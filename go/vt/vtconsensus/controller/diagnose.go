@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
@@ -47,25 +49,14 @@ const (
 	DiagnoseTypeError DiagnoseType = "error"
 	// DiagnoseTypeHealthy represents everything is DiagnoseTypeHealthy
 	DiagnoseTypeHealthy = "Healthy"
-	// DiagnoseTypeShardHasNoGroup represents the cluster has not init yet
-	DiagnoseTypeShardHasNoGroup = "ShardHasNoGroup"
-	// DiagnoseTypeShardHasInactiveGroup represents the status where we have a group name but no member in it
-	DiagnoseTypeShardHasInactiveGroup = "ShardHasInactiveGroup"
-	// DiagnoseTypeInsufficientGroupSize represents the cluster has insufficient group members
-	DiagnoseTypeInsufficientGroupSize = "InsufficientGroupSize"
-	// DiagnoseTypeReadOnlyShard represents the cluster who has a read only node
-	DiagnoseTypeReadOnlyShard = "ReadOnlyShard"
 	// DiagnoseTypeUnreachablePrimary represents the primary tablet is unreachable
 	DiagnoseTypeUnreachablePrimary = "UnreachablePrimary"
-	// DiagnoseTypeWrongPrimaryTablet represents the primary tablet is incorrect based on mysql group
+	// DiagnoseTypeWrongPrimaryTablet represents the primary tablet is incorrect based on on apecloud mysql
 	DiagnoseTypeWrongPrimaryTablet = "WrongPrimaryTablet"
+	// DiagnoseTypeMissingConsensusLeader represents miss consensus leader on apecloud mysql
+	DiagnoseTypeMissingConsensusLeader = "MissingConsensusLeader"
 	// DiagnoseTypeUnconnectedReplica represents cluster with primary tablet, but a node is not connected to it
 	DiagnoseTypeUnconnectedReplica = "UnconnectedReplica"
-	// DiagnoseTypeBackoffError represents a transient error e.g., the primary is unreachable
-	DiagnoseTypeBackoffError = "BackoffError"
-	// DiagnoseTypeBootstrapBackoff represents an ongoing bootstrap
-	DiagnoseTypeBootstrapBackoff = "BootstrapBackoff"
-
 	// diagnoseTypeUnknown represents a unclear intermediate diagnose state
 	diagnoseTypeUnknown = "Unknown"
 )
@@ -104,7 +95,7 @@ func (shard *ConsensusShard) Diagnose(ctx context.Context) (DiagnoseType, error)
 	shard.shardStatusCollector.recordDiagnoseResult(diagnoseResult)
 	shard.populateVTConsensusStatusLocked()
 	if diagnoseResult != DiagnoseTypeHealthy {
-		shard.logger.Warningf(`VTConsensus diagnose shard as unhealthy for %s/%s: result=%v, last_result=%v, instances=%v, primary=%v, primary_tablet=%v, problematics=%v, unreachables=%v,\n%v`,
+		shard.logger.Warningf(`VTConsensus diagnose shard as unhealthy for %s/%s:\n result=%v, last_result=%v, instances=%v, primary=%v, primary_tablet=%v, problematics=%v, unreachables=%v,\n%v`,
 			shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard,
 			shard.shardStatusCollector.status.DiagnoseResult,
 			shard.lastDiagnoseResult,
@@ -123,48 +114,53 @@ func (shard *ConsensusShard) Diagnose(ctx context.Context) (DiagnoseType, error)
 }
 
 func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, error) {
-	// First, check ConsensusGlobalView leader view.
-	if shard.isActive.Get() {
-		fastDiagnose := shard.fastPathDiagnose(ctx)
-		if fastDiagnose == DiagnoseTypeHealthy {
-			// If we can use local sql group info to diagnose
-			// we should record the view as well. This view is all we need
-			// later VTConsensus needs to find group name, primary etc from
-			// SQLGroup for repairing instead of getting nil
-			shard.logger.Infof("Diagnose %v from fast path", fastDiagnose)
-			return fastDiagnose, nil
-		}
-	}
-
-	// Second, normal strategy where we fetch info from all the nodes
+	// First, check primary healthy.
+	// force refresh consensus view
+	// TODO add fast path: directly fetch leader local view by primary tablet, if primary tablet exist.
 	err := shard.refreshSQLConsensusView()
 	if err != nil {
 		return DiagnoseTypeError, vterrors.Wrap(err, "fail to refreshConsensusView")
 	}
 
 	if shard.isActive.Get() {
-		fastDiagnose := shard.fastPathDiagnose(ctx)
-		if fastDiagnose == DiagnoseTypeHealthy {
-			// If we can use local sql group info to diagnose
-			// we should record the view as well. This view is all we need
-			// later VTConsensus needs to find group name, primary etc from
-			// SQLGroup for repairing instead of getting nil
-			shard.logger.Infof("Diagnose %v from fast path", fastDiagnose)
-			return fastDiagnose, nil
+		diagnoseType, err := shard.checkPrimaryTablet(ctx)
+
+		if err != nil {
+			shard.logger.Infof("Diagnose %v", err)
+		}
+		switch diagnoseType {
+		case DiagnoseTypeHealthy:
+			return DiagnoseTypeHealthy, nil
+		case DiagnoseTypeMissingConsensusLeader:
+			// we need fetch consensus info from all the nodes
+			err := shard.refreshSQLConsensusView()
+			if err != nil {
+				return DiagnoseTypeError, vterrors.Wrap(err, "fail to refreshConsensusView")
+			}
+		default:
+			return diagnoseType, nil
 		}
 	}
-
+	if shard.isActive.Get() {
+		diagnoseType, _ := shard.checkPrimaryTablet(ctx)
+		return diagnoseType, nil
+	}
 	// If we get here, shard is DiagnoseTypeHealthy
-	return DiagnoseTypeWrongPrimaryTablet, nil
+	return DiagnoseTypeHealthy, nil
 }
 
 func (shard *ConsensusShard) fastPathDiagnose(ctx context.Context) DiagnoseType {
 	pHost, pPort, isOnline := shard.sqlConsensusView.GetPrimary()
 	primaryTablet := shard.findShardPrimaryTablet()
-	// if no mysql leader
-	// if ConsensusGlobaView is null
+
 	// if no primary tablet
-	if !isOnline || pHost == "" || pPort == 0 || primaryTablet == nil {
+	if primaryTablet == nil {
+		log.Infof("Primary tablet unknown %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
+		return DiagnoseTypeWrongPrimaryTablet
+	}
+
+	// if mysql don't maybe elect leader, or ConsensusGlobaView is null when vtconsensus startup.
+	if !isOnline || pHost == "" || pPort == 0 {
 		return DiagnoseTypeWrongPrimaryTablet
 	}
 	// if mysql leader mismatch tablet type , maybe mysql failover leads to switch leader.
@@ -180,35 +176,37 @@ func (shard *ConsensusShard) fastPathDiagnose(ctx context.Context) DiagnoseType 
 	return DiagnoseTypeHealthy
 }
 
-func (shard *ConsensusShard) hasWrongPrimaryTablet(ctx context.Context) (bool, error) {
-	// Find out the hostname and port of the primary in mysql group
-	// we try to use local instance and then fallback to a random instance to check mysqld
-	// in case the primary is unreachable
-	host, port, _ := shard.sqlConsensusView.GetPrimary()
-	if !isHostPortValid(host, port) {
-		shard.logger.Warningf("Invalid address for primary %v:%v", host, port)
-		return false, errMissingGroup
+func (shard *ConsensusShard) checkPrimaryTablet(ctx context.Context) (DiagnoseType, error) {
+	// Find out the hostname and port of the Leader in consensus global view.
+	host, port, isOnline := shard.sqlConsensusView.GetPrimary()
+	// if we failed to find leader for apecloud mysql, maybe consensus cluster no ready.
+	// return true , vtconsensus need force refreshSQLConsensusView.
+	if !isOnline || host == "" || port == 0 {
+		shard.logger.Warningf("apecloud mysql consensus no Leader %v:%v", host, port)
+		return DiagnoseTypeMissingConsensusLeader, errMissingConsensusLeader
 	}
-	// Make sure we have a tablet available
+
+	// Make sure we have a primary tablet available
 	// findTabletByHostAndPort returns nil when we cannot find a tablet
 	// that is running on host:port, which means the tablet get stuck
 	// or when the tablet is not reachable
-	// we retrun errMissingPrimaryTablet so that VTConsensus will trigger a failover
+	// we return errMissingPrimaryTablet, we need to repair tablet manually.
 	tablet := shard.findTabletByHostAndPort(host, port)
 	if tablet == nil || !shard.instanceReachable(ctx, tablet) {
 		shard.logger.Errorf("Failed to find tablet that is running with mysql on %v:%v", host, port)
-		return false, errMissingPrimaryTablet
+		return DiagnoseTypeUnreachablePrimary, errUnreachablePrimaryTablet
 	}
-	// Now we know we have a valid mysql primary in the group
-	// we should make sure tablets are aligned with it
+
+	// find primary tablet in the cluster
 	primary := shard.findShardPrimaryTablet()
 	// If we failed to find primary for shard, it mostly means we are initializing the shard
-	// return true directly so that VTConsensus will set primary tablet according to MySQL group
-	if primary == nil {
+	// return true directly so that vtconsensus will set primary tablet according to MySQL group
+	if primary == nil || (host != primary.instanceKey.Hostname) || (port != primary.instanceKey.Port) {
 		shard.logger.Infof("unable to find primary tablet for %v", formatKeyspaceShard(shard.KeyspaceShard))
-		return true, nil
+		return DiagnoseTypeWrongPrimaryTablet, errWrongPrimaryTablet
 	}
-	return (host != primary.instanceKey.Hostname) || (port != primary.instanceKey.Port), nil
+
+	return DiagnoseTypeHealthy, nil
 }
 
 func (shard *ConsensusShard) isPrimaryReachable(ctx context.Context) (bool, error) {
@@ -246,7 +244,7 @@ func (shard *ConsensusShard) instanceReachable(ctx context.Context, instance *co
 func (shard *ConsensusShard) findShardPrimaryTablet() *consensusInstance {
 	var primaryInstance *consensusInstance
 	for _, instance := range shard.instances {
-		if shard.primaryAlias == instance.alias {
+		if shard.PrimaryAlias == instance.alias {
 			return instance
 		}
 	}

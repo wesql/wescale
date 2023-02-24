@@ -19,7 +19,8 @@ package controller
 import "errors"
 
 var (
-	errMissingPrimaryTablet = errors.New("no primary tablet available")
-	errMissingGroup         = errors.New("no mysql group")
-	errForceAbortBootstrap  = errors.New("force abort bootstrap")
+	errMissingPrimaryTablet     = errors.New("no primary tablet available")
+	errUnreachablePrimaryTablet = errors.New("primary tablet unreachable")
+	errWrongPrimaryTablet       = errors.New("wrong primary tablet")
+	errMissingConsensusLeader   = errors.New("no apecloud mysql consensus leader")
 )

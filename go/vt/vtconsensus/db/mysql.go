@@ -34,14 +34,10 @@ import (
 var (
 	configFilePath       string
 	enableHeartbeatCheck bool
-	// ErrGroupSplitBrain is the error when mysql group is split-brain
-	ErrGroupSplitBrain = errors.New("group has split brain")
 	// ErrGroupBackoffError is either the transient error or network partition from the group
 	ErrGroupBackoffError = errors.New("group backoff error")
-	// ErrGroupOngoingBootstrap is the error when a bootstrap is in progress
-	ErrGroupOngoingBootstrap = errors.New("group ongoing bootstrap")
 	// ErrGroupInactive is the error when mysql group is inactive unexpectedly
-	ErrGroupInactive = errors.New("group is inactive")
+	ErrConsensusNoLeader = errors.New("consensus no leader")
 	// ErrInvalidInstance is the error when the instance key has empty hostname
 	ErrInvalidInstance = errors.New("invalid mysql instance key")
 )
@@ -55,9 +51,10 @@ func init() {
 
 // Agent is used by vtconsensus to interact with Mysql
 type Agent interface {
-	// FetchGroupView fetches group related information
+	// FetchConsensusLocalView fetches consensus local view related information
 	FetchConsensusLocalView(alias string, instanceKey *inst.InstanceKey,
 		globalView *ConsensusGlobalView) (*ConsensusGlobalView, *ConsensusLocalView, error)
+	// FetchConsensusGlobalView fetches consensus global view
 	FetchConsensusGlobalView(globalView *ConsensusGlobalView)
 }
 
@@ -86,7 +83,7 @@ type ConsensusRole int
 
 const (
 	UNKNOWNCONSENSUSROLE ConsensusRole = iota
-	FOLLWER
+	FOLLOWER
 	LEADER
 	LOGGER
 	LEARNER
@@ -313,59 +310,5 @@ func (view *ConsensusGlobalView) CreateInstanceKey(member *ConsensusMember) inst
 	return inst.InstanceKey{
 		Hostname: member.MySQLHost,
 		Port:     member.MySQLPort,
-	}
-}
-
-func (state MemberState) String() string {
-	switch state {
-	case ONLINE:
-		return inst.GroupReplicationMemberStateOnline
-	case ERROR:
-		return inst.GroupReplicationMemberStateError
-	case RECOVERING:
-		return inst.GroupReplicationMemberStateRecovering
-	case OFFLINE:
-		return inst.GroupReplicationMemberStateOffline
-	case UNREACHABLE:
-		return inst.GroupReplicationMemberStateUnreachable
-	}
-	return "UNKNOWN"
-}
-
-func toMemberState(state string) MemberState {
-	switch state {
-	case inst.GroupReplicationMemberStateOnline:
-		return ONLINE
-	case inst.GroupReplicationMemberStateError:
-		return ERROR
-	case inst.GroupReplicationMemberStateRecovering:
-		return RECOVERING
-	case inst.GroupReplicationMemberStateOffline:
-		return OFFLINE
-	case inst.GroupReplicationMemberStateUnreachable:
-		return UNREACHABLE
-	default:
-		return UNKNOWNSTATE
-	}
-}
-
-func (role MemberRole) String() string {
-	switch role {
-	case PRIMARY:
-		return inst.GroupReplicationMemberRolePrimary
-	case SECONDARY:
-		return inst.GroupReplicationMemberRoleSecondary
-	}
-	return "UNKNOWN"
-}
-
-func toMemberRole(role string) MemberRole {
-	switch role {
-	case inst.GroupReplicationMemberRolePrimary:
-		return PRIMARY
-	case inst.GroupReplicationMemberRoleSecondary:
-		return SECONDARY
-	default:
-		return UNKNOWNROLE
 	}
 }

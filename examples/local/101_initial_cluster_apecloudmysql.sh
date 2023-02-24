@@ -27,38 +27,40 @@ elif [ "${TOPO}" = "k8s" ]; then
 elif [ "${TOPO}" = "consul" ]; then
 	CELL=zone1 ../common/scripts/consul-up.sh
 else
-	CELL=zone1 sh -x ../common/scripts/etcd-up.sh
+	CELL=zone1 ../common/scripts/etcd-up.sh
 fi
 
 # start vtctld
-CELL=zone1 sh -x ../common/scripts/vtctld-up.sh
+CELL=zone1 ../common/scripts/vtctld-up.sh
 
 # start vttablets for keyspace commerce
-for i in 2 3 4; do
-	CELL=zone1 TABLET_UID=$i sh -x ../common/scripts/apecloudmysql-up.sh
-	CELL=zone1 KEYSPACE=commerce TABLET_UID=$i sh -x ../common/scripts/vttablet-up.sh
+for i in 11 12 13; do
+	CELL=zone1 TABLET_UID=$i ../common/scripts/apecloudmysql-up.sh
+	CELL=zone1 KEYSPACE=commerce TABLET_UID=$i ../common/scripts/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
 vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync commerce || fail "Failed to set keyspace durability policy on the commerce keyspace"
 
-# apelcloud mysql not need start vtorc.
-# ../common/scripts/vtorc-up.sh
-vtconsensus --clusters_to_watch "commerce/0" --topo_implementation  etcd2 --topo_global_server_address  localhost:2379 --topo_global_root /vitess/global
+# start vtconsensus for apecloud mysql
+CELL=zone1 ../common/scripts/vtconsensus-up.sh
 
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
+echo "wait for healthy shard for a primary tablet to be elected"
 wait_for_healthy_shard commerce 0 || exit 1
 
 # create the schema
-#vtctldclient ApplySchema --sql-file create_commerce_schema.sql commerce || fail "Failed to apply schema for the commerce keyspace"
+vtctldclient ApplySchema --sql-file create_commerce_schema.sql commerce || fail "Failed to apply schema for the commerce keyspace"
 
 # create the vschema
-#vtctldclient ApplyVSchema --vschema-file vschema_commerce_initial.json commerce || fail "Failed to apply vschema for the commerce keyspace"
+vtctldclient ApplyVSchema --vschema-file vschema_commerce_initial.json commerce || fail "Failed to apply vschema for the commerce keyspace"
 
 # start vtgate
 CELL=zone1 ../common/scripts/vtgate-up.sh
 
 # start vtadmin
-#../common/scripts/vtadmin-up.sh
+../common/scripts/vtadmin-up.sh
+
+echo "vitess client connection: mysql -uroot"
 

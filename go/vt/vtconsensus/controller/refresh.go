@@ -69,7 +69,7 @@ type ConsensusShard struct {
 	KeyspaceShard        *topo.KeyspaceShard
 	cells                []string
 	instances            []*consensusInstance
-	primaryAlias         string
+	PrimaryAlias         string
 	shardStatusCollector *shardStatusCollector
 	sqlConsensusView     *SQLConsensusView
 	ts                   ConsensusTopo
@@ -154,22 +154,6 @@ func NewConsensusShard(
 	return consensusShard
 }
 
-// refreshTabletsInShardLocked is called by repair to get a fresh view of the shard
-// The caller is responsible to make sure the lock on ConsensusShard
-func (shard *ConsensusShard) refreshTabletsInShardLocked(ctx context.Context) {
-	instances, err := shard.refreshTabletsInShardInternal(ctx)
-	if err == nil {
-		shard.instances = instances
-	}
-	primary, err := shard.refreshPrimaryShard(ctx)
-	if err == nil {
-		shard.primaryAlias = primary
-		return
-	}
-	// If we failed to refreshPrimaryShard, use primary from local tablets
-	shard.primaryAlias = shard.findPrimaryFromLocalCell()
-}
-
 // UpdateTabletsInShardWithLock updates the shard instances with a lock
 func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
 	instances, err := shard.refreshTabletsInShardInternal(ctx)
@@ -181,19 +165,21 @@ func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
 		shard.Unlock()
 	}
 	primary, err := shard.refreshPrimaryShard(ctx)
-	// We set primary separately from instances so that if global topo is not available
-	// VTConsensus can still discover the new tablets from local cell
+	// set primary separately from instances so that if global topo is not available
+	// still discover the new tablets from local cell
 	shard.Lock()
 	defer shard.Unlock()
 	if err == nil {
-		shard.primaryAlias = primary
+		shard.PrimaryAlias = primary
 		return
 	}
-	shard.primaryAlias = shard.findPrimaryFromLocalCell()
+	shard.PrimaryAlias = shard.findPrimaryFromLocalCell()
 }
 
+// refreshTabletsInShardInternal refresh ks/shard instances.
 func (shard *ConsensusShard) refreshTabletsInShardInternal(ctx context.Context) ([]*consensusInstance, error) {
 	keyspace, shardName := shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard
+	// get all tablets for a shard
 	tablets, err := shard.ts.GetTabletMapForShardByCell(ctx, keyspace, shardName, shard.cells)
 	if err != nil {
 		shard.logger.Errorf("Error fetching tablets for keyspace/shardName %v/%v: %v", keyspace, shardName, err)
@@ -202,6 +188,7 @@ func (shard *ConsensusShard) refreshTabletsInShardInternal(ctx context.Context) 
 	return parseTabletInfos(tablets), nil
 }
 
+// refreshPrimaryShard fetch primary alias from global topo.
 func (shard *ConsensusShard) refreshPrimaryShard(ctx context.Context) (string, error) {
 	keyspace, shardName := shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard
 	si, err := shard.ts.GetShard(ctx, keyspace, shardName)
@@ -221,6 +208,7 @@ func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 		if instance.tablet.Type == topodatapb.TabletType_PRIMARY {
 			// It is possible that there are more than one master in topo server
 			// we should compare timestamp to pick the latest one
+			// TODO for apecloud mysql, should compare term.
 			if latestPrimaryTimestamp.Before(instance.primaryTimeStamp) {
 				latestPrimaryTimestamp = instance.primaryTimeStamp
 				primaryInstance = instance
@@ -236,11 +224,12 @@ func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 // parseTabletInfos replaces the replica reports for the shard key
 // Note: this is not thread-safe
 func parseTabletInfos(tablets map[string]*topo.TabletInfo) []*consensusInstance {
-	// collect all replicas
+	// collect all replica instances
 	var newReplicas []*consensusInstance
 	for alias, tabletInfo := range tablets {
 		tablet := tabletInfo.Tablet
 		// Only monitor primary, replica and ronly tablet types
+		// for apecloud mysql, leader is primary, follower is replica, learner is rdonly
 		switch tablet.Type {
 		case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
 			// mysql hostname and port might be empty here if tablet is not running

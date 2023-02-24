@@ -38,17 +38,6 @@ type DB interface {
 	QueryOrchestrator(query string, argsArray []any, onRow func(sqlutils.RowMap) error) error
 }
 
-type DummySQLResult struct {
-}
-
-func (dummyRes DummySQLResult) LastInsertId() (int64, error) {
-	return 0, nil
-}
-
-func (dummyRes DummySQLResult) RowsAffected() (int64, error) {
-	return 1, nil
-}
-
 // OpenDiscovery returns a DB instance to access a topology instance.
 // It has lower read timeout than OpenTopology and is intended to
 // be used with low-latency discovery queries.

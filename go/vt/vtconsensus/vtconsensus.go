@@ -165,7 +165,9 @@ func (vtconsensus *VTConsensus) RefreshCluster() {
 			ticker := time.Tick(refreshInterval)
 			for range ticker {
 				ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
+				log.Infof("Start refresh primary tablet, %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
 				shard.UpdateTabletsInShardWithLock(ctx)
+				log.Infof("Finished refresh primary tablet is %s, %v/%v", shard.PrimaryAlias, shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
 				cancel()
 			}
 		}(shard)

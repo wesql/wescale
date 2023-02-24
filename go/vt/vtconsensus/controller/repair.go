@@ -71,7 +71,7 @@ func (shard *ConsensusShard) Repair(ctx context.Context, status DiagnoseType) (R
 	if status != DiagnoseTypeHealthy {
 		shard.logger.Infof("vtconsensus repaired %v status=%v | code=%v", formatKeyspaceShard(shard.KeyspaceShard), status, code)
 	}
-	return code, vterrors.Wrap(err, "vtconsensus repair")
+	return code, vterrors.Wrap(err, "vtconsensus repaired")
 }
 
 func (shard *ConsensusShard) repairWrongPrimaryTablet(ctx context.Context) (RepairResultCode, error) {
@@ -94,7 +94,7 @@ func (shard *ConsensusShard) repairWrongPrimaryTablet(ctx context.Context) (Repa
 func (shard *ConsensusShard) fixPrimaryTabletLocked(ctx context.Context) error {
 	host, port, isActive := shard.sqlConsensusView.GetPrimary()
 	if !isActive {
-		return db.ErrGroupInactive
+		return db.ErrConsensusNoLeader
 	}
 	// Primary tablet does not run mysql leader, we need to change it accordingly
 	candidate := shard.findTabletByHostAndPort(host, port)
