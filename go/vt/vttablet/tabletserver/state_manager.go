@@ -666,30 +666,32 @@ func (sm *stateManager) Broadcast() {
 }
 
 func (sm *stateManager) refreshReplHealthLocked() (time.Duration, error) {
-	if sm.target.TabletType == topodatapb.TabletType_PRIMARY {
-		sm.replHealthy = true
-		return 0, nil
-	}
-	lag, err := sm.rt.Status()
-	if err != nil {
-		if sm.replHealthy {
-			log.Infof("Going unhealthy due to replication error: %v", err)
-		}
-		sm.replHealthy = false
-	} else {
-		if lag > sm.unhealthyThreshold.Get() {
-			if sm.replHealthy {
-				log.Infof("Going unhealthy due to high replication lag: %v", lag)
-			}
-			sm.replHealthy = false
-		} else {
-			if !sm.replHealthy {
-				log.Infof("Replication is healthy")
-			}
-			sm.replHealthy = true
-		}
-	}
-	return lag, err
+	sm.replHealthy = true
+	return 0, nil
+	//if sm.target.TabletType == topodatapb.TabletType_PRIMARY {
+	//	sm.replHealthy = true
+	//	return 0, nil
+	//}
+	//lag, err := sm.rt.Status()
+	//if err != nil {
+	//	if sm.replHealthy {
+	//		log.Infof("Going unhealthy due to replication error: %v", err)
+	//	}
+	//	sm.replHealthy = false
+	//} else {
+	//	if lag > sm.unhealthyThreshold.Get() {
+	//		if sm.replHealthy {
+	//			log.Infof("Going unhealthy due to high replication lag: %v", lag)
+	//		}
+	//		sm.replHealthy = false
+	//	} else {
+	//		if !sm.replHealthy {
+	//			log.Infof("Replication is healthy")
+	//		}
+	//		sm.replHealthy = true
+	//	}
+	//}
+	//return lag, err
 }
 
 // EnterLameduck causes tabletserver to enter the lameduck state. This
@@ -719,7 +721,8 @@ func (sm *stateManager) IsServing() bool {
 }
 
 func (sm *stateManager) isServingLocked() bool {
-	return sm.state == StateServing && sm.wantState == StateServing && sm.replHealthy && !sm.lameduck
+	//return sm.state == StateServing && sm.wantState == StateServing && sm.replHealthy && !sm.lameduck
+	return sm.state == StateServing && sm.wantState == StateServing && !sm.lameduck
 }
 
 func (sm *stateManager) AppendDetails(details []*kv) []*kv {
