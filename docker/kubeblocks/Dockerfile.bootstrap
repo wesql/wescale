@@ -1,0 +1,11 @@
+ARG bootstrap_version
+ARG image="apecloud/vitessbootstrap:${bootstrap_version}-common"
+
+FROM --platform=linux/amd64 "${image}"
+
+# Bootstrap Vitess
+WORKDIR /vt/src/vitess.io/vitess
+
+ENV MYSQL_FLAVOR MySQL80
+USER vitess
+RUN ./bootstrap.sh

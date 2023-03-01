@@ -1,0 +1,50 @@
+# Copyright 2019 The Vitess Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+ARG VT_BASE_VER=latest
+ARG DEBIAN_VER=stable-slim
+
+FROM apecloud/vitesskubeblocks:${VT_BASE_VER} AS kubeblocks
+
+FROM debian:${DEBIAN_VER}
+
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+
+# TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
+RUN apt-get update && \
+   apt-get upgrade -qq && \
+   apt-get install wget default-mysql-client jq curl -qq --no-install-recommends && \
+   apt-get autoremove && \
+   apt-get clean && \
+   rm -rf /var/lib/apt/lists/*
+
+# Set up Vitess environment (just enough to run pre-built Go binaries)
+ENV VTROOT /vt
+ENV VTDATAROOT /vtdataroot
+
+# Prepare directory structure.
+RUN mkdir -p /vt/bin && mkdir -p /vtdataroot
+
+# Copy binaries
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+
+# Copy certs to allow https calls
+COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# add vitess user/group and add permissions
+RUN groupadd -r --gid 2000 vitess && \
+   useradd -r -g vitess --uid 1000 vitess && \
+   chown -R vitess:vitess /vt && \
+   chown -R vitess:vitess /vtdataroot

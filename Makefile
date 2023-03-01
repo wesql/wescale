@@ -311,6 +311,15 @@ endef
 docker_base:
 	${call build_docker_image,docker/base/Dockerfile,vitess/base}
 
+DOCKER_KUBEBLOCKS_BOOTSTRAP_IMAGES = common bootstrap
+
+docker_bootstrap_kubeblocks:
+	for i in $(DOCKER_KUBEBLOCKS_BOOTSTRAP_IMAGES); do echo "building kubeblocks bootstrap image: $$i"; sh -x docker/kubeblocks/build_bootstrap.sh $$i ${BOOTSTRAP_VERSION} || exit 1; done
+
+docker_base_kubeblocks:
+	${call build_docker_image,docker/kubeblocks/Dockerfile.base,apecloud/vitessbase}
+
+
 DOCKER_BASE_SUFFIX = mysql80 percona57 percona80
 DOCKER_BASE_TARGETS = $(addprefix docker_base_, $(DOCKER_BASE_SUFFIX))
 $(DOCKER_BASE_TARGETS): docker_base_%:
