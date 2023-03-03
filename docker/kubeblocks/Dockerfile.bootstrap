@@ -7,5 +7,11 @@ FROM --platform=linux/amd64 "${image}"
 WORKDIR /vt/src/vitess.io/vitess
 
 ENV MYSQL_FLAVOR MySQL80
+
+ENV BUILD_CHROME 0
+ENV BUILD_JAVA 0 ENV
+ENV BUILD_CONSUL 0
+
 USER vitess
+
 RUN ./bootstrap.sh

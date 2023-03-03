@@ -15,9 +15,11 @@
 ARG VT_BASE_VER=latest
 ARG DEBIAN_VER=stable-slim
 
-FROM apecloud/vitesskubeblocks:${VT_BASE_VER} AS kubeblocks
+FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitesskubeblocks:${VT_BASE_VER} AS kubeblocks
 
 FROM debian:${DEBIAN_VER}
+
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 RUN apt-get update && \
    apt-get upgrade -qq && \
@@ -26,7 +28,18 @@ RUN apt-get update && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
 
-COPY --from=kubeblocks /vt/bin/vtctlclient /usr/bin/
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctl /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctld /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+
+RUN mkdir /vt/scripts
+
+COPY --from=kubeblocks /vt/scripts /vt/scripts
 
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \

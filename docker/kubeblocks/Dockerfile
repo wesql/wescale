@@ -24,7 +24,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 # TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
 RUN apt-get update && \
    apt-get upgrade -qq && \
-   apt-get install default-mysql-client -qq --no-install-recommends && \
+   apt-get install default-mysql-client -qq --no-install-recommends etcd procps vim iputils-ping && \
    apt-get autoremove && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
@@ -38,10 +38,15 @@ RUN mkdir -p /vt && \
     mkdir -p /vt/bin && \
     mkdir -p /vt/config && \
     mkdir -p /vt/web && \
+    mkdir -p /vt/dist/scripts && \
     mkdir -p /vtdataroot/tabletdata
 
 # Copy CA certs for https calls
 COPY --from=base /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+COPY --from=base $VTROOT/config/apecloud_scripts /vt/scripts
+COPY --from=base $VTROOT/examples/common/env.sh /vt/scripts/env.sh
+COPY --from=base $VTROOT/examples/common/lib/utils.sh /vt/scripts/lib/utils.sh
 
 # Copy binaries
 COPY --from=base /vt/bin/mysqlctld /vt/bin/

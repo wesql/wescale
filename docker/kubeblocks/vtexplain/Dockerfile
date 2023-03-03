@@ -15,7 +15,7 @@
 ARG VT_BASE_VER=latest
 ARG DEBIAN_VER=stable-slim
 
-FROM apecloud/vitessbase:${VT_BASE_VER} AS vitessbase
+FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbase:${VT_BASE_VER} AS vitessbase
 
 FROM debian:${DEBIAN_VER}
 
@@ -26,10 +26,23 @@ ENV VTROOT /vt
 RUN mkdir -p /vt/bin && mkdir -p /vtdataroot
 
 # Copy binaries
-COPY --from=vitessbase /vt/bin/vtexplain /vt/bin/
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctl /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctld /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+
+RUN mkdir /vt/scripts
+
+COPY --from=kubeblocks /vt/scripts /vt/scripts
 
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \
    useradd -r -g vitess --uid 1000 vitess && \
    chown -R vitess:vitess /vt && \
    chown -R vitess:vitess /vtdataroot
+
+CMD ["/bin/bash"]

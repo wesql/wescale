@@ -15,7 +15,7 @@
 ARG VT_BASE_VER=latest
 ARG DEBIAN_VER=stable-slim
 
-FROM apecloud/vitesskubeblocks:${VT_BASE_VER} AS kubeblocks
+FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitesskubeblocks:${VT_BASE_VER} AS kubeblocks
 
 FROM debian:${DEBIAN_VER}
 
@@ -27,7 +27,14 @@ RUN mkdir -p /vt/bin && \
    mkdir -p /vt/web && mkdir -p /vtdataroot
 
 # Copy binaries
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctl /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtctld /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
+COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
 
 # Copy certs to allow https calls
 COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
@@ -35,8 +42,17 @@ COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-cert
 # copy web admin files
 COPY --from=kubeblocks /vt/web /vt/web
 
+RUN mkdir /vt/scripts
+COPY --from=kubeblocks /vt/scripts /vt/scripts
+
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \
    useradd -r -g vitess --uid 1000 vitess && \
    chown -R vitess:vitess /vt && \
    chown -R vitess:vitess /vtdataroot
+
+ENV PATH $VTROOT/bin:$PATH
+
+USER vitess
+CMD ["/bin/bash"]
+#CMD ["/vt/scripts/vtctld-up.sh"]
