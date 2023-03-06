@@ -27,7 +27,7 @@ RUN apt-get update && \
    apt-get install default-mysql-client -qq --no-install-recommends sudo procps vim iputils-ping && \
    apt-get autoremove && \
    apt-get clean && \
-   rm -rf /var/lib/apt/lists/* \
+   rm -rf /var/lib/apt/lists/*
 
 
 # Set up Vitess environment (just enough to run pre-built Go binaries)
