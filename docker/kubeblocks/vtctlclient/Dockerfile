@@ -23,7 +23,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 RUN apt-get update && \
    apt-get upgrade -qq && \
-   apt-get install jq curl -qq --no-install-recommends && \
+   apt-get install jq curl sudo procps vim iputils-ping -qq --no-install-recommends && \
    apt-get autoremove && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*

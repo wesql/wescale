@@ -24,7 +24,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 # TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
 RUN apt-get update && \
    apt-get upgrade -qq && \
-   apt-get install wget default-mysql-client jq curl -qq --no-install-recommends procps rsyslog vim etcd iputils-ping && \
+   apt-get install wget default-mysql-client jq curl -qq --no-install-recommends sudo procps rsyslog vim iputils-ping && \
    apt-get autoremove && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
@@ -42,6 +42,7 @@ COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtctl /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtctld /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
+COPY --from=kubeblocks /vt/bin/vtctldclient /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
 COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
@@ -57,11 +58,12 @@ COPY --from=kubeblocks /vt/scripts /vt/scripts
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \
    useradd -r -g vitess --uid 1000 vitess && \
+   chpasswd && adduser vitess sudo && \
    chown -R vitess:vitess /vt && \
    chown -R vitess:vitess /vtdataroot
 
 ENV PATH $VTROOT/bin:$PATH
 
-USER vitess
+#USER vitess
 CMD ["/bin/bash"]
 #CMD ["/vt/scripts/vttablet-up.sh"]

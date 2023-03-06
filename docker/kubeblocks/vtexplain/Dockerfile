@@ -19,8 +19,19 @@ FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbase:${VT_BASE_VER} AS vit
 
 FROM debian:${DEBIAN_VER}
 
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+
+# TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
+RUN apt-get update && \
+   apt-get upgrade -qq && \
+   apt-get install default-mysql-client -qq --no-install-recommends sudo procps vim iputils-ping && \
+   apt-get autoremove && \
+   apt-get clean && \
+   rm -rf /var/lib/apt/lists/* \
+
 # Set up Vitess environment (just enough to run pre-built Go binaries)
 ENV VTROOT /vt
+ENV VTDATAROOT /vtdataroot
 
 # Prepare directory structure.
 RUN mkdir -p /vt/bin && mkdir -p /vtdataroot
@@ -42,6 +53,7 @@ COPY --from=kubeblocks /vt/scripts /vt/scripts
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \
    useradd -r -g vitess --uid 1000 vitess && \
+    chpasswd && adduser vitess sudo && \
    chown -R vitess:vitess /vt && \
    chown -R vitess:vitess /vtdataroot
 

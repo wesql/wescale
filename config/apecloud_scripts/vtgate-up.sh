@@ -17,13 +17,14 @@
 # This is an example script that starts a single vtgate.
 
 cell=${CELL:-'zone1'}
-web_port=15001
-grpc_port=15991
-mysql_server_port=15306
+web_port=${VTGATE_WEB_PORT:-'15001'}
+grpc_port=${VTGATE_GRPC_PORT:-'15991'}
+mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
 mysql_server_socket_path="/tmp/mysql.sock"
 
 # Start vtgate.
 # shellcheck disable=SC2086
+su vitess <<EOF
 vtgate \
   $TOPOLOGY_FLAGS \
   --log_dir $VTDATAROOT \
@@ -39,3 +40,4 @@ vtgate \
   --pid_file $VTDATAROOT/vtgate.pid \
   --mysql_auth_server_impl none \
   > $VTDATAROOT/vtgate.out 2>&1 &
+EOF

@@ -18,14 +18,16 @@
 
 #source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
-cell=${CELL:-'test'}
-grpc_port=15999
-vtctld_web_port=15000
+cell=${CELL:-'zone1'}
+grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
+vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
+topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
 
 echo "Starting vtctld..."
 # shellcheck disable=SC2086
+su vitess <<EOF
 vtctld \
- $TOPOLOGY_FLAGS \
+ $topology_fags \
  --cell $cell \
  --service_map 'grpc-vtctl,grpc-vtctld' \
  --backup_storage_implementation file \
@@ -35,3 +37,4 @@ vtctld \
  --grpc_port $grpc_port \
  --pid_file $VTDATAROOT/vtctld.pid \
   > $VTDATAROOT/vtctld.out 2>&1 &
+EOF

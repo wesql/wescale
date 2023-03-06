@@ -20,12 +20,16 @@ cell=${CELL:-'zone1'}
 keyspace=${KEYSPACE:-'commerce'}
 shard=${SHARD:-'0'}
 uid=$TABLET_UID
-mysql_port=3306
-port=15010
-grpc_port=16010
+mysql_root=${MYSQL_ROOT_USER:-'root'}
+mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
+mysql_port=${MYSQL_PORT:-3306}
+port=${VTTABLET_PORT:-'15100'} + uid
+grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
+vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
+vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
-tablet_hostname=$KB_HOSTIP
+tablet_hostname=$$HOSTNAME
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica
@@ -33,6 +37,7 @@ topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_serve
 
 echo "Starting vttablet for $alias..."
 
+su vitess <<EOF
 vttablet \
  $topology_fags \
  --log_dir $VTDATAROOT/tmp \
@@ -47,13 +52,16 @@ vttablet \
  --file_backup_storage_root $VTDATAROOT/backups \
  --port $port \
  --db_port $mysql_port \
- --db_host $KB_MYSQL_0_HOSTNAME= \
+ --db_host $HOSTNAME \
+ --db_allprivs_user $mysql_root \
+ --db_allprivs_password $mysql_root_passwd \
  --grpc_port $grpc_port \
  --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
  --pid_file $VTDATAROOT/vttablet.pid \
- --vtctld_addr http://$hostname:$vtctld_web_port/ \
+ --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
  --disable_active_reparents \
  > $VTDATAROOT/vttablet.out 2>&1 &
+EOF
 ## Block waiting for the tablet to be listening
 ## Not the same as healthy
 #

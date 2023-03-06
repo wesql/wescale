@@ -54,6 +54,7 @@ COPY --from=base /vt/bin/mysqlctl /vt/bin/
 COPY --from=base /vt/bin/vtctld /vt/bin/
 COPY --from=base /vt/bin/vtctl /vt/bin/
 COPY --from=base /vt/bin/vtctlclient /vt/bin/
+COPY --from=base /vt/bin/vtctldclient /vt/bin/
 COPY --from=base /vt/bin/vtgate /vt/bin/
 COPY --from=base /vt/bin/vtconsensus /vt/bin/
 COPY --from=base /vt/bin/vttablet /vt/bin/
@@ -72,3 +73,5 @@ COPY --from=base $VTROOT/config/mycnf /vt/config/mycnf
 # add vitess user and add permissions
 RUN groupadd -r --gid 2000 vitess && useradd -r -g vitess --uid 1000 vitess && \
    chown -R vitess:vitess /vt;
+
+ENV PATH /vt/bin:$PATH

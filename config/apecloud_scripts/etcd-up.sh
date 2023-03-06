@@ -19,7 +19,7 @@
 #source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 etcd_port=${ETCD_PORT:-'2379'}
-etcd_server=${ETCD_SERVER:-'127.0.0.1:'$etcd_port}
+etcd_server=${ETCD_SERVER:-'127.0.0.1'}
 
 cell=${CELL:-'zone1'}
 export ETCDCTL_API=2
@@ -27,16 +27,16 @@ export ETCDCTL_API=2
 # Check that etcd is not already running
 #curl "http://${etcd_server}" > /dev/null 2>&1 && fail "etcd is already running. Exiting."
 
-etcd --enable-v2=true --data-dir "${VTDATAROOT}/etcd/"  --listen-client-urls "http://${etcd_server}" --advertise-client-urls "http://${etcd_server}" > "${VTDATAROOT}"/etcd.out 2>&1 &
+etcd --enable-v2=true --data-dir "${VTDATAROOT}/etcd/"  --listen-client-urls "http://0.0.0.0:${etcd_port}" --advertise-client-urls "http://0.0.0.0:${etcd_port}" > "${VTDATAROOT}"/etcd.out 2>&1 &
 PID=$!
 echo $PID > "${VTDATAROOT}/etcd.pid"
 sleep 5
 
 echo "add /vitess/global"
-etcdctl --endpoints "http://${etcd_server}" mkdir /vitess/global &
+etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/global &
 
 echo "add /vitess/$cell"
-etcdctl --endpoints "http://${etcd_server}" mkdir /vitess/$cell &
+etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/$cell &
 
 # And also add the CellInfo description for the cell.
 # If the node already exists, it's fine, means we used existing data.
@@ -45,7 +45,7 @@ set +e
 # shellcheck disable=SC2086
 vtctl $TOPOLOGY_FLAGS VtctldCommand AddCellInfo \
   --root /vitess/$cell \
-  --server-address "${etcd_server}" \
+  --server-address "${etcd_server}:${etcd_port}" \
   $cell
 set -e
 
