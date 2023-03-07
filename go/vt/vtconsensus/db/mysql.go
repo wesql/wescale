@@ -34,6 +34,8 @@ import (
 var (
 	configFilePath       string
 	enableHeartbeatCheck bool
+	dbUser               string
+	dbPasswd             string
 	// ErrGroupBackoffError is either the transient error or network partition from the group
 	ErrGroupBackoffError = errors.New("group backoff error")
 	// ErrGroupInactive is the error when mysql group is inactive unexpectedly
@@ -44,8 +46,10 @@ var (
 
 func init() {
 	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
-		fs.StringVar(&configFilePath, "db_config", "", "Full path to db config file that will be used by VTGR.")
+		fs.StringVar(&configFilePath, "db_config", "", "Full path to db config file that will be used by VTConsensus.")
 		fs.BoolVar(&enableHeartbeatCheck, "enable_heartbeat_check", false, "Enable heartbeat checking, set together with --group_heartbeat_threshold.")
+		fs.StringVar(&dbUser, "db_username", "root", "ApeCloud MySQL access username, --db_username, default root.")
+		fs.StringVar(&dbPasswd, "db_password", "", "ApeCloud MySQL access password, --db_passwd, default empty.")
 	})
 }
 
@@ -129,6 +133,8 @@ type ConsensusGlobalView struct {
 type SQLAgentImpl struct {
 	config          *config.Configuration
 	enableHeartbeat bool
+	dbUserName      string
+	dbPassword      string
 }
 
 func NewConsensusLocalView(tabletAlias string, serverID int, currentLeader string,
@@ -166,6 +172,8 @@ func NewVTConsensusSqlAgent() *SQLAgentImpl {
 	agent := &SQLAgentImpl{
 		config:          conf,
 		enableHeartbeat: enableHeartbeatCheck,
+		dbUserName:      dbUser,
+		dbPassword:      dbPasswd,
 	}
 	return agent
 }
@@ -174,7 +182,7 @@ func NewVTConsensusSqlAgent() *SQLAgentImpl {
 func (agent *SQLAgentImpl) heartbeatCheck(instanceKey *inst.InstanceKey) (int, error) {
 	query := `select timestampdiff(SECOND, from_unixtime(truncate(ts * 0.000000001, 0)), NOW()) as diff from _vt.heartbeat;`
 	var result int
-	err := fetchInstance(instanceKey, query, func(m sqlutils.RowMap) error {
+	err := fetchInstance(instanceKey, query, agent.dbUserName, agent.dbPassword, func(m sqlutils.RowMap) error {
 		result = m.GetInt("diff")
 		return nil
 	})
@@ -199,7 +207,7 @@ func (agent *SQLAgentImpl) FetchConsensusLocalView(alias string, instanceKey *in
         case server_ready_for_rw when 'NO' then 0  when 'YES' then 1 end as isrw 
 	from information_schema.wesql_cluster_local;`
 
-	err := fetchInstance(instanceKey, query, func(m sqlutils.RowMap) error {
+	err := fetchInstance(instanceKey, query, agent.dbUserName, agent.dbPassword, func(m sqlutils.RowMap) error {
 		leaderHostname = m.GetString("leader_hostname")
 		leaderHostPort = m.GetInt("leader_port")
 		localView = NewConsensusLocalView(
@@ -241,7 +249,7 @@ func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalV
 	}
 	mk := make(map[inst.InstanceKey]ConsensusMember)
 
-	err := fetchInstance(&leaderInstance, query, func(m sqlutils.RowMap) error {
+	err := fetchInstance(&leaderInstance, query, agent.dbUserName, agent.dbPassword, func(m sqlutils.RowMap) error {
 		var realHost string
 		var realPort int
 		hostName := m.GetString("hostname")
@@ -284,11 +292,11 @@ func (view *ConsensusGlobalView) GetLeaderHostPort(local *ConsensusLocalView) (s
 }
 
 // fetchInstance fetches result from mysql
-func fetchInstance(instanceKey *inst.InstanceKey, query string, onRow func(sqlutils.RowMap) error) error {
+func fetchInstance(instanceKey *inst.InstanceKey, query string, userName string, passwd string, onRow func(sqlutils.RowMap) error) error {
 	if err := verifyInstance(instanceKey); err != nil {
 		return err
 	}
-	sqlDb, err := OpenDiscovery(instanceKey.Hostname, instanceKey.Port)
+	sqlDb, err := OpenDiscovery(instanceKey.Hostname, instanceKey.Port, userName, passwd)
 	if err != nil {
 		return err
 	}

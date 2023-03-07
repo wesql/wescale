@@ -91,13 +91,13 @@ func OpenTabletDiscovery(ctx context.Context, cellsToWatch, clustersToWatch []st
 // OpenTabletDiscoveryWithAcitve opens connection with topo server
 // and triggers the first round of controller based on parameter
 func OpenTabletDiscoveryWithAcitve(ctx context.Context, cellsToWatch, clustersToWatch []string, active bool) *VTConsensus {
-	// if vtconsensusConfigFile == "" {
-	// 	log.Fatal("vtconsensus_config is required")
-	// }
-	// config, err := config.ReadVTConsensusConfig(vtconsensusConfigFile)
-	// if err != nil {
+	//if vtconsensusConfigFile == "" {
+	//	log.Fatal("vtconsensus_config is required")
+	//}
+	//config, err := config.ReadVTConsensusConfig(vtconsensusConfigFile)
+	//if err != nil {
 	//	log.Fatalf("Cannot load vtconsensus config file: %v", err)
-	// }
+	//}
 
 	vtconsensus := newVTConsensus(
 		ctx,

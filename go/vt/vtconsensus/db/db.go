@@ -41,19 +41,19 @@ type DB interface {
 // OpenDiscovery returns a DB instance to access a topology instance.
 // It has lower read timeout than OpenTopology and is intended to
 // be used with low-latency discovery queries.
-func OpenDiscovery(host string, port int) (*sql.DB, error) {
-	return openTopology(host, port, config.Config.MySQLDiscoveryReadTimeoutSeconds)
+func OpenDiscovery(host string, port int, uname string, passwd string) (*sql.DB, error) {
+	return openTopology(host, port, uname, passwd, config.Config.MySQLDiscoveryReadTimeoutSeconds)
 }
 
 // OpenTopology returns a DB instance to access a topology instance.
 func OpenTopology(host string, port int) (*sql.DB, error) {
-	return openTopology(host, port, config.Config.MySQLTopologyReadTimeoutSeconds)
+	return openTopology(host, port, "", "", config.Config.MySQLTopologyReadTimeoutSeconds)
 }
 
-func openTopology(host string, port int, readTimeout int) (db *sql.DB, err error) {
+func openTopology(host string, port int, uname string, passwd string, readTimeout int) (db *sql.DB, err error) {
 	uri := fmt.Sprintf("%s:%s@tcp(%s:%d)/?timeout=%ds&readTimeout=%ds&interpolateParams=true",
-		"root",
-		"",
+		uname,
+		passwd,
 		host, port,
 		3,
 		readTimeout,
