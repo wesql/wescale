@@ -24,7 +24,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 # TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
 RUN apt-get update && \
    apt-get upgrade -qq && \
-   apt-get install default-mysql-client -qq --no-install-recommends sudo procps vim iputils-ping && \
+   apt-get install wget default-mysql-client jq curl -qq --no-install-recommends sudo procps rsyslog vim iputils-ping && \
    apt-get autoremove && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
@@ -55,17 +55,16 @@ COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-cert
 COPY --from=kubeblocks /vt/web /vt/web
 
 RUN mkdir /vt/scripts
+
 COPY --from=kubeblocks /vt/scripts /vt/scripts
 
 # add vitess user/group and add permissions
 RUN groupadd -r --gid 2000 vitess && \
    useradd -r -g vitess --uid 1000 vitess && \
-    chpasswd && adduser vitess sudo && \
+   chpasswd && adduser vitess sudo && \
    chown -R vitess:vitess /vt && \
    chown -R vitess:vitess /vtdataroot
 
 ENV PATH $VTROOT/bin:$PATH
 
-#USER vitess
 CMD ["/bin/bash"]
-#CMD ["/vt/scripts/vtctld-up.sh"]

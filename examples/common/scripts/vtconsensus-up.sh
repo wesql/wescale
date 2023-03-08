@@ -11,6 +11,8 @@ vtconsensus \
   --clusters_to_watch "commerce/0" \
   --refresh_interval 10s \
   --scan_repair_timeout 3s \
+  --db_username "root" \
+  --db_password "" \
   > "${log_dir}/vtconsensus.out" 2>&1 &
 
 vtconsensus_pid=$!

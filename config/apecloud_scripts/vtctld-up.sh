@@ -26,7 +26,7 @@ topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_serve
 echo "Starting vtctld..."
 # shellcheck disable=SC2086
 su vitess <<EOF
-vtctld \
+exec vtctld \
  $topology_fags \
  --cell $cell \
  --service_map 'grpc-vtctl,grpc-vtctld' \
@@ -36,5 +36,5 @@ vtctld \
  --port $vtctld_web_port \
  --grpc_port $grpc_port \
  --pid_file $VTDATAROOT/vtctld.pid \
-  > $VTDATAROOT/vtctld.out 2>&1 &
+  > $VTDATAROOT/vtctld.out 2>&1
 EOF

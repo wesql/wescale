@@ -499,6 +499,9 @@ func (hc *HealthCheckImpl) updateHealth(th *TabletHealth, prevTarget *query.Targ
 	hc.healthData[targetKey][tabletAlias] = th
 
 	isPrimary := th.Target.TabletType == topodata.TabletType_PRIMARY
+	log.Infof("updateHealth tabletAlias %v, th.Target %v, isPrimary %v, serving is %v",
+		tabletAlias, th.Target, isPrimary, up)
+
 	switch {
 	case isPrimary && up:
 		if len(hc.healthy[targetKey]) == 0 {
@@ -660,6 +663,8 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	var result []*TabletHealth
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
+	log.Infof("GetHealthyTabletStats %v", hc.healthy)
+	log.Infof("GetHealthyTabletStats target %v", target)
 	return append(result, hc.healthy[KeyFromTarget(target)]...)
 }
 

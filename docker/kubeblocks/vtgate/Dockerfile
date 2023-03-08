@@ -24,7 +24,7 @@ RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 # TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
 RUN apt-get update && \
    apt-get upgrade -qq && \
-   apt-get install default-mysql-client -qq --no-install-recommends sudo procps vim iputils-ping && \
+   apt-get install wget default-mysql-client jq curl -qq --no-install-recommends sudo procps rsyslog vim iputils-ping && \
    apt-get autoremove && \
    apt-get clean && \
    rm -rf /var/lib/apt/lists/*
@@ -34,10 +34,8 @@ ENV VTROOT /vt
 ENV VTDATAROOT /vtdataroot
 
 # Prepare directory structure.
-RUN mkdir -p /vt/bin && mkdir -p /vtdataroot
-
-# Copy certs to allow https calls
-COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN mkdir -p /vt/bin && \
+   mkdir -p /vt/web && mkdir -p /vtdataroot
 
 # Copy binaries
 COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
@@ -49,6 +47,12 @@ COPY --from=kubeblocks /vt/bin/vtctldclient /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
 COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
 COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
+
+# Copy certs to allow https calls
+COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
+# copy web admin files
+COPY --from=kubeblocks /vt/web /vt/web
 
 RUN mkdir /vt/scripts
 
@@ -63,6 +67,4 @@ RUN groupadd -r --gid 2000 vitess && \
 
 ENV PATH $VTROOT/bin:$PATH
 
-#USER vitess
 CMD ["/bin/bash"]
-#CMD ["/vt/scripts/vtgate-up.sh"]

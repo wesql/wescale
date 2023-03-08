@@ -34,7 +34,8 @@ ENV VTROOT /vt
 ENV VTDATAROOT /vtdataroot
 
 # Prepare directory structure.
-RUN mkdir -p /vt/bin && mkdir -p /vtdataroot
+RUN mkdir -p /vt/bin && \
+   mkdir -p /vt/web && mkdir -p /vtdataroot
 
 # Copy binaries
 COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
@@ -50,6 +51,8 @@ COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
 # Copy certs to allow https calls
 COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
+# copy web admin files
+COPY --from=kubeblocks /vt/web /vt/web
 
 RUN mkdir /vt/scripts
 
@@ -64,6 +67,4 @@ RUN groupadd -r --gid 2000 vitess && \
 
 ENV PATH $VTROOT/bin:$PATH
 
-#USER vitess
 CMD ["/bin/bash"]
-#CMD ["/vt/scripts/vttablet-up.sh"]

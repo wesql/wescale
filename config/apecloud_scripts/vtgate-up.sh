@@ -25,7 +25,7 @@ mysql_server_socket_path="/tmp/mysql.sock"
 # Start vtgate.
 # shellcheck disable=SC2086
 su vitess <<EOF
-vtgate \
+exec vtgate \
   $TOPOLOGY_FLAGS \
   --log_dir $VTDATAROOT \
   --log_queries_to_file $VTDATAROOT/vtgate_querylog.txt \
@@ -39,5 +39,5 @@ vtgate \
   --service_map 'grpc-vtgateservice' \
   --pid_file $VTDATAROOT/vtgate.pid \
   --mysql_auth_server_impl none \
-  > $VTDATAROOT/vtgate.out 2>&1 &
+  > $VTDATAROOT/vtgate.out 2>&1
 EOF

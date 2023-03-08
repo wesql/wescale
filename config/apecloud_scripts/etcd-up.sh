@@ -30,7 +30,7 @@ export ETCDCTL_API=2
 etcd --enable-v2=true --data-dir "${VTDATAROOT}/etcd/"  --listen-client-urls "http://0.0.0.0:${etcd_port}" --advertise-client-urls "http://0.0.0.0:${etcd_port}" > "${VTDATAROOT}"/etcd.out 2>&1 &
 PID=$!
 echo $PID > "${VTDATAROOT}/etcd.pid"
-sleep 5
+sleep 10
 
 echo "add /vitess/global"
 etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/global &

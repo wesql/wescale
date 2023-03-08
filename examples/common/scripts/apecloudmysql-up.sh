@@ -63,7 +63,7 @@ docker run -itd  \
     --ip $container_host \
     -p $port:3306     \
     -v ${cur_path}/../../../config/apecloud_mycnf:/etc/mysql/conf.d \
-    -v ${cur_path}/../../../config/apecloud_scripts:/docker-entrypoint-initdb.d/    \
+    -v ${cur_path}/../../../config/apecloud_local_scripts:/docker-entrypoint-initdb.d/    \
     -e MYSQL_ALLOW_EMPTY_PASSWORD=1 \
     -e MYSQL_INIT_CONSENSUS_PORT=13306 \
     -v $VTDATAROOT/$tablet_dir:/mysql \
