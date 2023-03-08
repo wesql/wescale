@@ -306,6 +306,8 @@ define build_docker_image
 		echo "Building docker using straight docker build"; \
 		docker build -f ${1} -t ${2} --build-arg bootstrap_version=${BOOTSTRAP_VERSION} .; \
 	fi
+	docker tag ${2}:latest registry.cn-hangzhou.aliyuncs.com/${2}:latest
+	docker push registry.cn-hangzhou.aliyuncs.com/${2}:latest
 endef
 
 docker_base:

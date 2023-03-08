@@ -15,7 +15,7 @@
 ARG VT_BASE_VER=latest
 ARG DEBIAN_VER=stable-slim
 
-FROM apecloud/vitessbase:${VT_BASE_VER} AS kubeblocks
+FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbase:${VT_BASE_VER} AS kubeblocks
 
 FROM debian:${DEBIAN_VER}
 
