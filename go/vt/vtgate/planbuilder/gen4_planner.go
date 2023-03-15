@@ -184,7 +184,7 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	if ks, _ := semTable.SingleUnshardedKeyspace(); ks != nil {
+	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
 		plan, tablesUsed, err = unshardedShortcut(ctx, selStmt, ks)
 		if err != nil {
 			return nil, nil, nil, err

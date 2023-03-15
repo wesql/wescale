@@ -30,6 +30,8 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/vt/vtgate/engine"
+
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/cache"
 	"vitess.io/vitess/go/sqltypes"
@@ -287,6 +289,7 @@ func Init(
 		noScatter,
 		pv,
 	)
+	engine.RegisterApeCloudDbOp(serv, gw)
 
 	// connect the schema tracker with the vschema manager
 	if enableSchemaChangeSignal {

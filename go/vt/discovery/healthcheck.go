@@ -660,7 +660,16 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	var result []*TabletHealth
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
-	return append(result, hc.healthy[KeyFromTarget(target)]...)
+	/*todo foobar*/
+	for _, value := range hc.healthy {
+		for _, th := range value {
+			if th.Target.TabletType == target.TabletType {
+				result = append(result, th)
+			}
+		}
+	}
+	return result
+	//return append(result, hc.healthy[KeyFromTarget(target)]...)
 }
 
 // GetTabletStats returns all tablets for the given target.

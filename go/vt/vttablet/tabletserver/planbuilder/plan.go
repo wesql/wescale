@@ -221,6 +221,8 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 		plan, err = analyzeSet(stmt), nil
 	case sqlparser.DDLStatement:
 		plan, err = analyzeDDL(stmt, viewsEnabled)
+	case sqlparser.DBDDLStatement:
+		plan, err = analyzeDBDDL(stmt)
 	case *sqlparser.AlterMigration:
 		plan, err = &Plan{PlanID: PlanAlterMigration, FullStmt: stmt}, nil
 	case *sqlparser.RevertMigration:

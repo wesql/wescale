@@ -18,8 +18,12 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
+	"vitess.io/vitess/go/vt/srvtopo"
+	"vitess.io/vitess/go/vt/topotools"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
 type failDBDDL struct{}
@@ -46,10 +50,47 @@ func (noOp) DropDatabase(context.Context, string) error {
 	return nil
 }
 
+type apeCloudDbOp struct {
+	srvTs srvtopo.Server
+	gw    queryservice.QueryService
+}
+
+// RegisterApeCloudDbOp registers the apeCloudDbOp plugin
+func RegisterApeCloudDbOp(srvTs srvtopo.Server, gateway queryservice.QueryService) {
+	DBDDLRegister(apeCloudDbDDL, &apeCloudDbOp{srvTs: srvTs, gw: gateway})
+}
+
+// CreateDatabase implements the DropCreateDB interface
+func (a apeCloudDbOp) CreateDatabase(ctx context.Context, keyspaceName string) error {
+	ts, err := a.srvTs.GetTopoServer()
+	if err != nil {
+		return fmt.Errorf("GetTopoServer failed: %v", err)
+	}
+	cellName, err := ts.GetKnownCells(ctx)
+	if err != nil {
+		return fmt.Errorf("GetKnownCells failed: %v", err)
+	}
+	return topotools.CreateDatabase(ctx, ts, a.gw, keyspaceName, cellName)
+}
+
+// DropDatabase implements the DropCreateDB interface
+func (a apeCloudDbOp) DropDatabase(ctx context.Context, keyspaceName string) error {
+	ts, err := a.srvTs.GetTopoServer()
+	if err != nil {
+		return fmt.Errorf("GetTopoServer failed: %v", err)
+	}
+	cellName, err := ts.GetKnownCells(ctx)
+	if err != nil {
+		return fmt.Errorf("GetKnownCells failed: %v", err)
+	}
+	return topotools.DropDatabase(ctx, ts, keyspaceName, cellName)
+}
+
 const (
 	faildbDDL          = "fail"
 	noOpdbDDL          = "noop"
-	defaultDBDDLPlugin = faildbDDL
+	apeCloudDbDDL      = "apeCloud"
+	defaultDBDDLPlugin = apeCloudDbDDL
 )
 
 func init() {
