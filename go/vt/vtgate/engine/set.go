@@ -507,7 +507,7 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 		if err != nil {
 			return err
 		}
-		if _, err := schema.ParseReadWriteSplittingPolicy(str); err != nil {
+		if _, err := schema.ParseReadWriteSplittingPolicySetting(str); err != nil {
 			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", str)
 		}
 		vcursor.Session().SetReadWriteSplittingPolicy(str)

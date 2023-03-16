@@ -39,6 +39,10 @@ func (s ReadWriteSplittingPolicy) IsRandom() bool {
 	return s == ReadWriteSplittingPolicyRandom
 }
 
+func (s ReadWriteSplittingPolicy) IsDisable() bool {
+	return s == ReadWriteSplittingPolicyDisable || s == ""
+}
+
 type ReadWriteSplittingPolicySetting struct {
 	Strategy ReadWriteSplittingPolicy `json:"strategy,omitempty"`
 	Options  string                   `json:"options,omitempty"`
@@ -51,7 +55,7 @@ func NewReadWriteSplittingPolicySettingSetting(strategy ReadWriteSplittingPolicy
 	}
 }
 
-func ParseReadWriteSplittingPolicy(strategyVariable string) (*ReadWriteSplittingPolicySetting, error) {
+func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSplittingPolicySetting, error) {
 	setting := &ReadWriteSplittingPolicySetting{}
 	strategyName := strategyVariable
 	if submatch := readWriteSplittingPolicyParserRegexp.FindStringSubmatch(strategyVariable); len(submatch) > 0 {

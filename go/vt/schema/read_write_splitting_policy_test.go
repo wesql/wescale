@@ -73,11 +73,11 @@ func TestParseReadWriteSplittingPolicy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseReadWriteSplittingPolicy(tt.args.strategyVariable)
-			if !tt.wantErr(t, err, fmt.Sprintf("ParseReadWriteSplittingPolicy(%v)", tt.args.strategyVariable)) {
+			got, err := ParseReadWriteSplittingPolicySetting(tt.args.strategyVariable)
+			if !tt.wantErr(t, err, fmt.Sprintf("ParseReadWriteSplittingPolicySetting(%v)", tt.args.strategyVariable)) {
 				return
 			}
-			assert.Equalf(t, tt.want, got, "ParseReadWriteSplittingPolicy(%v)", tt.args.strategyVariable)
+			assert.Equalf(t, tt.want, got, "ParseReadWriteSplittingPolicySetting(%v)", tt.args.strategyVariable)
 		})
 	}
 }

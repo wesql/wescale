@@ -257,7 +257,7 @@ func Init(
 	if _, err := schema.ParseDDLStrategy(defaultDDLStrategy); err != nil {
 		log.Fatalf("Invalid value for -ddl_strategy: %v", err.Error())
 	}
-	if _, err := schema.ParseReadWriteSplittingPolicy(defaultReadWriteSplittingPolicy); err != nil {
+	if _, err := schema.ParseReadWriteSplittingPolicySetting(defaultReadWriteSplittingPolicy); err != nil {
 		log.Fatalf("Invalid value for -read_write_splitting_policy: %v", err.Error())
 	}
 	tc := NewTxConn(gw, getTxMode())
@@ -670,7 +670,7 @@ func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 	if strategy == "" {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid DDL strategy: %s", strategy)
 	}
-	if _, err := schema.ParseReadWriteSplittingPolicy(strategy); err != nil {
+	if _, err := schema.ParseReadWriteSplittingPolicySetting(strategy); err != nil {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", strategy)
 	}
 	defaultReadWriteSplittingPolicy = strategy
