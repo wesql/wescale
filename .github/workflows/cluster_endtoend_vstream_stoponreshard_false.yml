@@ -1,7 +1,9 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
 name: Cluster (vstream_stoponreshard_false)
-on: [push, pull_request]
+on:
+  pull_request:
+  workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vstream_stoponreshard_false)')
   cancel-in-progress: true

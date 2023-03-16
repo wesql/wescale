@@ -1,7 +1,9 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
 name: Cluster (vstream_with_keyspaces_to_watch)
-on: [push, pull_request]
+on:
+  pull_request:
+  workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vstream_with_keyspaces_to_watch)')
   cancel-in-progress: true
