@@ -132,7 +132,7 @@ func newVCursorImpl(
 ) (*vcursorImpl, error) {
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.GetOrCreateOptions().HasCreatedTempTables, safeSession.HasAdvisoryLock(), sql)
+		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), sql)
 	if err != nil {
 		return nil, err
 	}

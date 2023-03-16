@@ -780,6 +780,13 @@ func (session *SafeSession) GetOrCreateOptions() *querypb.ExecuteOptions {
 	return session.Session.Options
 }
 
+func (session *SafeSession) HasCreatedTempTables() bool {
+	if session.Session.Options == nil {
+		return false
+	}
+	return session.Session.Options.HasCreatedTempTables
+}
+
 var _ iQueryOption = (*SafeSession)(nil)
 
 func (session *SafeSession) cachePlan() bool {
