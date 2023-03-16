@@ -1,6 +1,5 @@
 name: Upgrade Downgrade Testing Reparent New VTTablet
 on:
-  push:
   pull_request:
 
 concurrency:
