@@ -1,7 +1,9 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
 name: Cluster (vtgate_vindex_heavy)
-on: [push, pull_request]
+on:
+  pull_request:
+  workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vtgate_vindex_heavy)')
   cancel-in-progress: true
