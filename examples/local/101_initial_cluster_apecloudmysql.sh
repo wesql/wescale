@@ -17,33 +17,25 @@
 # this script brings up zookeeper and all the vitess components
 # required for a single shard deployment.
 
-source ../common/env.sh
+source ../common/env-apecloud.sh
 
 # start topo server
-if [ "${TOPO}" = "zk2" ]; then
-	CELL=zone1 ../common/scripts/zk-up.sh
-elif [ "${TOPO}" = "k8s" ]; then
-	CELL=zone1 ../common/scripts/k3s-up.sh
-elif [ "${TOPO}" = "consul" ]; then
-	CELL=zone1 ../common/scripts/consul-up.sh
-else
-	CELL=zone1 ../common/scripts/etcd-up.sh
-fi
+CELL=zone1 ../common/scripts-apecloud/etcd-up.sh
 
 # start vtctld
-CELL=zone1 ../common/scripts/vtctld-up.sh
+CELL=zone1 ../common/scripts-apecloud/vtctld-up.sh
 
 # start vttablets for keyspace commerce
 for i in 11 12 13; do
-	CELL=zone1 TABLET_UID=$i ../common/scripts/apecloudmysql-up.sh
-	CELL=zone1 KEYSPACE=commerce TABLET_UID=$i ../common/scripts/vttablet-up.sh
+	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/apecloudmysql-up.sh
+	CELL=zone1 KEYSPACE=commerce TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
 vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync commerce || fail "Failed to set keyspace durability policy on the commerce keyspace"
 
 # start vtconsensus for apecloud mysql
-CELL=zone1 ../common/scripts/vtconsensus-up.sh
+CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
@@ -57,10 +49,10 @@ vtctldclient ApplySchema --sql-file create_commerce_schema.sql commerce || fail 
 vtctldclient ApplyVSchema --vschema-file vschema_commerce_initial.json commerce || fail "Failed to apply vschema for the commerce keyspace"
 
 # start vtgate
-CELL=zone1 ../common/scripts/vtgate-up.sh
+CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 
 # start vtadmin
-../common/scripts/vtadmin-up.sh
+../common/scripts-apecloud/vtadmin-up.sh
 
 echo "vitess client connection: mysql -uroot"
 
