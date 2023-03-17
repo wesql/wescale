@@ -1,5 +1,0 @@
-[mysqld]
-datadir=/mysql/data
-pid-file=/mysql/mysql.pid
-log-error=/mysql/error.log
-socket=/mysql/mysql.sock
