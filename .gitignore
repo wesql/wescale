@@ -81,6 +81,8 @@ examples/apecloud/vtdataroot
 /bin/
 /vtdataroot/
 venv
+.run/
+
 
 .scannerwork
 report

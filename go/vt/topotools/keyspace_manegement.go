@@ -3,6 +3,8 @@ package topotools
 import (
 	"fmt"
 
+	"vitess.io/vitess/go/global"
+
 	"golang.org/x/net/context"
 
 	"vitess.io/vitess/go/vt/logutil"
@@ -12,8 +14,8 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
-var defaultKeyspace = "apecloud"
-var defaultShardName = "0"
+var defaultKeyspace = global.DefaultKeyspace
+var defaultShardName = global.DefaultShard
 
 func CreateDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryService, keyspaceName string, cells []string) error {
 	_, err := ts.GetOrCreateShard(ctx, keyspaceName, defaultShardName)

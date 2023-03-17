@@ -19,6 +19,7 @@ package planbuilder
 import (
 	"fmt"
 
+	"vitess.io/vitess/go/global"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -184,7 +185,14 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
+	ks, _ := func() (*vindexes.Keyspace, any) {
+		if global.UnshardEnabled {
+			return vschema.DefaultKeyspace()
+		}
+		return semTable.SingleUnshardedKeyspace()
+	}()
+
+	if ks != nil {
 		plan, tablesUsed, err = unshardedShortcut(ctx, selStmt, ks)
 		if err != nil {
 			return nil, nil, nil, err

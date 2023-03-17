@@ -764,14 +764,17 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			/*todo foobar delete me*/
-			//if len(settings) > 0 {
-			//	connSetting, err = tsv.qe.GetConnSetting(ctx, settings)
-			//	if err != nil {
-			//		return err
-			//	}
-			//}
-			var connSetting = pools.NewSetting("use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace}), "use "+tsv.config.DB.DBName)
+			var connSetting *pools.Setting
+			if len(settings) > 0 {
+				connSetting, err = tsv.qe.GetConnSetting(ctx, settings)
+				if err != nil {
+					return err
+				}
+			}
+			connSetting = pools.NewSetting(
+				"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
+				"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+			)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -877,6 +880,10 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
+			connSetting = pools.NewSetting(
+				"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
+				"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+			)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
