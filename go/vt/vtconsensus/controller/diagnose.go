@@ -49,8 +49,14 @@ const (
 	DiagnoseTypeError DiagnoseType = "error"
 	// DiagnoseTypeHealthy represents everything is DiagnoseTypeHealthy
 	DiagnoseTypeHealthy = "Healthy"
-	// DiagnoseTypeUnreachablePrimary represents the primary tablet is unreachable
+	// DiagnoseTypeUnreachablePrimary represents the primary MySQL is unreachable
 	DiagnoseTypeUnreachablePrimary = "UnreachablePrimary"
+	// DiagnoseTypeUnreachableReplica represents the replica MySQL is unreachable
+	DiagnoseTypeUnreachableReplica = "UnreachableReplica"
+	// DiagnoseTypeUnreachableLeader represents the primary MySQL is unreachable
+	DiagnoseTypeUnreachableLeader = "UnreachableLeader"
+	// DiagnoseTypeUnreachableFollower represents the replica MySQL is unreachable
+	DiagnoseTypeUnreachableFollower = "UnreachableFollower"
 	// DiagnoseTypeWrongPrimaryTablet represents the primary tablet is incorrect based on on apecloud mysql
 	DiagnoseTypeWrongPrimaryTablet = "WrongPrimaryTablet"
 	// DiagnoseTypeMissingConsensusLeader represents miss consensus leader on apecloud mysql
@@ -142,8 +148,8 @@ func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, 
 		}
 	}
 	if shard.isActive.Get() {
-		diagnoseType, _ := shard.checkPrimaryTablet(ctx)
-		return diagnoseType, nil
+		diagnoseType, err := shard.checkPrimaryTablet(ctx)
+		return diagnoseType, err
 	}
 	// If we get here, shard is DiagnoseTypeHealthy
 	return DiagnoseTypeHealthy, nil
@@ -334,44 +340,57 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 	var leaderHost string
 	var leaderPort int
 	var leaderServerId int
+	var leaderTerm int
+	var leaderInstance *consensusInstance
+	view = shard.dbAgent.NewConsensusGlobalView()
 
 	// reset views in sql group
 	shard.sqlConsensusView.clear()
 	for _, instance := range shard.instances {
 		var err error
 		var localView *db.ConsensusLocalView
-		view, localView, err = shard.dbAgent.FetchConsensusLocalView(instance.alias, instance.instanceKey, view)
+		localView, err = shard.dbAgent.FetchConsensusLocalView(instance.alias, instance.instanceKey, view)
 		if err != nil {
 			shard.shardStatusCollector.recordProblematics(instance)
 			if unreachableError(err) {
 				shard.shardStatusCollector.recordUnreachables(instance)
 			}
-			shard.logger.Errorf("%v get error while fetch group info: %v", instance.alias, err)
-			return err
+			shard.logger.Errorf("%v error while fetch local view from apecloud mysql: %v", instance.alias, err)
+			// Only raise error if we failed to get any data from mysql
+			// maybe some mysql node is not start.
+			continue
 		}
-		if localView.Role == db.LEADER {
+
+		// if exists dual leader, greater term instance would be new leader.
+		if localView.Role == db.LEADER &&
+			(nil == leaderInstance || leaderTerm < localView.CurrentTerm) {
+			leaderInstance = instance
 			leaderHost = instance.instanceKey.Hostname
 			leaderPort = instance.instanceKey.Port
 			leaderServerId = localView.ServerID
+			leaderTerm = localView.CurrentTerm
 		}
 		localCount++
 	}
-	if localCount > 0 && leaderHost != "" && leaderPort > 0 {
+
+	if localCount > 0 && leaderInstance != nil {
+		var err error
+		shard.logger.Infof("get consensus leader serverid %d: %v:%v", leaderServerId, leaderHost, leaderPort)
+
 		// need use mysql expose host:port, not param localhost:@@port
 		view.LeaderMySQLHost = leaderHost
 		view.LeaderMySQLPort = leaderPort
 		view.LeaderServerID = leaderServerId
-		shard.dbAgent.FetchConsensusGlobalView(view)
+		err = shard.dbAgent.FetchConsensusGlobalView(view)
+		if err != nil {
+			shard.logger.Errorf("%v:%v error while fetch global view from apecloud mysql: %v",
+				leaderHost, leaderPort, err)
+			shard.sqlConsensusView.recordView(nil)
+			return errUnreachableLeaderMySQL
+		}
 	}
 
 	shard.sqlConsensusView.recordView(view)
-
-	// Only raise error if we failed to get any data from mysql
-	// maybe some mysql node is not start.
-	if localCount != len(shard.instances) {
-		shard.logger.Errorf("fail to fetch any data for mysql")
-		return db.ErrGroupBackoffError
-	}
 	return nil
 }
 

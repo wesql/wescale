@@ -55,11 +55,12 @@ func init() {
 
 // Agent is used by vtconsensus to interact with Mysql
 type Agent interface {
+	NewConsensusGlobalView() *ConsensusGlobalView
 	// FetchConsensusLocalView fetches consensus local view related information
 	FetchConsensusLocalView(alias string, instanceKey *inst.InstanceKey,
-		globalView *ConsensusGlobalView) (*ConsensusGlobalView, *ConsensusLocalView, error)
+		globalView *ConsensusGlobalView) (*ConsensusLocalView, error)
 	// FetchConsensusGlobalView fetches consensus global view
-	FetchConsensusGlobalView(globalView *ConsensusGlobalView)
+	FetchConsensusGlobalView(globalView *ConsensusGlobalView) error
 }
 
 // MemberState is member state
@@ -98,6 +99,7 @@ const (
 type ConsensusLocalView struct {
 	TabletAlias    string
 	ServerID       int
+	CurrentTerm    int
 	CurrentLeader  string
 	LeaderHostName string
 	LeaderHostPort int
@@ -137,11 +139,11 @@ type SQLAgentImpl struct {
 	dbPassword      string
 }
 
-func NewConsensusLocalView(tabletAlias string, serverID int, currentLeader string,
+func NewConsensusLocalView(tabletAlias string, serverID int, currentTerm int, currentLeader string,
 	leaderHostName string, leaderHostPort int, mySQLHost string,
 	mySQLPort int, role ConsensusRole, isRW int) *ConsensusLocalView {
 	return &ConsensusLocalView{TabletAlias: tabletAlias, ServerID: serverID,
-		CurrentLeader: currentLeader, LeaderHostName: leaderHostName,
+		CurrentTerm: currentTerm, CurrentLeader: currentLeader, LeaderHostName: leaderHostName,
 		LeaderHostPort: leaderHostPort, MySQLHost: mySQLHost, MySQLPort: mySQLPort,
 		Role: role, IsRW: isRW}
 }
@@ -155,7 +157,7 @@ func NewConsensusMember(serverID int, mySQLHost string,
 }
 
 // NewConsensusGlobalView creates a new ConsensusGlobalView
-func NewConsensusGlobalView() *ConsensusGlobalView {
+func (agent *SQLAgentImpl) NewConsensusGlobalView() *ConsensusGlobalView {
 	return &ConsensusGlobalView{}
 }
 
@@ -191,16 +193,12 @@ func (agent *SQLAgentImpl) heartbeatCheck(instanceKey *inst.InstanceKey) (int, e
 
 // FetchConsensusLocalView implements Agent interface
 func (agent *SQLAgentImpl) FetchConsensusLocalView(alias string, instanceKey *inst.InstanceKey,
-	globalView *ConsensusGlobalView) (*ConsensusGlobalView, *ConsensusLocalView, error) {
+	globalView *ConsensusGlobalView) (*ConsensusLocalView, error) {
 	var leaderHostname string
 	var leaderHostPort int
 	var localView *ConsensusLocalView
 
-	if globalView == nil {
-		globalView = NewConsensusGlobalView()
-	}
-
-	query := `select server_id, current_leader, 
+	query := `select server_id, current_term, current_leader, 
         left(current_leader, locate(':', current_leader) -1) as leader_hostname, 
     	@@port as leader_port, 
     	case role when 'Leader' then 2 when 'Follower' then 1 else 0 end as role, 
@@ -213,6 +211,7 @@ func (agent *SQLAgentImpl) FetchConsensusLocalView(alias string, instanceKey *in
 		localView = NewConsensusLocalView(
 			alias,
 			m.GetInt("server_id"),
+			m.GetInt("current_term"),
 			m.GetString("current_leader"),
 			leaderHostname,
 			leaderHostPort,
@@ -224,13 +223,13 @@ func (agent *SQLAgentImpl) FetchConsensusLocalView(alias string, instanceKey *in
 		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return globalView, localView, nil
+	return localView, nil
 }
 
 // FetchConsensusGlobalView returns the view of wesql_cluster_global
-func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalView) {
+func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalView) error {
 	query := `select g.server_id,          
     left(g.ip_port, locate(':', g.ip_port) -1) as hostname,      
     @@port as port,     case g.role when 'Leader' then 2 when 'Follower' then 1 else 0 end as role,     
@@ -241,7 +240,7 @@ func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalV
     where g.server_id = h.server_id;`
 
 	if globalView.LeaderMySQLHost == "" || globalView.LeaderMySQLPort == 0 {
-		return
+		return nil
 	}
 	leaderInstance := inst.InstanceKey{
 		Hostname: globalView.LeaderMySQLHost,
@@ -281,9 +280,10 @@ func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalV
 		return nil
 	})
 	if err != nil {
-		return
+		return err
 	}
 	globalView.ResolvedMember = mk
+	return nil
 }
 
 // GetLeaderHostPort returns the host and port of Leader

@@ -55,7 +55,7 @@ func openTopology(host string, port int, uname string, passwd string, readTimeou
 		uname,
 		passwd,
 		host, port,
-		3,
+		1,
 		readTimeout,
 	)
 

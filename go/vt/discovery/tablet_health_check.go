@@ -171,10 +171,10 @@ func (thc *tabletHealthCheck) processResponse(hc *HealthCheckImpl, shr *query.St
 
 	// an app-level error from tablet, force serving state.
 	var healthErr error
-	//serving := shr.Serving
+	serving := shr.Serving
 	if shr.RealtimeStats.HealthError != "" {
 		healthErr = fmt.Errorf("vttablet error: %v", shr.RealtimeStats.HealthError)
-		//serving = false
+		serving = false
 	}
 
 	if shr.TabletAlias != nil && !proto.Equal(shr.TabletAlias, thc.Tablet.Alias) {
@@ -197,7 +197,7 @@ func (thc *tabletHealthCheck) processResponse(hc *HealthCheckImpl, shr *query.St
 	if healthErr != nil {
 		reason = "healthCheck update error: " + healthErr.Error()
 	}
-	thc.setServingState(true, reason)
+	thc.setServingState(serving, reason)
 
 	// notify downstream for primary change
 	hc.updateHealth(thc.SimpleCopy(), prevTarget, trivialUpdate, thc.Serving)

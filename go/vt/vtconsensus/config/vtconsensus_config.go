@@ -51,7 +51,7 @@ func newVTConsensusConfig() *VTConsensusConfig {
 	return config
 }
 
-// ReadVTConsensusConfig reads config for VTGR
+// ReadVTConsensusConfig reads config for VTConsensus
 func ReadVTConsensusConfig(file string) (*VTConsensusConfig, error) {
 	vtconsensusFile, err := os.Open(file)
 	if err != nil {
