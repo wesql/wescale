@@ -1,7 +1,7 @@
 #!/bin/bash
 
 script_dir="$(dirname "${BASH_SOURCE[0]:-$0}")"
-source "${script_dir}/../env.sh"
+source "${script_dir}/../env-apecloud.sh"
 
 log_dir="${VTDATAROOT}/tmp"
 port=16000

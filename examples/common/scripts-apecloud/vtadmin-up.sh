@@ -1,7 +1,7 @@
 #!/bin/bash
 
 script_dir="$(dirname "${BASH_SOURCE[0]:-$0}")"
-source "${script_dir}/../env.sh"
+source "${script_dir}/../env-apecloud.sh"
 
 log_dir="${VTDATAROOT}/tmp"
 web_dir="${script_dir}/../../../web/vtadmin"
@@ -20,7 +20,7 @@ vtadmin \
   --alsologtostderr \
   --rbac \
   --rbac-config="${script_dir}/../vtadmin/rbac.yaml" \
-  --cluster "id=local,name=local,discovery=staticfile,discovery-staticfile-path=./vtadmin/discovery.json,tablet-fqdn-tmpl={{ .Tablet.Hostname }}:15{{ .Tablet.Alias.Uid }}" \
+  --cluster "id=local,name=local,discovery=staticfile,discovery-staticfile-path=${script_dir}/../vtadmin/discovery.json,tablet-fqdn-tmpl={{ .Tablet.Hostname }}:15{{ .Tablet.Alias.Uid }}" \
   > "${log_dir}/vtadmin-api.out" 2>&1 &
 
 vtadmin_api_pid=$!

@@ -16,7 +16,7 @@
 
 # This is an example script that starts vtctld.
 
-source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
+source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 
 cell=${CELL:-'test'}
 grpc_port=15999
