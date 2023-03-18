@@ -21,8 +21,8 @@ var (
 	UnshardEnabled      = ApeCloudFeaturesEnable
 	DbPrefix            = func() string {
 		if ApeCloudFeaturesEnable {
-			return VtDbPrefix
+			return EmptyDbPrefix
 		}
-		return EmptyDbPrefix
+		return VtDbPrefix
 	}()
 )

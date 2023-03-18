@@ -774,10 +774,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 				}
 			}
 			if global.ApeCloudDbDDLPlugin {
-				connSetting = pools.NewSetting(
-					"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
-					"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
-				)
+				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			}
 			qre := &QueryExecutor{
 				query:          query,
@@ -815,6 +812,19 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 		},
 	)
 	return result, err
+}
+
+func (tsv *TabletServer) buildConnSettingForApeCloud(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
+	if connSetting == nil {
+		return pools.NewSetting(
+			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),
+			"use "+tsv.config.DB.DBName,
+		)
+	}
+	return pools.NewSetting(
+		"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName})+";"+connSetting.GetQuery(),
+		"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+	)
 }
 
 // smallerTimeout returns the smaller of the two timeouts.
@@ -885,10 +895,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 				}
 			}
 			if global.ApeCloudDbDDLPlugin {
-				connSetting = pools.NewSetting(
-					"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
-					"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
-				)
+				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			}
 			qre := &QueryExecutor{
 				query:          query,
