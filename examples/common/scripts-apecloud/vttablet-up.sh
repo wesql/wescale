@@ -20,6 +20,8 @@ cell=${CELL:-'test'}
 keyspace=${KEYSPACE:-'test_keyspace'}
 shard=${SHARD:-'0'}
 uid=$TABLET_UID
+mysql_root="root"
+mysql_root_passwd=""
 mysql_port=$[17000 + $uid]
 port=$[15000 + $uid]
 grpc_port=$[16000 + $uid]
@@ -45,13 +47,24 @@ vttablet \
  --init_keyspace $keyspace \
  --init_shard $shard \
  --init_tablet_type $tablet_type \
- --health_check_interval 5s \
+ --health_check_interval 1s \
+ --shard_sync_retry_delay 1s \
+ --remote_operation_timeout 1s \
+ --db_connect_timeout_ms 500 \
  --enable_replication_reporter \
  --backup_storage_implementation file \
  --file_backup_storage_root $VTDATAROOT/backups \
  --port $port \
  --db_port $mysql_port \
- --db_host "127.0.0.1" \
+ --db_host "$tablet_hostname" \
+ --db_allprivs_user "$mysql_root" \
+ --db_allprivs_password "$mysql_root_passwd" \
+ --db_dba_user "$mysql_root" \
+ --db_dba_password "$mysql_root_passwd" \
+ --db_app_user "$mysql_root" \
+ --db_app_password "$mysql_root_passwd" \
+ --db_filtered_user "$mysql_root" \
+ --db_filtered_password "$mysql_root_passwd" \
  --grpc_port $grpc_port \
  --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
  --pid_file $VTDATAROOT/$tablet_dir/vttablet.pid \

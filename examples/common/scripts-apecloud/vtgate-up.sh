@@ -28,6 +28,11 @@ mysql_server_socket_path="/tmp/mysql.sock"
 # shellcheck disable=SC2086
 vtgate \
   $TOPOLOGY_FLAGS \
+  --gateway_initial_tablet_timeout 30s \
+  --healthcheck_timeout 1s \
+  --srv_topo_timeout 1s \
+  --grpc_keepalive_time 1s \
+  --grpc_keepalive_timeout 2s \
   --log_dir $VTDATAROOT/tmp \
   --log_queries_to_file $VTDATAROOT/tmp/vtgate_querylog.txt \
   --port $web_port \
