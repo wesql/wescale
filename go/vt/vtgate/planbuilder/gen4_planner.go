@@ -19,7 +19,8 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/global"
+	"vitess.io/vitess/go/internal/global"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -185,14 +186,21 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	ks, _ := func() (*vindexes.Keyspace, any) {
-		if global.UnshardEnabled {
-			return vschema.DefaultKeyspace()
+	if global.UnshardEnabled {
+		if ks, _ := vschema.DefaultKeyspace(); ks != nil {
+			plan, tablesUsed, err = apeCloudShortcut(ctx, selStmt, ks)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			return plan, semTable, tablesUsed, err
 		}
-		return semTable.SingleUnshardedKeyspace()
-	}()
+	}
 
-	if ks != nil {
+	if ks, _ := semTable.SingleUnshardedKeyspace(); ks != nil {
 		plan, tablesUsed, err = unshardedShortcut(ctx, selStmt, ks)
 		if err != nil {
 			return nil, nil, nil, err

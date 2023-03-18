@@ -44,7 +44,7 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/global"
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
 

@@ -31,6 +31,8 @@ import (
 	"syscall"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/acl"
@@ -771,10 +773,12 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 					return err
 				}
 			}
-			connSetting = pools.NewSetting(
-				"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
-				"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
-			)
+			if global.ApeCloudDbDDLPlugin {
+				connSetting = pools.NewSetting(
+					"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
+					"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+				)
+			}
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -880,10 +884,12 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
-			connSetting = pools.NewSetting(
-				"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
-				"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
-			)
+			if global.ApeCloudDbDDLPlugin {
+				connSetting = pools.NewSetting(
+					"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: target.Keyspace})+";"+connSetting.GetQuery(),
+					"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+				)
+			}
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,

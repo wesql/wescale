@@ -3,7 +3,7 @@ package topotools
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/global"
+	"vitess.io/vitess/go/internal/global"
 
 	"golang.org/x/net/context"
 

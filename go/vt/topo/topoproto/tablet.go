@@ -26,9 +26,9 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/global"
-
 	"google.golang.org/protobuf/proto"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -42,7 +42,8 @@ import (
 
 const (
 	// VtDbPrefix + keyspace is the default name for databases.
-	VtDbPrefix = global.EmptyDbPrefix
+	VtDbPrefix    = "vt_"
+	EmptyDbPrefix = ""
 )
 
 // cache the conversion from tablet type enum to lower case string.
@@ -253,7 +254,7 @@ func TabletDbName(tablet *topodatapb.Tablet) string {
 	if tablet.Keyspace == "" {
 		return ""
 	}
-	return VtDbPrefix + tablet.Keyspace
+	return global.DbPrefix + tablet.Keyspace
 }
 
 // TabletIsAssigned returns if this tablet is assigned to a keyspace and shard.

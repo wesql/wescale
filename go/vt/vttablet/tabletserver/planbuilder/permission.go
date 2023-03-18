@@ -19,6 +19,8 @@ package planbuilder
 import (
 	"fmt"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/tableacl"
 )
@@ -64,8 +66,12 @@ func BuildPermissions(stmt sqlparser.Statement) []Permission {
 		}
 	case *sqlparser.OtherAdmin, *sqlparser.CallProc, *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback,
 		*sqlparser.Load, *sqlparser.Savepoint, *sqlparser.Release, *sqlparser.SRollback, *sqlparser.Set, *sqlparser.Show,
-		*sqlparser.OtherRead, sqlparser.Explain, sqlparser.DBDDLStatement:
-		// no op
+		*sqlparser.OtherRead, sqlparser.Explain:
+	// no op
+	case sqlparser.DBDDLStatement:
+		if !global.ApeCloudDbDDLPlugin {
+			panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
+		}
 	default:
 		panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 	}

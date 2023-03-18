@@ -29,7 +29,7 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
 
-func unshardedShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
+func apeCloudShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
 	// this method is used when the query we are handling has all tables in the same unsharded keyspace
 	sqlparser.SafeRewrite(stmt, nil, func(cursor *sqlparser.Cursor) bool {
 		switch node := cursor.Node().(type) {
@@ -51,6 +51,41 @@ func unshardedShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectSt
 					Name:      node.Name,
 				})
 			}
+		}
+		return true
+	})
+
+	tableNames, err := getTableNames(ctx.SemTable)
+	if err != nil {
+		return nil, nil, err
+	}
+	plan := &routeGen4{
+		eroute: &engine.Route{
+			RoutingParameters: &engine.RoutingParameters{
+				Opcode:   engine.Unsharded,
+				Keyspace: ks,
+			},
+			TableName: strings.Join(escapedTableNames(tableNames), ", "),
+		},
+		Select: stmt,
+	}
+
+	if err := plan.WireupGen4(ctx); err != nil {
+		return nil, nil, err
+	}
+	return plan, operators.QualifiedTableNames(ks, tableNames), nil
+}
+
+func unshardedShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
+	// this method is used when the query we are handling has all tables in the same unsharded keyspace
+	sqlparser.SafeRewrite(stmt, nil, func(cursor *sqlparser.Cursor) bool {
+		switch node := cursor.Node().(type) {
+		case sqlparser.SelectExpr:
+			removeKeyspaceFromSelectExpr(node)
+		case sqlparser.TableName:
+			cursor.Replace(sqlparser.TableName{
+				Name: node.Name,
+			})
 		}
 		return true
 	})

@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/srvtopo"
 	"vitess.io/vitess/go/vt/topotools"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -89,7 +91,7 @@ func (a apeCloudDbOp) DropDatabase(ctx context.Context, keyspaceName string) err
 const (
 	faildbDDL          = "fail"
 	noOpdbDDL          = "noop"
-	apeCloudDbDDL      = "apeCloud"
+	apeCloudDbDDL      = global.ApeCloud
 	defaultDBDDLPlugin = apeCloudDbDDL
 )
 

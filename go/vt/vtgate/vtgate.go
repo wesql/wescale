@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/vtgate/engine"
@@ -148,6 +150,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&queryLogBufferSize, "querylog-buffer-size", queryLogBufferSize, "Maximum number of buffered query logs before throttling log output")
 	fs.DurationVar(&messageStreamGracePeriod, "message_stream_grace_period", messageStreamGracePeriod, "the amount of time to give for a vttablet to resume if it ends a message stream, usually because of a reparent.")
 	fs.BoolVar(&enableViews, "enable-views", enableViews, "Enable views support in vtgate.")
+	fs.BoolVar(&global.ApeCloudFeaturesEnable, "ape_cloud_features_enable", true, "Enable all ApeCloud features.")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -289,7 +292,10 @@ func Init(
 		noScatter,
 		pv,
 	)
-	engine.RegisterApeCloudDbOp(serv, gw)
+	if global.ApeCloudDbDDLPlugin {
+		dbDDLPlugin = global.ApeCloud
+		engine.RegisterApeCloudDbOp(serv, gw)
+	}
 
 	// connect the schema tracker with the vschema manager
 	if enableSchemaChangeSignal {
