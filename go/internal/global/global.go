@@ -4,7 +4,7 @@ const ApeCloud = "apecloud"
 
 // Keyspace
 const (
-	DefaultKeyspace = "apecloud"
+	DefaultKeyspace = "_vt"
 	DefaultShard    = "0"
 
 	//// VtDbPrefix + keyspace is the default name for databases.
@@ -20,7 +20,7 @@ var (
 	ApeCloudDbDDLPlugin = ApeCloudFeaturesEnable
 	UnshardEnabled      = ApeCloudFeaturesEnable
 	DbPrefix            = func() string {
-		if ApeCloudFeaturesEnable {
+		if ApeCloudDbDDLPlugin {
 			return EmptyDbPrefix
 		}
 		return VtDbPrefix
