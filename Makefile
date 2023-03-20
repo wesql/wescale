@@ -307,7 +307,6 @@ define build_docker_image
 		docker build -f ${1} -t ${2} --build-arg bootstrap_version=${BOOTSTRAP_VERSION} .; \
 	fi
 	docker tag ${2}:latest registry.cn-hangzhou.aliyuncs.com/${2}:latest
-	docker push registry.cn-hangzhou.aliyuncs.com/${2}:latest
 endef
 
 docker_base:
@@ -318,8 +317,14 @@ DOCKER_KUBEBLOCKS_BOOTSTRAP_IMAGES = common bootstrap
 docker_bootstrap_kubeblocks:
 	for i in $(DOCKER_KUBEBLOCKS_BOOTSTRAP_IMAGES); do echo "building kubeblocks bootstrap image: $$i"; sh -x docker/kubeblocks/build_bootstrap.sh $$i ${BOOTSTRAP_VERSION} || exit 1; done
 
+docker_bootstrap_kubeblocks_push:
+	for i in $(DOCKER_KUBEBLOCKS_BOOTSTRAP_IMAGES); do echo "pushing bootstrap image: ${BOOTSTRAP_VERSION}-$$i"; docker push registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbootstrap:${BOOTSTRAP_VERSION}-$$i || exit 1; done
+
 docker_base_kubeblocks:
 	${call build_docker_image,docker/kubeblocks/Dockerfile.base,apecloud/vitessbase}
+
+docker_base_kubeblocks_pull:
+	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbase:latest
 
 
 DOCKER_BASE_SUFFIX = mysql80 percona57 percona80

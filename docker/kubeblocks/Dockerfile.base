@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG bootstrap_version=14
-ARG image="apecloud/vitessbootstrap:${bootstrap_version}-bootstrap"
+ARG image="registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbootstrap:${bootstrap_version}-bootstrap"
 
 FROM --platform=linux/amd64 "${image}"
 

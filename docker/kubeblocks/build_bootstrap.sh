@@ -63,5 +63,6 @@ done
 go env -w GOPROXY=https://goproxy.cn
 
 if [ -f "docker/kubeblocks/Dockerfile.$flavor$arch_ext" ]; then
-    docker build -f docker/kubeblocks/Dockerfile.$flavor$arch_ext -t $image --build-arg bootstrap_version=$version --build-arg image=$base_image .
+    docker build -f docker/kubeblocks/Dockerfile.$flavor$arch_ext -t $image --build-arg bootstrap_version=$version --build-arg image=$base_image
+    docker tag $image registry.cn-hangzhou.aliyuncs.com/$image
 fi
