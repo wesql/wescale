@@ -661,6 +661,7 @@ func (cluster *LocalProcessCluster) StartVtgate() (err error) {
 	if cluster.HasPartialKeyspaces {
 		cluster.VtGateExtraArgs = append(cluster.VtGateExtraArgs, "--enable-partial-keyspace-migration")
 	}
+	cluster.VtGateExtraArgs = append(cluster.VtGateExtraArgs, "--ape_cloud_features_enable=false")
 	vtgateInstance := *cluster.NewVtgateInstance()
 	cluster.VtgateProcess = vtgateInstance
 	log.Infof("Starting vtgate on port %d", vtgateInstance.Port)
