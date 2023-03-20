@@ -664,6 +664,9 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	defer hc.mu.Unlock()
 
 	if global.UnshardEnabled {
+		if hc.healthy[KeyFromTarget(target)] != nil {
+			return append(result, hc.healthy[KeyFromTarget(target)]...)
+		}
 		for _, value := range hc.healthy {
 			for _, th := range value {
 				if th.Target.TabletType == target.TabletType {
