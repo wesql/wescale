@@ -30,31 +30,6 @@ import (
 )
 
 func apeCloudShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
-	// this method is used when the query we are handling has all tables in the same unsharded keyspace
-	sqlparser.SafeRewrite(stmt, nil, func(cursor *sqlparser.Cursor) bool {
-		switch node := cursor.Node().(type) {
-		case sqlparser.SelectExpr:
-			//removeKeyspaceFromSelectExpr(node)
-		case sqlparser.TableName:
-			// if the table name do not have a qualifier, we need to rewrite it to vt_ksname.table_name
-			if node.Qualifier.String() == "" && !sqlparser.SystemSchema(node.Qualifier.String()) {
-				cursor.Replace(sqlparser.TableName{
-					Qualifier: sqlparser.NewIdentifierCS(ks.Name),
-					Name:      node.Name,
-				})
-			}
-
-			// if the table name has a qualifier, we need to rewrite it to vt_qualifier.table_name
-			if node.Qualifier.String() != "" && !sqlparser.SystemSchema(node.Qualifier.String()) {
-				cursor.Replace(sqlparser.TableName{
-					Qualifier: sqlparser.NewIdentifierCS(node.Qualifier.String()),
-					Name:      node.Name,
-				})
-			}
-		}
-		return true
-	})
-
 	tableNames, err := getTableNames(ctx.SemTable)
 	if err != nil {
 		return nil, nil, err
