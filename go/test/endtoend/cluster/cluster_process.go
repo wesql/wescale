@@ -663,7 +663,6 @@ func (cluster *LocalProcessCluster) StartVtgate() (err error) {
 	if cluster.HasPartialKeyspaces {
 		cluster.VtGateExtraArgs = append(cluster.VtGateExtraArgs, "--enable-partial-keyspace-migration")
 	}
-	cluster.VtGateExtraArgs = append(cluster.VtGateExtraArgs, "--ape_cloud_features_enable=false")
 	vtgateInstance := *cluster.NewVtgateInstance()
 	cluster.VtgateProcess = vtgateInstance
 	log.Infof("Starting vtgate on port %d", vtgateInstance.Port)
@@ -1197,7 +1196,6 @@ func (cluster *LocalProcessCluster) VtprocessInstanceFromVttablet(tablet *Vttabl
 // StartVttablet starts a new tablet
 func (cluster *LocalProcessCluster) StartVttablet(tablet *Vttablet, servingStatus string,
 	supportBackup bool, cell string, keyspaceName string, hostname string, shardName string) error {
-	cluster.VtTabletExtraArgs = append(cluster.VtTabletExtraArgs, "--ape_cloud_features_enable=false")
 	tablet.VttabletProcess = VttabletProcessInstance(
 		tablet.HTTPPort,
 		tablet.GrpcPort,

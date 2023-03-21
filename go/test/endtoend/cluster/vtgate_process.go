@@ -122,6 +122,7 @@ func (vtgate *VtgateProcess) Setup() (err error) {
 	}
 
 	vtgate.proc.Args = append(vtgate.proc.Args, vtgate.ExtraArgs...)
+	vtgate.proc.Args = append(vtgate.proc.Args, "--ape_cloud_features_enable=false")
 
 	errFile, _ := os.Create(path.Join(vtgate.LogDir, "vtgate-stderr.txt"))
 	vtgate.proc.Stderr = errFile
