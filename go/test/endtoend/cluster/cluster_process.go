@@ -36,6 +36,8 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
@@ -716,6 +718,7 @@ func NewBareCluster(cell string, hostname string) *LocalProcessCluster {
 // NewCluster instantiates a new cluster
 func NewCluster(cell string, hostname string) *LocalProcessCluster {
 	cluster := NewBareCluster(cell, hostname)
+	global.ApeCloudFeaturesEnable = false
 
 	err := cluster.populateVersionInfo()
 	if err != nil {
