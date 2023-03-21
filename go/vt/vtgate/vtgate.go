@@ -292,7 +292,7 @@ func Init(
 		noScatter,
 		pv,
 	)
-	if global.ApeCloudDbDDLPlugin {
+	if global.ApeCloudDbDDLPlugin() {
 		dbDDLPlugin = global.ApeCloud
 		engine.RegisterApeCloudDbOp(serv, gw)
 	}

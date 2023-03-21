@@ -773,7 +773,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 					return err
 				}
 			}
-			if global.ApeCloudDbDDLPlugin {
+			if global.ApeCloudDbDDLPlugin() {
 				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			}
 			qre := &QueryExecutor{
@@ -894,7 +894,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
-			if global.ApeCloudDbDDLPlugin {
+			if global.ApeCloudDbDDLPlugin() {
 				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			}
 			qre := &QueryExecutor{

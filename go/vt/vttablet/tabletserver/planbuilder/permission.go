@@ -69,7 +69,7 @@ func BuildPermissions(stmt sqlparser.Statement) []Permission {
 		*sqlparser.OtherRead, sqlparser.Explain:
 	// no op
 	case sqlparser.DBDDLStatement:
-		if !global.ApeCloudDbDDLPlugin {
+		if !global.ApeCloudDbDDLPlugin() {
 			panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 		}
 	default:

@@ -418,7 +418,7 @@ func (sm *stateManager) VerifyTarget(ctx context.Context, target *querypb.Target
 func (sm *stateManager) verifyTargetLocked(ctx context.Context, target *querypb.Target) error {
 	if target != nil {
 		switch {
-		case target.Keyspace != sm.target.Keyspace && !global.ApeCloudDbDDLPlugin:
+		case target.Keyspace != sm.target.Keyspace && !global.ApeCloudDbDDLPlugin():
 			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid keyspace %v does not match expected %v", target.Keyspace, sm.target.Keyspace)
 		case target.Shard != sm.target.Shard:
 			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid shard %v does not match expected %v", target.Shard, sm.target.Shard)

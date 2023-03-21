@@ -23,6 +23,8 @@ import (
 	"os"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/acl"
@@ -63,6 +65,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", tableACLConfigReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
 	fs.StringVar(&tabletConfig, "tablet_config", tabletConfig, "YAML file config for tablet")
+	fs.BoolVar(&global.ApeCloudFeaturesEnable, "ape_cloud_features_enable", true, "Enable all ApeCloud features.")
 
 	acl.RegisterFlags(fs)
 }

@@ -186,7 +186,7 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	if global.UnshardEnabled {
+	if global.UnshardEnabled() {
 		if ks, _ := vschema.DefaultKeyspace(); ks != nil {
 			plan, tablesUsed, err = apeCloudShortcut(ctx, selStmt, ks)
 			if err != nil {

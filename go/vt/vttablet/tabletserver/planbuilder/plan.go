@@ -224,7 +224,7 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 	case sqlparser.DDLStatement:
 		plan, err = analyzeDDL(stmt, viewsEnabled)
 	case sqlparser.DBDDLStatement:
-		if global.ApeCloudDbDDLPlugin {
+		if global.ApeCloudDbDDLPlugin() {
 			plan, err = analyzeDBDDL(stmt)
 		} else {
 			return nil, vterrors.New(vtrpcpb.Code_INVALID_ARGUMENT, "invalid SQL")

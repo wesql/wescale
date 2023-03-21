@@ -13,16 +13,20 @@ const (
 	EmptyDbPrefix = ""
 )
 
-var ApeCloudFeaturesEnable = true
+var ApeCloudFeaturesEnable = false
 
 // Planner
 var (
-	ApeCloudDbDDLPlugin = ApeCloudFeaturesEnable
-	UnshardEnabled      = ApeCloudFeaturesEnable
-	DbPrefix            = func() string {
-		if ApeCloudDbDDLPlugin {
+	ApeCloudDbDDLPlugin = func() bool {
+		return ApeCloudFeaturesEnable
+	}
+	UnshardEnabled = func() bool {
+		return ApeCloudFeaturesEnable
+	}
+	DbPrefix = func() string {
+		if ApeCloudDbDDLPlugin() {
 			return EmptyDbPrefix
 		}
 		return VtDbPrefix
-	}()
+	}
 )
