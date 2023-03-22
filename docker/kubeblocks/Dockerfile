@@ -39,7 +39,6 @@ RUN mkdir -p /vt && \
     mkdir -p /vt/bin && \
     mkdir -p /vt/config && \
     mkdir -p /vt/web && \
-    mkdir -p /vt/scripts && \
     mkdir -p /vtdataroot
 
 RUN cd /vt  \
@@ -52,8 +51,6 @@ ENV GOROOT /usr/local/go/
 
 # Copy CA certs for https calls
 COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-
-COPY --from=kubeblocks $VTSOURCEROOT/config/apecloud_scripts /vt/scripts
 
 # Copy binaries
 COPY --from=kubeblocks /vt/bin/mysqlctld /vt/bin/
