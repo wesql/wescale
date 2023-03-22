@@ -162,8 +162,8 @@ func (agent *SQLAgentImpl) NewConsensusGlobalView() *ConsensusGlobalView {
 	return &ConsensusGlobalView{}
 }
 
-// NewVTConsensusSqlAgent creates a SQLAgentImpl
-func NewVTConsensusSqlAgent() *SQLAgentImpl {
+// NewVTConsensusSQLAgent creates a SQLAgentImpl
+func NewVTConsensusSQLAgent() *SQLAgentImpl {
 	var conf *config.Configuration
 	if (configFilePath) != "" {
 		log.Infof("use config from %v", configFilePath)
@@ -254,11 +254,11 @@ func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalV
 		var realPort int
 		hostName := m.GetString("hostname")
 		hostPort := m.GetInt("port")
-		serverId := m.GetInt("server_id")
+		serverID := m.GetInt("server_id")
 
 		// ConsensusLocalView record real host:port, because from instanceKey.
 		for _, lv := range globalView.LocalView {
-			if lv.ServerID == serverId {
+			if lv.ServerID == serverID {
 				realHost = lv.MySQLHost
 				realPort = lv.MySQLPort
 				break

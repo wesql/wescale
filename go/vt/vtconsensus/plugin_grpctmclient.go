@@ -19,5 +19,6 @@ package vtconsensus
 // Imports and register the gRPC tabletmanager client
 
 import (
+	// register the gRPC tabletmanager client
 	_ "vitess.io/vitess/go/vt/vttablet/grpctmclient"
 )

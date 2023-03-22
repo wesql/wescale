@@ -340,7 +340,7 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 	var localCount int
 	var leaderHost string
 	var leaderPort int
-	var leaderServerId int
+	var leaderServerID int
 	var leaderTerm int
 	var leaderInstance *consensusInstance
 	view = shard.dbAgent.NewConsensusGlobalView()
@@ -368,7 +368,7 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 			leaderInstance = instance
 			leaderHost = instance.instanceKey.Hostname
 			leaderPort = instance.instanceKey.Port
-			leaderServerId = localView.ServerID
+			leaderServerID = localView.ServerID
 			leaderTerm = localView.CurrentTerm
 		}
 		localCount++
@@ -376,12 +376,12 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 
 	if localCount > 0 && leaderInstance != nil {
 		var err error
-		shard.logger.Infof("get consensus leader serverid %d: %v:%v", leaderServerId, leaderHost, leaderPort)
+		shard.logger.Infof("get consensus leader serverid %d: %v:%v", leaderServerID, leaderHost, leaderPort)
 
 		// need use mysql expose host:port, not param localhost:@@port
 		view.LeaderMySQLHost = leaderHost
 		view.LeaderMySQLPort = leaderPort
-		view.LeaderServerID = leaderServerId
+		view.LeaderServerID = leaderServerID
 		err = shard.dbAgent.FetchConsensusGlobalView(view)
 		if err != nil {
 			shard.logger.Errorf("%v:%v error while fetch global view from apecloud mysql: %v",

@@ -118,7 +118,7 @@ func OpenTabletDiscoveryWithAcitve(ctx context.Context, cellsToWatch, clustersTo
 				cellsToWatch,
 				vtconsensus.tmc,
 				vtconsensus.topo,
-				db.NewVTConsensusSqlAgent(),
+				db.NewVTConsensusSQLAgent(),
 				nil,
 				localDbPort,
 				active))
@@ -135,7 +135,7 @@ func OpenTabletDiscoveryWithAcitve(ctx context.Context, cellsToWatch, clustersTo
 				continue
 			}
 			for _, s := range shardNames {
-				shards = append(shards, controller.NewConsensusShard(ks, s, cellsToWatch, vtconsensus.tmc, vtconsensus.topo, db.NewVTConsensusSqlAgent(), nil, localDbPort, active))
+				shards = append(shards, controller.NewConsensusShard(ks, s, cellsToWatch, vtconsensus.tmc, vtconsensus.topo, db.NewVTConsensusSQLAgent(), nil, localDbPort, active))
 			}
 		}
 	}
