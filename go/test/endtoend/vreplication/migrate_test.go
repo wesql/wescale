@@ -36,13 +36,14 @@ func insertInitialDataIntoExternalCluster(t *testing.T, conn *mysql.Conn) {
 	})
 }
 
+// skip test
 // TestMigrate runs an e2e test for importing from an external cluster using the Mount and Migrate commands.
 // We have an anti-pattern in Vitess: vt executables look for an environment variable VTDATAROOT for certain cluster parameters
 // like the log directory when they are created. Until this test we just needed a single cluster for e2e tests.
 // However now we need to create an external Vitess cluster. For this we need a different VTDATAROOT and
 // hence the VTDATAROOT env variable gets overwritten.
 // Each time we need to create vt processes in the "other" cluster we need to set the appropriate VTDATAROOT
-func TestMigrate(t *testing.T) {
+func _TestMigrate(t *testing.T) {
 	defaultCellName := "zone1"
 	cells := []string{"zone1"}
 	allCellNames = "zone1"

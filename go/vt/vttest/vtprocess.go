@@ -294,5 +294,7 @@ func VtcomboProcess(environment Environment, args *Config, mysql MySQLManager) (
 		}...)
 	}
 
+	vt.ExtraArgs = append(vt.ExtraArgs, "--ape_cloud_features_enable=false")
+
 	return vt, nil
 }
