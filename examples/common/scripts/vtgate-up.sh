@@ -40,6 +40,7 @@ vtgate \
   --service_map 'grpc-vtgateservice' \
   --pid_file $VTDATAROOT/tmp/vtgate.pid \
   --mysql_auth_server_impl none \
+  --ape_cloud_features_enable=false \
   > $VTDATAROOT/tmp/vtgate.out 2>&1 &
 
 # Block waiting for vtgate to be listening

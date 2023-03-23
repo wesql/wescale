@@ -1,5 +1,6 @@
 Usage of vttablet:
       --alsologtostderr                                                  log to standard error as well as files
+      --ape_cloud_features_enable                                        Enable all ApeCloud features. (default true)
       --app_idle_timeout duration                                        Idle timeout for app connections (default 1m0s)
       --app_pool_size int                                                Size of the connection pool for app connections (default 40)
       --azblob_backup_account_key_file string                            Path to a file containing the Azure Storage account key; if this flag is unset, the environment variable VT_AZBLOB_ACCOUNT_KEY will be used as the key itself (NOT a file path).
