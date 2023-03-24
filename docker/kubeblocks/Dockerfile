@@ -1,79 +1,130 @@
-# Copyright 2019 The Vitess Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+ARG DEBIAN_VER=bullseye
 
-ARG VT_BASE_VER=latest
-ARG DEBIAN_VER=stable-slim
+FROM --platform=linux/amd64 golang:1.20.2-${DEBIAN_VER}
 
-FROM registry.cn-hangzhou.aliyuncs.com/apecloud/vitessbase:${VT_BASE_VER} AS kubeblocks
+# Allows some docker builds to disable CGO
+ARG CGO_ENABLED=0
 
-FROM debian:${DEBIAN_VER}
+# Allows docker builds to set the BUILD_NUMBER
+ARG BUILD_NUMBER
+
+# Allows docker builds to set the BUILD_GIT_BRANCH
+ARG BUILD_GIT_BRANCH
+
+# Allows docker builds to set the BUILD_GIT_REV
+ARG BUILD_GIT_REV
 
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
-# TODO: remove when https://github.com/vitessio/vitess/issues/3553 is fixed
+# Install Vitess build dependencies
 RUN apt-get update && \
-   apt-get upgrade -qq && \
-   apt-get install wget default-mysql-client jq curl ssh telnet delve -qq --no-install-recommends sudo etcd procps rsyslog vim iputils-ping && \
-   apt-get autoremove && \
-   apt-get clean && \
-   rm -rf /var/lib/apt/lists/*
+    apt-get upgrade -qq && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+    # TODO(mberlin): Group these to make it easier to understand which library actually requires them.
+    curl \
+    etcd \
+    g++ \
+    git \
+    make \
+    software-properties-common \
+    unzip \
+    zip \
+    xvfb \
+    ca-certificates \
+    wget \
+    default-mysql-client \
+    jq \
+    curl \
+    ssh \
+    delve \
+    sudo \
+    procps \
+    rsyslog \
+    vim \
+    iputils-ping &&\
+    apt-get autoremove && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set up Vitess environment (just enough to run pre-built Go binaries)
-ENV VTSOURCEROOT /vt/src/vitess.io/vitess
-ENV VTROOT /vt
+ARG GOPROXY=https://goproxy.cn
+ARG LD_FLAGS="-s -w"
+ENV GONOPROXY=github.com/apecloud
+ENV GONOSUMDB=github.com/apecloud
+ENV GOPRIVATE=github.com/apecloud
+ENV GOPROXY=${GOPROXY}
+
+# Set up Vitess environment (equivalent to '. dev.env')
+ENV VTSOURCEROOT /vt/src/vitess
 ENV VTDATAROOT /vtdataroot
+ENV VTPORTSTART 15000
+ENV PATH $VTSOURCEROOT/bin:$VTSOURCEROOT/dist/maven/bin:$VTSOURCEROOT/dist/chromedriver:$PATH
+ENV USER vitess
+ENV MYSQL_FLAVOR MySQL80
+ENV BUILD_CHROME 0
+ENV BUILD_JAVA 0
+ENV BUILD_CONSUL 0
 
-# Prepare directory structure.
-RUN mkdir -p /vt && \
+# copy sources from working tree
+COPY . $VTSOURCEROOT
+
+RUN git config --global --add safe.directory $VTSOURCEROOT
+
+# Create vitess user and Prepare directory structure.
+RUN groupadd -r vitess && useradd -r -g vitess vitess && \
+    chpasswd && adduser vitess sudo && \
+    mkdir -p /vtdataroot /home/vitess && \
+    mkdir -p /vt && \
     mkdir -p /vt/bin && \
     mkdir -p /vt/config && \
     mkdir -p /vt/web && \
-    mkdir -p /vtdataroot
+    chown -R vitess:vitess /vtdataroot /vt /home/vitess
 
-RUN cd /vt  \
-    && wget --no-check-certificate https://golang.google.cn/dl/go1.19.7.linux-amd64.tar.gz \
-    && tar -C /usr/local -xzf /vt/go1.19.7.linux-amd64.tar.gz
+# Download vendored Go dependencies
+RUN cd /vt/src/vitess && \
+ su vitess -c "go mod download -x"
 
-ENV PATH /usr/local/go/bin:$PATH
-ENV GOROOT /usr/local/go/
+# Bootstrap Vitess
+WORKDIR /vt/src/vitess
 
+USER vitess
 
-# Copy CA certs for https calls
-COPY --from=kubeblocks /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+RUN BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 ./bootstrap.sh
+
+# Build Vitess
+USER root
+
+RUN su vitess -c "mkdir -p /vt/src/vitess.io/vitess/bin"
+ENV VTROOT /vt/src/vitess
+
+# Binaries will be placed in ${VTROOT}/bin.
+RUN VT_GO_PARALLEL_VALUE=8 make build
+
+RUN go clean -modcache
+RUN go clean -cache
+
+ENV VTROOT /vt
 
 # Copy binaries
-COPY --from=kubeblocks /vt/bin/mysqlctld /vt/bin/
-COPY --from=kubeblocks /vt/bin/mysqlctl /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtctld /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtctl /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtctlclient /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtctldclient /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtgate /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtconsensus /vt/bin/
-COPY --from=kubeblocks /vt/bin/vttablet /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtbackup /vt/bin/
-COPY --from=kubeblocks /vt/bin/vtadmin /vt/bin/
+RUN cp /vt/src/vitess/bin/vtctld /vt/bin/
+RUN cp /vt/src/vitess/bin/vtctl /vt/bin/
+RUN cp /vt/src/vitess/bin/vtctlclient /vt/bin/
+RUN cp /vt/src/vitess/bin/vtctldclient /vt/bin/
+RUN cp /vt/src/vitess/bin/vtgate /vt/bin/
+RUN cp /vt/src/vitess/bin/vtconsensus /vt/bin/
+RUN cp /vt/src/vitess/bin/vttablet /vt/bin/
+RUN cp /vt/src/vitess/bin/vtbackup /vt/bin/
+RUN cp /vt/src/vitess/bin/vtadmin /vt/bin/
+RUN cp /vt/src/vitess/bin/etcd  /vt/bin
+RUN cp /vt/src/vitess/bin/etcdctl /vt/bin
+RUN cp /vt/src/vitess/bin/k3s  /vt/bin
+RUN cp /vt/src/vitess/bin/protoc  /vt/bin
 
 # copy web admin files
-COPY --from=kubeblocks $VTSOURCEROOT/web /vt/web/
+RUN cp -rf $VTSOURCEROOT/web /vt
 
-# add vitess user/group and add permissions
-RUN groupadd -r --gid 2000 vitess && \
-   useradd -r -g vitess --uid 1000 vitess && \
-   chpasswd && adduser vitess sudo && \
-   chown -R vitess:vitess /vt && \
-   chown -R vitess:vitess /vtdataroot
+WORKDIR /vt
+
+RUN rm -rf /vt/src
 
 ENV PATH $VTROOT/bin:$PATH
 
