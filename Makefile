@@ -312,7 +312,7 @@ docker_base:
 	${call build_docker_image,docker/base/Dockerfile,vitess/base}
 
 docker_wesqlscale:
-	${call build_docker_image,docker/kubeblocks/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/wesqlscale}
+	${call build_docker_image,docker/wesqlscale/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/wesqlscale}
 
 docker_wesqlscale_pull:
 	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/wesqlscale:latest

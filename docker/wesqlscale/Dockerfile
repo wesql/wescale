@@ -79,16 +79,16 @@ RUN groupadd -r vitess && useradd -r -g vitess vitess && \
     mkdir -p /vt/web && \
     chown -R vitess:vitess /vtdataroot /vt /home/vitess
 
-# Download vendored Go dependencies
-RUN cd /vt/src/vitess && \
- su vitess -c "go mod download -x"
 
 # Bootstrap Vitess
 WORKDIR /vt/src/vitess
 
-USER vitess
+#USER vitess
 
-RUN BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 ./bootstrap.sh
+# Download vendored Go dependencies
+RUN su vitess -c "go mod download"
+
+RUN BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=0 ./bootstrap.sh
 
 # Build Vitess
 USER root
@@ -99,32 +99,26 @@ ENV VTROOT /vt/src/vitess
 # Binaries will be placed in ${VTROOT}/bin.
 RUN VT_GO_PARALLEL_VALUE=8 make build
 
-RUN go clean -modcache
-RUN go clean -cache
+RUN go clean -modcache && \
+    go clean -cache
 
 ENV VTROOT /vt
 
 # Copy binaries
-RUN cp /vt/src/vitess/bin/vtctld /vt/bin/
-RUN cp /vt/src/vitess/bin/vtctl /vt/bin/
-RUN cp /vt/src/vitess/bin/vtctlclient /vt/bin/
-RUN cp /vt/src/vitess/bin/vtctldclient /vt/bin/
-RUN cp /vt/src/vitess/bin/vtgate /vt/bin/
-RUN cp /vt/src/vitess/bin/vtconsensus /vt/bin/
-RUN cp /vt/src/vitess/bin/vttablet /vt/bin/
-RUN cp /vt/src/vitess/bin/vtbackup /vt/bin/
-RUN cp /vt/src/vitess/bin/vtadmin /vt/bin/
-RUN cp /vt/src/vitess/bin/etcd  /vt/bin
-RUN cp /vt/src/vitess/bin/etcdctl /vt/bin
-RUN cp /vt/src/vitess/bin/k3s  /vt/bin
-RUN cp /vt/src/vitess/bin/protoc  /vt/bin
-
-# copy web admin files
-RUN cp -rf $VTSOURCEROOT/web /vt
+RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtctl /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtctlclient /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtctldclient /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtgate /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtconsensus /vt/bin/ && \
+    cp /vt/src/vitess/bin/vttablet /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtbackup /vt/bin/ && \
+    cp /vt/src/vitess/bin/vtadmin /vt/bin/ && \
+    cp /vt/src/vitess/bin/protoc  /vt/bin && \
+    cp -rf $VTSOURCEROOT/web /vt && \
+    rm -rf /vt/src
 
 WORKDIR /vt
-
-RUN rm -rf /vt/src
 
 ENV PATH $VTROOT/bin:$PATH
 

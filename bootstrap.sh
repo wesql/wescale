@@ -26,6 +26,8 @@ source ./dev.env
 BUILD_JAVA=${BUILD_JAVA:-1}
 BUILD_CONSUL=${BUILD_CONSUL:-1}
 BUILD_CHROME=${BUILD_CHROME:-1}
+BUILD_K3S=${BUILD_K3S:-1}
+BUILD_ETCD=${BUILD_ETCD:-1}
 
 VITESS_RESOURCES_DOWNLOAD_BASE_URL="https://github.com/vitessio/vitess-resources/releases/download"
 VITESS_RESOURCES_RELEASE="v2.0"
@@ -33,6 +35,9 @@ VITESS_RESOURCES_DOWNLOAD_URL="${VITESS_RESOURCES_DOWNLOAD_BASE_URL}/${VITESS_RE
 #
 # 0. Initialization and helper methods.
 #
+
+echo "140.82.113.4 github.com" >> /etc/hosts
+echo "185.199.109.133 objects.githubusercontent.com" >> /etc/hosts
 
 [[ "$(dirname "$0")" = "." ]] || fail "bootstrap.sh must be run from its current directory"
 
@@ -274,10 +279,14 @@ install_all() {
   fi
 
   # etcd
-  install_dep "etcd" "v3.5.6" "$VTROOT/dist/etcd" install_etcd
+  if [ "$BUILD_ETCD" == 1 ] ; then
+    install_dep "etcd" "v3.5.6" "$VTROOT/dist/etcd" install_etcd
+  fi
 
   # k3s
-  command -v k3s || install_dep "k3s" "v1.0.0" "$VTROOT/dist/k3s" install_k3s
+  if [ "$BUILD_K3S" == 1 ] ; then
+    command -v k3s || install_dep "k3s" "v1.0.0" "$VTROOT/dist/k3s" install_k3s
+  fi
 
   # consul
   if [ "$BUILD_CONSUL" == 1 ] ; then
