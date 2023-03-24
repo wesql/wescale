@@ -311,11 +311,11 @@ endef
 docker_base:
 	${call build_docker_image,docker/base/Dockerfile,vitess/base}
 
-docker_vitesskubeblocks:
-	${call build_docker_image,docker/kubeblocks/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/vitesskubeblocks}
+docker_wesqlscale:
+	${call build_docker_image,docker/kubeblocks/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/wesqlscale}
 
-docker_vitesskubeblocks_pull:
-	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/vitesskubeblocks:latest
+docker_wesqlscale_pull:
+	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/wesqlscale:latest
 
 DOCKER_BASE_SUFFIX = mysql80 percona57 percona80
 DOCKER_BASE_TARGETS = $(addprefix docker_base_, $(DOCKER_BASE_SUFFIX))
