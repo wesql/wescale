@@ -30,7 +30,30 @@ set -e -o pipefail
 ERR=false
 FAIL=false
 
-for file in $( git diff --name-only HEAD ); do
+checklicenseignore() {
+  for file in $( git diff --name-only HEAD ); do
+    ignore=true
+    if [[ -f .checklicenseignore ]]; then
+      # read ignored patterns from .checklicenseignore file
+      while read -r pattern; do
+        if [[ -z "$pattern" || $pattern == *"#"* ]]; then
+          continue
+        else
+            ret=$( eval "[[ $file == $pattern ]] && echo true" )
+            if [[ $ret == true ]]; then
+              ignore=false
+              break
+            fi
+        fi
+      done < .checklicenseignore
+    fi
+    if [[ $ignore == true ]]; then
+      echo $file
+    fi
+  done
+}
+
+for file in $( checklicenseignore ); do
   echo -n "Header check: $file... "
   if [[ -z $(cat ${file} | grep "Copyright ApeCloud, Inc.") ]]; then
       ERR=true
