@@ -65,6 +65,9 @@ for file in $( checklicenseignore ); do
         go)
           cat ./hack/boilerplate."${ext}".txt "${file}" > "${file}".new
         ;;
+        proto)
+          cat ./hack/boilerplate."${ext}".txt "${file}" > "${file}".new
+        ;;
         *)
           cat ./hack/boilerplate.txt "${file}" > "${file}".new
         ;;
