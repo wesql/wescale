@@ -51,7 +51,7 @@ type consensusInstance struct {
 	alias            string
 }
 
-// GRTopo is VTGR wrapper for topo server
+// ConsensusTopo is VTConsensus wrapper for topo server
 type ConsensusTopo interface {
 	GetShardNames(ctx context.Context, keyspace string) ([]string, error)
 	GetShard(ctx context.Context, keyspace, shard string) (*topo.ShardInfo, error)

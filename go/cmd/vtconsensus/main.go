@@ -42,7 +42,7 @@ func main() {
 	vtconsensus := vtconsensus.OpenTabletDiscovery(context.Background(), []string{"zone1"}, clustersToWatch)
 	// get the latest tablets from topo server
 	vtconsensus.RefreshCluster()
-	// starts the scanAndFix tablet status.
+	// starts the scanAndRepair tablet status.
 	vtconsensus.ScanAndRepair()
 
 	// block here so that we don't exit directly

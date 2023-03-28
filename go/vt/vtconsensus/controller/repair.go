@@ -35,15 +35,15 @@ import (
 )
 
 var (
-	repairTimingsMs    = stats.NewMultiTimings("repairTimingsMs", "time vtgr takes to repair", []string{"status", "success"})
+	repairTimingsMs    = stats.NewMultiTimings("repairTimingsMs", "time vtconsensus takes to repair", []string{"status", "success"})
 	unexpectedLockLost = stats.NewCountersWithMultiLabels("unexpectedLockLost", "unexpected lost of the lock", []string{"Keyspace", "Shard"})
 
 	abortRebootstrap bool
 )
 
 func init() {
-	servenv.OnParseFor("vtgr", func(fs *pflag.FlagSet) {
-		fs.BoolVar(&abortRebootstrap, "abort_rebootstrap", false, "Don't allow vtgr to rebootstrap an existing group.")
+	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
+		fs.BoolVar(&abortRebootstrap, "abort_rebootstrap", false, "Don't allow vtconsensus to rebootstrap an existing group.")
 	})
 }
 

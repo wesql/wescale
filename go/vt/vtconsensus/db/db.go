@@ -29,7 +29,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/vtgr/config"
+	"vitess.io/vitess/go/vt/vtconsensus/config"
 )
 
 type drv struct {
