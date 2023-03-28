@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -149,6 +154,9 @@ type (
 
 		SetDDLStrategy(string)
 		GetDDLStrategy() string
+
+		SetReadWriteSplittingPolicy(string)
+		GetReadWriteSplittingPolicy() string
 
 		GetSessionUUID() string
 

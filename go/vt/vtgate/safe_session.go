@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -691,6 +696,20 @@ func (session *SafeSession) GetDDLStrategy() string {
 	return session.DDLStrategy
 }
 
+// SetReadWriteSplittingPolicy set the DDLStrategy setting.
+func (session *SafeSession) SetReadWriteSplittingPolicy(strategy string) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.ReadWriteSplittingPolicy = strategy
+}
+
+// GetReadWriteSplittingPolicy returns the DDLStrategy value.
+func (session *SafeSession) GetReadWriteSplittingPolicy() string {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.ReadWriteSplittingPolicy
+}
+
 // GetSessionUUID returns the SessionUUID value.
 func (session *SafeSession) GetSessionUUID() string {
 	session.mu.Lock()
@@ -764,6 +783,13 @@ func (session *SafeSession) GetOrCreateOptions() *querypb.ExecuteOptions {
 		session.Session.Options = &querypb.ExecuteOptions{}
 	}
 	return session.Session.Options
+}
+
+func (session *SafeSession) HasCreatedTempTables() bool {
+	if session.Session.Options == nil {
+		return false
+	}
+	return session.Session.Options.HasCreatedTempTables
 }
 
 var _ iQueryOption = (*SafeSession)(nil)

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +27,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
 
 	"github.com/stretchr/testify/assert"
 
@@ -493,6 +500,77 @@ func TestConsolidator(t *testing.T) {
 			stmt, _ := Parse(test.query)
 			got := Consolidator(stmt)
 			assert.Equalf(t, test.expected, got, fmt.Sprintf("Consolidator(stmt) returned %v but expected %v", got, test.expected))
+		})
+	}
+}
+
+func TestGetNodeType(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+		want tabletpb.TabletType
+	}{
+		{
+			name: "Invalid Tablet Type",
+			sql:  "SELECT /*vt+ ROLE=FOOBAR */ * FROM user",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+		{
+			name: "Select with SKIP_QUERY_PLAN_CACHE directive",
+			sql:  "SELECT /*vt+ SKIP_QUERY_PLAN_CACHE=1 */ * FROM user",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+		{
+			name: "Select with PRIMARY directive",
+			sql:  "SELECT /*vt+ ROLE=PRIMARY */ * FROM user",
+			want: tabletpb.TabletType_PRIMARY,
+		},
+		{
+			name: "Insert with REPLICA directive",
+			sql:  "INSERT /*vt+ ROLE=REPLICA */ INTO user (id, name) VALUES (1, 'Alice')",
+			want: tabletpb.TabletType_REPLICA,
+		},
+		{
+			name: "Update with RDONLY directive",
+			sql:  "UPDATE /*vt+ ROLE=RDONLY */ user SET name='Bob' WHERE id=1",
+			want: tabletpb.TabletType_RDONLY,
+		},
+		{
+			name: "Delete with RDONLY directive",
+			sql:  "DELETE /*vt+ ROLE=RDONLY */ FROM user WHERE id=1",
+			want: tabletpb.TabletType_RDONLY,
+		},
+		{
+			name: "Delete with no directive",
+			sql:  "DELETE FROM user WHERE id=1",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+		{
+			name: "Select with no directive",
+			sql:  "SELECT * FROM user",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+		{
+			name: "Insert with no directive",
+			sql:  "INSERT INTO user VALUES (1, 'Alice')",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+		{
+			name: "Update with no directive",
+			sql:  "UPDATE user SET name='Bob' WHERE id=1",
+			want: tabletpb.TabletType_UNKNOWN,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt, err := Parse(tt.sql)
+			if err != nil {
+				t.Fatalf("Failed to parse SQL statement: %v", err)
+			}
+			got := GetNodeType(stmt)
+			if got != tt.want {
+				t.Errorf("GetNodeType(%s) = %v, want %v", tt.sql, got, tt.want)
+			}
 		})
 	}
 }

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,13 +42,13 @@ type testCaseSysVar struct {
 }
 
 type myTestCase struct {
-	in, expected                                                          string
-	liid, db, foundRows, rowCount, rawGTID, rawTimeout, sessTrackGTID     bool
-	ddlStrategy, sessionUUID, sessionEnableSystemSettings                 bool
-	udv                                                                   int
-	autocommit, clientFoundRows, skipQueryPlanCache, socket, queryTimeout bool
-	sqlSelectLimit, transactionMode, workload, version, versionComment    bool
-	txIsolation                                                           bool
+	in, expected                                                                    string
+	liid, db, foundRows, rowCount, rawGTID, rawTimeout, sessTrackGTID               bool
+	ddlStrategy, sessionUUID, sessionEnableSystemSettings, readWriteSplittingPolicy bool
+	udv                                                                             int
+	autocommit, clientFoundRows, skipQueryPlanCache, socket, queryTimeout           bool
+	sqlSelectLimit, transactionMode, workload, version, versionComment              bool
+	txIsolation                                                                     bool
 }
 
 func TestRewrites(in *testing.T) {
@@ -190,6 +195,10 @@ func TestRewrites(in *testing.T) {
 		expected:    "select * from user where col = :__vtddl_strategy",
 		ddlStrategy: true,
 	}, {
+		in:                       `select * from user where col = @@read_write_splitting_policy`,
+		expected:                 "select * from user where col = :__vtread_write_splitting_policy",
+		readWriteSplittingPolicy: true,
+	}, {
 		in:       `select * from user where col = @@read_after_write_gtid OR col = @@read_after_write_timeout OR col = @@session_track_gtids`,
 		expected: "select * from user where col = :__vtread_after_write_gtid or col = :__vtread_after_write_timeout or col = :__vtsession_track_gtids",
 		rawGTID:  true, rawTimeout: true, sessTrackGTID: true,
@@ -301,6 +310,7 @@ func TestRewrites(in *testing.T) {
 		version:                     true,
 		versionComment:              true,
 		ddlStrategy:                 true,
+		readWriteSplittingPolicy:    true,
 		sessionUUID:                 true,
 		sessionEnableSystemSettings: true,
 		rawGTID:                     true,
@@ -320,6 +330,7 @@ func TestRewrites(in *testing.T) {
 		version:                     true,
 		versionComment:              true,
 		ddlStrategy:                 true,
+		readWriteSplittingPolicy:    true,
 		sessionUUID:                 true,
 		sessionEnableSystemSettings: true,
 		rawGTID:                     true,
@@ -364,6 +375,7 @@ func TestRewrites(in *testing.T) {
 			assert.Equal(tc.workload, result.NeedsSysVar(sysvars.Workload.Name), "should need :__vtworkload")
 			assert.Equal(tc.queryTimeout, result.NeedsSysVar(sysvars.QueryTimeout.Name), "should need :__vtquery_timeout")
 			assert.Equal(tc.ddlStrategy, result.NeedsSysVar(sysvars.DDLStrategy.Name), "should need ddlStrategy")
+			assert.Equal(tc.readWriteSplittingPolicy, result.NeedsSysVar(sysvars.ReadWriteSplittingPolicy.Name), "should need ReadWriteSplittingPolicy")
 			assert.Equal(tc.sessionUUID, result.NeedsSysVar(sysvars.SessionUUID.Name), "should need sessionUUID")
 			assert.Equal(tc.sessionEnableSystemSettings, result.NeedsSysVar(sysvars.SessionEnableSystemSettings.Name), "should need sessionEnableSystemSettings")
 			assert.Equal(tc.rawGTID, result.NeedsSysVar(sysvars.ReadAfterWriteGTID.Name), "should need rawGTID")
