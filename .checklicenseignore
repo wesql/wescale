@@ -1,3 +1,29 @@
 # header licenses check ignore
 
 .checklicenseignore
+.gitignore
+
+*.md
+*.json
+*.csv
+*.txt
+*.xml
+*.yml
+*.yaml
+*.log
+*.tpl
+*.sql
+*.libsonnet
+*.pb.go
+
+.github/*
+bin/*
+config/*
+data/*
+dist/*
+doc/*
+resources/*
+support/*
+tools/*
+vitess-mixin/*
+web/*
