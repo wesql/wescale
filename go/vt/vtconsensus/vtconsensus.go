@@ -65,10 +65,10 @@ type VTConsensus struct {
 	// Shards are all the shards that a VTConsenus is monitoring.
 	// Caller can choose to iterate the shards to scan and repair for more granular control (e.g., stats report)
 	// instead of calling ScanAndRepair() directly.
-	Shards []*controller.ConsensusShard
-	topo   controller.ConsensusTopo
-	tmc    tmclient.TabletManagerClient
-	ctx    context.Context
+	Shard *controller.ConsensusShard
+	topo  controller.ConsensusTopo
+	tmc   tmclient.TabletManagerClient
+	ctx   context.Context
 
 	stopped sync2.AtomicBool
 }
@@ -84,114 +84,104 @@ func newVTConsensus(ctx context.Context, ts controller.ConsensusTopo, tmc tmclie
 // OpenTabletDiscovery calls OpenTabletDiscoveryWithAcitve and set the shard to be active
 // it opens connection with topo server
 // and triggers the first round of controller based on specified cells and keyspace/shards.
-func OpenTabletDiscovery(ctx context.Context, cellsToWatch, clustersToWatch []string) *VTConsensus {
-	return OpenTabletDiscoveryWithAcitve(ctx, cellsToWatch, clustersToWatch, true)
-}
+func OpenTabletDiscovery(ctx context.Context, cellsToWatch []string, clustersToWatch string) *VTConsensus {
+	var shard *controller.ConsensusShard
+	// TODO: vtconsensusConfigurator is not used, remove it currently. In the future, we may need it, add it back.
 
-// OpenTabletDiscoveryWithAcitve opens connection with topo server
-// and triggers the first round of controller based on parameter
-func OpenTabletDiscoveryWithAcitve(ctx context.Context, cellsToWatch, clustersToWatch []string, active bool) *VTConsensus {
-	//if vtconsensusConfigFile == "" {
-	//	log.Fatal("vtconsensus_config is required")
-	//}
-	//config, err := config.ReadVTConsensusConfig(vtconsensusConfigFile)
-	//if err != nil {
-	//	log.Fatalf("Cannot load vtconsensus config file: %v", err)
-	//}
-
+	// new a vtconsensus instance, include topo server and tablet manager client
 	vtconsensus := newVTConsensus(
 		ctx,
 		topo.Open(),
 		tmclient.NewTabletManagerClient(),
 	)
-	var shards []*controller.ConsensusShard
+
+	// create a context with timeout, RemoteOperationTimeout is default 30s.
 	ctx, cancel := context.WithTimeout(vtconsensus.ctx, topo.RemoteOperationTimeout)
 	defer cancel()
-	for _, ks := range clustersToWatch {
-		if strings.Contains(ks, "/") {
-			// This is a keyspace/shard specification
-			input := strings.Split(ks, "/")
-			// input[0] is commerce, input[1] is 0, if ks is commerce and shard is 0.
-			shards = append(shards, controller.NewConsensusShard(
-				input[0],
-				input[1],
-				cellsToWatch,
-				vtconsensus.tmc,
-				vtconsensus.topo,
-				db.NewVTConsensusSQLAgent(),
-				nil,
-				localDbPort,
-				active))
-		} else {
-			// Assume this is a keyspace and find all shards in keyspace
-			shardNames, err := vtconsensus.topo.GetShardNames(ctx, ks)
-			if err != nil {
-				// Log the error and continue
-				log.Errorf("Error fetching shards for keyspace %v: %v", ks, err)
-				continue
-			}
-			if len(shardNames) == 0 {
-				log.Errorf("Topo has no shards for ks: %v", ks)
-				continue
-			}
-			for _, s := range shardNames {
-				shards = append(shards, controller.NewConsensusShard(ks, s, cellsToWatch, vtconsensus.tmc, vtconsensus.topo, db.NewVTConsensusSQLAgent(), nil, localDbPort, active))
-			}
+
+	// if clustersToWatch contains "/", it is a keyspace/shard specification
+	if strings.Contains(clustersToWatch, "/") {
+		input := strings.Split(clustersToWatch, "/")
+		// input[0] is keyspace, input[1] is shard 0.
+		if input[1] != "0" {
+			log.Exitf("Shard must be 0 for ks: %v", clustersToWatch)
 		}
+		shard = controller.NewConsensusShard(
+			input[0],
+			input[1],
+			cellsToWatch,
+			vtconsensus.tmc,
+			vtconsensus.topo,
+			db.NewVTConsensusSQLAgent(),
+			localDbPort)
+	} else {
+		// This is only a keyspace, find shard 0 in keyspace.
+		shardNames, err := vtconsensus.topo.GetShardNames(ctx, clustersToWatch)
+		if err != nil {
+			log.Exitf("Error fetching shards for keyspace %v: %v", clustersToWatch, err)
+		}
+		if len(shardNames) != 1 || shardNames[0] != "0" {
+			log.Exitf("Shard must be 0 for ks: %v", clustersToWatch)
+		}
+		shard = controller.NewConsensusShard(
+			clustersToWatch,
+			shardNames[0],
+			cellsToWatch,
+			vtconsensus.tmc,
+			vtconsensus.topo,
+			db.NewVTConsensusSQLAgent(),
+			localDbPort)
 	}
+
 	vtconsensus.handleSignal(os.Exit)
-	vtconsensus.Shards = shards
-	log.Infof("Monitoring shards size %v", len(vtconsensus.Shards))
+	vtconsensus.Shard = shard
+	log.Infof("Monitoring shard %v", vtconsensus.Shard)
 	// Force refresh all tablet here to populate data for vtconsensus
 	var wg sync.WaitGroup
-	for _, shard := range vtconsensus.Shards {
-		wg.Add(1)
-		go func(shard *controller.ConsensusShard) {
-			defer wg.Done()
-			shard.UpdateTabletsInShardWithLock(ctx)
-		}(shard)
-	}
+	wg.Add(1)
+	go func(shard *controller.ConsensusShard) {
+		defer wg.Done()
+		shard.UpdateTabletsInShardWithLock(ctx)
+	}(shard)
 	wg.Wait()
+
 	log.Info("Ready to start VTConsensus")
 	return vtconsensus
 }
 
-// RefreshCluster get the latest tablets from topo server
+// RefreshCluster get the latest tablets from topo server and update the ConsensusShard.
 func (vtconsensus *VTConsensus) RefreshCluster() {
-	for _, shard := range vtconsensus.Shards {
-		// start thread
-		go func(shard *controller.ConsensusShard) {
-			// period timer task, refresh tablet info in shard.
-			ticker := time.Tick(refreshInterval)
-			for range ticker {
-				ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
-				log.Infof("Start refresh primary tablet, %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
-				shard.UpdateTabletsInShardWithLock(ctx)
-				log.Infof("Finished refresh primary tablet is %s, %v/%v", shard.PrimaryAlias, shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
-				cancel()
-			}
-		}(shard)
-	}
+	// start thread
+	go func(shard *controller.ConsensusShard) {
+		// period timer task, refresh tablet info in shard.
+		log.Infof("Start refresh tablet period task in the %v/%v, refresh_interval is %v seconds",
+			shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard, refreshInterval.Seconds())
+		ticker := time.Tick(refreshInterval)
+		for range ticker {
+			ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
+			shard.UpdateTabletsInShardWithLock(ctx)
+			cancel()
+		}
+	}(vtconsensus.Shard)
 }
 
 // ScanAndRepair starts the scanAndFix routine
 func (vtconsensus *VTConsensus) ScanAndRepair() {
-	for _, shard := range vtconsensus.Shards {
-		go func(shard *controller.ConsensusShard) {
-			ticker := time.Tick(scanInterval)
-			for range ticker {
-				func() {
-					ctx, cancel := context.WithTimeout(vtconsensus.ctx, scanAndRepairTimeout)
-					defer cancel()
-					if !vtconsensus.stopped.Get() {
-						log.Infof("Start scan and repair %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
-						shard.ScanAndRepairShard(ctx)
-						log.Infof("Finished scan and repair %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
-					}
-				}()
-			}
-		}(shard)
-	}
+	go func(shard *controller.ConsensusShard) {
+		log.Infof("Start scan and repair tablet in the %v/%v, scan_interval is %v seconds, scan_repair_timeout is %v seconds",
+			shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard,
+			scanInterval.Seconds(), scanAndRepairTimeout.Seconds())
+		ticker := time.Tick(scanInterval)
+		for range ticker {
+			func() {
+				ctx, cancel := context.WithTimeout(vtconsensus.ctx, scanAndRepairTimeout)
+				defer cancel()
+				if !vtconsensus.stopped.Get() {
+					shard.ScanAndRepairShard(ctx)
+				}
+			}()
+		}
+	}(vtconsensus.Shard)
 }
 
 func (vtconsensus *VTConsensus) handleSignal(action func(int)) {
@@ -204,9 +194,8 @@ func (vtconsensus *VTConsensus) handleSignal(action func(int)) {
 		// Set stopped to true so that following repair call won't do anything
 		// For the ongoing repairs, checkShardLocked will abort if needed
 		vtconsensus.stopped.Set(true)
-		for _, shard := range vtconsensus.Shards {
-			shard.UnlockShard()
-		}
+		vtconsensus.Shard.UnlockShard()
+
 		action(1)
 	}()
 }

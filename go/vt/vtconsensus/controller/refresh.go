@@ -1,6 +1,6 @@
 /*
-Copyright 2021 The Vitess Authors.
 Copyright ApeCloud, Inc.
+Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,11 +28,9 @@ import (
 	"golang.org/x/net/context"
 
 	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/sync2"
 	"vitess.io/vitess/go/vt/logutil"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtconsensus/config"
 	"vitess.io/vitess/go/vt/vtconsensus/db"
 	"vitess.io/vitess/go/vt/vtconsensus/inst"
 	"vitess.io/vitess/go/vt/vtconsensus/log"
@@ -42,7 +40,7 @@ var (
 	lockShardTimingsMs = stats.NewMultiTimings("lockShard", "time vtconsensus takes to lock the shard", []string{"operation", "success"})
 )
 
-// consensusInstance represents an instance that's running ApeCloud MySQL
+// consensusInstance represents an instance that's running wesql-server
 // it wraps a InstanceKey plus some tablet related information
 type consensusInstance struct {
 	instanceKey      *inst.InstanceKey
@@ -94,8 +92,6 @@ type ConsensusShard struct {
 	lastDiagnoseResult DiagnoseType
 	lastDiagnoseSince  time.Time
 
-	isActive sync2.AtomicBool
-
 	logger *log.Logger
 
 	// lock prevents multiple go routine fights with each other
@@ -132,9 +128,7 @@ func NewConsensusShard(
 	tmc ConsensusTmcClient,
 	ts ConsensusTopo,
 	dbAgent db.Agent,
-	config *config.VTConsensusConfig,
-	localDbPort int,
-	isActive bool) *ConsensusShard {
+	localDbPort int) *ConsensusShard {
 	consensusShard := &ConsensusShard{
 		KeyspaceShard:             &topo.KeyspaceShard{Keyspace: keyspace, Shard: shard},
 		cells:                     cells,
@@ -151,7 +145,6 @@ func NewConsensusShard(
 		transientErrorWaitTime:    time.Duration(3) * time.Second,
 		bootstrapWaitTime:         time.Duration(3) * time.Second,
 	}
-	consensusShard.isActive.Set(isActive)
 	return consensusShard
 }
 
@@ -160,27 +153,28 @@ func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
 	instances, err := shard.refreshTabletsInShardInternal(ctx)
 	if err == nil {
 		// Take a per shard lock here when we actually refresh the data to avoid
-		// race conditions bewteen controller and repair tasks
+		// race conditions between controller and repair tasks
 		shard.Lock()
 		shard.instances = instances
 		shard.Unlock()
 	}
+	// get primary tablet from global topo server.
 	primary, err := shard.refreshPrimaryShard(ctx)
-	// set primary separately from instances so that if global topo is not available
-	// still discover the new tablets from local cell
 	shard.Lock()
 	defer shard.Unlock()
 	if err == nil {
 		shard.PrimaryAlias = primary
 		return
 	}
+	// set primary separately from instances so that if global topo is not available
+	// still discover the new tablets from local cell
 	shard.PrimaryAlias = shard.findPrimaryFromLocalCell()
 }
 
 // refreshTabletsInShardInternal refresh ks/shard instances.
 func (shard *ConsensusShard) refreshTabletsInShardInternal(ctx context.Context) ([]*consensusInstance, error) {
 	keyspace, shardName := shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard
-	// get all tablets for a shard
+	// get all tablets for a shard from topo server.
 	tablets, err := shard.ts.GetTabletMapForShardByCell(ctx, keyspace, shardName, shard.cells)
 	if err != nil {
 		shard.logger.Errorf("Error fetching tablets for keyspace/shardName %v/%v: %v", keyspace, shardName, err)
@@ -200,7 +194,7 @@ func (shard *ConsensusShard) refreshPrimaryShard(ctx context.Context) (string, e
 	return topoproto.TabletAliasString(si.PrimaryAlias), nil
 }
 
-// findPrimaryFromLocalCell iterates through the replicas stored in consensusShard and returns
+// findPrimaryFromLocalCell iterates through the instances stored in consensusShard and returns
 // the one that's marked as primary
 func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 	var latestPrimaryTimestamp time.Time
@@ -209,7 +203,7 @@ func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 		if instance.tablet.Type == topodatapb.TabletType_PRIMARY {
 			// It is possible that there are more than one master in topo server
 			// we should compare timestamp to pick the latest one
-			// TODO for apecloud mysql, should compare term.
+			// TODO for wesql-server, should compare term.
 			if latestPrimaryTimestamp.Before(instance.primaryTimeStamp) {
 				latestPrimaryTimestamp = instance.primaryTimeStamp
 				primaryInstance = instance
@@ -229,12 +223,14 @@ func parseTabletInfos(tablets map[string]*topo.TabletInfo) []*consensusInstance 
 	var newReplicas []*consensusInstance
 	for alias, tabletInfo := range tablets {
 		tablet := tabletInfo.Tablet
-		// Only monitor primary, replica and ronly tablet types
-		// for apecloud mysql, leader is primary, follower is replica, learner is rdonly
+		// Only monitor primary, replica and rdonly tablet types
+		// for wesql-server, leader is primary, follower is replica, learner is rdonly
 		switch tablet.Type {
 		case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
 			// mysql hostname and port might be empty here if tablet is not running
 			// we will treat them as unreachable
+			// tablet.MysqlHostname and tablet.MysqlPort are initialized by vttablet running options.
+			// tablet.MysqlHostname and tablet.MysqlPort are used for connecting to mysql across pod.
 			instanceKey := inst.InstanceKey{
 				Hostname: tablet.MysqlHostname,
 				Port:     int(tablet.MysqlPort),
@@ -320,10 +316,4 @@ func (shard *ConsensusShard) GetUnlock() func(*error) {
 	shard.unlockMu.Lock()
 	defer shard.unlockMu.Unlock()
 	return shard.unlock
-}
-
-// SetIsActive sets isActive for the shard
-func (shard *ConsensusShard) SetIsActive(isActive bool) {
-	shard.logger.Infof("Setting is active to %v", isActive)
-	shard.isActive.Set(isActive)
 }

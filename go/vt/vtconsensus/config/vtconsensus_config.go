@@ -29,42 +29,6 @@ import (
 	"vitess.io/vitess/go/vt/log"
 )
 
-// VTConsensusConfig is the config for VTConsensus
-type VTConsensusConfig struct {
-	DisableReadOnlyProtection   bool
-	BootstrapGroupSize          int
-	MinNumReplica               int
-	BackoffErrorWaitTimeSeconds int
-	BootstrapWaitTimeSeconds    int
-}
-
-var vtconsensusCfg = newVTConsensusConfig()
-
-func newVTConsensusConfig() *VTConsensusConfig {
-	config := &VTConsensusConfig{
-		DisableReadOnlyProtection:   false,
-		BootstrapGroupSize:          5,
-		MinNumReplica:               3,
-		BackoffErrorWaitTimeSeconds: 10,
-		BootstrapWaitTimeSeconds:    10 * 60,
-	}
-	return config
-}
-
-// ReadVTConsensusConfig reads config for VTConsensus
-func ReadVTConsensusConfig(file string) (*VTConsensusConfig, error) {
-	vtconsensusFile, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	decoder := json.NewDecoder(vtconsensusFile)
-	err = decoder.Decode(vtconsensusCfg)
-	if err != nil {
-		return nil, err
-	}
-	return vtconsensusCfg, nil
-}
-
 /*
 	Everything below has been copied over from the VTOrc package
 */

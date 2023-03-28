@@ -1,6 +1,6 @@
 /*
-Copyright 2021 The Vitess Authors.
 Copyright ApeCloud, Inc.
+Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import (
 	"vitess.io/vitess/go/stats"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtconsensus/db"
 	"vitess.io/vitess/go/vt/vterrors"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
@@ -68,10 +67,16 @@ func (shard *ConsensusShard) Repair(ctx context.Context, status DiagnoseType) (R
 	switch status {
 	case DiagnoseTypeWrongPrimaryTablet:
 		code, err = shard.repairWrongPrimaryTablet(ctx)
+	case DiagnoseTypeUnreachablePrimary:
+		shard.logger.Infof("unreachable primary tablet, repairing")
+	case DiagnoseTypeMissingConsensusLeader:
+		shard.logger.Infof("missing consensus leader, repairing")
+	case DiagnoseTypeUnreachableLeader:
+		shard.logger.Infof("unreachable leader, repairing")
+	default:
+		shard.logger.Infof("wesql-server and tablet unhealthy")
 	}
-	if status != DiagnoseTypeHealthy {
-		shard.logger.Infof("vtconsensus repaired %v status=%v | code=%v", formatKeyspaceShard(shard.KeyspaceShard), status, code)
-	}
+
 	return code, vterrors.Wrap(err, "vtconsensus repaired")
 }
 
@@ -93,9 +98,9 @@ func (shard *ConsensusShard) repairWrongPrimaryTablet(ctx context.Context) (Repa
 
 // fixPrimaryTabletLocked changes Vitess primary tablet based on mysql consensus global view.
 func (shard *ConsensusShard) fixPrimaryTabletLocked(ctx context.Context) error {
-	host, port, isActive := shard.sqlConsensusView.GetPrimary()
-	if !isActive {
-		return db.ErrConsensusNoLeader
+	host, port, isOnline := shard.sqlConsensusView.GetPrimary()
+	if !isOnline {
+		return errUnreachableLeaderMySQL
 	}
 	// Primary tablet does not run mysql leader, we need to change it accordingly
 	candidate := shard.findTabletByHostAndPort(host, port)

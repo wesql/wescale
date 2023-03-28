@@ -32,23 +32,11 @@ import (
 	"vitess.io/vitess/go/vt/vtconsensus/config"
 )
 
-type drv struct {
-}
-
-type DB interface {
-	QueryOrchestrator(query string, argsArray []any, onRow func(sqlutils.RowMap) error) error
-}
-
 // OpenDiscovery returns a DB instance to access a topology instance.
 // It has lower read timeout than OpenTopology and is intended to
 // be used with low-latency discovery queries.
 func OpenDiscovery(host string, port int, uname string, passwd string) (*sql.DB, error) {
 	return openTopology(host, port, uname, passwd, config.Config.MySQLDiscoveryReadTimeoutSeconds)
-}
-
-// OpenTopology returns a DB instance to access a topology instance.
-func OpenTopology(host string, port int) (*sql.DB, error) {
-	return openTopology(host, port, "", "", config.Config.MySQLTopologyReadTimeoutSeconds)
 }
 
 func openTopology(host string, port int, uname string, passwd string, readTimeout int) (db *sql.DB, err error) {

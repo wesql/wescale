@@ -1,6 +1,6 @@
 /*
-Copyright 2021 The Vitess Authors.
 Copyright ApeCloud, Inc.
+Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,14 +24,11 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/log"
-
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/topo"
 	"vitess.io/vitess/go/vt/vtconsensus/db"
-	"vitess.io/vitess/go/vt/vterrors"
 )
 
 var pingTabletTimeout = 2 * time.Second
@@ -50,22 +47,14 @@ const (
 	DiagnoseTypeError DiagnoseType = "error"
 	// DiagnoseTypeHealthy represents everything is DiagnoseTypeHealthy
 	DiagnoseTypeHealthy = "Healthy"
-	// DiagnoseTypeUnreachablePrimary represents the primary MySQL is unreachable
+	// DiagnoseTypeUnreachablePrimary represents the primary tablet is unreachable
 	DiagnoseTypeUnreachablePrimary = "UnreachablePrimary"
-	// DiagnoseTypeUnreachableReplica represents the replica MySQL is unreachable
-	DiagnoseTypeUnreachableReplica = "UnreachableReplica"
-	// DiagnoseTypeUnreachableLeader represents the primary MySQL is unreachable
+	// DiagnoseTypeUnreachableLeader represents the wesql-server consensus leader is unreachable
 	DiagnoseTypeUnreachableLeader = "UnreachableLeader"
-	// DiagnoseTypeUnreachableFollower represents the replica MySQL is unreachable
-	DiagnoseTypeUnreachableFollower = "UnreachableFollower"
-	// DiagnoseTypeWrongPrimaryTablet represents the primary tablet is incorrect based on on apecloud mysql
+	// DiagnoseTypeWrongPrimaryTablet represents the primary tablet is incorrect based on wesql-server leader
 	DiagnoseTypeWrongPrimaryTablet = "WrongPrimaryTablet"
-	// DiagnoseTypeMissingConsensusLeader represents miss consensus leader on apecloud mysql
+	// DiagnoseTypeMissingConsensusLeader represents miss consensus leader on wesql-server
 	DiagnoseTypeMissingConsensusLeader = "MissingConsensusLeader"
-	// DiagnoseTypeUnconnectedReplica represents cluster with primary tablet, but a node is not connected to it
-	DiagnoseTypeUnconnectedReplica = "UnconnectedReplica"
-	// diagnoseTypeUnknown represents a unclear intermediate diagnose state
-	diagnoseTypeUnknown = "Unknown"
 )
 
 // ScanAndRepairShard scans a particular shard by first Diagnose the shard with info from consensusShard
@@ -74,7 +63,7 @@ func (shard *ConsensusShard) ScanAndRepairShard(ctx context.Context) {
 	shard.logger.Infof("ScanAndRepairShard diagnose %v status", formatKeyspaceShard(shard.KeyspaceShard))
 	status, err := shard.Diagnose(ctx)
 	if err != nil {
-		shard.logger.Infof("fail to scanAndRepairShard %v/%v because of diagnose error: %v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard, err)
+		shard.logger.Infof("failed to scanAndRepairShard diagnose %v/%v error: %v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard, err)
 	}
 	// We are able to get Diagnose without error.
 	// Note: all the recovery function should first try to grab a shard level lock
@@ -86,15 +75,6 @@ func (shard *ConsensusShard) ScanAndRepairShard(ctx context.Context) {
 	}
 }
 
-// Diagnose the shard in the following order:
-// 1. if the shard has a group that every node agreed on
-// 2. if the group has any active (online / recovering) member
-// 3. if the shard has initialized a Vitess primary
-// 4. if primary tablet is reachable
-// 5. if Vitess primary and mysql primary reconciled
-// 6. if we have enough group members
-// 7. if the primary node has read_only=OFF
-// 8. if there is a node that is not in Mysql group
 func (shard *ConsensusShard) Diagnose(ctx context.Context) (DiagnoseType, error) {
 	shard.Lock()
 	defer shard.Unlock()
@@ -121,107 +101,52 @@ func (shard *ConsensusShard) Diagnose(ctx context.Context) (DiagnoseType, error)
 }
 
 func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, error) {
-	// First, check primary healthy.
-	// force refresh consensus view
+	// 1. fetch consensus leader instance from wesql-server consensus global view.
 	// TODO add fast path: directly fetch leader local view by primary tablet, if primary tablet exist.
 	err := shard.refreshSQLConsensusView()
 	if err != nil {
-		return DiagnoseTypeError, vterrors.Wrap(err, "fail to refreshConsensusView")
-	}
-
-	if shard.isActive.Get() {
-		diagnoseType, err := shard.checkPrimaryTablet(ctx)
-
-		if err != nil {
-			shard.logger.Infof("Diagnose %v", err)
+		if err == errMissingPrimaryTablet {
+			return DiagnoseTypeMissingConsensusLeader, nil
 		}
-		switch diagnoseType {
-		case DiagnoseTypeHealthy:
-			return DiagnoseTypeHealthy, nil
-		case DiagnoseTypeMissingConsensusLeader:
-			// we need fetch consensus info from all the nodes
-			err := shard.refreshSQLConsensusView()
-			if err != nil {
-				return DiagnoseTypeError, vterrors.Wrap(err, "fail to refreshConsensusView")
-			}
-		default:
-			return diagnoseType, nil
+		if err == errUnreachableLeaderMySQL {
+			return DiagnoseTypeUnreachableLeader, nil
 		}
 	}
-	if shard.isActive.Get() {
-		diagnoseType, err := shard.checkPrimaryTablet(ctx)
-		return diagnoseType, err
-	}
-	// If we get here, shard is DiagnoseTypeHealthy
-	return DiagnoseTypeHealthy, nil
-}
 
-func (shard *ConsensusShard) fastPathDiagnose(ctx context.Context) DiagnoseType {
-	pHost, pPort, isOnline := shard.sqlConsensusView.GetPrimary()
-	primaryTablet := shard.findShardPrimaryTablet()
+	// 2. check if the primary tablet is available.
+	diagnoseType, err := shard.checkPrimaryTablet(ctx)
 
-	// if no primary tablet
-	if primaryTablet == nil {
-		log.Infof("Primary tablet unknown %v/%v", shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard)
-		return DiagnoseTypeWrongPrimaryTablet
-	}
-
-	// if mysql don't maybe elect leader, or ConsensusGlobaView is null when vtconsensus startup.
-	if !isOnline || pHost == "" || pPort == 0 {
-		return DiagnoseTypeWrongPrimaryTablet
-	}
-	// if mysql leader mismatch tablet type , maybe mysql failover leads to switch leader.
-	// so need change tablet type.
-	if primaryTablet.instanceKey.Hostname != pHost || primaryTablet.instanceKey.Port != pPort {
-		// we find a mismatch but if the reported mysql primary is not in
-		// topology we should consider it as unreachable.
-		if shard.findTabletByHostAndPort(pHost, pPort) == nil {
-			return DiagnoseTypeUnreachablePrimary
-		}
-		return DiagnoseTypeWrongPrimaryTablet
-	}
-	return DiagnoseTypeHealthy
+	return diagnoseType, err
 }
 
 func (shard *ConsensusShard) checkPrimaryTablet(ctx context.Context) (DiagnoseType, error) {
-	// Find out the hostname and port of the Leader in consensus global view.
 	host, port, isOnline := shard.sqlConsensusView.GetPrimary()
-	// if we failed to find leader for apecloud mysql, maybe consensus cluster no ready.
-	// return true , vtconsensus need force refreshSQLConsensusView.
+	// if we failed to find leader for wesql-server, maybe consensus cluster no ready.
 	if !isOnline || host == "" || port == 0 {
-		shard.logger.Warningf("apecloud mysql consensus no Leader %v:%v", host, port)
+		shard.logger.Infof("apecloud mysql consensus no Leader %v:%v", host, port)
 		return DiagnoseTypeMissingConsensusLeader, errMissingConsensusLeader
 	}
 
 	// Make sure we have a primary tablet available
 	// findTabletByHostAndPort returns nil when we cannot find a tablet
-	// that is running on host:port, which means the tablet get stuck
-	// or when the tablet is not reachable
-	// we return errMissingPrimaryTablet, we need to repair tablet manually.
+	// which means the tablet get stuck or when the tablet is not reachable.
 	tablet := shard.findTabletByHostAndPort(host, port)
 	if tablet == nil || !shard.instanceReachable(ctx, tablet) {
-		shard.logger.Errorf("Failed to find tablet that is running with mysql on %v:%v", host, port)
+		shard.logger.Infof("Failed to find tablet that is running with wesql-server on %v:%v", host, port)
 		return DiagnoseTypeUnreachablePrimary, errUnreachablePrimaryTablet
 	}
 
 	// find primary tablet in the cluster
 	primary := shard.findShardPrimaryTablet()
-	// If we failed to find primary for shard, it mostly means we are initializing the shard
-	// return true directly so that vtconsensus will set primary tablet according to MySQL group
+	// If we failed to find primary for shard, it mostly means we are initializing the shard.
+	// If the primary and consensus leader instances are not the same,
+	// vtconsensus will set primary tablet according to wesql-server consensus leader.
 	if primary == nil || (host != primary.instanceKey.Hostname) || (port != primary.instanceKey.Port) {
 		shard.logger.Infof("unable to find primary tablet for %v", formatKeyspaceShard(shard.KeyspaceShard))
 		return DiagnoseTypeWrongPrimaryTablet, errWrongPrimaryTablet
 	}
 
 	return DiagnoseTypeHealthy, nil
-}
-
-func (shard *ConsensusShard) isPrimaryReachable(ctx context.Context) (bool, error) {
-	primaryTablet := shard.findShardPrimaryTablet()
-	if primaryTablet == nil {
-		return false, fmt.Errorf("unable to find primary for %v", formatKeyspaceShard(shard.KeyspaceShard))
-	}
-	return shard.instanceReachable(ctx, primaryTablet), nil
 }
 
 func (shard *ConsensusShard) instanceReachable(ctx context.Context, instance *consensusInstance) bool {
@@ -356,7 +281,7 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 			if unreachableError(err) {
 				shard.shardStatusCollector.recordUnreachables(instance)
 			}
-			shard.logger.Errorf("%v error while fetch local view from apecloud mysql: %v", instance.alias, err)
+			shard.logger.Infof("%v can not fetch local view from apecloud mysql: %v", instance.alias, err)
 			// Only raise error if we failed to get any data from mysql
 			// maybe some mysql node is not start.
 			continue
@@ -365,34 +290,48 @@ func (shard *ConsensusShard) refreshSQLConsensusView() error {
 		// if exists dual leader, greater term instance would be new leader.
 		if localView.Role == db.LEADER &&
 			(nil == leaderInstance || leaderTerm < localView.CurrentTerm) {
+			shard.logger.Warningf("Dual leaders ard founded, old leader serverid %d: %v:%v, term is %v. new leader serverid %d: %v:%v, term is %v",
+				leaderServerID,
+				leaderHost,
+				leaderPort,
+				leaderTerm,
+				localView.ServerID,
+				instance.instanceKey.Hostname,
+				instance.instanceKey.Port,
+				localView.CurrentTerm)
 			leaderInstance = instance
 			leaderHost = instance.instanceKey.Hostname
 			leaderPort = instance.instanceKey.Port
 			leaderServerID = localView.ServerID
 			leaderTerm = localView.CurrentTerm
+
 		}
 		localCount++
 	}
 
+	// if local views ard found from instances, and leader instance is not nil,
+	// then fetch global view from leader instance.
 	if localCount > 0 && leaderInstance != nil {
 		var err error
 		shard.logger.Infof("get consensus leader serverid %d: %v:%v", leaderServerID, leaderHost, leaderPort)
 
-		// need use mysql expose host:port, not param localhost:@@port
-		view.LeaderMySQLHost = leaderHost
-		view.LeaderMySQLPort = leaderPort
+		view.LeaderTabletMySQLHost = leaderHost
+		view.LeaderTabletMySQLPort = leaderPort
 		view.LeaderServerID = leaderServerID
 		err = shard.dbAgent.FetchConsensusGlobalView(view)
 		if err != nil {
-			shard.logger.Errorf("%v:%v error while fetch global view from apecloud mysql: %v",
+			shard.logger.Infof("%v:%v error while fetch global view from apecloud mysql: %v",
 				leaderHost, leaderPort, err)
 			shard.sqlConsensusView.recordView(nil)
 			return errUnreachableLeaderMySQL
 		}
+		shard.sqlConsensusView.recordView(view)
+		return nil
 	}
 
-	shard.sqlConsensusView.recordView(view)
-	return nil
+	shard.logger.Infof("no consensus leader found")
+	shard.sqlConsensusView.recordView(nil)
+	return errMissingConsensusLeader
 }
 
 func (shard *ConsensusShard) disconnectedInstance() (*consensusInstance, error) {

@@ -1,6 +1,6 @@
 /*
-Copyright 2021 The Vitess Authors.
 Copyright ApeCloud, Inc.
+Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,39 +23,27 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/spf13/pflag"
-
-	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vtconsensus/db"
 	"vitess.io/vitess/go/vt/vtconsensus/inst"
 	"vitess.io/vitess/go/vt/vtconsensus/log"
 )
 
-var (
-	heartbeatThreshold int
-)
-
 func init() {
-	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
-		fs.IntVar(&heartbeatThreshold, "group_heartbeat_threshold", 0, "VTConsensus will trigger backoff on inconsistent state if the group heartbeat staleness exceeds this threshold (in seconds). Should be used along with --enable_heartbeat_check.")
-	})
 }
 
 // SQLConsensusView contains views from all the nodes within the shard
 type SQLConsensusView struct {
-	view               *db.ConsensusGlobalView
-	logger             *log.Logger
-	heartbeatThreshold int
-	statsTags          []string
+	view      *db.ConsensusGlobalView
+	logger    *log.Logger
+	statsTags []string
 	sync.Mutex
 }
 
 // NewSQLConsensusView creates a new SQLConsensusView
 func NewSQLConsensusView(keyspace, shard string) *SQLConsensusView {
 	return &SQLConsensusView{
-		statsTags:          []string{keyspace, shard},
-		logger:             log.NewVTConsensusLogger(keyspace, shard),
-		heartbeatThreshold: heartbeatThreshold,
+		statsTags: []string{keyspace, shard},
+		logger:    log.NewVTConsensusLogger(keyspace, shard),
 	}
 }
 
@@ -123,25 +111,6 @@ func (consensusView *SQLConsensusView) IsAllOfflineOrError() bool {
 	return true
 }
 
-// GetConsensusMember returns ConsensusMember status for given a host
-func (consensusView *SQLConsensusView) GetConsensusMember(instanceKey *inst.InstanceKey) *db.ConsensusMember {
-	if instanceKey == nil {
-		return nil
-	}
-	consensusView.Lock()
-	defer consensusView.Unlock()
-	cg := consensusView.view
-	if nil == cg {
-		return nil
-	}
-	views := cg.ResolvedMember
-	status, ok := views[*instanceKey]
-	if !ok {
-		return nil
-	}
-	return &status
-}
-
 // GetPrimary returns the hostname, port of the primary that everyone agreed on
 // isActive bool indicates if there is any node in the group whose primary is "ONLINE"
 func (consensusView *SQLConsensusView) GetPrimary() (string, int, bool) {
@@ -155,13 +124,7 @@ func (consensusView *SQLConsensusView) getPrimaryLocked() (string, int, bool) {
 	if nil == cg {
 		return "", 0, false
 	}
-	rm := cg.ResolvedMember
-	for instance, cm := range rm {
-		if cm.Role == db.LEADER {
-			return instance.Hostname, instance.Port, cm.Connected
-		}
-	}
-	return "", 0, false
+	return cg.LeaderTabletMySQLHost, cg.LeaderTabletMySQLPort, true
 }
 
 // ToString returns a string representation of the Consensus global view
@@ -178,15 +141,15 @@ func (consensusView *SQLConsensusView) ToString() string {
 
 	sb.WriteString(fmt.Sprintf("ConsensuGlobalView leaderserverid=%d leaderhost=%s leaderport=%d\n",
 		cg.LeaderServerID,
-		cg.LeaderMySQLHost,
-		cg.LeaderMySQLPort))
+		cg.LeaderTabletMySQLHost,
+		cg.LeaderTabletMySQLPort))
 
 	for _, clv := range lvs {
 		sb.WriteString(fmt.Sprintf("TabletAlias:[%s] ConsensusLocalView", clv.TabletAlias))
 		sb.WriteString(fmt.Sprintf(" | serverid=%d host=%s port=%d leaderhost=%s leaderport=%d role=%v",
 			clv.ServerID,
-			clv.MySQLHost,
-			clv.MySQLPort,
+			clv.TabletMySQLHost,
+			clv.TabletMySQLPort,
 			clv.LeaderHostName,
 			clv.LeaderHostPort,
 			clv.Role))
