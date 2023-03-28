@@ -1096,8 +1096,6 @@ func (vc *vcursorImpl) GetSrvVschema() *vschemapb.SrvVSchema {
 
 func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) error {
 	switch name {
-	case sysvars.DDLStrategy.Name:
-		return SetDefaultDDLStrategy(value)
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
 	}

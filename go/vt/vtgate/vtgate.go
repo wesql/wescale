@@ -653,18 +653,6 @@ func (vtg *VTGate) HandlePanic(err *error) {
 	}
 }
 
-func SetDefaultDDLStrategy(strategy string) error {
-	//return error if strategy is empty
-	if strategy == "" {
-		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid DDL strategy: %s", strategy)
-	}
-	if _, err := schema.ParseDDLStrategy(strategy); err != nil {
-		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid DDL strategy: %s", strategy)
-	}
-	defaultDDLStrategy = strategy
-	return nil
-}
-
 func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 	//return error if strategy is empty
 	if strategy == "" {

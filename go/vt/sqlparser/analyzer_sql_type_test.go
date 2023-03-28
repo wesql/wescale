@@ -106,6 +106,10 @@ func TestIsSelectLastInsertIDStatement(t *testing.T) {
 	}{
 		{"select last_insert_id()", true},
 		{"select last_insert_id() union all select last_insert_id()", true},
+		{"select 1 union all select 1 union all select last_insert_id()", true},
+		{"select 1 union all select last_insert_id() union all select 1", true},
+		{"select last_insert_id() union all select 1 union all select 1", true},
+		{"select 1 union all select 1 union all select last_insert_id() union all select 1 union all select 1", true},
 		{"select /* select last_insert_id() */ 1", false},
 		{"select database()", false},
 	}

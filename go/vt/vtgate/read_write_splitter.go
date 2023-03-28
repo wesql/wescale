@@ -55,14 +55,14 @@ func IsReadOnly(query string) (bool, error) {
 	if sqlparser.ContainsLockStatement(s) {
 		return false, nil
 	}
-	// if HasSystemTable
-	if HasSystemTable(s, "") {
+	// if hasSystemTable
+	if hasSystemTable(s, "") {
 		return false, nil
 	}
 	return sqlparser.IsPureSelectStatement(s), nil
 }
 
-func HasSystemTable(sel sqlparser.Statement, ksName string) bool {
+func hasSystemTable(sel sqlparser.Statement, ksName string) bool {
 	semTable, err := semantics.Analyze(sel, ksName, &semantics.FakeSI{})
 	if err != nil {
 		return false

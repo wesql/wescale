@@ -45,49 +45,49 @@ func ContainsLockStatement(stmt Statement) bool {
 
 // isLockStatement returns true if the query is a Get Lock statement.
 func isLockStatement(stmt Statement) bool {
-	if s, ok := stmt.(*Select); !ok {
+	s, ok := stmt.(*Select)
+	if !ok {
 		return false
-	} else {
-		foundLastInsertId := false
-		err := Walk(func(node SQLNode) (kontinue bool, err error) {
-			switch node.(type) {
-			case *LockingFunc:
-				foundLastInsertId = true
-				return false, nil
-			}
-			return true, nil
-		}, s)
-		if err != nil {
-			return false
-		}
-		return foundLastInsertId
 	}
+	foundLockingFunc := false
+	err := Walk(func(node SQLNode) (kontinue bool, err error) {
+		switch node.(type) {
+		case *LockingFunc:
+			foundLockingFunc = true
+			return false, nil
+		}
+		return true, nil
+	}, s)
+	if err != nil {
+		return false
+	}
+	return foundLockingFunc
 }
 
 func hasFuncInStatement(funcs []string, stmt Statement) bool {
 	//return false if stmt is not a Select statement
-	if s, ok := stmt.(*Select); !ok {
+	s, ok := stmt.(*Select)
+	if !ok {
 		return false
-	} else {
-		//visit the select statement and check if it is a Select Last Insert ID statement
-		foundLastInsertId := false
-		err := Walk(func(node SQLNode) (kontinue bool, err error) {
-			switch node := node.(type) {
-			case *FuncExpr:
-				for _, f := range funcs {
-					if node.Name.Lowered() == f {
-						foundLastInsertId = true
-						return false, nil
-					}
+	}
+	//visit the select statement and check if it is a Select Last Insert ID statement
+	foundFunc := false
+	err := Walk(func(node SQLNode) (kontinue bool, err error) {
+		switch node := node.(type) {
+		case *FuncExpr:
+			for _, f := range funcs {
+				if node.Name.Lowered() == f {
+					foundFunc = true
+					return false, nil
 				}
 			}
-			return true, nil
-		}, s)
-		if err != nil {
-			return false
 		}
-		return foundLastInsertId
+		return true, nil
+	}, s)
+	if err != nil {
+		return false
 	}
+	return foundFunc
 }
 
 // ContainsLastInsertIDStatement returns true if the query is a Select Last Insert ID statement.
@@ -96,7 +96,7 @@ func ContainsLastInsertIDStatement(stmt Statement) bool {
 	case *Select:
 		return isSelectLastInsertIDStatement(stmt)
 	case *Union:
-		return isSelectLastInsertIDStatement(stmt.Left) || isSelectLastInsertIDStatement(stmt.Right)
+		return ContainsLastInsertIDStatement(stmt.Left) || ContainsLastInsertIDStatement(stmt.Right)
 	}
 
 	return false
