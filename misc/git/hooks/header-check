@@ -85,5 +85,10 @@ for file in $( checklicenseignore ); do
   fi
 done
 
+if [ $FAIL == true ]; then
+  echo "Header check failed. Please run '$(tput -T xterm setaf 1)make fix-license-header$(tput -T xterm sgr0)' to fix the errors."
+  echo "If the file doesn’t require a LICENSE header to be attached, please add it to $(tput -T xterm setaf 1).checklicenseignore$(tput -T xterm sgr0) file."
+fi
+
 # If we failed one check, return 1
 [ $FAIL == true ] && exit 1 || exit 0
