@@ -1,8 +1,6 @@
 # Copyright ApeCloud, Inc.
 # Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
-
-
 ARG DEBIAN_VER=bullseye
 
 FROM --platform=linux/amd64 golang:1.20.2-${DEBIAN_VER}

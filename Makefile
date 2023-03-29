@@ -509,4 +509,4 @@ define buildx_docker_image
 endef
 
 push-images:
-	${call buildx_docker_image,docker/wesqlscale/Dockerfile.x}
+	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release}
