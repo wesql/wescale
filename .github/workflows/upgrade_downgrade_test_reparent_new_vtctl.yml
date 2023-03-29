@@ -1,6 +1,7 @@
 name: Upgrade Downgrade Testing Reparent New Vtctl
 on:
-  pull_request:
+  workflow_dispatch:
+#  pull_request:
 
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Upgrade Downgrade Testing Reparent New Vtctl')
