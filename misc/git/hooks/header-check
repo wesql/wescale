@@ -69,7 +69,7 @@ for file in $( checklicenseignore ); do
           cat ./hack/boilerplate."${ext}".txt "${file}" > "${file}".new
         ;;
         sh)
-          sed '2 r './hack/boilerplate."${ext}".txt "${file}" > "${file}".new
+          sed '1 r './hack/boilerplate."${ext}".txt "${file}" > "${file}".new
         ;;
         *)
           cat ./hack/boilerplate.txt "${file}" > "${file}".new
