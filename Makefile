@@ -29,6 +29,11 @@
 MAKEFLAGS = -s
 GIT_STATUS := $(shell git status --porcelain)
 
+IMG ?= registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale
+VERSION ?= latest
+BUILDX_ARGS ?=
+BUILDX_PLATFORMS ?= linux/amd64,linux/arm64
+
 ifndef GOARCH
 export GOARCH=$(go env GOARCH)
 endif
@@ -145,20 +150,20 @@ endif
 install: build
 	# binaries
 	mkdir -p "$${PREFIX}/bin"
-	cp "$${VTROOTBIN}/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup} "$${PREFIX}/bin/"
+	cp "$${VTROOTBIN}/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup,vtconsensus} "$${PREFIX}/bin/"
 
 # Will only work inside the docker bootstrap for now
 cross-install: cross-build
 	# binaries
 	mkdir -p "$${PREFIX}/bin"
-	cp "${VTROOTBIN}/${GOOS}_${GOARCH}/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup} "$${PREFIX}/bin/"
+	cp "${VTROOTBIN}/${GOOS}_${GOARCH}/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup,vtconsensus} "$${PREFIX}/bin/"
 
 # Install local install the binaries needed to run vitess locally
 # Usage: make install-local PREFIX=/path/to/install/root
 install-local: build
 	# binaries
 	mkdir -p "$${PREFIX}/bin"
-	cp "$${VTROOT}/bin/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctl,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup} "$${PREFIX}/bin/"
+	cp "$${VTROOT}/bin/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctl,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup,vtconsensus} "$${PREFIX}/bin/"
 
 
 # install copies the files needed to run test Vitess using vtcombo into the given directory tree.
@@ -325,6 +330,12 @@ endef
 docker_base:
 	${call build_docker_image,docker/base/Dockerfile,vitess/base}
 
+docker_wesqlscale:
+	${call build_docker_image,docker/wesqlscale/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale}
+
+docker_wesqlscale_pull:
+	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale:latest
+
 DOCKER_BASE_SUFFIX = mysql80 percona57 percona80
 DOCKER_BASE_TARGETS = $(addprefix docker_base_, $(DOCKER_BASE_SUFFIX))
 $(DOCKER_BASE_TARGETS): docker_base_%:
@@ -487,3 +498,15 @@ check-license-header: ## Run license header check.
 .PHONY: fix-license-header
 fix-license-header: ## Run license header fix.
 	@./misc/git/hooks/header-check fix
+
+define buildx_docker_image
+	${info Building ${IMG}}
+	# Fix permissions before copying files, to avoid AUFS bug other must have read/access permissions
+	chmod -R o=rx *;
+	echo "Building docker using amd64/arm64 buildx";
+	docker buildx build --platform ${BUILDX_PLATFORMS} -f ${1} \
+		-t ${IMG}:${VERSION} ${BUILDX_ARGS} --push .;
+endef
+
+push-images:
+	${call buildx_docker_image,docker/wesqlscale/Dockerfile.x}
