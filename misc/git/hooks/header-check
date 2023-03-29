@@ -68,6 +68,9 @@ for file in $( checklicenseignore ); do
         proto)
           cat ./hack/boilerplate."${ext}".txt "${file}" > "${file}".new
         ;;
+        sh)
+          sed '2 r './hack/boilerplate."${ext}".txt "${file}" > "${file}".new
+        ;;
         *)
           cat ./hack/boilerplate.txt "${file}" > "${file}".new
         ;;

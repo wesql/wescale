@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 script_dir="$(dirname "${BASH_SOURCE[0]:-$0}")"
 source "${script_dir}/../env-apecloud.sh"
 
