@@ -67,7 +67,7 @@ type ConsensusTmcClient interface {
 	Ping(ctx context.Context, tablet *topodatapb.Tablet) error
 }
 
-// ConsensusShard stores the information about a Vitess shard that's running MySQL GR
+// ConsensusShard stores the information about a Vitess shard that's running wesql-server
 type ConsensusShard struct {
 	KeyspaceShard        *topo.KeyspaceShard
 	cells                []string
