@@ -68,13 +68,13 @@ func (shard *ConsensusShard) Repair(ctx context.Context, status DiagnoseType) (R
 	case DiagnoseTypeWrongPrimaryTablet:
 		code, err = shard.repairWrongPrimaryTablet(ctx)
 	case DiagnoseTypeUnreachablePrimary:
-		shard.logger.Infof("unreachable primary tablet, repairing")
+		shard.logger.Errorf("unreachable primary tablet, please check apecloud mysql-scale vttablet status")
 	case DiagnoseTypeMissingConsensusLeader:
-		shard.logger.Infof("missing consensus leader, repairing")
+		shard.logger.Errorf("missing consensus leader, please check apecloud mysql instances status")
 	case DiagnoseTypeUnreachableLeader:
-		shard.logger.Infof("unreachable leader, repairing")
+		shard.logger.Errorf("unreachable leader, please check apecloud mysql instances status")
 	default:
-		shard.logger.Infof("wesql-server and tablet unhealthy")
+		shard.logger.Errorf("apecloud mysql and tablet unhealthy, please manually repair")
 	}
 
 	return code, vterrors.Wrap(err, "vtconsensus repaired")

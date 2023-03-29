@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -110,6 +111,9 @@ func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, 
 		}
 		if err == errUnreachableLeaderMySQL {
 			return DiagnoseTypeUnreachableLeader, nil
+		}
+		if err == errMissingConsensusLeader {
+			return DiagnoseTypeMissingConsensusLeader, nil
 		}
 	}
 
@@ -261,57 +265,63 @@ func unreachableError(err error) bool {
 // refreshSQLConsensusView hits all instances and renders a SQL group locally for later diagnoses
 // the SQL group contains a list of "views" for the group from all the available nodes
 func (shard *ConsensusShard) refreshSQLConsensusView() error {
-	var view *db.ConsensusGlobalView
-	var localCount int
 	var leaderHost string
 	var leaderPort int
 	var leaderServerID int
 	var leaderTerm int
 	var leaderInstance *consensusInstance
-	view = shard.dbAgent.NewConsensusGlobalView()
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	view := shard.dbAgent.NewConsensusGlobalView()
 
 	// reset views in sql group
 	shard.sqlConsensusView.clear()
+	// get local view from all instances and leader instance
 	for _, instance := range shard.instances {
-		var err error
-		var localView *db.ConsensusLocalView
-		localView, err = shard.dbAgent.FetchConsensusLocalView(instance.alias, instance.instanceKey, view)
-		if err != nil {
-			shard.shardStatusCollector.recordProblematics(instance)
-			if unreachableError(err) {
-				shard.shardStatusCollector.recordUnreachables(instance)
+		wg.Add(1)
+		go func(instance *consensusInstance) {
+			defer wg.Done()
+			localView, err := shard.dbAgent.FetchConsensusLocalView(instance.alias, instance.instanceKey, view)
+			if err != nil {
+				shard.shardStatusCollector.recordProblematics(instance)
+				if unreachableError(err) {
+					shard.shardStatusCollector.recordUnreachables(instance)
+				}
+				shard.logger.Infof("%v can not fetch local view from apecloud mysql: %v", instance.alias, err)
+				// Only raise error if we failed to get any data from mysql
+				// maybe some mysql node is not start.
+				return
 			}
-			shard.logger.Infof("%v can not fetch local view from apecloud mysql: %v", instance.alias, err)
-			// Only raise error if we failed to get any data from mysql
-			// maybe some mysql node is not start.
-			continue
-		}
-
-		// if exists dual leader, greater term instance would be new leader.
-		if localView.Role == db.LEADER &&
-			(nil == leaderInstance || leaderTerm < localView.CurrentTerm) {
-			shard.logger.Warningf("Dual leaders ard founded, old leader serverid %d: %v:%v, term is %v. new leader serverid %d: %v:%v, term is %v",
-				leaderServerID,
-				leaderHost,
-				leaderPort,
-				leaderTerm,
-				localView.ServerID,
-				instance.instanceKey.Hostname,
-				instance.instanceKey.Port,
-				localView.CurrentTerm)
-			leaderInstance = instance
-			leaderHost = instance.instanceKey.Hostname
-			leaderPort = instance.instanceKey.Port
-			leaderServerID = localView.ServerID
-			leaderTerm = localView.CurrentTerm
-
-		}
-		localCount++
+			mu.Lock()
+			defer mu.Unlock()
+			if leaderInstance != nil && leaderInstance != instance {
+				shard.logger.Warningf("Dual leaders ard founded, old leader serverid %d: %v:%v, term is %v. new leader serverid %d: %v:%v, term is %v",
+					leaderServerID,
+					leaderHost,
+					leaderPort,
+					leaderTerm,
+					localView.ServerID,
+					instance.instanceKey.Hostname,
+					instance.instanceKey.Port,
+					localView.CurrentTerm)
+			}
+			// if exists dual leader, greater term instance would be new leader.
+			if localView.Role == db.LEADER &&
+				(nil == leaderInstance || leaderTerm < localView.CurrentTerm) {
+				leaderInstance = instance
+				leaderHost = instance.instanceKey.Hostname
+				leaderPort = instance.instanceKey.Port
+				leaderServerID = localView.ServerID
+				leaderTerm = localView.CurrentTerm
+			}
+		}(instance)
 	}
+	wg.Wait()
 
 	// if local views ard found from instances, and leader instance is not nil,
 	// then fetch global view from leader instance.
-	if localCount > 0 && leaderInstance != nil {
+	if leaderInstance != nil {
 		var err error
 		shard.logger.Infof("get consensus leader serverid %d: %v:%v", leaderServerID, leaderHost, leaderPort)
 
