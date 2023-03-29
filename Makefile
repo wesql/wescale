@@ -29,6 +29,11 @@
 MAKEFLAGS = -s
 GIT_STATUS := $(shell git status --porcelain)
 
+IMG ?= registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale
+VERSION ?= latest
+BUILDX_ARGS ?=
+BUILDX_PLATFORMS ?= linux/amd64,linux/arm64
+
 ifndef GOARCH
 export GOARCH=$(go env GOARCH)
 endif
@@ -493,3 +498,15 @@ check-license-header: ## Run license header check.
 .PHONY: fix-license-header
 fix-license-header: ## Run license header fix.
 	@./misc/git/hooks/header-check fix
+
+define buildx_docker_image
+	${info Building ${IMG}}
+	# Fix permissions before copying files, to avoid AUFS bug other must have read/access permissions
+	chmod -R o=rx *;
+	echo "Building docker using amd64/arm64 buildx";
+	docker buildx build --platform ${BUILDX_PLATFORMS} -f ${1} \
+		-t ${IMG}:${VERSION} ${BUILDX_ARGS} --push .;
+endef
+
+push-images:
+	${call buildx_docker_image,docker/wesqlscale/Dockerfile.x}
