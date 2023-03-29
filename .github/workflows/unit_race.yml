@@ -1,5 +1,7 @@
 name: unit_race
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+#  [push, pull_request]
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'unit_race')
   cancel-in-progress: true

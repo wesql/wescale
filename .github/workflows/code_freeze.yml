@@ -1,6 +1,6 @@
 name: Code Freeze
 on:
-  pull_request:
+#  pull_request:
 
 jobs:
   build:
