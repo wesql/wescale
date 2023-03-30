@@ -85,7 +85,7 @@ func (a apeCloudDbOp) DropDatabase(ctx context.Context, keyspaceName string) err
 	if err != nil {
 		return fmt.Errorf("GetKnownCells failed: %v", err)
 	}
-	return topotools.DropDatabase(ctx, ts, keyspaceName, cellName)
+	return topotools.DropDatabase(ctx, ts, a.gw, keyspaceName, cellName)
 }
 
 const (

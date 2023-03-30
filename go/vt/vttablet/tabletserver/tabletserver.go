@@ -31,8 +31,6 @@ import (
 	"syscall"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/acl"
@@ -773,9 +771,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 					return err
 				}
 			}
-			if global.ApeCloudDbDDLPlugin() {
-				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
-			}
+			connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -894,9 +890,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
-			if global.ApeCloudDbDDLPlugin() {
-				connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
-			}
+			connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,

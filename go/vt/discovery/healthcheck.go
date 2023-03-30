@@ -44,8 +44,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/netutil"
@@ -663,19 +661,15 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
-	if global.UnshardEnabled() {
-		if hc.healthy[KeyFromTarget(target)] != nil {
-			return append(result, hc.healthy[KeyFromTarget(target)]...)
-		}
-		for _, value := range hc.healthy {
-			for _, th := range value {
-				if th.Target.TabletType == target.TabletType {
-					result = append(result, th)
-				}
+	if hc.healthy[KeyFromTarget(target)] != nil {
+		return append(result, hc.healthy[KeyFromTarget(target)]...)
+	}
+	for _, value := range hc.healthy {
+		for _, th := range value {
+			if th.Target.TabletType == target.TabletType {
+				result = append(result, th)
 			}
 		}
-	} else {
-		return append(result, hc.healthy[KeyFromTarget(target)]...)
 	}
 	return result
 }

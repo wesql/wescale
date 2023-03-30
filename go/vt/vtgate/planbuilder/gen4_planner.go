@@ -19,8 +19,6 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/internal/global"
-
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -186,71 +184,16 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	if global.UnshardEnabled() {
-		if ks, _ := vschema.DefaultKeyspace(); ks != nil {
-			plan, tablesUsed, err = apeCloudShortcut(ctx, selStmt, ks)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			return plan, semTable, tablesUsed, err
-		}
-	}
-
-	if ks, _ := semTable.SingleUnshardedKeyspace(); ks != nil {
-		plan, tablesUsed, err = unshardedShortcut(ctx, selStmt, ks)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return plan, semTable, tablesUsed, err
-	}
-
-	// From this point on, we know it is not an unsharded query and return the NotUnshardedErr if there is any
-	if semTable.NotUnshardedErr != nil {
-		return nil, nil, nil, semTable.NotUnshardedErr
-	}
-
-	err = queryRewrite(semTable, reservedVars, selStmt)
+	ks, _ := vschema.DefaultKeyspace()
+	plan, tablesUsed, err = apeCloudShortcut(ctx, selStmt, ks)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	op, err := operators.PlanQuery(ctx, selStmt)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	plan, err = transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	plan = optimizePlan(plan)
-
-	sel, isSel := selStmt.(*sqlparser.Select)
-	if isSel {
-		if err = setMiscFunc(plan, sel); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	if err = plan.WireupGen4(ctx); err != nil {
-		return nil, nil, nil, err
-	}
-
 	plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	return plan, semTable, operators.TablesUsed(op), nil
+	return plan, semTable, tablesUsed, err
 }
 
 // optimizePlan removes unnecessary simpleProjections that have been created while planning

@@ -42,7 +42,7 @@ func CreateDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryS
 	return nil
 }
 
-func DropDatabase(ctx context.Context, ts *topo.Server, keyspaceName string, cells []string) error {
+func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryService, keyspaceName string, cells []string) error {
 	if err := ts.DeleteShard(ctx, keyspaceName, defaultShardName); err != nil {
 		return err
 	}
@@ -59,6 +59,13 @@ func DropDatabase(ctx context.Context, ts *topo.Server, keyspaceName string, cel
 
 	if err := ts.RebuildSrvVSchema(ctx, cells); err != nil {
 		return err
+	}
+
+	dbname := keyspaceName
+	target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
+	sql := "CREATE DATABASE IF NOT EXISTS `" + dbname + "`"
+	if _, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil); err != nil {
+		return fmt.Errorf("error ensuring database exists: %v", err)
 	}
 
 	return nil

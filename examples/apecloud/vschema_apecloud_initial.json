@@ -1,7 +1,5 @@
 {
     "tables": {
-        "read_write_splitting_policy_definition": {},
-        "system_table1": {},
-        "system_table2": {}
+        "read_write_splitting_policy_definition": {}
     }
 }

@@ -28,8 +28,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"vitess.io/vitess/go/netutil"
@@ -254,7 +252,7 @@ func TabletDbName(tablet *topodatapb.Tablet) string {
 	if tablet.Keyspace == "" {
 		return ""
 	}
-	return global.DbPrefix() + tablet.Keyspace
+	return EmptyDbPrefix + tablet.Keyspace
 }
 
 // TabletIsAssigned returns if this tablet is assigned to a keyspace and shard.
