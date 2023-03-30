@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -253,9 +258,6 @@ func NewConnParams(port int, password, socketPath, keyspace string) mysql.ConnPa
 		Pass:       password,
 	}
 	cp.DbName = keyspace
-	if keyspace != "" && keyspace != "_vt" {
-		cp.DbName = "vt_" + keyspace
-	}
 
 	return cp
 
