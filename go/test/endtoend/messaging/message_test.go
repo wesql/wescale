@@ -67,8 +67,7 @@ create table vitess_message(
 ) comment 'vitess_message,vt_ack_wait=1,vt_purge_after=3,vt_batch_size=2,vt_cache_size=10,vt_poller_interval=1'
 `
 
-// skip test
-func _TestMessage(t *testing.T) {
+func TestMessage(t *testing.T) {
 	ctx := context.Background()
 
 	vtParams := mysql.ConnParams{

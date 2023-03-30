@@ -31,8 +31,7 @@ import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 )
 
-// skip test
-func _TestZk2Topo(t *testing.T) {
+func TestZk2Topo(t *testing.T) {
 	// Start a real single ZK daemon, and close it after all tests are done.
 	zkd, serverAddr := zkctl.StartLocalZk(testfiles.GoVtTopoZk2topoZkID, testfiles.GoVtTopoZk2topoPort)
 	defer zkd.Teardown()
