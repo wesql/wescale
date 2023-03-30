@@ -190,7 +190,7 @@ func newBuildSelectPlan(
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
 	ks, _ := vschema.DefaultKeyspace()
-	plan, tablesUsed, err = apeCloudShortcut(ctx, selStmt, ks)
+	plan, tablesUsed, err = pushdownShortcut(ctx, selStmt, ks)
 	if err != nil {
 		return nil, nil, nil, err
 	}

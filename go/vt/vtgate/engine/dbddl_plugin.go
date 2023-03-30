@@ -57,18 +57,18 @@ func (noOp) DropDatabase(context.Context, string) error {
 	return nil
 }
 
-type apeCloudDbOp struct {
+type directDbOp struct {
 	srvTs srvtopo.Server
 	gw    queryservice.QueryService
 }
 
-// RegisterApeCloudDbOp registers the apeCloudDbOp plugin
-func RegisterApeCloudDbOp(srvTs srvtopo.Server, gateway queryservice.QueryService) {
-	DBDDLRegister(apeCloudDbDDL, &apeCloudDbOp{srvTs: srvTs, gw: gateway})
+// RegisterPushdownDbOp registers the directDbOp plugin
+func RegisterPushdownDbOp(srvTs srvtopo.Server, gateway queryservice.QueryService) {
+	DBDDLRegister(pushdownDbDDL, &directDbOp{srvTs: srvTs, gw: gateway})
 }
 
 // CreateDatabase implements the DropCreateDB interface
-func (a apeCloudDbOp) CreateDatabase(ctx context.Context, keyspaceName string) error {
+func (a directDbOp) CreateDatabase(ctx context.Context, keyspaceName string) error {
 	ts, err := a.srvTs.GetTopoServer()
 	if err != nil {
 		return fmt.Errorf("GetTopoServer failed: %v", err)
@@ -81,7 +81,7 @@ func (a apeCloudDbOp) CreateDatabase(ctx context.Context, keyspaceName string) e
 }
 
 // DropDatabase implements the DropCreateDB interface
-func (a apeCloudDbOp) DropDatabase(ctx context.Context, keyspaceName string) error {
+func (a directDbOp) DropDatabase(ctx context.Context, keyspaceName string) error {
 	ts, err := a.srvTs.GetTopoServer()
 	if err != nil {
 		return fmt.Errorf("GetTopoServer failed: %v", err)
@@ -96,8 +96,8 @@ func (a apeCloudDbOp) DropDatabase(ctx context.Context, keyspaceName string) err
 const (
 	faildbDDL          = "fail"
 	noOpdbDDL          = "noop"
-	apeCloudDbDDL      = global.ApeCloud
-	defaultDBDDLPlugin = apeCloudDbDDL
+	pushdownDbDDL      = global.Pushdown
+	defaultDBDDLPlugin = pushdownDbDDL
 )
 
 func init() {

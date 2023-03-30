@@ -102,7 +102,7 @@ var (
 
 	// ddl related flags
 	foreignKeyMode     = "allow"
-	dbDDLPlugin        = global.ApeCloud
+	dbDDLPlugin        = global.Pushdown
 	defaultDDLStrategy = string(schema.DDLStrategyDirect)
 	enableOnlineDDL    = true
 	enableDirectDDL    = true
@@ -297,7 +297,7 @@ func Init(
 		pv,
 	)
 
-	engine.RegisterApeCloudDbOp(serv, gw)
+	engine.RegisterPushdownDbOp(serv, gw)
 
 	// connect the schema tracker with the vschema manager
 	if enableSchemaChangeSignal {

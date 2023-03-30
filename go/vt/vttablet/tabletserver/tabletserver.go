@@ -776,7 +776,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 					return err
 				}
 			}
-			connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
+			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -815,7 +815,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 	return result, err
 }
 
-func (tsv *TabletServer) buildConnSettingForApeCloud(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
+func (tsv *TabletServer) buildConnSettingForUserKeyspace(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
 	if connSetting == nil {
 		return pools.NewSetting(
 			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),
@@ -895,7 +895,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
-			connSetting = tsv.buildConnSettingForApeCloud(connSetting, target.Keyspace)
+			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
