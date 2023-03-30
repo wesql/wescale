@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -539,7 +544,8 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.Version.Name,
 		sysvars.VersionComment.Name,
 		sysvars.QueryTimeout.Name,
-		sysvars.Workload.Name:
+		sysvars.Workload.Name,
+		sysvars.ReadWriteSplittingPolicy.Name:
 		found = true
 	}
 
