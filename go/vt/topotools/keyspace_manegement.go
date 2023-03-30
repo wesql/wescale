@@ -29,7 +29,7 @@ func CreateDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryS
 	sql := "CREATE DATABASE IF NOT EXISTS `" + dbname + "`"
 	_, err = gw.Execute(ctx, target, sql, nil, 0, 0, nil)
 	if err != nil {
-		return fmt.Errorf("error ensuring database exists: %v", err)
+		return fmt.Errorf("error creating database: %v", err)
 	}
 
 	if err = ts.RebuildSrvVSchema(ctx, cells); err != nil {
@@ -63,9 +63,9 @@ func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QuerySer
 
 	dbname := keyspaceName
 	target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
-	sql := "CREATE DATABASE IF NOT EXISTS `" + dbname + "`"
+	sql := "DROP DATABASE IF EXISTS `" + dbname + "`"
 	if _, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil); err != nil {
-		return fmt.Errorf("error ensuring database exists: %v", err)
+		return fmt.Errorf("error droping database: %v", err)
 	}
 
 	return nil

@@ -50,10 +50,10 @@ vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-p
 wait_for_healthy_shard _vt 0 || exit 1
 
 # create the schema
-vtctldclient ApplySchema --sql-file create_apecloud_schema.sql _vt || fail "Failed to apply schema for the _vt keyspace"
+#vtctldclient ApplySchema --sql-file create_apecloud_schema.sql _vt || fail "Failed to apply schema for the _vt keyspace"
 
 # create the vschema
-vtctldclient ApplyVSchema --vschema-file vschema_apecloud_initial.json _vt || fail "Failed to apply vschema for the _vt keyspace"
+#vtctldclient ApplyVSchema --vschema-file vschema_apecloud_initial.json _vt || fail "Failed to apply vschema for the _vt keyspace"
 
 # start vtgate
 
