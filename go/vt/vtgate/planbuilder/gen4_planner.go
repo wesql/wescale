@@ -24,6 +24,8 @@ package planbuilder
 import (
 	"fmt"
 
+	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -190,6 +192,9 @@ func newBuildSelectPlan(
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
 	ks, _ := vschema.DefaultKeyspace()
+	if ks == nil {
+		return nil, nil, nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "no default keyspace for query")
+	}
 	plan, tablesUsed, err = pushdownShortcut(ctx, selStmt, ks)
 	if err != nil {
 		return nil, nil, nil, err

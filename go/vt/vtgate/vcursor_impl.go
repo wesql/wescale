@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/vtgate/logstats"
 
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
@@ -289,7 +295,7 @@ func (vc *vcursorImpl) getActualKeyspace() string {
 // identified, it returns an error.
 func (vc *vcursorImpl) DefaultKeyspace() (*vindexes.Keyspace, error) {
 	if ignoreKeyspace(vc.keyspace) {
-		return nil, errNoKeyspace
+		return vc.FindKeyspace(global.DefaultKeyspace)
 	}
 	ks, ok := vc.vschema.Keyspaces[vc.keyspace]
 	if !ok {
