@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,6 +87,9 @@ var (
 	ReadAfterWriteTimeOut = SystemVariable{Name: "read_after_write_timeout"}
 	SessionTrackGTIDs     = SystemVariable{Name: "session_track_gtids", IdentifierAsString: true}
 
+	// Read Write Splitting
+	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
+
 	VitessAware = []SystemVariable{
 		Autocommit,
 		ClientFoundRows,
@@ -100,6 +108,7 @@ var (
 		ReadAfterWriteTimeOut,
 		SessionTrackGTIDs,
 		QueryTimeout,
+		ReadWriteSplittingPolicy,
 	}
 
 	ReadOnly = []SystemVariable{

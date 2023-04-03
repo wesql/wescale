@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,6 +158,9 @@ message Session {
 
   // query_timeout is the maximum amount of time a query is permitted to run
   int64 query_timeout = 25;
+
+  // ReadWriteSplittingPolicy is the policy used for read write splitting
+  string ReadWriteSplittingPolicy = 26;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout

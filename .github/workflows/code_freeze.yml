@@ -1,6 +1,7 @@
 name: Code Freeze
 on:
-  pull_request:
+  workflow_dispatch:
+#  pull_request:
 
 jobs:
   build:
