@@ -39,27 +39,50 @@ func TestCRUD(t *testing.T) {
 	})
 }
 
-func TestCrossDbDdlAndJoin(t *testing.T) {
+func TestCrossDbCRUD(t *testing.T) {
 	execWithConn(t, DefaultKeyspaceName, func(conn *mysql.Conn) {
 		defer utils.Exec(t, conn, `drop table t1`)
 		utils.Exec(t, conn, "create table t1 (c1 int, c2 int, primary key(c1))")
-		utils.Exec(t, conn, "insert into t1(c1, c2) values (1, 2)")
+		utils.Exec(t, conn, "insert into t1(c1, c2) values (1, 1)")
 
 		utils.Exec(t, conn, "create database wesql2")
 		defer utils.Exec(t, conn, "drop database wesql2")
 		utils.Exec(t, conn, "create table wesql2.t2 (c1 int, c2 int, primary key(c1))")
-		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (1, 2)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (2, 2)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (22, 22)")
 
 		utils.Exec(t, conn, "create database wesql3")
 		defer utils.Exec(t, conn, "drop database wesql3")
 		utils.Exec(t, conn, "create table wesql3.t3 (c1 int, c2 int, primary key(c1))")
-		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (1, 2)")
-		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (3, 4)")
-		utils.Exec(t, conn, "update wesql3.t3 set c1=5 where c1=3")
-		utils.Exec(t, conn, "delete from wesql3.t3 where c1=5")
+		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (3, 3)")
+		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (33, 33)")
+		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (330, 330)")
+		utils.Exec(t, conn, "insert into wesql3.t3(c1, c2) values (3333, 3333)")
+		utils.Exec(t, conn, "update wesql3.t3 set c1=333, c2=333 where c1=330")
+		utils.Exec(t, conn, "delete from wesql3.t3 where c1=3333")
 
-		qr := utils.Exec(t, conn, "select * from t1 join wesql2.t2 join wesql3.t3")
-		assert.Equal(t, `[[INT32(1) INT32(2) INT32(1) INT32(2) INT32(1) INT32(2)]]`, fmt.Sprintf("%v", qr.Rows))
+		// cross db join
+		qr := utils.Exec(t, conn, "select * from t1 join wesql2.t2 join wesql3.t3 order by t1.c1 asc limit 1")
+		assert.Equal(t, `[[INT32(1) INT32(1) INT32(22) INT32(22) INT32(3) INT32(3)]]`, fmt.Sprintf("%v", qr.Rows))
+
+		// cross db update
+		updateSQL := `
+			UPDATE wesql.t1 
+			INNER JOIN wesql2.t2 
+			INNER JOIN wesql3.t3 
+			SET t1.c2 = 4, t2.c2 = 44, t3.c2 = 444`
+		utils.Exec(t, conn, updateSQL)
+		qr = utils.Exec(t, conn, "select * from t1 join wesql2.t2 join wesql3.t3 order by t1.c1 asc limit 1")
+		assert.Equal(t, `[[INT32(1) INT32(4) INT32(22) INT32(44) INT32(3) INT32(444)]]`, fmt.Sprintf("%v", qr.Rows))
+
+		// cross db delete
+		utils.Exec(t, conn, "DELETE t1, t2 FROM wesql.t1 as t1 INNER JOIN wesql2.t2 as t2 WHERE t1.c2=t2.c2 or t1.c1=1")
+		qr = utils.Exec(t, conn, "select count(*) from wesql.t1")
+		assert.Equal(t, `[[INT64(0)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "select count(*) from wesql2.t2")
+		assert.Equal(t, `[[INT64(0)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "select count(*) from wesql3.t3")
+		assert.Equal(t, `[[INT64(3)]]`, fmt.Sprintf("%v", qr.Rows))
 	})
 }
 
@@ -78,5 +101,20 @@ func TestTransaction(t *testing.T) {
 
 		qr := utils.Exec(t, conn, "select * from t1")
 		assert.Equal(t, `[[INT32(1) INT32(2)] [INT32(2) INT32(3)] [INT32(3) INT32(4)]]`, fmt.Sprintf("%v", qr.Rows))
+	})
+}
+
+// TestCreateDropDatabaseWithTheSameNameMultipleTimes tests that we can create and drop a database with the same name multiple times.
+func TestCreateDropDatabaseWithTheSameNameMultipleTimes(t *testing.T) {
+	dbName := "wesql_test_db"
+	execWithConn(t, DefaultKeyspaceName, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, fmt.Sprintf("create database %s", dbName))
+		utils.AssertDatabaseExists(t, conn, dbName)
+		utils.Exec(t, conn, fmt.Sprintf("drop database %s", dbName))
+		utils.AssertDatabaseNotExists(t, conn, dbName)
+		utils.Exec(t, conn, fmt.Sprintf("create database %s", dbName))
+		utils.AssertDatabaseExists(t, conn, dbName)
+		utils.Exec(t, conn, fmt.Sprintf("drop database %s", dbName))
+		utils.AssertDatabaseNotExists(t, conn, dbName)
 	})
 }

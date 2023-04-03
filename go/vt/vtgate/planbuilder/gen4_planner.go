@@ -254,49 +254,19 @@ func gen4UpdateStmtPlanner(
 		return nil, err
 	}
 
-	if ks, tables := semTable.SingleUnshardedKeyspace(); ks != nil {
-		edml := engine.NewDML()
-		edml.Keyspace = ks
-		edml.Table = tables
-		edml.Opcode = engine.Unsharded
-		edml.Query = generateQuery(updStmt)
-		upd := &engine.Update{DML: edml}
-		return newPlanResult(upd, operators.QualifiedTables(ks, tables)...), nil
+	ks, _ := vschema.DefaultKeyspace()
+	if ks == nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "no default keyspace for query")
 	}
 
-	if semTable.NotUnshardedErr != nil {
-		return nil, semTable.NotUnshardedErr
-	}
-
-	err = queryRewrite(semTable, reservedVars, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
-
-	op, err := operators.PlanQuery(ctx, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err = pushCommentDirectivesOnPlan(plan, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	setLockOnAllSelect(plan)
-
-	if err := plan.WireupGen4(ctx); err != nil {
-		return nil, err
-	}
-
-	return newPlanResult(plan.Primitive(), operators.TablesUsed(op)...), nil
+	tables := semTable.GetVindexTable()
+	edml := engine.NewDML()
+	edml.Keyspace = ks
+	edml.Table = tables
+	edml.Opcode = engine.Unsharded
+	edml.Query = generateQuery(updStmt)
+	upd := &engine.Update{DML: edml}
+	return newPlanResult(upd, operators.QualifiedTables(ks, tables)...), nil
 }
 
 func gen4DeleteStmtPlanner(
@@ -333,48 +303,18 @@ func gen4DeleteStmtPlanner(
 		return nil, err
 	}
 
-	if ks, tables := semTable.SingleUnshardedKeyspace(); ks != nil {
-		edml := engine.NewDML()
-		edml.Keyspace = ks
-		edml.Table = tables
-		edml.Opcode = engine.Unsharded
-		edml.Query = generateQuery(deleteStmt)
-		del := &engine.Delete{DML: edml}
-		return newPlanResult(del, operators.QualifiedTables(ks, tables)...), nil
+	ks, _ := vschema.DefaultKeyspace()
+	if ks == nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "no default keyspace for query")
 	}
-
-	if err := checkIfDeleteSupported(deleteStmt, semTable); err != nil {
-		return nil, err
-	}
-
-	err = queryRewrite(semTable, reservedVars, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
-	op, err := operators.PlanQuery(ctx, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err = pushCommentDirectivesOnPlan(plan, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	setLockOnAllSelect(plan)
-
-	if err := plan.WireupGen4(ctx); err != nil {
-		return nil, err
-	}
-
-	return newPlanResult(plan.Primitive(), operators.TablesUsed(op)...), nil
+	tables := semTable.GetVindexTable()
+	edml := engine.NewDML()
+	edml.Keyspace = ks
+	edml.Table = tables
+	edml.Opcode = engine.Unsharded
+	edml.Query = generateQuery(deleteStmt)
+	del := &engine.Delete{DML: edml}
+	return newPlanResult(del, operators.QualifiedTables(ks, tables)...), nil
 }
 
 func rewriteRoutedTables(stmt sqlparser.Statement, vschema plancontext.VSchema) error {

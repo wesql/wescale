@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -393,9 +398,7 @@ func generateDMLSubquery(tblExpr sqlparser.TableExpr, where *sqlparser.Where, or
 }
 
 func generateQuery(statement sqlparser.Statement) string {
-	buf := sqlparser.NewTrackedBuffer(dmlFormatter)
-	statement.Format(buf)
-	return buf.String()
+	return sqlparser.String(statement)
 }
 
 // dmlFormatter strips out keyspace name from dmls.
