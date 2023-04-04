@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -771,6 +776,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 					return err
 				}
 			}
+			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -807,6 +813,19 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 		},
 	)
 	return result, err
+}
+
+func (tsv *TabletServer) buildConnSettingForUserKeyspace(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
+	if connSetting == nil {
+		return pools.NewSetting(
+			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),
+			"use "+tsv.config.DB.DBName,
+		)
+	}
+	return pools.NewSetting(
+		"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName})+";"+connSetting.GetQuery(),
+		"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+	)
 }
 
 // smallerTimeout returns the smaller of the two timeouts.
@@ -876,6 +895,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 					return err
 				}
 			}
+			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -221,6 +226,18 @@ func analyzeDDL(stmt sqlparser.DDLStatement, viewsEnabled bool) (*Plan, error) {
 		fullQuery = GenerateFullQuery(stmt)
 	}
 	return &Plan{PlanID: PlanDDL, FullQuery: fullQuery, FullStmt: stmt, NeedsReservedConn: stmt.IsTemporary()}, nil
+}
+
+func analyzeDBDDL(stmt sqlparser.DBDDLStatement) (*Plan, error) {
+	// DDLs and some other statements below don't get fully parsed.
+	// We have to use the original query at the time of execution.
+	// We are in the process of changing this
+	var fullQuery *sqlparser.ParsedQuery
+	// If the query is fully parsed, then use the ast and store the fullQuery
+	if stmt.IsFullyParsed() {
+		fullQuery = GenerateFullQuery(stmt)
+	}
+	return &Plan{PlanID: PlanDDL, FullQuery: fullQuery, FullStmt: stmt, NeedsReservedConn: false}, nil
 }
 
 func analyzeViewsDDL(stmt sqlparser.DDLStatement) (*Plan, error) {

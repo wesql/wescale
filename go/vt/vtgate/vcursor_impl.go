@@ -28,8 +28,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/sysvars"
-
 	"vitess.io/vitess/go/vt/vtgate/logstats"
 
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
@@ -303,8 +303,11 @@ func (vc *vcursorImpl) getActualKeyspace() string {
 // if there is one. If the keyspace specified in the target cannot be
 // identified, it returns an error.
 func (vc *vcursorImpl) DefaultKeyspace() (*vindexes.Keyspace, error) {
-	if ignoreKeyspace(vc.keyspace) {
+	if vc.keyspace == "" {
 		return nil, errNoKeyspace
+	}
+	if sqlparser.SystemSchema(vc.keyspace) {
+		return vc.FindKeyspace(global.DefaultKeyspace)
 	}
 	ks, ok := vc.vschema.Keyspaces[vc.keyspace]
 	if !ok {

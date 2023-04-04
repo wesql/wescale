@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +33,28 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/semantics"
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
+
+func pushdownShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
+	tableNames, err := getTableNames(ctx.SemTable)
+	if err != nil {
+		return nil, nil, err
+	}
+	plan := &routeGen4{
+		eroute: &engine.Route{
+			RoutingParameters: &engine.RoutingParameters{
+				Opcode:   engine.Unsharded,
+				Keyspace: ks,
+			},
+			TableName: strings.Join(escapedTableNames(tableNames), ", "),
+		},
+		Select: stmt,
+	}
+
+	if err := plan.WireupGen4(ctx); err != nil {
+		return nil, nil, err
+	}
+	return plan, operators.QualifiedTableNames(ks, tableNames), nil
+}
 
 func unshardedShortcut(ctx *plancontext.PlanningContext, stmt sqlparser.SelectStatement, ks *vindexes.Keyspace) (logicalPlan, []string, error) {
 	// this method is used when the query we are handling has all tables in the same unsharded keyspace

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -334,5 +339,60 @@ func TestIsNull(t *testing.T) {
 		if out != tc.out {
 			t.Errorf("IsNull(%T): %v, want %v", tc.in, out, tc.out)
 		}
+	}
+}
+
+func TestGetAllTableNames(t *testing.T) {
+
+	tests := []struct {
+		name string
+		sql  string
+		want []TableName
+	}{
+		{
+			name: "simple select",
+			sql:  "select * from t",
+			want: []TableName{
+				{
+					Name:      NewIdentifierCS("t"),
+					Qualifier: NewIdentifierCS(""),
+				},
+			},
+		},
+		{
+			name: "simple select with alias",
+			sql:  "select * from t as t2",
+			want: []TableName{
+				{
+					Name: NewIdentifierCS("t"),
+				},
+			},
+		},
+		{
+			name: "simple select with keyspace",
+			sql:  "select * from d1.t as t2",
+			want: []TableName{
+				{
+					Name:      NewIdentifierCS("t"),
+					Qualifier: NewIdentifierCS("d1"),
+				},
+			},
+		},
+		{
+			name: "select system variables",
+			sql:  "select @@sql_mode",
+			want: []TableName{
+				{
+					Name:      NewIdentifierCS("dual"),
+					Qualifier: NewIdentifierCS(""),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt, _ := Parse(tt.sql)
+			assert.Equalf(t, tt.want, GetAllTableNames(stmt), "GetAllTableNames(%v)", tt.sql)
+		})
 	}
 }

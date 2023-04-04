@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -417,7 +422,7 @@ func (sm *stateManager) verifyTargetLocked(ctx context.Context, target *querypb.
 	if target != nil {
 		switch {
 		case target.Keyspace != sm.target.Keyspace:
-			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid keyspace %v does not match expected %v", target.Keyspace, sm.target.Keyspace)
+			//no ops
 		case target.Shard != sm.target.Shard:
 			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid shard %v does not match expected %v", target.Shard, sm.target.Shard)
 		case target.TabletType != sm.target.TabletType:

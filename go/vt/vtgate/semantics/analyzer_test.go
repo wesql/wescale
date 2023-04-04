@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1443,4 +1448,33 @@ func fakeSchemaInfo() *FakeSI {
 		},
 	}
 	return si
+}
+
+func TestSemTable_GetVindexTable(t *testing.T) {
+	tests := []struct {
+		query  string
+		tables []*vindexes.Table
+	}{
+		{
+			query: "select 1 from t",
+			tables: []*vindexes.Table{
+				{Keyspace: ks1, Name: sqlparser.NewIdentifierCS("t")},
+			},
+		},
+		{
+			query: "select 1 from t as A, t as B",
+			tables: []*vindexes.Table{
+				{Keyspace: ks1, Name: sqlparser.NewIdentifierCS("t")},
+				{Keyspace: ks1, Name: sqlparser.NewIdentifierCS("t")},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.query, func(t *testing.T) {
+			_, semTable := parseAndAnalyze(t, test.query, "d")
+			tables := semTable.GetVindexTable()
+			assert.Equal(t, test.tables, tables)
+		})
+	}
 }

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,8 +69,8 @@ func BuildPermissions(stmt sqlparser.Statement) []Permission {
 		}
 	case *sqlparser.OtherAdmin, *sqlparser.CallProc, *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback,
 		*sqlparser.Load, *sqlparser.Savepoint, *sqlparser.Release, *sqlparser.SRollback, *sqlparser.Set, *sqlparser.Show,
-		*sqlparser.OtherRead, sqlparser.Explain:
-		// no op
+		*sqlparser.OtherRead, sqlparser.Explain, sqlparser.DBDDLStatement:
+	// no op
 	default:
 		panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 	}
