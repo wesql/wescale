@@ -346,8 +346,8 @@ func Test_vcursorImpl_DefaultKeyspace(t *testing.T) {
 						ks3Schema.Keyspace.Name: ks3Schema,
 					}},
 			},
-			want:    defaultKs.Keyspace,
-			wantErr: assert.NoError,
+			want:    nil,
+			wantErr: assert.Error,
 		},
 	}
 	for _, tt := range tests {

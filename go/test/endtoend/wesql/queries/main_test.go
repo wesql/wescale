@@ -105,6 +105,20 @@ func execMulti(t *testing.T, conn *mysql.Conn, query string) []*sqltypes.Result 
 	return res
 }
 
+func execWithConnWithoutDB(t *testing.T, f func(conn *mysql.Conn)) {
+	defer cluster.PanicHandler(t)
+	ctx := context.Background()
+	vtParams := mysql.ConnParams{
+		Host: "localhost",
+		Port: clusterInstance.VtgateMySQLPort,
+	}
+	conn, err := mysql.Connect(ctx, &vtParams)
+	require.Nil(t, err)
+	defer conn.Close()
+
+	f(conn)
+}
+
 func execWithConn(t *testing.T, db string, f func(conn *mysql.Conn)) {
 	defer cluster.PanicHandler(t)
 	ctx := context.Background()

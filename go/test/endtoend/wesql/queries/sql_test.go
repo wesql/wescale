@@ -118,3 +118,27 @@ func TestCreateDropDatabaseWithTheSameNameMultipleTimes(t *testing.T) {
 		utils.AssertDatabaseNotExists(t, conn, dbName)
 	})
 }
+
+// TestDefaultDb tests that we can use the default database.
+func TestDefaultDb(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, "select @@sql_mode")
+		utils.Exec(t, conn, "select * from information_schema.tables limit 1")
+		{
+			_, err := utils.ExecAllowError(t, conn, "select * from t1")
+			assert.ErrorContains(t, err, "no database selected")
+		}
+		{
+			_, err := utils.ExecAllowError(t, conn, "update t1 set c2=3 where c1=1")
+			assert.ErrorContains(t, err, "no database selected")
+		}
+		{
+			_, err := utils.ExecAllowError(t, conn, "delete from t1 where c1=1")
+			assert.ErrorContains(t, err, "no database selected")
+		}
+		utils.Exec(t, conn, "use information_schema")
+		utils.Exec(t, conn, "select @@sql_mode")
+		utils.Exec(t, conn, "select * from information_schema.tables limit 1")
+		utils.Exec(t, conn, "select * from tables limit 1")
+	})
+}
