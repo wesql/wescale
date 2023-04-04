@@ -56,7 +56,7 @@ type RepairResultCode string
 const (
 	// Success means successfully repaired
 	Success RepairResultCode = "Success"
-	// Fail means failed to repaire
+	// Fail means failed to repair
 	Fail RepairResultCode = "Fail"
 	// Noop means do nothing
 	Noop RepairResultCode = "Noop"
@@ -70,18 +70,22 @@ func (shard *ConsensusShard) Repair(ctx context.Context, status DiagnoseType) (R
 	code := Noop
 	switch status {
 	case DiagnoseTypeWrongPrimaryTablet:
+		shard.logger.Infof("primary tablet and leader mistmatch, vtconsensus repairing...")
 		code, err = shard.repairWrongPrimaryTablet(ctx)
 	case DiagnoseTypeUnreachablePrimary:
-		shard.logger.Errorf("unreachable primary tablet, please check vitess vttablet status")
+		err = fmt.Errorf("%v，please check vitess primary tablet status manually", errUnreachablePrimaryTablet)
+		code = Fail
 	case DiagnoseTypeMissingConsensusLeader:
-		shard.logger.Errorf("missing leader, please check wesql-server instances status")
+		err = fmt.Errorf("%v，please check wesql-server status manually", errMissingConsensusLeader)
+		code = Fail
 	case DiagnoseTypeUnreachableConsensusLeader:
-		shard.logger.Errorf("unreachable leader, please check wesql-server instances status")
+		err = fmt.Errorf("%v，please check vitess primary tablet status", errUnreachableLeaderMySQL)
+		code = Fail
 	default:
-		shard.logger.Errorf("wesql-server instance and vitess tablet unhealthy, please manually repair")
+		err = fmt.Errorf("wesql-server instance and vitess tablet unhealthy, please manually repair")
 	}
 
-	return code, vterrors.Wrap(err, "vtconsensus repaired")
+	return code, err
 }
 
 func (shard *ConsensusShard) repairWrongPrimaryTablet(ctx context.Context) (RepairResultCode, error) {
@@ -106,7 +110,8 @@ func (shard *ConsensusShard) fixPrimaryTabletLocked(ctx context.Context) error {
 	if !isOnline {
 		return errUnreachableLeaderMySQL
 	}
-	// Primary tablet does not run mysql leader, we need to change it accordingly
+	// Primary tablet does not run wesql-server leader,
+	// we need to change it based on wesql-server leader info accordingly.
 	candidate := shard.findTabletByHostAndPort(host, port)
 	if candidate == nil {
 		return errMissingPrimaryTablet

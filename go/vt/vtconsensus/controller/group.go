@@ -79,42 +79,6 @@ func (consensusView *SQLConsensusView) GetViews() *db.ConsensusGlobalView {
 	return consensusView.view
 }
 
-// IsUnconnectedReplica checks if the node is connected to a group
-func (consensusView *SQLConsensusView) IsUnconnectedReplica(instanceKey *inst.InstanceKey) bool {
-	if instanceKey == nil {
-		return false
-	}
-	consensusView.Lock()
-	defer consensusView.Unlock()
-	cg := consensusView.view
-	if nil == cg {
-		return true
-	}
-	rm := cg.ResolvedMember
-	cm, ok := rm[*instanceKey]
-	if !ok {
-		return true
-	}
-	return !cm.Connected
-}
-
-// IsAllOfflineOrError returns true if all the nodes are in offline mode
-func (consensusView *SQLConsensusView) IsAllOfflineOrError() bool {
-	consensusView.Lock()
-	defer consensusView.Unlock()
-	cg := consensusView.view
-	if nil == cg {
-		return false
-	}
-	rm := cg.ResolvedMember
-	for _, cm := range rm {
-		if cm.Connected {
-			return false
-		}
-	}
-	return true
-}
-
 // GetPrimary returns the hostname, port of the primary that everyone agreed on
 // isActive bool indicates if there is any node in the group whose primary is "ONLINE"
 func (consensusView *SQLConsensusView) GetPrimary() (string, int, bool) {

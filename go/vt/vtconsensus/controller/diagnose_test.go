@@ -475,7 +475,7 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 			{testAlias0, testUID1,
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
-				true, topodatapb.TabletType_PRIMARY, // tablet uninitialized
+				true, topodatapb.TabletType_PRIMARY, // tablet uninitialized by removeTablets
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
@@ -492,7 +492,7 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				{ServerID: 1, MySQLHost: testMySQLConsensusHost0, MySQLPort: testMySQLPort, Role: db.LEADER, ElectionWeight: 1, Connected: true},
 				{ServerID: 2, MySQLHost: testMySQLConsensusHost1, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
 				{ServerID: 3, MySQLHost: testMySQLConsensusHost2, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
-			}, removeTablets: []string{testAlias0},
+			}, removeTablets: []string{testAlias0}, // tablet uninitialized
 		},
 		{name: "non primary tablet unreachable", expected: DiagnoseTypeHealthy, ttdata: []tabletdata{
 			{testAlias0, testUID1,

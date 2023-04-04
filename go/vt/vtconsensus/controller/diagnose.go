@@ -110,7 +110,7 @@ func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, 
 		}
 	}
 
-	// 2. check if the primary tablet is available.
+	// 2. available leader found, check if the primary tablet is available.
 	diagnoseType, err := shard.checkPrimaryTablet(ctx)
 
 	return diagnoseType, err
@@ -127,7 +127,7 @@ func (shard *ConsensusShard) checkPrimaryTablet(ctx context.Context) (DiagnoseTy
 
 	// find primary tablet in the vitess
 	primary := shard.findShardPrimaryTablet()
-	// If we failed to find primary for shard, it mostly means we are initializing the shard.
+	// If we failed to find primary for shard, it mostly means we are initializing the shard and all tablets are replica.
 	// If the primary and consensus leader mismatch, then logging and return DiagnoseTypeWrongPrimaryTablet.
 	if primary == nil || (host != primary.instanceKey.Hostname) || (port != primary.instanceKey.Port) {
 		shard.logger.Infof("vitess primary and wesql-server leader mismatch ,currently leader is %v:%v", host, port)
