@@ -420,41 +420,6 @@ func (st *SemTable) SingleUnshardedKeyspace() (*vindexes.Keyspace, []*vindexes.T
 	return ks, tables
 }
 
-// GetFirstKeyspace returns the first keyspace found in the query
-func (st *SemTable) GetFirstKeyspace() *vindexes.Keyspace {
-	var ks *vindexes.Keyspace
-	for _, table := range st.Tables {
-		vindexTable := table.GetVindexTable()
-
-		if vindexTable == nil {
-			_, isDT := table.getExpr().Expr.(*sqlparser.DerivedTable)
-			if isDT {
-				// derived tables are ok, as long as all real tables are from the same unsharded keyspace
-				// we check the real tables inside the derived table as well for same unsharded keyspace.
-				continue
-			}
-			return nil
-		}
-		if vindexTable.Type != "" {
-			// A reference table is not an issue when seeing if a query is going to an unsharded keyspace
-			if vindexTable.Type == vindexes.TypeReference {
-				continue
-			}
-			return nil
-		}
-		name, ok := table.getExpr().Expr.(sqlparser.TableName)
-		if !ok {
-			return nil
-		}
-		if name.Name.String() != vindexTable.Name.String() {
-			// this points to a table alias. safer to not shortcut
-			return nil
-		}
-		return vindexTable.Keyspace
-	}
-	return ks
-}
-
 func (st *SemTable) GetVindexTable() []*vindexes.Table {
 	var tables []*vindexes.Table
 	for _, table := range st.Tables {
