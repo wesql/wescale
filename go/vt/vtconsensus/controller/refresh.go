@@ -86,15 +86,7 @@ type ConsensusShard struct {
 	unlockMu sync.Mutex
 
 	// configuration
-	minNumReplicas            int
-	localDbPort               int
-	disableReadOnlyProtection bool
-
-	transientErrorWaitTime time.Duration
-	bootstrapWaitTime      time.Duration
-
-	lastDiagnoseResult DiagnoseType
-	lastDiagnoseSince  time.Time
+	localDbPort int
 
 	logger *log.Logger
 
@@ -134,20 +126,16 @@ func NewConsensusShard(
 	dbAgent db.Agent,
 	localDbPort int) *ConsensusShard {
 	consensusShard := &ConsensusShard{
-		KeyspaceShard:             &topo.KeyspaceShard{Keyspace: keyspace, Shard: shard},
-		cells:                     cells,
-		shardStatusCollector:      newShardStatusCollector(keyspace, shard),
-		tmc:                       tmc,
-		ts:                        ts,
-		dbAgent:                   dbAgent,
-		unlock:                    nil,
-		sqlConsensusView:          NewSQLConsensusView(keyspace, shard),
-		minNumReplicas:            1,
-		disableReadOnlyProtection: false,
-		localDbPort:               localDbPort,
-		logger:                    log.NewVTConsensusLogger(keyspace, shard),
-		transientErrorWaitTime:    time.Duration(3) * time.Second,
-		bootstrapWaitTime:         time.Duration(3) * time.Second,
+		KeyspaceShard:        &topo.KeyspaceShard{Keyspace: keyspace, Shard: shard},
+		cells:                cells,
+		shardStatusCollector: newShardStatusCollector(keyspace, shard),
+		tmc:                  tmc,
+		ts:                   ts,
+		dbAgent:              dbAgent,
+		unlock:               nil,
+		sqlConsensusView:     NewSQLConsensusView(keyspace, shard),
+		localDbPort:          localDbPort,
+		logger:               log.NewVTConsensusLogger(keyspace, shard),
 	}
 	return consensusShard
 }
@@ -166,7 +154,8 @@ func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
 	primary, err := shard.refreshPrimaryShard(ctx)
 	shard.Lock()
 	defer shard.Unlock()
-	if err == nil {
+	// if global topo is not exist
+	if err == nil && primary != "<nil>" {
 		shard.PrimaryAlias = primary
 		return
 	}
@@ -205,10 +194,15 @@ func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 	var primaryInstance *consensusInstance
 	for _, instance := range shard.instances {
 		if instance.tablet.Type == topodatapb.TabletType_PRIMARY {
-			// It is possible that there are more than one master in topo server
+			// It is possible that there are more than one primary in topo server
 			// we should compare timestamp to pick the latest one
-			// TODO for wesql-server, should compare term.
+			// Primary in topo server is updated serially by vtconsensus based on role and term of wesql-server.
+			// If all tablet clocks are consistent, the primaryTimestamp of the primary should be monotonically increasing.
 			if latestPrimaryTimestamp.Before(instance.primaryTimeStamp) {
+				if primaryInstance != nil {
+					shard.logger.Infof("multiple primary found, old primary is %v, primaryTimestamp is %v",
+						primaryInstance.alias, latestPrimaryTimestamp)
+				}
 				latestPrimaryTimestamp = instance.primaryTimeStamp
 				primaryInstance = instance
 			}
@@ -285,6 +279,8 @@ func (shard *ConsensusShard) UnlockShard() {
 	shard.unlock = nil
 }
 
+// findTabletByHostAndPort find tablet instance with the given tablet hostname
+// and port
 func (shard *ConsensusShard) findTabletByHostAndPort(host string, port int) *consensusInstance {
 	for _, instance := range shard.instances {
 		if instance.instanceKey.Hostname == host && instance.instanceKey.Port == port {
@@ -294,6 +290,7 @@ func (shard *ConsensusShard) findTabletByHostAndPort(host string, port int) *con
 	return nil
 }
 
+// populateVTConsensusStatusLocked populate consensusShard status with a lock
 func (shard *ConsensusShard) populateVTConsensusStatusLocked() {
 	var instanceList []string
 	for _, instance := range shard.instances {
@@ -303,16 +300,6 @@ func (shard *ConsensusShard) populateVTConsensusStatusLocked() {
 	if primary := shard.findShardPrimaryTablet(); primary != nil {
 		shard.shardStatusCollector.status.Primary = primary.alias
 	}
-}
-
-// GetCurrentShardStatuses returns the status collector has
-func (shard *ConsensusShard) GetCurrentShardStatuses() ShardStatus {
-	shard.Lock()
-	collector := shard.shardStatusCollector
-	// dereference status so that we return a copy of the struct
-	status := *collector.status
-	shard.Unlock()
-	return status
 }
 
 // GetUnlock returns the unlock function for the shard for testing

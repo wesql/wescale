@@ -24,10 +24,9 @@ package controller
 import "errors"
 
 var (
-	errMissingPrimaryTablet     = errors.New("no primary tablet available")
-	errUnreachablePrimaryTablet = errors.New("primary tablet unreachable")
-	errWrongPrimaryTablet       = errors.New("wrong primary tablet")
-	errUnreachableLeaderMySQL   = errors.New("leader mysql unreachable")
-	errUnreachableFollowerMySQL = errors.New("follower mysql unreachable")
-	errMissingConsensusLeader   = errors.New("no apecloud mysql consensus leader")
+	errMissingPrimaryTablet     = errors.New("vitess no primary tablet available")
+	errUnreachablePrimaryTablet = errors.New("vitess primary tablet unreachable")
+	errWrongPrimaryTablet       = errors.New("vitess wrong primary tablet")
+	errUnreachableLeaderMySQL   = errors.New("wesql-server leader unreachable")
+	errMissingConsensusLeader   = errors.New("wesql-server no consensus leader available")
 )

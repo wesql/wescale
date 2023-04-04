@@ -62,10 +62,9 @@ func init() {
 	})
 }
 
-// VTConsensus is the interface to manage the component to set up ApeCloud MySQL with Vitess.
-// The main goal of it is to reconcile ApeCloud MySQL and the Vitess topology.
+// VTConsensus is the interface to manage the component to set up wesql-server with Vitess.
+// The main goal of it is to reconcile wesql-server and the Vitess topology.
 // Caller should use OpenTabletDiscovery to create the VTConsensus instance.
-// ApeCloud MySQL Only one shard.
 type VTConsensus struct {
 	// Shards are all the shards that a VTConsenus is monitoring.
 	// Caller can choose to iterate the shards to scan and repair for more granular control (e.g., stats report)

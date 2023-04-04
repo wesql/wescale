@@ -143,13 +143,8 @@ func (consensusView *SQLConsensusView) ToString() string {
 	}
 	lvs := cg.LocalView
 
-	sb.WriteString(fmt.Sprintf("ConsensuGlobalView leaderserverid=%d leaderhost=%s leaderport=%d\n",
-		cg.LeaderServerID,
-		cg.LeaderTabletMySQLHost,
-		cg.LeaderTabletMySQLPort))
-
 	for _, clv := range lvs {
-		sb.WriteString(fmt.Sprintf("TabletAlias:[%s] ConsensusLocalView", clv.TabletAlias))
+		sb.WriteString(fmt.Sprintf("ConsensusLocalView TabletAlias:[%s]", clv.TabletAlias))
 		sb.WriteString(fmt.Sprintf(" | serverid=%d host=%s port=%d leaderhost=%s leaderport=%d role=%v",
 			clv.ServerID,
 			clv.TabletMySQLHost,
@@ -159,6 +154,12 @@ func (consensusView *SQLConsensusView) ToString() string {
 			clv.Role))
 		sb.WriteString("\n")
 	}
+
+	sb.WriteString(fmt.Sprintf("ConsensuGlobalView leaderserverid=%d leaderhost=%s leaderport=%d\n",
+		cg.LeaderServerID,
+		cg.LeaderTabletMySQLHost,
+		cg.LeaderTabletMySQLPort))
+
 	rm := cg.ResolvedMember
 	if rm != nil {
 		sb.WriteString("ConsensusMember [resolved_view]\n")

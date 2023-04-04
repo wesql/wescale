@@ -670,7 +670,7 @@ func (sm *stateManager) Broadcast() {
 	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked())
 }
 
-// For apecloud mysql, the health status of the replica is not judged by the replication lag,
+// For wesql-server, the health status of the replica is not judged by the replication lag,
 // but by the consensus log_index.
 // TODO: Currently, this logic is not added to judge the health status of the replica.
 //

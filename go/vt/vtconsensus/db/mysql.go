@@ -20,8 +20,9 @@ limitations under the License.
 */
 
 /*
-ApeCloud MySQL db interface.
+WeSQL-Server db interface.
 */
+
 package db
 
 import (
@@ -48,8 +49,8 @@ var (
 func init() {
 	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
 		fs.StringVar(&configFilePath, "db_config", "", "Full path to db config file that will be used by VTConsensus.")
-		fs.StringVar(&dbUser, "db_username", "root", "ApeCloud MySQL access username, --db_username, default root.")
-		fs.StringVar(&dbPasswd, "db_password", "", "ApeCloud MySQL access password, --db_passwd, default empty.")
+		fs.StringVar(&dbUser, "db_username", "root", "WeSQL-Server access username, --db_username, default root.")
+		fs.StringVar(&dbPasswd, "db_password", "", "WeSQL-Server access password, --db_passwd, default empty.")
 	})
 }
 
@@ -107,21 +108,20 @@ type ConsensusLocalView struct {
 // from the db_host startup parameter of vttablet, which can be used for cross-pod access.
 // For example, vtgate、vtconsensus、and vtctld can access the wesql-server instance through TabletMySQLHost.
 type ConsensusMember struct {
-	ServerID           int
-	MySQLHost          string // MySQLHost is from wesql-server wesql_cluster_global.host.
-	MySQLPort          int    // MySQLPort is from wesql-server wesql_cluster_global.port.
-	Role               ConsensusRole
-	ForceSync          int
-	ElectionWeight     int
-	LearnerSource      string
-	Connected          bool
-	HeartbeatStaleness int
+	ServerID       int
+	MySQLHost      string // MySQLHost is from wesql-server wesql_cluster_global.host.
+	MySQLPort      int    // MySQLPort is from wesql-server wesql_cluster_global.port.
+	Role           ConsensusRole
+	ForceSync      int
+	ElectionWeight int
+	LearnerSource  string
+	Connected      bool
 }
 
 // tablet.MysqlHostname and tablet.MysqlPort are initialized by vttablet running options.
 // tablet.MysqlHostname and tablet.MysqlPort are used for connecting to mysql across pod.
 
-// ConsensusGlobalView is an instance's view for the apecloud mysql wesql_cluster_global
+// ConsensusGlobalView is an instance's view for the wesql-server information_schema.wesql_cluster_global
 type ConsensusGlobalView struct {
 	LeaderTabletMySQLHost string // LeaderMySQLHost is tablet.MysqlHostname, initialized by vttablet running option "--db_host".
 	LeaderTabletMySQLPort int    // LeaderMySQLPort is tablet.MysqlPort, initialized by vttablet running options "--db_port".
@@ -147,7 +147,7 @@ func newConsensusLocalView(tabletAlias string, serverID int, currentTerm int, cu
 		Role: role, IsRW: isRW}
 }
 
-func NewConsensusMember(serverID int, mySQLHost string,
+func newConsensusMember(serverID int, mySQLHost string,
 	mySQLPort int, role ConsensusRole, forceSync int, electionWeight int,
 	learnerSource string, connected bool) *ConsensusMember {
 	return &ConsensusMember{ServerID: serverID, MySQLHost: mySQLHost,
@@ -185,6 +185,7 @@ func (agent *SQLAgentImpl) FetchConsensusLocalView(alias string, instanceKey *in
 	var leaderHostPort int
 	var localView *ConsensusLocalView
 
+	// TODO: This leader_port is actually using the current instance's port because it is not possible to obtain this information.
 	query := `select server_id, current_term, current_leader, 
         left(current_leader, locate(':', current_leader) -1) as leader_hostname, 
     	@@port as leader_port, 
@@ -252,7 +253,7 @@ func (agent *SQLAgentImpl) FetchConsensusGlobalView(globalView *ConsensusGlobalV
 				break
 			}
 		}
-		consensusMember := NewConsensusMember(
+		consensusMember := newConsensusMember(
 			m.GetInt("server_id"),
 			hostName,
 			hostPort,
@@ -295,12 +296,4 @@ func verifyInstance(instanceKey *inst.InstanceKey) error {
 		return ErrInvalidInstance
 	}
 	return nil
-}
-
-// CreateInstanceKey returns an InstanceKey
-func CreateInstanceKey(member *ConsensusMember) inst.InstanceKey {
-	return inst.InstanceKey{
-		Hostname: member.MySQLHost,
-		Port:     member.MySQLPort,
-	}
 }
