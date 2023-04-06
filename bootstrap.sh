@@ -22,6 +22,8 @@
 
 ### This file is executed by 'make tools'. You do not need to execute it directly.
 
+export GITHUB_PROXY=https://ghproxy.com
+
 source ./dev.env
 
 # Outline of this file.
@@ -40,9 +42,6 @@ VITESS_RESOURCES_DOWNLOAD_URL="${VITESS_RESOURCES_DOWNLOAD_BASE_URL}/${VITESS_RE
 #
 # 0. Initialization and helper methods.
 #
-
-echo "140.82.113.4 github.com" >> /etc/hosts
-echo "185.199.109.133 objects.githubusercontent.com" >> /etc/hosts
 
 [[ "$(dirname "$0")" = "." ]] || fail "bootstrap.sh must be run from its current directory"
 
