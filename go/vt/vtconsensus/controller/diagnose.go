@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vterrors"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
@@ -47,6 +49,8 @@ func init() {
 type DiagnoseType string
 
 const (
+	// DiagnoseTypeError represents an DiagnoseTypeError status
+	DiagnoseTypeError DiagnoseType = "error"
 	// DiagnoseTypeHealthy represents everything is DiagnoseTypeHealthy
 	DiagnoseTypeHealthy = "Healthy"
 	// DiagnoseTypeUnreachablePrimary represents the primary tablet is unreachable
@@ -108,6 +112,7 @@ func (shard *ConsensusShard) diagnoseLocked(ctx context.Context) (DiagnoseType, 
 		if err == errMissingConsensusLeader {
 			return DiagnoseTypeMissingConsensusLeader, errMissingConsensusLeader
 		}
+		return DiagnoseTypeError, vterrors.Wrap(err, "fail to refreshSQLConsensusView")
 	}
 
 	// 2. available leader found, check if the primary tablet is available.
