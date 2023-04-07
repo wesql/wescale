@@ -23,6 +23,7 @@ package controller
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -140,8 +141,8 @@ func NewConsensusShard(
 	return consensusShard
 }
 
-// UpdateTabletsInShardWithLock updates the shard instances with a lock
-func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
+// RefreshTabletsInShardWithLock refreshes the shard instances and find primary tablet with a lock
+func (shard *ConsensusShard) RefreshTabletsInShardWithLock(ctx context.Context) {
 	instances, err := shard.refreshTabletsInShardInternal(ctx)
 	if err == nil {
 		// Take a per shard lock here when we actually refresh the data to avoid
@@ -154,7 +155,7 @@ func (shard *ConsensusShard) UpdateTabletsInShardWithLock(ctx context.Context) {
 	primary, err := shard.refreshPrimaryShard(ctx)
 	shard.Lock()
 	defer shard.Unlock()
-	// if global topo is not exist
+	// If the global topo server does not exist or there is no shard primary information,primary will be nil
 	if err == nil && primary != "<nil>" {
 		shard.PrimaryAlias = primary
 		return
@@ -198,10 +199,22 @@ func (shard *ConsensusShard) findPrimaryFromLocalCell() string {
 			// we should compare timestamp to pick the latest one
 			// Primary in topo server is updated serially by vtconsensus based on role and term of wesql-server.
 			// If all tablet clocks are consistent, the primaryTimestamp of the primary should be monotonically increasing.
+			if primaryInstance != nil {
+				// If the primaryTimestamp is the same, it means that the tablet clocks may be not consistent.
+				// VTConsensus will select the first instance found as the primary.
+				// At the same time, an error log will be printed.
+				if latestPrimaryTimestamp.Equal(instance.primaryTimeStamp) {
+					shard.logger.Errorf("multiple primary found with same timestamp, previous primary alias:%v primarytimestamp:%v, current primary alias:%v primarytimestamp:%v",
+						primaryInstance.alias, latestPrimaryTimestamp, instance.alias, instance.primaryTimeStamp)
+				} else {
+					shard.logger.Warningf("multiple primary found, previous primary alias:%v primarytimestamp:%v, current primary alias:%v primarytimestamp:%v",
+						primaryInstance.alias, latestPrimaryTimestamp, instance.alias, instance.primaryTimeStamp)
+				}
+			}
 			if latestPrimaryTimestamp.Before(instance.primaryTimeStamp) {
 				if primaryInstance != nil {
-					shard.logger.Infof("multiple primary found, old primary is %v, primaryTimestamp is %v",
-						primaryInstance.alias, latestPrimaryTimestamp)
+					shard.logger.Infof("newer primary found, current primary alias:%v primarytimestamp:%v",
+						instance.alias, instance.primaryTimeStamp)
 				}
 				latestPrimaryTimestamp = instance.primaryTimeStamp
 				primaryInstance = instance
@@ -222,9 +235,11 @@ func parseTabletInfos(tablets map[string]*topo.TabletInfo) []*consensusInstance 
 	for alias, tabletInfo := range tablets {
 		tablet := tabletInfo.Tablet
 		// Only monitor primary, replica and rdonly tablet types
-		// for wesql-server, leader is primary, follower is replica, learner is rdonly
+		// for wesql-server, leader is primary, follower is replica, learner is rdonly.
+		// TODO: wesql-server consensus logger will be supported in the future. Maybe a new tablet type (eg. TabletType_LOGGER )
+		// 		will be added. Bug the LOGGER tablet type logically should be not invisible to vtgate.
 		switch tablet.Type {
-		case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
+		case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA:
 			// mysql hostname and port might be empty here if tablet is not running
 			// we will treat them as unreachable
 			// tablet.MysqlHostname and tablet.MysqlPort are initialized by vttablet running options.
@@ -242,6 +257,9 @@ func parseTabletInfos(tablets map[string]*topo.TabletInfo) []*consensusInstance 
 			newReplicas = append(newReplicas, &consensusInstance)
 		}
 	}
+	sort.Slice(newReplicas[:], func(i, j int) bool {
+		return newReplicas[i].alias < newReplicas[j].alias
+	})
 	return newReplicas
 }
 

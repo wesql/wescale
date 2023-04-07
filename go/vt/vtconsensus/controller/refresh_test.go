@@ -8,7 +8,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"sort"
 	"testing"
 	"time"
 
@@ -42,8 +41,8 @@ var (
 	testAlias2              = "test_cell-0000000002"
 )
 
-// TestUpdateTabletInShardWithLock tests the updateTabletInShardWithLock function.
-func TestUpdateTabletsWithEmptyCells(t *testing.T) {
+// TestRefreshTabletsWithEmptyCells tests the RefreshTabletInShardWithLock function.
+func TestRefreshTabletsWithEmptyCells(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ctx := context.Background()
@@ -53,8 +52,8 @@ func TestUpdateTabletsWithEmptyCells(t *testing.T) {
 	_ = ts.CreateShard(ctx, testKeyspace, testUnShard)
 	primaryTs := time.Now()
 
-	tablet1 := buildTabletInfoWithCell(uint32(testUID0), testCell, testKeyspace, testUnShard, testMySQLHost0, int32(testMySQLPort), topodatapb.TabletType_PRIMARY, primaryTs)
-	tablet2 := buildTabletInfoWithCell(uint32(testUID1), testCell, testKeyspace, testUnShard, testMySQLHost1, int32(testMySQLPort), topodatapb.TabletType_REPLICA, time.Time{})
+	tablet1 := buildTabletInfoWithCell(uint32(testUID0), testCell, testKeyspace, testUnShard, testMySQLHost0, int32(testMySQLPort), topodatapb.TabletType_PRIMARY, primaryTs.Add(1*time.Minute))
+	tablet2 := buildTabletInfoWithCell(uint32(testUID1), testCell, testKeyspace, testUnShard, testMySQLHost1, int32(testMySQLPort), topodatapb.TabletType_PRIMARY, primaryTs)
 	tablet3 := buildTabletInfoWithCell(uint32(testUID2), testCell, testKeyspace, testUnShard, testMySQLHost2, int32(0), topodatapb.TabletType_REPLICA, time.Time{})
 	testutil.AddTablet(ctx, t, ts, tablet1.Tablet, nil)
 	testutil.AddTablet(ctx, t, ts, tablet2.Tablet, nil)
@@ -62,18 +61,15 @@ func TestUpdateTabletsWithEmptyCells(t *testing.T) {
 	// with empty cell
 	shard := NewConsensusShard(testKeyspace, testUnShard, nil, nil, ts, nil, 0)
 	// get tablet instance and primary tablet from local topo server
-	shard.UpdateTabletsInShardWithLock(ctx)
+	shard.RefreshTabletsInShardWithLock(ctx)
 	instances := shard.instances
 	assert.Equal(t, testAlias0, shard.PrimaryAlias)
 	assert.Equal(t, 3, len(instances))
-	sort.Slice(instances[:], func(i, j int) bool {
-		return instances[i].alias < instances[j].alias
-	})
 	assert.Equal(t, testAlias0, instances[0].alias)
 	assert.Equal(t, testAlias1, instances[1].alias)
 	assert.Equal(t, testAlias2, instances[2].alias)
 	assert.Equal(t, topodatapb.TabletType_PRIMARY, instances[0].tablet.Type)
-	assert.Equal(t, topodatapb.TabletType_REPLICA, instances[1].tablet.Type)
+	assert.Equal(t, topodatapb.TabletType_PRIMARY, instances[1].tablet.Type)
 	assert.Equal(t, topodatapb.TabletType_REPLICA, instances[2].tablet.Type)
 	assert.Equal(t, int32(testMySQLPort), instances[0].tablet.MysqlPort)
 	assert.Equal(t, int32(testMySQLPort), instances[1].tablet.MysqlPort)
@@ -83,8 +79,8 @@ func TestUpdateTabletsWithEmptyCells(t *testing.T) {
 	assert.Equal(t, testMySQLHost2, instances[2].tablet.MysqlHostname)
 }
 
-// TestUpdateTabletInShardWithLock tests the updateTabletInShardWithLock function.
-func TestUpdateTabletsWithCell(t *testing.T) {
+// TestRefreshTabletsWithCell tests the RefreshTabletInShardWithLock function with cell.
+func TestRefreshTabletsWithCell(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	ctx := context.Background()
@@ -96,7 +92,7 @@ func TestUpdateTabletsWithCell(t *testing.T) {
 
 	tablet1 := buildTabletInfoWithCell(uint32(testUID0), testCell, testKeyspace, testUnShard, testMySQLHost0, int32(testMySQLPort), topodatapb.TabletType_PRIMARY, primaryTs)
 	tablet2 := buildTabletInfoWithCell(uint32(testUID1), testCell, testKeyspace, testUnShard, testMySQLHost1, int32(testMySQLPort), topodatapb.TabletType_REPLICA, time.Time{})
-	tablet3 := buildTabletInfoWithCell(uint32(testUID2), testCell, testKeyspace, testUnShard, testMySQLHost2, int32(0), topodatapb.TabletType_REPLICA, time.Time{})
+	tablet3 := buildTabletInfoWithCell(uint32(testUID2), testCell, testKeyspace, testUnShard, testMySQLHost2, int32(0), topodatapb.TabletType_RDONLY, time.Time{})
 	testutil.AddTablet(ctx, t, ts, tablet1.Tablet, nil)
 	testutil.AddTablet(ctx, t, ts, tablet2.Tablet, nil)
 	testutil.AddTablet(ctx, t, ts, tablet3.Tablet, nil)
@@ -104,25 +100,19 @@ func TestUpdateTabletsWithCell(t *testing.T) {
 	// with local cell
 	shard := NewConsensusShard(testKeyspace, testUnShard, []string{testCell}, nil, ts, nil, 0)
 	// get tablet instance and primary tablet from local topo server
-	shard.UpdateTabletsInShardWithLock(ctx)
+	shard.RefreshTabletsInShardWithLock(ctx)
 	instances := shard.instances
 	assert.Equal(t, testAlias0, shard.PrimaryAlias)
-	assert.Equal(t, 3, len(instances))
-	sort.Slice(instances[:], func(i, j int) bool {
-		return instances[i].alias < instances[j].alias
-	})
+	// TabletType_RDONLY is filtered out
+	assert.Equal(t, 2, len(instances))
 	assert.Equal(t, testAlias0, instances[0].alias)
 	assert.Equal(t, testAlias1, instances[1].alias)
-	assert.Equal(t, testAlias2, instances[2].alias)
 	assert.Equal(t, topodatapb.TabletType_PRIMARY, instances[0].tablet.Type)
 	assert.Equal(t, topodatapb.TabletType_REPLICA, instances[1].tablet.Type)
-	assert.Equal(t, topodatapb.TabletType_REPLICA, instances[2].tablet.Type)
 	assert.Equal(t, int32(testMySQLPort), instances[0].tablet.MysqlPort)
 	assert.Equal(t, int32(testMySQLPort), instances[1].tablet.MysqlPort)
-	assert.Equal(t, int32(0), instances[2].tablet.MysqlPort)
 	assert.Equal(t, testMySQLHost0, instances[0].tablet.MysqlHostname)
 	assert.Equal(t, testMySQLHost1, instances[1].tablet.MysqlHostname)
-	assert.Equal(t, testMySQLHost2, instances[2].tablet.MysqlHostname)
 }
 
 func TestRefreshPrimaryShard(t *testing.T) {

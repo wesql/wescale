@@ -22,14 +22,16 @@ import (
 )
 
 func TestWrongPrimaryTabletRepair(t *testing.T) {
+	primaryTs := time.Now()
 
 	type tabletData struct {
-		alias           string
-		uid             int
-		ttType          topodatapb.TabletType
-		tabletMySQLHost string
-		tabletMySQLPort int
-		uninitialized   bool
+		alias            string
+		uid              int
+		ttType           topodatapb.TabletType
+		tabletMySQLHost  string
+		tabletMySQLPort  int
+		uninitialized    bool
+		primaryTimestamp time.Time
 	}
 	var testcases = []struct {
 		name            string
@@ -40,37 +42,51 @@ func TestWrongPrimaryTabletRepair(t *testing.T) {
 	}{
 		{
 			name: "primary tablet and leader match", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
-				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false},
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
 			},
 		},
 		{
 			name: "primary tablet and leader mismatch", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
-				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false},
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
 			},
 		},
 		{
 			name: "no primary tablet", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
-				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false},
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
 			},
 		},
 		{
 			name: "uninitialized primary tablet", errorMsg: "vitess no primary tablet available", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
-				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: true},
-				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false},
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: true, primaryTimestamp: time.Time{}},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
 			},
 		},
 		{
 			name: "uninitialized non primary tablet", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
-				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false},
-				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: true},
-				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: true},
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: true, primaryTimestamp: time.Time{}},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_UNKNOWN, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: true, primaryTimestamp: time.Time{}},
+			},
+		},
+		{
+			name: "multi primary tablet, exist a newer primaryTimestamp", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs.Add(1 * time.Minute)},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
+			},
+		},
+		{
+			name: "multi primary tablet, primaryTimestamp are equal", errorMsg: "", LeaderMySQLHost: testMySQLHost0, LeaderMySQLPort: testMySQLPort, inputs: []tabletData{
+				{alias: testAlias0, uid: testUID0, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost0, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias1, uid: testUID1, ttType: topodatapb.TabletType_PRIMARY, tabletMySQLHost: testMySQLHost1, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: primaryTs},
+				{alias: testAlias2, uid: testUID2, ttType: topodatapb.TabletType_REPLICA, tabletMySQLHost: testMySQLHost2, tabletMySQLPort: testMySQLPort, uninitialized: false, primaryTimestamp: time.Time{}},
 			},
 		},
 	}
@@ -89,13 +105,12 @@ func TestWrongPrimaryTabletRepair(t *testing.T) {
 			dbAgent := db.NewMockAgent(ctrl)
 			tmc := NewMockConsensusTmcClient(ctrl)
 
-			primaryTs := time.Now()
 			tablets := make(map[string]*topo.TabletInfo)
 
 			for _, input := range tc.inputs {
 				if input.uninitialized == false {
 					tablet := buildTabletInfoWithCell(uint32(input.uid), testCell, testKeyspace, testUnShard,
-						input.tabletMySQLHost, int32(input.tabletMySQLPort), input.ttType, primaryTs)
+						input.tabletMySQLHost, int32(input.tabletMySQLPort), input.ttType, input.primaryTimestamp)
 					tablets[input.alias] = tablet
 					testutil.AddTablet(ctx, t, ts, tablet.Tablet, nil)
 				}
@@ -114,7 +129,7 @@ func TestWrongPrimaryTabletRepair(t *testing.T) {
 
 			shard := NewConsensusShard(testKeyspace, testUnShard, []string{testCell}, tmc, ts, dbAgent, 0)
 			populateGlobalViewForConsensusView(shard, tc.LeaderMySQLHost, tc.LeaderMySQLPort)
-			shard.UpdateTabletsInShardWithLock(ctx)
+			shard.RefreshTabletsInShardWithLock(ctx)
 			_, err := shard.Repair(ctx, DiagnoseTypeWrongPrimaryTablet)
 			if tc.errorMsg == "" {
 				assert.NoError(t, err)

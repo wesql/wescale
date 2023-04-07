@@ -37,7 +37,6 @@ func main() {
 	var clustersToWatch string
 	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
 		// vtconsensus --clusters_to_watch="commerce/-0" or --clusters_to_watch="commerce".
-		// "commerce" is the default keyspace specified by the user,
 		// and "shard 0" indicates that this keyspace is an unsharded keyspace
 		// meaning that keyspace has only one shard.
 		// Currently, wesqlscale only supports unsharded keyspace.

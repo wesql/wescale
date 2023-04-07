@@ -145,7 +145,7 @@ func OpenTabletDiscovery(ctx context.Context, cellsToWatch []string, clustersToW
 	wg.Add(1)
 	go func(shard *controller.ConsensusShard) {
 		defer wg.Done()
-		shard.UpdateTabletsInShardWithLock(ctx)
+		shard.RefreshTabletsInShardWithLock(ctx)
 	}(shard)
 	wg.Wait()
 
@@ -163,7 +163,7 @@ func (vtconsensus *VTConsensus) RefreshCluster() {
 		ticker := time.Tick(refreshInterval)
 		for range ticker {
 			ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
-			shard.UpdateTabletsInShardWithLock(ctx)
+			shard.RefreshTabletsInShardWithLock(ctx)
 			cancel()
 		}
 	}(vtconsensus.Shard)

@@ -320,7 +320,7 @@ func TestWeSQLServerIssueDiagnose(t *testing.T) {
 				AnyTimes()
 			ctx := context.Background()
 			shard := NewConsensusShard(testKeyspace, testUnShard, []string{testCell}, tmc, ts, dbAgent, 0)
-			shard.UpdateTabletsInShardWithLock(ctx)
+			shard.RefreshTabletsInShardWithLock(ctx)
 			diagnose, err := shard.Diagnose(ctx)
 			assert.Equal(t, tt.expected, diagnose)
 			if tt.errMessage == "" {
@@ -337,15 +337,17 @@ func TestWeSQLServerIssueDiagnose(t *testing.T) {
 func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 	// Make sure ping tablet timeout is short enough to not affect the test
 	pingTabletTimeout = 5 * time.Second
+	primaryTs := time.Now()
 
 	type tabletdata struct {
-		alias           string
-		uid             int
-		localView       db.TestConsensusLocalView
-		TabletMySQLHost string
-		TabletMySQLPort int
-		isOnline        bool
-		ttype           topodatapb.TabletType
+		alias            string
+		uid              int
+		localView        db.TestConsensusLocalView
+		TabletMySQLHost  string
+		TabletMySQLPort  int
+		isOnline         bool
+		ttype            topodatapb.TabletType
+		primaryTimestamp time.Time
 	}
 
 	var sqltests = []struct {
@@ -361,16 +363,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -384,16 +389,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -407,16 +415,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -430,16 +441,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				false, topodatapb.TabletType_PRIMARY, // tablet no exists
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -453,16 +467,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA, // tablet uninitialized
+				time.Time{},
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				false, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -476,16 +493,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY, // tablet uninitialized by removeTablets
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -499,16 +519,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				false, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				false, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -522,16 +545,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -545,16 +571,19 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
 				testMySQLConsensusHost0, testMySQLPort,
 				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
 			},
 			{testAlias1, testUID1,
 				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost1, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 			{testAlias2, testUID1,
 				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
 				testMySQLConsensusHost2, testMySQLPort,
 				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
 			},
 		},
 			consensusMember: []db.TestConsensusMember{
@@ -562,6 +591,58 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				{ServerID: 2, MySQLHost: testMySQLConsensusHost1, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
 				{ServerID: 3, MySQLHost: testMySQLConsensusHost2, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
 			}, removeTablets: []string{testAlias0, testAlias1, testAlias2},
+		},
+		{name: "multi primary tablet,exist a newer primaryTimestamp", expected: DiagnoseTypeHealthy, errMessage: "", ttdata: []tabletdata{
+			{testAlias0, testUID1,
+				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
+				testMySQLConsensusHost0, testMySQLPort,
+				true, topodatapb.TabletType_PRIMARY,
+				primaryTs.Add(1 * time.Minute),
+			},
+			{testAlias1, testUID1,
+				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
+				testMySQLConsensusHost1, testMySQLPort,
+				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
+			},
+			{testAlias2, testUID1,
+				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
+				testMySQLConsensusHost2, testMySQLPort,
+				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
+			},
+		},
+			consensusMember: []db.TestConsensusMember{
+				{ServerID: 1, MySQLHost: testMySQLConsensusHost0, MySQLPort: testMySQLPort, Role: db.LEADER, ElectionWeight: 1, Connected: true},
+				{ServerID: 2, MySQLHost: testMySQLConsensusHost1, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
+				{ServerID: 3, MySQLHost: testMySQLConsensusHost2, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
+			}, removeTablets: []string{},
+		},
+		{name: "multi primary tablet,and tablets primaryTimestamp are equal", expected: DiagnoseTypeHealthy, errMessage: "", ttdata: []tabletdata{
+			{testAlias0, testUID1,
+				db.TestConsensusLocalView{ServerID: 1, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.LEADER, IsRW: 1},
+				testMySQLConsensusHost0, testMySQLPort,
+				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
+			},
+			{testAlias1, testUID1,
+				db.TestConsensusLocalView{ServerID: 2, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
+				testMySQLConsensusHost1, testMySQLPort,
+				true, topodatapb.TabletType_PRIMARY,
+				primaryTs,
+			},
+			{testAlias2, testUID1,
+				db.TestConsensusLocalView{ServerID: 3, CurrentTerm: 1, CurrentLeader: "localhost0:13306", LeaderHostName: testMySQLConsensusHost0, LeaderHostPort: testMySQLPort, Role: db.FOLLOWER},
+				testMySQLConsensusHost2, testMySQLPort,
+				true, topodatapb.TabletType_REPLICA,
+				time.Time{},
+			},
+		},
+			consensusMember: []db.TestConsensusMember{
+				{ServerID: 1, MySQLHost: testMySQLConsensusHost0, MySQLPort: testMySQLPort, Role: db.LEADER, ElectionWeight: 1, Connected: true},
+				{ServerID: 2, MySQLHost: testMySQLConsensusHost1, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
+				{ServerID: 3, MySQLHost: testMySQLConsensusHost2, MySQLPort: testMySQLPort, Role: db.FOLLOWER, ElectionWeight: 1, Connected: true},
+			}, removeTablets: []string{},
 		},
 	}
 	for _, tt := range sqltests {
@@ -573,8 +654,6 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 			ts := NewMockConsensusTopo(ctrl)
 			tmc := NewMockConsensusTmcClient(ctrl)
 
-			primaryTs := time.Now()
-
 			tablets := make(map[string]*topo.TabletInfo)
 			localViewData := make(map[string]db.TestConsensusLocalView)
 
@@ -582,7 +661,7 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 				var response = struct {
 					isOnline bool
 				}{td.isOnline}
-				tablet := buildTabletInfoWithCell(uint32(td.uid), testCell, testKeyspace, testUnShard, td.TabletMySQLHost, int32(td.TabletMySQLPort), td.ttype, primaryTs)
+				tablet := buildTabletInfoWithCell(uint32(td.uid), testCell, testKeyspace, testUnShard, td.TabletMySQLHost, int32(td.TabletMySQLPort), td.ttype, td.primaryTimestamp)
 				tablets[td.alias] = tablet
 
 				localViewData[td.alias] = td.localView
@@ -645,7 +724,7 @@ func TestPrimaryTabletIssueDiagnose(t *testing.T) {
 
 			ctx := context.Background()
 			shard := NewConsensusShard(testKeyspace, testUnShard, []string{testCell}, tmc, ts, dbAgent, 0)
-			shard.UpdateTabletsInShardWithLock(ctx)
+			shard.RefreshTabletsInShardWithLock(ctx)
 			diagnose, err := shard.Diagnose(ctx)
 			assert.Equal(t, tt.expected, diagnose)
 			if tt.errMessage == "" {
