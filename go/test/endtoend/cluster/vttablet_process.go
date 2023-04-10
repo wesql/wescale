@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,10 +99,8 @@ func (vttablet *VttabletProcess) Setup() (err error) {
 		"--tablet-path", vttablet.TabletPath,
 		"--port", fmt.Sprintf("%d", vttablet.Port),
 		"--grpc_port", fmt.Sprintf("%d", vttablet.GrpcPort),
-		"--init_shard", vttablet.Shard,
 		"--log_dir", vttablet.LogDir,
 		"--tablet_hostname", vttablet.TabletHostname,
-		"--init_keyspace", vttablet.Keyspace,
 		"--init_tablet_type", vttablet.TabletType,
 		"--health_check_interval", fmt.Sprintf("%ds", vttablet.HealthCheckInterval),
 		"--enable_replication_reporter",
