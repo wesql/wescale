@@ -11,7 +11,7 @@ port=16000
 
 vtconsensus \
   $TOPOLOGY_FLAGS \
-  --clusters_to_watch "commerce/0" \
+  --clusters_to_watch "_vt/0" \
   --refresh_interval 1s \
   --scan_repair_timeout 1s \
   --log_dir ${log_dir} \

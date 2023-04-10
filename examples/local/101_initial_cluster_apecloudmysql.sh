@@ -30,14 +30,13 @@ CELL=zone1 ../common/scripts-apecloud/etcd-up.sh
 # start vtctld
 CELL=zone1 ../common/scripts-apecloud/vtctld-up.sh
 
-# start vttablets for keyspace commerce
 for i in 11 12 13; do
 	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/apecloudmysql-up.sh
-	CELL=zone1 KEYSPACE=commerce TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
+	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
-vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync commerce || fail "Failed to set keyspace durability policy on the commerce keyspace"
+vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync _vt || fail "Failed to set keyspace durability policy on the _vt keyspace"
 
 # start vtconsensus for apecloud mysql
 CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
@@ -45,13 +44,7 @@ CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 echo "wait for healthy shard for a primary tablet to be elected"
-wait_for_healthy_shard commerce 0 || exit 1
-
-# create the schema
-vtctldclient ApplySchema --sql-file create_commerce_schema.sql commerce || fail "Failed to apply schema for the commerce keyspace"
-
-# create the vschema
-vtctldclient ApplyVSchema --vschema-file vschema_commerce_initial.json commerce || fail "Failed to apply vschema for the commerce keyspace"
+wait_for_healthy_shard _vt 0 || exit 1
 
 # start vtgate
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh

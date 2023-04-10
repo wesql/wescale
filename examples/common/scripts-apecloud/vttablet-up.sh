@@ -47,8 +47,6 @@ vttablet \
  --log_queries_to_file $VTDATAROOT/tmp/$tablet_logfile \
  --tablet-path $alias \
  --tablet_hostname "$tablet_hostname" \
- --init_keyspace $keyspace \
- --init_shard $shard \
  --init_tablet_type $tablet_type \
  --health_check_interval 1s \
  --shard_sync_retry_delay 1s \
