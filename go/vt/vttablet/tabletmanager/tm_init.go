@@ -84,8 +84,6 @@ const denyListQueryList string = "DenyListQueryRules"
 var (
 	// The following flags initialize the tablet record.
 	tabletHostname     string
-	initKeyspace       = global.DefaultKeyspace
-	initShard          = global.DefaultShard
 	initTabletType     string
 	initDbNameOverride string
 	skipBuildInfoTags  = "/.*/"
@@ -219,16 +217,6 @@ func BuildTabletFromInput(alias *topodatapb.TabletAlias, port, grpcPort int32, d
 		log.Infof("Using hostname: %v from --tablet_hostname flag. Tablet %s", hostname, alias.String())
 	}
 
-	if initKeyspace == "" || initShard == "" {
-		return nil, fmt.Errorf("init_keyspace and init_shard must be specified")
-	}
-
-	// parse and validate shard name
-	shard, keyRange, err := topo.ValidateShardName(initShard)
-	if err != nil {
-		return nil, vterrors.Wrapf(err, "cannot validate shard name %v", initShard)
-	}
-
 	tabletType, err := topoproto.ParseTabletType(initTabletType)
 	if err != nil {
 		return nil, err
@@ -261,9 +249,9 @@ func BuildTabletFromInput(alias *topodatapb.TabletAlias, port, grpcPort int32, d
 			"vt":   port,
 			"grpc": grpcPort,
 		},
-		Keyspace:             initKeyspace,
-		Shard:                shard,
-		KeyRange:             keyRange,
+		Keyspace:             global.DefaultKeyspace,
+		Shard:                global.DefaultShard,
+		KeyRange:             nil,
 		Type:                 tabletType,
 		DbNameOverride:       initDbNameOverride,
 		Tags:                 mergeTags(buildTags, initTags),

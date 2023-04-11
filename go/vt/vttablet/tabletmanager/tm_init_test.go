@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,8 +65,6 @@ func TestStartBuildTabletFromInput(t *testing.T) {
 
 	// Hostname should be used as is.
 	tabletHostname = "foo"
-	initKeyspace = "test_keyspace"
-	initShard = "0"
 	initTabletType = "replica"
 	initDbNameOverride = "aa"
 	wantTablet := &topodatapb.Tablet{
@@ -71,7 +74,7 @@ func TestStartBuildTabletFromInput(t *testing.T) {
 			"vt":   port,
 			"grpc": grpcport,
 		},
-		Keyspace:             "test_keyspace",
+		Keyspace:             "_vt",
 		Shard:                "0",
 		KeyRange:             nil,
 		Type:                 topodatapb.TabletType_REPLICA,
@@ -91,37 +94,6 @@ func TestStartBuildTabletFromInput(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, "", gotTablet.Hostname)
 
-	// Canonicalize shard name and compute keyrange.
-	tabletHostname = "foo"
-	initShard = "-C0"
-	wantTablet.Shard = "-c0"
-	wantTablet.KeyRange = &topodatapb.KeyRange{
-		Start: []byte(""),
-		End:   []byte("\xc0"),
-	}
-	gotTablet, err = BuildTabletFromInput(alias, port, grpcport, dbServerVersion, nil)
-	require.NoError(t, err)
-	// KeyRange check is explicit because the next comparison doesn't
-	// show the diff well enough.
-	assert.Equal(t, wantTablet.KeyRange, gotTablet.KeyRange)
-	assert.Equal(t, wantTablet, gotTablet)
-
-	// Invalid inputs.
-	initKeyspace = ""
-	initShard = "0"
-	_, err = BuildTabletFromInput(alias, port, grpcport, dbServerVersion, nil)
-	assert.Contains(t, err.Error(), "init_keyspace and init_shard must be specified")
-
-	initKeyspace = "test_keyspace"
-	initShard = ""
-	_, err = BuildTabletFromInput(alias, port, grpcport, dbServerVersion, nil)
-	assert.Contains(t, err.Error(), "init_keyspace and init_shard must be specified")
-
-	initShard = "x-y"
-	_, err = BuildTabletFromInput(alias, port, grpcport, dbServerVersion, nil)
-	assert.Contains(t, err.Error(), "cannot validate shard name")
-
-	initShard = "0"
 	initTabletType = "bad"
 	_, err = BuildTabletFromInput(alias, port, grpcport, dbServerVersion, nil)
 	assert.Contains(t, err.Error(), "unknown TabletType bad")
@@ -141,8 +113,6 @@ func TestBuildTabletFromInputWithBuildTags(t *testing.T) {
 
 	// Hostname should be used as is.
 	tabletHostname = "foo"
-	initKeyspace = "test_keyspace"
-	initShard = "0"
 	initTabletType = "replica"
 	initDbNameOverride = "aa"
 	skipBuildInfoTags = ""
@@ -154,7 +124,7 @@ func TestBuildTabletFromInputWithBuildTags(t *testing.T) {
 			"vt":   port,
 			"grpc": grpcport,
 		},
-		Keyspace:             "test_keyspace",
+		Keyspace:             "_vt",
 		Shard:                "0",
 		KeyRange:             nil,
 		Type:                 topodatapb.TabletType_REPLICA,
