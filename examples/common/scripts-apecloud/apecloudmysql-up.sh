@@ -17,8 +17,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This is an example script that creates a single shard vttablet deployment.
-
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 cell=${CELL:-'test'}
 uid=$TABLET_UID
@@ -42,24 +40,6 @@ if [ -d $VTDATAROOT/$tablet_dir ]; then
  action='start'
 fi
 
-# mysqlctl \
-#  --log_dir $VTDATAROOT/tmp \
-#  --tablet_uid $uid \
-#  --mysql_port $mysql_port \
-
-# mysqld \
-#      --enable-consensus=ON \
-#      --server-id=$uid \
-#      --defaults-file=$VTDATAROOT/$tablet_dir/my.cnf \
-#      --basedir=/opt/homebrew \
-#      --datadir=$VTDATAROOT/$tablet_dir/data \
-#      --plugin-dir=/opt/homebrew/lib/plugin \
-#      --log-error=$VTDATAROOT/$tablet_dir/error.log \
-#      --pid-file=$VTDATAROOT/$tablet_dir/mysql.pid \
-#      --socket=$VTDATAROOT/$tablet_dir/mysql.sock \
-#      --port=$mysql_port  \
-#      --cluster-info='$hostname:13306;$hostname:13307;$hostname:13308@$idx'
-#
 echo "start apecloud mysql docker mysql-server$idx"
 docker run -itd  \
     --name mysql-server$idx \

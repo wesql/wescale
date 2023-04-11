@@ -20,8 +20,6 @@
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 
 cell=${CELL:-'test'}
-keyspace=${KEYSPACE:-'test_keyspace'}
-shard=${SHARD:-'0'}
 uid=$TABLET_UID
 mysql_root="root"
 mysql_root_passwd=""

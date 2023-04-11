@@ -23,8 +23,8 @@ package main
 
 import (
 	"context"
-
-	"vitess.io/vitess/go/vt/log"
+	"fmt"
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
 
@@ -36,19 +36,15 @@ import (
 func main() {
 	var clustersToWatch string
 	servenv.OnParseFor("vtconsensus", func(fs *pflag.FlagSet) {
-		// vtconsensus --clusters_to_watch="commerce/-0" or --clusters_to_watch="commerce".
-		// and "shard 0" indicates that this keyspace is an unsharded keyspace
-		// meaning that keyspace has only one shard.
-		// Currently, wesqlscale only supports unsharded keyspace.
-		// If "cluster_to_watch" does not specify a shard 0, then it will directly look for shard 0.
-		fs.StringVar(&clustersToWatch, "clusters_to_watch", clustersToWatch, `Keyspace or keyspace/shards that this instance will monitor and repair, If "cluster_to_watch" does not specify a shard, then it will directly look for shard 0. Example: "ks1 or ks1/0"`)
+		// If "cluster_to_watch" does not specify, then it will directly look for default keyspace and shard.
+		fs.StringVar(&clustersToWatch, "clusters_to_watch", clustersToWatch, `Keyspace or keyspace/shards that this instance will monitor and repair, default _vt/0 `)
 
 		acl.RegisterFlags(fs)
 	})
 	servenv.ParseFlags("vtconsensus")
 
 	if len(clustersToWatch) == 0 {
-		log.Exitf("clusters_to_watch must be configured")
+		clustersToWatch = fmt.Sprintf("%s/%s", global.DefaultKeyspace, global.DefaultShard)
 	}
 
 	// openTabletDiscovery will open up a connection to topo server

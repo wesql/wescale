@@ -333,12 +333,6 @@ endef
 docker_base:
 	${call build_docker_image,docker/base/Dockerfile,vitess/base}
 
-docker_wesqlscale:
-	${call build_docker_image,docker/wesqlscale/Dockerfile,registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale}
-
-docker_wesqlscale_pull:
-	docker push registry.cn-hangzhou.aliyuncs.com/apecloud/apecloud-mysql-scale:latest
-
 DOCKER_BASE_SUFFIX = mysql80 percona57 percona80
 DOCKER_BASE_TARGETS = $(addprefix docker_base_, $(DOCKER_BASE_SUFFIX))
 $(DOCKER_BASE_TARGETS): docker_base_%:

@@ -19,7 +19,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# this script brings up zookeeper and all the vitess components
+# this script brings up etcd and all the vitess components
 # required for a single shard deployment.
 
 source ../common/env-apecloud.sh
