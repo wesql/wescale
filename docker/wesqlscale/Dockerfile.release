@@ -17,8 +17,6 @@ ARG BUILD_GIT_BRANCH
 # Allows docker builds to set the BUILD_GIT_REV
 ARG BUILD_GIT_REV
 
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
-
 # Install Vitess build dependencies
 RUN apt-get update && \
     apt-get upgrade -qq && \
@@ -43,7 +41,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-ARG GOPROXY=https://goproxy.cn
+#ARG GOPROXY=https://goproxy.cn
 ARG LD_FLAGS="-s -w"
 ENV GONOPROXY=github.com/apecloud
 ENV GONOSUMDB=github.com/apecloud
