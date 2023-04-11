@@ -501,7 +501,7 @@ define buildx_docker_image
 	# Fix permissions before copying files, to avoid AUFS bug other must have read/access permissions
 	chmod -R o=rx *;
 	echo "Building docker using amd64/arm64 buildx";
-	docker buildx build --platform ${BUILDX_PLATFORMS} -f ${1} \
+	docker buildx build --squash --platform ${BUILDX_PLATFORMS} -f ${1} \
 		-t ${IMG}:${VERSION} ${BUILDX_ARGS} --push .;
 endef
 
