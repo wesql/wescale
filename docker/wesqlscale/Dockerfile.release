@@ -106,6 +106,7 @@ FROM docker.io/alpine:3.17
 # install tools via apk
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache shadow bash && rm -rf /var/cache/apk/*
+RUN echo 'export PS1="[\u@\h \W]$"' > ~/.bashrc
 
 # export ENV
 ENV PATH /vt/bin:$PATH
@@ -119,6 +120,5 @@ RUN groupadd -r --gid 2000 vitess && useradd -r -g vitess --uid 1000 vitess  && 
 
 COPY --chown=vitess:vitess --from=builder /vt /vt
 WORKDIR /vt
-USER vitess
 
 CMD ["/bin/bash"]
