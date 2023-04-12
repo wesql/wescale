@@ -100,19 +100,25 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
     cp -rf $VTSOURCEROOT/web /vt && \
     rm -rf /vt/src
 
-# multi-stage build
-FROM debian:stable-slim
+# Use alpine
+FROM docker.io/alpine:3.17
 
-RUN groupadd -r vitess && useradd -r -g vitess vitess && \
-    chpasswd && adduser vitess sudo && \
-    mkdir -p /vtdataroot /vt /home/vitess && \
-    chown -R vitess:vitess /vtdataroot /vt /home/vitess
+# install tools via apk
+# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk add --no-cache shadow bash && rm -rf /var/cache/apk/*
 
+# export ENV
 ENV PATH /vt/bin:$PATH
 ENV VTDATAROOT /vtdataroot
 ENV VTROOT /vt
 
+# prepare vitess user
+RUN groupadd -r --gid 2000 vitess && useradd -r -g vitess --uid 1000 vitess  && \
+    mkdir -p /vtdataroot /vt /home/vitess && \
+    chown -R vitess:vitess /vtdataroot /vt /home/vitess
+
 COPY --chown=vitess:vitess --from=builder /vt /vt
 WORKDIR /vt
+USER vitess
 
 CMD ["/bin/bash"]
