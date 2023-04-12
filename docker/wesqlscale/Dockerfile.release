@@ -41,7 +41,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-ARG GOPROXY=https://goproxy.cn
+# ARG GOPROXY=https://goproxy.cn
 ARG LD_FLAGS="-s -w"
 ENV GONOPROXY=github.com/apecloud
 ENV GONOSUMDB=github.com/apecloud
@@ -103,13 +103,16 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
 # multi-stage build
 FROM debian:stable-slim
 
-COPY --from=builder /vt /vt
-ENV PATH /vt/bin:$PATH
-ENV VTDATAROOT /vtdataroot
-
 RUN groupadd -r vitess && useradd -r -g vitess vitess && \
     chpasswd && adduser vitess sudo && \
-    mkdir -p /vtdataroot /home/vitess && \
+    mkdir -p /vtdataroot /vt /home/vitess && \
     chown -R vitess:vitess /vtdataroot /vt /home/vitess
+
+ENV PATH /vt/bin:$PATH
+ENV VTDATAROOT /vtdataroot
+ENV VTROOT /vt
+
+COPY --chown=vitess:vitess --from=builder /vt /vt
+WORKDIR /vt
 
 CMD ["/bin/bash"]
