@@ -684,5 +684,8 @@ func SystemSchema(schema string) bool {
 	return strings.EqualFold(schema, "information_schema") ||
 		strings.EqualFold(schema, "performance_schema") ||
 		strings.EqualFold(schema, "sys") ||
-		strings.EqualFold(schema, "mysql")
+		strings.EqualFold(schema, "mysql") ||
+		strings.EqualFold(schema, "dbms_consensus") ||
+		strings.EqualFold(schema, "dbms_admin") ||
+		strings.EqualFold(schema, "dbms_ccl")
 }
