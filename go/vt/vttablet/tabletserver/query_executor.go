@@ -844,7 +844,7 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 func (qre *QueryExecutor) addPrefixWaitGtid(sql string) string {
 	var buf strings.Builder
 	buf.Grow(100 + len(sql))
-	buf.WriteString(fmt.Sprintf("SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('%s', %v);",
+	buf.WriteString(fmt.Sprintf("SELECT WAIT_FOR_EXECUTED_GTID_SET('%s', %v);",
 		qre.options.GetReadAfterWriteGtid(), int(qre.options.GetReadAfterWriteTimeout())))
 	buf.WriteString(sql)
 	return buf.String()
@@ -855,17 +855,19 @@ func (qre *QueryExecutor) discardWaitGtidResponse(res *sqltypes.Result, err erro
 	if err != nil {
 		return nil, err
 	}
-	if res.Rows[0][0].ToString() == "0" {
-		return nil, vterrors.Errorf(vtrpcpb.Code_ABORTED, "wait for gtid timeout")
-	}
 	if !res.IsMoreResultsExists() {
 		// should not happen
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "wait for gtid response is not complete")
 	}
+	waitGtidRes := res.Rows[0][0].ToString()
 	// we need to fetch all the results and discard them.
 	// Otherwise, the connection will be left in a bad state.
 	// the last result will be returned to the caller.
-	return conn.FetchNext(qre.ctx, int(qre.tsv.qe.maxResultSize.Get()), wantFields)
+	userSQLRes, userSQLErr := conn.FetchNext(qre.ctx, int(qre.tsv.qe.maxResultSize.Get()), wantFields)
+	if waitGtidRes == "1" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_ABORTED, "wait for gtid timeout")
+	}
+	return userSQLRes, userSQLErr
 }
 
 func (qre *QueryExecutor) execDMLLimit(conn *StatefulConnection) (*sqltypes.Result, error) {

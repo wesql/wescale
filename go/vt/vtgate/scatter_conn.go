@@ -273,6 +273,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			//todo need to add a switch to control whether to use the new feature
 			if qr.SessionStateChanges != "" {
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
+				session.SetReadAfterWriteTimeout(float64(3))
 			}
 			return newInfo, nil
 		},
