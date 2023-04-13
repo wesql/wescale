@@ -3,7 +3,7 @@
 
 ARG DEBIAN_VER=bullseye
 
-FROM golang:1.20.2-${DEBIAN_VER}
+FROM golang:1.20.2-${DEBIAN_VER} as builder
 
 # Allows some docker builds to disable CGO
 ARG CGO_ENABLED=0
@@ -17,7 +17,7 @@ ARG BUILD_GIT_BRANCH
 # Allows docker builds to set the BUILD_GIT_REV
 ARG BUILD_GIT_REV
 
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
+# RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 # Install Vitess build dependencies
 RUN apt-get update && \
@@ -37,14 +37,8 @@ RUN apt-get update && \
     wget \
     default-mysql-client \
     jq \
-    curl \
     ssh \
-    delve \
-    sudo \
-    procps \
-    rsyslog \
-    vim \
-    iputils-ping &&\
+    sudo &&\
     apt-get autoremove && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -59,9 +53,7 @@ ENV GOPROXY=${GOPROXY}
 # Set up Vitess environment (equivalent to '. dev.env')
 ENV VTSOURCEROOT /vt/src/vitess
 ENV VTDATAROOT /vtdataroot
-ENV VTPORTSTART 15000
 ENV PATH $VTSOURCEROOT/bin:$VTSOURCEROOT/dist/maven/bin:$VTSOURCEROOT/dist/chromedriver:$PATH
-ENV USER vitess
 ENV MYSQL_FLAVOR MySQL80
 ENV BUILD_CHROME 0
 ENV BUILD_JAVA 0
@@ -73,37 +65,24 @@ COPY . $VTSOURCEROOT
 RUN git config --global --add safe.directory $VTSOURCEROOT
 
 # Create vitess user and Prepare directory structure.
-RUN groupadd -r vitess && useradd -r -g vitess vitess && \
-    chpasswd && adduser vitess sudo && \
-    mkdir -p /vtdataroot /home/vitess && \
+RUN mkdir -p /vtdataroot /home/vitess && \
     mkdir -p /vt && \
     mkdir -p /vt/bin && \
     mkdir -p /vt/config && \
-    mkdir -p /vt/web && \
-    chown -R vitess:vitess /vtdataroot /vt /home/vitess
-
+    mkdir -p /vt/web
 
 # Bootstrap Vitess
 WORKDIR /vt/src/vitess
 
-#USER vitess
-
 # Download vendored Go dependencies
-RUN su vitess -c "go mod download"
+RUN go mod download
 
-RUN BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=0 ./bootstrap.sh
+RUN BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=1 ./bootstrap.sh
 
-# Build Vitess
-USER root
-
-RUN su vitess -c "mkdir -p /vt/src/vitess.io/vitess/bin"
 ENV VTROOT /vt/src/vitess
 
 # Binaries will be placed in ${VTROOT}/bin.
 RUN VT_GO_PARALLEL_VALUE=8 make build
-
-RUN go clean -modcache && \
-    go clean -cache
 
 ENV VTROOT /vt
 
@@ -118,11 +97,30 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
     cp /vt/src/vitess/bin/vtbackup /vt/bin/ && \
     cp /vt/src/vitess/bin/vtadmin /vt/bin/ && \
     cp /vt/src/vitess/bin/protoc  /vt/bin && \
+    cp /vt/src/vitess/bin/etcd  /vt/bin && \
+    cp /vt/src/vitess/bin/etcdctl  /vt/bin && \
     cp -rf $VTSOURCEROOT/web /vt && \
     rm -rf /vt/src
 
-WORKDIR /vt
+# Use alpine
+FROM docker.io/alpine:3.17
 
-ENV PATH $VTROOT/bin:$PATH
+# install tools via apk
+# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+RUN apk add --no-cache shadow bash mysql-client && rm -rf /var/cache/apk/*
+RUN echo 'export PS1="[\u@\h \W]$"' > ~/.bashrc
+
+# export ENV
+ENV PATH /vt/bin:$PATH
+ENV VTDATAROOT /vtdataroot
+ENV VTROOT /vt
+
+# prepare vitess user
+RUN groupadd -r --gid 2000 vitess && useradd -r -g vitess --uid 1000 vitess  && \
+    mkdir -p /vtdataroot /vt /home/vitess && \
+    chown -R vitess:vitess /vtdataroot /vt /home/vitess
+
+COPY --chown=vitess:vitess --from=builder /vt /vt
+WORKDIR /vt
 
 CMD ["/bin/bash"]
