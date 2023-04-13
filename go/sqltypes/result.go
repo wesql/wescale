@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -333,6 +338,9 @@ func (result *Result) AppendResult(src *Result) {
 		result.InsertID = src.InsertID
 	}
 	result.Rows = append(result.Rows, src.Rows...)
+	// Since sharding is not supported, the only mysqld accepts writes is the leader.
+	// We can just append the session state changes.
+	result.SessionStateChanges = src.SessionStateChanges
 }
 
 // Named returns a NamedResult based on this struct

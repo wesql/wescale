@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -177,6 +182,9 @@ func (stc *ScatterConn) ExecuteMultiShard(
 
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				//todo need to add a switch to control whether to use the new feature
+				setReadAfterWriteOpts(opts, session)
 			}
 
 			if autocommit {
@@ -261,6 +269,10 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			// Don't append more rows if row count is exceeded.
 			if ignoreMaxMemoryRows || len(qr.Rows) <= maxMemoryRows {
 				qr.AppendResult(innerqr)
+			}
+			//todo need to add a switch to control whether to use the new feature
+			if qr.SessionStateChanges != "" {
+				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
 			}
 			return newInfo, nil
 		},
@@ -874,3 +886,11 @@ const (
 	reserve
 	begin
 )
+
+func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession) {
+	if opts == nil || session == nil || session.Session == nil || session.Session.ReadAfterWrite == nil {
+		return
+	}
+	opts.ReadAfterWriteGtid = session.Session.ReadAfterWrite.ReadAfterWriteGtid
+	opts.ReadAfterWriteTimeout = float32(session.Session.ReadAfterWrite.ReadAfterWriteTimeout)
+}

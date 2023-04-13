@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -786,6 +791,13 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	wantFields := true
+	waitGtidPrefixAdded := false
+	// If the query is a read after write, we need to add the wait gtid prefix
+	if qre.options != nil && qre.options.ReadAfterWriteGtid != "" {
+		sql = qre.addPrefixWaitGtid(sql)
+		waitGtidPrefixAdded = true
+	}
 	// Check tablet type.
 	if qre.shouldConsolidate() {
 		q, original := qre.tsv.qe.consolidator.Create(sqlWithoutComments)
@@ -797,7 +809,10 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 				q.Err = err
 			} else {
 				defer conn.Recycle()
-				q.Result, q.Err = qre.execDBConn(conn, sql, true)
+				q.Result, q.Err = qre.execDBConn(conn, sql, wantFields)
+				if waitGtidPrefixAdded {
+					q.Result, q.Err = qre.discardWaitGtidResponse(q.Result.(*sqltypes.Result), q.Err, conn, wantFields)
+				}
 			}
 		} else {
 			qre.logStats.QuerySources |= tabletenv.QuerySourceConsolidator
@@ -815,11 +830,42 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 		return nil, err
 	}
 	defer conn.Recycle()
-	res, err := qre.execDBConn(conn, sql, true)
+	res, err := qre.execDBConn(conn, sql, wantFields)
+	if waitGtidPrefixAdded {
+		res, err = qre.discardWaitGtidResponse(res, err, conn, wantFields)
+	}
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
+}
+
+// addPrefixWaitGtid adds a prefix to the query to wait for the gtid to be replicated.
+func (qre *QueryExecutor) addPrefixWaitGtid(sql string) string {
+	var buf strings.Builder
+	buf.Grow(100 + len(sql))
+	buf.WriteString(fmt.Sprintf("SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('%s', %v);",
+		qre.options.GetReadAfterWriteGtid(), int(qre.options.GetReadAfterWriteTimeout())))
+	buf.WriteString(sql)
+	return buf.String()
+}
+
+// discardWaitGtidResponse discards the wait gtid response and returns the last result.
+func (qre *QueryExecutor) discardWaitGtidResponse(res *sqltypes.Result, err error, conn *connpool.DBConn, wantFields bool) (*sqltypes.Result, error) {
+	if err != nil {
+		return nil, err
+	}
+	if res.Rows[0][0].ToString() == "0" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_ABORTED, "wait for gtid timeout")
+	}
+	if !res.IsMoreResultsExists() {
+		// should not happen
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "wait for gtid response is not complete")
+	}
+	// we need to fetch all the results and discard them.
+	// Otherwise, the connection will be left in a bad state.
+	// the last result will be returned to the caller.
+	return conn.FetchNext(qre.ctx, int(qre.tsv.qe.maxResultSize.Get()), wantFields)
 }
 
 func (qre *QueryExecutor) execDMLLimit(conn *StatefulConnection) (*sqltypes.Result, error) {

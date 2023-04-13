@@ -377,6 +377,21 @@ func (m *ExecuteOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ReadAfterWriteTimeout != 0 {
+		i -= 4
+		binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.ReadAfterWriteTimeout))))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x85
+	}
+	if len(m.ReadAfterWriteGtid) > 0 {
+		i -= len(m.ReadAfterWriteGtid)
+		copy(dAtA[i:], m.ReadAfterWriteGtid)
+		i = encodeVarint(dAtA, i, uint64(len(m.ReadAfterWriteGtid)))
+		i--
+		dAtA[i] = 0x7a
+	}
 	if len(m.TransactionAccessMode) > 0 {
 		var pksize2 int
 		for _, num := range m.TransactionAccessMode {
@@ -4417,6 +4432,13 @@ func (m *ExecuteOptions) SizeVT() (n int) {
 		}
 		n += 1 + sov(uint64(l)) + l
 	}
+	l = len(m.ReadAfterWriteGtid)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	if m.ReadAfterWriteTimeout != 0 {
+		n += 6
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -6999,6 +7021,49 @@ func (m *ExecuteOptions) UnmarshalVT(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)
 			}
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteGtid", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ReadAfterWriteGtid = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 16:
+			if wireType != 5 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteTimeout", wireType)
+			}
+			var v uint32
+			if (iNdEx + 4) > l {
+				return io.ErrUnexpectedEOF
+			}
+			v = uint32(binary.LittleEndian.Uint32(dAtA[iNdEx:]))
+			iNdEx += 4
+			m.ReadAfterWriteTimeout = float32(math.Float32frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
