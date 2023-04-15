@@ -24,7 +24,7 @@ uid=$TABLET_UID
 mysql_root="root"
 mysql_root_passwd=""
 mysql_port=$[17000 + $uid]
-port=$[15000 + $uid]
+port=$[15100 + $uid]
 grpc_port=$[16000 + $uid]
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
@@ -32,9 +32,9 @@ tablet_hostname='127.0.0.1'
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica
-# if [[ "${uid: -1}" -gt 1 ]]; then
-# tablet_type=rdonly
-# fi
+if [[ $uid -gt 10 ]]; then
+tablet_type=rdonly
+fi
 
 echo "Starting vttablet for $alias..."
 

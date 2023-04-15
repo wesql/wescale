@@ -20,14 +20,25 @@
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 cell=${CELL:-'test'}
 uid=$TABLET_UID
-mysql_port=$[17000 + $uid]
-# container ip range [172.17.0.2, 172.17.0.3, 172.17.0.4 ....], 172.17.0.1 is physical host ip.
-container_host="172.17.0."$[$uid - 9]
+tablets_uid=${TABLETS_UID[@]}
+# container ip range [192.168.0.1, 192.168.0.2, 192.168.0.3 ....]
+container_host="192.168.0."$[$uid + 1]
 cur_path=$(dirname $(readlink -f "$0"))
 port=$[17000 + $uid]
-idx=$[$uid - 10]
-printf -v alias '%s-%010d' $cell $uidls
+idx=$uid
+printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
+
+if [[ "$TABLET_TYPE" = "replica" ]]; then
+  #generate cluster_info
+  for i in ${tablets_uid[@]}; do
+    cluster_info=$cluster_info"192.168.0."$[$i + 1]":13306;"
+  done
+  cluster_info=$(echo "$cluster_info" | sed 's/.$/@/')
+else
+  cluster_info="192.168.0."$[$uid + 1]":13306"
+  idx=
+fi
 
 mkdir -p $VTDATAROOT/backups
 
@@ -43,6 +54,7 @@ fi
 echo "start apecloud mysql docker mysql-server$idx"
 docker run -itd  \
     --name mysql-server$idx \
+    --network my_wesqlscale_network \
     --ip $container_host \
     -p $port:3306     \
     -v ${cur_path}/../../../config/apecloud_mycnf:/etc/mysql/conf.d \
@@ -51,7 +63,7 @@ docker run -itd  \
     -e MYSQL_INIT_CONSENSUS_PORT=13306 \
     -v $VTDATAROOT/$tablet_dir:/mysql \
     -e CLUSTER_ID=1 \
-    -e CLUSTER_INFO='172.17.0.2:13306;172.17.0.3:13306;172.17.0.4:13306@'$idx \
+    -e CLUSTER_INFO="$cluster_info"$idx \
     apecloud/apecloud-mysql-server:8.0.30-5.alpha2.20230105.gd6b8719.2
 
 echo "apecloud mysql instance client connection: mysql -h$hostname -uroot -P$port"

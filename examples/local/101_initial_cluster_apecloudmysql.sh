@@ -3,8 +3,6 @@
 # Copyright ApeCloud, Inc.
 # Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
-
-
 # Copyright 2019 The Vitess Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,15 +22,28 @@
 
 source ../common/env-apecloud.sh
 
+echo "create docker network for wesql-server cluster"
+# create docker network for wesql-server cluster
+docker network create --driver bridge --gateway=192.168.0.1 --subnet 192.168.0.0/24 my_wesqlscale_network
+
 # start topo server
 CELL=zone1 ../common/scripts-apecloud/etcd-up.sh
 
 # start vtctld
 CELL=zone1 ../common/scripts-apecloud/vtctld-up.sh
 
-for i in 11 12 13; do
-	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/apecloudmysql-up.sh
-	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
+# create three vttablet replicas.
+TABLETS_UID=(1 2 3)
+for i in ${TABLETS_UID[@]}; do
+	TABLET_TYPE=replica CELL=zone1 TABLET_UID=$i TABLETS_UID=${TABLETS_UID[@]} ../common/scripts-apecloud/apecloudmysql-up.sh
+	TABLET_TYPE=replica CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
+done
+
+# create ont vttablet rdonly.
+TABLETS_UID=(11)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/apecloudmysql-up.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
@@ -44,7 +55,7 @@ CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 echo "wait for healthy shard for a primary tablet to be elected"
-wait_for_healthy_shard _vt 0 || exit 1
+wait_for_healthy_shard _vt 0 4 || exit 1
 
 # start vtgate
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
