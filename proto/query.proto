@@ -530,6 +530,7 @@ message CommitRequest {
 // CommitResponse is the returned value from Commit
 message CommitResponse {
   int64 reserved_id = 1;
+  string session_state_changes = 2;
 }
 
 // RollbackRequest is the payload to Rollback

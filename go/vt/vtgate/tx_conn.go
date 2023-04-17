@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,7 +120,7 @@ func (txc *TxConn) commitShard(ctx context.Context, s *vtgatepb.Session_ShardSes
 	if err != nil {
 		return err
 	}
-	reservedID, err := qs.Commit(ctx, s.Target, s.TransactionId)
+	reservedID, _, err := qs.Commit(ctx, s.Target, s.TransactionId)
 	if err != nil {
 		return err
 	}

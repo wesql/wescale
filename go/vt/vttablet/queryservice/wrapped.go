@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,17 +97,18 @@ func (ws *wrappedService) Begin(ctx context.Context, target *querypb.Target, opt
 	return state, err
 }
 
-func (ws *wrappedService) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {
+func (ws *wrappedService) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error) {
 	var rID int64
+	var sessionStateChange string
 	err := ws.wrapper(ctx, target, ws.impl, "Commit", true, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
 		var innerErr error
-		rID, innerErr = conn.Commit(ctx, target, transactionID)
+		rID, sessionStateChange, innerErr = conn.Commit(ctx, target, transactionID)
 		return canRetry(ctx, innerErr), innerErr
 	})
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-	return rID, nil
+	return rID, sessionStateChange, nil
 }
 
 func (ws *wrappedService) Rollback(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {

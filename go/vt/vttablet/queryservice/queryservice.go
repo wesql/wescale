@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +49,7 @@ type QueryService interface {
 	Begin(ctx context.Context, target *querypb.Target, options *querypb.ExecuteOptions) (TransactionState, error)
 
 	// Commit commits the current transaction
-	Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error)
+	Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error)
 
 	// Rollback aborts the current transaction
 	Rollback(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error)
