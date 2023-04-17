@@ -259,7 +259,7 @@ func (qre *QueryExecutor) execAsTransaction(f func(conn *StatefulConnection) (*s
 	}
 
 	defer qre.logStats.AddRewrittenSQL("commit", time.Now())
-	if _, err := qre.tsv.te.txPool.Commit(qre.ctx, conn); err != nil {
+	if _, _, err := qre.tsv.te.txPool.Commit(qre.ctx, conn); err != nil {
 		return nil, err
 	}
 	return result, nil

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -253,7 +258,7 @@ func (te *TxEngine) Commit(ctx context.Context, transactionID int64) (int64, str
 	var query string
 	var err error
 	connID, err := te.txFinish(transactionID, tx.TxCommit, func(conn *StatefulConnection) error {
-		query, err = te.txPool.Commit(ctx, conn)
+		query, _, err = te.txPool.Commit(ctx, conn)
 		return err
 	})
 
