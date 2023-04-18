@@ -478,6 +478,11 @@ func (gw *TabletGateway) GetLastGtid(target string) string {
 	return gtid
 }
 
+// LastSeenGtidString returns the last seen gtid as a string
+func (gw *TabletGateway) LastSeenGtidString() string {
+	return gw.lastSeenGtid.String()
+}
+
 // NewShardError returns a new error with the shard info amended.
 func NewShardError(in error, target *querypb.Target) error {
 	if in == nil {

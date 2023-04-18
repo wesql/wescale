@@ -184,7 +184,10 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsReadAfterWriteEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					setReadAfterWriteOpts(opts, session)
+					err = setReadAfterWriteOpts(opts, session, stc.gateway)
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
 
@@ -271,12 +274,9 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if ignoreMaxMemoryRows || len(qr.Rows) <= maxMemoryRows {
 				qr.AppendResult(innerqr)
 			}
-			//todo earayu need to add a switch to control whether to use the new feature
 			if qr.SessionStateChanges != "" {
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
-				if session.IsReadAfterWriteEnable() && session.GetReadAfterWrite().GetReadAfterWriteScope() == vtgatepb.ReadAfterWriteScope_INSTANCE {
-					stc.gateway.AddGtid(qr.SessionStateChanges)
-				}
+				stc.gateway.AddGtid(qr.SessionStateChanges)
 			}
 			return newInfo, nil
 		},
@@ -891,14 +891,21 @@ const (
 	begin
 )
 
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession) {
-	if opts == nil || session == nil || session.Session == nil || session.Session.ReadAfterWrite == nil {
-		return
+func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway) error {
+	if opts == nil || session == nil || session.Session == nil || !session.IsReadAfterWriteEnable() {
+		return nil
 	}
-	opts.ReadAfterWriteGtid = session.Session.ReadAfterWrite.ReadAfterWriteGtid
 	if session.Session.ReadAfterWrite.ReadAfterWriteTimeout <= 0 {
 		opts.ReadAfterWriteTimeout = float32(3) //todo earayu need default value
 	} else {
 		opts.ReadAfterWriteTimeout = float32(session.Session.ReadAfterWrite.ReadAfterWriteTimeout) //todo earayu need default value
 	}
+
+	switch session.GetReadAfterWrite().GetReadAfterWriteScope() {
+	case vtgatepb.ReadAfterWriteScope_INSTANCE:
+		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
+	case vtgatepb.ReadAfterWriteScope_SESSION:
+		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
+	}
+	return nil
 }

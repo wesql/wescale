@@ -72,3 +72,9 @@ func (g *LastSeenGtid) GetLastGtid(target string) (string, error) {
 		return "", fmt.Errorf("unsupported flavor: %s", g.flavor)
 	}
 }
+
+func (g *LastSeenGtid) String() string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.gtidSet.String()
+}
