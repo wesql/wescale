@@ -84,6 +84,7 @@ var (
 
 	// Read After Write settings
 	ReadAfterWriteGTID    = SystemVariable{Name: "read_after_write_gtid"}
+	ReadAfterWriteScope   = SystemVariable{Name: "read_after_write_scope"}
 	ReadAfterWriteTimeOut = SystemVariable{Name: "read_after_write_timeout"}
 	SessionTrackGTIDs     = SystemVariable{Name: "session_track_gtids", IdentifierAsString: true}
 
@@ -105,6 +106,7 @@ var (
 		SessionUUID,
 		SessionEnableSystemSettings,
 		ReadAfterWriteGTID,
+		ReadAfterWriteScope,
 		ReadAfterWriteTimeOut,
 		SessionTrackGTIDs,
 		QueryTimeout,

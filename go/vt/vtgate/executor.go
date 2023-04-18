@@ -461,6 +461,12 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 				v = raw.ReadAfterWriteGtid
 			})
 			bindVars[key] = sqltypes.StringBindVariable(v)
+		case sysvars.ReadAfterWriteScope.Name:
+			var v string
+			ifReadAfterWriteExist(session, func(raw *vtgatepb.ReadAfterWrite) {
+				v = raw.ReadAfterWriteScope.String()
+			})
+			bindVars[key] = sqltypes.StringBindVariable(v)
 		case sysvars.ReadAfterWriteTimeOut.Name:
 			var v float64
 			ifReadAfterWriteExist(session, func(raw *vtgatepb.ReadAfterWrite) {

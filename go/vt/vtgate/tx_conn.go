@@ -126,10 +126,10 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 	}
 	s.TransactionId = 0
 	s.ReservedId = reservedID
-	//todo need to add a switch to control whether to use the new feature
+	//todo earayu need to add a switch to control whether to use the new feature
 	if sessionStateChange != "" {
 		session.SetReadAfterWriteGTID(sessionStateChange)
-		session.SetReadAfterWriteTimeout(float64(3))
+		session.SetReadAfterWriteTimeout(float64(3)) //todo earayu default timeout
 	}
 	logging.log(nil, s.Target, nil, "commit", false, nil)
 	return nil

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -250,6 +255,19 @@ func (gtidSet MariadbGTIDSet) Last() string {
 
 	lastGTID := domains[len(gtidSet)-1]
 	return gtidSet[lastGTID].String()
+}
+
+// LastOfSID returns the last gtid
+func (gtidSet MariadbGTIDSet) LastOf(target any) string {
+	domain, ok := target.(uint32)
+	if !ok {
+		return ""
+	}
+	r, ok := gtidSet[domain]
+	if !ok {
+		return ""
+	}
+	return r.String()
 }
 
 // deepCopy returns a deep copy of the set.

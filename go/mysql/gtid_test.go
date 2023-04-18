@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -174,13 +179,14 @@ type fakeGTID struct {
 	flavor, value string
 }
 
-func (f fakeGTID) String() string    { return f.value }
-func (f fakeGTID) Last() string      { panic("not implemented") }
-func (f fakeGTID) Flavor() string    { return f.flavor }
-func (fakeGTID) SourceServer() any   { return int(1) }
-func (fakeGTID) SequenceNumber() any { return int(1) }
-func (fakeGTID) SequenceDomain() any { return int(1) }
-func (f fakeGTID) GTIDSet() GTIDSet  { return nil }
+func (f fakeGTID) String() string           { return f.value }
+func (f fakeGTID) Last() string             { panic("not implemented") }
+func (f fakeGTID) LastOf(target any) string { panic("not implemented") }
+func (f fakeGTID) Flavor() string           { return f.flavor }
+func (fakeGTID) SourceServer() any          { return int(1) }
+func (fakeGTID) SequenceNumber() any        { return int(1) }
+func (fakeGTID) SequenceDomain() any        { return int(1) }
+func (f fakeGTID) GTIDSet() GTIDSet         { return nil }
 
 func (fakeGTID) ContainsGTID(GTID) bool  { return false }
 func (fakeGTID) Contains(GTIDSet) bool   { return false }

@@ -915,6 +915,11 @@ func (vc *vcursorImpl) SetSessionTrackGTIDs(enable bool) {
 	vc.safeSession.SetSessionTrackGtids(enable)
 }
 
+// SetReadAfterWriteScope implements the SessionActions interface
+func (vc *vcursorImpl) SetReadAfterWriteScope(vtgtid vtgatepb.ReadAfterWriteScope) {
+	vc.safeSession.SetReadAfterWriteScope(vtgtid)
+}
+
 // HasCreatedTempTable implements the SessionActions interface
 func (vc *vcursorImpl) HasCreatedTempTable() {
 	vc.safeSession.GetOrCreateOptions().HasCreatedTempTables = true

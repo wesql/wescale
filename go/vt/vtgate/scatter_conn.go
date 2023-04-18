@@ -183,8 +183,9 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				//todo need to add a switch to control whether to use the new feature
-				setReadAfterWriteOpts(opts, session)
+				if session.IsReadAfterWriteEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					setReadAfterWriteOpts(opts, session)
+				}
 			}
 
 			if autocommit {
@@ -270,10 +271,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if ignoreMaxMemoryRows || len(qr.Rows) <= maxMemoryRows {
 				qr.AppendResult(innerqr)
 			}
-			//todo need to add a switch to control whether to use the new feature
+			//todo earayu need to add a switch to control whether to use the new feature
 			if qr.SessionStateChanges != "" {
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
-				session.SetReadAfterWriteTimeout(float64(3))
+				if session.IsReadAfterWriteEnable() && session.GetReadAfterWrite().GetReadAfterWriteScope() == vtgatepb.ReadAfterWriteScope_INSTANCE {
+					stc.gateway.AddGtid(qr.SessionStateChanges)
+				}
 			}
 			return newInfo, nil
 		},
@@ -893,5 +896,9 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession) {
 		return
 	}
 	opts.ReadAfterWriteGtid = session.Session.ReadAfterWrite.ReadAfterWriteGtid
-	opts.ReadAfterWriteTimeout = float32(session.Session.ReadAfterWrite.ReadAfterWriteTimeout)
+	if session.Session.ReadAfterWrite.ReadAfterWriteTimeout <= 0 {
+		opts.ReadAfterWriteTimeout = float32(3) //todo earayu need default value
+	} else {
+		opts.ReadAfterWriteTimeout = float32(session.Session.ReadAfterWrite.ReadAfterWriteTimeout) //todo earayu need default value
+	}
 }

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +31,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/discovery"
@@ -73,6 +80,7 @@ type TabletGateway struct {
 	localCell            string
 	retryCount           int
 	defaultConnCollation uint32
+	lastSeenGtid         *LastSeenGtid
 
 	// mu protects the fields of this group.
 	mu sync.Mutex
@@ -102,11 +110,16 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 		}
 		hc = createHealthCheck(ctx, healthCheckRetryDelay, healthCheckTimeout, topoServer, localCell, CellsToWatch)
 	}
+	lastSeenGtid, err := NewLastSeenGtid(global.DefaultFlavor)
+	if err != nil {
+		log.Exitf("Unable to create new TabletGateway: %v", err)
+	}
 	gw := &TabletGateway{
 		hc:                hc,
 		srvTopoServer:     serv,
 		localCell:         localCell,
 		retryCount:        retryCount,
+		lastSeenGtid:      lastSeenGtid,
 		statusAggregators: make(map[string]*TabletStatusAggregator),
 	}
 	gw.setupBuffering(ctx)
@@ -445,6 +458,24 @@ func (gw *TabletGateway) updateDefaultConnCollation(tablet *topodatapb.Tablet) {
 // DefaultConnCollation returns the default connection collation of this TabletGateway
 func (gw *TabletGateway) DefaultConnCollation() collations.ID {
 	return collations.ID(atomic.LoadUint32(&gw.defaultConnCollation))
+}
+
+// AddGtid adds a gtid to the last seen gtid
+func (gw *TabletGateway) AddGtid(gtid string) {
+	err := gw.lastSeenGtid.AddGtid(gtid)
+	if err != nil {
+		log.Errorf("Error adding gtid: %v", err)
+	}
+}
+
+// GetLastGtid returns the last seen gtid
+func (gw *TabletGateway) GetLastGtid(target string) string {
+	gtid, err := gw.lastSeenGtid.GetLastGtid(target)
+	if err != nil {
+		log.Errorf("Error getting last gtid: %v", err)
+		return ""
+	}
+	return gtid
 }
 
 // NewShardError returns a new error with the shard info amended.

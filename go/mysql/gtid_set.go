@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +57,9 @@ type GTIDSet interface {
 
 	// Union returns a union of the receiver GTIDSet and the supplied GTIDSet.
 	Last() string
+
+	//todo earayu add testcases
+	LastOf(target any) string
 }
 
 // gtidSetParsers maps flavor names to parser functions. It is used by

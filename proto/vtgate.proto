@@ -61,6 +61,15 @@ enum CommitOrder {
   AUTOCOMMIT = 3;
 }
 
+enum ReadAfterWriteScope {
+  // NONE uses the read after write scope set by the VTGate flag 'read_after_write_scope'.
+  NONE = 0;
+  // SESSION is used to designate session read after write scope.
+  SESSION = 1;
+  // INSTANCE is used to designate instance read after write scope.
+  INSTANCE = 2;
+}
+
 // Session objects are exchanged like cookies through various
 // calls to VTGate. The behavior differs between V2 & V3 APIs.
 // V3 APIs are Execute, ExecuteBatch and StreamExecute. All
@@ -169,6 +178,7 @@ message ReadAfterWrite {
   string read_after_write_gtid = 1;
   double read_after_write_timeout = 2;
   bool session_track_gtids = 3;
+  ReadAfterWriteScope read_after_write_scope = 4;
 }
 
 // ExecuteRequest is the payload to Execute.

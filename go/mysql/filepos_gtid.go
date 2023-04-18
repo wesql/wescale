@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,6 +157,10 @@ func (gtid filePosGTID) Union(other GTIDSet) GTIDSet {
 // here we will just return the current filePos
 func (gtid filePosGTID) Last() string {
 	return gtid.String()
+}
+
+func (gtid filePosGTID) LastOf(target any) string {
+	panic("not implemented")
 }
 
 func init() {
