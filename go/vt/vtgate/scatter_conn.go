@@ -391,6 +391,13 @@ func (stc *ScatterConn) StreamExecuteMulti(
 
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				if session.IsReadAfterWriteEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					err = setReadAfterWriteOpts(opts, session, stc.gateway)
+					if err != nil {
+						return nil, err
+					}
+				}
 			}
 
 			if autocommit {
