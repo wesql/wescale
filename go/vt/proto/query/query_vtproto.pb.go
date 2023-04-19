@@ -378,12 +378,12 @@ func (m *ExecuteOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.ReadAfterWriteTimeout != 0 {
-		i -= 4
-		binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.ReadAfterWriteTimeout))))
+		i -= 8
+		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.ReadAfterWriteTimeout))))
 		i--
 		dAtA[i] = 0x1
 		i--
-		dAtA[i] = 0x85
+		dAtA[i] = 0x81
 	}
 	if len(m.ReadAfterWriteGtid) > 0 {
 		i -= len(m.ReadAfterWriteGtid)
@@ -4444,7 +4444,7 @@ func (m *ExecuteOptions) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.ReadAfterWriteTimeout != 0 {
-		n += 6
+		n += 10
 	}
 	n += len(m.unknownFields)
 	return n
@@ -7065,16 +7065,16 @@ func (m *ExecuteOptions) UnmarshalVT(dAtA []byte) error {
 			m.ReadAfterWriteGtid = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 16:
-			if wireType != 5 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteTimeout", wireType)
 			}
-			var v uint32
-			if (iNdEx + 4) > l {
+			var v uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(binary.LittleEndian.Uint32(dAtA[iNdEx:]))
-			iNdEx += 4
-			m.ReadAfterWriteTimeout = float32(math.Float32frombits(v))
+			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
+			iNdEx += 8
+			m.ReadAfterWriteTimeout = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

@@ -896,9 +896,9 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, g
 		return nil
 	}
 	if session.Session.ReadAfterWrite.ReadAfterWriteTimeout <= 0 {
-		opts.ReadAfterWriteTimeout = float32(3) //todo earayu need default value
+		opts.ReadAfterWriteTimeout = defaultReadAfterWriteTimeout
 	} else {
-		opts.ReadAfterWriteTimeout = float32(session.Session.ReadAfterWrite.ReadAfterWriteTimeout) //todo earayu need default value
+		opts.ReadAfterWriteTimeout = session.Session.ReadAfterWrite.ReadAfterWriteTimeout
 	}
 
 	switch session.GetReadAfterWrite().GetReadAfterWriteScope() {

@@ -168,7 +168,7 @@ func newVCursorImpl(
 		connCollation = collations.Default()
 	}
 
-	return &vcursorImpl{
+	vc := &vcursorImpl{
 		safeSession:     safeSession,
 		keyspace:        keyspace,
 		tabletType:      tabletType,
@@ -183,7 +183,9 @@ func newVCursorImpl(
 		topoServer:      ts,
 		warnShardedOnly: warnShardedOnly,
 		pv:              pv,
-	}, nil
+	}
+	vc.SetReadAfterWriteTimeout(defaultReadAfterWriteTimeout)
+	return vc, nil
 }
 
 // HasSystemVariables returns whether the session has set system variables or not
@@ -1111,6 +1113,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
+	case sysvars.ReadAfterWriteTimeOut.Name:
+		return SetDefaultReadAfterWriteTimeout(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }
