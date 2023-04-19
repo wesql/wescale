@@ -11,8 +11,9 @@ port=16000
 
 vtconsensus \
   $TOPOLOGY_FLAGS \
-  --refresh_interval 1s \
-  --scan_repair_timeout 1s \
+  --scan_interval 2s \
+  --refresh_interval 5s \
+  --scan_repair_timeout 4s \
   --log_dir ${log_dir} \
   --db_username "root" \
   --db_password "" \

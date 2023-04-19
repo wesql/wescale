@@ -81,6 +81,9 @@ func (shard *ConsensusShard) Repair(ctx context.Context, status DiagnoseType) (R
 	case DiagnoseTypeUnreachableConsensusLeader:
 		err = fmt.Errorf("%v，please check vitess primary tablet status", errUnreachableLeaderMySQL)
 		code = Fail
+	case DiagnoseTypeHealthy:
+		err = nil
+		code = Success
 	default:
 		err = fmt.Errorf("wesql-server instance and vitess tablet unhealthy, please manually repair")
 	}

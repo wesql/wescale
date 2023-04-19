@@ -35,15 +35,8 @@ CELL=zone1 ../common/scripts-apecloud/vtctld-up.sh
 # create three vttablet replicas.
 TABLETS_UID=(1 2 3)
 for i in ${TABLETS_UID[@]}; do
-	TABLET_TYPE=replica CELL=zone1 TABLET_UID=$i TABLETS_UID=${TABLETS_UID[@]} ../common/scripts-apecloud/apecloudmysql-up.sh
-	TABLET_TYPE=replica CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
-done
-
-# create ont vttablet rdonly.
-TABLETS_UID=(11)
-for i in ${TABLETS_UID[@]}; do
-	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/apecloudmysql-up.sh
-	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
+	CELL=zone1 TABLET_UID=$i TABLETS_UID=${TABLETS_UID[@]} NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-up.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
@@ -55,7 +48,7 @@ CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 echo "wait for healthy shard for a primary tablet to be elected"
-wait_for_healthy_shard _vt 0 4 || exit 1
+wait_for_healthy_shard _vt 0 || exit 1
 
 # start vtgate
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
@@ -63,5 +56,24 @@ CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 # start vtadmin
 ../common/scripts-apecloud/vtadmin-up.sh
 
-echo "vitess client connection: mysql -uroot"
+echo "wesql-scale client connection: mysql -uroot
+"
+
+echo "Staring add new follower node and tablet for wesql-scale cluster ... "
+TABLETS_UID=(11)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-add-node.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
+done
+echo ""
+echo "Staring add new learner node and tablet for wesql-scale cluster ..."
+# create ont wesql-server learner node.
+# TODO: when learner node promote to follower, rdonly should be changed to replica. but vtcltd not support this action for wesql-server.
+TABLETS_UID=(12)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i NODE_ROLE=learner ../common/scripts-apecloud/apecloudmysql-add-node.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
+done
+echo ""
+echo "wesql-scale initial cluster setup done"
 

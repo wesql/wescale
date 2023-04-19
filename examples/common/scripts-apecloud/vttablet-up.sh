@@ -31,12 +31,7 @@ printf -v tablet_dir 'vt_%010d' $uid
 tablet_hostname='127.0.0.1'
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
-tablet_type=replica
-if [[ $uid -gt 10 ]]; then
-tablet_type=rdonly
-fi
-
-echo "Starting vttablet for $alias..."
+echo "Starting $TABLET_TYPE vttablet for $alias..."
 
 # shellcheck disable=SC2086
 vttablet \
@@ -45,7 +40,7 @@ vttablet \
  --log_queries_to_file $VTDATAROOT/tmp/$tablet_logfile \
  --tablet-path $alias \
  --tablet_hostname "$tablet_hostname" \
- --init_tablet_type $tablet_type \
+ --init_tablet_type $TABLET_TYPE \
  --health_check_interval 1s \
  --shard_sync_retry_delay 1s \
  --remote_operation_timeout 1s \
