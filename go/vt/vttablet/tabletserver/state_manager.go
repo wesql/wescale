@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/mysql"
+
 	"vitess.io/vitess/go/vt/servenv"
 
 	"google.golang.org/protobuf/proto"
@@ -154,6 +156,7 @@ type (
 		MakeNonPrimary()
 		Close()
 		Status() (time.Duration, error)
+		GtidExecuted() (mysql.Position, error)
 	}
 
 	queryEngine interface {
@@ -667,6 +670,9 @@ func (sm *stateManager) Broadcast() {
 	defer sm.mu.Unlock()
 
 	lag, err := sm.refreshReplHealthLocked()
+	//todo earayu handling error, maybe change 'ChangeState'
+	p, _ := sm.rt.GtidExecuted()
+	sm.hs.state.Position = mysql.EncodePosition(p)
 	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked())
 }
 

@@ -78,3 +78,12 @@ func (g *LastSeenGtid) String() string {
 	defer g.mu.RUnlock()
 	return g.gtidSet.String()
 }
+
+// Position returns the current position
+func (g *LastSeenGtid) Position() mysql.Position {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return mysql.Position{
+		GTIDSet: g.gtidSet,
+	}
+}
