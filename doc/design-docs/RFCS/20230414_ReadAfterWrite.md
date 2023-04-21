@@ -22,7 +22,7 @@ The ReadAfterWrite feature is being proposed to address the issue of read reques
 This feature would support use cases where read requests need to be performed immediately after write requests, such as in high-traffic applications or when dealing with time-sensitive data.
 
 The Picture below shows why the read request is not able to get the latest data.
-![hgfh1FYa7y](./images/hgfh1FYa7y.jpg)
+![MOzGxDQEp9](./images/MOzGxDQEp9.jpg)
 
 # Technical design
 
@@ -97,7 +97,7 @@ All the Steps above will not introduce additional network rounds, so the perform
 The users need to enable GTID to enable the feature.
 
 The Picture below shows why the ReadAfterWrite feature ensures the read request is able to get the latest data.
-![hgfh1FYa7y](./images/JsVdY0ltLU.jpg)
+![QlSyswIybc](./images/QlSyswIybc.jpg)
 
 ## Road Map
 
