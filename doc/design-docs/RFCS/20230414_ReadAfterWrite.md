@@ -1,11 +1,11 @@
 # 20230414_ReadAfterWrite
 
 - Feature: ReadAfterWrite
-- Status: draft
+- Status: in-progress
 - Start Date: 2023-04-14
 - Authors: @earayu
-- RFC PR:
-- WeSQL-Scale Issue:
+- RFC PR: https://github.com/apecloud/wesql-scale/pull/23
+- WeSQL-Scale Issue: https://github.com/apecloud/wesql-scale/issues/20
 
 # Summary
 
@@ -58,8 +58,6 @@ After parsing the response packet and get the GTIDs, WeSQL-Scale will store them
 
 Depends on the consistency level, the GTIDs may be stored in the client’s Session or a global memory data structure.
 
-(TODO: need to design the global memory data structure, the easiest way is to use a global variable, but may cause heavy lock contentions)
-
 Later read operations will utilize GTIDs stored in WeSQL-Scale’s memory, to ensure retrieval of data that was previously written. See belowing steps for more details.
 
 ### Step 3: Select a MySQL follower for reading
@@ -97,20 +95,29 @@ The users need to enable GTID to enable the feature.
 
 ## Road Map
 
-- [] implement Session Level ReadAfterWrite (Step 1、2、4)
+- [x] implement Session Level ReadAfterWrite (Step 1、2、4)
 
-- [] implement Instance Level ReadAfterWrite (Complement of Step 2、4)
+- [x] implement Instance Level ReadAfterWrite (Complement of Step 2、4)
 
-- [] implement CLUSTER_GTID_EXEUTED data structure (Step 3)
+- [ ] implement CLUSTER_GTID_EXEUTED data structure (Step 3)
 
 ## Usage
 
-TODO: may add serveral system variables for users to configure this feature
+### Enable ReadAfterWrite
 
-1. to decide whether or not the feature is enabled
-2. to decide what’s the scope of ReadAfterWrite: Session/Instance
-3. to decide the timeout parameter in Step 4
-4. may be more…
+users can enable the feature by setting a system variable:
+```MySQL
+set @@read_after_write_scope='NONE'; -- default
+set @@read_after_write_scope='SESSION';
+set @@read_after_write_scope='INSTANCE';
+```
+
+users can set the timeout for the `WAIT_FOR_EXECUTED_GTID_SET` function:
+```MySQL
+set @@read_after_write_timeout = 30; -- default 30s
+set @@read_after_write_timeout = 0.1; -- 100ms
+set @@read_after_write_timeout = 0; -- won't timeout wait forever
+```
 
 # Future Works
 

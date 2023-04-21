@@ -168,7 +168,7 @@ func newVCursorImpl(
 		connCollation = collations.Default()
 	}
 
-	vc := &vcursorImpl{
+	return &vcursorImpl{
 		safeSession:     safeSession,
 		keyspace:        keyspace,
 		tabletType:      tabletType,
@@ -183,9 +183,7 @@ func newVCursorImpl(
 		topoServer:      ts,
 		warnShardedOnly: warnShardedOnly,
 		pv:              pv,
-	}
-	vc.SetReadAfterWriteTimeout(defaultReadAfterWriteTimeout)
-	return vc, nil
+	}, nil
 }
 
 // HasSystemVariables returns whether the session has set system variables or not
