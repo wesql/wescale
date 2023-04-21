@@ -14,53 +14,60 @@ import (
 )
 
 func TestReadAfterWrite_Session(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", false, false)
+	runReadAfterWriteTest(t, true, "SESSION", false, false, false)
 }
 
 func TestReadAfterWrite_Session_Transaction(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", true, false)
+	runReadAfterWriteTest(t, true, "SESSION", false, true, false)
 }
 
 func TestReadAfterWrite_Session_Transaction_OLAP(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", true, true)
+	runReadAfterWriteTest(t, true, "SESSION", false, true, true)
 }
 
 func TestReadAfterWrite_Instance(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", false, false)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, false, false)
 }
 
 func TestReadAfterWrite_Instance_Transaction(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", false, false)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, false)
 }
 
 func TestReadAfterWrite_Instance_Transaction_OLAP(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", false, true)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true)
 }
 
-func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteScope string, enableTransaction bool, olap bool) {
+func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteScope string, separateConn, enableTransaction bool, olap bool) {
 	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
-		conn := getConn()
-		execMulti(t, conn, "create table t1(c1 int primary key auto_increment, c2 int);insert into t1(c1, c2) values(null, 1)")
+		rwConn := getConn()
+		roConn := rwConn
+		if separateConn {
+			roConn = getConn()
+		}
+		execMulti(t, rwConn, "create table t1(c1 int primary key auto_increment, c2 int);insert into t1(c1, c2) values(null, 1)")
 
 		// enable read after write & enable read after write for session
 		if enableReadWriteSplitting {
-			utils.Exec(t, conn, "set session read_write_splitting_policy='random'")
+			utils.Exec(t, roConn, "set session read_write_splitting_policy='random'")
 		}
-		utils.Exec(t, conn, fmt.Sprintf("set @@read_after_write_scope='%s'", readAfterWriteScope))
+		utils.Exec(t, roConn, fmt.Sprintf("set @@read_after_write_scope='%s'", readAfterWriteScope))
 		if olap {
-			utils.Exec(t, conn, "set @@workload='OLAP'")
+			utils.Exec(t, roConn, "set @@workload='OLAP'")
 		}
 
 		for i := 0; i < 1000; i++ {
 			if enableTransaction {
-				utils.Exec(t, conn, "begin")
+				utils.Exec(t, rwConn, "begin")
 			}
-			result := utils.Exec(t, conn, "insert into t1(c1, c2) values(null, 1)")
+			result := utils.Exec(t, rwConn, "insert into t1(c1, c2) values(null, 1)")
 			if enableTransaction {
-				utils.Exec(t, conn, "commit")
+				utils.Exec(t, rwConn, "commit")
 			}
 			lastInsertID := result.InsertID
-			qr := utils.Exec(t, conn, "select c1 from t1 order by c1 desc limit 1")
+			qr := utils.Exec(t, roConn, "select c1 from t1 order by c1 desc limit 1")
+			if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
+				t.Fatalf("read_after_write get empty result")
+			}
 			c1Val, err := qr.Rows[0][0].ToUint64()
 			if err != nil {
 				t.Fatalf("ToUint64 failed: %v", err)
