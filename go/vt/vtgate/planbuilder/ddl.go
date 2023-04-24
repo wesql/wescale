@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package planbuilder
 
 import (
@@ -333,18 +338,20 @@ func buildDropTable(vschema plancontext.VSchema, ddlStatement sqlparser.DDLState
 			}
 		} else {
 			keyspaceTab = table.Keyspace
-			ddlStatement.GetFromTables()[i] = sqlparser.TableName{
-				Name: table.Name,
-			}
+			// Regardless of how many tables are dropped, the database qualifier for each table must be retained.
+			//ddlStatement.GetFromTables()[i] = sqlparser.TableName{
+			//	Name: table.Name,
+			//}
 		}
 
 		if destination == nil && keyspace == nil {
 			destination = destinationTab
 			keyspace = keyspaceTab
 		}
-		if destination != destinationTab || keyspace != keyspaceTab {
-			return nil, nil, vterrors.VT12001(DifferentDestinations)
-		}
+		// When there are multiple databases, use the first database as the default database.
+		//if destination != destinationTab || keyspace != keyspaceTab {
+		//	return nil, nil, vterrors.VT12001(DifferentDestinations)
+		//}
 	}
 	return destination, keyspace, nil
 }
