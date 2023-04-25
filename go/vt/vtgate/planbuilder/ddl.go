@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package planbuilder
 
 import (
@@ -238,44 +243,14 @@ func buildAlterView(vschema plancontext.VSchema, ddl *sqlparser.AlterView, reser
 }
 
 func buildCreateView(vschema plancontext.VSchema, ddl *sqlparser.CreateView, reservedVars *sqlparser.ReservedVars, enableOnlineDDL, enableDirectDDL bool) (key.Destination, *vindexes.Keyspace, error) {
-	// For Create View, we require that the keyspace exist and the select query can be satisfied within the keyspace itself
-	// We should remove the keyspace name from the table name, as the database name in MySQL might be different than the keyspace name
+	// Due to the fact that wesql-scale is in unsharder mode
+	// and already supports multiple keyspace under a single instance,
+	// there is no longer a limitation for the SELECT query of CREATE VIEW to
+	// match the keyspace of the view.
 	destination, keyspace, _, err := vschema.TargetDestination(ddl.ViewName.Qualifier.String())
 	if err != nil {
 		return nil, nil, err
 	}
-	ddl.ViewName.Qualifier = sqlparser.NewIdentifierCS("")
-
-	selectPlan, err := createInstructionFor(sqlparser.String(ddl.Select), ddl.Select, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
-	if err != nil {
-		return nil, nil, err
-	}
-	selPlanKs := selectPlan.primitive.GetKeyspaceName()
-	if keyspace.Name != selPlanKs {
-		return nil, nil, vterrors.VT12001(ViewDifferentKeyspace)
-	}
-	if vschema.IsViewsEnabled() {
-		if keyspace == nil {
-			return nil, nil, vterrors.VT09005()
-		}
-		return destination, keyspace, nil
-	}
-	isRoutePlan, opCode := tryToGetRoutePlan(selectPlan.primitive)
-	if !isRoutePlan {
-		return nil, nil, vterrors.VT12001(ViewComplex)
-	}
-	if opCode != engine.Unsharded && opCode != engine.EqualUnique && opCode != engine.Scatter {
-		return nil, nil, vterrors.VT12001(ViewComplex)
-	}
-	_ = sqlparser.SafeRewrite(ddl.Select, nil, func(cursor *sqlparser.Cursor) bool {
-		switch tableName := cursor.Node().(type) {
-		case sqlparser.TableName:
-			cursor.Replace(sqlparser.TableName{
-				Name: tableName.Name,
-			})
-		}
-		return true
-	})
 	return destination, keyspace, nil
 }
 
