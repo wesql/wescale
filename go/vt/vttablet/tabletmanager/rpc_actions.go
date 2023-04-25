@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +24,6 @@ package tabletmanager
 import (
 	"fmt"
 	"time"
-
-	"vitess.io/vitess/go/vt/vterrors"
 
 	"context"
 
@@ -96,10 +99,6 @@ func (tm *TabletManager) changeTypeLocked(ctx context.Context, tabletType topoda
 		return err
 	}
 
-	// Let's see if we need to fix semi-sync acking.
-	if err := tm.fixSemiSyncAndReplication(tm.Tablet().Type, semiSync); err != nil {
-		return vterrors.Wrap(err, "fixSemiSyncAndReplication failed, may not ack correctly")
-	}
 	return nil
 }
 
