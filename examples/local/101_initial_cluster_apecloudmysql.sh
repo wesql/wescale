@@ -68,12 +68,12 @@ done
 echo ""
 echo "Staring add new learner node and tablet for wesql-scale cluster ..."
 # create ont wesql-server learner node.
-# TODO: when learner node promote to follower, rdonly should be changed to replica. but vtcltd not support this action for wesql-server.
-TABLETS_UID=(12)
+TABLETS_UID=(12 13)
 for i in ${TABLETS_UID[@]}; do
 	CELL=zone1 TABLET_UID=$i NODE_ROLE=learner ../common/scripts-apecloud/apecloudmysql-add-node.sh
 	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
 done
+
 echo ""
 echo "wesql-scale initial cluster setup done"
 
