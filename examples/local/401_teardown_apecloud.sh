@@ -27,7 +27,7 @@ source ../common/env-apecloud.sh
 
 ../common/scripts-apecloud/vtconsensus-down.sh
 
-for tablet in 1 2 3 11 12; do
+for tablet in 1 2 3 11 12 13; do
 		CELL=zone1 TABLET_UID=$tablet ../common/scripts-apecloud/vttablet-down.sh
 		TABLET_UID=$tablet ../common/scripts-apecloud/apecloudmysql-down.sh
 done
