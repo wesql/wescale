@@ -471,16 +471,6 @@ func (gw *TabletGateway) AddGtid(gtid string) {
 	}
 }
 
-// GetLastGtid returns the last seen gtid
-func (gw *TabletGateway) GetLastGtid(target string) string {
-	gtid, err := gw.lastSeenGtid.GetLastGtid(target)
-	if err != nil {
-		log.Errorf("Error getting last gtid: %v", err)
-		return ""
-	}
-	return gtid
-}
-
 // LastSeenGtidString returns the last seen gtid as a string
 func (gw *TabletGateway) LastSeenGtidString() string {
 	return gw.lastSeenGtid.String()

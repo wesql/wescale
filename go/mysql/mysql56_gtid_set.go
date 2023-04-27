@@ -199,27 +199,6 @@ func (set Mysql56GTIDSet) Last() string {
 	return buf.String()
 }
 
-func (set Mysql56GTIDSet) LastOf(target any) string {
-	sid, ok := target.(SID)
-	if !ok {
-		return ""
-	}
-
-	var buf strings.Builder
-	gtidsOfSid, ok := set[sid]
-	if !ok {
-		return ""
-	}
-	buf.WriteString(sid.String())
-	sequences := gtidsOfSid
-	if len(sequences) > 0 {
-		buf.WriteByte(':')
-		lastInterval := sequences[len(sequences)-1]
-		buf.WriteString(strconv.FormatInt(lastInterval.end, 10))
-	}
-	return buf.String()
-}
-
 // Flavor implements GTIDSet.
 func (Mysql56GTIDSet) Flavor() string { return Mysql56FlavorID }
 

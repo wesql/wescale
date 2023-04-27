@@ -7,13 +7,12 @@ package vtgate
 
 import (
 	"fmt"
-	"strconv"
 	"sync"
 
 	"vitess.io/vitess/go/mysql"
 )
 
-// todo earayu need to add testcase
+// LastSeenGtid is used to track the last seen gtid
 type LastSeenGtid struct {
 	mu      sync.RWMutex
 	flavor  string
@@ -48,29 +47,6 @@ func (g *LastSeenGtid) AddGtid(gtidStr string) error {
 	}
 	g.gtidSet = g.gtidSet.AddGTID(parsedGtid)
 	return nil
-}
-
-// GetLastGtid returns the last gtid for a given target
-func (g *LastSeenGtid) GetLastGtid(target string) (string, error) {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-
-	switch g.flavor {
-	case mysql.MariadbFlavorID:
-		sid, err := mysql.ParseSID(target)
-		if err != nil {
-			return "", err
-		}
-		return g.gtidSet.(mysql.Mysql56GTIDSet).LastOf(sid), nil
-	case mysql.Mysql56FlavorID:
-		domain, err := strconv.ParseUint(target, 10, 32)
-		if err != nil {
-			return "", err
-		}
-		return g.gtidSet.(mysql.MariadbGTIDSet).LastOf(uint32(domain)), nil
-	default:
-		return "", fmt.Errorf("unsupported flavor: %s", g.flavor)
-	}
 }
 
 func (g *LastSeenGtid) String() string {

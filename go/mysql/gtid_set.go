@@ -57,9 +57,6 @@ type GTIDSet interface {
 
 	// Union returns a union of the receiver GTIDSet and the supplied GTIDSet.
 	Last() string
-
-	//todo earayu add testcases
-	LastOf(target any) string
 }
 
 // gtidSetParsers maps flavor names to parser functions. It is used by

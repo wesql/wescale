@@ -159,10 +159,6 @@ func (gtid filePosGTID) Last() string {
 	return gtid.String()
 }
 
-func (gtid filePosGTID) LastOf(target any) string {
-	panic("not implemented")
-}
-
 func init() {
 	gtidParsers[FilePosFlavorID] = parseFilePosGTID
 	gtidSetParsers[FilePosFlavorID] = ParseFilePosGTIDSet

@@ -257,19 +257,6 @@ func (gtidSet MariadbGTIDSet) Last() string {
 	return gtidSet[lastGTID].String()
 }
 
-// LastOfSID returns the last gtid
-func (gtidSet MariadbGTIDSet) LastOf(target any) string {
-	domain, ok := target.(uint32)
-	if !ok {
-		return ""
-	}
-	r, ok := gtidSet[domain]
-	if !ok {
-		return ""
-	}
-	return r.String()
-}
-
 // deepCopy returns a deep copy of the set.
 func (gtidSet MariadbGTIDSet) deepCopy() MariadbGTIDSet {
 	newSet := make(MariadbGTIDSet, len(gtidSet))
