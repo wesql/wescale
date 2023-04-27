@@ -162,3 +162,34 @@ func createDbExecDropDb(t *testing.T, db string, f func(getConn func() *mysql.Co
 	}
 	f(getConn)
 }
+
+func getVTGateMysqlConn() *mysql.Conn {
+	ctx := context.Background()
+
+	params := mysql.ConnParams{
+		Host:   "localhost",
+		Port:   clusterInstance.VtgateMySQLPort,
+		DbName: KeyspaceName,
+	}
+	conn, err := mysql.Connect(ctx, &params)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return conn
+}
+
+func getBackendPrimaryMysqlConn() *mysql.Conn {
+	ctx := context.Background()
+
+	params := mysql.ConnParams{
+		Host:   "localhost",
+		Port:   clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet().MySQLPort,
+		DbName: KeyspaceName,
+		Uname:  "vt_dba",
+	}
+	conn, err := mysql.Connect(ctx, &params)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return conn
+}

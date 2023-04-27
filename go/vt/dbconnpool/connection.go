@@ -28,6 +28,7 @@ import (
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/dbconfigs"
+	"vitess.io/vitess/go/vt/log"
 )
 
 // DBConnection re-exposes mysql.Conn with some wrapping to implement
@@ -44,10 +45,8 @@ func NewDBConnection(ctx context.Context, info dbconfigs.Connector) (*DBConnecti
 	if err != nil {
 		return nil, err
 	}
-	// Tell the server that we understand the format of events
-	// that will be used if binlog_checksum is enabled on the server.
 	if _, err := c.ExecuteFetch("SET @@session_track_gtids='OWN_GTID'", 1, false); err != nil {
-		return nil, fmt.Errorf("failed to set @@session_track_gtids='OWN_GTID': %v", err)
+		log.Errorf("failed to set @@session_track_gtids='OWN_GTID': %v", err)
 	}
 	return &DBConnection{Conn: c}, nil
 }

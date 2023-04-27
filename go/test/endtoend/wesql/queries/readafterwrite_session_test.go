@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/test/endtoend/utils"
 )
@@ -79,4 +81,32 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 			}
 		}
 	})
+}
+
+func TestReadAfterWrite_Settings(t *testing.T) {
+	backendPrimaryMysqlConn := getBackendPrimaryMysqlConn()
+	defer backendPrimaryMysqlConn.Close()
+	qr := utils.Exec(t, backendPrimaryMysqlConn, "select @@gtid_mode")
+	if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
+		t.Fatalf("read_after_write get empty result")
+	}
+	gtidMode := qr.Rows[0][0].ToString()
+	if gtidMode == "ON" {
+		utils.Exec(t, backendPrimaryMysqlConn, "set global gtid_mode='ON_PERMISSIVE'")
+
+		qr = utils.Exec(t, backendPrimaryMysqlConn, "select @@gtid_mode")
+		if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
+			t.Fatalf("read_after_write get empty result")
+		}
+		gtidMode = qr.Rows[0][0].ToString()
+		if gtidMode != "ON_PERMISSIVE" {
+			t.Fatalf("gtid_mode is not ON_PERMISSIVE")
+		}
+	}
+
+	vtGateMysqlConn := getVTGateMysqlConn()
+	defer vtGateMysqlConn.Close()
+
+	_, err := utils.ExecAllowError(t, vtGateMysqlConn, "set @@read_after_write_consistency='INSTANCE'")
+	assert.Error(t, err, "ReadAfterWriteConsistency can only be set when gtid_mode is ON")
 }
