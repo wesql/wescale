@@ -670,9 +670,15 @@ func (sm *stateManager) Broadcast() {
 	defer sm.mu.Unlock()
 
 	lag, err := sm.refreshReplHealthLocked()
-	//todo earayu handling error, maybe change 'ChangeState'
-	p, _ := sm.rt.GtidExecuted()
-	sm.hs.state.Position = mysql.EncodePosition(p)
+	p, e := sm.rt.GtidExecuted()
+	if e != nil {
+		log.Errorf("Error getting GTIDExecuted: %v", e)
+		if err == nil {
+			err = e
+		}
+	} else {
+		sm.hs.state.Position = mysql.EncodePosition(p)
+	}
 	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked())
 }
 
