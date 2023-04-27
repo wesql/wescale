@@ -30,7 +30,7 @@ fi
 
 # mysqld might be in /usr/sbin which will not be in the default PATH
 PATH="/usr/sbin:$PATH"
-for binary in mysqld etcd etcdctl curl vtctlclient vttablet vtgate vtctld mysqlctl; do
+for binary in etcd etcdctl curl vtctlclient vttablet vtgate vtctld mysqlctl vtconsensus; do
   command -v "$binary" > /dev/null || fail "${binary} is not installed in PATH. See https://vitess.io/docs/get-started/local/ for install instructions."
 done;
 

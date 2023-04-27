@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -879,57 +884,6 @@ func (tm *TabletManager) fixSemiSync(tabletType topodatapb.TabletType, semiSync 
 func (tm *TabletManager) isPrimarySideSemiSyncEnabled() bool {
 	semiSyncEnabled, _ := tm.MysqlDaemon.SemiSyncEnabled()
 	return semiSyncEnabled
-}
-
-func (tm *TabletManager) fixSemiSyncAndReplication(tabletType topodatapb.TabletType, semiSync SemiSyncAction) error {
-	if semiSync == SemiSyncActionNone {
-		// Semi-sync handling is not required.
-		return nil
-	}
-
-	if tabletType == topodatapb.TabletType_PRIMARY {
-		// Primary is special. It is always handled at the
-		// right time by the reparent operations, it doesn't
-		// need to be fixed.
-		return nil
-	}
-
-	if err := tm.fixSemiSync(tabletType, semiSync); err != nil {
-		return vterrors.Wrapf(err, "failed to fixSemiSync(%v)", tabletType)
-	}
-
-	// If replication is running, but the status is wrong,
-	// we should restart replication. First, let's make sure
-	// replication is running.
-	status, err := tm.MysqlDaemon.ReplicationStatus()
-	if err != nil {
-		// Replication is not configured, nothing to do.
-		return nil
-	}
-	if !status.IOHealthy() {
-		// IO thread is not running, nothing to do.
-		return nil
-	}
-
-	//shouldAck := semiSync == SemiSyncActionSet
-	shouldAck := isPrimaryEligible(tabletType)
-	acking, err := tm.MysqlDaemon.SemiSyncReplicationStatus()
-	if err != nil {
-		return vterrors.Wrap(err, "failed to get SemiSyncReplicationStatus")
-	}
-	if shouldAck == acking {
-		return nil
-	}
-
-	// We need to restart replication
-	log.Infof("Restarting replication for semi-sync flag change to take effect from %v to %v", acking, shouldAck)
-	if err := tm.MysqlDaemon.StopReplication(tm.hookExtraEnv()); err != nil {
-		return vterrors.Wrap(err, "failed to StopReplication")
-	}
-	if err := tm.MysqlDaemon.StartReplication(tm.hookExtraEnv()); err != nil {
-		return vterrors.Wrap(err, "failed to StartReplication")
-	}
-	return nil
 }
 
 func (tm *TabletManager) handleRelayLogError(err error) error {
