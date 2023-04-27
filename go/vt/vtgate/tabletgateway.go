@@ -256,7 +256,7 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 // withRetry also adds shard information to errors returned from the inner QueryService, so
 // withShardError should not be combined with withRetry.
 func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, _ queryservice.QueryService,
-	_ string, inTransaction bool, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
+	_ string, inTransaction bool, options *querypb.ExecuteOptions, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
 	// for transactions, we connect to a specific tablet instead of letting gateway choose one
 	if inTransaction && target.TabletType != topodatapb.TabletType_PRIMARY {
 		return vterrors.Errorf(vtrpcpb.Code_INTERNAL, "tabletGateway's query service can only be used for non-transactional queries on replicas")
@@ -305,6 +305,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			}
 		}
 
+		// Get a healthy tablet connection that can be used for executing the query.
 		tablets := gw.hc.GetHealthyTabletStats(target)
 		if len(tablets) == 0 {
 			// if we have a keyspace event watcher, check if the reason why our primary is not available is that it's currently being resharded
@@ -324,20 +325,22 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			err = vterrors.Errorf(vtrpcpb.Code_UNAVAILABLE, "no healthy tablet available for '%s'", target.String())
 			break
 		}
-		gw.shuffleTablets(gw.localCell, tablets)
-
 		var th *discovery.TabletHealth
+		availableTablets := make([]*discovery.TabletHealth, 0)
 		// skip tablets we tried before
 		for _, t := range tablets {
-			if _, ok := invalidTablets[topoproto.TabletAliasString(t.Tablet.Alias)]; !ok {
-				th = t
-				break
+			if _, ok := invalidTablets[topoproto.TabletAliasString(t.Tablet.Alias)]; ok {
+				continue
 			}
+			availableTablets = append(availableTablets, t)
 		}
-		if th == nil {
+
+		// pick one tablet based on the pick tablet algorithm
+		th, e := gw.PickTablet(availableTablets, options)
+		if e != nil {
 			// do not override error from last attempt.
 			if err == nil {
-				err = vterrors.VT14002()
+				err = e
 			}
 			break
 		}
@@ -367,7 +370,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 
 // withShardError adds shard information to errors returned from the inner QueryService.
 func (gw *TabletGateway) withShardError(ctx context.Context, target *querypb.Target, conn queryservice.QueryService,
-	_ string, _ bool, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
+	_ string, _ bool, _ *querypb.ExecuteOptions, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
 	_, err := inner(ctx, target, conn)
 	return NewShardError(err, target)
 }

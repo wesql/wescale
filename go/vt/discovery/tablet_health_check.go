@@ -209,6 +209,9 @@ func (thc *tabletHealthCheck) processResponse(hc *HealthCheckImpl, shr *query.St
 	thc.setServingState(serving, reason)
 	if shr.Position != "" {
 		if p, err := mysql.DecodePosition(shr.Position); err == nil {
+			if !thc.Position.Equal(p) {
+				trivialUpdate = false
+			}
 			thc.Position = p
 		} else {
 			log.Errorf("Error decoding position: %v, position str: %s", err, shr.Position)
