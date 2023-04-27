@@ -908,10 +908,10 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, g
 		opts.ReadAfterWriteTimeout = session.Session.ReadAfterWrite.ReadAfterWriteTimeout
 	}
 
-	switch session.GetReadAfterWrite().GetReadAfterWriteScope() {
-	case vtgatepb.ReadAfterWriteScope_INSTANCE:
+	switch session.GetReadAfterWrite().GetReadAfterWriteConsistency() {
+	case vtgatepb.ReadAfterWriteConsistency_INSTANCE:
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
-	case vtgatepb.ReadAfterWriteScope_SESSION:
+	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 	}
 	return nil

@@ -61,13 +61,15 @@ enum CommitOrder {
   AUTOCOMMIT = 3;
 }
 
-enum ReadAfterWriteScope {
-  // NONE uses the read after write scope set by the VTGate flag 'read_after_write_scope'.
-  NONE = 0;
-  // SESSION is used to designate session read after write scope.
+enum ReadAfterWriteConsistency {
+  // NONE uses the read after write scope set by the VTGate flag 'read_after_write_consistency'.
+  EVENTUAL = 0;
+  // SESSION is used to designate session read after write consistency.
   SESSION = 1;
-  // INSTANCE is used to designate instance read after write scope.
+  // INSTANCE is used to designate instance read after write consistency.
   INSTANCE = 2;
+  //GLOBAL is used to designate global read after write consistency.
+  GLOBAL = 3;
 }
 
 // Session objects are exchanged like cookies through various
@@ -178,7 +180,7 @@ message ReadAfterWrite {
   string read_after_write_gtid = 1;
   double read_after_write_timeout = 2;
   bool session_track_gtids = 3;
-  ReadAfterWriteScope read_after_write_scope = 4;
+  ReadAfterWriteConsistency read_after_write_consistency = 4;
 }
 
 // ExecuteRequest is the payload to Execute.

@@ -425,8 +425,8 @@ func (m *ReadAfterWrite) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.ReadAfterWriteScope != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.ReadAfterWriteScope))
+	if m.ReadAfterWriteConsistency != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ReadAfterWriteConsistency))
 		i--
 		dAtA[i] = 0x20
 	}
@@ -1494,8 +1494,8 @@ func (m *ReadAfterWrite) SizeVT() (n int) {
 	if m.SessionTrackGtids {
 		n += 2
 	}
-	if m.ReadAfterWriteScope != 0 {
-		n += 1 + sov(uint64(m.ReadAfterWriteScope))
+	if m.ReadAfterWriteConsistency != 0 {
+		n += 1 + sov(uint64(m.ReadAfterWriteConsistency))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3102,9 +3102,9 @@ func (m *ReadAfterWrite) UnmarshalVT(dAtA []byte) error {
 			m.SessionTrackGtids = bool(v != 0)
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteScope", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteConsistency", wireType)
 			}
-			m.ReadAfterWriteScope = 0
+			m.ReadAfterWriteConsistency = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -3114,7 +3114,7 @@ func (m *ReadAfterWrite) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ReadAfterWriteScope |= ReadAfterWriteScope(b&0x7F) << shift
+				m.ReadAfterWriteConsistency |= ReadAfterWriteConsistency(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}

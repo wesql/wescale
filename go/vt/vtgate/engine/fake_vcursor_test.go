@@ -186,7 +186,7 @@ func (t *noopVCursor) SetSessionTrackGTIDs(b bool) {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetReadAfterWriteScope(s vtgatepb.ReadAfterWriteScope) {
+func (t *noopVCursor) SetReadAfterWriteConsistency(s vtgatepb.ReadAfterWriteConsistency) {
 	panic("implement me")
 }
 

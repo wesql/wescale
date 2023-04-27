@@ -113,9 +113,9 @@ The Picture below shows why the ReadAfterWrite feature ensures the read request 
 
 users can enable the feature by setting a system variable:
 ```MySQL
-set @@read_after_write_scope='NONE'; -- default
-set @@read_after_write_scope='SESSION';
-set @@read_after_write_scope='INSTANCE';
+set @@read_after_write_consistency='EVENTUAL'; -- default
+set @@read_after_write_consistency='SESSION';
+set @@read_after_write_consistency='INSTANCE';
 ```
 
 users can set the timeout for the `WAIT_FOR_EXECUTED_GTID_SET` function:

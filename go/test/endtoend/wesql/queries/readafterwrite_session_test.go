@@ -37,7 +37,7 @@ func TestReadAfterWrite_Instance_Transaction_OLAP(t *testing.T) {
 	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true)
 }
 
-func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteScope string, separateConn, enableTransaction bool, olap bool) {
+func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
 	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
 		roConn := rwConn
@@ -50,7 +50,7 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 		if enableReadWriteSplitting {
 			utils.Exec(t, roConn, "set session read_write_splitting_policy='random'")
 		}
-		utils.Exec(t, roConn, fmt.Sprintf("set @@read_after_write_scope='%s'", readAfterWriteScope))
+		utils.Exec(t, roConn, fmt.Sprintf("set @@read_after_write_consistency='%s'", readAfterWriteConsistency))
 		if olap {
 			utils.Exec(t, roConn, "set @@workload='OLAP'")
 		}

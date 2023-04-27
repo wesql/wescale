@@ -544,16 +544,16 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return err
 		}
 		vcursor.Session().SetReadAfterWriteGTID(str)
-	case sysvars.ReadAfterWriteScope.Name:
+	case sysvars.ReadAfterWriteConsistency.Name:
 		str, err := svss.evalAsString(env)
 		if err != nil {
 			return err
 		}
-		out, ok := vtgatepb.ReadAfterWriteScope_value[strings.ToUpper(str)]
-		if !ok {
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadAfterWriteScope: %s", str)
+		out, ok := vtgatepb.ReadAfterWriteConsistency_value[strings.ToUpper(str)]
+		if !ok || vtgatepb.ReadAfterWriteConsistency(out) == vtgatepb.ReadAfterWriteConsistency_GLOBAL {
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadAfterWriteConsistency: %s", str)
 		}
-		vcursor.Session().SetReadAfterWriteScope(vtgatepb.ReadAfterWriteScope(out))
+		vcursor.Session().SetReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency(out))
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		val, err := svss.evalAsFloat(env)
 		if err != nil {

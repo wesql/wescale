@@ -199,8 +199,8 @@ func TestRewrites(in *testing.T) {
 		expected:                 "select * from user where col = :__vtread_write_splitting_policy",
 		readWriteSplittingPolicy: true,
 	}, {
-		in:       `select * from user where col = @@read_after_write_gtid OR col = @@read_after_write_timeout OR col = @@session_track_gtids OR col = @@read_after_write_scope`,
-		expected: "select * from user where col = :__vtread_after_write_gtid or col = :__vtread_after_write_timeout or col = :__vtsession_track_gtids or col = :__vtread_after_write_scope",
+		in:       `select * from user where col = @@read_after_write_gtid OR col = @@read_after_write_timeout OR col = @@session_track_gtids OR col = @@read_after_write_consistency`,
+		expected: "select * from user where col = :__vtread_after_write_gtid or col = :__vtread_after_write_timeout or col = :__vtsession_track_gtids or col = :__vtread_after_write_consistency",
 		rawGTID:  true, rawTimeout: true, sessTrackGTID: true, scope: true,
 	}, {
 		in:       "SELECT * FROM tbl WHERE id IN (SELECT 1 FROM dual)",
@@ -381,7 +381,7 @@ func TestRewrites(in *testing.T) {
 			assert.Equal(tc.sessionUUID, result.NeedsSysVar(sysvars.SessionUUID.Name), "should need sessionUUID")
 			assert.Equal(tc.sessionEnableSystemSettings, result.NeedsSysVar(sysvars.SessionEnableSystemSettings.Name), "should need sessionEnableSystemSettings")
 			assert.Equal(tc.rawGTID, result.NeedsSysVar(sysvars.ReadAfterWriteGTID.Name), "should need rawGTID")
-			assert.Equal(tc.scope, result.NeedsSysVar(sysvars.ReadAfterWriteScope.Name), "should need scope")
+			assert.Equal(tc.scope, result.NeedsSysVar(sysvars.ReadAfterWriteConsistency.Name), "should need readAfterWriteConsistency")
 			assert.Equal(tc.rawTimeout, result.NeedsSysVar(sysvars.ReadAfterWriteTimeOut.Name), "should need rawTimeout")
 			assert.Equal(tc.sessTrackGTID, result.NeedsSysVar(sysvars.SessionTrackGTIDs.Name), "should need sessTrackGTID")
 			assert.Equal(tc.version, result.NeedsSysVar(sysvars.Version.Name), "should need Vitess version")

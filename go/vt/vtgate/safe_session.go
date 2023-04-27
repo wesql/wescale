@@ -761,14 +761,14 @@ func (session *SafeSession) SetSessionTrackGtids(enable bool) {
 	session.ReadAfterWrite.SessionTrackGtids = enable
 }
 
-// SetReadAfterWriteScope set the ReadAfterWriteScope setting.
-func (session *SafeSession) SetReadAfterWriteScope(scope vtgatepb.ReadAfterWriteScope) {
+// SetReadAfterWriteConsistency set the ReadAfterWriteConsistency setting.
+func (session *SafeSession) SetReadAfterWriteConsistency(scope vtgatepb.ReadAfterWriteConsistency) {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	if session.ReadAfterWrite == nil {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
 	}
-	session.ReadAfterWrite.ReadAfterWriteScope = scope
+	session.ReadAfterWrite.ReadAfterWriteConsistency = scope
 }
 
 func removeShard(tabletAlias *topodatapb.TabletAlias, sessions []*vtgatepb.Session_ShardSession) ([]*vtgatepb.Session_ShardSession, error) {
@@ -929,7 +929,7 @@ func (session *SafeSession) IsReadAfterWriteEnable() bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	return session.ReadAfterWrite != nil && session.ReadAfterWrite.ReadAfterWriteScope != vtgatepb.ReadAfterWriteScope_NONE
+	return session.ReadAfterWrite != nil && session.ReadAfterWrite.ReadAfterWriteConsistency != vtgatepb.ReadAfterWriteConsistency_EVENTUAL
 }
 
 func (l *executeLogger) log(primitive engine.Primitive, target *querypb.Target, gateway srvtopo.Gateway, query string, begin bool, bv map[string]*querypb.BindVariable) {
