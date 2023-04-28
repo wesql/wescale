@@ -105,7 +105,7 @@ The Picture below shows why the ReadAfterWrite feature ensures the read request 
 
 - [x] implement Instance Level ReadAfterWrite (Complement of Step 2、4)
 
-- [ ] implement CLUSTER_GTID_EXEUTED data structure (Step 3)
+- [x] implement CLUSTER_GTID_EXEUTED data structure (Step 3)
 
 ## Usage
 
