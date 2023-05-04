@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 
 	"vitess.io/vitess/go/vt/proto/vschema"
@@ -317,4 +319,47 @@ func TestFirstSortedKeyspace(t *testing.T) {
 	ks, err := vc.FirstSortedKeyspace()
 	require.NoError(t, err)
 	require.Equal(t, ks3Schema.Keyspace, ks)
+}
+
+func Test_vcursorImpl_DefaultKeyspace(t *testing.T) {
+	defaultKs := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "_vt"}}
+	ks1Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "xks1"}}
+	ks2Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "aks2"}}
+	ks3Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "aks1"}}
+	type fields struct {
+		vschema *vindexes.VSchema
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    *vindexes.Keyspace
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "no default keyspace",
+			fields: fields{
+				vschema: &vindexes.VSchema{
+					Keyspaces: map[string]*vindexes.KeyspaceSchema{
+						"_vt":                   defaultKs,
+						ks1Schema.Keyspace.Name: ks1Schema,
+						ks2Schema.Keyspace.Name: ks2Schema,
+						ks3Schema.Keyspace.Name: ks3Schema,
+					}},
+			},
+			want:    nil,
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vc := &vcursorImpl{
+				vschema: tt.fields.vschema,
+			}
+			got, err := vc.DefaultKeyspace()
+			if !tt.wantErr(t, err) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "DefaultKeyspace()")
+		})
+	}
 }

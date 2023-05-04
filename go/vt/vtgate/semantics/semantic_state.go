@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -413,6 +418,44 @@ func (st *SemTable) SingleUnshardedKeyspace() (*vindexes.Keyspace, []*vindexes.T
 		tables = append(tables, vindexTable)
 	}
 	return ks, tables
+}
+
+func (st *SemTable) GetVindexTable() []*vindexes.Table {
+	var tables []*vindexes.Table
+	for _, table := range st.Tables {
+		vindexTable := table.GetVindexTable()
+
+		if vindexTable == nil {
+			_, isDT := table.getExpr().Expr.(*sqlparser.DerivedTable)
+			if isDT {
+				// derived tables are ok, as long as all real tables are from the same unsharded keyspace
+				// we check the real tables inside the derived table as well for same unsharded keyspace.
+				continue
+			}
+			return nil
+		}
+		if vindexTable.Type != "" {
+			// A reference table is not an issue when seeing if a query is going to an unsharded keyspace
+			if vindexTable.Type == vindexes.TypeReference {
+				continue
+			}
+			return nil
+		}
+		name, ok := table.getExpr().Expr.(sqlparser.TableName)
+		if !ok {
+			return nil
+		}
+		if name.Name.String() != vindexTable.Name.String() {
+			// this points to a table alias. safer to not shortcut
+			return nil
+		}
+		this := vindexTable.Keyspace
+		if this == nil || this.Sharded {
+			return nil
+		}
+		tables = append(tables, vindexTable)
+	}
+	return tables
 }
 
 // EqualsExpr compares two expressions using the semantic analysis information.

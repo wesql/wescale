@@ -33,7 +33,11 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/vt/vtgate/engine"
 
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/cache"
@@ -98,7 +102,7 @@ var (
 
 	// ddl related flags
 	foreignKeyMode     = "allow"
-	dbDDLPlugin        = "fail"
+	dbDDLPlugin        = global.Pushdown
 	defaultDDLStrategy = string(schema.DDLStrategyDirect)
 	enableOnlineDDL    = true
 	enableDirectDDL    = true
@@ -299,6 +303,8 @@ func Init(
 		noScatter,
 		pv,
 	)
+
+	engine.RegisterPushdownDbOp(serv, gw)
 
 	// connect the schema tracker with the vschema manager
 	if enableSchemaChangeSignal {

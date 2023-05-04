@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,6 +73,7 @@ var (
 	// Hence, they are not listed in the list below.
 	clusterList = []string{
 		"vtctlbackup_sharded_clustertest_heavy",
+		"wesql",
 		"12",
 		"13",
 		"ers_prs_newfeatures_heavy",

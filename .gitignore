@@ -74,12 +74,15 @@ releases
 
 # Local examples
 /examples/local/vtdataroot
+/examples/apecloud/vtdataroot
 
 /dist/
 /vthook/
 /bin/
 /vtdataroot/
 venv
+.run/
+
 
 .scannerwork
 report

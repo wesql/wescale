@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +38,18 @@ import (
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 )
+
+func AssertDatabaseExists(t testing.TB, conn *mysql.Conn, dbName string) {
+	t.Helper()
+	qr := Exec(t, conn, fmt.Sprintf("show databases like '%s'", dbName))
+	require.Equal(t, 1, len(qr.Rows), "Database %s not found", dbName)
+}
+
+func AssertDatabaseNotExists(t testing.TB, conn *mysql.Conn, dbName string) {
+	t.Helper()
+	qr := Exec(t, conn, fmt.Sprintf("show databases like '%s'", dbName))
+	require.Equal(t, 0, len(qr.Rows), "Database %s found", dbName)
+}
 
 // AssertContains ensures the given query result contains the expected results.
 func AssertContains(t testing.TB, conn *mysql.Conn, query, expected string) {

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +23,8 @@ package planbuilder
 
 import (
 	"fmt"
+
+	"vitess.io/vitess/go/internal/global"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -172,9 +179,11 @@ func newBuildSelectPlan(
 	version querypb.ExecuteOptions_PlannerVersion,
 ) (plan logicalPlan, semTable *semantics.SemTable, tablesUsed []string, err error) {
 	ksName := ""
-	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
-		ksName = ks.Name
+	usingKs, err := GetUsingKs(selStmt, vschema)
+	if err != nil {
+		return nil, nil, nil, vterrors.VT09005()
 	}
+	ksName = usingKs.Name
 	semTable, err = semantics.Analyze(selStmt, ksName, vschema)
 	if err != nil {
 		return nil, nil, nil, err
@@ -184,57 +193,50 @@ func newBuildSelectPlan(
 
 	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
 
-	if ks, _ := semTable.SingleUnshardedKeyspace(); ks != nil {
-		plan, tablesUsed, err = unshardedShortcut(ctx, selStmt, ks)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		return plan, semTable, tablesUsed, err
-	}
-
-	// From this point on, we know it is not an unsharded query and return the NotUnshardedErr if there is any
-	if semTable.NotUnshardedErr != nil {
-		return nil, nil, nil, semTable.NotUnshardedErr
-	}
-
-	err = queryRewrite(semTable, reservedVars, selStmt)
+	plan, tablesUsed, err = pushdownShortcut(ctx, selStmt, usingKs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	op, err := operators.PlanQuery(ctx, selStmt)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	plan, err = transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	plan = optimizePlan(plan)
-
-	sel, isSel := selStmt.(*sqlparser.Select)
-	if isSel {
-		if err = setMiscFunc(plan, sel); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	if err = plan.WireupGen4(ctx); err != nil {
-		return nil, nil, nil, err
-	}
-
 	plan, err = pushCommentDirectivesOnPlan(plan, selStmt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	return plan, semTable, tablesUsed, err
+}
 
-	return plan, semTable, operators.TablesUsed(op), nil
+// GetUsingKs returns the keyspace to use for the query.
+func GetUsingKs(node sqlparser.SQLNode, vschema plancontext.VSchema) (*vindexes.Keyspace, error) {
+	// If the query has a USING clause, it returns the keyspace specified in the clause.
+	usingKs, err := vschema.DefaultKeyspace()
+	if err == nil {
+		return usingKs, nil
+	}
+
+	// If the query doesn't lookup any tables, it returns the default keyspace.
+	allTables := sqlparser.GetAllTableNames(node)
+	if len(allTables) == 1 && allTables[0].Name.String() == "dual" {
+		return vschema.FindKeyspace(global.DefaultKeyspace)
+	}
+
+	// Otherwise, it returns the default keyspace, the default keyspace is the first keyspace in the query.
+	firstKsName := ""
+	for _, table := range allTables {
+		if table.Qualifier.IsEmpty() {
+			continue
+		}
+		firstKsName = table.Qualifier.String()
+	}
+	if firstKsName == "" {
+		return nil, vterrors.VT09005()
+	}
+	if sqlparser.SystemSchema(firstKsName) {
+		return vschema.FindKeyspace(global.DefaultKeyspace)
+	}
+	usingKs, err = vschema.FindKeyspace(firstKsName)
+	if err != nil {
+		return nil, err
+	}
+	return usingKs, nil
 }
 
 // optimizePlan removes unnecessary simpleProjections that have been created while planning
@@ -270,9 +272,11 @@ func gen4UpdateStmtPlanner(
 	}
 
 	ksName := ""
-	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
-		ksName = ks.Name
+	usingKs, err := GetUsingKs(updStmt, vschema)
+	if err != nil {
+		return nil, vterrors.VT09005()
 	}
+	ksName = usingKs.Name
 	semTable, err := semantics.Analyze(updStmt, ksName, vschema)
 	if err != nil {
 		return nil, err
@@ -285,49 +289,14 @@ func gen4UpdateStmtPlanner(
 		return nil, err
 	}
 
-	if ks, tables := semTable.SingleUnshardedKeyspace(); ks != nil {
-		edml := engine.NewDML()
-		edml.Keyspace = ks
-		edml.Table = tables
-		edml.Opcode = engine.Unsharded
-		edml.Query = generateQuery(updStmt)
-		upd := &engine.Update{DML: edml}
-		return newPlanResult(upd, operators.QualifiedTables(ks, tables)...), nil
-	}
-
-	if semTable.NotUnshardedErr != nil {
-		return nil, semTable.NotUnshardedErr
-	}
-
-	err = queryRewrite(semTable, reservedVars, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
-
-	op, err := operators.PlanQuery(ctx, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err = pushCommentDirectivesOnPlan(plan, updStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	setLockOnAllSelect(plan)
-
-	if err := plan.WireupGen4(ctx); err != nil {
-		return nil, err
-	}
-
-	return newPlanResult(plan.Primitive(), operators.TablesUsed(op)...), nil
+	tables := semTable.GetVindexTable()
+	edml := engine.NewDML()
+	edml.Keyspace = usingKs
+	edml.Table = tables
+	edml.Opcode = engine.Unsharded
+	edml.Query = generateQuery(updStmt)
+	upd := &engine.Update{DML: edml}
+	return newPlanResult(upd, operators.QualifiedTables(usingKs, tables)...), nil
 }
 
 func gen4DeleteStmtPlanner(
@@ -349,9 +318,11 @@ func gen4DeleteStmtPlanner(
 	}
 
 	ksName := ""
-	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
-		ksName = ks.Name
+	usingKs, err := GetUsingKs(deleteStmt, vschema)
+	if err != nil {
+		return nil, vterrors.VT09005()
 	}
+	ksName = usingKs.Name
 	semTable, err := semantics.Analyze(deleteStmt, ksName, vschema)
 	if err != nil {
 		return nil, err
@@ -364,48 +335,14 @@ func gen4DeleteStmtPlanner(
 		return nil, err
 	}
 
-	if ks, tables := semTable.SingleUnshardedKeyspace(); ks != nil {
-		edml := engine.NewDML()
-		edml.Keyspace = ks
-		edml.Table = tables
-		edml.Opcode = engine.Unsharded
-		edml.Query = generateQuery(deleteStmt)
-		del := &engine.Delete{DML: edml}
-		return newPlanResult(del, operators.QualifiedTables(ks, tables)...), nil
-	}
-
-	if err := checkIfDeleteSupported(deleteStmt, semTable); err != nil {
-		return nil, err
-	}
-
-	err = queryRewrite(semTable, reservedVars, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx := plancontext.NewPlanningContext(reservedVars, semTable, vschema, version)
-	op, err := operators.PlanQuery(ctx, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err := transformToLogicalPlan(ctx, op, true)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err = pushCommentDirectivesOnPlan(plan, deleteStmt)
-	if err != nil {
-		return nil, err
-	}
-
-	setLockOnAllSelect(plan)
-
-	if err := plan.WireupGen4(ctx); err != nil {
-		return nil, err
-	}
-
-	return newPlanResult(plan.Primitive(), operators.TablesUsed(op)...), nil
+	tables := semTable.GetVindexTable()
+	edml := engine.NewDML()
+	edml.Keyspace = usingKs
+	edml.Table = tables
+	edml.Opcode = engine.Unsharded
+	edml.Query = generateQuery(deleteStmt)
+	del := &engine.Delete{DML: edml}
+	return newPlanResult(del, operators.QualifiedTables(usingKs, tables)...), nil
 }
 
 func rewriteRoutedTables(stmt sqlparser.Statement, vschema plancontext.VSchema) error {

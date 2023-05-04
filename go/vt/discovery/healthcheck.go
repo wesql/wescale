@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -660,7 +665,18 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	var result []*TabletHealth
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
-	return append(result, hc.healthy[KeyFromTarget(target)]...)
+
+	if hc.healthy[KeyFromTarget(target)] != nil {
+		return append(result, hc.healthy[KeyFromTarget(target)]...)
+	}
+	for _, value := range hc.healthy {
+		for _, th := range value {
+			if th.Target.TabletType == target.TabletType {
+				result = append(result, th)
+			}
+		}
+	}
+	return result
 }
 
 // GetTabletStats returns all tablets for the given target.

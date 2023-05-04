@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +45,8 @@ import (
 
 const (
 	// VtDbPrefix + keyspace is the default name for databases.
-	VtDbPrefix = "vt_"
+	VtDbPrefix    = "vt_"
+	EmptyDbPrefix = ""
 )
 
 // cache the conversion from tablet type enum to lower case string.
@@ -251,7 +257,7 @@ func TabletDbName(tablet *topodatapb.Tablet) string {
 	if tablet.Keyspace == "" {
 		return ""
 	}
-	return VtDbPrefix + tablet.Keyspace
+	return EmptyDbPrefix + tablet.Keyspace
 }
 
 // TabletIsAssigned returns if this tablet is assigned to a keyspace and shard.
