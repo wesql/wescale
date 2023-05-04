@@ -74,11 +74,7 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 			if err != nil {
 				t.Fatalf("ToUint64 failed: %v", err)
 			}
-			if lastInsertID != c1Val {
-				fmt.Printf("lastInsertID=%d\n", lastInsertID)
-				fmt.Printf("c1=%d\n", c1Val)
-				fmt.Printf("------------------------\n")
-			}
+			assert.Equal(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
 		}
 	})
 }

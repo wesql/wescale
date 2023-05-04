@@ -338,7 +338,7 @@ func (result *Result) AppendResult(src *Result) {
 		result.InsertID = src.InsertID
 	}
 	result.Rows = append(result.Rows, src.Rows...)
-	// Since sharding is not supported, the only mysqld accepts writes is the leader.
+	// Since sharding is not supported, the only mysqld accepting writes is the leader.
 	// We can just append the session state changes.
 	result.SessionStateChanges = src.SessionStateChanges
 }

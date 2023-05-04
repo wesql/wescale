@@ -183,7 +183,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsReadAfterWriteEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
 					err = setReadAfterWriteOpts(opts, session, stc.gateway)
 					if err != nil {
 						return nil, err
@@ -392,7 +392,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsReadAfterWriteEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
 					err = setReadAfterWriteOpts(opts, session, stc.gateway)
 					if err != nil {
 						return nil, err
@@ -899,7 +899,7 @@ const (
 )
 
 func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway) error {
-	if opts == nil || session == nil || session.Session == nil || !session.IsReadAfterWriteEnable() {
+	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
 		return nil
 	}
 	if session.Session.ReadAfterWrite.ReadAfterWriteTimeout < 0 {

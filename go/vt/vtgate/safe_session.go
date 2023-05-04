@@ -925,7 +925,7 @@ func (session *SafeSession) EnableLogging() {
 	session.logging = &executeLogger{}
 }
 
-func (session *SafeSession) IsReadAfterWriteEnable() bool {
+func (session *SafeSession) IsNonWeakReadAfterWriteConsistencyEnable() bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
