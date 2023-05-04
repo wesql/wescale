@@ -20,8 +20,6 @@
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 
 cell=${CELL:-'test'}
-keyspace=${KEYSPACE:-'test_keyspace'}
-shard=${SHARD:-'0'}
 uid=$TABLET_UID
 mysql_root="root"
 mysql_root_passwd=""
@@ -47,8 +45,6 @@ vttablet \
  --log_queries_to_file $VTDATAROOT/tmp/$tablet_logfile \
  --tablet-path $alias \
  --tablet_hostname "$tablet_hostname" \
- --init_keyspace $keyspace \
- --init_shard $shard \
  --init_tablet_type $tablet_type \
  --health_check_interval 1s \
  --shard_sync_retry_delay 1s \

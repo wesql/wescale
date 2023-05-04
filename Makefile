@@ -245,6 +245,9 @@ e2e_test_race: build
 e2e_test_cluster: build
 	tools/e2e_test_cluster.sh
 
+wesql_cluster_test: build
+	tools/wesql_cluster_test.sh
+
 .ONESHELL:
 SHELL = /bin/bash
 .SHELLFLAGS = -ec
