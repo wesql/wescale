@@ -29,29 +29,11 @@ idx=$uid
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 
-if [[ "$NODE_ROLE" = "follower" ]]; then
-  #generate cluster_info
-  for i in ${tablets_uid[@]}; do
-    cluster_info=$cluster_info"192.168.0."$[$i + 1]":13306;"
-  done
-  cluster_info=$(echo "$cluster_info" | sed 's/.$/@/')
-else
-  cluster_info="192.168.0."$[$uid + 1]":13306"
-  idx=
-fi
+cluster_info="192.168.0."$[$uid + 1]":13306"
 
 mkdir -p $VTDATAROOT/backups
 
-echo "Starting MySQL for tablet $alias..."
-action="init"
-
-if [ -d $VTDATAROOT/$tablet_dir ]; then
- echo "Resuming from existing vttablet dir:"
- echo "    $VTDATAROOT/$tablet_dir"
- action='start'
-fi
-
-echo "start apecloud mysql docker mysql-server$idx"
+echo "Starting apecloud mysql docker mysql-server$idx"
 docker run -itd  \
     --name mysql-server$idx \
     --network my_wesqlscale_network \
@@ -63,8 +45,21 @@ docker run -itd  \
     -e MYSQL_INIT_CONSENSUS_PORT=13306 \
     -v $VTDATAROOT/$tablet_dir:/mysql \
     -e CLUSTER_ID=1 \
-    -e CLUSTER_INFO="$cluster_info"$idx \
+    -e CLUSTER_INFO="$cluster_info" \
     apecloud/apecloud-mysql-server:8.0.30-5.alpha2.20230105.gd6b8719.2
 
-echo "apecloud mysql instance client connection: mysql -h$hostname -uroot -P$port"
+# add learner to wesql-server cluster
+echo "Add learner mysql-server$idx $cluster_info to wesql-server cluster ..."
+mysql -h127.0.0.1 -P15306  -e "call dbms_consensus.add_learner('$cluster_info');" >> ${VTDATAROOT}/tmp/setup_learner_error.log 2>&1
 
+echo "Wait for mysql-server$idx to be ready..."
+until mysqladmin ping -h127.0.0.1 -P$port -uroot > /dev/null 2>&1; do
+  sleep 5
+  mysqladmin flush-hosts
+done
+
+if [[ "$NODE_ROLE" = "follower" ]]; then
+  # promote learner to follower, rdonly to replica
+  echo "Upgrade learner to follower"
+  mysql -h127.0.0.1 -P15306  -e "call dbms_consensus.upgrade_learner('$cluster_info');" >> ${VTDATAROOT}/tmp/upgrade_learner_error.log 2>&1
+fi

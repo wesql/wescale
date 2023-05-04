@@ -25,6 +25,7 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 printf -v tablet_dir 'vt_%010d' $TABLET_UID
 pid=`cat $VTDATAROOT/$tablet_dir/vttablet.pid`
 
+echo "Stopping vttablet $tablet_dir"
 kill $pid
 
 # Wait for vttablet to die.

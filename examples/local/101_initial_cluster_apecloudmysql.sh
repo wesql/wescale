@@ -3,8 +3,6 @@
 # Copyright ApeCloud, Inc.
 # Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
-
-
 # Copyright 2019 The Vitess Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,15 +22,21 @@
 
 source ../common/env-apecloud.sh
 
+echo "create docker network for wesql-server cluster"
+# create docker network for wesql-server cluster
+docker network create --driver bridge --gateway=192.168.0.1 --subnet 192.168.0.0/24 my_wesqlscale_network
+
 # start topo server
 CELL=zone1 ../common/scripts-apecloud/etcd-up.sh
 
 # start vtctld
 CELL=zone1 ../common/scripts-apecloud/vtctld-up.sh
 
-for i in 11 12 13; do
-	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/apecloudmysql-up.sh
-	CELL=zone1 TABLET_UID=$i ../common/scripts-apecloud/vttablet-up.sh
+# create three vttablet replicas.
+TABLETS_UID=(1 2 3)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i TABLETS_UID=${TABLETS_UID[@]} NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-up.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
@@ -52,5 +56,24 @@ CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 # start vtadmin
 ../common/scripts-apecloud/vtadmin-up.sh
 
-echo "vitess client connection: mysql -uroot"
+echo "wesql-scale client connection: mysql -uroot
+"
+
+echo "Staring add new follower node and tablet for wesql-scale cluster ... "
+TABLETS_UID=(11)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-add-node.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
+done
+echo ""
+echo "Staring add new learner node and tablet for wesql-scale cluster ..."
+# create ont wesql-server learner node.
+# TODO: when learner node promote to follower, rdonly should be changed to replica. but vtcltd not support this action for wesql-server.
+TABLETS_UID=(12)
+for i in ${TABLETS_UID[@]}; do
+	CELL=zone1 TABLET_UID=$i NODE_ROLE=learner ../common/scripts-apecloud/apecloudmysql-add-node.sh
+	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
+done
+echo ""
+echo "wesql-scale initial cluster setup done"
 

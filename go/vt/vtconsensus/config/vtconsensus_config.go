@@ -257,10 +257,10 @@ func newConfiguration() *Configuration {
 		MySQLTopologyUseMutualTLS:                   false,
 		MySQLTopologyUseMixedTLS:                    true,
 		MySQLOrchestratorUseMutualTLS:               false,
-		MySQLConnectTimeoutSeconds:                  2,
+		MySQLConnectTimeoutSeconds:                  1,
 		MySQLOrchestratorReadTimeoutSeconds:         30,
 		MySQLOrchestratorRejectReadOnly:             false,
-		MySQLDiscoveryReadTimeoutSeconds:            10,
+		MySQLDiscoveryReadTimeoutSeconds:            1,
 		MySQLTopologyReadTimeoutSeconds:             600,
 		MySQLConnectionLifetimeSeconds:              0,
 		DefaultInstancePort:                         3306,
@@ -368,8 +368,8 @@ func newConfiguration() *Configuration {
 		DiscoveryIgnoreReplicaHostnameFilters:       []string{},
 		WebMessage:                                  "",
 		MaxConcurrentReplicaOperations:              5,
-		InstanceDBExecContextTimeoutSeconds:         30,
-		LockShardTimeoutSeconds:                     30,
+		InstanceDBExecContextTimeoutSeconds:         1,
+		LockShardTimeoutSeconds:                     1,
 		WaitReplicasTimeoutSeconds:                  30,
 	}
 }
