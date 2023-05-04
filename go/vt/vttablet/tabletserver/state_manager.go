@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -665,31 +670,39 @@ func (sm *stateManager) Broadcast() {
 	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked())
 }
 
+// For wesql-server, the health status of the replica is not judged by the replication lag,
+// but by the consensus log_index.
+// TODO: Currently, this logic is not added to judge the health status of the replica.
+//
+//	The replica provides read-only. When the client needs to limit the replica lag threshold,
+//	add this health check.
 func (sm *stateManager) refreshReplHealthLocked() (time.Duration, error) {
-	if sm.target.TabletType == topodatapb.TabletType_PRIMARY {
-		sm.replHealthy = true
-		return 0, nil
-	}
-	lag, err := sm.rt.Status()
-	if err != nil {
-		if sm.replHealthy {
-			log.Infof("Going unhealthy due to replication error: %v", err)
-		}
-		sm.replHealthy = false
-	} else {
-		if lag > sm.unhealthyThreshold.Get() {
-			if sm.replHealthy {
-				log.Infof("Going unhealthy due to high replication lag: %v", lag)
-			}
-			sm.replHealthy = false
-		} else {
-			if !sm.replHealthy {
-				log.Infof("Replication is healthy")
-			}
-			sm.replHealthy = true
-		}
-	}
-	return lag, err
+	sm.replHealthy = true
+	return 0, nil
+	//if sm.target.TabletType == topodatapb.TabletType_PRIMARY {
+	//	sm.replHealthy = true
+	//	return 0, nil
+	//}
+	//lag, err := sm.rt.Status()
+	//if err != nil {
+	//	if sm.replHealthy {
+	//		log.Infof("Going unhealthy due to replication error: %v", err)
+	//	}
+	//	sm.replHealthy = false
+	//} else {
+	//	if lag > sm.unhealthyThreshold.Get() {
+	//		if sm.replHealthy {
+	//			log.Infof("Going unhealthy due to high replication lag: %v", lag)
+	//		}
+	//		sm.replHealthy = false
+	//	} else {
+	//		if !sm.replHealthy {
+	//			log.Infof("Replication is healthy")
+	//		}
+	//		sm.replHealthy = true
+	//	}
+	//}
+	//return lag, err
 }
 
 // EnterLameduck causes tabletserver to enter the lameduck state. This
@@ -719,7 +732,8 @@ func (sm *stateManager) IsServing() bool {
 }
 
 func (sm *stateManager) isServingLocked() bool {
-	return sm.state == StateServing && sm.wantState == StateServing && sm.replHealthy && !sm.lameduck
+	//return sm.state == StateServing && sm.wantState == StateServing && sm.replHealthy && !sm.lameduck
+	return sm.state == StateServing && sm.wantState == StateServing && !sm.lameduck
 }
 
 func (sm *stateManager) AppendDetails(details []*kv) []*kv {

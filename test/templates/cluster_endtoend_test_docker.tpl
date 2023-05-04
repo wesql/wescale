@@ -1,5 +1,7 @@
 name: {{.Name}}
-on: [push, pull_request]
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:

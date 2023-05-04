@@ -1,5 +1,10 @@
 #!/bin/bash
 # shellcheck disable=SC2164
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 
 # Copyright 2019 The Vitess Authors.
 #
@@ -17,6 +22,8 @@
 
 ### This file is executed by 'make tools'. You do not need to execute it directly.
 
+export GITHUB_PROXY=https://ghproxy.com/
+
 source ./dev.env
 
 # Outline of this file.
@@ -26,10 +33,12 @@ source ./dev.env
 BUILD_JAVA=${BUILD_JAVA:-1}
 BUILD_CONSUL=${BUILD_CONSUL:-1}
 BUILD_CHROME=${BUILD_CHROME:-1}
+BUILD_K3S=${BUILD_K3S:-1}
+BUILD_ETCD=${BUILD_ETCD:-1}
 
 VITESS_RESOURCES_DOWNLOAD_BASE_URL="https://github.com/vitessio/vitess-resources/releases/download"
 VITESS_RESOURCES_RELEASE="v2.0"
-VITESS_RESOURCES_DOWNLOAD_URL="${VITESS_RESOURCES_DOWNLOAD_BASE_URL}/${VITESS_RESOURCES_RELEASE}"
+VITESS_RESOURCES_DOWNLOAD_URL="${GITHUB_PROXY}${VITESS_RESOURCES_DOWNLOAD_BASE_URL}/${VITESS_RESOURCES_RELEASE}"
 #
 # 0. Initialization and helper methods.
 #
@@ -114,7 +123,7 @@ install_protoc() {
   esac
 
   # This is how we'd download directly from source:
-  $VTROOT/tools/wget-retry https://github.com/protocolbuffers/protobuf/releases/download/v$version/protoc-$version-$platform-${target}.zip
+  $VTROOT/tools/wget-retry ${GITHUB_PROXY}https://github.com/protocolbuffers/protobuf/releases/download/v$version/protoc-$version-$platform-${target}.zip
   #$VTROOT/tools/wget-retry "${VITESS_RESOURCES_DOWNLOAD_URL}/protoc-$version-$platform-${target}.zip"
   unzip "protoc-$version-$platform-${target}.zip"
 
@@ -130,7 +139,7 @@ install_zookeeper() {
   vtzk="vt-zookeeper-$version"
   # This is how we'd download directly from source:
   # wget "https://dlcdn.apache.org/zookeeper/$zk/apache-$zk.tar.gz"
-  $VTROOT/tools/wget-retry "${VITESS_RESOURCES_DOWNLOAD_URL}/apache-${zk}.tar.gz"
+  $VTROOT/tools/wget-retry "${GITHUB_PROXY}${VITESS_RESOURCES_DOWNLOAD_URL}/apache-${zk}.tar.gz"
   tar -xzf "$dist/apache-$zk.tar.gz"
   mv $dist/apache-$zk $dist/$vtzk
   mvn -f $dist/$vtzk/zookeeper-contrib/zookeeper-contrib-fatjar/pom.xml clean install -P fatjar -DskipTests
@@ -161,7 +170,7 @@ install_etcd() {
   file="etcd-${version}-${platform}-${target}.${ext}"
 
   # This is how we'd download directly from source:
-  $VTROOT/tools/wget-retry "https://github.com/etcd-io/etcd/releases/download/$version/$file"
+  $VTROOT/tools/wget-retry "${GITHUB_PROXY}https://github.com/etcd-io/etcd/releases/download/$version/$file"
   #$VTROOT/tools/wget-retry "${VITESS_RESOURCES_DOWNLOAD_URL}/${file}"
   if [ "$ext" = "tar.gz" ]; then
     tar xzf "$file"
@@ -250,7 +259,7 @@ install_chromedriver() {
         ;;
       esac
       echo "For Arm64, using prebuilt binary from electron (https://github.com/electron/electron/) of version 76.0.3809.126"
-      $VTROOT/tools/wget-retry https://github.com/electron/electron/releases/download/v6.0.3/chromedriver-v6.0.3-linux-arm64.zip
+      $VTROOT/tools/wget-retry ${GITHUB_PROXY}https://github.com/electron/electron/releases/download/v6.0.3/chromedriver-v6.0.3-linux-arm64.zip
       unzip -o -q chromedriver-v6.0.3-linux-arm64.zip -d "$dist"
       rm chromedriver-v6.0.3-linux-arm64.zip
   else
@@ -274,10 +283,14 @@ install_all() {
   fi
 
   # etcd
-  install_dep "etcd" "v3.5.6" "$VTROOT/dist/etcd" install_etcd
+  if [ "$BUILD_ETCD" == 1 ] ; then
+    install_dep "etcd" "v3.5.6" "$VTROOT/dist/etcd" install_etcd
+  fi
 
   # k3s
-  command -v k3s || install_dep "k3s" "v1.0.0" "$VTROOT/dist/k3s" install_k3s
+  if [ "$BUILD_K3S" == 1 ] ; then
+    command -v k3s || install_dep "k3s" "v1.0.0" "$VTROOT/dist/k3s" install_k3s
+  fi
 
   # consul
   if [ "$BUILD_CONSUL" == 1 ] ; then

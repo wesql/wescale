@@ -1,7 +1,7 @@
 name: Upgrade Downgrade Testing Query Serving (Queries) Next Release
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+#  pull_request:
 
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Upgrade Downgrade Testing Query Serving (Queries) Next Release')
