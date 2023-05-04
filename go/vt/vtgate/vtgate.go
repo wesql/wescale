@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,6 +117,9 @@ var (
 	queryLogBufferSize = 10
 
 	messageStreamGracePeriod = 30 * time.Second
+
+	// read write splitting flags
+	defaultReadWriteSplittingPolicy = string(schema.ReadWriteSplittingPolicyDisable)
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -146,6 +154,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&queryLogBufferSize, "querylog-buffer-size", queryLogBufferSize, "Maximum number of buffered query logs before throttling log output")
 	fs.DurationVar(&messageStreamGracePeriod, "message_stream_grace_period", messageStreamGracePeriod, "the amount of time to give for a vttablet to resume if it ends a message stream, usually because of a reparent.")
 	fs.BoolVar(&enableViews, "enable-views", enableViews, "Enable views support in vtgate.")
+	fs.StringVar(&defaultReadWriteSplittingPolicy, "read_write_splitting_policy", defaultReadWriteSplittingPolicy, "Enable read write splitting.")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -252,6 +261,9 @@ func Init(
 
 	if _, err := schema.ParseDDLStrategy(defaultDDLStrategy); err != nil {
 		log.Fatalf("Invalid value for -ddl_strategy: %v", err.Error())
+	}
+	if _, err := schema.ParseReadWriteSplittingPolicySetting(defaultReadWriteSplittingPolicy); err != nil {
+		log.Fatalf("Invalid value for -read_write_splitting_policy: %v", err.Error())
 	}
 	tc := NewTxConn(gw, getTxMode())
 	// ScatterConn depends on TxConn to perform forced rollbacks.
@@ -644,4 +656,16 @@ func (vtg *VTGate) HandlePanic(err *error) {
 		*err = fmt.Errorf("uncaught panic: %v, vtgate: %v", x, servenv.ListeningURL.String())
 		errorCounts.Add([]string{"Panic", "Unknown", "Unknown", vtrpcpb.Code_INTERNAL.String()}, 1)
 	}
+}
+
+func SetDefaultReadWriteSplittingPolicy(strategy string) error {
+	//return error if strategy is empty
+	if strategy == "" {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid DDL strategy: %s", strategy)
+	}
+	if _, err := schema.ParseReadWriteSplittingPolicySetting(strategy); err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", strategy)
+	}
+	defaultReadWriteSplittingPolicy = strategy
+	return nil
 }
