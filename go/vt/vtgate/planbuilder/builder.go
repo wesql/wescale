@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,25 +136,15 @@ func BuildFromStmt(query string, stmt sqlparser.Statement, reservedVars *sqlpars
 	return plan, nil
 }
 
-func getConfiguredPlanner(vschema plancontext.VSchema, v3planner func(string) stmtPlanner, stmt sqlparser.Statement, query string) (stmtPlanner, error) {
+func getConfiguredPlanner(vschema plancontext.VSchema, stmt sqlparser.Statement, query string) (stmtPlanner, error) {
 	planner, ok := getPlannerFromQuery(stmt)
 	if !ok {
 		// if the query doesn't specify the planner, we check what the configuration is
 		planner = vschema.Planner()
 	}
 	switch planner {
-	case Gen4CompareV3:
-		return gen4CompareV3Planner(query), nil
 	case Gen4Left2Right, Gen4GreedyOnly:
 		return gen4Planner(query, planner), nil
-	case Gen4WithFallback:
-		fp := &fallbackPlanner{
-			primary:  gen4Planner(query, querypb.ExecuteOptions_Gen4),
-			fallback: v3planner(query),
-		}
-		return fp.plan, nil
-	case V3:
-		return v3planner(query), nil
 	default:
 		// default is gen4 plan
 		return gen4Planner(query, Gen4), nil
@@ -205,7 +200,7 @@ func buildRoutePlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVa
 func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
 	switch stmt := stmt.(type) {
 	case *sqlparser.Select:
-		configuredPlanner, err := getConfiguredPlanner(vschema, buildSelectPlan, stmt, query)
+		configuredPlanner, err := getConfiguredPlanner(vschema, stmt, query)
 		if err != nil {
 			return nil, err
 		}
@@ -213,19 +208,19 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.Insert:
 		return buildRoutePlan(stmt, reservedVars, vschema, buildInsertPlan)
 	case *sqlparser.Update:
-		configuredPlanner, err := getConfiguredPlanner(vschema, buildUpdatePlan, stmt, query)
+		configuredPlanner, err := getConfiguredPlanner(vschema, stmt, query)
 		if err != nil {
 			return nil, err
 		}
 		return buildRoutePlan(stmt, reservedVars, vschema, configuredPlanner)
 	case *sqlparser.Delete:
-		configuredPlanner, err := getConfiguredPlanner(vschema, buildDeletePlan, stmt, query)
+		configuredPlanner, err := getConfiguredPlanner(vschema, stmt, query)
 		if err != nil {
 			return nil, err
 		}
 		return buildRoutePlan(stmt, reservedVars, vschema, configuredPlanner)
 	case *sqlparser.Union:
-		configuredPlanner, err := getConfiguredPlanner(vschema, buildUnionPlan, stmt, query)
+		configuredPlanner, err := getConfiguredPlanner(vschema, stmt, query)
 		if err != nil {
 			return nil, err
 		}

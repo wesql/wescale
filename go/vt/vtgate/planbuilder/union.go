@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,32 +24,12 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-
 	"vitess.io/vitess/go/vt/vterrors"
 
 	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/vt/sqlparser"
 )
-
-func buildUnionPlan(string) stmtPlanner {
-	return func(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-		union := stmt.(*sqlparser.Union)
-		if union.With != nil {
-			return nil, vterrors.VT12001("WITH expression in UNION statement")
-		}
-		// For unions, create a pb with anonymous scope.
-		pb := newPrimitiveBuilder(vschema, newJointab(reservedVars))
-		if err := pb.processUnion(union, reservedVars, nil); err != nil {
-			return nil, err
-		}
-		if err := pb.plan.Wireup(pb.plan, pb.jt); err != nil {
-			return nil, err
-		}
-		return newPlanResult(pb.plan.Primitive()), nil
-	}
-}
 
 func (pb *primitiveBuilder) processUnion(union *sqlparser.Union, reservedVars *sqlparser.ReservedVars, outer *symtab) error {
 	if err := pb.processPart(union.Left, reservedVars, outer); err != nil {
