@@ -14,5 +14,6 @@ if [[ ! $commit_msg =~ $msg_re ]]
 then
   echo "$(tput -T xterm setaf 1)invalid commit message format. Please use the correct format, example:$(tput -T xterm setaf 1)"
   echo "$(tput -T xterm setaf 1)feat(#12345): commit message$(tput -T xterm setaf 1)"
+  echo "$(tput -T xterm setaf 1)The commit message should start with one of the following keywords: 'feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'workflow', 'build', 'ci', 'chore', or 'release'.$(tput -T xterm setaf 1)"
 	exit 1
 fi
