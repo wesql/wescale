@@ -8,7 +8,7 @@
 commit_msg=`cat $1`
 
 email=`git config user.email`
-msg_re="^(feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|release|workflow)(\(#.+\))\s*: .{1,140}"
+msg_re="^(feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|release|workflow)(\(#.+\))\s*:\s*.{1,140}"
 
 if [[ ! $commit_msg =~ $msg_re ]]
 then
