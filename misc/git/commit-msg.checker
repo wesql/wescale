@@ -1,0 +1,18 @@
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
+#!/bin/bash
+
+commit_msg=`cat $1`
+
+email=`git config user.email`
+msg_re="^(feat|fix|docs|style|refactor|perf|test|workflow|build|ci|chore|release|workflow)(\(#.+\))\s*: .{1,140}"
+
+if [[ ! $commit_msg =~ $msg_re ]]
+then
+  echo "$(tput -T xterm setaf 1)invalid commit message format. Please use the correct format, example:$(tput -T xterm setaf 1)"
+  echo "$(tput -T xterm setaf 1)feat(#12345): commit message$(tput -T xterm setaf 1)"
+	exit 1
+fi
