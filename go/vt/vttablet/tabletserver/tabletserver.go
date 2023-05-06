@@ -816,6 +816,9 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 }
 
 func (tsv *TabletServer) buildConnSettingForUserKeyspace(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
+	if keyspaceName == "" {
+		return nil
+	}
 	if connSetting == nil {
 		return pools.NewSetting(
 			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),

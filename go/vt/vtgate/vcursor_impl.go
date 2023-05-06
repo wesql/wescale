@@ -656,6 +656,11 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 	return rss, values, err
 }
 
+func (vc *vcursorImpl) ResolveDefaultDestination(destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	result, _ := vc.resolver.ResolveDefaultDestination(vc.tabletType, destination)
+	return result, nil
+}
+
 func (vc *vcursorImpl) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
 	rss, values, err := vc.resolver.ResolveDestinationsMultiCol(ctx, keyspace, vc.tabletType, ids, destinations)
 	if err != nil {
@@ -770,7 +775,7 @@ func commentedShardQueries(shardQueries []*querypb.BoundQuery, marginComments sq
 // TargetDestination implements the ContextVSchema interface
 func (vc *vcursorImpl) TargetDestination(qualifier string) (key.Destination, *vindexes.Keyspace, topodatapb.TabletType, error) {
 	keyspaceName := vc.keyspace
-	if vc.destination == nil && qualifier != "" {
+	if (vc.destination == nil || vc.destination == key.DestinationShard(global.DefaultShard)) && qualifier != "" {
 		keyspaceName = qualifier
 	}
 	if keyspaceName == "" {
@@ -1003,6 +1008,9 @@ func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetStr
 		for k := range vschema.Keyspaces {
 			destKeyspace = k
 		}
+	}
+	if dest == nil {
+		dest = key.DestinationShard("0")
 	}
 	return destKeyspace, destTabletType, dest, err
 }
