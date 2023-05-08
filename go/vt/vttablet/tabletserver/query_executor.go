@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,6 +67,7 @@ type QueryExecutor struct {
 	tsv            *TabletServer
 	tabletType     topodatapb.TabletType
 	setting        *pools.Setting
+	withoutDB      bool
 }
 
 const (
@@ -863,9 +869,17 @@ func (qre *QueryExecutor) execOther() (*sqltypes.Result, error) {
 func (qre *QueryExecutor) getConn() (*connpool.DBConn, error) {
 	span, ctx := trace.NewSpan(qre.ctx, "QueryExecutor.getConn")
 	defer span.Finish()
-
+	var conn *connpool.DBConn
+	var err error
 	start := time.Now()
-	conn, err := qre.tsv.qe.conns.Get(ctx, qre.setting)
+
+	// If the obtained connection does not need to specify a database, create a connection without dbname directly
+	// from the non-connection pool
+	if qre.withoutDB {
+		conn, err = qre.tsv.qe.conns.GetWithoutDB(ctx, qre.tsv.qe.env.Config().DB.DbaConnector(), qre.setting)
+	} else {
+		conn, err = qre.tsv.qe.conns.Get(ctx, qre.setting)
+	}
 
 	switch err {
 	case nil:
