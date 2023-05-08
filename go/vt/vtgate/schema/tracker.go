@@ -24,9 +24,11 @@ package schema
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/strings/slices"
 	"sync"
 	"time"
+
+	"k8s.io/utils/strings/slices"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
