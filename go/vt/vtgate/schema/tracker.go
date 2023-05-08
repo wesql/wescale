@@ -24,8 +24,10 @@ package schema
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/strings/slices"
 	"sync"
 	"time"
+	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/srvtopo"
@@ -199,6 +201,10 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	if th.Stats == nil {
 		return nil
 	}
+	// only primary tablets return schema info, see health_streamer.go#reload()
+	if th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+		return nil
+	}
 	// make sure we have the keyspace meta and the updateController
 	err := t.keyspaceMetaSync(th.Stats.DbList)
 	if err != nil {
@@ -236,6 +242,16 @@ func (t *Tracker) keyspaceMetaSync(dbList []string) error {
 		}
 		ksUpdater := t.newUpdateController(dbName)
 		t.tracked[dbName] = ksUpdater
+	}
+	for keyspace := range t.tracked {
+		if slices.Contains(dbList, keyspace) {
+			continue
+		}
+		delete(t.tracked, keyspace)
+		err := topotools.DropDatabaseMeta(t.ctx, ts, keyspace, []string{t.cell})
+		if err != nil {
+			return fmt.Errorf("keyspaceMetaSync#DropDatabaseMeta error, database %s: %v", keyspace, err)
+		}
 	}
 	return nil
 }
