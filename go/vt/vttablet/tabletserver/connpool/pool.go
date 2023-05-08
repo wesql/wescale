@@ -244,7 +244,7 @@ func (cp *Pool) GetWithoutDB(ctx context.Context, connector dbconfigs.Connector,
 		}
 	}
 
-	return NewDBConnNoPool(ctx, connector, nil, setting)
+	return NewDBConnNoPool(ctx, connector, cp.dbaPool, setting)
 }
 
 // Put puts a connection into the pool.
