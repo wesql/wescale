@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -209,6 +214,11 @@ func (c Connector) Host() string {
 // AppWithDB returns connection parameters for app with dbname set.
 func (dbcfgs *DBConfigs) AppWithDB() Connector {
 	return dbcfgs.makeParams(&dbcfgs.appParams, true)
+}
+
+// AppWithoutDB returns connection parameters for app without dbname.
+func (dbcfgs *DBConfigs) AppWithoutDB() Connector {
+	return dbcfgs.makeParams(&dbcfgs.appParams, false)
 }
 
 // AppDebugWithDB returns connection parameters for appdebug with dbname set.
