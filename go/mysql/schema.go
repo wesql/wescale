@@ -125,6 +125,8 @@ order by table_name, ordinal_position`
 
 	// FetchViews queries fetches all views
 	FetchViews = `select table_name, create_statement from _vt.views where table_schema = database()`
+
+	FetchDbList = `select schema_name from information_schema.schemata`
 )
 
 // BaseShowTablesFields contains the fields returned by a BaseShowTables or a BaseShowTablesForTable command.

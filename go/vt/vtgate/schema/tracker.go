@@ -18,10 +18,13 @@ package schema
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
-
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	"vitess.io/vitess/go/vt/srvtopo"
+	"vitess.io/vitess/go/vt/topo"
+	"vitess.io/vitess/go/vt/topotools"
 	"vitess.io/vitess/go/vt/vterrors"
 
 	"vitess.io/vitess/go/vt/callerid"
@@ -57,6 +60,9 @@ type (
 		// map of keyspace currently tracked
 		tracked      map[keyspaceStr]*updateController
 		consumeDelay time.Duration
+
+		serv srvtopo.Server
+		cell string
 	}
 )
 
@@ -67,7 +73,8 @@ const defaultConsumeDelay = 1 * time.Second
 const aclErrorMessageLog = "Table ACL might be enabled, --schema_change_signal_user needs to be passed to VTGate for schema tracking to work. Check 'schema tracking' docs on vitess.io"
 
 // NewTracker creates the tracker object.
-func NewTracker(ch chan *discovery.TabletHealth, user string, enableViews bool) *Tracker {
+// todo earayu fix testcase
+func NewTracker(serv srvtopo.Server, cell string, ch chan *discovery.TabletHealth, user string, enableViews bool) *Tracker {
 	ctx := context.Background()
 	// Set the caller on the context if the user is provided.
 	// This user that will be sent down to vttablet calls.
@@ -81,6 +88,8 @@ func NewTracker(ch chan *discovery.TabletHealth, user string, enableViews bool) 
 		tables:       &tableMap{m: map[keyspaceStr]map[tableNameStr][]vindexes.Column{}},
 		tracked:      map[keyspaceStr]*updateController{},
 		consumeDelay: defaultConsumeDelay,
+		serv:         serv,
+		cell:         cell,
 	}
 
 	if enableViews {
@@ -164,7 +173,9 @@ func (t *Tracker) Start() {
 			select {
 			case th := <-t.ch:
 				ksUpdater := t.getKeyspaceUpdateController(th)
-				ksUpdater.add(th)
+				if ksUpdater != nil {
+					ksUpdater.add(th)
+				}
 			case <-ctx.Done():
 				// closing of the channel happens outside the scope of the tracker. It is the responsibility of the one who created this tracker.
 				return
@@ -179,22 +190,64 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	ksUpdater, exists := t.tracked[th.Target.Keyspace]
-	if !exists {
-		ksUpdater = t.newUpdateController()
-		t.tracked[th.Target.Keyspace] = ksUpdater
+	if th.Stats == nil {
+		return nil
 	}
+	// make sure we have the keyspace meta and the updateController
+	err := t.keyspaceMetaSync(th.Stats.DbList)
+	if err != nil {
+		log.Errorf("Error syncing keyspace meta for keyspace %s: %v", th.Target.Keyspace, err)
+		return nil
+	}
+	ksUpdater := t.tracked[th.Target.Keyspace]
 	return ksUpdater
 }
 
-func (t *Tracker) newUpdateController() *updateController {
-	return &updateController{update: t.updateSchema, reloadKeyspace: t.initKeyspace, signal: t.signal, consumeDelay: t.consumeDelay}
+func (t *Tracker) keyspaceMetaSync(dbList []string) error {
+	if len(dbList) == 0 {
+		return nil
+	}
+	ts, err := t.serv.GetTopoServer()
+	if err != nil {
+		return err
+	}
+
+	for _, dbName := range dbList {
+		// if we are already tracking this keyspace, we must have the keyspace metadata, so we can skip it.
+		if _, exists := t.tracked[dbName]; exists {
+			continue
+		}
+		// if we don't have the keyspace metadata, we must write it to the topo server.
+		ksInfo, err := ts.GetKeyspace(t.ctx, dbName)
+		if err != nil && !topo.IsErrType(err, topo.NoNode) {
+			return fmt.Errorf("keyspaceMetaSync#GetKeyspace error, keyspace %s: %v", dbName, err)
+		}
+		if ksInfo == nil {
+			err := topotools.CreateDatabaseMeta(t.ctx, ts, dbName, []string{t.cell})
+			if err != nil {
+				return fmt.Errorf("keyspaceMetaSync error, database %s: %v", dbName, err)
+			}
+		}
+		ksUpdater := t.newUpdateController(dbName)
+		t.tracked[dbName] = ksUpdater
+	}
+	return nil
 }
 
-func (t *Tracker) initKeyspace(th *discovery.TabletHealth) error {
-	err := t.LoadKeyspace(th.Conn, th.Target)
+func (t *Tracker) newUpdateController(keyspaceStr keyspaceStr) *updateController {
+	return &updateController{keyspaceStr: keyspaceStr, update: t.updateSchema, reloadKeyspace: t.initKeyspace, signal: t.signal, consumeDelay: t.consumeDelay}
+}
+
+func (t *Tracker) initKeyspace(keyspaceStr keyspaceStr, th *discovery.TabletHealth) error {
+	target := &querypb.Target{
+		Keyspace:   keyspaceStr,
+		Shard:      th.Target.Shard,
+		TabletType: th.Target.TabletType,
+		Cell:       th.Target.Cell,
+	}
+	err := t.LoadKeyspace(th.Conn, target)
 	if err != nil {
-		log.Warningf("Unable to add the %s keyspace to the schema tracker: %v", th.Target.Keyspace, err)
+		log.Warningf("Unable to add the %s keyspace to the schema tracker: %v", keyspaceStr, err)
 		code := vterrors.Code(err)
 		if code == vtrpcpb.Code_UNAUTHENTICATED || code == vtrpcpb.Code_PERMISSION_DENIED {
 			log.Warning(aclErrorMessageLog)
@@ -242,19 +295,26 @@ func (t *Tracker) Views(ks string) map[string]sqlparser.SelectStatement {
 	return t.views.m[ks]
 }
 
-func (t *Tracker) updateSchema(th *discovery.TabletHealth) bool {
+func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool {
+	target := &querypb.Target{
+		Keyspace:   keyspaceStr,
+		Shard:      th.Target.Shard,
+		TabletType: th.Target.TabletType,
+		Cell:       th.Target.Cell,
+	}
 	success := true
 	if th.Stats.TableSchemaChanged != nil {
-		success = t.updatedTableSchema(th)
+		success = t.updatedTableSchema(th, target)
 	}
 	if !success || th.Stats.ViewSchemaChanged == nil {
 		return success
 	}
 	// there is view definition change in the tablet
-	return t.updatedViewSchema(th)
+	return t.updatedViewSchema(th, target)
 }
 
-func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth) bool {
+func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth, target *querypb.Target) bool {
+	// todo earayu: the tablesUpdated should be filtered by the keyspace
 	tablesUpdated := th.Stats.TableSchemaChanged
 	tables, err := sqltypes.BuildBindVariable(tablesUpdated)
 	if err != nil {
@@ -262,9 +322,9 @@ func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth) bool {
 		return false
 	}
 	bv := map[string]*querypb.BindVariable{"tableNames": tables}
-	res, err := th.Conn.Execute(t.ctx, th.Target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
+	res, err := th.Conn.Execute(t.ctx, target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
 	if err != nil {
-		t.tracked[th.Target.Keyspace].setLoaded(false)
+		t.tracked[target.Keyspace].setLoaded(false)
 		// TODO: optimize for the tables that got errored out.
 		log.Warningf("error fetching new schema for %v, making them non-authoritative: %v", tablesUpdated, err)
 		code := vterrors.Code(err)
@@ -280,9 +340,9 @@ func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth) bool {
 	// first we empty all prior schema. deleted tables will not show up in the result,
 	// so this is the only chance to delete
 	for _, tbl := range tablesUpdated {
-		t.tables.delete(th.Target.Keyspace, tbl)
+		t.tables.delete(target.Keyspace, tbl)
 	}
-	t.updateTables(th.Target.Keyspace, res)
+	t.updateTables(target.Keyspace, res)
 	return true
 }
 
@@ -301,23 +361,24 @@ func (t *Tracker) updateTables(keyspace string, res *sqltypes.Result) {
 	}
 }
 
-func (t *Tracker) updatedViewSchema(th *discovery.TabletHealth) bool {
+func (t *Tracker) updatedViewSchema(th *discovery.TabletHealth, target *querypb.Target) bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
+	// todo earayu: the viewsUpdated should be filtered by the keyspace
 	viewsUpdated := th.Stats.ViewSchemaChanged
 
 	// first we empty all prior schema. deleted tables will not show up in the result,
 	// so this is the only chance to delete
 	for _, view := range viewsUpdated {
-		t.views.delete(th.Target.Keyspace, view)
+		t.views.delete(target.Keyspace, view)
 	}
-	err := th.Conn.GetSchema(t.ctx, th.Target, querypb.SchemaTableType_VIEWS, viewsUpdated, func(schemaRes *querypb.GetSchemaResponse) error {
-		t.updateViews(th.Target.Keyspace, schemaRes.TableDefinition)
+	err := th.Conn.GetSchema(t.ctx, target, querypb.SchemaTableType_VIEWS, viewsUpdated, func(schemaRes *querypb.GetSchemaResponse) error {
+		t.updateViews(target.Keyspace, schemaRes.TableDefinition)
 		return nil
 	})
 	if err != nil {
-		t.tracked[th.Target.Keyspace].setLoaded(false)
+		t.tracked[target.Keyspace].setLoaded(false)
 		// TODO: optimize for the views that got errored out.
 		log.Warningf("error fetching new views definition for %v", viewsUpdated, err)
 		return false
@@ -343,7 +404,7 @@ func (t *Tracker) RegisterSignalReceiver(f func()) {
 
 // AddNewKeyspace adds keyspace to the tracker.
 func (t *Tracker) AddNewKeyspace(conn queryservice.QueryService, target *querypb.Target) error {
-	updateController := t.newUpdateController()
+	updateController := t.newUpdateController(target.Keyspace)
 	t.tracked[target.Keyspace] = updateController
 	err := t.LoadKeyspace(conn, target)
 	if err != nil {

@@ -36,13 +36,14 @@ type (
 		mu             sync.Mutex
 		queue          *queue
 		consumeDelay   time.Duration
-		update         func(th *discovery.TabletHealth) bool
-		reloadKeyspace func(th *discovery.TabletHealth) error
+		update         func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool
+		reloadKeyspace func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) error
 		signal         func()
 		loaded         bool
 
 		// we'll only log a failed keyspace loading once
-		ignore bool
+		ignore      bool
+		keyspaceStr keyspaceStr
 	}
 )
 
@@ -64,9 +65,9 @@ func (u *updateController) consume() {
 
 		var success bool
 		if loaded {
-			success = u.update(item)
+			success = u.update(u.keyspaceStr, item)
 		} else {
-			if err := u.reloadKeyspace(item); err == nil {
+			if err := u.reloadKeyspace(u.keyspaceStr, item); err == nil {
 				success = true
 			} else {
 				if checkIfWeShouldIgnoreKeyspace(err) {

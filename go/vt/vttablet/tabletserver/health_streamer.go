@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -340,6 +341,11 @@ func (hs *healthStreamer) reload() error {
 	}
 	defer conn.Recycle()
 
+	dbList, err := hs.getDbList(ctx, conn)
+	if err != nil {
+		return err
+	}
+
 	tables, err := hs.getChangedTableNames(ctx, conn)
 	if err != nil {
 		return err
@@ -351,16 +357,18 @@ func (hs *healthStreamer) reload() error {
 	}
 
 	// no change detected
-	if len(tables) == 0 && len(views) == 0 {
+	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 {
 		return nil
 	}
 
 	hs.state.RealtimeStats.TableSchemaChanged = tables
 	hs.state.RealtimeStats.ViewSchemaChanged = views
+	hs.state.RealtimeStats.DbList = dbList
 	shr := proto.Clone(hs.state).(*querypb.StreamHealthResponse)
 	hs.broadCastToClients(shr)
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil
+	hs.state.RealtimeStats.DbList = nil
 
 	return nil
 }
@@ -475,4 +483,16 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 	hs.views = views
 
 	return changedViews, nil
+}
+
+func (hs *healthStreamer) getDbList(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
+	qr, err := conn.Exec(ctx, mysql.FetchDbList, math.MaxInt32, true)
+	if err != nil {
+		return nil, err
+	}
+	var dbList []string
+	for _, row := range qr.Rows {
+		dbList = append(dbList, row[0].ToString())
+	}
+	return dbList, nil
 }

@@ -141,7 +141,7 @@ func TestTracking(t *testing.T) {
 		t.Run(fmt.Sprintf("%d - %s", i, tcase.tName), func(t *testing.T) {
 			sbc := sandboxconn.NewSandboxConn(tablet)
 			ch := make(chan *discovery.TabletHealth)
-			tracker := NewTracker(ch, "", false)
+			tracker := NewTracker(nil, "", ch, "", false)
 			tracker.consumeDelay = 1 * time.Millisecond
 			tracker.Start()
 			defer tracker.Stop()
@@ -210,7 +210,7 @@ func TestTrackingUnHealthyTablet(t *testing.T) {
 
 	sbc := sandboxconn.NewSandboxConn(tablet)
 	ch := make(chan *discovery.TabletHealth)
-	tracker := NewTracker(ch, "", false)
+	tracker := NewTracker(nil, "", ch, "", false)
 	tracker.consumeDelay = 1 * time.Millisecond
 	tracker.Start()
 	defer tracker.Stop()
@@ -354,7 +354,7 @@ func TestViewsTracking(t *testing.T) {
 	}}
 
 	ch := make(chan *discovery.TabletHealth)
-	tracker := NewTracker(ch, "", true)
+	tracker := NewTracker(nil, "", ch, "", true)
 	tracker.tables = nil // making tables map nil - so load keyspace does not try to load the tables information.
 	tracker.consumeDelay = 1 * time.Millisecond
 	tracker.Start()
