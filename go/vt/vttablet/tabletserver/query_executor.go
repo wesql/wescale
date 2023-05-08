@@ -876,7 +876,7 @@ func (qre *QueryExecutor) getConn() (*connpool.DBConn, error) {
 	// If the obtained connection does not need to specify a database, create a connection without dbname directly
 	// from the non-connection pool
 	if qre.withoutDB {
-		conn, err = qre.tsv.qe.conns.GetWithoutDB(ctx, qre.tsv.qe.env.Config().DB.DbaConnector(), qre.setting)
+		conn, err = qre.tsv.qe.conns.GetWithoutDB(ctx, qre.tsv.qe.env.Config().DB.AppWithoutDB(), qre.setting)
 	} else {
 		conn, err = qre.tsv.qe.conns.Get(ctx, qre.setting)
 	}
