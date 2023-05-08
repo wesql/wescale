@@ -817,17 +817,23 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 
 func (tsv *TabletServer) buildConnSettingForUserKeyspace(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
 	if keyspaceName == "" {
-		return nil
+		if connSetting == nil {
+			return nil
+		}
+		return pools.NewSetting(
+			connSetting.GetQuery(),
+			connSetting.GetResetQuery(),
+		)
 	}
 	if connSetting == nil {
 		return pools.NewSetting(
 			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),
-			"use "+tsv.config.DB.DBName,
+			"create database _someweiredname;use _someweiredname;drop database _someweiredname;",
 		)
 	}
 	return pools.NewSetting(
 		"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName})+";"+connSetting.GetQuery(),
-		"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
+		"create database _someweiredname;use _someweiredname;drop database _someweiredname;"+connSetting.GetResetQuery(),
 	)
 }
 

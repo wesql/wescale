@@ -333,7 +333,7 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		log.Infof("TabletManager Start took ~%d ms", time.Since(servenv.GetInitStartTime()).Milliseconds())
 	}()
 	log.Infof("TabletManager Start")
-	tm.DBConfigs.DBName = topoproto.TabletDbName(tablet)
+	tm.DBConfigs.DBName = ""
 	tm.tabletAlias = tablet.Alias
 	tm.tmState = newTMState(tm, tablet)
 	tm.actionSema = sync2.NewSemaphore(1, 0)
