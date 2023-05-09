@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 
 # Copyright 2019 The Vitess Authors.
 # 
@@ -17,8 +22,6 @@
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 cell=${CELL:-'test'}
-keyspace=${KEYSPACE:-'test_keyspace'}
-shard=${SHARD:-'0'}
 uid=$TABLET_UID
 mysql_port=$[17000 + $uid]
 port=$[15000 + $uid]
@@ -42,8 +45,6 @@ vttablet \
  --log_queries_to_file $VTDATAROOT/tmp/$tablet_logfile \
  --tablet-path $alias \
  --tablet_hostname "$tablet_hostname" \
- --init_keyspace $keyspace \
- --init_shard $shard \
  --init_tablet_type $tablet_type \
  --health_check_interval 5s \
  --enable_replication_reporter \

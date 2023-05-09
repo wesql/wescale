@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/sysvars"
 
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
@@ -262,6 +264,8 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 	case sysvars.DDLStrategy.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplittingPolicy.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
+	case sysvars.ReadAfterWriteTimeOut.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	}
 	//handle set global to mysql
@@ -542,6 +546,24 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return err
 		}
 		vcursor.Session().SetReadAfterWriteGTID(str)
+	case sysvars.ReadAfterWriteConsistency.Name:
+		str, err := svss.evalAsString(env)
+		if err != nil {
+			return err
+		}
+		out, ok := vtgatepb.ReadAfterWriteConsistency_value[strings.ToUpper(str)]
+		if !ok || vtgatepb.ReadAfterWriteConsistency(out) == vtgatepb.ReadAfterWriteConsistency_GLOBAL {
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadAfterWriteConsistency: %s", str)
+		}
+		ok, err = checkVariableValue(vcursor, "gtid_mode", "ON")
+		if err != nil {
+			return fmt.Errorf("error checking cluster environment before setting ReadAfterWriteConsistency: %v", err)
+		}
+		if !ok {
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "ReadAfterWriteConsistency can only be set when gtid_mode is ON")
+		}
+
+		vcursor.Session().SetReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency(out))
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		val, err := svss.evalAsFloat(env)
 		if err != nil {
@@ -637,4 +659,25 @@ func (v *VitessMetadata) Execute(ctx context.Context, vcursor VCursor, env *eval
 
 func (v *VitessMetadata) VariableName() string {
 	return v.Name
+}
+
+func checkVariableValue(vcursor VCursor, name string, value string) (bool, error) {
+	checkSysVarQuery := fmt.Sprintf("select 1 from dual where @@%s = '%s'", name, value)
+	rss, _, err := vcursor.ResolveDestinations(context.Background(), global.DefaultKeyspace, nil, []key.Destination{key.DestinationAllShards{}})
+	if err != nil {
+		return false, err
+	}
+	if len(rss) == 0 {
+		return false, fmt.Errorf("no shards found for keyspace %s", global.DefaultKeyspace)
+	}
+
+	result, err := execShard(context.Background(), nil, vcursor, checkSysVarQuery, make(map[string]*querypb.BindVariable), rss[0], false, false)
+	if err != nil {
+		log.Warningf("unable to validate the current settings for '%s': %s", name, err.Error())
+		return false, err
+	}
+	if len(result.Rows) == 0 {
+		return false, nil
+	}
+	return true, nil
 }

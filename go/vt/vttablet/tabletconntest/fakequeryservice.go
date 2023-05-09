@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -158,9 +163,9 @@ func (f *FakeQueryService) Begin(ctx context.Context, target *querypb.Target, op
 const commitTransactionID int64 = 999044
 
 // Commit is part of the queryservice.QueryService interface
-func (f *FakeQueryService) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {
+func (f *FakeQueryService) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error) {
 	if f.HasError {
-		return 0, f.TabletError
+		return 0, "", f.TabletError
 	}
 	if f.Panics {
 		panic(fmt.Errorf("test-triggered panic"))
@@ -169,7 +174,7 @@ func (f *FakeQueryService) Commit(ctx context.Context, target *querypb.Target, t
 	if transactionID != commitTransactionID {
 		f.t.Errorf("Commit: invalid TransactionId: got %v expected %v", transactionID, commitTransactionID)
 	}
-	return 0, nil
+	return 0, "", nil
 }
 
 // rollbackTransactionID is a test transactin id for Rollback.

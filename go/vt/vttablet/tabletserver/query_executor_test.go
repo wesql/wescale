@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1775,6 +1780,57 @@ func TestQueryExecSchemaReloadCount(t *testing.T) {
 			_, err := qre.Execute()
 			require.NoError(t, err)
 			assert.EqualValues(t, tcase.schemaReloadCount, qre.tsv.se.SchemaReloadTimings.Counts()["TabletServerTest.SchemaReload"], "got: %v", qre.tsv.se.SchemaReloadTimings.Counts())
+		})
+	}
+}
+
+func TestQueryExecutor_addPrefixWaitGtid(t *testing.T) {
+	tests := []struct {
+		name                    string
+		options                 *querypb.ExecuteOptions
+		sql                     string
+		wantNewSQL              string
+		wantWaitGtidPrefixAdded bool
+	}{
+		{
+			name: "no GTID options",
+			options: &querypb.ExecuteOptions{
+				ReadAfterWriteGtid:    "",
+				ReadAfterWriteTimeout: float64(30),
+			},
+			sql:                     "select * from t1",
+			wantNewSQL:              "select * from t1",
+			wantWaitGtidPrefixAdded: false,
+		},
+		{
+			name: "with GTID options",
+			options: &querypb.ExecuteOptions{
+				ReadAfterWriteGtid:    "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-135147",
+				ReadAfterWriteTimeout: float64(30),
+			},
+			sql:                     "select * from t1",
+			wantNewSQL:              "SELECT WAIT_FOR_EXECUTED_GTID_SET('df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-135147', 30);select * from t1",
+			wantWaitGtidPrefixAdded: true,
+		},
+		{
+			name: "with GTID options",
+			options: &querypb.ExecuteOptions{
+				ReadAfterWriteGtid:    "ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-135147",
+				ReadAfterWriteTimeout: float64(0),
+			},
+			sql:                     "select * from t1",
+			wantNewSQL:              "SELECT WAIT_FOR_EXECUTED_GTID_SET('ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-135147', 0);select * from t1",
+			wantWaitGtidPrefixAdded: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			qre := &QueryExecutor{
+				options: tt.options,
+			}
+			gotNewSQL, gotWaitGtidPrefixAdded := qre.addPrefixWaitGtid(tt.sql)
+			assert.Equalf(t, tt.wantNewSQL, gotNewSQL, "addPrefixWaitGtid(%v)", tt.sql)
+			assert.Equalf(t, tt.wantWaitGtidPrefixAdded, gotWaitGtidPrefixAdded, "addPrefixWaitGtid(%v)", tt.sql)
 		})
 	}
 }

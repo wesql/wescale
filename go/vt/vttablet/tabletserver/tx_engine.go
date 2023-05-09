@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -247,17 +252,18 @@ func (te *TxEngine) Begin(ctx context.Context, savepointQueries []string, reserv
 }
 
 // Commit commits the specified transaction and renews connection id if one exists.
-func (te *TxEngine) Commit(ctx context.Context, transactionID int64) (int64, string, error) {
+func (te *TxEngine) Commit(ctx context.Context, transactionID int64) (int64, string, string, error) {
 	span, ctx := trace.NewSpan(ctx, "TxEngine.Commit")
 	defer span.Finish()
 	var query string
+	var sessionStateChanges string
 	var err error
 	connID, err := te.txFinish(transactionID, tx.TxCommit, func(conn *StatefulConnection) error {
-		query, err = te.txPool.Commit(ctx, conn)
+		query, sessionStateChanges, err = te.txPool.Commit(ctx, conn)
 		return err
 	})
 
-	return connID, query, err
+	return connID, query, sessionStateChanges, err
 }
 
 // Rollback rolls back the specified transaction.

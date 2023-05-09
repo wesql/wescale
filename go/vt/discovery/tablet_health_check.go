@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sync2"
 
 	"vitess.io/vitess/go/vt/grpcclient"
@@ -72,6 +78,8 @@ type tabletHealthCheck struct {
 	// possibly delete both these
 	loggedServingState    bool
 	lastResponseTimestamp time.Time // timestamp of the last healthcheck response
+	// position is the current replication position of the tablet.
+	Position mysql.Position
 }
 
 // String is defined because we want to print a []*tabletHealthCheck array nicely.
@@ -91,6 +99,7 @@ func (thc *tabletHealthCheck) SimpleCopy() *TabletHealth {
 		Tablet:               thc.Tablet,
 		Target:               thc.Target,
 		Stats:                thc.Stats,
+		Position:             thc.Position,
 		LastError:            thc.LastError,
 		PrimaryTermStartTime: thc.PrimaryTermStartTime,
 		Serving:              thc.Serving,
@@ -198,6 +207,16 @@ func (thc *tabletHealthCheck) processResponse(hc *HealthCheckImpl, shr *query.St
 		reason = "healthCheck update error: " + healthErr.Error()
 	}
 	thc.setServingState(serving, reason)
+	if shr.Position != "" {
+		if p, err := mysql.DecodePosition(shr.Position); err == nil {
+			if !thc.Position.Equal(p) {
+				trivialUpdate = false
+			}
+			thc.Position = p
+		} else {
+			log.Errorf("Error decoding position: %v, position str: %s", err, shr.Position)
+		}
+	}
 
 	// notify downstream for primary change
 	hc.updateHealth(thc.SimpleCopy(), prevTarget, trivialUpdate, thc.Serving)

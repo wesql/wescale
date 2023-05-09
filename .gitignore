@@ -74,7 +74,7 @@ releases
 
 # Local examples
 /examples/local/vtdataroot
-/examples/apecloud/vtdataroot
+/examples/x/vtdataroot
 
 /dist/
 /vthook/

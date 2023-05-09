@@ -534,6 +534,7 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.Names.Name,
 		sysvars.TransactionMode.Name,
 		sysvars.ReadAfterWriteGTID.Name,
+		sysvars.ReadAfterWriteConsistency.Name,
 		sysvars.ReadAfterWriteTimeOut.Name,
 		sysvars.SessionEnableSystemSettings.Name,
 		sysvars.SessionTrackGTIDs.Name,

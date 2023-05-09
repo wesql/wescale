@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -344,6 +350,11 @@ message ExecuteOptions {
   // TransactionAccessMode specifies the access modes to be used while starting the transaction i.e. READ WRITE/READ ONLY/WITH CONSISTENT SNAPSHOT
   // If not specified, the transaction will be started with the default access mode on the connection.
   repeated TransactionAccessMode transaction_access_mode = 14;
+
+  // ReadAfterWriteGtid is a list of GTIDs that the client has already seen.
+  string ReadAfterWriteGtid = 15;
+  // ReadAfterWriteTimeout is the timeout for the read-after-write.
+  double ReadAfterWriteTimeout = 16;
 }
 
 // Field describes a single column returned by a query
@@ -519,6 +530,7 @@ message CommitRequest {
 // CommitResponse is the returned value from Commit
 message CommitResponse {
   int64 reserved_id = 1;
+  string session_state_changes = 2;
 }
 
 // RollbackRequest is the payload to Rollback
@@ -956,6 +968,8 @@ message StreamHealthResponse {
   // hasn't changed in the meantime e.g. due to tablet restarts where ports or
   // ips have been reused but assigned differently.
   topodata.TabletAlias tablet_alias = 5;
+  // position is the replication position of the tablet.
+  string position = 7;
 }
 
 // TransactionState represents the state of a distributed transaction.
