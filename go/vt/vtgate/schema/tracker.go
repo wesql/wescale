@@ -210,7 +210,7 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	// make sure we have the keyspace meta and the updateController
 	err := t.keyspaceMetaSync(th.Stats.DbList)
 	if err != nil {
-		log.Errorf("Error syncing keyspace meta for keyspace %s: %v", th.Target.Keyspace, err)
+		log.Errorf("Error syncing keyspace meta", err)
 		return nil
 	}
 	ksUpdater := t.tracked[th.Target.Keyspace]
@@ -251,7 +251,7 @@ func (t *Tracker) keyspaceMetaSync(dbList []string) error {
 		}
 		delete(t.tracked, keyspace)
 		err := topotools.DropDatabaseMeta(t.ctx, ts, keyspace, []string{t.cell})
-		if err != nil {
+		if err != nil && !topo.IsErrType(err, topo.NoNode) {
 			return fmt.Errorf("keyspaceMetaSync#DropDatabaseMeta error, database %s: %v", keyspace, err)
 		}
 	}
