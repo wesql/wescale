@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,13 +177,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
-					if err != nil {
-						return nil, err
-					}
-				}
 			}
 
 			if autocommit {
@@ -273,10 +261,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			// Don't append more rows if row count is exceeded.
 			if ignoreMaxMemoryRows || len(qr.Rows) <= maxMemoryRows {
 				qr.AppendResult(innerqr)
-			}
-			if qr.SessionStateChanges != "" {
-				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
-				stc.gateway.AddGtid(qr.SessionStateChanges)
 			}
 			return newInfo, nil
 		},
@@ -391,13 +375,6 @@ func (stc *ScatterConn) StreamExecuteMulti(
 
 			if session != nil && session.Session != nil {
 				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
-					if err != nil {
-						return nil, err
-					}
-				}
 			}
 
 			if autocommit {
@@ -897,22 +874,3 @@ const (
 	reserve
 	begin
 )
-
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway) error {
-	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
-		return nil
-	}
-	if session.Session.ReadAfterWrite.ReadAfterWriteTimeout < 0 {
-		opts.ReadAfterWriteTimeout = defaultReadAfterWriteTimeout
-	} else {
-		opts.ReadAfterWriteTimeout = session.Session.ReadAfterWrite.ReadAfterWriteTimeout
-	}
-
-	switch session.GetReadAfterWrite().GetReadAfterWriteConsistency() {
-	case vtgatepb.ReadAfterWriteConsistency_INSTANCE:
-		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
-	case vtgatepb.ReadAfterWriteConsistency_SESSION:
-		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
-	}
-	return nil
-}

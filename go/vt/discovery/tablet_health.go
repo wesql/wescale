@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +21,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"vitess.io/vitess/go/mysql"
-
 	"vitess.io/vitess/go/vt/topo/topoproto"
 
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
@@ -46,7 +39,6 @@ type TabletHealth struct {
 	Tablet               *topodata.Tablet
 	Target               *query.Target
 	Stats                *query.RealtimeStats
-	Position             mysql.Position
 	PrimaryTermStartTime int64
 	LastError            error
 	Serving              bool
@@ -98,8 +90,7 @@ func (th *TabletHealth) DeepEqual(other *TabletHealth) bool {
 		th.PrimaryTermStartTime == other.PrimaryTermStartTime &&
 		proto.Equal(th.Stats, other.Stats) &&
 		((th.LastError == nil && other.LastError == nil) ||
-			(th.LastError != nil && other.LastError != nil && th.LastError.Error() == other.LastError.Error())) &&
-		th.Position.Equal(other.Position)
+			(th.LastError != nil && other.LastError != nil && th.LastError.Error() == other.LastError.Error()))
 }
 
 // GetTabletHostPort formats a tablet host port address.

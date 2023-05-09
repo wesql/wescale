@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,11 +60,11 @@ func TestTxPoolExecuteCommit(t *testing.T) {
 	conn3, err := txPool.GetAndLock(id, "")
 	require.NoError(t, err)
 
-	_, _, err = txPool.Commit(ctx, conn3)
+	_, err = txPool.Commit(ctx, conn3)
 	require.NoError(t, err)
 
 	// try committing again. this should fail
-	_, _, err = txPool.Commit(ctx, conn)
+	_, err = txPool.Commit(ctx, conn)
 	require.EqualError(t, err, "not in a transaction")
 
 	// wrap everything up and assert
@@ -127,7 +122,7 @@ func TestTxPoolRollbackNonBusy(t *testing.T) {
 	txPool.Shutdown(ctx)
 
 	// committing tx1 should not be an issue
-	_, _, err = txPool.Commit(ctx, conn1)
+	_, err = txPool.Commit(ctx, conn1)
 	require.NoError(t, err)
 
 	// Trying to get back to conn2 should not work since the transaction has been rolled back
@@ -165,7 +160,7 @@ func TestTxPoolAutocommit(t *testing.T) {
 	query := "select 3"
 	conn1.Exec(ctx, query, 1, false)
 
-	_, _, err = txPool.Commit(ctx, conn1)
+	_, err = txPool.Commit(ctx, conn1)
 	require.NoError(t, err)
 	conn1.Release(tx.TxCommit)
 
@@ -348,7 +343,7 @@ func TestTxPoolGetConnRecentlyRemovedTransaction(t *testing.T) {
 
 	conn1, _, _, _ = txPool.Begin(ctx, &querypb.ExecuteOptions{}, false, 0, nil, nil)
 	id = conn1.ReservedID()
-	_, _, err := txPool.Commit(ctx, conn1)
+	_, err := txPool.Commit(ctx, conn1)
 	require.NoError(t, err)
 
 	conn1.Releasef("transaction committed")

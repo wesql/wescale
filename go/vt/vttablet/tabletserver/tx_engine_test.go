@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -168,7 +163,7 @@ func TestTxEngineBegin(t *testing.T) {
 		te.AcceptReadOnly()
 		tx1, _, err := exec()
 		require.NoError(t, err)
-		_, _, _, err = te.Commit(ctx, tx1)
+		_, _, err = te.Commit(ctx, tx1)
 		require.NoError(t, err)
 		requireLogs(t, db.QueryLog(), "start transaction read only", "commit")
 		db.ResetQueryLog()
@@ -176,7 +171,7 @@ func TestTxEngineBegin(t *testing.T) {
 		te.AcceptReadWrite()
 		tx2, _, err := exec()
 		require.NoError(t, err)
-		_, _, _, err = te.Commit(ctx, tx2)
+		_, _, err = te.Commit(ctx, tx2)
 		require.NoError(t, err)
 		requireLogs(t, db.QueryLog(), "begin", "commit")
 		db.ResetQueryLog()
@@ -216,7 +211,7 @@ func TestTxEngineRenewFails(t *testing.T) {
 
 	// commit will do a renew
 	dbConn := conn.dbConn
-	_, _, _, err = te.Commit(ctx, connID)
+	_, _, err = te.Commit(ctx, connID)
 	require.Error(t, err)
 	assert.True(t, conn.IsClosed(), "connection was not closed")
 	assert.True(t, dbConn.IsClosed(), "underlying connection was not closed")
@@ -597,7 +592,7 @@ func TestTxEngineFailReserve(t *testing.T) {
 	_, err = te.Reserve(ctx, options, txID, []string{"dummy_query"})
 	assert.EqualError(t, err, "unknown error: failed executing dummy_query (errno 1105) (sqlstate HY000) during query: dummy_query")
 
-	connID, _, _, err := te.Commit(ctx, txID)
+	connID, _, err := te.Commit(ctx, txID)
 	require.Error(t, err)
 	assert.Zero(t, connID)
 }

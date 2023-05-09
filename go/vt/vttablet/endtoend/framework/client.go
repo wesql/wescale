@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,7 +102,7 @@ func (client *QueryClient) Begin(clientFoundRows bool) error {
 // Commit commits the current transaction.
 func (client *QueryClient) Commit() error {
 	defer func() { client.transactionID = 0 }()
-	rID, _, err := client.server.Commit(client.ctx, client.target, client.transactionID)
+	rID, err := client.server.Commit(client.ctx, client.target, client.transactionID)
 	client.reservedID = rID
 	if err != nil {
 		return err

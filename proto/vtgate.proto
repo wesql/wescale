@@ -61,17 +61,6 @@ enum CommitOrder {
   AUTOCOMMIT = 3;
 }
 
-enum ReadAfterWriteConsistency {
-  // NONE uses the read after write scope set by the VTGate flag 'read_after_write_consistency'.
-  EVENTUAL = 0;
-  // SESSION is used to designate session read after write consistency.
-  SESSION = 1;
-  // INSTANCE is used to designate instance read after write consistency.
-  INSTANCE = 2;
-  //GLOBAL is used to designate global read after write consistency.
-  GLOBAL = 3;
-}
-
 // Session objects are exchanged like cookies through various
 // calls to VTGate. The behavior differs between V2 & V3 APIs.
 // V3 APIs are Execute, ExecuteBatch and StreamExecute. All
@@ -180,7 +169,6 @@ message ReadAfterWrite {
   string read_after_write_gtid = 1;
   double read_after_write_timeout = 2;
   bool session_track_gtids = 3;
-  ReadAfterWriteConsistency read_after_write_consistency = 4;
 }
 
 // ExecuteRequest is the payload to Execute.

@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +19,6 @@ package repltracker
 import (
 	"sync"
 	"time"
-
-	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/stats"
 
@@ -73,15 +66,4 @@ func (p *poller) Status() (time.Duration, error) {
 	p.timeRecorded = time.Now()
 	replicationLagSeconds.Set(int64(p.lag.Seconds()))
 	return p.lag, nil
-}
-
-func (p *poller) GtidExecuted() (mysql.Position, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	position, err := p.mysqld.PrimaryPosition()
-	if err != nil {
-		return mysql.Position{}, err
-	}
-	return position, nil
 }

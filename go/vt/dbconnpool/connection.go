@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +23,6 @@ import (
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/log"
 )
 
 // DBConnection re-exposes mysql.Conn with some wrapping to implement
@@ -44,9 +38,6 @@ func NewDBConnection(ctx context.Context, info dbconfigs.Connector) (*DBConnecti
 	c, err := info.Connect(ctx)
 	if err != nil {
 		return nil, err
-	}
-	if _, err := c.ExecuteFetch("SET @@session_track_gtids='OWN_GTID'", 1, false); err != nil {
-		log.Errorf("failed to set @@session_track_gtids='OWN_GTID': %v", err)
 	}
 	return &DBConnection{Conn: c}, nil
 }

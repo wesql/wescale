@@ -83,10 +83,9 @@ var (
 	VersionComment = SystemVariable{Name: "version_comment"}
 
 	// Read After Write settings
-	ReadAfterWriteGTID        = SystemVariable{Name: "read_after_write_gtid"}
-	ReadAfterWriteConsistency = SystemVariable{Name: "read_after_write_consistency"}
-	ReadAfterWriteTimeOut     = SystemVariable{Name: "read_after_write_timeout"}
-	SessionTrackGTIDs         = SystemVariable{Name: "session_track_gtids", IdentifierAsString: true}
+	ReadAfterWriteGTID    = SystemVariable{Name: "read_after_write_gtid"}
+	ReadAfterWriteTimeOut = SystemVariable{Name: "read_after_write_timeout"}
+	SessionTrackGTIDs     = SystemVariable{Name: "session_track_gtids", IdentifierAsString: true}
 
 	// Read Write Splitting
 	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
@@ -106,7 +105,6 @@ var (
 		SessionUUID,
 		SessionEnableSystemSettings,
 		ReadAfterWriteGTID,
-		ReadAfterWriteConsistency,
 		ReadAfterWriteTimeOut,
 		SessionTrackGTIDs,
 		QueryTimeout,

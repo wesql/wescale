@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +19,6 @@ package repltracker
 import (
 	"sync"
 	"time"
-
-	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/stats"
 	"vitess.io/vitess/go/vt/log"
@@ -148,14 +141,6 @@ func (rt *ReplTracker) Status() (time.Duration, error) {
 	}
 	// rt.mode == tabletenv.Poller
 	return rt.poller.Status()
-}
-
-// GtidExecuted returns the GTID_EXECUTED value.
-func (rt *ReplTracker) GtidExecuted() (mysql.Position, error) {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-
-	return rt.poller.GtidExecuted()
 }
 
 // EnableHeartbeat enables or disables writes of heartbeat. This functionality
