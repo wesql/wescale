@@ -22,6 +22,6 @@ const DefaultFlavor = mysql.Mysql56FlavorID
 
 // Schema Management
 const (
-	TableSchemaTracking = true
-	ViewSchemaTracking  = true
+	TableSchemaTracking = false
+	ViewSchemaTracking  = false
 )
