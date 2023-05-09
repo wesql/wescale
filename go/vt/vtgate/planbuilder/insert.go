@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -266,10 +271,10 @@ func getStatementAndPlanner(
 ) (selectStmt sqlparser.SelectStatement, configuredPlanner stmtPlanner, err error) {
 	switch stmt := ins.Rows.(type) {
 	case *sqlparser.Select:
-		configuredPlanner, err = getConfiguredPlanner(vschema, buildSelectPlan, stmt, "")
+		configuredPlanner, err = getConfiguredPlanner(vschema, stmt, "")
 		selectStmt = stmt
 	case *sqlparser.Union:
-		configuredPlanner, err = getConfiguredPlanner(vschema, buildUnionPlan, stmt, "")
+		configuredPlanner, err = getConfiguredPlanner(vschema, stmt, "")
 		selectStmt = stmt
 	default:
 		err = vterrors.VT12001(fmt.Sprintf("INSERT plan with %T", ins.Rows))
