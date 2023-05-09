@@ -393,9 +393,6 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 			SessionUUID:              u.String(),
 			EnableSystemSettings:     sysVarSetEnabled,
 			ReadWriteSplittingPolicy: defaultReadWriteSplittingPolicy,
-			ReadAfterWrite: &vtgatepb.ReadAfterWrite{
-				ReadAfterWriteTimeout: defaultReadAfterWriteTimeout,
-			},
 		}
 		if c.Capabilities&mysql.CapabilityClientFoundRows != 0 {
 			session.Options.ClientFoundRows = true

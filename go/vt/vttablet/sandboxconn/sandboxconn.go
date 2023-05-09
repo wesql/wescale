@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -265,13 +260,13 @@ func (sbc *SandboxConn) begin(ctx context.Context, target *querypb.Target, preQu
 }
 
 // Commit is part of the QueryService interface.
-func (sbc *SandboxConn) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error) {
+func (sbc *SandboxConn) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {
 	sbc.CommitCount.Add(1)
 	reservedID := sbc.getTxReservedID(transactionID)
 	if reservedID != 0 {
 		reservedID = sbc.ReserveID.Add(1)
 	}
-	return reservedID, "", sbc.getError()
+	return reservedID, sbc.getError()
 }
 
 // Rollback is part of the QueryService interface.

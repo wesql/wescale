@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +26,6 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-
-	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/discovery"
@@ -80,7 +73,6 @@ type TabletGateway struct {
 	localCell            string
 	retryCount           int
 	defaultConnCollation uint32
-	lastSeenGtid         *LastSeenGtid
 
 	// mu protects the fields of this group.
 	mu sync.Mutex
@@ -110,16 +102,11 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 		}
 		hc = createHealthCheck(ctx, healthCheckRetryDelay, healthCheckTimeout, topoServer, localCell, CellsToWatch)
 	}
-	lastSeenGtid, err := NewLastSeenGtid(global.DefaultFlavor)
-	if err != nil {
-		log.Exitf("Unable to create new TabletGateway: %v", err)
-	}
 	gw := &TabletGateway{
 		hc:                hc,
 		srvTopoServer:     serv,
 		localCell:         localCell,
 		retryCount:        retryCount,
-		lastSeenGtid:      lastSeenGtid,
 		statusAggregators: make(map[string]*TabletStatusAggregator),
 	}
 	gw.setupBuffering(ctx)
@@ -256,7 +243,7 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 // withRetry also adds shard information to errors returned from the inner QueryService, so
 // withShardError should not be combined with withRetry.
 func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, _ queryservice.QueryService,
-	_ string, inTransaction bool, options *querypb.ExecuteOptions, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
+	_ string, inTransaction bool, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
 	// for transactions, we connect to a specific tablet instead of letting gateway choose one
 	if inTransaction && target.TabletType != topodatapb.TabletType_PRIMARY {
 		return vterrors.Errorf(vtrpcpb.Code_INTERNAL, "tabletGateway's query service can only be used for non-transactional queries on replicas")
@@ -305,7 +292,6 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			}
 		}
 
-		// Get a healthy tablet connection that can be used for executing the query.
 		tablets := gw.hc.GetHealthyTabletStats(target)
 		if len(tablets) == 0 {
 			// if we have a keyspace event watcher, check if the reason why our primary is not available is that it's currently being resharded
@@ -325,22 +311,20 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			err = vterrors.Errorf(vtrpcpb.Code_UNAVAILABLE, "no healthy tablet available for '%s'", target.String())
 			break
 		}
+		gw.shuffleTablets(gw.localCell, tablets)
+
 		var th *discovery.TabletHealth
-		availableTablets := make([]*discovery.TabletHealth, 0)
 		// skip tablets we tried before
 		for _, t := range tablets {
-			if _, ok := invalidTablets[topoproto.TabletAliasString(t.Tablet.Alias)]; ok {
-				continue
+			if _, ok := invalidTablets[topoproto.TabletAliasString(t.Tablet.Alias)]; !ok {
+				th = t
+				break
 			}
-			availableTablets = append(availableTablets, t)
 		}
-
-		// pick one tablet based on the pick tablet algorithm
-		th, e := gw.PickTablet(availableTablets, options)
-		if e != nil {
+		if th == nil {
 			// do not override error from last attempt.
 			if err == nil {
-				err = e
+				err = vterrors.VT14002()
 			}
 			break
 		}
@@ -370,7 +354,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 
 // withShardError adds shard information to errors returned from the inner QueryService.
 func (gw *TabletGateway) withShardError(ctx context.Context, target *querypb.Target, conn queryservice.QueryService,
-	_ string, _ bool, _ *querypb.ExecuteOptions, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
+	_ string, _ bool, inner func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService) (bool, error)) error {
 	_, err := inner(ctx, target, conn)
 	return NewShardError(err, target)
 }
@@ -461,19 +445,6 @@ func (gw *TabletGateway) updateDefaultConnCollation(tablet *topodatapb.Tablet) {
 // DefaultConnCollation returns the default connection collation of this TabletGateway
 func (gw *TabletGateway) DefaultConnCollation() collations.ID {
 	return collations.ID(atomic.LoadUint32(&gw.defaultConnCollation))
-}
-
-// AddGtid adds a gtid to the last seen gtid
-func (gw *TabletGateway) AddGtid(gtid string) {
-	err := gw.lastSeenGtid.AddGtid(gtid)
-	if err != nil {
-		log.Errorf("Error adding gtid: %v", err)
-	}
-}
-
-// LastSeenGtidString returns the last seen gtid as a string
-func (gw *TabletGateway) LastSeenGtidString() string {
-	return gw.lastSeenGtid.String()
 }
 
 // NewShardError returns a new error with the shard info amended.

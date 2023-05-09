@@ -377,21 +377,6 @@ func (m *ExecuteOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.ReadAfterWriteTimeout != 0 {
-		i -= 8
-		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.ReadAfterWriteTimeout))))
-		i--
-		dAtA[i] = 0x1
-		i--
-		dAtA[i] = 0x81
-	}
-	if len(m.ReadAfterWriteGtid) > 0 {
-		i -= len(m.ReadAfterWriteGtid)
-		copy(dAtA[i:], m.ReadAfterWriteGtid)
-		i = encodeVarint(dAtA, i, uint64(len(m.ReadAfterWriteGtid)))
-		i--
-		dAtA[i] = 0x7a
-	}
 	if len(m.TransactionAccessMode) > 0 {
 		var pksize2 int
 		for _, num := range m.TransactionAccessMode {
@@ -1444,13 +1429,6 @@ func (m *CommitResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.SessionStateChanges) > 0 {
-		i -= len(m.SessionStateChanges)
-		copy(dAtA[i:], m.SessionStateChanges)
-		i = encodeVarint(dAtA, i, uint64(len(m.SessionStateChanges)))
-		i--
-		dAtA[i] = 0x12
 	}
 	if m.ReservedId != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.ReservedId))
@@ -4013,13 +3991,6 @@ func (m *StreamHealthResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) 
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Position) > 0 {
-		i -= len(m.Position)
-		copy(dAtA[i:], m.Position)
-		i = encodeVarint(dAtA, i, uint64(len(m.Position)))
-		i--
-		dAtA[i] = 0x3a
-	}
 	if m.TabletAlias != nil {
 		size, err := m.TabletAlias.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -4446,13 +4417,6 @@ func (m *ExecuteOptions) SizeVT() (n int) {
 		}
 		n += 1 + sov(uint64(l)) + l
 	}
-	l = len(m.ReadAfterWriteGtid)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
-	}
-	if m.ReadAfterWriteTimeout != 0 {
-		n += 10
-	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -4831,10 +4795,6 @@ func (m *CommitResponse) SizeVT() (n int) {
 	_ = l
 	if m.ReservedId != 0 {
 		n += 1 + sov(uint64(m.ReservedId))
-	}
-	l = len(m.SessionStateChanges)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5819,10 +5779,6 @@ func (m *StreamHealthResponse) SizeVT() (n int) {
 	}
 	if m.TabletAlias != nil {
 		l = m.TabletAlias.SizeVT()
-		n += 1 + l + sov(uint64(l))
-	}
-	l = len(m.Position)
-	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -7043,49 +6999,6 @@ func (m *ExecuteOptions) UnmarshalVT(dAtA []byte) error {
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)
 			}
-		case 15:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteGtid", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ReadAfterWriteGtid = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 16:
-			if wireType != 1 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReadAfterWriteTimeout", wireType)
-			}
-			var v uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
-			iNdEx += 8
-			m.ReadAfterWriteTimeout = float64(math.Float64frombits(v))
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -9651,38 +9564,6 @@ func (m *CommitResponse) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SessionStateChanges", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SessionStateChanges = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -16404,38 +16285,6 @@ func (m *StreamHealthResponse) UnmarshalVT(dAtA []byte) error {
 			if err := m.TabletAlias.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Position", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Position = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

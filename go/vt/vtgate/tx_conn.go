@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,7 +105,7 @@ func (txc *TxConn) queryService(alias *topodatapb.TabletAlias) (queryservice.Que
 	return txc.tabletGateway.QueryServiceByAlias(alias, nil)
 }
 
-func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtgatepb.Session_ShardSession, logging *executeLogger) error {
+func (txc *TxConn) commitShard(ctx context.Context, s *vtgatepb.Session_ShardSession, logging *executeLogger) error {
 	if s.TransactionId == 0 {
 		return nil
 	}
@@ -120,41 +115,31 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 	if err != nil {
 		return err
 	}
-	reservedID, sessionStateChange, err := qs.Commit(ctx, s.Target, s.TransactionId)
+	reservedID, err := qs.Commit(ctx, s.Target, s.TransactionId)
 	if err != nil {
 		return err
 	}
 	s.TransactionId = 0
 	s.ReservedId = reservedID
-	if sessionStateChange != "" {
-		session.SetReadAfterWriteGTID(sessionStateChange)
-		txc.tabletGateway.AddGtid(sessionStateChange)
-	}
 	logging.log(nil, s.Target, nil, "commit", false, nil)
 	return nil
 }
 
 func (txc *TxConn) commitNormal(ctx context.Context, session *SafeSession) error {
-	// wrap txc.commitShard in a closure so that it can be used in runSessions
-	action := func(session *SafeSession) func(context.Context, *vtgatepb.Session_ShardSession, *executeLogger) error {
-		return func(ctx context.Context, shardSession *vtgatepb.Session_ShardSession, logging *executeLogger) error {
-			return txc.commitShard(ctx, session, shardSession, logging)
-		}
-	}(session)
-	if err := txc.runSessions(ctx, session.PreSessions, session.logging, action); err != nil {
+	if err := txc.runSessions(ctx, session.PreSessions, session.logging, txc.commitShard); err != nil {
 		_ = txc.Release(ctx, session)
 		return err
 	}
 
 	// Retain backward compatibility on commit order for the normal session.
 	for _, shardSession := range session.ShardSessions {
-		if err := txc.commitShard(ctx, session, shardSession, session.logging); err != nil {
+		if err := txc.commitShard(ctx, shardSession, session.logging); err != nil {
 			_ = txc.Release(ctx, session)
 			return err
 		}
 	}
 
-	if err := txc.runSessions(ctx, session.PostSessions, session.logging, action); err != nil {
+	if err := txc.runSessions(ctx, session.PostSessions, session.logging, txc.commitShard); err != nil {
 		// If last commit fails, there will be nothing to rollback.
 		session.RecordWarning(&querypb.QueryWarning{Message: fmt.Sprintf("post-operation transaction had an error: %v", err)})
 		// With reserved connection we should release them.

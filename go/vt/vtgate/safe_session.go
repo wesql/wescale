@@ -761,16 +761,6 @@ func (session *SafeSession) SetSessionTrackGtids(enable bool) {
 	session.ReadAfterWrite.SessionTrackGtids = enable
 }
 
-// SetReadAfterWriteConsistency set the ReadAfterWriteConsistency setting.
-func (session *SafeSession) SetReadAfterWriteConsistency(scope vtgatepb.ReadAfterWriteConsistency) {
-	session.mu.Lock()
-	defer session.mu.Unlock()
-	if session.ReadAfterWrite == nil {
-		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
-	}
-	session.ReadAfterWrite.ReadAfterWriteConsistency = scope
-}
-
 func removeShard(tabletAlias *topodatapb.TabletAlias, sessions []*vtgatepb.Session_ShardSession) ([]*vtgatepb.Session_ShardSession, error) {
 	idx := -1
 	for i, session := range sessions {
@@ -923,13 +913,6 @@ func (session *SafeSession) EnableLogging() {
 	defer session.mu.Unlock()
 
 	session.logging = &executeLogger{}
-}
-
-func (session *SafeSession) IsNonWeakReadAfterWriteConsistencyEnable() bool {
-	session.mu.Lock()
-	defer session.mu.Unlock()
-
-	return session.ReadAfterWrite != nil && session.ReadAfterWrite.ReadAfterWriteConsistency != vtgatepb.ReadAfterWriteConsistency_EVENTUAL
 }
 
 func (l *executeLogger) log(primitive engine.Primitive, target *querypb.Target, gateway srvtopo.Gateway, query string, begin bool, bv map[string]*querypb.BindVariable) {

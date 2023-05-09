@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -185,23 +180,22 @@ func (tp *TxPool) GetAndLock(connID tx.ConnID, reason string) (*StatefulConnecti
 }
 
 // Commit commits the transaction on the connection.
-func (tp *TxPool) Commit(ctx context.Context, txConn *StatefulConnection) (string, string, error) {
+func (tp *TxPool) Commit(ctx context.Context, txConn *StatefulConnection) (string, error) {
 	if !txConn.IsInTransaction() {
-		return "", "", vterrors.New(vtrpcpb.Code_INTERNAL, "not in a transaction")
+		return "", vterrors.New(vtrpcpb.Code_INTERNAL, "not in a transaction")
 	}
 	span, ctx := trace.NewSpan(ctx, "TxPool.Commit")
 	defer span.Finish()
 	defer tp.txComplete(txConn, tx.TxCommit)
 	if txConn.TxProperties().Autocommit {
-		return "", "", nil
+		return "", nil
 	}
 
-	result, err := txConn.Exec(ctx, "commit", 1, false)
-	if err != nil {
+	if _, err := txConn.Exec(ctx, "commit", 1, false); err != nil {
 		txConn.Close()
-		return "", "", err
+		return "", err
 	}
-	return "commit", result.SessionStateChanges, nil
+	return "commit", nil
 }
 
 // RollbackAndRelease rolls back the transaction on the specified connection, and releases the connection when done

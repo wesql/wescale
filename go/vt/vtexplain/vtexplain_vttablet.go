@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,7 +125,7 @@ func (vte *VTExplain) newTablet(opts *Options, t *topodatapb.Tablet) *explainTab
 
 	tablet.QueryService = queryservice.Wrap(
 		nil,
-		func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService, name string, inTransaction bool, _ *querypb.ExecuteOptions, inner func(context.Context, *querypb.Target, queryservice.QueryService) (bool, error)) error {
+		func(ctx context.Context, target *querypb.Target, conn queryservice.QueryService, name string, inTransaction bool, inner func(context.Context, *querypb.Target, queryservice.QueryService) (bool, error)) error {
 			return fmt.Errorf("explainTablet does not implement %s", name)
 		},
 	)
@@ -172,7 +167,7 @@ func (t *explainTablet) Begin(ctx context.Context, target *querypb.Target, optio
 }
 
 // Commit is part of the QueryService interface.
-func (t *explainTablet) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error) {
+func (t *explainTablet) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {
 	t.mu.Lock()
 	t.currentTime = t.vte.batchTime.Wait()
 	t.tabletQueries = append(t.tabletQueries, &TabletQuery{

@@ -25,7 +25,7 @@ CELL=zone1 ../common/scripts/vtctld-up.sh
 # start vttablets for keyspace _vt
 for i in 100 101 102; do
 	CELL=zone1 TABLET_UID=$i ../common/scripts/mysqlctl-up.sh
-	CELL=zone1 TABLET_UID=$i ../common/scripts/vttablet-up.sh
+	CELL=zone1 KEYSPACE=_vt TABLET_UID=$i ../common/scripts/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace

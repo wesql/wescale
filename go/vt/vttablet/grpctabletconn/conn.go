@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -226,11 +221,11 @@ func (conn *gRPCQueryClient) Begin(ctx context.Context, target *querypb.Target, 
 }
 
 // Commit commits the ongoing transaction.
-func (conn *gRPCQueryClient) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, string, error) {
+func (conn *gRPCQueryClient) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (int64, error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.cc == nil {
-		return 0, "", tabletconn.ConnClosed
+		return 0, tabletconn.ConnClosed
 	}
 
 	req := &querypb.CommitRequest{
@@ -241,9 +236,9 @@ func (conn *gRPCQueryClient) Commit(ctx context.Context, target *querypb.Target,
 	}
 	resp, err := conn.c.Commit(ctx, req)
 	if err != nil {
-		return 0, "", tabletconn.ErrorFromGRPC(err)
+		return 0, tabletconn.ErrorFromGRPC(err)
 	}
-	return resp.ReservedId, resp.SessionStateChanges, nil
+	return resp.ReservedId, nil
 }
 
 // Rollback rolls back the ongoing transaction.

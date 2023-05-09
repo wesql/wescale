@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -462,7 +457,7 @@ func TestTabletServerCommitTransaction(t *testing.T) {
 	require.NoError(t, err)
 	_, err = tsv.Execute(ctx, &target, executeSQL, nil, state.TransactionID, 0, nil)
 	require.NoError(t, err)
-	_, _, err = tsv.Commit(ctx, &target, state.TransactionID)
+	_, err = tsv.Commit(ctx, &target, state.TransactionID)
 	require.NoError(t, err)
 }
 
@@ -472,7 +467,7 @@ func TestTabletServerCommiRollbacktFail(t *testing.T) {
 	defer db.Close()
 
 	target := querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}
-	_, _, err := tsv.Commit(ctx, &target, -1)
+	_, err := tsv.Commit(ctx, &target, -1)
 	want := "transaction -1: not found"
 	require.Equal(t, want, err.Error())
 	_, err = tsv.Rollback(ctx, &target, -1)
@@ -660,7 +655,7 @@ func TestTabletServerReserveAndBeginCommit(t *testing.T) {
 	require.Error(t, err)
 
 	// commit
-	newRID, _, err := tsv.Commit(ctx, &target, state.TransactionID)
+	newRID, err := tsv.Commit(ctx, &target, state.TransactionID)
 	require.NoError(t, err)
 	assert.NotEqual(t, state.ReservedID, newRID)
 	rID := newRID
@@ -792,7 +787,7 @@ func TestTabletServerBeginStreamExecute(t *testing.T) {
 			executeSQL, err)
 	}
 	require.NoError(t, err)
-	_, _, err = tsv.Commit(ctx, &target, state.TransactionID)
+	_, err = tsv.Commit(ctx, &target, state.TransactionID)
 	require.NoError(t, err)
 }
 
@@ -886,7 +881,7 @@ func TestSerializeTransactionsSameRow(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to execute query: %s: %s", q1, err)
 		}
-		if _, _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -906,7 +901,7 @@ func TestSerializeTransactionsSameRow(t *testing.T) {
 		// open a second connection while the request of the first connection is
 		// still pending.
 		<-tx3Finished
-		if _, _, err := tsv.Commit(ctx, &target, state2.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state2.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -921,7 +916,7 @@ func TestSerializeTransactionsSameRow(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to execute query: %s: %s", q3, err)
 		}
-		if _, _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 		close(tx3Finished)
@@ -952,7 +947,7 @@ func TestDMLQueryWithoutWhereClause(t *testing.T) {
 
 	state, _, err := tsv.BeginExecute(ctx, &target, nil, q, nil, 0, nil)
 	require.NoError(t, err)
-	_, _, err = tsv.Commit(ctx, &target, state.TransactionID)
+	_, err = tsv.Commit(ctx, &target, state.TransactionID)
 	require.NoError(t, err)
 }
 
@@ -1013,7 +1008,7 @@ func TestSerializeTransactionsSameRow_ConcurrentTransactions(t *testing.T) {
 			t.Errorf("failed to execute query: %s: %s", q1, err)
 		}
 
-		if _, _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -1032,7 +1027,7 @@ func TestSerializeTransactionsSameRow_ConcurrentTransactions(t *testing.T) {
 			t.Errorf("failed to execute query: %s: %s", q2, err)
 		}
 
-		if _, _, err := tsv.Commit(ctx, &target, state2.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state2.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -1051,7 +1046,7 @@ func TestSerializeTransactionsSameRow_ConcurrentTransactions(t *testing.T) {
 			t.Errorf("failed to execute query: %s: %s", q3, err)
 		}
 
-		if _, _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -1144,7 +1139,7 @@ func TestSerializeTransactionsSameRow_TooManyPendingRequests(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to execute query: %s: %s", q1, err)
 		}
-		if _, _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -1232,7 +1227,7 @@ func TestSerializeTransactionsSameRow_RequestCanceled(t *testing.T) {
 			t.Errorf("failed to execute query: %s: %s", q1, err)
 		}
 
-		if _, _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state1.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -1269,7 +1264,7 @@ func TestSerializeTransactionsSameRow_RequestCanceled(t *testing.T) {
 			t.Errorf("failed to execute query: %s: %s", q3, err)
 		}
 
-		if _, _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
+		if _, err := tsv.Commit(ctx, &target, state3.TransactionID); err != nil {
 			t.Errorf("call TabletServer.Commit failed: %v", err)
 		}
 	}()
@@ -2084,7 +2079,7 @@ func TestDatabaseNameReplaceByKeyspaceNameExecuteMethod(t *testing.T) {
 	for _, field := range res.Fields {
 		require.Equal(t, "keyspaceName", field.Database)
 	}
-	_, _, err = tsv.Commit(ctx, target, state.TransactionID)
+	_, err = tsv.Commit(ctx, target, state.TransactionID)
 	require.NoError(t, err)
 }
 
@@ -2155,7 +2150,7 @@ func TestDatabaseNameReplaceByKeyspaceNameBeginExecuteMethod(t *testing.T) {
 	for _, field := range res.Fields {
 		require.Equal(t, "keyspaceName", field.Database)
 	}
-	_, _, err = tsv.Commit(ctx, target, state.TransactionID)
+	_, err = tsv.Commit(ctx, target, state.TransactionID)
 	require.NoError(t, err)
 }
 

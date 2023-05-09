@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +98,7 @@ func (txe *TxExecutor) CommitPrepared(dtid string) error {
 		txe.markFailed(ctx, dtid)
 		return err
 	}
-	_, _, err = txe.te.txPool.Commit(ctx, conn)
+	_, err = txe.te.txPool.Commit(ctx, conn)
 	if err != nil {
 		txe.markFailed(ctx, dtid)
 		return err
@@ -134,7 +129,7 @@ func (txe *TxExecutor) markFailed(ctx context.Context, dtid string) {
 		return
 	}
 
-	if _, _, err = txe.te.txPool.Commit(ctx, conn); err != nil {
+	if _, err = txe.te.txPool.Commit(ctx, conn); err != nil {
 		log.Errorf("markFailed: Commit failed for dtid %s: %v", dtid, err)
 	}
 }
@@ -205,7 +200,7 @@ func (txe *TxExecutor) StartCommit(transactionID int64, dtid string) error {
 	if err != nil {
 		return err
 	}
-	_, _, err = txe.te.txPool.Commit(txe.ctx, conn)
+	_, err = txe.te.txPool.Commit(txe.ctx, conn)
 	return err
 }
 
@@ -276,7 +271,7 @@ func (txe *TxExecutor) inTransaction(f func(*StatefulConnection) error) error {
 		return err
 	}
 
-	_, _, err = txe.te.txPool.Commit(txe.ctx, conn)
+	_, err = txe.te.txPool.Commit(txe.ctx, conn)
 	if err != nil {
 		return err
 	}
