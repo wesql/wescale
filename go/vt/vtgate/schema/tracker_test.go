@@ -175,6 +175,7 @@ func TestTracking(t *testing.T) {
 			tracker.RegisterSignalReceiver(func() {
 				wg.Done()
 			})
+			tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 			for _, d := range tcase.deltas {
 				ch <- &discovery.TabletHealth{
@@ -226,6 +227,7 @@ func TestTrackingUnHealthyTablet(t *testing.T) {
 	tracker.RegisterSignalReceiver(func() {
 		wg.Done()
 	})
+	tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 	tcases := []struct {
 		name          string
@@ -283,25 +285,39 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
-	ks3 := &updateController{}
+	ks3 := &updateController{keyspaceStr: "ks3"}
 	tracker := Tracker{
 		tracked: map[keyspaceStr]*updateController{
 			"ks3": ks3,
 		},
 	}
+	tracker.tracked["ks1"] = tracker.newUpdateController("ks1")
+	tracker.tracked["ks2"] = tracker.newUpdateController("ks2")
 
 	th1 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks1"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 	ks1 := tracker.getKeyspaceUpdateController(th1)
 
 	th2 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks2"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 	ks2 := tracker.getKeyspaceUpdateController(th2)
 
 	th3 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks3"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 
 	assert.NotEqual(t, ks1, ks2, "ks1 and ks2 should not be equal, belongs to different keyspace")
@@ -369,6 +385,7 @@ func TestViewsTracking(t *testing.T) {
 	tracker.RegisterSignalReceiver(func() {
 		wg.Done()
 	})
+	tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 	sbc := sandboxconn.NewSandboxConn(tablet)
 	sbc.SetSchemaResult(schemaDefResult)

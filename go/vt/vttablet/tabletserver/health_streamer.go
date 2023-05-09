@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
 
@@ -351,14 +352,23 @@ func (hs *healthStreamer) reload() error {
 		return err
 	}
 
-	tables, err := hs.getChangedTableNames(ctx, conn)
-	if err != nil {
-		return err
+	var tables []string
+	// Since current SQL layer doesn't need to know about the schema of the tables
+	// that are not sharded, we don't need to track the schema of those tables.
+	// So, we can disable the schema tracking by default.
+	if global.TableSchemaTracking {
+		tables, err = hs.getChangedTableNames(ctx, conn)
+		if err != nil {
+			return err
+		}
 	}
 
-	views, err := hs.getChangedViewNames(ctx, conn)
-	if err != nil {
-		return err
+	var views []string
+	if global.ViewSchemaTracking {
+		views, err = hs.getChangedViewNames(ctx, conn)
+		if err != nil {
+			return err
+		}
 	}
 
 	// no change detected
