@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -134,7 +139,7 @@ func testCommit(t *testing.T, conn queryservice.QueryService, f *FakeQueryServic
 	t.Log("testCommit")
 	ctx := context.Background()
 	ctx = callerid.NewContext(ctx, TestCallerID, TestVTGateCallerID)
-	_, err := conn.Commit(ctx, TestTarget, commitTransactionID)
+	_, _, err := conn.Commit(ctx, TestTarget, commitTransactionID)
 	if err != nil {
 		t.Fatalf("Commit failed: %v", err)
 	}
@@ -144,7 +149,7 @@ func testCommitError(t *testing.T, conn queryservice.QueryService, f *FakeQueryS
 	t.Log("testCommitError")
 	f.HasError = true
 	testErrorHelper(t, f, "Commit", func(ctx context.Context) error {
-		_, err := conn.Commit(ctx, TestTarget, commitTransactionID)
+		_, _, err := conn.Commit(ctx, TestTarget, commitTransactionID)
 		return err
 	})
 	f.HasError = false
@@ -153,7 +158,7 @@ func testCommitError(t *testing.T, conn queryservice.QueryService, f *FakeQueryS
 func testCommitPanics(t *testing.T, conn queryservice.QueryService, f *FakeQueryService) {
 	t.Log("testCommitPanics")
 	testPanicHelper(t, f, "Commit", func(ctx context.Context) error {
-		_, err := conn.Commit(ctx, TestTarget, commitTransactionID)
+		_, _, err := conn.Commit(ctx, TestTarget, commitTransactionID)
 		return err
 	})
 }
