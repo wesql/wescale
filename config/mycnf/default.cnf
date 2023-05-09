@@ -32,7 +32,7 @@ slow-query-log-file = {{.SlowLogPath}}
 
 long_query_time = 2
 slow-query-log
-skip-name-resolve
+# skip-name-resolve
 connect_timeout = 30
 innodb_lock_wait_timeout = 20
 max_allowed_packet = 64M

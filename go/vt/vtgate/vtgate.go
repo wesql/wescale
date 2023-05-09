@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -124,6 +125,8 @@ var (
 
 	// read write splitting flags
 	defaultReadWriteSplittingPolicy = string(schema.ReadWriteSplittingPolicyDisable)
+	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
+	defaultReadAfterWriteTimeout = float64(30.0)
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -159,6 +162,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&messageStreamGracePeriod, "message_stream_grace_period", messageStreamGracePeriod, "the amount of time to give for a vttablet to resume if it ends a message stream, usually because of a reparent.")
 	fs.BoolVar(&enableViews, "enable-views", enableViews, "Enable views support in vtgate.")
 	fs.StringVar(&defaultReadWriteSplittingPolicy, "read_write_splitting_policy", defaultReadWriteSplittingPolicy, "Enable read write splitting.")
+	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -673,5 +677,14 @@ func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", strategy)
 	}
 	defaultReadWriteSplittingPolicy = strategy
+	return nil
+}
+
+func SetDefaultReadAfterWriteTimeout(timeoutStr string) error {
+	timeout, err := strconv.ParseFloat(timeoutStr, 64)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid read-after-write timeout: %s", timeoutStr)
+	}
+	defaultReadAfterWriteTimeout = timeout
 	return nil
 }

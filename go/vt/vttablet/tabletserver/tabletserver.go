@@ -529,7 +529,7 @@ func (tsv *TabletServer) begin(ctx context.Context, target *querypb.Target, save
 }
 
 // Commit commits the specified transaction.
-func (tsv *TabletServer) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (newReservedID int64, err error) {
+func (tsv *TabletServer) Commit(ctx context.Context, target *querypb.Target, transactionID int64) (newReservedID int64, sessionStateChange string, err error) {
 	err = tsv.execRequest(
 		ctx, tsv.QueryTimeout.Get(),
 		"Commit", "commit", nil,
@@ -539,7 +539,7 @@ func (tsv *TabletServer) Commit(ctx context.Context, target *querypb.Target, tra
 			logStats.TransactionID = transactionID
 
 			var commitSQL string
-			newReservedID, commitSQL, err = tsv.te.Commit(ctx, transactionID)
+			newReservedID, commitSQL, sessionStateChange, err = tsv.te.Commit(ctx, transactionID)
 			if newReservedID > 0 {
 				// commit executed on old reserved id.
 				logStats.ReservedID = transactionID
@@ -556,7 +556,7 @@ func (tsv *TabletServer) Commit(ctx context.Context, target *querypb.Target, tra
 			return err
 		},
 	)
-	return newReservedID, err
+	return newReservedID, sessionStateChange, err
 }
 
 // Rollback rollsback the specified transaction.
@@ -1124,7 +1124,7 @@ func (tsv *TabletServer) execDML(ctx context.Context, target *querypb.Target, qu
 	if err != nil {
 		return 0, err
 	}
-	if _, err = tsv.Commit(ctx, target, state.TransactionID); err != nil {
+	if _, _, err = tsv.Commit(ctx, target, state.TransactionID); err != nil {
 		state.TransactionID = 0
 		return 0, err
 	}

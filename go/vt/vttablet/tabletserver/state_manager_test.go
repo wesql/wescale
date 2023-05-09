@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +27,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"vitess.io/vitess/go/mysql"
 
 	"google.golang.org/protobuf/proto"
 
@@ -818,6 +825,10 @@ func (te *testReplTracker) Close() {
 
 func (te *testReplTracker) Status() (time.Duration, error) {
 	return te.lag, te.err
+}
+
+func (te *testReplTracker) GtidExecuted() (mysql.Position, error) {
+	return mysql.Position{}, nil
 }
 
 type testQueryEngine struct {
