@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,6 +62,11 @@ type ConnParams struct {
 	// for informative purposes. It has no programmatic value. Returning this field is
 	// disabled by default.
 	EnableQueryInfo bool
+}
+
+// SetDBName will set dbname on the parameters.
+func (cp *ConnParams) SetDBName(dbname string) {
+	cp.DbName = dbname
 }
 
 // EnableSSL will set the right flag on the parameters.
