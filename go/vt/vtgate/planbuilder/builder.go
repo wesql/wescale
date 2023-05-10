@@ -252,7 +252,7 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.Load:
 		return buildLoadPlan(query, vschema)
 	case sqlparser.DBDDLStatement:
-		return buildRoutePlan(stmt, reservedVars, vschema, buildDBDDLPlan)
+		return buildDBDDLPlan(stmt, reservedVars, vschema)
 	case *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback, *sqlparser.Savepoint, *sqlparser.SRollback, *sqlparser.Release:
 		// Empty by design. Not executed by a plan
 		return nil, nil

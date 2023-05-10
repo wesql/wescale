@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +87,9 @@ type (
 
 	// Setting represents a set query and reset query for system settings.
 	Setting struct {
-		query      string
-		resetQuery string
+		withoutDBName bool
+		query         string
+		resetQuery    string
 	}
 
 	// ResourcePool allows you to use a pool of resources.
@@ -129,11 +135,16 @@ var (
 	ErrCtxTimeout = vterrors.New(vtrpcpb.Code_DEADLINE_EXCEEDED, "resource pool context already expired")
 )
 
-func NewSetting(query, resetQuery string) *Setting {
+func NewSetting(withoutDBName bool, query, resetQuery string) *Setting {
 	return &Setting{
-		query:      query,
-		resetQuery: resetQuery,
+		withoutDBName: withoutDBName,
+		query:         query,
+		resetQuery:    resetQuery,
 	}
+}
+
+func (s *Setting) GetWithoutDBName() bool {
+	return s.withoutDBName
 }
 
 func (s *Setting) GetQuery() string {
@@ -263,7 +274,7 @@ func (rp *ResourcePool) Get(ctx context.Context, setting *Setting) (resource Res
 	if ctx.Err() != nil {
 		return nil, ErrCtxTimeout
 	}
-	if setting == nil {
+	if setting == nil || setting.GetQuery() == "" {
 		return rp.get(ctx)
 	}
 	return rp.getWithSettings(ctx, setting)
