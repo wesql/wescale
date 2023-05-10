@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -257,7 +262,7 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.Load:
 		return buildLoadPlan(query, vschema)
 	case sqlparser.DBDDLStatement:
-		return buildRoutePlan(stmt, reservedVars, vschema, buildDBDDLPlan)
+		return buildDBDDLPlan(stmt, reservedVars, vschema)
 	case *sqlparser.Begin, *sqlparser.Commit, *sqlparser.Rollback, *sqlparser.Savepoint, *sqlparser.SRollback, *sqlparser.Release:
 		// Empty by design. Not executed by a plan
 		return nil, nil

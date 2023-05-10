@@ -126,19 +126,157 @@ func TestDefaultDb(t *testing.T) {
 		utils.Exec(t, conn, "select * from information_schema.tables limit 1")
 		{
 			_, err := utils.ExecAllowError(t, conn, "select * from t1")
-			assert.ErrorContains(t, err, "no database selected")
+			assert.ErrorContains(t, err, "No database selected")
 		}
 		{
 			_, err := utils.ExecAllowError(t, conn, "update t1 set c2=3 where c1=1")
-			assert.ErrorContains(t, err, "no database selected")
+			assert.ErrorContains(t, err, "No database selected")
 		}
 		{
 			_, err := utils.ExecAllowError(t, conn, "delete from t1 where c1=1")
-			assert.ErrorContains(t, err, "no database selected")
+			assert.ErrorContains(t, err, "No database selected")
 		}
 		utils.Exec(t, conn, "use information_schema")
 		utils.Exec(t, conn, "select @@sql_mode")
 		utils.Exec(t, conn, "select * from information_schema.tables limit 1")
 		utils.Exec(t, conn, "select * from tables limit 1")
+
+		// create db
+		utils.Exec(t, conn, "create database wesql2")
+		defer utils.Exec(t, conn, "drop database wesql2")
+		// cross db
+		utils.Exec(t, conn, "create table wesql2.t2 (c1 int, c2 int, primary key(c1))")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (2, 2)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (22, 22)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (222, 222)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (2222, 2222)")
+		utils.Exec(t, conn, "update wesql2.t2 set c1=3333, c2=3333 where c1=2222")
+		utils.Exec(t, conn, "delete from wesql2.t2 where c1=3333")
+		qr := utils.Exec(t, conn, "select count(*) from wesql2.t2")
+		assert.Equal(t, `[[INT64(3)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "drop table wesql2.t2")
+
+		// cross db , explicit transaction
+		utils.Exec(t, conn, "create table wesql2.t2 (c1 int, c2 int, primary key(c1))")
+		utils.Exec(t, conn, "begin")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (2, 2)")
+		utils.Exec(t, conn, "commit")
+		qr = utils.Exec(t, conn, "select count(*) from wesql2.t2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "begin")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (22, 22)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (222, 222)")
+		utils.Exec(t, conn, "insert into wesql2.t2(c1, c2) values (2222, 2222)")
+		utils.Exec(t, conn, "update wesql2.t2 set c1=3333, c2=3333 where c1=2222")
+		utils.Exec(t, conn, "delete from wesql2.t2 where c1=3333")
+		qr = utils.Exec(t, conn, "select count(*) from wesql2.t2")
+		assert.Equal(t, `[[INT64(3)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "rollback")
+		qr = utils.Exec(t, conn, "select count(*) from wesql2.t2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "drop table wesql2.t2")
+
+		// use db
+		utils.Exec(t, conn, "use wesql2")
+		utils.Exec(t, conn, "create table t2 (c1 int, c2 int, primary key(c1))")
+		utils.Exec(t, conn, "begin")
+		utils.Exec(t, conn, "insert into t2(c1, c2) values (2, 2)")
+		utils.Exec(t, conn, "commit")
+		qr = utils.Exec(t, conn, "select count(*) from t2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "begin")
+		utils.Exec(t, conn, "insert into t2(c1, c2) values (22, 22)")
+		utils.Exec(t, conn, "insert into t2(c1, c2) values (222, 222)")
+		utils.Exec(t, conn, "insert into t2(c1, c2) values (2222, 2222)")
+		utils.Exec(t, conn, "update t2 set c1=3333, c2=3333 where c1=2222")
+		utils.Exec(t, conn, "delete from t2 where c1=3333")
+		qr = utils.Exec(t, conn, "select count(*) from t2")
+		assert.Equal(t, `[[INT64(3)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "rollback")
+		qr = utils.Exec(t, conn, "select count(*) from t2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "drop table t2")
+	})
+}
+
+// TestDefaultDb tests that we can use the default database.
+func TestViewDDL(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, "create database db1")
+		defer utils.Exec(t, conn, "drop database db1")
+		utils.Exec(t, conn, "create database db2")
+		defer utils.Exec(t, conn, "drop database db2")
+		utils.Exec(t, conn, "create table db1.t1(c1 int, c2 int)")
+		utils.Exec(t, conn, "insert into db1.t1(c1, c2) values (22, 22)")
+		utils.Exec(t, conn, "create table db2.t2(c1 int, c2 int)")
+		utils.Exec(t, conn, "insert into db2.t2(c1, c2) values (33, 33)")
+		utils.Exec(t, conn, "create view db1.v1 as select * from db1.t1")
+		utils.Exec(t, conn, "create view db2.v2 as select * from db2.t2")
+		qr := utils.Exec(t, conn, "select count(*) from db1.v1")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "select count(*) from db2.v2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		// drop multi view
+		utils.Exec(t, conn, "drop view db1.v1, db2.v2")
+
+		// create view with complex select queries
+		utils.Exec(t, conn, "insert into db1.t1(c1, c2) values (33, 33)")
+		utils.Exec(t, conn, "insert into db1.t1(c1, c2) values (44, 55)")
+		utils.Exec(t, conn, "create view db1.v2 as select sql_calc_found_rows * from db1.t1 order by c1 limit 1")
+		qr = utils.Exec(t, conn, "select * from db1.v2")
+		assert.Equal(t, `[[INT32(22) INT32(22)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "SELECT FOUND_ROWS()")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "drop view db1.v2")
+	})
+}
+
+// TestDefaultDb tests that we can use the default database.
+func TestTableDDL(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, "create database db1")
+		defer utils.Exec(t, conn, "drop database db1")
+		utils.Exec(t, conn, "create database db2")
+		defer utils.Exec(t, conn, "drop database db2")
+		utils.Exec(t, conn, "create table db1.t1(c1 int, c2 int)")
+		utils.Exec(t, conn, "insert into db1.t1(c1, c2) values (22, 22)")
+		utils.Exec(t, conn, "create table db2.t2(c1 int, c2 int)")
+		utils.Exec(t, conn, "insert into db2.t2(c1, c2) values (33, 33)")
+		qr := utils.Exec(t, conn, "select count(*) from db1.t1")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "select count(*) from db2.t2")
+		assert.Equal(t, `[[INT64(1)]]`, fmt.Sprintf("%v", qr.Rows))
+		utils.Exec(t, conn, "drop table db1.t1, db2.t2")
+	})
+}
+
+func TestJsonTable(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		qr := utils.Exec(t, conn, "SELECT * FROM JSON_TABLE('[ {\"c1\": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt ;")
+		assert.Equal(t, `[[NULL]]`, fmt.Sprintf("%v", qr.Rows))
+	})
+	execWithConn(t, DefaultKeyspaceName, func(conn *mysql.Conn) {
+		qr := utils.Exec(t, conn, "SELECT * FROM JSON_TABLE('[ {\"c1\": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt ;")
+		assert.Equal(t, `[[NULL]]`, fmt.Sprintf("%v", qr.Rows))
+	})
+}
+
+func TestUnion(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, "create database wesql2")
+		defer utils.Exec(t, conn, "drop database wesql2")
+		utils.Exec(t, conn, "create table wesql2.user(id int, col int)")
+		utils.Exec(t, conn, "insert into wesql2.user values(1, 1);")
+		qr := utils.Exec(t, conn, "(select sql_calc_found_rows id from wesql2.user where id = 1 limit 1) union select id from wesql2.user where id = 1")
+		assert.Equal(t, `[[INT32(1)]]`, fmt.Sprintf("%v", qr.Rows))
+	})
+}
+
+func TestWithAs(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		qr := utils.Exec(t, conn, "WITH x AS (select cast(1 as signed) as col1,cast(2 as signed) as col2) select * from x union select * from x")
+		assert.Equal(t, `[[INT64(1) INT64(2)]]`, fmt.Sprintf("%v", qr.Rows))
+		qr = utils.Exec(t, conn, "WITH cte AS ( SELECT 1 AS col1, 2 AS col2 UNION ALL SELECT 3, 4 ) SELECT col1, col2 FROM cte")
+		assert.Equal(t, `[[INT64(1) INT64(2)] [INT64(3) INT64(4)]]`, fmt.Sprintf("%v", qr.Rows))
 	})
 }

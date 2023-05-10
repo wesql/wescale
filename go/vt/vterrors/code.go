@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +66,7 @@ var (
 	VT09002 = errorWithState("VT09002", vtrpcpb.Code_FAILED_PRECONDITION, InnodbReadOnly, "%s statement with a replica target", "This type of DML statement is not allowed on a replica target.")
 	VT09003 = errorWithoutState("VT09003", vtrpcpb.Code_FAILED_PRECONDITION, "INSERT query does not have primary vindex column '%v' in the column list", "A vindex column is mandatory for the insert, please provide one.")
 	VT09004 = errorWithoutState("VT09004", vtrpcpb.Code_FAILED_PRECONDITION, "INSERT should contain column list or the table should have authoritative columns in vschema", "You need to provide the list of columns you want to insert, or provide a VSchema with authoritative columns. If schema tracking is disabled you can enable it to automatically have authoritative columns.")
-	VT09005 = errorWithState("VT09005", vtrpcpb.Code_FAILED_PRECONDITION, NoDB, "no database selected: use keyspace<:shard><@type> or keyspace<[range]><@type> (<> are optional)", "A database must be selected.")
+	VT09005 = errorWithState("VT09005", vtrpcpb.Code_FAILED_PRECONDITION, NoDB, "No database selected: use keyspace<:shard><@type> or keyspace<[range]><@type> (<> are optional)", "A database must be selected.")
 	VT09006 = errorWithoutState("VT09006", vtrpcpb.Code_FAILED_PRECONDITION, "%s VITESS_MIGRATION works only on primary tablet", "VITESS_MIGRATION commands work only on primary tablets, you must send such commands to a primary tablet.")
 	VT09007 = errorWithoutState("VT09007", vtrpcpb.Code_FAILED_PRECONDITION, "%s VITESS_THROTTLED_APPS works only on primary tablet", "VITESS_THROTTLED_APPS commands work only on primary tablet, you must send such commands to a primary tablet.")
 	VT09008 = errorWithoutState("VT09008", vtrpcpb.Code_FAILED_PRECONDITION, "vexplain queries/all will actually run queries", "vexplain queries/all will actually run queries. `/*vt+ EXECUTE_DML_QUERIES */` must be set to run DML queries in vtexplain. Example: `vexplain /*vt+ EXECUTE_DML_QUERIES */ queries delete from t1`")
