@@ -22,7 +22,12 @@
 
 ### This file is executed by 'make tools'. You do not need to execute it directly.
 
-export GITHUB_PROXY=https://ghproxy.com/
+# if uname return Darwin, then set GITHUB_PROXY, otherwise set to empty
+if [[ $(uname) == "Darwin" ]]; then
+  export GITHUB_PROXY=https://ghproxy.com/
+else
+  export GITHUB_PROXY=
+fi
 
 source ./dev.env
 
