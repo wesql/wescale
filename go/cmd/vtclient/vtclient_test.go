@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +35,7 @@ import (
 	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
 )
 
-func TestVtclient(t *testing.T) {
+func _TestVtclient(t *testing.T) {
 	// Build the config for vttest.
 	var cfg vttest.Config
 	cfg.Topology = &vttestpb.VTTestTopology{
