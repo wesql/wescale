@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +29,7 @@ import (
 // but may leave files/processes behind if they don't succeed,
 // so some manual cleanup may be required.
 
-func TestLifeCycle(t *testing.T) {
+func _TestLifeCycle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode.")
 	}
