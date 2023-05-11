@@ -186,6 +186,10 @@ func (t *noopVCursor) SetSessionTrackGTIDs(b bool) {
 	panic("implement me")
 }
 
+func (t *noopVCursor) SetReadAfterWriteConsistency(s vtgatepb.ReadAfterWriteConsistency) {
+	panic("implement me")
+}
+
 func (t *noopVCursor) HasCreatedTempTable() {
 	panic("implement me")
 }

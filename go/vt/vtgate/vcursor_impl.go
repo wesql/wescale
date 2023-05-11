@@ -920,6 +920,11 @@ func (vc *vcursorImpl) SetSessionTrackGTIDs(enable bool) {
 	vc.safeSession.SetSessionTrackGtids(enable)
 }
 
+// SetReadAfterWriteConsistency implements the SessionActions interface
+func (vc *vcursorImpl) SetReadAfterWriteConsistency(vtgtid vtgatepb.ReadAfterWriteConsistency) {
+	vc.safeSession.SetReadAfterWriteConsistency(vtgtid)
+}
+
 // HasCreatedTempTable implements the SessionActions interface
 func (vc *vcursorImpl) HasCreatedTempTable() {
 	vc.safeSession.GetOrCreateOptions().HasCreatedTempTables = true
@@ -1114,6 +1119,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
+	case sysvars.ReadAfterWriteTimeOut.Name:
+		return SetDefaultReadAfterWriteTimeout(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

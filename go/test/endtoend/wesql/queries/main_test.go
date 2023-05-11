@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 
+	"vitess.io/vitess/go/test/endtoend/utils"
+
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -50,7 +52,7 @@ func runAllTests(m *testing.M) int {
 		Name: KeyspaceName,
 	}
 	clusterInstance.VtTabletExtraArgs = []string{"--queryserver-config-transaction-timeout", "3", "--queryserver-config-max-result-size", "30"}
-	if err := clusterInstance.StartUnshardedKeyspace(*Keyspace, 0, false); err != nil {
+	if err := clusterInstance.StartUnshardedKeyspace(*Keyspace, 1, false); err != nil {
 		log.Fatal(err.Error())
 		return 1
 	}
@@ -132,4 +134,62 @@ func execWithConn(t *testing.T, db string, f func(conn *mysql.Conn)) {
 	defer conn.Close()
 
 	f(conn)
+}
+
+func createDbExecDropDb(t *testing.T, db string, f func(getConn func() *mysql.Conn)) {
+	defer cluster.PanicHandler(t)
+	ctx := context.Background()
+	vtParams := mysql.ConnParams{
+		Host: "localhost",
+		Port: clusterInstance.VtgateMySQLPort,
+	}
+	conn, err := mysql.Connect(ctx, &vtParams)
+	require.Nil(t, err)
+	defer conn.Close()
+
+	utils.Exec(t, conn, "create database "+db)
+	defer utils.Exec(t, conn, "drop database "+db)
+
+	getConn := func() *mysql.Conn {
+		vtParams := mysql.ConnParams{
+			Host:   "localhost",
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: db,
+		}
+		conn, err := mysql.Connect(ctx, &vtParams)
+		require.Nil(t, err)
+		return conn
+	}
+	f(getConn)
+}
+
+func getVTGateMysqlConn() *mysql.Conn {
+	ctx := context.Background()
+
+	params := mysql.ConnParams{
+		Host:   "localhost",
+		Port:   clusterInstance.VtgateMySQLPort,
+		DbName: KeyspaceName,
+	}
+	conn, err := mysql.Connect(ctx, &params)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return conn
+}
+
+func getBackendPrimaryMysqlConn() *mysql.Conn {
+	ctx := context.Background()
+
+	params := mysql.ConnParams{
+		Host:   "localhost",
+		Port:   clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet().MySQLPort,
+		DbName: KeyspaceName,
+		Uname:  "vt_dba",
+	}
+	conn, err := mysql.Connect(ctx, &params)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return conn
 }

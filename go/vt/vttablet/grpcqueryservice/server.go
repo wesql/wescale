@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,11 +103,11 @@ func (q *query) Commit(ctx context.Context, request *querypb.CommitRequest) (res
 		request.EffectiveCallerId,
 		request.ImmediateCallerId,
 	)
-	rID, err := q.server.Commit(ctx, request.Target, request.TransactionId)
+	rID, sessionStateChange, err := q.server.Commit(ctx, request.Target, request.TransactionId)
 	if err != nil {
 		return nil, vterrors.ToGRPC(err)
 	}
-	return &querypb.CommitResponse{ReservedId: rID}, nil
+	return &querypb.CommitResponse{ReservedId: rID, SessionStateChanges: sessionStateChange}, nil
 }
 
 // Rollback is part of the queryservice.QueryServer interface

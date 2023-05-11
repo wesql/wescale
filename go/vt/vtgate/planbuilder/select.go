@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +24,6 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/log"
-
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 
 	"vitess.io/vitess/go/vt/key"
@@ -32,73 +35,6 @@ import (
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/engine"
 )
-
-func buildSelectPlan(query string) stmtPlanner {
-	return func(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-		sel := stmt.(*sqlparser.Select)
-		if sel.With != nil {
-			return nil, vterrors.VT12001("WITH expression in SELECT statement")
-		}
-
-		p, err := handleDualSelects(sel, vschema)
-		if err != nil {
-			return nil, err
-		}
-		if p != nil {
-			return newPlanResult(p), nil
-		}
-
-		getPlan := func(sel *sqlparser.Select) (logicalPlan, error) {
-			pb := newPrimitiveBuilder(vschema, newJointab(reservedVars))
-			if err := pb.processSelect(sel, reservedVars, nil, query); err != nil {
-				return nil, err
-			}
-			if err := pb.plan.Wireup(pb.plan, pb.jt); err != nil {
-				return nil, err
-			}
-			return pb.plan, nil
-		}
-
-		plan, err := getPlan(sel)
-		if err != nil {
-			return nil, err
-		}
-
-		if shouldRetryAfterPredicateRewriting(plan) {
-			// by transforming the predicates to CNF, the planner will sometimes find better plans
-			primitive := rewriteToCNFAndReplan(stmt, getPlan)
-			if primitive != nil {
-				return newPlanResult(primitive), nil
-			}
-		}
-		primitive := plan.Primitive()
-		if rb, ok := primitive.(*engine.Route); ok {
-			// this is done because engine.Route doesn't handle the empty result well
-			// if it doesn't find a shard to send the query to.
-			// All other engine primitives can handle this, so we only need it when
-			// Route is the last (and only) instruction before the user sees a result
-			if isOnlyDual(sel) || (len(sel.GroupBy) == 0 && sel.SelectExprs.AllAggregation()) {
-				rb.NoRoutesSpecialHandling = true
-			}
-		}
-
-		return newPlanResult(primitive), nil
-	}
-}
-
-func rewriteToCNFAndReplan(stmt sqlparser.Statement, getPlan func(sel *sqlparser.Select) (logicalPlan, error)) engine.Primitive {
-	rewritten := sqlparser.RewritePredicate(stmt)
-	sel2, isSelect := rewritten.(*sqlparser.Select)
-	if isSelect {
-		log.Infof("retrying plan after cnf: %s", sqlparser.String(sel2))
-		plan2, err := getPlan(sel2)
-		if err == nil && !shouldRetryAfterPredicateRewriting(plan2) {
-			// we only use this new plan if it's better than the old one we got
-			return plan2.Primitive()
-		}
-	}
-	return nil
-}
 
 func shouldRetryAfterPredicateRewriting(plan logicalPlan) bool {
 	// if we have a I_S query, but have not found table_schema or table_name, let's try CNF

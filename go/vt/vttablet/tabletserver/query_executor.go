@@ -259,7 +259,7 @@ func (qre *QueryExecutor) execAsTransaction(f func(conn *StatefulConnection) (*s
 	}
 
 	defer qre.logStats.AddRewrittenSQL("commit", time.Now())
-	if _, err := qre.tsv.te.txPool.Commit(qre.ctx, conn); err != nil {
+	if _, _, err := qre.tsv.te.txPool.Commit(qre.ctx, conn); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -448,6 +448,10 @@ func (qre *QueryExecutor) Stream(callback StreamCallback) error {
 						return err
 					}
 					defer dbConn.Recycle()
+					_, waitGtidErr := qre.execWaitForExecutedGtidSetIfNecessary(dbConn)
+					if waitGtidErr != nil {
+						return waitGtidErr
+					}
 					return qre.execStreamSQL(dbConn, qre.connID != 0, sql, func(result *sqltypes.Result) error {
 						// this stream result is potentially used by more than one client, so
 						// the consolidator will return it to the pool once it knows it's no longer
@@ -485,6 +489,10 @@ func (qre *QueryExecutor) Stream(callback StreamCallback) error {
 		conn = dbConn
 	}
 
+	_, waitGtidErr := qre.execWaitForExecutedGtidSetIfNecessary(conn)
+	if waitGtidErr != nil {
+		return waitGtidErr
+	}
 	return qre.execStreamSQL(conn, qre.connID != 0, sql, func(result *sqltypes.Result) error {
 		// this stream result is only used by the calling client, so it can be
 		// returned to the pool once the callback has fully returned
@@ -791,6 +799,9 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	wantFields := true
+	// If the query is a read after write, we need to add the wait gtid prefix
+	sql, waitGtidPrefixAdded := qre.addPrefixWaitGtid(sql)
 	// Check tablet type.
 	if qre.shouldConsolidate() {
 		q, original := qre.tsv.qe.consolidator.Create(sqlWithoutComments)
@@ -802,7 +813,10 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 				q.Err = err
 			} else {
 				defer conn.Recycle()
-				q.Result, q.Err = qre.execDBConn(conn, sql, true)
+				q.Result, q.Err = qre.execDBConn(conn, sql, wantFields)
+				if waitGtidPrefixAdded {
+					q.Result, q.Err = qre.discardWaitGtidResponse(q.Result.(*sqltypes.Result), q.Err, conn, wantFields)
+				}
 			}
 		} else {
 			qre.logStats.QuerySources |= tabletenv.QuerySourceConsolidator
@@ -820,11 +834,70 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 		return nil, err
 	}
 	defer conn.Recycle()
-	res, err := qre.execDBConn(conn, sql, true)
+	res, err := qre.execDBConn(conn, sql, wantFields)
+	if waitGtidPrefixAdded {
+		res, err = qre.discardWaitGtidResponse(res, err, conn, wantFields)
+	}
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
+}
+
+// addPrefixWaitGtid adds a prefix to the query to wait for the gtid to be replicated.
+// make sure to call discardWaitGtidResponse if waitGtidPrefixAdded returns true.
+func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtidPrefixAdded bool) {
+	if qre.options == nil || qre.options.ReadAfterWriteGtid == "" {
+		return sql, false
+	}
+	var buf strings.Builder
+	buf.Grow(len(qre.options.GetReadAfterWriteGtid()) + len(sql) + 64)
+	buf.WriteString(fmt.Sprintf("SELECT WAIT_FOR_EXECUTED_GTID_SET('%s', %v);",
+		qre.options.GetReadAfterWriteGtid(), qre.options.GetReadAfterWriteTimeout()))
+	buf.WriteString(sql)
+	newSQL = buf.String()
+	return newSQL, true
+}
+
+const WaitGtidTimeoutFlag = "1"
+
+// discardWaitGtidResponse discards the wait gtid response and returns the last result.
+func (qre *QueryExecutor) discardWaitGtidResponse(res *sqltypes.Result, err error, conn *connpool.DBConn, wantFields bool) (*sqltypes.Result, error) {
+	if err != nil {
+		return nil, err
+	}
+	if !res.IsMoreResultsExists() {
+		// should not happen
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "wait for gtid response is not complete")
+	}
+	waitGtidRes := res.Rows[0][0].ToString()
+	// we need to fetch all the results and discard them.
+	// Otherwise, the connection will be left in a bad state.
+	// the last result will be returned to the caller.
+	userSQLRes, userSQLErr := conn.FetchNext(qre.ctx, int(qre.tsv.qe.maxResultSize.Get()), wantFields)
+	if waitGtidRes == WaitGtidTimeoutFlag {
+		return nil, vterrors.Errorf(vtrpcpb.Code_ABORTED, "wait for gtid timeout")
+	}
+	return userSQLRes, userSQLErr
+}
+
+// execWaitForExecutedGtidSetIfNecessary executes a query to wait for the gtid to be replicated.
+// It returns true if the query is executed, false if the query is not executed.
+// It returns an error if the query is executed and the GTID is not replicated.
+func (qre *QueryExecutor) execWaitForExecutedGtidSetIfNecessary(conn *connpool.DBConn) (executed bool, err error) {
+	sql, waitGtidPrefixAdded := qre.addPrefixWaitGtid("")
+	if !waitGtidPrefixAdded || sql == "" {
+		return false, nil
+	}
+	res, err := qre.execDBConn(conn, sql, true)
+	if err != nil {
+		return true, err
+	}
+	waitGtidRes := res.Rows[0][0].ToString()
+	if waitGtidRes == WaitGtidTimeoutFlag {
+		return true, vterrors.Errorf(vtrpcpb.Code_ABORTED, "wait for gtid timeout")
+	}
+	return true, nil
 }
 
 func (qre *QueryExecutor) execDMLLimit(conn *StatefulConnection) (*sqltypes.Result, error) {
