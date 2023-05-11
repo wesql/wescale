@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,7 +122,7 @@ func TestMultipleUpdatesFromDifferentShards(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			var signalNb, initNb int
 			var updatedTables []string
-			update := func(th *discovery.TabletHealth) bool {
+			update := func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool {
 				updatedTables = th.Stats.TableSchemaChanged
 				return !test.updateFail
 			}
@@ -128,7 +133,7 @@ func TestMultipleUpdatesFromDifferentShards(t *testing.T) {
 				update:       update,
 				signal:       signal,
 				consumeDelay: 5 * time.Millisecond,
-				reloadKeyspace: func(th *discovery.TabletHealth) error {
+				reloadKeyspace: func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) error {
 					initNb++
 					var err error
 					if test.initFail {
@@ -239,7 +244,7 @@ func TestViewsUpdates(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i+1), func(t *testing.T) {
 			var signalNb, initNb int
 			var updatedViews []string
-			update := func(th *discovery.TabletHealth) bool {
+			update := func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool {
 				updatedViews = th.Stats.ViewSchemaChanged
 				return !test.updateFail
 			}
@@ -250,7 +255,7 @@ func TestViewsUpdates(t *testing.T) {
 				update:       update,
 				signal:       signal,
 				consumeDelay: 5 * time.Millisecond,
-				reloadKeyspace: func(th *discovery.TabletHealth) error {
+				reloadKeyspace: func(keyspaceStr keyspaceStr, th *discovery.TabletHealth) error {
 					initNb++
 					var err error
 					if test.initFail {

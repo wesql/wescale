@@ -23,18 +23,43 @@ var defaultKeyspace = global.DefaultKeyspace
 var defaultShardName = global.DefaultShard
 
 func CreateDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryService, keyspaceName string, cells []string) error {
+	return createDatabaseInternal(ctx, ts, func() error {
+		// Create Database if not exist
+		dbname := keyspaceName
+		target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
+		sql := "CREATE DATABASE IF NOT EXISTS `" + dbname + "`"
+		_, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil)
+		return err
+	}, keyspaceName, cells)
+}
+
+func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryService, keyspaceName string, cells []string) error {
+	return dropDatabaseInternal(ctx, ts, func() error {
+		dbname := keyspaceName
+		target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
+		sql := "DROP DATABASE IF EXISTS `" + dbname + "`"
+		_, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil)
+		return err
+	}, keyspaceName, cells)
+}
+
+func CreateDatabaseMeta(ctx context.Context, ts *topo.Server, keyspaceName string, cells []string) error {
+	return createDatabaseInternal(ctx, ts, func() error { return nil }, keyspaceName, cells)
+}
+
+func DropDatabaseMeta(ctx context.Context, ts *topo.Server, keyspaceName string, cells []string) error {
+	return dropDatabaseInternal(ctx, ts, func() error { return nil }, keyspaceName, cells)
+}
+
+func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error, keyspaceName string, cells []string) error {
 	_, err := ts.GetOrCreateShard(ctx, keyspaceName, defaultShardName)
 	if err != nil {
 		return fmt.Errorf("CreateKeyspace(%v:%v) failed: %v", keyspaceName, defaultShardName, err)
 	}
 
-	// Create Database if not exist
-	dbname := keyspaceName
-	target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
-	sql := "CREATE DATABASE IF NOT EXISTS `" + dbname + "`"
-	_, err = gw.Execute(ctx, target, sql, nil, 0, 0, nil)
+	err = f()
 	if err != nil {
-		return fmt.Errorf("error creating database: %v", err)
+		return err
 	}
 
 	if err = ts.RebuildSrvVSchema(ctx, cells); err != nil {
@@ -47,7 +72,7 @@ func CreateDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryS
 	return nil
 }
 
-func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QueryService, keyspaceName string, cells []string) error {
+func dropDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error, keyspaceName string, cells []string) error {
 	if err := ts.DeleteShard(ctx, keyspaceName, defaultShardName); err != nil {
 		return err
 	}
@@ -66,11 +91,9 @@ func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QuerySer
 		return err
 	}
 
-	dbname := keyspaceName
-	target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
-	sql := "DROP DATABASE IF EXISTS `" + dbname + "`"
-	if _, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil); err != nil {
-		return fmt.Errorf("error droping database: %v", err)
+	err := f()
+	if err != nil {
+		return err
 	}
 
 	return nil

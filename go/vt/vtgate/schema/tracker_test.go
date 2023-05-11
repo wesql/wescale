@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,7 +146,7 @@ func TestTracking(t *testing.T) {
 		t.Run(fmt.Sprintf("%d - %s", i, tcase.tName), func(t *testing.T) {
 			sbc := sandboxconn.NewSandboxConn(tablet)
 			ch := make(chan *discovery.TabletHealth)
-			tracker := NewTracker(ch, "", false)
+			tracker := NewTracker(nil, "", ch, "", false)
 			tracker.consumeDelay = 1 * time.Millisecond
 			tracker.Start()
 			defer tracker.Stop()
@@ -170,6 +175,7 @@ func TestTracking(t *testing.T) {
 			tracker.RegisterSignalReceiver(func() {
 				wg.Done()
 			})
+			tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 			for _, d := range tcase.deltas {
 				ch <- &discovery.TabletHealth{
@@ -210,7 +216,7 @@ func TestTrackingUnHealthyTablet(t *testing.T) {
 
 	sbc := sandboxconn.NewSandboxConn(tablet)
 	ch := make(chan *discovery.TabletHealth)
-	tracker := NewTracker(ch, "", false)
+	tracker := NewTracker(nil, "", ch, "", false)
 	tracker.consumeDelay = 1 * time.Millisecond
 	tracker.Start()
 	defer tracker.Stop()
@@ -221,6 +227,7 @@ func TestTrackingUnHealthyTablet(t *testing.T) {
 	tracker.RegisterSignalReceiver(func() {
 		wg.Done()
 	})
+	tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 	tcases := []struct {
 		name          string
@@ -278,25 +285,39 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
-	ks3 := &updateController{}
+	ks3 := &updateController{keyspaceStr: "ks3"}
 	tracker := Tracker{
 		tracked: map[keyspaceStr]*updateController{
 			"ks3": ks3,
 		},
 	}
+	tracker.tracked["ks1"] = tracker.newUpdateController("ks1")
+	tracker.tracked["ks2"] = tracker.newUpdateController("ks2")
 
 	th1 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks1"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 	ks1 := tracker.getKeyspaceUpdateController(th1)
 
 	th2 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks2"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 	ks2 := tracker.getKeyspaceUpdateController(th2)
 
 	th3 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks3"},
+		Stats:  &querypb.RealtimeStats{},
+		Tablet: &topodatapb.Tablet{
+			Type: topodatapb.TabletType_PRIMARY,
+		},
 	}
 
 	assert.NotEqual(t, ks1, ks2, "ks1 and ks2 should not be equal, belongs to different keyspace")
@@ -354,7 +375,7 @@ func TestViewsTracking(t *testing.T) {
 	}}
 
 	ch := make(chan *discovery.TabletHealth)
-	tracker := NewTracker(ch, "", true)
+	tracker := NewTracker(nil, "", ch, "", true)
 	tracker.tables = nil // making tables map nil - so load keyspace does not try to load the tables information.
 	tracker.consumeDelay = 1 * time.Millisecond
 	tracker.Start()
@@ -364,6 +385,7 @@ func TestViewsTracking(t *testing.T) {
 	tracker.RegisterSignalReceiver(func() {
 		wg.Done()
 	})
+	tracker.tracked[target.Keyspace] = tracker.newUpdateController(target.Keyspace)
 
 	sbc := sandboxconn.NewSandboxConn(tablet)
 	sbc.SetSchemaResult(schemaDefResult)
