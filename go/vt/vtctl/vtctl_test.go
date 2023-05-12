@@ -72,7 +72,7 @@ func TestMoveTables(t *testing.T) {
 	expectGlobalResults := func() {
 		env.tmc.setVRResults(
 			target.tablet,
-			fmt.Sprintf("select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='%s' and db_name=%s'",
+			fmt.Sprintf("select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='%s' and db_name='%s'",
 				wf, targetKs),
 			sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"id|source|message|cell|tablet_types|workflow_type|workflow_sub_type|defer_secondary_keys",
@@ -117,7 +117,7 @@ func TestMoveTables(t *testing.T) {
 				)
 				env.tmc.setVRResults(
 					target.tablet,
-					fmt.Sprintf("select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name = %s' and workflow = '%s'",
+					fmt.Sprintf("select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name = '%s' and workflow = '%s'",
 						targetKs, wf),
 					sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 						"id|source|pos|stop_pos|max_replication_lag|state|db_name|time_updated|transaction_timestamp|time_heartbeat|time_throttled|component_throttled|message|tags|workflow_type|workflow_sub_type|defer_secondary_keys",
@@ -128,7 +128,7 @@ func TestMoveTables(t *testing.T) {
 				)
 				env.tmc.setDBAResults(
 					target.tablet,
-					fmt.Sprintf("select table_name, table_rows, data_length from information_schema.tables where table_schema = %s' and table_name in ('%s')",
+					fmt.Sprintf("select table_name, table_rows, data_length from information_schema.tables where table_schema = '%s' and table_name in ('%s')",
 						targetKs, table),
 					sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 						"table_name|table_rows|data_length",
