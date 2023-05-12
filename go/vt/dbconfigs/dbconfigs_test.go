@@ -240,8 +240,8 @@ func TestAccessors(t *testing.T) {
 	if got, want := dbc.AppWithDB().connParams.DbName, "db"; got != want {
 		t.Errorf("dbc.AppWithDB().DbName: %v, want %v", got, want)
 	}
-	if got, want := dbc.AppWithoutDB().connParams.DbName, ""; got != want {
-		t.Errorf("dbc.AppWithoutDB().DbName: %v, want %v", got, want)
+	if got, want := dbc.AppConnector().connParams.DbName, ""; got != want {
+		t.Errorf("dbc.AppConnector().DbName: %v, want %v", got, want)
 	}
 	if got, want := dbc.AllPrivsConnector().connParams.DbName, ""; got != want {
 		t.Errorf("dbc.AllPrivsWithDB().DbName: %v, want %v", got, want)
@@ -251,6 +251,9 @@ func TestAccessors(t *testing.T) {
 	}
 	if got, want := dbc.AppDebugWithDB().connParams.DbName, "db"; got != want {
 		t.Errorf("dbc.AppDebugWithDB().DbName: %v, want %v", got, want)
+	}
+	if got, want := dbc.AppDebugConnector().connParams.DbName, ""; got != want {
+		t.Errorf("dbc.AppDebugConnector().DbName: %v, want %v", got, want)
 	}
 	if got, want := dbc.DbaConnector().connParams.DbName, ""; got != want {
 		t.Errorf("dbc.Dba().DbName: %v, want %v", got, want)

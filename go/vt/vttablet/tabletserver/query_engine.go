@@ -298,8 +298,8 @@ func (qe *QueryEngine) Open() error {
 
 	qe.streamConns.Open(qe.env.Config().DB.AppWithDB(), qe.env.Config().DB.DbaWithDB(), qe.env.Config().DB.AppDebugWithDB())
 
-	qe.withoutDBConns.Open(qe.env.Config().DB.AppWithoutDB(), qe.env.Config().DB.DbaWithDB(), qe.env.Config().DB.AppDebugWithDB())
-	qe.streamWithoutDBConns.Open(qe.env.Config().DB.AppWithoutDB(), qe.env.Config().DB.DbaWithDB(), qe.env.Config().DB.AppDebugWithDB())
+	qe.withoutDBConns.Open(qe.env.Config().DB.AppConnector(), qe.env.Config().DB.DbaConnector(), qe.env.Config().DB.AppDebugConnector())
+	qe.streamWithoutDBConns.Open(qe.env.Config().DB.AppConnector(), qe.env.Config().DB.DbaConnector(), qe.env.Config().DB.AppDebugConnector())
 
 	qe.se.RegisterNotifier("qe", qe.schemaChanged)
 	qe.isOpen = true
