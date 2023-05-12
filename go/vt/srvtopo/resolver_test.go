@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -255,6 +260,43 @@ func TestResolveDestinations(t *testing.T) {
 		}
 		if !ValuesEqual(values, testCase.expectedValues) {
 			t.Errorf("%v: values != testCase.expectedValues: got values=%v", testCase.name, values)
+		}
+	}
+}
+
+func TestResolveDefaultDestinations(t *testing.T) {
+	resolver := initResolver(t, "TestResolveDefaultDestinations")
+
+	var testCases = []struct {
+		name string
+
+		destination      key.Destination
+		errString        string
+		expectedShard    string
+		expectedKeySpace string
+	}{
+		{
+			name:             "unsharded keyspace, no keyspace",
+			destination:      key.DestinationShard("0"),
+			expectedShard:    "DestinationShard(0)",
+			expectedKeySpace: "",
+		},
+	}
+	for _, testCase := range testCases {
+		rss, _ := resolver.ResolveDefaultDestination(topodatapb.TabletType_PRIMARY, testCase.destination)
+
+		// Check the ResolvedShard are correct.
+		if len(rss) != 1 {
+			t.Errorf("%v: expected %v ResolvedShard, but got: %v", testCase.name, testCase.expectedShard, rss)
+			continue
+		}
+		for i, rs := range rss {
+			if rs.Target.Shard != testCase.expectedShard {
+				t.Errorf("%v: expected rss[%v] shard to be '%v', but got: %v", testCase.name, i, testCase.expectedShard, rs.Target.Shard)
+			}
+			if rs.Target.Keyspace != testCase.expectedKeySpace {
+				t.Errorf("%v: expected rss[%v] keyspace to be '%v', but got: %v", testCase.name, i, testCase.expectedShard, rs.Target.Shard)
+			}
 		}
 	}
 }

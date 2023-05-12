@@ -32,6 +32,8 @@ import (
 
 func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
 	keyspace, err := vschema.DefaultKeyspace()
+	// If no keyspace is specified in this SQL or Session, the SQL can be processed directly by vttablet,
+	// because vttablet can now handle SQL without any database specified.
 	if err != nil && err.Error() != vterrors.VT09005().Error() {
 		return nil, err
 	}

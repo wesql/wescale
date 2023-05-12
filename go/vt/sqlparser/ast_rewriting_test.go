@@ -299,6 +299,18 @@ func TestRewrites(in *testing.T) {
 		in:       "SELECT id, name, salary FROM user_details",
 		expected: "SELECT id, name, salary FROM (select user.id, user.name, user_extra.salary from user join user_extra where user.id = user_extra.user_id) as user_details",
 	}, {
+		in:       "(SELECT SQL_CALC_FOUND_ROWS id FROM user WHERE id = 1 limit 1) UNION SELECT id FROM user WHERE id = 1",
+		expected: "(SELECT SQL_CALC_FOUND_ROWS id FROM user WHERE id = 1 limit 1) UNION SELECT id FROM user WHERE id = 1",
+	}, {
+		in:       "WITH cte AS (SELECT 1 as col1, 1 as col2) SELECT * FROM cte UNION SELECT * FROM cte",
+		expected: "WITH cte AS (SELECT 1 as col1, 1 as col2) SELECT * FROM cte UNION SELECT * FROM cte",
+	}, {
+		in:       "WITH cte1 AS (SELECT 1 as col1, 1 as col2),cte2 AS (SELECT 3 as col1, 4 as col2) SELECT * FROM cte1 UNION SELECT * FROM cte2",
+		expected: "WITH cte1 AS (SELECT 1 as col1, 1 as col2),cte2 AS (SELECT 3 as col1, 4 as col2) SELECT * FROM cte1 UNION SELECT * FROM cte2",
+	}, {
+		in:       "WITH cte AS ( SELECT 1 AS col1, 2 AS col2 UNION ALL SELECT 3, 4 ) SELECT col1, col2 FROM cte",
+		expected: "WITH cte AS ( SELECT 1 AS col1, 2 AS col2 UNION ALL SELECT 3, 4 ) SELECT col1, col2 FROM cte",
+	}, {
 		in:                          "SHOW VARIABLES",
 		expected:                    "SHOW VARIABLES",
 		autocommit:                  true,
