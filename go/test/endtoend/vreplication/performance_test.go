@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,7 +107,7 @@ create table customer(cid int, name varbinary(128), meta json default null, typ 
 	for _, shard := range keyspaceTgt.Shards {
 		for _, tablet := range shard.Tablets {
 			t.Logf("catchup shard=%v, tablet=%v", shard.Name, tablet.Name)
-			tablet.Vttablet.WaitForVReplicationToCatchup(t, "stress_workflow", fmt.Sprintf("vt_%s", tablet.Vttablet.Keyspace), 5*time.Minute)
+			tablet.Vttablet.WaitForVReplicationToCatchup(t, "stress_workflow", tablet.Vttablet.Keyspace, 5*time.Minute)
 		}
 	}
 

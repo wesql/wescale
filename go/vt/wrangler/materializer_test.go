@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,9 +44,9 @@ import (
 	"vitess.io/vitess/go/vt/topo/memorytopo"
 )
 
-const mzUpdateQuery = "update _vt.vreplication set state='Running' where db_name='vt_targetks' and workflow='workflow'"
-const mzSelectIDQuery = "select id from _vt.vreplication where db_name='vt_targetks' and workflow='workflow'"
-const mzSelectFrozenQuery = "select 1 from _vt.vreplication where db_name='vt_targetks' and message='FROZEN' and workflow_sub_type != 1"
+const mzUpdateQuery = "update _vt.vreplication set state='Running' where db_name='targetks' and workflow='workflow'"
+const mzSelectIDQuery = "select id from _vt.vreplication where db_name='targetks' and workflow='workflow'"
+const mzSelectFrozenQuery = "select 1 from _vt.vreplication where db_name='targetks' and message='FROZEN' and workflow_sub_type != 1"
 const mzCheckJournal = "/select val from _vt.resharding_journal where id="
 
 var defaultOnDDL = binlogdatapb.OnDDLAction_name[int32(binlogdatapb.OnDDLAction_IGNORE)]
@@ -318,7 +323,7 @@ func TestCreateLookupVindexFull(t *testing.T) {
 	env.tmc.expectVRQuery(200, mzSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, "/CREATE TABLE `lkp`", &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, insertPrefix, &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='vt_targetks' and workflow='lkp_vdx'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='targetks' and workflow='lkp_vdx'", &sqltypes.Result{})
 
 	ctx := context.Background()
 	err := env.wr.CreateLookupVindex(ctx, ms.SourceKeyspace, specs, "cell", "PRIMARY", false)
@@ -1718,13 +1723,13 @@ func TestExternalizeVindex(t *testing.T) {
 			t.Fatal(err)
 		}
 		if tcase.vrResponse != nil {
-			validationQuery := "select id, state, message, source from _vt.vreplication where workflow='lkp_vdx' and db_name='vt_targetks'"
+			validationQuery := "select id, state, message, source from _vt.vreplication where workflow='lkp_vdx' and db_name='targetks'"
 			env.tmc.expectVRQuery(200, validationQuery, tcase.vrResponse)
 			env.tmc.expectVRQuery(210, validationQuery, tcase.vrResponse)
 		}
 
 		if tcase.expectDelete {
-			deleteQuery := "delete from _vt.vreplication where db_name='vt_targetks' and workflow='lkp_vdx'"
+			deleteQuery := "delete from _vt.vreplication where db_name='targetks' and workflow='lkp_vdx'"
 			env.tmc.expectVRQuery(200, deleteQuery, &sqltypes.Result{})
 			env.tmc.expectVRQuery(210, deleteQuery, &sqltypes.Result{})
 		}
@@ -1785,7 +1790,7 @@ func TestMaterializerOneToOne(t *testing.T) {
 				`rules:{match:\\"t2\\" filter:\\"select.*t3\\"} `+
 				`rules:{match:\\"t4\\"}`+
 				`}', `)+
-			`'', [0-9]*, [0-9]*, 'zone1', 'primary,rdonly', [0-9]*, 0, 'Stopped', 'vt_targetks', 0, 0, false`+
+			`'', [0-9]*, [0-9]*, 'zone1', 'primary,rdonly', [0-9]*, 0, 'Stopped', 'targetks', 0, 0, false`+
 			`\)`+eol,
 		&sqltypes.Result{},
 	)
@@ -1818,9 +1823,9 @@ func TestMaterializerManyToOne(t *testing.T) {
 	env.tmc.expectVRQuery(
 		200,
 		insertPrefix+
-			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"-80\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'vt_targetks', 0, 0, false\)`+
+			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"-80\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'targetks', 0, 0, false\)`+
 			`, `+
-			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"80-\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'vt_targetks', 0, 0, false\)`+
+			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"80-\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'targetks', 0, 0, false\)`+
 			eol,
 		&sqltypes.Result{},
 	)
@@ -2031,7 +2036,7 @@ func TestMaterializerDeploySchema(t *testing.T) {
 	env.tmc.expectVRQuery(
 		200,
 		insertPrefix+
-			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"0\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'vt_targetks', 0, 0, false\)`+
+			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"0\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'targetks', 0, 0, false\)`+
 			eol,
 		&sqltypes.Result{},
 	)
@@ -2069,7 +2074,7 @@ func TestMaterializerCopySchema(t *testing.T) {
 	env.tmc.expectVRQuery(
 		200,
 		insertPrefix+
-			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"0\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'vt_targetks', 0, 0, false\)`+
+			`\('workflow', 'keyspace:\\"sourceks\\" shard:\\"0\\" filter:{rules:{match:\\"t1\\" filter:\\"select.*t1\\"} rules:{match:\\"t2\\" filter:\\"select.*t3\\"}}', '', [0-9]*, [0-9]*, '', '', [0-9]*, 0, 'Stopped', 'targetks', 0, 0, false\)`+
 			eol,
 		&sqltypes.Result{},
 	)

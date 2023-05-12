@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -289,7 +294,7 @@ func testCopySchemaShardWithDifferentDB(t *testing.T, shard int) {
 	// (The different charset won't be corrected on the destination shard
 	//  because we use "CREATE DATABASE IF NOT EXISTS" and this doesn't fail if
 	//  there are differences in the options e.g. the character set.)
-	err = clusterInstance.VtctlclientProcess.ExecuteCommand("ExecuteFetchAsDba", "--", "--json", tabletAlias, "ALTER DATABASE vt_ks CHARACTER SET latin1")
+	err = clusterInstance.VtctlclientProcess.ExecuteCommand("ExecuteFetchAsDba", "--", "--json", tabletAlias, "ALTER DATABASE ks CHARACTER SET latin1")
 	require.Nil(t, err)
 
 	output, err := clusterInstance.VtctlclientProcess.ExecuteCommandWithOutput("CopySchemaShard", source, fmt.Sprintf("%s/%d", keyspaceName, shard))

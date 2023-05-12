@@ -408,8 +408,8 @@ func (vttablet *VttabletProcess) TearDownWithTimeout(timeout time.Duration) erro
 
 // CreateDB creates the database for keyspace
 func (vttablet *VttabletProcess) CreateDB(keyspace string) error {
-	_, _ = vttablet.QueryTablet(fmt.Sprintf("drop database IF EXISTS vt_%s", keyspace), keyspace, false)
-	_, err := vttablet.QueryTablet(fmt.Sprintf("create database IF NOT EXISTS vt_%s", keyspace), keyspace, false)
+	_, _ = vttablet.QueryTablet(fmt.Sprintf("drop database IF EXISTS %s", keyspace), keyspace, false)
+	_, err := vttablet.QueryTablet(fmt.Sprintf("create database IF NOT EXISTS %s", keyspace), keyspace, false)
 	return err
 }
 
@@ -567,7 +567,7 @@ func (vttablet *VttabletProcess) BulkLoad(t testing.TB, db, table string, bulkIn
 		t.Fatal(err)
 	}
 
-	conn, err := vttablet.defaultConn("vt_" + db)
+	conn, err := vttablet.defaultConn(db)
 	if err != nil {
 		t.Fatal(err)
 	}

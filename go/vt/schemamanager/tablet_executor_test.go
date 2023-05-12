@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +85,7 @@ func TestTabletExecutorOpenWithEmptyPrimaryAlias(t *testing.T) {
 func TestTabletExecutorValidate(t *testing.T) {
 	fakeTmc := newFakeTabletManagerClient()
 
-	fakeTmc.AddSchemaDefinition("vt_test_keyspace", &tabletmanagerdatapb.SchemaDefinition{
+	fakeTmc.AddSchemaDefinition("test_keyspace", &tabletmanagerdatapb.SchemaDefinition{
 		DatabaseSchema: "CREATE DATABASE `{{.DatabaseName}}` /*!40100 DEFAULT CHARACTER SET utf8 */",
 		TableDefinitions: []*tabletmanagerdatapb.TableDefinition{
 			{
@@ -169,7 +174,7 @@ func TestTabletExecutorValidate(t *testing.T) {
 func TestTabletExecutorDML(t *testing.T) {
 	fakeTmc := newFakeTabletManagerClient()
 
-	fakeTmc.AddSchemaDefinition("vt_test_keyspace", &tabletmanagerdatapb.SchemaDefinition{
+	fakeTmc.AddSchemaDefinition("test_keyspace", &tabletmanagerdatapb.SchemaDefinition{
 		DatabaseSchema: "CREATE DATABASE `{{.DatabaseName}}` /*!40100 DEFAULT CHARACTER SET utf8 */",
 		TableDefinitions: []*tabletmanagerdatapb.TableDefinition{
 			{

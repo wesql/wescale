@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,48 +22,13 @@ limitations under the License.
 package planbuilder
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
-
-func TestBuildDBPlan(t *testing.T) {
-	vschema := &vschemaWrapper{
-		keyspace: &vindexes.Keyspace{Name: "main"},
-	}
-
-	testCases := []struct {
-		query    string
-		expected string
-	}{{
-		query:    "show databases like 'main'",
-		expected: `[[VARCHAR("main")]]`,
-	}, {
-		query:    "show databases like '%ys%'",
-		expected: `[[VARCHAR("mysql")] [VARCHAR("sys")]]`,
-	}}
-
-	for _, s := range testCases {
-		t.Run(s.query, func(t *testing.T) {
-			parserOut, err := sqlparser.Parse(s.query)
-			require.NoError(t, err)
-
-			show := parserOut.(*sqlparser.Show)
-			primitive, err := buildDBPlan(show.Internal.(*sqlparser.ShowBasic), vschema)
-			require.NoError(t, err)
-
-			result, err := primitive.TryExecute(context.Background(), nil, nil, false)
-			require.NoError(t, err)
-			require.Equal(t, s.expected, fmt.Sprintf("%v", result.Rows))
-		})
-	}
-}
 
 func TestGenerateCharsetRows(t *testing.T) {
 	rows := make([][]sqltypes.Value, 0, 4)

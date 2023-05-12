@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,7 +106,7 @@ func TestReshardingWorkflowErrorsAndMisc(t *testing.T) {
 
 func expectCanSwitchQueries(t *testing.T, tme *testMigraterEnv, keyspace, state string, currentLag int64) {
 	now := time.Now().Unix()
-	rowTemplate := "1|||||%s|vt_%s|%d|%d|0|0|||"
+	rowTemplate := "1|||||%s|%s|%d|%d|0|0|||"
 	row := fmt.Sprintf(rowTemplate, state, keyspace, now, now-currentLag)
 	replicationResult := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"id|source|pos|stop_pos|max_replication_lag|state|db_name|time_updated|transaction_timestamp|time_heartbeat|time_throttled|component_throttled|message|tags",
@@ -241,7 +246,7 @@ func expectCopyProgressQueries(t *testing.T, tme *testMigraterEnv) {
 	query = "select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2"
 	db.AddQuery(query, result)
 
-	query = "select table_name, table_rows, data_length from information_schema.tables where table_schema = 'vt_ks2' and table_name in ('t1','t2')"
+	query = "select table_name, table_rows, data_length from information_schema.tables where table_schema = 'ks2' and table_name in ('t1','t2')"
 	result = sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"table_name|table_rows|data_length",
 		"varchar|int64|int64"),
@@ -249,7 +254,7 @@ func expectCopyProgressQueries(t *testing.T, tme *testMigraterEnv) {
 		"t2|200|500")
 	db.AddQuery(query, result)
 
-	query = "select table_name, table_rows, data_length from information_schema.tables where table_schema = 'vt_ks1' and table_name in ('t1','t2')"
+	query = "select table_name, table_rows, data_length from information_schema.tables where table_schema = 'ks1' and table_name in ('t1','t2')"
 	result = sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"table_name|table_rows|data_length",
 		"varchar|int64|int64"),
@@ -569,15 +574,15 @@ func expectReshardQueries(t *testing.T, tme *testShardMigraterEnv, params *VRepl
 		params.SourceKeyspace, params.Workflow)
 
 	sourceQueries := []string{
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='vt_ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='vt_ks' and workflow != 'test_reverse'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'",
 	}
 	noResult := &sqltypes.Result{}
 	for _, dbclient := range tme.dbSourceClients {
 		for _, query := range sourceQueries {
 			dbclient.addInvariant(query, noResult)
 		}
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test_reverse'", resultid1)
+		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid1)
 		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
@@ -591,7 +596,7 @@ func expectReshardQueries(t *testing.T, tme *testShardMigraterEnv, params *VRepl
 	}
 
 	targetQueries := []string{
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='vt_ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
 	}
 
 	for _, dbclient := range tme.dbTargetClients {
@@ -610,13 +615,13 @@ func expectReshardQueries(t *testing.T, tme *testShardMigraterEnv, params *VRepl
 			"MariaDB/5-456-892|Running")
 		dbclient.addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
 		dbclient.addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test'", resultid1)
+		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid1)
 		dbclient.addInvariant("update _vt.vreplication set message = 'FROZEN'", noResult)
 		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
 	}
-	tme.tmeDB.AddQuery("USE `vt_ks`", noResult)
+	tme.tmeDB.AddQuery("USE `ks`", noResult)
 	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)
 	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2", noResult)
 	tme.tmeDB.AddQuery(vdiffDeleteQuery, noResult)
@@ -640,7 +645,7 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 	for _, dbclient := range tme.dbTargetClients {
 		query = "update _vt.vreplication set state = 'Running', message = '' where id in (1)"
 		dbclient.addInvariant(query, noResult)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'vt_ks2' and workflow = 'test'", resultid1)
+		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1)
 		dbclient.addInvariant("select * from _vt.vreplication where id = 1", runningResult(1))
 		dbclient.addInvariant("select * from _vt.vreplication where id = 2", runningResult(2))
 		query = "update _vt.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1"
@@ -651,13 +656,13 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
 		dbclient.addInvariant("insert into _vt.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
 		dbclient.addInvariant("update _vt.vreplication set message = 'FROZEN'", noResult)
-		dbclient.addInvariant("select 1 from _vt.vreplication where db_name='vt_ks2' and workflow='test' and message!='FROZEN'", noResult)
+		dbclient.addInvariant("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", noResult)
 		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
 		dbclient.addInvariant("insert into _vt.resharding_journal", noResult)
 		dbclient.addInvariant("select val from _vt.resharding_journal", noResult)
-		dbclient.addInvariant("select id, source, message, cell, tablet_types from _vt.vreplication where workflow='test_reverse' and db_name='vt_ks1'",
+		dbclient.addInvariant("select id, source, message, cell, tablet_types from _vt.vreplication where workflow='test_reverse' and db_name='ks1'",
 			sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"id|source|message|cell|tablet_types",
 				"int64|varchar|varchar|varchar|varchar"),
@@ -673,7 +678,7 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
 		dbclient.addInvariant("select id from _vt.vreplication where id = 1", resultid1)
 		dbclient.addInvariant("select id from _vt.vreplication where id = 2", resultid2)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'vt_ks1' and workflow = 'test_reverse'", resultid1)
+		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid1)
 		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
 		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
@@ -702,12 +707,12 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 	tme.dbSourceClients[0].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
 	tme.dbSourceClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
 	tme.dbSourceClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
-	tme.tmeDB.AddQuery("USE `vt_ks1`", noResult)
-	tme.tmeDB.AddQuery("USE `vt_ks2`", noResult)
-	tme.tmeDB.AddQuery("drop table `vt_ks1`.`t1`", noResult)
-	tme.tmeDB.AddQuery("drop table `vt_ks1`.`t2`", noResult)
-	tme.tmeDB.AddQuery("drop table `vt_ks2`.`t1`", noResult)
-	tme.tmeDB.AddQuery("drop table `vt_ks2`.`t2`", noResult)
+	tme.tmeDB.AddQuery("USE `ks1`", noResult)
+	tme.tmeDB.AddQuery("USE `ks2`", noResult)
+	tme.tmeDB.AddQuery("drop table `ks1`.`t1`", noResult)
+	tme.tmeDB.AddQuery("drop table `ks1`.`t2`", noResult)
+	tme.tmeDB.AddQuery("drop table `ks2`.`t1`", noResult)
+	tme.tmeDB.AddQuery("drop table `ks2`.`t2`", noResult)
 	tme.tmeDB.AddQuery("update _vt.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1", noResult)
 	tme.tmeDB.AddQuery("lock tables `t1` read,`t2` read", &sqltypes.Result{})
 	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)

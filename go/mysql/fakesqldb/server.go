@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -443,7 +448,7 @@ func (db *DB) comQueryOrdered(query string) (*sqltypes.Result, error) {
 	// when creating a connection to the database, we send an initial query to set the connection's
 	// collation, we want to skip the query check if we get such initial query.
 	// this is done to ease the test readability.
-	if strings.HasPrefix(query, "SET collation_connection =") || strings.EqualFold(query, "use `fakesqldb`") {
+	if strings.HasPrefix(query, "SET collation_connection =") || strings.EqualFold(query, "use `fakesqldb`") || strings.HasPrefix(query, "SET @@session_track_gtids") {
 		return &sqltypes.Result{}, nil
 	}
 

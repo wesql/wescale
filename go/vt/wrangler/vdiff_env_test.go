@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -135,7 +140,7 @@ func newTestVDiffEnv(sourceShards, targetShards []string, query string, position
 		// migrater buildMigrationTargets
 		env.tmc.setVRResults(
 			primary.tablet,
-			"select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='vdiffTest' and db_name='vt_target'",
+			"select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='vdiffTest' and db_name='target'",
 			sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"id|source|message|cell|tablet_types|workflow_type|workflow_sub_type|defer_secondary_keys",
 				"int64|varchar|varchar|varchar|varchar|int64|int64|int64"),
@@ -144,10 +149,10 @@ func newTestVDiffEnv(sourceShards, targetShards []string, query string, position
 		)
 
 		// vdiff.stopTargets
-		env.tmc.setVRResults(primary.tablet, "update _vt.vreplication set state='Stopped', message='for vdiff' where db_name='vt_target' and workflow='vdiffTest'", &sqltypes.Result{})
+		env.tmc.setVRResults(primary.tablet, "update _vt.vreplication set state='Stopped', message='for vdiff' where db_name='target' and workflow='vdiffTest'", &sqltypes.Result{})
 		env.tmc.setVRResults(
 			primary.tablet,
-			"select source, pos from _vt.vreplication where db_name='vt_target' and workflow='vdiffTest'",
+			"select source, pos from _vt.vreplication where db_name='target' and workflow='vdiffTest'",
 			sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"source|pos",
 				"varchar|varchar"),
@@ -163,7 +168,7 @@ func newTestVDiffEnv(sourceShards, targetShards []string, query string, position
 		env.tmc.waitpos[tabletID+1] = vdiffTargetPrimaryPosition
 
 		// vdiff.restartTargets
-		env.tmc.setVRResults(primary.tablet, "update _vt.vreplication set state='Running', message='', stop_pos='' where db_name='vt_target' and workflow='vdiffTest'", &sqltypes.Result{})
+		env.tmc.setVRResults(primary.tablet, "update _vt.vreplication set state='Running', message='', stop_pos='' where db_name='target' and workflow='vdiffTest'", &sqltypes.Result{})
 
 		tabletID += 10
 	}

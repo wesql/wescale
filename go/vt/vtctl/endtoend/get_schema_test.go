@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package endtoend
 
 import (
@@ -66,7 +71,7 @@ func TestGetSchema(t *testing.T) {
 						Type:         querypb.Type_INT32,
 						Table:        "foo",
 						OrgTable:     "foo",
-						Database:     "vt_testkeyspace",
+						Database:     "testkeyspace",
 						OrgName:      "id",
 						ColumnLength: 11,
 						Charset:      63,
@@ -77,7 +82,7 @@ func TestGetSchema(t *testing.T) {
 						Type:         querypb.Type_VARCHAR,
 						Table:        "foo",
 						OrgTable:     "foo",
-						Database:     "vt_testkeyspace",
+						Database:     "testkeyspace",
 						OrgName:      "name",
 						ColumnLength: 1020,
 						Charset:      45,
@@ -108,7 +113,7 @@ func TestGetSchema(t *testing.T) {
 						Type:         querypb.Type_INT32,
 						Table:        "bar",
 						OrgTable:     "bar",
-						Database:     "vt_testkeyspace",
+						Database:     "testkeyspace",
 						OrgName:      "id",
 						ColumnLength: 11,
 						Charset:      63,
@@ -119,7 +124,7 @@ func TestGetSchema(t *testing.T) {
 						Type:         querypb.Type_INT32,
 						Table:        "bar",
 						OrgTable:     "bar",
-						Database:     "vt_testkeyspace",
+						Database:     "testkeyspace",
 						OrgName:      "foo_id",
 						ColumnLength: 11,
 						Charset:      63,
@@ -130,7 +135,7 @@ func TestGetSchema(t *testing.T) {
 						Type:         querypb.Type_INT8,
 						Table:        "bar",
 						OrgTable:     "bar",
-						Database:     "vt_testkeyspace",
+						Database:     "testkeyspace",
 						OrgName:      "is_active",
 						ColumnLength: 1,
 						Charset:      63,

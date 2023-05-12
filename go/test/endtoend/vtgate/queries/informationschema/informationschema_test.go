@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +69,7 @@ func TestDbNameOverride(t *testing.T) {
 
 	require.Nil(t, err)
 	assert.Equal(t, 1, len(qr.Rows), "did not get enough rows back")
-	assert.Equal(t, "vt_ks", qr.Rows[0][0].ToString())
+	assert.Equal(t, "ks", qr.Rows[0][0].ToString())
 }
 
 func TestInformationSchemaQuery(t *testing.T) {
@@ -74,15 +79,15 @@ func TestInformationSchemaQuery(t *testing.T) {
 	mcmp, closer := start(t)
 	defer closer()
 
-	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks'", "vt_ks")
-	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'vt_ks'", "vt_ks")
+	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks'", "ks")
+	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks'", "ks")
 	utils.AssertResultIsEmpty(t, mcmp.VtConn, "table_schema = 'NONE'")
 	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'performance_schema'", "performance_schema")
 	utils.AssertResultIsEmpty(t, mcmp.VtConn, "table_schema = 'PERFORMANCE_SCHEMA'")
 	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'performance_schema' and table_name = 'users'", "performance_schema")
 	utils.AssertResultIsEmpty(t, mcmp.VtConn, "table_schema = 'performance_schema' and table_name = 'foo'")
-	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'vt_ks' and table_name = 't1'", "vt_ks")
-	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks' and table_name = 't1'", "vt_ks")
+	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks' and table_name = 't1'", "ks")
+	utils.AssertSingleRowIsReturned(t, mcmp.VtConn, "table_schema = 'ks' and table_name = 't1'", "ks")
 }
 
 func TestInformationSchemaWithSubquery(t *testing.T) {

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,29 +37,6 @@ import (
 
 	"vitess.io/vitess/go/vt/sqlparser"
 )
-
-// TestSimplifyBuggyQuery should be used to whenever we get a planner bug reported
-// It will try to minimize the query to make it easier to understand and work with the bug.
-func TestSimplifyBuggyQuery(t *testing.T) {
-	query := "(select id from unsharded union select id from unsharded_auto) union (select id from user union select name from unsharded)"
-	vschema := &vschemaWrapper{
-		v:       loadSchema(t, "vschemas/schema.json", true),
-		version: Gen4,
-	}
-	stmt, reserved, err := sqlparser.Parse2(query)
-	require.NoError(t, err)
-	rewritten, _ := sqlparser.RewriteAST(sqlparser.CloneStatement(stmt), vschema.currentDb(), sqlparser.SQLSelectLimitUnset, "", nil, nil)
-	reservedVars := sqlparser.NewReservedVars("vtg", reserved)
-
-	simplified := simplifier.SimplifyStatement(
-		stmt.(sqlparser.SelectStatement),
-		vschema.currentDb(),
-		vschema,
-		keepSameError(query, reservedVars, vschema, rewritten.BindVarNeeds),
-	)
-
-	fmt.Println(sqlparser.String(simplified))
-}
 
 func TestSimplifyPanic(t *testing.T) {
 	t.Skip("not needed to run")

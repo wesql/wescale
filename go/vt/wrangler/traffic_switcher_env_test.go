@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +51,8 @@ import (
 )
 
 const (
-	streamInfoQuery    = "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='%s' and db_name='vt_%s'"
-	streamExtInfoQuery = "select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name = 'vt_%s' and workflow = '%s'"
+	streamInfoQuery    = "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='%s' and db_name='%s'"
+	streamExtInfoQuery = "select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name = '%s' and workflow = '%s'"
 	copyStateQuery     = "select table_name, lastpk from _vt.copy_state where vrepl_id = %d and id in (select max(id) from _vt.copy_state where vrepl_id = %d group by vrepl_id, table_name)"
 )
 
@@ -205,7 +210,7 @@ func newTestTableMigraterCustom(ctx context.Context, t *testing.T, sourceShards,
 				},
 			}
 			streamInfoRows = append(streamInfoRows, fmt.Sprintf("%d|%v|||", j+1, bls))
-			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|vt_ks1|%d|%d|0|0||||0", j+1, now, now))
+			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|ks1|%d|%d|0|0||||0", j+1, now, now))
 			tme.dbTargetClients[i].addInvariant(fmt.Sprintf(copyStateQuery, j+1, j+1), noResult)
 		}
 		tme.dbTargetClients[i].addInvariant(streamInfoKs2, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -363,7 +368,7 @@ func newTestShardMigrater(ctx context.Context, t *testing.T, sourceShards, targe
 			}
 			rows = append(rows, fmt.Sprintf("%d|%v||||0|0|0", j+1, bls))
 			rowsRdOnly = append(rows, fmt.Sprintf("%d|%v|||RDONLY|0|0|0", j+1, bls))
-			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|vt_ks1|%d|%d|0|0|||", j+1, now, now))
+			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|ks1|%d|%d|0|0|||", j+1, now, now))
 			tme.dbTargetClients[i].addInvariant(fmt.Sprintf(copyStateQuery, j+1, j+1), noResult)
 		}
 		tme.dbTargetClients[i].addInvariant(streamInfoKs, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -387,7 +392,7 @@ func newTestShardMigrater(ctx context.Context, t *testing.T, sourceShards, targe
 		var streamExtInfoRows []string
 		dbclient.addInvariant(streamInfoKs, &sqltypes.Result{})
 		for j := range targetShards {
-			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|vt_ks|%d|%d|0|0|||", j+1, now, now))
+			streamExtInfoRows = append(streamExtInfoRows, fmt.Sprintf("%d|||||Running|ks|%d|%d|0|0|||", j+1, now, now))
 			tme.dbSourceClients[i].addInvariant(fmt.Sprintf(copyStateQuery, j+1, j+1), noResult)
 		}
 		tme.dbSourceClients[i].addInvariant(streamExtInfoKs, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -533,7 +538,7 @@ func (tme *testShardMigraterEnv) expectDeleteReverseVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test_reverse'", resultid12, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid12, nil)
 		dbclient.addQuery("delete from _vt.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("delete from _vt.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("delete from _vt.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
@@ -558,7 +563,7 @@ func (tme *testShardMigraterEnv) expectStartReverseVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks'", resultid34, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
 		dbclient.addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
 		dbclient.addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
@@ -569,7 +574,7 @@ func (tme *testShardMigraterEnv) expectFrozenTargetVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test'", resultid12, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
 		dbclient.addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
 		dbclient.addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
@@ -580,7 +585,7 @@ func (tme *testShardMigraterEnv) expectDeleteTargetVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test'", resultid12, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
 		dbclient.addQuery("delete from _vt.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("delete from _vt.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
 		dbclient.addQuery("delete from _vt.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
@@ -589,10 +594,10 @@ func (tme *testShardMigraterEnv) expectDeleteTargetVReplication() {
 
 func (tme *testShardMigraterEnv) expectCancelMigration() {
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks' and workflow = 'test'", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", &sqltypes.Result{}, nil)
 	}
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'vt_ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 	}
 	tme.expectDeleteReverseVReplication()
 }
