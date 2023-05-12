@@ -109,7 +109,7 @@ func TestVReplicationQueryPlanner_planSelect(t *testing.T) {
 		},
 		{
 			// In this case, the QueryParams for the planner (which have
-			// workflow = "testworkflow"; db_name = "vt_testkeyspace") are
+			// workflow = "testworkflow"; db_name = "testkeyspace") are
 			// ignored because the WHERE clause was explicit.
 			name:                 "select with workflow and dbname columns with different values",
 			query:                "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'different_keyspace' AND workflow = 'otherworkflow'",
@@ -117,7 +117,7 @@ func TestVReplicationQueryPlanner_planSelect(t *testing.T) {
 		},
 	}
 
-	planner := NewVReplicationQueryPlanner(nil, "testworkflow", "vt_testkeyspace")
+	planner := NewVReplicationQueryPlanner(nil, "testworkflow", "testkeyspace")
 
 	for _, tt := range tests {
 		tt := tt
@@ -148,7 +148,7 @@ func TestVReplicationQueryPlanner_planUpdate(t *testing.T) {
 	}{
 		{
 			name:                 "simple update",
-			planner:              NewVReplicationQueryPlanner(nil, "testworkflow", "vt_testkeyspace"),
+			planner:              NewVReplicationQueryPlanner(nil, "testworkflow", "testkeyspace"),
 			query:                "UPDATE _vt.vreplication SET state = 'Running'",
 			expectedPlannedQuery: "UPDATE _vt.vreplication SET state = 'Running' WHERE db_name = 'testkeyspace' AND workflow = 'testworkflow'",
 			expectedErr:          nil,
@@ -167,7 +167,7 @@ func TestVReplicationQueryPlanner_planUpdate(t *testing.T) {
 		},
 		{
 			name:        "cannot update id column",
-			planner:     NewVReplicationQueryPlanner(nil, "", "vt_testkeyspace"),
+			planner:     NewVReplicationQueryPlanner(nil, "", "testkeyspace"),
 			query:       "UPDATE _vt.vreplication SET id = 5",
 			expectedErr: ErrCannotUpdateImmutableColumn,
 		},
@@ -232,7 +232,7 @@ func TestVReplicationQueryPlanner_planDelete(t *testing.T) {
 		},
 	}
 
-	planner := NewVReplicationQueryPlanner(nil, "", "vt_testkeyspace")
+	planner := NewVReplicationQueryPlanner(nil, "", "testkeyspace")
 
 	for _, tt := range tests {
 		tt := tt
