@@ -1014,7 +1014,7 @@ func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetStr
 			destKeyspace = k
 		}
 	}
-	if dest == nil {
+	if global.UseUnShardedMode && dest == nil {
 		dest = key.DestinationShard("0")
 	}
 	return destKeyspace, destTabletType, dest, err

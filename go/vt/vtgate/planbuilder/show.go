@@ -51,6 +51,8 @@ const (
 )
 
 func buildShowPlan(sql string, stmt *sqlparser.Show, _ *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
+	// Several SHOW statements related to Vitess cannot be routed to vttablet for execution,
+	// need to be processed by vtgate itself.
 	if vschema.Destination() != nil {
 		var prim engine.Primitive
 		var err error

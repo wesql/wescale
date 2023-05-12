@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -234,6 +239,9 @@ func TestAccessors(t *testing.T) {
 	}
 	if got, want := dbc.AppWithDB().connParams.DbName, "db"; got != want {
 		t.Errorf("dbc.AppWithDB().DbName: %v, want %v", got, want)
+	}
+	if got, want := dbc.AppWithoutDB().connParams.DbName, ""; got != want {
+		t.Errorf("dbc.AppWithoutDB().DbName: %v, want %v", got, want)
 	}
 	if got, want := dbc.AllPrivsConnector().connParams.DbName, ""; got != want {
 		t.Errorf("dbc.AllPrivsWithDB().DbName: %v, want %v", got, want)

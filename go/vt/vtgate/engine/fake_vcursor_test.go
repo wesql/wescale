@@ -587,6 +587,24 @@ func (f *loggingVCursor) ResolveDestinations(ctx context.Context, keyspace strin
 	return rss, values, nil
 }
 
+func (f *loggingVCursor) ResolveDefaultDestination(destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	f.log = append(f.log, fmt.Sprintf("ResolveDestinations without keyspace %v", destination.String()))
+	if f.shardErr != nil {
+		return nil, f.shardErr
+	}
+	var result []*srvtopo.ResolvedShard
+
+	target := &querypb.Target{
+		Keyspace:   "",
+		Shard:      destination.String(),
+		TabletType: f.resolvedTargetTabletType,
+	}
+	result = append(result, &srvtopo.ResolvedShard{
+		Target: target,
+	})
+	return result, nil
+}
+
 func (f *loggingVCursor) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
 	f.log = append(f.log, fmt.Sprintf("ResolveDestinationsMultiCol %v %v %v", keyspace, ids, key.DestinationsString(destinations)))
 	if f.shardErr != nil {

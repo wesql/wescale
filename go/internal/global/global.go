@@ -18,4 +18,9 @@ const (
 	Pushdown = "Pushdown"
 )
 
+// vtgate
+const (
+	UseUnShardedMode = true
+)
+
 const DefaultFlavor = mysql.Mysql56FlavorID
