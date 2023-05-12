@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -279,7 +284,7 @@ func TestConnPoolStateWithSettings(t *testing.T) {
 	assert.EqualValues(t, 0, connPool.ResetSettingCount(), "pool reset settings count should be 0")
 
 	db.AddQuery("a", &sqltypes.Result{})
-	sa := pools.NewSetting("a", "")
+	sa := pools.NewSetting(false, "a", "")
 	dbConn, err = connPool.Get(context.Background(), sa)
 	require.NoError(t, err)
 	assert.EqualValues(t, 4, connPool.Available(), "pool available connections should be 4")
@@ -346,7 +351,7 @@ func TestConnPoolStateWithSettings(t *testing.T) {
 
 	// Step 4
 	db.AddQuery("b", &sqltypes.Result{})
-	sb := pools.NewSetting("b", "")
+	sb := pools.NewSetting(false, "b", "")
 	dbConn, err = connPool.Get(context.Background(), sb)
 	require.NoError(t, err)
 	assert.EqualValues(t, 4, connPool.Available(), "pool available connections should be 4")
@@ -381,7 +386,7 @@ func TestPoolGetConnTime(t *testing.T) {
 	assert.Zero(t, getTimeMap["PoolTest.GetWithSettings"])
 
 	db.AddQuery("b", &sqltypes.Result{})
-	sb := pools.NewSetting("b", "")
+	sb := pools.NewSetting(false, "b", "")
 	dbConn, err = connPool.Get(context.Background(), sb)
 	require.NoError(t, err)
 	defer dbConn.Recycle()

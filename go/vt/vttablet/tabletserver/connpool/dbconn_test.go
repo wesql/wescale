@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -500,7 +505,7 @@ func TestDBConnReApplySetting(t *testing.T) {
 	// apply system settings.
 	setQ := "set @@sql_mode='ANSI_QUOTES'"
 	db.AddExpectedQuery(setQ, nil)
-	err = dbConn.ApplySetting(ctx, pools.NewSetting(setQ, "set @@sql_mode = default"))
+	err = dbConn.ApplySetting(ctx, pools.NewSetting(false, setQ, "set @@sql_mode = default"))
 	require.NoError(t, err)
 
 	// close the connection and let the dbconn reconnect to start a new connection when required.

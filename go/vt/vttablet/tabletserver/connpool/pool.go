@@ -230,23 +230,6 @@ func (cp *Pool) Get(ctx context.Context, setting *pools.Setting) (*DBConn, error
 	return r.(*DBConn), nil
 }
 
-// GetWithoutDB returns a connection without database from no pool.
-func (cp *Pool) GetWithoutDB(ctx context.Context, connector dbconfigs.Connector, setting *pools.Setting) (*DBConn, error) {
-	span, ctx := trace.NewSpan(ctx, "Pool.Get")
-	defer span.Finish()
-
-	if cp.waiterCap > 0 {
-		waiterCount := cp.waiterCount.Add(1)
-		defer cp.waiterCount.Add(-1)
-		if waiterCount > cp.waiterCap {
-			cp.waiterQueueFull.Add(1)
-			return nil, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED, "pool %s waiter count exceeded", cp.name)
-		}
-	}
-
-	return NewDBConnNoPool(ctx, connector, cp.dbaPool, setting)
-}
-
 // Put puts a connection into the pool.
 func (cp *Pool) Put(conn *DBConn) {
 	p := cp.pool()
