@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,12 +122,12 @@ func (env *testResharderEnv) expectValidation() {
 	for _, tablet := range env.tablets {
 		tabletID := int(tablet.Alias.Uid)
 		// wr.validateNewWorkflow
-		env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select 1 from _vt.vreplication where db_name='vt_%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+		env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 		env.tmc.expectVRQuery(tabletID, rsSelectFrozenQuery, &sqltypes.Result{})
 
 		if tabletID >= 200 {
 			// validateTargets
-			env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select 1 from _vt.vreplication where db_name='vt_%s'", env.keyspace), &sqltypes.Result{})
+			env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s'", env.keyspace), &sqltypes.Result{})
 		}
 	}
 }
@@ -132,7 +137,7 @@ func (env *testResharderEnv) expectNoRefStream() {
 		tabletID := int(tablet.Alias.Uid)
 		if tabletID < 200 {
 			// readRefStreams
-			env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='vt_%s' and message != 'FROZEN'", env.keyspace), &sqltypes.Result{})
+			env.tmc.expectVRQuery(tabletID, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), &sqltypes.Result{})
 		}
 	}
 }
