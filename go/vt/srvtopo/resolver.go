@@ -329,6 +329,7 @@ func (r *Resolver) ResolveDestination(ctx context.Context, keyspace string, tabl
 	return rss, err
 }
 
+// ResolveDefaultDestination resolves values and default destination withou keyspace into the respective.
 func (r *Resolver) ResolveDefaultDestination(tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
 	var result []*ResolvedShard
 

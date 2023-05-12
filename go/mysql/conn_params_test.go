@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -147,4 +152,14 @@ func TestConnParams_SslRequiredVerifyIdentity(t *testing.T) {
 	}
 	assert := assert.New(t)
 	assert.True(p.SslRequired())
+}
+
+func TestConnParams_SetDBName(t *testing.T) {
+	p := ConnParams{
+		DbName: "_vt",
+	}
+	assert := assert.New(t)
+	assert.EqualValues(p.DbName, "_vt", "should with default database")
+	p.SetDBName("")
+	assert.EqualValues(p.DbName, "", "should without database")
 }

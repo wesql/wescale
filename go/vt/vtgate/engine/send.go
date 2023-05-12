@@ -154,12 +154,19 @@ func copyBindVars(in map[string]*querypb.BindVariable) map[string]*querypb.BindV
 
 // TryStreamExecute implements Primitive interface
 func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
-	rss, _, err := vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	var rss []*srvtopo.ResolvedShard
+	var err error
+	if s.Keyspace == nil {
+		rss, err = vcursor.ResolveDefaultDestination(s.TargetDestination)
+	} else {
+		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	}
+
 	if err != nil {
 		return err
 	}
 
-	if !s.Keyspace.Sharded && len(rss) != 1 {
+	if s.Keyspace != nil && !s.Keyspace.Sharded && len(rss) != 1 {
 		return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "Keyspace does not have exactly one shard: %v", rss)
 	}
 
