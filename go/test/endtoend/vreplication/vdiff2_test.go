@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -323,7 +328,7 @@ func testAutoRetryError(t *testing.T, tc *testCase, cells string) {
 		// update the VDiff to simulate an ephemeral error having occurred
 		for _, shard := range strings.Split(tc.targetShards, ",") {
 			tab := vc.getPrimaryTablet(t, tc.targetKs, shard)
-			res, err := tab.QueryTabletWithDB(fmt.Sprintf(sqlSimulateError, encodeString(uuid)), "vt_"+tc.targetKs)
+			res, err := tab.QueryTabletWithDB(fmt.Sprintf(sqlSimulateError, encodeString(uuid)), tc.targetKs)
 			require.NoError(t, err)
 			// should have updated the vdiff record and at least one vdiff_table record
 			require.GreaterOrEqual(t, int(res.RowsAffected), 2)

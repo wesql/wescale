@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +56,7 @@ var (
 	hostname        = "localhost"
 	keyspaceName    = "ks"
 	shardName       = "0"
-	dbName          = "vt_ks"
+	dbName          = "ks"
 	mysqlUsers      = []string{"vt_dba", "vt_app", "vt_appdebug", "vt_repl", "vt_filtered"}
 	mysqlPassword   = "password"
 	vtgateUser      = "vtgate_user"

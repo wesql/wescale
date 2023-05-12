@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,7 +224,7 @@ func encodeString(in string) string {
 // You should execute this if you leverage table information from e.g.
 // information_schema.tables in your test.
 func updateTableStats(t *testing.T, tablet *cluster.VttabletProcess, tables string) {
-	dbName := "vt_" + tablet.Keyspace
+	dbName := tablet.Keyspace
 	tableList := strings.Split(strings.TrimSpace(tables), ",")
 	if len(tableList) == 0 {
 		// we need to get all of the tables in the keyspace

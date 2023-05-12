@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -143,7 +148,7 @@ func TestProblemsAPI(t *testing.T) {
 		assert.Equal(t, "null", resp)
 
 		// insert an errant GTID in the replica
-		_, err := utils.RunSQL(t, "insert into vt_insert_test(id, msg) values (10173, 'test 178342')", replica, "vt_ks")
+		_, err := utils.RunSQL(t, "insert into vt_insert_test(id, msg) values (10173, 'test 178342')", replica, "ks")
 		require.NoError(t, err)
 
 		// Wait until VTOrc picks up on this errant GTID and verify

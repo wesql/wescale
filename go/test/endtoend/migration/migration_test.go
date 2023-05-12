@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -218,7 +223,7 @@ func migrate(t *testing.T, fromdb, toks string, tables []string) {
 	val.EncodeSQL(&sqlEscaped)
 	query := fmt.Sprintf("insert into _vt.vreplication "+
 		"(workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values"+
-		"('%s', '%s', %s, '', 9999, 9999, 'primary', 0, 0, 'Running')", tables[0], "vt_"+toks, sqlEscaped.String())
+		"('%s', '%s', %s, '', 9999, 9999, 'primary', 0, 0, 'Running')", tables[0], toks, sqlEscaped.String())
 	fmt.Printf("VReplicationExec: %s\n", query)
 	vttablet := keyspaces[toks].Shards[0].Vttablets[0].VttabletProcess
 	err := clusterInstance.VtctlclientProcess.ExecuteCommand("VReplicationExec", vttablet.TabletPath, query)

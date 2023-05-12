@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,7 +106,7 @@ func TestApplySchema_AllowLongUnavailability(t *testing.T) {
 		ft.FakeMysqlDaemon.PreflightSchemaChangeResult = preflightSchemaChanges
 	}
 
-	changeToDb := "USE `vt_ks`"
+	changeToDb := "USE `ks`"
 	addColumn := "ALTER TABLE table1 ADD COLUMN new_id bigint(20)"
 	db.AddQuery(changeToDb, &sqltypes.Result{})
 	db.AddQuery(addColumn, &sqltypes.Result{})

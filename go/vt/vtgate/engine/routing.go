@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -230,7 +235,7 @@ func (rp *RoutingParameters) routeInfoSchemaQuery(ctx context.Context, vcursor V
 		rss, err := rp.routedTable(ctx, vcursor, bindVars, specifiedKS, tableNames)
 		if err != nil {
 			// Only if keyspace is not found in vschema, we try with default keyspace.
-			// As the in the table_schema predicates for a keyspace 'ks' it can contain 'vt_ks'.
+			// As the in the table_schema predicates for a keyspace 'ks' it can contain 'ks'.
 			if vterrors.ErrState(err) == vterrors.BadDb {
 				return defaultRoute()
 			}
