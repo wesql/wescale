@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -108,7 +113,7 @@ func TestSchemaManagerExecutorExecuteFail(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := Run(ctx, controller, executor)
-	if err == nil || !strings.Contains(err.Error(), "unknown database: vt_test_keyspace") {
+	if err == nil || !strings.Contains(err.Error(), "unknown database: test_keyspace") {
 		t.Fatalf("run schema change should fail due to executor.Execute fail, but got: %v", err)
 	}
 }
@@ -132,7 +137,7 @@ func TestSchemaManagerRun(t *testing.T) {
 		},
 	})
 
-	fakeTmc.AddSchemaDefinition("vt_test_keyspace", &tabletmanagerdatapb.SchemaDefinition{})
+	fakeTmc.AddSchemaDefinition("test_keyspace", &tabletmanagerdatapb.SchemaDefinition{})
 	executor := NewTabletExecutor("TestSchemaManagerRun", newFakeTopo(t), fakeTmc, logutil.NewConsoleLogger(), testWaitReplicasTimeout)
 
 	ctx := context.Background()
@@ -180,7 +185,7 @@ func TestSchemaManagerExecutorFail(t *testing.T) {
 		},
 	})
 
-	fakeTmc.AddSchemaDefinition("vt_test_keyspace", &tabletmanagerdatapb.SchemaDefinition{})
+	fakeTmc.AddSchemaDefinition("test_keyspace", &tabletmanagerdatapb.SchemaDefinition{})
 	fakeTmc.EnableExecuteFetchAsDbaError = true
 	executor := NewTabletExecutor("TestSchemaManagerExecutorFail", newFakeTopo(t), fakeTmc, logutil.NewConsoleLogger(), testWaitReplicasTimeout)
 

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -11369,7 +11374,6 @@ func TestValidateVersionShard(t *testing.T) {
 	for _, tt := range tests {
 		curT := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
 			curT.setup()
 			resp, err := vtctld.ValidateVersionShard(ctx, curT.req)
