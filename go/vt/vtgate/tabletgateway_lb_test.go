@@ -49,14 +49,14 @@ func TestTabletGateway_PickTablet(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 				options: &querypb.ExecuteOptions{
 					ReadAfterWriteGtid: "",
 				},
 			},
-			want: generateTabletHealth(
+			want: generateTabletHealthFromPosition(
 				"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 			wantErr: false,
@@ -67,14 +67,14 @@ func TestTabletGateway_PickTablet(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 				options: &querypb.ExecuteOptions{
 					ReadAfterWriteGtid: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				},
 			},
-			want: generateTabletHealth(
+			want: generateTabletHealthFromPosition(
 				"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 			wantErr: false,
@@ -85,14 +85,14 @@ func TestTabletGateway_PickTablet(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1"),
 				options: &querypb.ExecuteOptions{
 					ReadAfterWriteGtid: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				},
 			},
-			want:    generateTabletHealth("df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
+			want:    generateTabletHealthFromPosition("df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 			wantErr: false,
 		},
 	}
@@ -142,7 +142,7 @@ func TestTabletGateway_filterAdvisorByGTIDThreshold(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 				options: &querypb.ExecuteOptions{
@@ -157,14 +157,14 @@ func TestTabletGateway_filterAdvisorByGTIDThreshold(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 				options: &querypb.ExecuteOptions{
 					ReadAfterWriteGtid: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				},
 			},
-			want: generateTabletHealth(
+			want: generateTabletHealthFromPosition(
 				"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				"ddfabe04-d9b4-11ed-8345-d22027637c46:1,df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 		},
@@ -174,14 +174,14 @@ func TestTabletGateway_filterAdvisorByGTIDThreshold(t *testing.T) {
 				flavor: mysql.Mysql56FlavorID,
 			},
 			args: args{
-				availableTablets: generateTabletHealth(
+				availableTablets: generateTabletHealthFromPosition(
 					"df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 					"ddfabe04-d9b4-11ed-8345-d22027637c46:1"),
 				options: &querypb.ExecuteOptions{
 					ReadAfterWriteGtid: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100",
 				},
 			},
-			want: generateTabletHealth("df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
+			want: generateTabletHealthFromPosition("df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"),
 		},
 	}
 	for _, tt := range tests {
@@ -194,7 +194,7 @@ func TestTabletGateway_filterAdvisorByGTIDThreshold(t *testing.T) {
 	}
 }
 
-func generateTabletHealth(positions ...string) []*discovery.TabletHealth {
+func generateTabletHealthFromPosition(positions ...string) []*discovery.TabletHealth {
 	tabletHealths := make([]*discovery.TabletHealth, 0)
 	for _, position := range positions {
 		tabletHealths = append(tabletHealths, &discovery.TabletHealth{
@@ -207,4 +207,82 @@ func generateTabletHealth(positions ...string) []*discovery.TabletHealth {
 		})
 	}
 	return tabletHealths
+}
+
+func generateTabletHealthFromQPS(qpsList []float64, diffCellQPSList []float64) []*discovery.TabletHealth {
+	tabletHealths := make([]*discovery.TabletHealth, 0)
+	for _, qps := range qpsList {
+		tabletHealths = append(tabletHealths, &discovery.TabletHealth{
+			Tablet: &topodatapb.Tablet{
+				Alias: &topodatapb.TabletAlias{
+					Cell: "test_cell",
+				},
+			},
+			Target: &querypb.Target{
+				Cell: "test_cell",
+			},
+			Stats: &querypb.RealtimeStats{
+				Qps: qps,
+			},
+		})
+	}
+
+	for _, qps := range diffCellQPSList {
+		tabletHealths = append(tabletHealths, &discovery.TabletHealth{
+			Tablet: &topodatapb.Tablet{
+				Alias: &topodatapb.TabletAlias{
+					Cell: "test_cell2",
+				},
+			},
+			Target: &querypb.Target{
+				Cell: "test_cell2",
+			},
+			Stats: &querypb.RealtimeStats{
+				Qps: qps,
+			},
+		})
+	}
+	return tabletHealths
+}
+
+func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		wantQPS    float64
+	}{
+		{
+			name:       "no candidates",
+			candidates: generateTabletHealthFromQPS([]float64{}, []float64{}),
+			wantQPS:    -1,
+		},
+		{
+			name:       "1",
+			candidates: generateTabletHealthFromQPS([]float64{1}, []float64{}),
+			wantQPS:    1,
+		},
+		{
+			name:       "412.3, 500.3, 600.3, 700.1, 8654.5, 2.1",
+			candidates: generateTabletHealthFromQPS([]float64{412.3, 500.3, 600.3, 700.1, 8654.5, 2.1}, []float64{}),
+			wantQPS:    2.1,
+		},
+		{
+			name:       "412.3, 500.3, 600.3, 700.1, 8654.5 | 2.1",
+			candidates: generateTabletHealthFromQPS([]float64{412.3, 500.3, 600.3, 700.1, 8654.5}, []float64{2.1}),
+			wantQPS:    412.3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gw := &TabletGateway{
+				localCell: "test_cell",
+			}
+			chosen := gw.loadBalance(LEAST_GLOBAL_QPS, tt.candidates)
+			if chosen == nil {
+				assert.Equal(t, tt.wantQPS, -1.0)
+				return
+			}
+			assert.Equalf(t, tt.wantQPS, chosen.Stats.Qps, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantQPS)
+		})
+	}
 }

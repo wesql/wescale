@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -156,6 +161,8 @@ type TabletStatusAggregator struct {
 	TabletType topodatapb.TabletType
 	Name       string // the alternative name of a tablet
 	Addr       string // the host:port of a tablet
+
+	Uid uint32 // nolint:revive
 
 	// mu protects below fields.
 	mu         sync.RWMutex

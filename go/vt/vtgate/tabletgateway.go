@@ -247,6 +247,16 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 	return res
 }
 
+func (gw *TabletGateway) CacheStatusMap() map[string]*TabletCacheStatus {
+	gw.mu.Lock()
+	res := make(map[string]*TabletCacheStatus, len(gw.statusAggregators))
+	for _, aggr := range gw.statusAggregators {
+		res[aggr.Name] = aggr.GetCacheStatus()
+	}
+	gw.mu.Unlock()
+	return res
+}
+
 // withRetry gets available connections and executes the action. If there are retryable errors,
 // it retries retryCount times before failing. It does not retry if the connection is in
 // the middle of a transaction. While returning the error check if it maybe a result of
@@ -358,7 +368,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		startTime := time.Now()
 		var canRetry bool
 		canRetry, err = inner(ctx, target, th.Conn)
-		gw.updateStats(target, startTime, err)
+		gw.updateStats(th.Tablet, startTime, err)
 		if canRetry {
 			invalidTablets[topoproto.TabletAliasString(tabletLastUsed.Alias)] = true
 			continue
@@ -375,14 +385,14 @@ func (gw *TabletGateway) withShardError(ctx context.Context, target *querypb.Tar
 	return NewShardError(err, target)
 }
 
-func (gw *TabletGateway) updateStats(target *querypb.Target, startTime time.Time, err error) {
+func (gw *TabletGateway) updateStats(tablet *topodatapb.Tablet, startTime time.Time, err error) {
 	elapsed := time.Since(startTime)
-	aggr := gw.getStatsAggregator(target)
-	aggr.UpdateQueryInfo("", target.TabletType, elapsed, err != nil)
+	aggr := gw.getStatsAggregator(tablet)
+	aggr.UpdateQueryInfo("", tablet.Type, elapsed, err != nil)
 }
 
-func (gw *TabletGateway) getStatsAggregator(target *querypb.Target) *TabletStatusAggregator {
-	key := fmt.Sprintf("%v/%v/%v", target.Keyspace, target.Shard, target.TabletType.String())
+func (gw *TabletGateway) getStatsAggregator(tablet *topodatapb.Tablet) *TabletStatusAggregator {
+	key := fmt.Sprintf("%v", tablet.Alias.Uid)
 
 	// get existing aggregator
 	gw.mu.Lock()
@@ -392,7 +402,7 @@ func (gw *TabletGateway) getStatsAggregator(target *querypb.Target) *TabletStatu
 		return aggr
 	}
 	// create a new one if it doesn't exist yet
-	aggr = NewTabletStatusAggregator(target.Keyspace, target.Shard, target.TabletType, key)
+	aggr = NewTabletStatusAggregator(tablet.Keyspace, tablet.Shard, tablet.Type, key)
 	gw.statusAggregators[key] = aggr
 	return aggr
 }
