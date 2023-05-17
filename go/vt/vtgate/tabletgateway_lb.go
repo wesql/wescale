@@ -8,8 +8,6 @@ package vtgate
 import (
 	"strconv"
 
-	"vitess.io/vitess/go/vt/schema"
-
 	"golang.org/x/exp/slices"
 
 	"vitess.io/vitess/go/mysql"
@@ -42,7 +40,7 @@ func (gw *TabletGateway) PickTablet(
 	if len(candidates) == 0 {
 		return nil, vterrors.VT14002()
 	}
-	chosenTablet := gw.loadBalance(schema.ReadWriteSplittingPolicyRandom, candidates)
+	chosenTablet := gw.loadBalance(candidates, options)
 	if chosenTablet == nil {
 		return nil, vterrors.VT14002()
 	}
@@ -74,20 +72,21 @@ func (gw *TabletGateway) filterAdvisorByGTIDThreshold(
 	return filtered
 }
 
-func (gw *TabletGateway) loadBalance(policy schema.ReadWriteSplittingPolicy, candidates []*discovery.TabletHealth) *discovery.TabletHealth {
+func (gw *TabletGateway) loadBalance(candidates []*discovery.TabletHealth, options *querypb.ExecuteOptions) *discovery.TabletHealth {
 	if len(candidates) == 0 {
 		return nil
 	}
+	policy := options.GetLoadBalancePolicy()
 	switch policy {
-	case schema.ReadWriteSplittingPolicyLeastGlobalQPS:
+	case querypb.ExecuteOptions_LEAST_GLOBAL_QPS:
 		gw.leastGlobalQPSLoadBalancer(candidates)
-	case schema.ReadWriteSplittingPolicyLeastQPS:
+	case querypb.ExecuteOptions_LEAST_QPS:
 		gw.leastQPSLoadBalancer(candidates)
-	case schema.ReadWriteSplittingPolicyLeastRT:
+	case querypb.ExecuteOptions_LEAST_RT:
 		gw.leastRTLoadBalancer(candidates)
-	case schema.ReadWriteSplittingPolicyLeastBehindPrimary:
+	case querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY:
 		gw.leastBehindPrimaryLoadBalancer(candidates)
-	case schema.ReadWriteSplittingPolicyRandom:
+	case querypb.ExecuteOptions_RANDOM:
 		gw.randomLoadBalancer(candidates)
 	default:
 		gw.randomLoadBalancer(candidates)

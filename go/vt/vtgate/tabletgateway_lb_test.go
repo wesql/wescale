@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/schema"
-
 	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/mysql"
@@ -281,7 +279,7 @@ func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
 			gw := &TabletGateway{
 				localCell: "test_cell",
 			}
-			chosen := gw.loadBalance(schema.ReadWriteSplittingPolicyLeastGlobalQPS, tt.candidates)
+			chosen := gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_GLOBAL_QPS})
 			if chosen == nil {
 				assert.Equal(t, tt.wantQPS, -1.0)
 				return
@@ -420,7 +418,7 @@ func TestTabletGateway_leastQpsLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastQPS, tt.candidates)
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_QPS})
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
@@ -510,7 +508,7 @@ func TestTabletGateway_leastRTLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastRT, tt.candidates)
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_RT})
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
@@ -572,12 +570,67 @@ func TestTabletGateway_leastBehindPrimaryLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastBehindPrimary, tt.candidates)
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY})
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
 			}
 			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
+		})
+	}
+}
+
+// TestTabletGateway_loadBalance_options_is_nil tests the case that options is nil.
+// In this case, the default load balance policy is RANDOM.
+func TestTabletGateway_loadBalance_options_is_nil(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-500"},
+				{uid: 4, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"},
+				{uid: 3, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-300"},
+				{uid: 2, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell"},
+			wantUid: 5,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-500"},
+				{uid: 4, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"},
+				{uid: 3, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-300"},
+				{uid: 2, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell"},
+			wantUid: 3,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:500"},
+				{uid: 4, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:100"},
+				{uid: 3, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:300"},
+				{uid: 2, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell2"},
+			wantUid: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(tt.candidates, nil)
+			assert.NotNil(t, chosen)
+			assert.NotZero(t, chosen.Tablet.Alias.Uid)
 		})
 	}
 }

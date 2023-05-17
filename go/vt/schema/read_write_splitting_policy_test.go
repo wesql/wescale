@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"vitess.io/vitess/go/vt/proto/query"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -78,6 +80,65 @@ func TestParseReadWriteSplittingPolicy(t *testing.T) {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "ParseReadWriteSplittingPolicySetting(%v)", tt.args.strategyVariable)
+		})
+	}
+}
+
+func TestToLoadBalancePolicy(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want query.ExecuteOptions_LoadBalancePolicy
+	}{
+		{
+			name: "random",
+			args: args{
+				s: "random",
+			},
+			want: query.ExecuteOptions_RANDOM,
+		},
+		{
+			name: "empty",
+			args: args{
+				s: "",
+			},
+			want: query.ExecuteOptions_RANDOM,
+		},
+		{
+			name: "LEAST_GLOBAL_QPS",
+			args: args{
+				s: "LEAST_GLOBAL_QPS",
+			},
+			want: query.ExecuteOptions_LEAST_GLOBAL_QPS,
+		},
+		{
+			name: "LEAST_QPS",
+			args: args{
+				s: "LEAST_QPS",
+			},
+			want: query.ExecuteOptions_LEAST_QPS,
+		},
+		{
+			name: "LEAST_RT",
+			args: args{
+				s: "LEAST_RT",
+			},
+			want: query.ExecuteOptions_LEAST_RT,
+		},
+		{
+			name: "LEAST_BEHIND_PRIMARY",
+			args: args{
+				s: "LEAST_BEHIND_PRIMARY",
+			},
+			want: query.ExecuteOptions_LEAST_BEHIND_PRIMARY,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, ToLoadBalancePolicy(tt.args.s), "ToLoadBalancePolicy(%v)", tt.args.s)
 		})
 	}
 }

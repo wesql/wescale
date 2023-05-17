@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/schema"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 
 	"google.golang.org/protobuf/proto"
@@ -180,7 +182,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil {
+			if session != nil && session.Session != nil && session.Session.Options != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
@@ -189,6 +191,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 						return nil, err
 					}
 				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
 
 			if autocommit {
@@ -389,7 +392,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil {
+			if session != nil && session.Session != nil && session.Session.Options != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
@@ -398,6 +401,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 						return nil, err
 					}
 				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
 
 			if autocommit {
