@@ -124,7 +124,7 @@ func (gw *TabletGateway) leastQPSLoadBalancer(candidates []*discovery.TabletHeal
 	if len(candidates) == 0 {
 		return
 	}
-	statsMap := gw.CacheStatusMap()
+	statsMap := gw.GetCacheStatusMap()
 	slices.SortFunc(candidates, func(a, b *discovery.TabletHealth) bool {
 		aStats := statsMap[strconv.Itoa(int(a.Tablet.Alias.Uid))]
 		bStats := statsMap[strconv.Itoa(int(b.Tablet.Alias.Uid))]
@@ -148,7 +148,7 @@ func (gw *TabletGateway) leastRTLoadBalancer(candidates []*discovery.TabletHealt
 	if len(candidates) == 0 {
 		return
 	}
-	statsMap := gw.CacheStatusMap()
+	statsMap := gw.GetCacheStatusMap()
 	slices.SortFunc(candidates, func(a, b *discovery.TabletHealth) bool {
 		aStats := statsMap[strconv.Itoa(int(a.Tablet.Alias.Uid))]
 		bStats := statsMap[strconv.Itoa(int(b.Tablet.Alias.Uid))]

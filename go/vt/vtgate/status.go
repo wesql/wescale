@@ -159,10 +159,8 @@ type TabletStatusAggregator struct {
 	Keyspace   string
 	Shard      string
 	TabletType topodatapb.TabletType
-	Name       string // the alternative name of a tablet
+	Name       string // the uid of a tablet
 	Addr       string // the host:port of a tablet
-
-	Uid uint32 // nolint:revive
 
 	// mu protects below fields.
 	mu         sync.RWMutex

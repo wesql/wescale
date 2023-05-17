@@ -84,9 +84,9 @@ type TabletGateway struct {
 
 	// mu protects the fields of this group.
 	mu sync.Mutex
-	// statusAggregators is a map indexed by the key
-	// keyspace/shard/tablet_type.
+	// statusAggregators is a map indexed by tablet uid.
 	statusAggregators map[string]*TabletStatusAggregator
+	tabletStatusMap   map[string]*TabletCacheStatus
 
 	// buffer, if enabled, buffers requests during a detected PRIMARY failover.
 	buffer *buffer.Buffer
@@ -124,6 +124,7 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 	}
 	gw.setupBuffering(ctx)
 	gw.QueryService = queryservice.Wrap(nil, gw.withRetry)
+	go gw.BuildCacheStatusMap()
 	return gw
 }
 
@@ -247,14 +248,23 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 	return res
 }
 
-func (gw *TabletGateway) CacheStatusMap() map[string]*TabletCacheStatus {
-	gw.mu.Lock()
-	res := make(map[string]*TabletCacheStatus, len(gw.statusAggregators))
-	for _, aggr := range gw.statusAggregators {
-		res[aggr.Name] = aggr.GetCacheStatus()
+// BuildCacheStatusMap builds a map of TabletCacheStatus per second
+// load balancer will use this to decide which tablet to use
+func (gw *TabletGateway) BuildCacheStatusMap() {
+	ticker := time.NewTicker(time.Second)
+	for range ticker.C {
+		gw.mu.Lock()
+		res := make(map[string]*TabletCacheStatus, len(gw.statusAggregators))
+		for _, aggr := range gw.statusAggregators {
+			res[aggr.Name] = aggr.GetCacheStatus()
+		}
+		gw.tabletStatusMap = res
+		gw.mu.Unlock()
 	}
-	gw.mu.Unlock()
-	return res
+}
+
+func (gw *TabletGateway) GetCacheStatusMap() map[string]*TabletCacheStatus {
+	return gw.tabletStatusMap
 }
 
 // withRetry gets available connections and executes the action. If there are retryable errors,
@@ -387,11 +397,11 @@ func (gw *TabletGateway) withShardError(ctx context.Context, target *querypb.Tar
 
 func (gw *TabletGateway) updateStats(tablet *topodatapb.Tablet, startTime time.Time, err error) {
 	elapsed := time.Since(startTime)
-	aggr := gw.getStatsAggregator(tablet)
+	aggr := gw.getOrCreateStatsAggregator(tablet)
 	aggr.UpdateQueryInfo("", tablet.Type, elapsed, err != nil)
 }
 
-func (gw *TabletGateway) getStatsAggregator(tablet *topodatapb.Tablet) *TabletStatusAggregator {
+func (gw *TabletGateway) getOrCreateStatsAggregator(tablet *topodatapb.Tablet) *TabletStatusAggregator {
 	key := fmt.Sprintf("%v", tablet.Alias.Uid)
 
 	// get existing aggregator
