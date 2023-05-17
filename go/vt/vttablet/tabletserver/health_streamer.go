@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
