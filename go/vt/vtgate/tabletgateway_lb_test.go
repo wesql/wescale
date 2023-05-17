@@ -6,7 +6,9 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package vtgate
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -283,6 +285,297 @@ func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
 				return
 			}
 			assert.Equalf(t, tt.wantQPS, chosen.Stats.Qps, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantQPS)
+		})
+	}
+}
+
+type tabletInfo struct {
+	uid      uint32
+	qps      float64
+	cell     string
+	position string
+}
+
+func genTablets(tabletInfoList []tabletInfo) []*discovery.TabletHealth {
+	tabletHealths := make([]*discovery.TabletHealth, 0)
+	for _, t := range tabletInfoList {
+		tabletHealths = append(tabletHealths, &discovery.TabletHealth{
+			Tablet: &topodatapb.Tablet{
+				Alias: &topodatapb.TabletAlias{
+					Uid:  t.uid,
+					Cell: t.cell,
+				},
+			},
+			Target: &querypb.Target{
+				Cell: t.cell,
+			},
+			Stats: &querypb.RealtimeStats{
+				Qps: t.qps,
+			},
+			Position: mysql.MustParsePosition(mysql.Mysql56FlavorID, t.position),
+		})
+	}
+
+	return tabletHealths
+}
+
+type aggrInfo struct {
+	tabletInfo
+	queryCountInMinute uint64
+	latencyInMinute    time.Duration
+}
+
+func genAggr(aggrInfo []aggrInfo) map[string]*TabletStatusAggregator {
+	aggr := make(map[string]*TabletStatusAggregator)
+	for _, a := range aggrInfo {
+		name := fmt.Sprintf("%v", a.uid)
+		aggr[name] = &TabletStatusAggregator{
+			Name:               name,
+			queryCountInMinute: [60]uint64{a.queryCountInMinute},
+			latencyInMinute:    [60]time.Duration{a.latencyInMinute},
+		}
+	}
+	return aggr
+}
+
+func TestTabletGateway_leastQpsLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name:       "no candidates",
+			candidates: genTablets([]tabletInfo{}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{}),
+			},
+			wantUid: 0,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell"},
+			}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell"}, queryCountInMinute: 100 * 60},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell"}, queryCountInMinute: 200 * 60},
+				}),
+			},
+			wantUid: 1,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell2"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell2"},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60},
+				}),
+			},
+			wantUid: 3,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell2"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell2"},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell2",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60},
+				}),
+			},
+			wantUid: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(LEAST_QPS, tt.candidates)
+			if chosen == nil {
+				assert.Equal(t, tt.wantUid, uint32(0))
+				return
+			}
+			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
+		})
+	}
+}
+
+func TestTabletGateway_leastRTLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name:       "no candidates",
+			candidates: genTablets([]tabletInfo{}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{}),
+			},
+			wantUid: 0,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell"},
+			}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 5,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell2"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell2"},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 5,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell"},
+				{uid: 4, cell: "test_cell"},
+				{uid: 1, cell: "test_cell2"},
+				{uid: 3, cell: "test_cell"},
+				{uid: 2, cell: "test_cell2"},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell2",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(LEAST_RT, tt.candidates)
+			if chosen == nil {
+				assert.Equal(t, tt.wantUid, uint32(0))
+				return
+			}
+			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
+		})
+	}
+}
+
+func TestTabletGateway_leastBehindPrimaryLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name:       "no candidates",
+			candidates: genTablets([]tabletInfo{}),
+			gw:         &TabletGateway{localCell: "test_cell"},
+			wantUid:    0,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-500"},
+				{uid: 4, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"},
+				{uid: 3, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-300"},
+				{uid: 2, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell"},
+			wantUid: 5,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-500"},
+				{uid: 4, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-100"},
+				{uid: 3, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-300"},
+				{uid: 2, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:1-200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell"},
+			wantUid: 3,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:500"},
+				{uid: 4, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:400"},
+				{uid: 1, cell: "test_cell", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:100"},
+				{uid: 3, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:300"},
+				{uid: 2, cell: "test_cell2", position: "df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:200"},
+			}),
+			gw:      &TabletGateway{localCell: "test_cell2"},
+			wantUid: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(LEAST_BEHIND_PRIMARY, tt.candidates)
+			if chosen == nil {
+				assert.Equal(t, tt.wantUid, uint32(0))
+				return
+			}
+			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
 		})
 	}
 }
