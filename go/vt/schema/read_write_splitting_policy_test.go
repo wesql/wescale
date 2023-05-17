@@ -41,6 +41,16 @@ func TestParseReadWriteSplittingPolicy(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name: "RANDOM",
+			args: args{
+				strategyVariable: "RANDOM",
+			},
+			want: &ReadWriteSplittingPolicySetting{
+				Strategy: ReadWriteSplittingPolicyRandom,
+			},
+			wantErr: assert.NoError,
+		},
+		{
 			name: "disable",
 			args: args{
 				strategyVariable: "disable",

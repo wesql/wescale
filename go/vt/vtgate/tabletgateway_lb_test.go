@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/vt/schema"
+
 	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/mysql"
@@ -279,7 +281,7 @@ func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
 			gw := &TabletGateway{
 				localCell: "test_cell",
 			}
-			chosen := gw.loadBalance(LEAST_GLOBAL_QPS, tt.candidates)
+			chosen := gw.loadBalance(schema.ReadWriteSplittingPolicyLeastGlobalQPS, tt.candidates)
 			if chosen == nil {
 				assert.Equal(t, tt.wantQPS, -1.0)
 				return
@@ -418,7 +420,7 @@ func TestTabletGateway_leastQpsLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(LEAST_QPS, tt.candidates)
+			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastQPS, tt.candidates)
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
@@ -508,7 +510,7 @@ func TestTabletGateway_leastRTLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(LEAST_RT, tt.candidates)
+			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastRT, tt.candidates)
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
@@ -570,7 +572,7 @@ func TestTabletGateway_leastBehindPrimaryLoadBalancer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(LEAST_BEHIND_PRIMARY, tt.candidates)
+			chosen := tt.gw.loadBalance(schema.ReadWriteSplittingPolicyLeastBehindPrimary, tt.candidates)
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return

@@ -8,24 +8,14 @@ package vtgate
 import (
 	"strconv"
 
+	"vitess.io/vitess/go/vt/schema"
+
 	"golang.org/x/exp/slices"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/vt/discovery"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/vterrors"
-)
-
-const (
-	RANDOM = "RANDOM"
-	// nolint:revive
-	LEAST_GLOBAL_QPS = "LEAST_GLOBAL_QPS"
-	// nolint:revive
-	LEAST_QPS = "LEAST_QPS"
-	// nolint:revive
-	LEAST_RT = "LEAST_RT"
-	// nolint:revive
-	LEAST_BEHIND_PRIMARY = "LEAST_BEHIND_PRIMARY"
 )
 
 // PickTablet picks one tablet based on the pick tablet algorithm
@@ -52,7 +42,7 @@ func (gw *TabletGateway) PickTablet(
 	if len(candidates) == 0 {
 		return nil, vterrors.VT14002()
 	}
-	chosenTablet := gw.loadBalance(LEAST_BEHIND_PRIMARY, candidates)
+	chosenTablet := gw.loadBalance(schema.ReadWriteSplittingPolicyRandom, candidates)
 	if chosenTablet == nil {
 		return nil, vterrors.VT14002()
 	}
@@ -84,20 +74,20 @@ func (gw *TabletGateway) filterAdvisorByGTIDThreshold(
 	return filtered
 }
 
-func (gw *TabletGateway) loadBalance(policy string, candidates []*discovery.TabletHealth) *discovery.TabletHealth {
+func (gw *TabletGateway) loadBalance(policy schema.ReadWriteSplittingPolicy, candidates []*discovery.TabletHealth) *discovery.TabletHealth {
 	if len(candidates) == 0 {
 		return nil
 	}
 	switch policy {
-	case LEAST_GLOBAL_QPS:
+	case schema.ReadWriteSplittingPolicyLeastGlobalQPS:
 		gw.leastGlobalQPSLoadBalancer(candidates)
-	case LEAST_QPS:
+	case schema.ReadWriteSplittingPolicyLeastQPS:
 		gw.leastQPSLoadBalancer(candidates)
-	case LEAST_RT:
+	case schema.ReadWriteSplittingPolicyLeastRT:
 		gw.leastRTLoadBalancer(candidates)
-	case LEAST_BEHIND_PRIMARY:
+	case schema.ReadWriteSplittingPolicyLeastBehindPrimary:
 		gw.leastBehindPrimaryLoadBalancer(candidates)
-	case RANDOM:
+	case schema.ReadWriteSplittingPolicyRandom:
 		gw.randomLoadBalancer(candidates)
 	default:
 		gw.randomLoadBalancer(candidates)

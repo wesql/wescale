@@ -8,6 +8,7 @@ package schema
 import (
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 var (
@@ -21,6 +22,14 @@ const (
 	ReadWriteSplittingPolicyDisable ReadWriteSplittingPolicy = "disable"
 	// ReadWriteSplittingPolicyRandom enables read write splitting using random policy
 	ReadWriteSplittingPolicyRandom ReadWriteSplittingPolicy = "random"
+	// ReadWriteSplittingPolicyLeastGlobalQPS enables read write splitting using least global QPS policy
+	ReadWriteSplittingPolicyLeastGlobalQPS ReadWriteSplittingPolicy = "least_global_qps"
+	// ReadWriteSplittingPolicyLeastQPS enables read write splitting using least QPS policy
+	ReadWriteSplittingPolicyLeastQPS ReadWriteSplittingPolicy = "least_qps"
+	// ReadWriteSplittingPolicyLeastRT enables read write splitting using least RT policy
+	ReadWriteSplittingPolicyLeastRT ReadWriteSplittingPolicy = "least_rt"
+	// ReadWriteSplittingPolicyLeastBehindPrimary enables read write splitting using least behind primary policy
+	ReadWriteSplittingPolicyLeastBehindPrimary ReadWriteSplittingPolicy = "least_behind_primary"
 )
 
 // IsRandom returns true if the strategy is random
@@ -45,6 +54,7 @@ func NewReadWriteSplittingPolicySettingSetting(strategy ReadWriteSplittingPolicy
 }
 
 func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSplittingPolicySetting, error) {
+	strategyVariable = strings.ToLower(strategyVariable)
 	setting := &ReadWriteSplittingPolicySetting{}
 	strategyName := strategyVariable
 	if submatch := readWriteSplittingPolicyParserRegexp.FindStringSubmatch(strategyVariable); len(submatch) > 0 {
@@ -55,7 +65,12 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 	switch strategy := ReadWriteSplittingPolicy(strategyName); strategy {
 	case "": // backward compatiblity and to handle unspecified values
 		setting.Strategy = ReadWriteSplittingPolicyDisable
-	case ReadWriteSplittingPolicyRandom, ReadWriteSplittingPolicyDisable:
+	case ReadWriteSplittingPolicyRandom,
+		ReadWriteSplittingPolicyLeastGlobalQPS,
+		ReadWriteSplittingPolicyLeastQPS,
+		ReadWriteSplittingPolicyLeastRT,
+		ReadWriteSplittingPolicyLeastBehindPrimary,
+		ReadWriteSplittingPolicyDisable:
 		setting.Strategy = strategy
 	default:
 		return nil, fmt.Errorf("Unknown ReadWriteSplittingPolicy: '%v'", strategy)
