@@ -19,6 +19,10 @@ var (
 
 type ReadWriteSplittingPolicy string
 
+func NewReadWriteSplittingPolicy(s string) ReadWriteSplittingPolicy {
+	return ReadWriteSplittingPolicy(strings.ToLower(s))
+}
+
 const (
 	// ReadWriteSplittingPolicyDisable disables read write splitting
 	ReadWriteSplittingPolicyDisable ReadWriteSplittingPolicy = "disable"
@@ -48,15 +52,7 @@ type ReadWriteSplittingPolicySetting struct {
 	Options  string                   `json:"options,omitempty"`
 }
 
-func NewReadWriteSplittingPolicySettingSetting(strategy ReadWriteSplittingPolicy, options string) *ReadWriteSplittingPolicySetting {
-	return &ReadWriteSplittingPolicySetting{
-		Strategy: strategy,
-		Options:  options,
-	}
-}
-
 func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSplittingPolicySetting, error) {
-	strategyVariable = strings.ToLower(strategyVariable)
 	setting := &ReadWriteSplittingPolicySetting{}
 	strategyName := strategyVariable
 	if submatch := readWriteSplittingPolicyParserRegexp.FindStringSubmatch(strategyVariable); len(submatch) > 0 {
@@ -64,7 +60,7 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 		setting.Options = submatch[2]
 	}
 
-	switch strategy := ReadWriteSplittingPolicy(strategyName); strategy {
+	switch strategy := NewReadWriteSplittingPolicy(strategyName); strategy {
 	case "": // backward compatiblity and to handle unspecified values
 		setting.Strategy = ReadWriteSplittingPolicyDisable
 	case ReadWriteSplittingPolicyRandom,
@@ -86,7 +82,7 @@ func (setting *ReadWriteSplittingPolicySetting) ToString() string {
 }
 
 func ToLoadBalancePolicy(s string) querypb.ExecuteOptions_LoadBalancePolicy {
-	strategy := ReadWriteSplittingPolicy(strings.ToLower(s))
+	strategy := NewReadWriteSplittingPolicy(s)
 	switch strategy {
 	case ReadWriteSplittingPolicyLeastGlobalQPS:
 		return querypb.ExecuteOptions_LEAST_GLOBAL_QPS
