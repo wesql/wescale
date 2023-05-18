@@ -512,4 +512,8 @@ build-mysql-tester:
 	go build -o ${VTROOT}/bin/mysql-tester -C ${VTROOT}/go/test/mysql-tester/src
 
 run-mysql-tester:
-	${VTROOT}/bin/mysql-tester -port 15306 -path go/test/mysql-tester
+	@if [ -z "${args}" ]; then \
+    	${VTROOT}/bin/mysql-tester -port 15306 -path go/test/mysql-tester; \
+	else \
+		${VTROOT}/bin/mysql-tester ${args}; \
+	fi
