@@ -2,7 +2,7 @@
 // Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
 
-module mysql-tester
+module github.com/apecloud/mysql-tester
 
 go 1.20
 
