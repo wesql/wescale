@@ -46,6 +46,7 @@ var (
 	params         string
 	all            bool
 	reserveSchema  bool
+	path           string
 	xmlPath        string
 	retryConnCount int
 	dbName         string
@@ -61,6 +62,7 @@ func init() {
 	flag.StringVar(&params, "params", "", "Additional params pass as DSN(e.g. session variable)")
 	flag.BoolVar(&all, "all", false, "run all tests")
 	flag.BoolVar(&reserveSchema, "reserve-schema", false, "Reserve schema after each test")
+	flag.StringVar(&path, "path", ".", "The Base Path of testcase.")
 	flag.StringVar(&xmlPath, "xunitfile", "", "The xml file path to record testing results.")
 	flag.IntVar(&retryConnCount, "retry-connection-count", 120, "The max number to retry to connect to the database.")
 	flag.StringVar(&dbName, "dbName", "mysql", "The database name that firstly connect to.")
@@ -862,17 +864,17 @@ func (t *tester) flushResult() error {
 
 func (t *tester) testFileName() string {
 	// test and result must be in current ./t the same as MySQL
-	return fmt.Sprintf("./t/%s.test", t.name)
+	return fmt.Sprintf("%s/t/%s.test", path, t.name)
 }
 
 func (t *tester) resultFileName() string {
 	// test and result must be in current ./r, the same as MySQL
-	return fmt.Sprintf("./r/%s.result", t.name)
+	return fmt.Sprintf("%s/r/%s.result", path, t.name)
 }
 
 func loadAllTests() ([]string, error) {
 	// tests must be in t folder
-	files, err := ioutil.ReadDir("./t")
+	files, err := ioutil.ReadDir(fmt.Sprintf("%s/t", path))
 	if err != nil {
 		return nil, err
 	}
@@ -896,7 +898,7 @@ func loadAllTests() ([]string, error) {
 }
 
 func resultExists(name string) bool {
-	resultFile := fmt.Sprintf("./r/%s.result", name)
+	resultFile := fmt.Sprintf("%s/r/%s.result", path, name)
 
 	if _, err := os.Stat(resultFile); err != nil {
 		if os.IsNotExist(err) {

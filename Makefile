@@ -507,3 +507,9 @@ endef
 
 push-images:
 	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release}
+
+build-mysql-tester:
+	go build -o ${VTROOT}/bin/mysql-tester -C ${VTROOT}/go/test/mysql-tester/src
+
+run-mysql-tester:
+	${VTROOT}/bin/mysql-tester -port 15306 -path go/test/mysql-tester
