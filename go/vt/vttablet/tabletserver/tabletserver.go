@@ -769,8 +769,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			var connSetting *pools.Setting
-			connSetting, err = tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
 			if err != nil {
 				return err
 			}
@@ -902,8 +901,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			var connSetting *pools.Setting
-			connSetting, err = tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
 			if err != nil {
 				return err
 			}
