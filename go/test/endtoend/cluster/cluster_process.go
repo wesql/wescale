@@ -101,11 +101,12 @@ type LocalProcessCluster struct {
 	VtctlProcess        VtctlProcess
 
 	// background executable processes
-	TopoProcess     TopoProcess
-	VtctldProcess   VtctldProcess
-	VtgateProcess   VtgateProcess
-	VtbackupProcess VtbackupProcess
-	VTOrcProcesses  []*VTOrcProcess
+	TopoProcess        TopoProcess
+	VtctldProcess      VtctldProcess
+	VtgateProcess      VtgateProcess
+	VtbackupProcess    VtbackupProcess
+	VTOrcProcesses     []*VTOrcProcess
+	VtconsensusProcess VtconsensusProcess
 
 	nextPortForProcess int
 
@@ -117,6 +118,9 @@ type LocalProcessCluster struct {
 	VtGatePlannerVersion plancontext.PlannerVersion
 
 	VtctldExtraArgs []string
+
+	// Extra arguments for vtConsensus
+	VtConsensusExtraArgs []string
 
 	// mutex added to handle the parallel teardowns
 	mx                *sync.Mutex
@@ -264,6 +268,18 @@ func (cluster *LocalProcessCluster) StartVTOrc(keyspace string) error {
 		vtorcProcess.ExtraArgs = append(vtorcProcess.ExtraArgs, fmt.Sprintf(`--clusters_to_watch="%s"`, keyspace))
 	}
 	cluster.VTOrcProcesses = append(cluster.VTOrcProcesses, vtorcProcess)
+	return nil
+}
+
+func (cluster *LocalProcessCluster) StartVtconsensus() error {
+	vtconsensus := cluster.NewVtconsensusProcess()
+	err := vtconsensus.Start()
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	cluster.VtconsensusProcess = *vtconsensus
+
 	return nil
 }
 
@@ -918,6 +934,10 @@ func (cluster *LocalProcessCluster) Teardown() {
 		}
 	}
 
+	if err := cluster.VtconsensusProcess.Teardown(); err != nil {
+		log.Errorf("Error in vtgate teardown: %v", err)
+	}
+
 	var mysqlctlProcessList []*exec.Cmd
 	var mysqlctlTabletUIDs []int
 	for _, keyspace := range cluster.Keyspaces {
@@ -1188,6 +1208,21 @@ func (cluster *LocalProcessCluster) VtprocessInstanceFromVttablet(tablet *Vttabl
 		cluster.TmpDirectory,
 		cluster.VtTabletExtraArgs,
 		cluster.DefaultCharset)
+}
+
+func (cluster *LocalProcessCluster) NewVtconsensusProcess() *VtconsensusProcess {
+	return VtconsensusInstance(
+		cluster.TopoFlavor,
+		fmt.Sprintf("%s:%d", cluster.Hostname, cluster.TopoProcess.Port),
+		os.Getenv("VTDATAROOT"),
+		10,
+		3,
+		3,
+		cluster.TmpDirectory,
+		"root",
+		"",
+		cluster.VtConsensusExtraArgs...,
+	)
 }
 
 // StartVttablet starts a new tablet

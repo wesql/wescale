@@ -256,7 +256,7 @@ func MysqlCtlProcessInstance(tabletUID int, mySQLPort int, tmpDirectory string) 
 }
 
 // StartMySQL starts mysqlctl process
-func StartMySQL(ctx context.Context, tablet *Vttablet, username string, tmpDirectory string) error {
+func StartMySQL(_ context.Context, tablet *Vttablet, _ string, tmpDirectory string) error {
 	tablet.MysqlctlProcess = *MysqlCtlProcessInstance(tablet.TabletUID, tablet.MySQLPort, tmpDirectory)
 	return tablet.MysqlctlProcess.Start()
 }
