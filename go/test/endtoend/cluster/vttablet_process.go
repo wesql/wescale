@@ -74,44 +74,97 @@ type VttabletProcess struct {
 	SupportsBackup              bool
 	ServingStatus               string
 	DbPassword                  string
-	DbPort                      int
+	DBPort                      int
 	VreplicationTabletType      string
 	DbFlavor                    string
 	Charset                     string
 	ConsolidationsURL           string
-
 	//Extra Args to be set before starting the vttablet process
 	ExtraArgs []string
+
+	// fields to manage external mysql instance(wesql server)
+	ShardSyncRetryDelay    int
+	RemoteOperationTimeOut int
+	DBConnectTimeOutMs     int
+	DBHostName             string
+	DBRootName             string
+	DBRootPassword         string
+	PidFile                string
 
 	proc *exec.Cmd
 	exit chan error
 }
 
+type shardStatus struct {
+	Shard struct {
+		PrimaryAlias interface{} `json:"primary_alias"`
+	} `json:"shard"`
+}
+
 // Setup starts vttablet process with required arguements
 func (vttablet *VttabletProcess) Setup() (err error) {
 
-	vttablet.proc = exec.Command(
-		vttablet.Binary,
-		"--topo_implementation", vttablet.CommonArg.TopoImplementation,
-		"--topo_global_server_address", vttablet.CommonArg.TopoGlobalAddress,
-		"--topo_global_root", vttablet.CommonArg.TopoGlobalRoot,
-		"--log_queries_to_file", vttablet.FileToLogQueries,
-		"--tablet-path", vttablet.TabletPath,
-		"--port", fmt.Sprintf("%d", vttablet.Port),
-		"--grpc_port", fmt.Sprintf("%d", vttablet.GrpcPort),
-		"--log_dir", vttablet.LogDir,
-		"--tablet_hostname", vttablet.TabletHostname,
-		"--init_tablet_type", vttablet.TabletType,
-		"--health_check_interval", fmt.Sprintf("%ds", vttablet.HealthCheckInterval),
-		"--enable_replication_reporter",
-		"--backup_storage_implementation", vttablet.BackupStorageImplementation,
-		"--file_backup_storage_root", vttablet.FileBackupStorageRoot,
-		"--service_map", vttablet.ServiceMap,
-		"--vtctld_addr", vttablet.VtctldAddress,
-		"--vtctld_addr", vttablet.VtctldAddress,
-		"--vreplication_tablet_type", vttablet.VreplicationTabletType,
-		"--db_charset", vttablet.Charset,
-	)
+	switch *dbFlavor {
+	case "mysqlctl":
+		vttablet.proc = exec.Command(
+			vttablet.Binary,
+			"--topo_implementation", vttablet.CommonArg.TopoImplementation,
+			"--topo_global_server_address", vttablet.CommonArg.TopoGlobalAddress,
+			"--topo_global_root", vttablet.CommonArg.TopoGlobalRoot,
+			"--log_queries_to_file", vttablet.FileToLogQueries,
+			"--tablet-path", vttablet.TabletPath,
+			"--port", fmt.Sprintf("%d", vttablet.Port),
+			"--grpc_port", fmt.Sprintf("%d", vttablet.GrpcPort),
+			"--log_dir", vttablet.LogDir,
+			"--tablet_hostname", vttablet.TabletHostname,
+			"--init_tablet_type", vttablet.TabletType,
+			"--health_check_interval", fmt.Sprintf("%ds", vttablet.HealthCheckInterval),
+			"--enable_replication_reporter",
+			"--backup_storage_implementation", vttablet.BackupStorageImplementation,
+			"--file_backup_storage_root", vttablet.FileBackupStorageRoot,
+			"--service_map", vttablet.ServiceMap,
+			"--vtctld_addr", vttablet.VtctldAddress,
+			"--vtctld_addr", vttablet.VtctldAddress,
+			"--vreplication_tablet_type", vttablet.VreplicationTabletType,
+			"--db_charset", vttablet.Charset,
+		)
+	case "wesql":
+		vttablet.proc = exec.Command(
+			vttablet.Binary,
+			"--topo_implementation", vttablet.CommonArg.TopoImplementation,
+			"--topo_global_server_address", vttablet.CommonArg.TopoGlobalAddress,
+			"--topo_global_root", vttablet.CommonArg.TopoGlobalRoot,
+			"--log_dir", vttablet.LogDir,
+			"--log_queries_to_file", vttablet.FileToLogQueries,
+			"--tablet-path", vttablet.TabletPath,
+			"--tablet_hostname", vttablet.TabletHostname,
+			"--init_tablet_type", vttablet.TabletType,
+			"--health_check_interval", fmt.Sprintf("%ds", vttablet.HealthCheckInterval),
+			"--shard_sync_retry_delay", fmt.Sprintf("%ds", vttablet.ShardSyncRetryDelay),
+			"--remote_operation_timeout", fmt.Sprintf("%ds", vttablet.RemoteOperationTimeOut),
+			"--db_connect_timeout_ms", fmt.Sprintf("%d", vttablet.DBConnectTimeOutMs),
+			"--enable_replication_reporter",
+			"--backup_storage_implementation", vttablet.BackupStorageImplementation,
+			"--file_backup_storage_root", vttablet.FileBackupStorageRoot,
+			"--port", fmt.Sprintf("%d", vttablet.Port),
+			"--db_port", fmt.Sprintf("%d", vttablet.DBPort),
+			"--db_host", vttablet.DBHostName,
+			fmt.Sprintf("--db_allprivs_user=%s", vttablet.DBRootName),
+			//fmt.Sprintf("--db_allprivs_password=\"%s\"", vttablet.DBRootPassword),
+			fmt.Sprintf("--db_dba_user=%s", vttablet.DBRootName),
+			//fmt.Sprintf("--db_dba_password=\"%s\"", vttablet.DBRootPassword),
+			fmt.Sprintf("--db_app_user=%s", vttablet.DBRootName),
+			//fmt.Sprintf("--db_app_password=\"%s\"", vttablet.DBRootPassword),
+			fmt.Sprintf("--db_filtered_user=%s", vttablet.DBRootName),
+			//fmt.Sprintf("--db_filtered_password=\"%s\"", vttablet.DBRootPassword),
+			"--grpc_port", fmt.Sprintf("%d", vttablet.GrpcPort),
+			"--service_map", "grpc-queryservice,grpc-tabletmanager,grpc-updatestream",
+			"--pid_file", vttablet.PidFile,
+			"--vtctld_addr", vttablet.VtctldAddress,
+			"--disable_active_reparents",
+		)
+	}
+
 	if *isCoverage {
 		vttablet.proc.Args = append(vttablet.proc.Args, "--test.coverprofile="+getCoveragePath("vttablet.out"))
 	}
@@ -127,6 +180,10 @@ func (vttablet *VttabletProcess) Setup() (err error) {
 	}
 
 	vttablet.proc.Args = append(vttablet.proc.Args, vttablet.ExtraArgs...)
+
+	tmp := strings.Join(vttablet.proc.Args, " ")
+	fmt.Println(tmp)
+
 	fname := path.Join(vttablet.LogDir, vttablet.TabletPath+"-vttablet-stderr.txt")
 	errFile, _ := os.Create(fname)
 	vttablet.proc.Stderr = errFile
@@ -149,7 +206,14 @@ func (vttablet *VttabletProcess) Setup() (err error) {
 	}()
 
 	if vttablet.ServingStatus != "" {
-		if err = vttablet.WaitForTabletStatus(vttablet.ServingStatus); err != nil {
+		var err error
+		switch *dbFlavor {
+		case "mysqlctl":
+			err = vttablet.WaitForTabletStatus(vttablet.ServingStatus)
+		case "wesql":
+			err = vttablet.WaitForTabletListen()
+		}
+		if err != nil {
 			errFileContent, _ := os.ReadFile(fname)
 			if errFileContent != nil {
 				log.Infof("vttablet error:\n%s\n", string(errFileContent))
@@ -279,6 +343,28 @@ func (vttablet *VttabletProcess) WaitForTabletStatus(expectedStatus string) erro
 // WaitForTabletStatuses waits for 10 second till one of expected statuses is reached
 func (vttablet *VttabletProcess) WaitForTabletStatuses(expectedStatuses []string) error {
 	return vttablet.WaitForTabletStatusesForTimeout(expectedStatuses, 10*time.Second)
+}
+
+// WaitForTabletListen waits for 10 second till tablet start listen
+func (vttablet *VttabletProcess) WaitForTabletListen() error {
+	return vttablet.WaitForTabletListenForTimeout(10 * time.Second)
+}
+
+// WaitForTabletListenForTimeout waits till tablet listen
+func (vttablet *VttabletProcess) WaitForTabletListenForTimeout(timeout time.Duration) error {
+	waitUntil := time.Now().Add(timeout)
+	for time.Now().Before(waitUntil) {
+		if vttablet.GetVars() != nil {
+			return nil
+		}
+		select {
+		case err := <-vttablet.exit:
+			return fmt.Errorf("process '%s' exited prematurely (err: %s)", vttablet.Name, err)
+		default:
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("Vttablet %s, not listening, beyond duration %v ", vttablet.TabletPath, timeout)
 }
 
 // WaitForTabletTypes waits for 10 second till one of expected statuses is reached
@@ -418,7 +504,7 @@ func (vttablet *VttabletProcess) QueryTablet(query string, keyspace string, useD
 	if !useDb {
 		keyspace = ""
 	}
-	dbParams := NewConnParams(vttablet.DbPort, vttablet.DbPassword, path.Join(vttablet.Directory, "mysql.sock"), keyspace)
+	dbParams := NewConnParams(vttablet.DBPort, vttablet.DbPassword, path.Join(vttablet.Directory, "mysql.sock"), keyspace)
 	conn, err := vttablet.conn(&dbParams)
 	if err != nil {
 		return nil, err
@@ -531,9 +617,8 @@ func (vttablet *VttabletProcess) WaitForVReplicationToCatchup(t testing.TB, work
 			}
 			if qr != nil && qr.Rows != nil && len(qr.Rows) > 0 && fmt.Sprintf("%v", qr.Rows[0]) == string(results[ind]) {
 				break
-			} else {
-				log.Infof("In WaitForVReplicationToCatchup: %s %+v", query, qr.Rows)
 			}
+			log.Infof("In WaitForVReplicationToCatchup: %s %+v", query, qr.Rows)
 			time.Sleep(waitDuration)
 			duration -= waitDuration
 		}
@@ -628,6 +713,33 @@ func VttabletProcessInstance(port, grpcPort, tabletUID int, cell, shard, keyspac
 	vttablet.QueryzURL = fmt.Sprintf("http://%s:%d/queryz", hostname, port)
 	vttablet.StatusDetailsURL = fmt.Sprintf("http://%s:%d/debug/status_details", hostname, port)
 	vttablet.ConsolidationsURL = fmt.Sprintf("http://%s:%d/debug/consolidations", hostname, port)
+
+	return vttablet
+}
+
+// VttabletProcessInstanceWithWesql wrap VttabletProcessInstance to support wesql specific args
+func VttabletProcessInstanceWithWesql(port, grpcPort, tabletUID int, cell, shard, keyspace string, vtctldPort int, tabletType string, topoPort int, hostname, tmpDirectory string, extraArgs []string, charset string,
+	shardSyncRetryDelay int, remoteOperationTimeOut int, dbConnectTimeOutMs int, dbPort int, dbHost string, dbRootName string, dbRootPassWord string) *VttabletProcess {
+	vttablet := VttabletProcessInstance(port, grpcPort, tabletUID, cell, shard, keyspace, vtctldPort, tabletType, topoPort, hostname, tmpDirectory, extraArgs, charset)
+	vttablet.DBPort = dbPort
+	vttablet.DBHostName = dbHost
+	vttablet.DBRootName = dbRootName
+	vttablet.DBRootPassword = dbRootPassWord
+
+	vttablet.ShardSyncRetryDelay = shardSyncRetryDelay
+	vttablet.RemoteOperationTimeOut = remoteOperationTimeOut
+	vttablet.DBConnectTimeOutMs = dbConnectTimeOutMs
+
+	vttablet.PidFile = fmt.Sprintf("%s/vttablet.pid", vttablet.Directory)
+	vttablet.SupportsBackup = false
+	vttablet.HealthCheckInterval = 1
+
+	if vttablet.TabletHostname == "localhost" {
+		vttablet.TabletHostname = "127.0.0.1"
+	}
+	if vttablet.DBHostName == "localhost" {
+		vttablet.DBHostName = "127.0.0.1"
+	}
 
 	return vttablet
 }

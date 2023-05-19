@@ -296,7 +296,7 @@ func WriteDbCredentialToTmp(tmpDir string) string {
 
 // GetPasswordUpdateSQL returns the SQL for updating the users' passwords
 // to the static creds used throughout tests.
-func GetPasswordUpdateSQL(localCluster *LocalProcessCluster) string {
+func GetPasswordUpdateSQL(_ *LocalProcessCluster) string {
 	pwdChangeCmd := `
 					# Set real passwords for all users.
 					SET PASSWORD FOR 'root'@'localhost' = 'RootPass';

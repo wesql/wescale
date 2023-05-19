@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -256,7 +261,7 @@ func MysqlCtlProcessInstance(tabletUID int, mySQLPort int, tmpDirectory string) 
 }
 
 // StartMySQL starts mysqlctl process
-func StartMySQL(ctx context.Context, tablet *Vttablet, username string, tmpDirectory string) error {
+func StartMySQL(_ context.Context, tablet *Vttablet, _ string, tmpDirectory string) error {
 	tablet.MysqlctlProcess = *MysqlCtlProcessInstance(tablet.TabletUID, tablet.MySQLPort, tmpDirectory)
 	return tablet.MysqlctlProcess.Start()
 }
