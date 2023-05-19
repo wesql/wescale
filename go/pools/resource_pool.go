@@ -155,6 +155,18 @@ func (s *Setting) GetResetQuery() string {
 	return s.resetQuery
 }
 
+func (s *Setting) SetWithoutDBName(withoutDBName bool) {
+	s.withoutDBName = withoutDBName
+}
+
+func (s *Setting) SetQuery(query string) {
+	s.query = query
+}
+
+func (s *Setting) SetResetQuery(resetQuery string) {
+	s.resetQuery = resetQuery
+}
+
 // NewResourcePool creates a new ResourcePool pool.
 // capacity is the number of possible resources in the pool:
 // there can be up to 'capacity' of these at a given time.
