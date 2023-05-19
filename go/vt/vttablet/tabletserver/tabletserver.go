@@ -770,13 +770,10 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.TransactionID = transactionID
 
 			var connSetting *pools.Setting
-			if len(settings) > 0 {
-				connSetting, err = tsv.qe.GetConnSetting(ctx, settings)
-				if err != nil {
-					return err
-				}
+			connSetting, err = tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			if err != nil {
+				return err
 			}
-			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
@@ -815,33 +812,34 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 	return result, err
 }
 
-func (tsv *TabletServer) buildConnSettingForUserKeyspace(connSetting *pools.Setting, keyspaceName string) *pools.Setting {
-	if keyspaceName == "" {
-		if connSetting == nil {
-			return pools.NewSetting(
-				true,
-				"",
-				"",
-			)
+func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, settings []string, keyspaceName string) (*pools.Setting, error) {
+	var connSetting *pools.Setting
+	var err error
+	if len(settings) > 0 {
+		connSetting, err = tsv.qe.GetConnSetting(ctx, settings)
+		if err != nil {
+			return nil, err
 		}
-		return pools.NewSetting(
-			true,
-			connSetting.GetQuery(),
-			connSetting.GetResetQuery(),
-		)
 	}
+	var settingNotInCache bool
 	if connSetting == nil {
-		return pools.NewSetting(
-			false,
-			"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}),
-			"use "+tsv.config.DB.DBName,
-		)
+		connSetting = pools.NewSetting(false, "", "")
+		settingNotInCache = true
 	}
-	return pools.NewSetting(
-		false,
-		"use "+topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName})+";"+connSetting.GetQuery(),
-		"use "+tsv.config.DB.DBName+";"+connSetting.GetResetQuery(),
-	)
+	if keyspaceName == "" {
+		connSetting.SetWithoutDBName(true)
+	} else {
+		connSetting.SetWithoutDBName(false)
+		query := fmt.Sprintf("use %s", topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}))
+		resetQuery := fmt.Sprintf("use %s", tsv.config.DB.DBName)
+		if !settingNotInCache {
+			query = fmt.Sprintf("%s;%s", query, connSetting.GetQuery())
+			resetQuery = fmt.Sprintf("%s;%s", resetQuery, connSetting.GetResetQuery())
+		}
+		connSetting.SetQuery(query)
+		connSetting.SetResetQuery(resetQuery)
+	}
+	return connSetting, nil
 }
 
 // smallerTimeout returns the smaller of the two timeouts.
@@ -905,13 +903,10 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 			logStats.TransactionID = transactionID
 
 			var connSetting *pools.Setting
-			if len(settings) > 0 {
-				connSetting, err = tsv.qe.GetConnSetting(ctx, settings)
-				if err != nil {
-					return err
-				}
+			connSetting, err = tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			if err != nil {
+				return err
 			}
-			connSetting = tsv.buildConnSettingForUserKeyspace(connSetting, target.Keyspace)
 			qre := &QueryExecutor{
 				query:          query,
 				marginComments: comments,
