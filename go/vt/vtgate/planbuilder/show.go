@@ -238,7 +238,7 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 	var rows [][]sqltypes.Value
 
 	for _, v := range ks {
-		if filter.MatchString(v.Name) {
+		if filter.MatchString(v.Name) && v.Name != "_vt" {
 			rows = append(rows, buildVarCharRow(v.Name))
 		}
 	}
