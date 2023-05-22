@@ -264,6 +264,7 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 	if err != nil {
 		return nil, err
 	}
+	sort.Slice(ks, func(i, j int) bool { return ks[i].Name < ks[j].Name })
 
 	var filter *regexp.Regexp
 
@@ -277,14 +278,6 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 
 	// rows := make([][]sqltypes.Value, 0, len(ks)+4)
 	var rows [][]sqltypes.Value
-
-	if show.Command == sqlparser.Database {
-		// Hard code default databases
-		ks = append(ks, &vindexes.Keyspace{Name: "information_schema"},
-			&vindexes.Keyspace{Name: "mysql"},
-			&vindexes.Keyspace{Name: "sys"},
-			&vindexes.Keyspace{Name: "performance_schema"})
-	}
 
 	for _, v := range ks {
 		if filter.MatchString(v.Name) {

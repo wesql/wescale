@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +25,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"time"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
 
@@ -340,27 +348,43 @@ func (hs *healthStreamer) reload() error {
 	}
 	defer conn.Recycle()
 
-	tables, err := hs.getChangedTableNames(ctx, conn)
+	dbList, err := hs.getDbList(ctx, conn)
 	if err != nil {
 		return err
 	}
 
-	views, err := hs.getChangedViewNames(ctx, conn)
-	if err != nil {
-		return err
+	var tables []string
+	// Since current SQL layer doesn't need to know about the schema of the tables
+	// that are not sharded, we don't need to track the schema of those tables.
+	// So, we can disable the schema tracking by default.
+	if global.TableSchemaTracking {
+		tables, err = hs.getChangedTableNames(ctx, conn)
+		if err != nil {
+			return err
+		}
+	}
+
+	var views []string
+	if global.ViewSchemaTracking {
+		views, err = hs.getChangedViewNames(ctx, conn)
+		if err != nil {
+			return err
+		}
 	}
 
 	// no change detected
-	if len(tables) == 0 && len(views) == 0 {
+	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 {
 		return nil
 	}
 
 	hs.state.RealtimeStats.TableSchemaChanged = tables
 	hs.state.RealtimeStats.ViewSchemaChanged = views
+	hs.state.RealtimeStats.DbList = dbList
 	shr := proto.Clone(hs.state).(*querypb.StreamHealthResponse)
 	hs.broadCastToClients(shr)
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil
+	hs.state.RealtimeStats.DbList = nil
 
 	return nil
 }
@@ -475,4 +499,16 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 	hs.views = views
 
 	return changedViews, nil
+}
+
+func (hs *healthStreamer) getDbList(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
+	qr, err := conn.Exec(ctx, mysql.FetchDbList, math.MaxInt32, true)
+	if err != nil {
+		return nil, err
+	}
+	var dbList []string
+	for _, row := range qr.Rows {
+		dbList = append(dbList, row[0].ToString())
+	}
+	return dbList, nil
 }

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -113,9 +118,9 @@ func copySchema(t *testing.T, useShardAsSource bool) {
 	sourceRdonly.FakeMysqlDaemon.Schema = schema
 
 	setSQLMode := fmt.Sprintf("SET @@session.sql_mode='%v'", vreplication.SQLMode)
-	changeToDb := "USE `vt_ks`"
-	createDb := "CREATE DATABASE `vt_ks` /*!40100 DEFAULT CHARACTER SET utf8 */"
-	createTable := "CREATE TABLE `vt_ks`.`table1` (\n" +
+	changeToDb := "USE `ks`"
+	createDb := "CREATE DATABASE `ks` /*!40100 DEFAULT CHARACTER SET utf8 */"
+	createTable := "CREATE TABLE `ks`.`table1` (\n" +
 		"  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n" +
 		"  `msg` varchar(64) DEFAULT NULL,\n" +
 		"  `keyspace_id` bigint(20) unsigned NOT NULL,\n" +

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +78,7 @@ func RestoreTablet(t *testing.T, localCluster *cluster.LocalProcessCluster, tabl
 		"--init_tablet_type", "replica",
 		"--init_keyspace", restoreKSName,
 		"--init_shard", shardName,
-		"--init_db_name_override", "vt_"+keyspaceName,
+		"--init_db_name_override", keyspaceName,
 	)
 	tablet.VttabletProcess.SupportsBackup = true
 	tablet.VttabletProcess.ExtraArgs = replicaTabletArgs

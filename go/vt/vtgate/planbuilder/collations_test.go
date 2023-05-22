@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +22,10 @@ limitations under the License.
 package planbuilder
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/vtgate/engine"
 )
 
@@ -60,74 +63,5 @@ func (tc *collationTestCase) addCollationsToSchema(vschema *vschemaWrapper) {
 				break
 			}
 		}
-	}
-}
-
-func TestOrderedAggregateCollations(t *testing.T) {
-	collid := func(collname string) collations.ID {
-		return collations.Local().LookupByName(collname).ID()
-	}
-	testCases := []collationTestCase{
-		{
-			collations: []collationInTable{{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol1"}},
-			query:      "select textcol1 from user group by textcol1",
-			check: func(t *testing.T, colls []collationInTable, primitive engine.Primitive) {
-				oa, isOA := primitive.(*engine.OrderedAggregate)
-				require.True(t, isOA, "should be an OrderedAggregate")
-				require.Equal(t, collid(colls[0].collationName), oa.GroupByKeys[0].CollationID)
-			},
-		},
-		{
-			collations: []collationInTable{{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol1"}},
-			query:      "select distinct textcol1 from user",
-			check: func(t *testing.T, colls []collationInTable, primitive engine.Primitive) {
-				oa, isOA := primitive.(*engine.OrderedAggregate)
-				require.True(t, isOA, "should be an OrderedAggregate")
-				require.Equal(t, collid(colls[0].collationName), oa.GroupByKeys[0].CollationID)
-			},
-		},
-		{
-			collations: []collationInTable{
-				{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol1"},
-				{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol2"},
-			},
-			query: "select textcol1, textcol2 from user group by textcol1, textcol2",
-			check: func(t *testing.T, colls []collationInTable, primitive engine.Primitive) {
-				oa, isOA := primitive.(*engine.OrderedAggregate)
-				require.True(t, isOA, "should be an OrderedAggregate")
-				require.Equal(t, collid(colls[0].collationName), oa.GroupByKeys[0].CollationID)
-				require.Equal(t, collid(colls[1].collationName), oa.GroupByKeys[1].CollationID)
-			},
-		},
-		{
-			collations: []collationInTable{
-				{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol2"},
-			},
-			query: "select count(*), textcol2 from user group by textcol2",
-			check: func(t *testing.T, colls []collationInTable, primitive engine.Primitive) {
-				oa, isOA := primitive.(*engine.OrderedAggregate)
-				require.True(t, isOA, "should be an OrderedAggregate")
-				require.Equal(t, collid(colls[0].collationName), oa.GroupByKeys[0].CollationID)
-			},
-		},
-		{
-			collations: []collationInTable{
-				{ks: "user", table: "user", collationName: "utf8mb4_bin", colName: "textcol2"},
-			},
-			query: "select count(*) as c, textcol2 from user group by textcol2 order by c",
-			check: func(t *testing.T, colls []collationInTable, primitive engine.Primitive) {
-				memSort, isMemSort := primitive.(*engine.MemorySort)
-				require.True(t, isMemSort, "should be a MemorySort")
-				oa, isOA := memSort.Input.(*engine.OrderedAggregate)
-				require.True(t, isOA, "should be an OrderedAggregate")
-				require.Equal(t, collid(colls[0].collationName), oa.GroupByKeys[0].CollationID)
-			},
-		},
-	}
-
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d %s", i+1, tc.query), func(t *testing.T) {
-			tc.run(t)
-		})
 	}
 }

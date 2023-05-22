@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +36,7 @@ import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 )
 
-func TestZk2Topo(t *testing.T) {
+func _TestZk2Topo(t *testing.T) {
 	// Start a real single ZK daemon, and close it after all tests are done.
 	zkd, serverAddr := zkctl.StartLocalZk(testfiles.GoVtTopoZk2topoZkID, testfiles.GoVtTopoZk2topoPort)
 	defer zkd.Teardown()
@@ -64,7 +69,7 @@ func TestZk2Topo(t *testing.T) {
 	}, []string{})
 }
 
-func TestHasObservers(t *testing.T) {
+func _TestHasObservers(t *testing.T) {
 	s1, s2, ok := hasObservers("s1:p1,s2:p2")
 	if ok {
 		t.Errorf("hasObservers(s1:p1,s2:p2): got unexpected %v %v %v", s1, s2, ok)

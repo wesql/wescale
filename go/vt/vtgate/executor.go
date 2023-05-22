@@ -961,12 +961,6 @@ func (e *Executor) SaveVSchema(vschema *vindexes.VSchema, stats *VSchemaStats) {
 // ParseDestinationTarget parses destination target string and sets default keyspace if possible.
 func (e *Executor) ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, dest, err := topoproto.ParseDestination(targetString, defaultTabletType)
-	// Set default keyspace
-	if destKeyspace == "" && len(e.VSchema().Keyspaces) == 1 {
-		for k := range e.VSchema().Keyspaces {
-			destKeyspace = k
-		}
-	}
 	return destKeyspace, destTabletType, dest, err
 }
 

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -644,7 +649,8 @@ func TestWaitForAllServingTablets(t *testing.T) {
 	}
 
 	err = hc.WaitForAllServingTablets(ctx, targets)
-	assert.NotNil(t, err, "error should not be nil (there are no tablets on this keyspace")
+	// wesql-scale are unsharded, so we should not get an error
+	assert.Nil(t, err, "error should be nil. Targets are found")
 
 	targets = []*querypb.Target{
 

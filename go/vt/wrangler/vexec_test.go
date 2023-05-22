@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +69,7 @@ func TestVExec(t *testing.T) {
 		} else {
 			query += " where "
 		}
-		query += fmt.Sprintf("db_name = %s and workflow = %s", encodeString("vt_"+keyspace), encodeString(workflow))
+		query += fmt.Sprintf("db_name = %s and workflow = %s", encodeString(keyspace), encodeString(workflow))
 		return query
 	}
 	want := addWheres(query)
@@ -152,17 +157,17 @@ func TestVExec(t *testing.T) {
 	_, err = wr.VExec(ctx, workflow, keyspace, query, true)
 	require.NoError(t, err)
 	dryRunResults := []string{
-		"Query: delete from _vt.vreplication where db_name = 'vt_target' and workflow = 'wrWorkflow'",
+		"Query: delete from _vt.vreplication where db_name = 'target' and workflow = 'wrWorkflow'",
 		"will be run on the following streams in keyspace target for workflow wrWorkflow:\n\n",
-		`+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-|        TABLET        | ID |          BINLOGSOURCE          |  STATE  |  DBNAME   |               CURRENT GTID               |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-| -80/zone1-0000000200 |  1 | keyspace:"source" shard:"0"    | Copying | vt_target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:"t1"}}    |         |           |                                          |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-| 80-/zone1-0000000210 |  1 | keyspace:"source" shard:"0"    | Copying | vt_target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:"t1"}}    |         |           |                                          |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+`,
+		`+----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+|        TABLET        | ID |          BINLOGSOURCE          |  STATE  | DBNAME |               CURRENT GTID               |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+| -80/zone1-0000000200 |  1 | keyspace:"source" shard:"0"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:"t1"}}    |         |        |                                          |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+| 80-/zone1-0000000210 |  1 | keyspace:"source" shard:"0"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:"t1"}}    |         |        |                                          |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+`,
 	}
 	require.Equal(t, strings.Join(dryRunResults, "\n")+"\n\n\n\n\n", logger.String())
 	logger.Clear()
@@ -235,7 +240,7 @@ func TestWorkflowListStreams(t *testing.T) {
 					"Pos": "14b68925-696a-11ea-aee7-fec597a91f5e:1-3",
 					"StopPos": "",
 					"State": "Copying",
-					"DBName": "vt_target",
+					"DBName": "target",
 					"TransactionTimestamp": 0,
 					"TimeUpdated": 1234,
 					"TimeHeartbeat": 1234,
@@ -276,7 +281,7 @@ func TestWorkflowListStreams(t *testing.T) {
 					"Pos": "14b68925-696a-11ea-aee7-fec597a91f5e:1-3",
 					"StopPos": "",
 					"State": "Copying",
-					"DBName": "vt_target",
+					"DBName": "target",
 					"TransactionTimestamp": 0,
 					"TimeUpdated": 1234,
 					"TimeHeartbeat": 1234,
@@ -328,19 +333,19 @@ func TestWorkflowListStreams(t *testing.T) {
 	results, err = wr.execWorkflowAction(ctx, workflow, keyspace, "stop", true)
 	require.Nil(t, err)
 	require.Equal(t, "map[]", fmt.Sprintf("%v", results))
-	dryRunResult := `Query: update _vt.vreplication set state = 'Stopped' where db_name = 'vt_target' and workflow = 'wrWorkflow'
+	dryRunResult := `Query: update _vt.vreplication set state = 'Stopped' where db_name = 'target' and workflow = 'wrWorkflow'
 will be run on the following streams in keyspace target for workflow wrWorkflow:
 
 
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-|        TABLET        | ID |          BINLOGSOURCE          |  STATE  |  DBNAME   |               CURRENT GTID               |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-| -80/zone1-0000000200 |  1 | keyspace:"source" shard:"0"    | Copying | vt_target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:"t1"}}    |         |           |                                          |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
-| 80-/zone1-0000000210 |  1 | keyspace:"source" shard:"0"    | Copying | vt_target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:"t1"}}    |         |           |                                          |
-+----------------------+----+--------------------------------+---------+-----------+------------------------------------------+
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+|        TABLET        | ID |          BINLOGSOURCE          |  STATE  | DBNAME |               CURRENT GTID               |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+| -80/zone1-0000000200 |  1 | keyspace:\"source\" shard:\"0\"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:\"t1\"}}    |         |        |                                          |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
+| 80-/zone1-0000000210 |  1 | keyspace:\"source\" shard:\"0\"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:\"t1\"}}    |         |        |                                          |
++----------------------+----+--------------------------------+---------+--------+------------------------------------------+
 
 
 

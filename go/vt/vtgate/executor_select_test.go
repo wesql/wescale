@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,7 +135,7 @@ func TestSelectDBA(t *testing.T) {
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 
 	sbc1.Queries = nil
-	query = "select 1 from information_schema.table_constraints where constraint_schema = 'vt_ks' and table_name = 'user'"
+	query = "select 1 from information_schema.table_constraints where constraint_schema = 'ks' and table_name = 'user'"
 	_, err = executor.Execute(context.Background(), "TestSelectDBA",
 		NewSafeSession(&vtgatepb.Session{TargetString: "TestExecutor"}),
 		query, map[string]*querypb.BindVariable{},
@@ -138,13 +143,13 @@ func TestSelectDBA(t *testing.T) {
 	require.NoError(t, err)
 	wantQueries = []*querypb.BoundQuery{{Sql: "select 1 from information_schema.table_constraints where constraint_schema = :__vtschemaname and table_name = :table_name",
 		BindVariables: map[string]*querypb.BindVariable{
-			"__vtschemaname": sqltypes.StringBindVariable("vt_ks"),
+			"__vtschemaname": sqltypes.StringBindVariable("ks"),
 			"table_name":     sqltypes.StringBindVariable("user"),
 		}}}
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 
 	sbc1.Queries = nil
-	query = "select 1 from information_schema.table_constraints where constraint_schema = 'vt_ks'"
+	query = "select 1 from information_schema.table_constraints where constraint_schema = 'ks'"
 	_, err = executor.Execute(context.Background(), "TestSelectDBA",
 		NewSafeSession(&vtgatepb.Session{TargetString: "TestExecutor"}),
 		query, map[string]*querypb.BindVariable{},
@@ -152,7 +157,7 @@ func TestSelectDBA(t *testing.T) {
 	require.NoError(t, err)
 	wantQueries = []*querypb.BoundQuery{{Sql: "select 1 from information_schema.table_constraints where constraint_schema = :__vtschemaname",
 		BindVariables: map[string]*querypb.BindVariable{
-			"__vtschemaname": sqltypes.StringBindVariable("vt_ks"),
+			"__vtschemaname": sqltypes.StringBindVariable("ks"),
 		}}}
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 }
@@ -486,7 +491,7 @@ func TestGen4SelectDBA(t *testing.T) {
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 
 	sbc1.Queries = nil
-	query = "select 1 from information_schema.table_constraints where constraint_schema = 'vt_ks' and table_name = 'user'"
+	query = "select 1 from information_schema.table_constraints where constraint_schema = 'ks' and table_name = 'user'"
 	_, err = executor.Execute(context.Background(), "TestSelectDBA",
 		NewSafeSession(&vtgatepb.Session{TargetString: "TestExecutor"}),
 		query, map[string]*querypb.BindVariable{},
@@ -495,15 +500,15 @@ func TestGen4SelectDBA(t *testing.T) {
 	wantQueries = []*querypb.BoundQuery{{Sql: "select :vtg1 from information_schema.table_constraints where constraint_schema = :__vtschemaname and table_name = :table_name1",
 		BindVariables: map[string]*querypb.BindVariable{
 			"vtg1":              sqltypes.Int64BindVariable(1),
-			"constraint_schema": sqltypes.StringBindVariable("vt_ks"),
+			"constraint_schema": sqltypes.StringBindVariable("ks"),
 			"table_name":        sqltypes.StringBindVariable("user"),
-			"__vtschemaname":    sqltypes.StringBindVariable("vt_ks"),
+			"__vtschemaname":    sqltypes.StringBindVariable("ks"),
 			"table_name1":       sqltypes.StringBindVariable("user"),
 		}}}
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 
 	sbc1.Queries = nil
-	query = "select 1 from information_schema.table_constraints where constraint_schema = 'vt_ks'"
+	query = "select 1 from information_schema.table_constraints where constraint_schema = 'ks'"
 	_, err = executor.Execute(context.Background(), "TestSelectDBA",
 		NewSafeSession(&vtgatepb.Session{TargetString: "TestExecutor"}),
 		query, map[string]*querypb.BindVariable{},
@@ -512,8 +517,8 @@ func TestGen4SelectDBA(t *testing.T) {
 	wantQueries = []*querypb.BoundQuery{{Sql: "select :vtg1 from information_schema.table_constraints where constraint_schema = :__vtschemaname",
 		BindVariables: map[string]*querypb.BindVariable{
 			"vtg1":              sqltypes.Int64BindVariable(1),
-			"constraint_schema": sqltypes.StringBindVariable("vt_ks"),
-			"__vtschemaname":    sqltypes.StringBindVariable("vt_ks"),
+			"constraint_schema": sqltypes.StringBindVariable("ks"),
+			"__vtschemaname":    sqltypes.StringBindVariable("ks"),
 		}}}
 	utils.MustMatch(t, wantQueries, sbc1.Queries)
 
