@@ -229,9 +229,6 @@ func GetUsingKs(node sqlparser.SQLNode, vschema plancontext.VSchema) (*vindexes.
 	if firstKsName == "" {
 		return nil, vterrors.VT09005()
 	}
-	if sqlparser.SystemSchema(firstKsName) {
-		return vschema.FindKeyspace(global.DefaultKeyspace)
-	}
 	usingKs, err = vschema.FindKeyspace(firstKsName)
 	if err != nil {
 		return nil, err
