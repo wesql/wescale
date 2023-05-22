@@ -38,14 +38,7 @@ vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-p
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 wait_for_healthy_shard _vt 0 || exit 1
 
-# create the schema
-#vtctldclient ApplySchema --sql-file create_apecloud_schema.sql _vt || fail "Failed to apply schema for the _vt keyspace"
-
-# create the vschema
-#vtctldclient ApplyVSchema --vschema-file vschema_apecloud_initial.json _vt || fail "Failed to apply vschema for the _vt keyspace"
-
 # start vtgate
-
 CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
 
 # start vtadmin
