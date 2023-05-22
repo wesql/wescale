@@ -305,6 +305,15 @@ func (db *DB) ConnParamsWithUname(uname string) dbconfigs.Connector {
 	})
 }
 
+// ConnParamsWithoutDB returns the ConnParamsWithoutDB to connect to the DB without specifying database.
+func (db *DB) ConnParamsWithoutDB() dbconfigs.Connector {
+	return dbconfigs.New(&mysql.ConnParams{
+		UnixSocket: db.socketFile,
+		Uname:      "user1",
+		Pass:       "password1",
+	})
+}
+
 //
 // mysql.Handler interface
 //
