@@ -1006,7 +1006,7 @@ func (vc *vcursorImpl) ForeignKeyMode() string {
 // ParseDestinationTarget parses destination target string and sets default keyspace if possible.
 func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetString string, vschema *vindexes.VSchema) (string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, dest, err := topoprotopb.ParseDestination(targetString, suggestedTabletType)
-	if global.UseUnShardedMode && dest == nil {
+	if enableDefaultUnShardedMode && dest == nil {
 		dest = key.DestinationShard("0")
 	}
 	return destKeyspace, destTabletType, dest, err
