@@ -127,7 +127,7 @@ var (
 	defaultReadWriteSplittingPolicy = string(schema.ReadWriteSplittingPolicyDisable)
 	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
 	defaultReadAfterWriteTimeout = float64(30.0)
-	enableDefaultUnShardedMode   = false
+	enableDefaultUnShardedMode   = true
 )
 
 func registerFlags(fs *pflag.FlagSet) {
