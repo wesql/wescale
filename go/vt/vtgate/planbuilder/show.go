@@ -52,7 +52,21 @@ const (
 
 func buildShowPlan(sql string, stmt *sqlparser.Show, _ *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
 	if vschema.Destination() != nil {
-		return buildByPassDDLPlan(sql, vschema)
+		var prim engine.Primitive
+		var err error
+		switch show := stmt.Internal.(type) {
+		case *sqlparser.ShowBasic:
+			prim, err = buildShowVitessPlan(show, vschema)
+			if prim == nil {
+				return buildByPassDDLPlan(sql, vschema)
+			}
+		default:
+			return buildByPassDDLPlan(sql, vschema)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return newPlanResult(prim), nil
 	}
 
 	var prim engine.Primitive
@@ -129,6 +143,32 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 	}
 	return nil, vterrors.VT13001(fmt.Sprintf("unknown SHOW query type %s", show.Command.ToString()))
 
+}
+
+func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
+	switch show.Command {
+	case sqlparser.Keyspace:
+		return buildDBPlan(show, vschema)
+	case sqlparser.VitessMigrations:
+		return buildShowVMigrationsPlan(show, vschema)
+	case sqlparser.VGtidExecGlobal:
+		return buildShowVGtidPlan(show, vschema)
+	case sqlparser.GtidExecGlobal:
+		return buildShowGtidPlan(show, vschema)
+	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables:
+		return &engine.ShowExec{
+			Command:    show.Command,
+			ShowFilter: show.Filter,
+		}, nil
+	case sqlparser.VitessTarget:
+		return buildShowTargetPlan(vschema)
+	case sqlparser.VschemaTables:
+		return buildVschemaTablesPlan(vschema)
+	case sqlparser.VschemaVindexes:
+		return buildVschemaVindexesPlan(show, vschema)
+	default:
+		return nil, nil
+	}
 }
 
 func buildShowTargetPlan(vschema plancontext.VSchema) (engine.Primitive, error) {
