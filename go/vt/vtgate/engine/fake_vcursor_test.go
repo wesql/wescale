@@ -327,6 +327,10 @@ func (t *noopVCursor) ResolveDestinations(ctx context.Context, keyspace string, 
 	return nil, nil, nil
 }
 
+func (t *noopVCursor) ResolveDefaultDestination(destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	return nil, nil
+}
+
 func (t *noopVCursor) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
 	panic("unimplemented")
 }

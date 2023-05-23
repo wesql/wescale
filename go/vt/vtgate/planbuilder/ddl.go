@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package planbuilder
 
 import (
@@ -91,7 +96,7 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 
 func buildByPassDDLPlan(sql string, vschema plancontext.VSchema) (*planResult, error) {
 	keyspace, err := vschema.DefaultKeyspace()
-	if err != nil {
+	if err.Error() != vterrors.VT09005().Error() {
 		return nil, err
 	}
 	send := &engine.Send{
