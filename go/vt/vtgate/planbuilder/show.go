@@ -129,7 +129,7 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 		return buildPluginsPlan()
 	case sqlparser.Engines:
 		return buildEnginesPlan()
-	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables:
+	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload:
 		return &engine.ShowExec{
 			Command:    show.Command,
 			ShowFilter: show.Filter,
