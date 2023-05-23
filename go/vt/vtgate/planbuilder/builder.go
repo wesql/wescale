@@ -204,7 +204,7 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		if err != nil {
 			return nil, err
 		}
-		return buildRoutePlan(stmt, reservedVars, vschema, configuredPlanner)
+		return configuredPlanner(stmt, reservedVars, vschema)
 	case *sqlparser.Insert:
 		return buildRoutePlan(stmt, reservedVars, vschema, buildInsertPlan)
 	case *sqlparser.Update:
@@ -224,7 +224,7 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		if err != nil {
 			return nil, err
 		}
-		return buildRoutePlan(stmt, reservedVars, vschema, configuredPlanner)
+		return configuredPlanner(stmt, reservedVars, vschema)
 	case sqlparser.DDLStatement:
 		return buildGeneralDDLPlan(query, stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.AlterMigration:
