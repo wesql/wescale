@@ -95,7 +95,7 @@ func gen4SelectStmtPlanner(
 	if !ok {
 		return nil, vterrors.Errorf(vtrpc.Code_INTERNAL, "unexpected primitive type %T", plan.primitive)
 	}
-	s.TargetDestination = key.DestinationAnyShard{}
+	s.TargetDestination = key.DestinationShard(global.DefaultShard)
 
 	return plan, nil
 }

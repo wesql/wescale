@@ -84,7 +84,7 @@ type (
 		// Will replace all of the Topo functions.
 		ResolveDestinations(ctx context.Context, keyspace string, ids []*querypb.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][]*querypb.Value, error)
 
-		ResolveDefaultDestination(destination key.Destination) ([]*srvtopo.ResolvedShard, error)
+		ResolveDefaultDestination(ctx context.Context, destination key.Destination) ([]*srvtopo.ResolvedShard, error)
 
 		ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error)
 
