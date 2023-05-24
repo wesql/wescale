@@ -14,7 +14,7 @@ import (
 
 func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, sql string) (tabletType topodatapb.TabletType, err error) {
 	suggestedTabletType := defaultTabletType
-	if schema.ReadWriteSplittingPolicy(readWriteSplittingPolicy).IsDisable() {
+	if schema.NewReadWriteSplittingPolicy(readWriteSplittingPolicy).IsDisable() {
 		return suggestedTabletType, nil
 	}
 	if inTransaction || hasCreatedTempTables || hasAdvisoryLock {
