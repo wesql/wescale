@@ -99,7 +99,7 @@ func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[str
 	var rss []*srvtopo.ResolvedShard
 	var err error
 	if s.Keyspace == nil {
-		rss, err = vcursor.ResolveDefaultDestination(s.TargetDestination)
+		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
 	} else {
 		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
 	}
@@ -157,7 +157,7 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 	var rss []*srvtopo.ResolvedShard
 	var err error
 	if s.Keyspace == nil {
-		rss, err = vcursor.ResolveDefaultDestination(s.TargetDestination)
+		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
 	} else {
 		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
 	}

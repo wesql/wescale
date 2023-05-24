@@ -24,6 +24,8 @@ package srvtopo
 import (
 	"testing"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/stretchr/testify/require"
 
 	"context"
@@ -60,6 +62,14 @@ func initResolver(t *testing.T, name string) *Resolver {
 		}
 	}
 
+	// Create default unsharded keyspace and shard
+	if err := ts.CreateKeyspace(ctx, global.DefaultKeyspace, &topodatapb.Keyspace{}); err != nil {
+		t.Fatalf("CreateKeyspace(uks) failed: %v", err)
+	}
+	if err := ts.CreateShard(ctx, global.DefaultKeyspace, "0"); err != nil {
+		t.Fatalf("CreateShard(0) failed: %v", err)
+	}
+
 	// Create unsharded keyspace and shard.
 	if err := ts.CreateKeyspace(ctx, "uks", &topodatapb.Keyspace{}); err != nil {
 		t.Fatalf("CreateKeyspace(uks) failed: %v", err)
@@ -69,7 +79,7 @@ func initResolver(t *testing.T, name string) *Resolver {
 	}
 
 	// And rebuild both.
-	for _, keyspace := range []string{"sks", "uks"} {
+	for _, keyspace := range []string{global.DefaultKeyspace, "sks", "uks"} {
 		if err := topotools.RebuildKeyspace(ctx, logutil.NewConsoleLogger(), ts, keyspace, []string{cell}, false); err != nil {
 			t.Fatalf("RebuildKeyspace(%v) failed: %v", keyspace, err)
 		}
@@ -278,12 +288,13 @@ func TestResolveDefaultDestinations(t *testing.T) {
 		{
 			name:             "unsharded keyspace, no keyspace",
 			destination:      key.DestinationShard("0"),
-			expectedShard:    "DestinationShard(0)",
+			expectedShard:    "0",
 			expectedKeySpace: "",
 		},
 	}
 	for _, testCase := range testCases {
-		rss, _ := resolver.ResolveDefaultDestination(topodatapb.TabletType_PRIMARY, testCase.destination)
+		ctx := context.Background()
+		rss, _ := resolver.ResolveDefaultDestination(ctx, topodatapb.TabletType_PRIMARY, testCase.destination)
 
 		// Check the ResolvedShard are correct.
 		if len(rss) != 1 {

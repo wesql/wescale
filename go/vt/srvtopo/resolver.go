@@ -24,6 +24,8 @@ package srvtopo
 import (
 	"sort"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/sqltypes"
 
 	"context"
@@ -329,24 +331,33 @@ func (r *Resolver) ResolveDestination(ctx context.Context, keyspace string, tabl
 	return rss, err
 }
 
-// ResolveDefaultDestination resolves values and default destination withou keyspace into the respective.
-func (r *Resolver) ResolveDefaultDestination(tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
+// ResolveDefaultDestination resolves values and default destination without keyspace into the respective.
+func (r *Resolver) ResolveDefaultDestination(ctx context.Context, tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
 	var result []*ResolvedShard
-
-	target := &querypb.Target{
-		Keyspace:   "",
-		Shard:      destination.String(),
-		TabletType: tabletType,
-		Cell:       r.localCell,
+	_, _, allShards, err := r.GetKeyspaceShards(ctx, global.DefaultKeyspace, tabletType)
+	if err != nil {
+		return nil, err
 	}
-	// Right now we always set the Cell to ""
-	// Later we can fallback to another cell if needed.
-	// We would then need to read the SrvKeyspace there too.
-	target.Cell = ""
-	result = append(result, &ResolvedShard{
-		Target:  target,
-		Gateway: r.gateway,
-	})
+
+	if err := destination.Resolve(allShards, func(shard string) error {
+		target := &querypb.Target{
+			Keyspace:   "",
+			Shard:      shard,
+			TabletType: tabletType,
+			Cell:       r.localCell,
+		}
+		// Right now we always set the Cell to ""
+		// Later we can fallback to another cell if needed.
+		// We would then need to read the SrvKeyspace there too.
+		target.Cell = ""
+		result = append(result, &ResolvedShard{
+			Target:  target,
+			Gateway: r.gateway,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 

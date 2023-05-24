@@ -654,8 +654,8 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 	return rss, values, err
 }
 
-func (vc *vcursorImpl) ResolveDefaultDestination(destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
-	result, _ := vc.resolver.ResolveDefaultDestination(vc.tabletType, destination)
+func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	result, _ := vc.resolver.ResolveDefaultDestination(ctx, vc.tabletType, destination)
 	return result, nil
 }
 
@@ -1007,7 +1007,7 @@ func (vc *vcursorImpl) ForeignKeyMode() string {
 func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetString string, vschema *vindexes.VSchema) (string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, dest, err := topoprotopb.ParseDestination(targetString, suggestedTabletType)
 	if enableDefaultUnShardedMode && dest == nil {
-		dest = key.DestinationShard("0")
+		dest = key.DestinationShard(global.DefaultShard)
 	}
 	return destKeyspace, destTabletType, dest, err
 }
