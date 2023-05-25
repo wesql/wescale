@@ -2,7 +2,7 @@
 
 name: Unit Test (mysql57)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Unit Test (mysql57)')
@@ -152,3 +152,7 @@ jobs:
 
         # print test output
         cat output.txt
+    - name: Print report.xml
+      if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.unit_tests == 'true' && always()
+      run: |
+        cat report.xml

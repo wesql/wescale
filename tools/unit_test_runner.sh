@@ -64,7 +64,7 @@ flaky_tests=$(echo "$packages_with_tests" | grep -E ".+ .+_flaky_test\.go" | cut
 packages_to_run=$(echo "$packages_with_tests" | cut -d" " -f1 | grep -v "endtoend")
 
 # Run non-flaky tests.
-echo "packages_to_run" | xargs go test $VT_GO_PARALLEL -v -count=1
+echo "$packages_to_run" | xargs go test $VT_GO_PARALLEL -v -count=1
 if [ $? -ne 0 ]; then
   echo "ERROR: Go unit tests failed. See above for errors."
   echo
