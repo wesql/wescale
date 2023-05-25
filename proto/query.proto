@@ -355,6 +355,16 @@ message ExecuteOptions {
   string ReadAfterWriteGtid = 15;
   // ReadAfterWriteTimeout is the timeout for the read-after-write.
   double ReadAfterWriteTimeout = 16;
+
+  enum LoadBalancePolicy {
+    RANDOM = 0;
+    LEAST_GLOBAL_QPS = 1;
+    LEAST_QPS = 2;
+    LEAST_RT = 3;
+    LEAST_BEHIND_PRIMARY = 4;
+  }
+
+  LoadBalancePolicy load_balance_policy = 17;
 }
 
 // Field describes a single column returned by a query

@@ -8,6 +8,9 @@ package schema
 import (
 	"fmt"
 	"regexp"
+	"strings"
+
+	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
 var (
@@ -16,11 +19,23 @@ var (
 
 type ReadWriteSplittingPolicy string
 
+func NewReadWriteSplittingPolicy(s string) ReadWriteSplittingPolicy {
+	return ReadWriteSplittingPolicy(strings.ToLower(s))
+}
+
 const (
 	// ReadWriteSplittingPolicyDisable disables read write splitting
 	ReadWriteSplittingPolicyDisable ReadWriteSplittingPolicy = "disable"
 	// ReadWriteSplittingPolicyRandom enables read write splitting using random policy
 	ReadWriteSplittingPolicyRandom ReadWriteSplittingPolicy = "random"
+	// ReadWriteSplittingPolicyLeastGlobalQPS enables read write splitting using least global QPS policy
+	ReadWriteSplittingPolicyLeastGlobalQPS ReadWriteSplittingPolicy = "least_global_qps"
+	// ReadWriteSplittingPolicyLeastQPS enables read write splitting using least QPS policy
+	ReadWriteSplittingPolicyLeastQPS ReadWriteSplittingPolicy = "least_qps"
+	// ReadWriteSplittingPolicyLeastRT enables read write splitting using least RT policy
+	ReadWriteSplittingPolicyLeastRT ReadWriteSplittingPolicy = "least_rt"
+	// ReadWriteSplittingPolicyLeastBehindPrimary enables read write splitting using least behind primary policy
+	ReadWriteSplittingPolicyLeastBehindPrimary ReadWriteSplittingPolicy = "least_behind_primary"
 )
 
 // IsRandom returns true if the strategy is random
@@ -37,13 +52,6 @@ type ReadWriteSplittingPolicySetting struct {
 	Options  string                   `json:"options,omitempty"`
 }
 
-func NewReadWriteSplittingPolicySettingSetting(strategy ReadWriteSplittingPolicy, options string) *ReadWriteSplittingPolicySetting {
-	return &ReadWriteSplittingPolicySetting{
-		Strategy: strategy,
-		Options:  options,
-	}
-}
-
 func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSplittingPolicySetting, error) {
 	setting := &ReadWriteSplittingPolicySetting{}
 	strategyName := strategyVariable
@@ -52,10 +60,15 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 		setting.Options = submatch[2]
 	}
 
-	switch strategy := ReadWriteSplittingPolicy(strategyName); strategy {
+	switch strategy := NewReadWriteSplittingPolicy(strategyName); strategy {
 	case "": // backward compatiblity and to handle unspecified values
 		setting.Strategy = ReadWriteSplittingPolicyDisable
-	case ReadWriteSplittingPolicyRandom, ReadWriteSplittingPolicyDisable:
+	case ReadWriteSplittingPolicyRandom,
+		ReadWriteSplittingPolicyLeastGlobalQPS,
+		ReadWriteSplittingPolicyLeastQPS,
+		ReadWriteSplittingPolicyLeastRT,
+		ReadWriteSplittingPolicyLeastBehindPrimary,
+		ReadWriteSplittingPolicyDisable:
 		setting.Strategy = strategy
 	default:
 		return nil, fmt.Errorf("Unknown ReadWriteSplittingPolicy: '%v'", strategy)
@@ -66,4 +79,22 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 // ToString returns a simple string representation of this instance
 func (setting *ReadWriteSplittingPolicySetting) ToString() string {
 	return fmt.Sprintf("ReadWriteSplittingPolicySetting: strategy=%v, options=%s", setting.Strategy, setting.Options)
+}
+
+func ToLoadBalancePolicy(s string) querypb.ExecuteOptions_LoadBalancePolicy {
+	strategy := NewReadWriteSplittingPolicy(s)
+	switch strategy {
+	case ReadWriteSplittingPolicyLeastGlobalQPS:
+		return querypb.ExecuteOptions_LEAST_GLOBAL_QPS
+	case ReadWriteSplittingPolicyLeastQPS:
+		return querypb.ExecuteOptions_LEAST_QPS
+	case ReadWriteSplittingPolicyLeastRT:
+		return querypb.ExecuteOptions_LEAST_RT
+	case ReadWriteSplittingPolicyLeastBehindPrimary:
+		return querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY
+	case ReadWriteSplittingPolicyRandom:
+		return querypb.ExecuteOptions_RANDOM
+	default:
+		return querypb.ExecuteOptions_RANDOM
+	}
 }
