@@ -27,6 +27,8 @@ import (
 	"sort"
 	"sync"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/topo"
@@ -85,10 +87,14 @@ func (fhc *FakeHealthCheck) WaitForAllServingTablets(ctx context.Context, target
 // GetHealthyTabletStats returns only the healthy tablets - Serving true and LastError is not nil
 func (fhc *FakeHealthCheck) GetHealthyTabletStats(target *querypb.Target) []*TabletHealth {
 	result := make([]*TabletHealth, 0)
+	newTarget := target
+	if newTarget.Keyspace == "" {
+		newTarget.Keyspace = global.DefaultKeyspace
+	}
 	fhc.mu.Lock()
 	defer fhc.mu.Unlock()
 	for _, item := range fhc.items {
-		if proto.Equal(item.ts.Target, target) && item.ts.Serving && item.ts.LastError == nil {
+		if proto.Equal(item.ts.Target, newTarget) && item.ts.Serving && item.ts.LastError == nil {
 			result = append(result, item.ts)
 		}
 	}

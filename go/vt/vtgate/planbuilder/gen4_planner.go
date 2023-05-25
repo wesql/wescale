@@ -24,7 +24,6 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/proto/vtrpc"
 
 	"vitess.io/vitess/go/internal/global"
@@ -91,12 +90,10 @@ func gen4SelectStmtPlanner(
 	if err != nil {
 		return nil, err
 	}
-	s, ok := plan.primitive.(*engine.Send)
+	_, ok := plan.primitive.(*engine.Send)
 	if !ok {
 		return nil, vterrors.Errorf(vtrpc.Code_INTERNAL, "unexpected primitive type %T", plan.primitive)
 	}
-	s.TargetDestination = key.DestinationShard(global.DefaultShard)
-
 	return plan, nil
 }
 

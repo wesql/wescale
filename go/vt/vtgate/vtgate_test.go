@@ -56,24 +56,11 @@ var executeOptions = &querypb.ExecuteOptions{
 var primarySession *vtgatepb.Session
 
 func init() {
-	createSandbox(KsTestUnsharded).VSchema = `
+	createSandbox(KsTestDefaultShard).VSchema = `
 {
 	"sharded": false,
 	"tables": {
 		"t1": {}
-	}
-}
-`
-	createSandbox(KsTestBadVSchema).VSchema = `
-{
-	"sharded": true,
-	"tables": {
-		"t2": {
-			"auto_increment": {
-				"column": "id",
-				"sequence": "id_seq"
-			}
-		}
 	}
 }
 `
@@ -87,9 +74,9 @@ func init() {
 }
 
 func TestVTGateExecute(t *testing.T) {
-	createSandbox(KsTestUnsharded)
+	createSandbox(KsTestDefaultShard)
 	hcVTGateTest.Reset()
-	sbc := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestUnsharded, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
+	sbc := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestDefaultShard, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
 	_, qr, err := rpcVTGate.Execute(
 		context.Background(),
 		&vtgatepb.Session{
@@ -112,15 +99,15 @@ func TestVTGateExecute(t *testing.T) {
 }
 
 func TestVTGateExecuteWithKeyspaceShard(t *testing.T) {
-	createSandbox(KsTestUnsharded)
+	createSandbox(KsTestDefaultShard)
 	hcVTGateTest.Reset()
-	hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestUnsharded, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
+	hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestDefaultShard, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
 
 	// Valid keyspace.
 	_, qr, err := rpcVTGate.Execute(
 		context.Background(),
 		&vtgatepb.Session{
-			TargetString: KsTestUnsharded,
+			TargetString: KsTestDefaultShard,
 		},
 		"select id from none",
 		nil,
@@ -148,7 +135,7 @@ func TestVTGateExecuteWithKeyspaceShard(t *testing.T) {
 	_, qr, err = rpcVTGate.Execute(
 		context.Background(),
 		&vtgatepb.Session{
-			TargetString: KsTestUnsharded + ":0@primary",
+			TargetString: KsTestDefaultShard + ":0@primary",
 		},
 		"select id from none",
 		nil,
@@ -158,21 +145,21 @@ func TestVTGateExecuteWithKeyspaceShard(t *testing.T) {
 	}
 	utils.MustMatch(t, &wantQr, qr)
 
-	// Invalid keyspace/shard.
+	// ignore invalid shard.
 	_, _, err = rpcVTGate.Execute(
 		context.Background(),
 		&vtgatepb.Session{
-			TargetString: KsTestUnsharded + ":noshard@primary",
+			TargetString: KsTestDefaultShard + ":noshard@primary",
 		},
 		"select id from none",
 		nil,
 	)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `no healthy tablet available for 'keyspace:"TestUnsharded" shard:"noshard" tablet_type:PRIMARY`)
+	require.Contains(t, err.Error(), `no healthy tablet available for 'keyspace:"_vt" shard:"noshard" tablet_type:PRIMARY`)
 }
 
 func TestVTGateStreamExecute(t *testing.T) {
-	ks := KsTestUnsharded
+	ks := KsTestDefaultShard
 	shard := "0"
 	createSandbox(ks)
 	hcVTGateTest.Reset()
@@ -204,7 +191,7 @@ func TestVTGateStreamExecute(t *testing.T) {
 }
 
 func TestVTGateBindVarError(t *testing.T) {
-	ks := KsTestUnsharded
+	ks := KsTestDefaultShard
 	createSandbox(ks)
 	hcVTGateTest.Reset()
 	ctx := context.Background()
@@ -300,15 +287,15 @@ func testErrorPropagation(t *testing.T, sbcs []*sandboxconn.SandboxConn, before 
 // tablet and a rdonly tablet because we don't control the routing of
 // Commit.
 func TestErrorPropagation(t *testing.T) {
-	createSandbox(KsTestUnsharded)
+	createSandbox(KsTestDefaultShard)
 	hcVTGateTest.Reset()
 	// create a new session each time so that ShardSessions don't get re-used across tests
 	primarySession = &vtgatepb.Session{
 		TargetString: "@primary",
 	}
 
-	sbcm := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestUnsharded, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
-	sbcrdonly := hcVTGateTest.AddTestTablet("aa", "1.1.1.2", 1001, KsTestUnsharded, "0", topodatapb.TabletType_RDONLY, true, 1, nil)
+	sbcm := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestDefaultShard, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
+	sbcrdonly := hcVTGateTest.AddTestTablet("aa", "1.1.1.2", 1001, KsTestDefaultShard, "0", topodatapb.TabletType_RDONLY, true, 1, nil)
 	sbcs := []*sandboxconn.SandboxConn{
 		sbcm,
 		sbcrdonly,
@@ -390,9 +377,9 @@ func TestErrorPropagation(t *testing.T) {
 // This test makes sure that if we start a transaction and hit a critical
 // error, a rollback is issued.
 func TestErrorIssuesRollback(t *testing.T) {
-	createSandbox(KsTestUnsharded)
+	createSandbox(KsTestDefaultShard)
 	hcVTGateTest.Reset()
-	sbc := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestUnsharded, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
+	sbc := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1001, KsTestDefaultShard, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
 
 	// Start a transaction, send one statement.
 	// Simulate an error that should trigger a rollback:
@@ -512,120 +499,6 @@ func TestErrorIssuesRollback(t *testing.T) {
 		t.Errorf("want 0, got %d", sbc.RollbackCount.Get())
 	}
 	sbc.MustFailCodes[vtrpcpb.Code_ALREADY_EXISTS] = 0
-}
-
-var shardedVSchema = `
-{
-	"sharded": true,
-	"vindexes": {
-		"hash_index": {
-			"type": "hash"
-		}
-	},
-	"tables": {
-		"sp_tbl": {
-			"column_vindexes": [
-				{
-					"column": "user_id",
-					"name": "hash_index"
-				}
-			]
-		}
-	}
-}
-`
-
-func TestMultiInternalSavepointVtGate(t *testing.T) {
-	s := createSandbox(KsTestSharded)
-	s.ShardSpec = "-40-80-"
-	s.VSchema = shardedVSchema
-	srvSchema := getSandboxSrvVSchema()
-	rpcVTGate.executor.vm.VSchemaUpdate(srvSchema, nil)
-	hcVTGateTest.Reset()
-
-	sbc1 := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 1, KsTestSharded, "-40", topodatapb.TabletType_PRIMARY, true, 1, nil)
-	sbc2 := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 2, KsTestSharded, "40-80", topodatapb.TabletType_PRIMARY, true, 1, nil)
-	sbc3 := hcVTGateTest.AddTestTablet("aa", "1.1.1.1", 3, KsTestSharded, "80-", topodatapb.TabletType_PRIMARY, true, 1, nil)
-
-	logChan := QueryLogger.Subscribe("Test")
-	defer QueryLogger.Unsubscribe(logChan)
-
-	session := &vtgatepb.Session{Autocommit: true}
-	require.True(t, session.GetAutocommit())
-	require.False(t, session.InTransaction)
-
-	var err error
-	session, _, err = rpcVTGate.Execute(context.Background(), session, "begin", nil)
-	require.NoError(t, err)
-	require.True(t, session.GetAutocommit())
-	require.True(t, session.InTransaction)
-
-	// this query goes to multiple shards so internal savepoint will be created.
-	session, _, err = rpcVTGate.Execute(context.Background(), session, "insert into sp_tbl(user_id) values (1), (3)", nil)
-	require.NoError(t, err)
-	require.True(t, session.GetAutocommit())
-	require.True(t, session.InTransaction)
-
-	wantQ := []*querypb.BoundQuery{{
-		Sql:           "savepoint x",
-		BindVariables: map[string]*querypb.BindVariable{},
-	}, {
-		Sql: "insert into sp_tbl(user_id) values (:_user_id_0)",
-		BindVariables: map[string]*querypb.BindVariable{
-			"_user_id_0": sqltypes.Int64BindVariable(1),
-			"_user_id_1": sqltypes.Int64BindVariable(3),
-			"vtg1":       sqltypes.Int64BindVariable(1),
-			"vtg2":       sqltypes.Int64BindVariable(3),
-		},
-	}}
-	assertQueriesWithSavepoint(t, sbc1, wantQ)
-	wantQ[1].Sql = "insert into sp_tbl(user_id) values (:_user_id_1)"
-	assertQueriesWithSavepoint(t, sbc2, wantQ)
-	assert.Len(t, sbc3.Queries, 0)
-	// internal savepoint should be removed.
-	assert.Len(t, session.Savepoints, 0)
-	sbc1.Queries = nil
-	sbc2.Queries = nil
-
-	// multi shard so new savepoint will be created.
-	session, _, err = rpcVTGate.Execute(context.Background(), session, "insert into sp_tbl(user_id) values (2), (4)", nil)
-	require.NoError(t, err)
-	wantQ = []*querypb.BoundQuery{{
-		Sql:           "savepoint x",
-		BindVariables: map[string]*querypb.BindVariable{},
-	}, {
-		Sql: "insert into sp_tbl(user_id) values (:_user_id_1)",
-		BindVariables: map[string]*querypb.BindVariable{
-			"_user_id_0": sqltypes.Int64BindVariable(2),
-			"_user_id_1": sqltypes.Int64BindVariable(4),
-			"vtg1":       sqltypes.Int64BindVariable(2),
-			"vtg2":       sqltypes.Int64BindVariable(4),
-		},
-	}}
-	assertQueriesWithSavepoint(t, sbc3, wantQ)
-	// internal savepoint should be removed.
-	assert.Len(t, session.Savepoints, 0)
-	sbc2.Queries = nil
-	sbc3.Queries = nil
-
-	// single shard so no savepoint will be created and neither any old savepoint will be executed
-	_, _, err = rpcVTGate.Execute(context.Background(), session, "insert into sp_tbl(user_id) values (5)", nil)
-	require.NoError(t, err)
-	wantQ = []*querypb.BoundQuery{{
-		Sql: "insert into sp_tbl(user_id) values (:_user_id_0)",
-		BindVariables: map[string]*querypb.BindVariable{
-			"_user_id_0": sqltypes.Int64BindVariable(5),
-			"vtg1":       sqltypes.Int64BindVariable(5),
-		},
-	}}
-	assertQueriesWithSavepoint(t, sbc2, wantQ)
-
-	testQueryLog(t, logChan, "Execute", "BEGIN", "begin", 0)
-	testQueryLog(t, logChan, "MarkSavepoint", "SAVEPOINT", "savepoint x", 0)
-	testQueryLog(t, logChan, "Execute", "INSERT", "insert into sp_tbl(user_id) values (:vtg1), (:vtg2)", 2)
-	testQueryLog(t, logChan, "MarkSavepoint", "SAVEPOINT", "savepoint y", 2)
-	testQueryLog(t, logChan, "Execute", "INSERT", "insert into sp_tbl(user_id) values (:vtg1), (:vtg2)", 2)
-	testQueryLog(t, logChan, "Execute", "INSERT", "insert into sp_tbl(user_id) values (:vtg1)", 1)
 }
 
 func TestSetDefaultReadWriteSplittingPolicy(t *testing.T) {
