@@ -75,7 +75,7 @@ echo "$all_except_flaky_tests" | xargs go test $VT_GO_PARALLEL -v -count=1
 #fi
 
 echo '# Flaky tests (3 attempts permitted)'
-echo flaky_tests
+echo "$flaky_tests"
 
 # Run flaky tests sequentially. Retry when necessary.
 for pkg in $flaky_tests; do
