@@ -169,4 +169,5 @@ jobs:
     - name: Print report.xml
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.unit_tests == 'true' && always()
       run: |
+        echo "print report.xml"
         cat report.xml
