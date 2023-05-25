@@ -30,6 +30,8 @@
 # We repeat this here because this script is called directly by test.go
 # and not via the Makefile.
 
+echo 'Starting unit_test_runner.sh'
+
 source build.env
 
 if [[ -z $VT_GO_PARALLEL && -n $VT_GO_PARALLEL_VALUE ]]; then
@@ -59,8 +61,10 @@ packages_with_tests=$(go list -f '{{if len .TestGoFiles}}{{.ImportPath}} {{join 
 all_except_flaky_tests=$(echo "$packages_with_tests" | grep -vE ".+ .+_flaky_test\.go" | cut -d" " -f1 | grep -v "endtoend")
 flaky_tests=$(echo "$packages_with_tests" | grep -E ".+ .+_flaky_test\.go" | cut -d" " -f1)
 
+packages_to_run=$(echo "$packages_with_tests" | cut -d" " -f1 | grep -v "endtoend")
+
 # Run non-flaky tests.
-echo "$all_except_flaky_tests" | xargs go test $VT_GO_PARALLEL -v -count=1
+echo "packages_to_run" | xargs go test $VT_GO_PARALLEL -v -count=1
 if [ $? -ne 0 ]; then
   echo "ERROR: Go unit tests failed. See above for errors."
   echo
@@ -69,18 +73,18 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-echo '# Flaky tests (3 attempts permitted)'
-
-# Run flaky tests sequentially. Retry when necessary.
-for pkg in $flaky_tests; do
-  max_attempts=3
-  attempt=1
-  # Set a timeout because some tests may deadlock when they flake.
-  until go test -timeout 2m $VT_GO_PARALLEL $pkg -v -count=1; do
-    echo "FAILED (try $attempt/$max_attempts) in $pkg (return code $?). See above for errors."
-    if [ $((++attempt)) -gt $max_attempts ]; then
-      echo "ERROR: Flaky Go unit tests in package $pkg failed too often (after $max_attempts retries). Please reduce the flakiness."
-      exit 1
-    fi
-  done
-done
+#echo '# Flaky tests (3 attempts permitted)'
+#
+## Run flaky tests sequentially. Retry when necessary.
+#for pkg in $flaky_tests; do
+#  max_attempts=3
+#  attempt=1
+#  # Set a timeout because some tests may deadlock when they flake.
+#  until go test -timeout 2m $VT_GO_PARALLEL $pkg -v -count=1; do
+#    echo "FAILED (try $attempt/$max_attempts) in $pkg (return code $?). See above for errors."
+#    if [ $((++attempt)) -gt $max_attempts ]; then
+#      echo "ERROR: Flaky Go unit tests in package $pkg failed too often (after $max_attempts retries). Please reduce the flakiness."
+#      exit 1
+#    fi
+#  done
+#done
