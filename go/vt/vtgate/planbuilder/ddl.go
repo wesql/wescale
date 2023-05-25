@@ -8,6 +8,8 @@ package planbuilder
 import (
 	"fmt"
 
+	"vitess.io/vitess/go/vt/schema"
+
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -59,6 +61,9 @@ func (fk *fkContraint) FkWalk(node sqlparser.SQLNode) (kontinue bool, err error)
 // and which chooses which of the two to invoke at runtime.
 func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
 	if vschema.Destination() != nil {
+		if !enableDirectDDL {
+			return nil, schema.ErrDirectDDLDisabled
+		}
 		return buildByPassDDLPlan(sql, vschema)
 	}
 	normalDDLPlan, onlineDDLPlan, err := buildDDLPlans(sql, ddlStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
