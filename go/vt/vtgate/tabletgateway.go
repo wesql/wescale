@@ -124,7 +124,7 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 	}
 	gw.setupBuffering(ctx)
 	gw.QueryService = queryservice.Wrap(nil, gw.withRetry)
-	go gw.BuildCacheStatusMap()
+	go gw.RunBuildCacheStatusMap()
 	return gw
 }
 
@@ -248,22 +248,29 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 	return res
 }
 
-// BuildCacheStatusMap builds a map of TabletCacheStatus per second
+// RunBuildCacheStatusMap builds a map of TabletCacheStatus per second
 // load balancer will use this to decide which tablet to use
-func (gw *TabletGateway) BuildCacheStatusMap() {
+func (gw *TabletGateway) RunBuildCacheStatusMap() {
 	ticker := time.NewTicker(time.Second)
 	for range ticker.C {
-		gw.mu.Lock()
-		res := make(map[string]*TabletCacheStatus, len(gw.statusAggregators))
-		for _, aggr := range gw.statusAggregators {
-			res[aggr.Name] = aggr.GetCacheStatus()
-		}
-		gw.tabletStatusMap = res
-		gw.mu.Unlock()
+		gw.buildCacheStatusMap()
 	}
 }
 
+func (gw *TabletGateway) buildCacheStatusMap() {
+	gw.mu.Lock()
+	res := make(map[string]*TabletCacheStatus, len(gw.statusAggregators))
+	for _, aggr := range gw.statusAggregators {
+		res[aggr.Name] = aggr.GetCacheStatus()
+	}
+	gw.tabletStatusMap = res
+	gw.mu.Unlock()
+}
+
 func (gw *TabletGateway) GetCacheStatusMap() map[string]*TabletCacheStatus {
+	if gw.tabletStatusMap == nil {
+		gw.buildCacheStatusMap()
+	}
 	return gw.tabletStatusMap
 }
 
