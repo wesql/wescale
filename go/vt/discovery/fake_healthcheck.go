@@ -94,7 +94,8 @@ func (fhc *FakeHealthCheck) GetHealthyTabletStats(target *querypb.Target) []*Tab
 	fhc.mu.Lock()
 	defer fhc.mu.Unlock()
 	for _, item := range fhc.items {
-		if proto.Equal(item.ts.Target, newTarget) && item.ts.Serving && item.ts.LastError == nil {
+		if item.ts.Target.TabletType == newTarget.TabletType && item.ts.Target.Shard == newTarget.Shard &&
+			item.ts.Serving && item.ts.LastError == nil {
 			result = append(result, item.ts)
 		}
 	}
