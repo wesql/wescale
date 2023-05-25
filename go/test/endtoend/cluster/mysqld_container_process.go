@@ -1,8 +1,14 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package cluster
 
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -22,16 +28,25 @@ const (
 	DefaultDataMountDestination   = "/mysql"
 	DefaultPort                   = "3306"
 	DefaultClusterInfo            = "CLUSTER_INFO"
+	DefaultConsensusPot           = "13306"
 	// todo
 	DefaultDockerfile = ""
 )
 
 var (
-	ImgRepo    string
-	ImgTag     string
-	Envs       map[string]string
-	MountExist map[string]bool
+	ImgRepo string
+	ImgTag  string
+	Envs    map[string]string
 )
+
+// containerStatus is a struct used to unmarshal json output from `docker container inspect`
+type containerStatus struct {
+	State struct {
+		Status  string
+		Running bool
+		Pid     int
+	}
+}
 
 func init() {
 	ImgRepo = DefaultImageRepo
@@ -49,15 +64,8 @@ func init() {
 
 	// default environment variable
 	Envs["MYSQL_ALLOW_EMPTY_PASSWORD"] = "1"
-	Envs["MYSQL_INIT_CONSENSUS_PORT"] = "13306"
+	Envs["MYSQL_INIT_CONSENSUS_PORT"] = DefaultConsensusPot
 	Envs["CLUSTER_ID"] = "1"
-
-	MountExist = make(map[string]bool)
-
-	// default mounts
-	MountExist[DefaultConfigMountDestination] = false
-	MountExist[DefaultScriptMountDestination] = false
-	MountExist[DefaultDataMountDestination] = false
 }
 
 type ContainerProcessCluster struct {
@@ -80,18 +88,16 @@ type ContainerProcess struct {
 	exit chan error
 }
 
-type ContainerProcessMounts struct {
-	ConfigDir string
-	ScriptDir string
-	DataDir   string
-}
-
 type ContainerNetwork struct {
 	Name    string
 	Driver  string
 	Gateway string
 	Subnet  string
 	proc    *exec.Cmd
+
+	// next ip for container process
+	// available ip addr range [gateway+1,  subnet broad cast ip addr]
+	nextIpForProcess string
 }
 
 func pullImage() error {
@@ -104,7 +110,7 @@ func pullImage() error {
 
 	pull := exec.Command(DefaultCommand, "pull", image)
 
-	if err := pull.Start(); err != nil {
+	if err := pull.Run(); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -132,7 +138,7 @@ func commandExist() error {
 	return nil
 }
 
-func NewContainerProcess(name string, network string, ipaddr string, port int, envs map[string]string, mounts ...string) *ContainerProcess {
+func NewContainerProcess(name string, network string, ipaddr string, port int, tabletDir string, envs map[string]string) *ContainerProcess {
 	// incorporate with default environment variable
 	for env, value := range Envs {
 		if _, ok := envs[env]; !ok {
@@ -140,19 +146,14 @@ func NewContainerProcess(name string, network string, ipaddr string, port int, e
 		}
 	}
 
-	// check if all  default mounts exist
-	for i := range mounts {
-		mount := strings.Split(mounts[i], ":")
-		if val, ok := MountExist[mount[1]]; ok && !val {
-			MountExist[mount[1]] = true
-		}
-	}
-
-	for _, v := range MountExist {
-		if !v {
-			return nil
-		}
-	}
+	// assembly default mounts
+	var mounts []string
+	mount1 := fmt.Sprintf("%s/config/apecloud_mycnf:%s", os.Getenv("VTROOT"), DefaultConfigMountDestination)
+	mount2 := fmt.Sprintf("%s/config/apecloud_local_scripts:%s", os.Getenv("VTROOT"), DefaultScriptMountDestination)
+	mount3 := fmt.Sprintf("%s:%s", tabletDir, DefaultDataMountDestination)
+	mounts = append(mounts, mount1)
+	mounts = append(mounts, mount2)
+	mounts = append(mounts, mount3)
 
 	return &ContainerProcess{
 		Name:    name,
@@ -167,12 +168,14 @@ func NewContainerProcess(name string, network string, ipaddr string, port int, e
 }
 
 func NewContainerNetWork(name string, driver string, gateway string, subnet string) *ContainerNetwork {
-	return &ContainerNetwork{
-		Name:    name,
-		Driver:  driver,
-		Gateway: gateway,
-		Subnet:  subnet,
+	cn := &ContainerNetwork{
+		Name:             name,
+		Driver:           driver,
+		Gateway:          gateway,
+		Subnet:           subnet,
+		nextIpForProcess: gateway,
 	}
+	return cn
 }
 
 func (cn *ContainerNetwork) Setup() error {
@@ -219,6 +222,28 @@ func (cn *ContainerNetwork) ClearUp() {
 	cn.CheckAndRemove()
 }
 
+func (cn *ContainerNetwork) GetReservedIpAddr() (string, error) {
+	ip := net.ParseIP(cn.nextIpForProcess)
+	_, ipNet, _ := net.ParseCIDR(cn.Subnet)
+	ip = nextIP(ip)
+	if !ipNet.Contains(ip) {
+		return cn.nextIpForProcess, errors.New("overflowed CIDR while incrementing IP")
+	}
+	cn.nextIpForProcess = ip.String()
+	return cn.nextIpForProcess, nil
+}
+
+func nextIP(ip net.IP) net.IP {
+	i := ip.To4()
+	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
+	v += 1
+	v3 := byte(v & 0xFF)
+	v2 := byte((v >> 8) & 0xFF)
+	v1 := byte((v >> 16) & 0xFF)
+	v0 := byte((v >> 24) & 0xFF)
+	return net.IPv4(v0, v1, v2, v3)
+}
+
 func (container *ContainerProcess) Start() error {
 
 	args := []string{
@@ -226,7 +251,7 @@ func (container *ContainerProcess) Start() error {
 		"--name", container.Name,
 		"--network", container.Network,
 		"--ip", container.IPAddr,
-		"-p", fmt.Sprintf("%d:%s", container.Port, DefaultPort), // port mapping
+		"-p", fmt.Sprintf("127.0.0.1:%d:%s", container.Port, DefaultPort), // port mapping
 	}
 
 	// add mount mapping arg
@@ -358,6 +383,9 @@ func (cluster *ContainerProcessCluster) CheckIntegrity() error {
 
 		if clusterInfo == "" {
 			clusterInfo = cinfo[0]
+
+			// todo ensure cluster members all use the DefaultConsensusPort
+
 		} else {
 			if cinfo[0] != clusterInfo {
 				return fmt.Errorf("container %s cluster info %s mismatched with cluster info %s", con.Name, con.Envs[DefaultClusterInfo], clusterInfo)
@@ -405,11 +433,22 @@ func (cluster *ContainerProcessCluster) Start() error {
 }
 
 func (cluster *ContainerProcessCluster) Teardown() {
-
 	for _, con := range cluster.Containers {
 		if err := con.Teardown(); err != nil {
 			log.Errorf("container %s teardown failed")
 		}
 	}
+}
+
+func (cluster *ContainerProcessCluster) TeardownAndClearUp() {
+	for _, con := range cluster.Containers {
+		if err := con.TeardownAndClearUp(); err != nil {
+			log.Errorf("container %s teardown and clean up failed")
+		}
+	}
+}
+
+// todo
+func WaitUntilContainerHealthy(_ containerStatus) {
 
 }

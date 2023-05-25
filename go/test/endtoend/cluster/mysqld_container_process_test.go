@@ -1,27 +1,26 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package cluster
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"testing"
 )
 
-const (
-	DefaultConsensusPot = 13306
-)
-
 func TestPullImage(t *testing.T) {
-	res := pullImage()
-	if res != nil {
-		t.Error("please install docker first")
+	if err := pullImage(); err != nil {
+		t.Error("pulling default docker image failed")
+		return
 	}
-	t.Log("docker is installed")
 }
 
 func TestContainerNetwork(t *testing.T) {
-
 	nw := "my_wesqlscale_network"
-
 	cn := NewContainerNetWork(nw, "bridge", "192.168.0.1", "192.168.0.0/24")
 
 	if err := cn.Setup(); err != nil {
@@ -53,7 +52,7 @@ func TestContainerProcessCluster(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		clusterInfo += "192.168.0."
 		clusterInfo += strconv.Itoa(i + 1)
-		clusterInfo += fmt.Sprintf(":%d", DefaultConsensusPot)
+		clusterInfo += fmt.Sprintf(":%s", DefaultConsensusPot)
 		clusterInfo += ";"
 	}
 
@@ -68,15 +67,9 @@ func TestContainerProcessCluster(t *testing.T) {
 		env := make(map[string]string)
 		env["CLUSTER_INFO"] = clusterInfoWithID
 
-		tabletDir := "vt_" + strconv.Itoa(i)
+		tabletDir := fmt.Sprintf("%s/vt_%d", os.Getenv("VTDATAROOT"), i)
 
-		mounts := []string{
-			"/Users/liuyongqiang/wesql-scale/config/apecloud_mycnf:/etc/mysql/conf.d",
-			"/Users/liuyongqiang/wesql-scale/config/apecloud_local_scripts:/docker-entrypoint-initdb.d/",
-			fmt.Sprintf("/tmp/%s:/mysql", tabletDir),
-		}
-
-		con := NewContainerProcess(name, nw, ipAddr, port, env, mounts...)
+		con := NewContainerProcess(name, nw, ipAddr, port, tabletDir, env)
 
 		containers = append(containers, con)
 	}
@@ -90,8 +83,7 @@ func TestContainerProcessCluster(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	cluster.Teardown()
-
+	cluster.TeardownAndClearUp()
 }
 
 func TestContainerProcess_Start(t *testing.T) {
@@ -106,12 +98,9 @@ func TestContainerProcess_Start(t *testing.T) {
 
 	env := make(map[string]string)
 
-	//env["MYSQL_ALLOW_EMPTY_PASSWORD"] = "1"
-	//env["MYSQL_INIT_CONSENSUS_PORT"] = "13306"
-	//env["CLUSTER_ID"] = "1"
 	env["CLUSTER_INFO"] = "192.169.0.2:13306;192.168.0.3:13306;192.168.0.4:13306@1"
 
-	tabletDir := "vt_1"
+	tabletDir := fmt.Sprintf("%s/vt_%d", os.Getenv("VTDATAROOT"), 1)
 
 	id := 1
 	containername := fmt.Sprintf("mysql-server%d", id)
@@ -119,14 +108,7 @@ func TestContainerProcess_Start(t *testing.T) {
 	// map localhost:17001 to container 3306
 	port := 17000 + id
 
-	// assume in the project root directory
-	mounts := []string{
-		"/Users/liuyongqiang/wesql-scale/config/apecloud_mycnf:/etc/mysql/conf.d",
-		"/Users/liuyongqiang/wesql-scale/config/apecloud_local_scripts:/docker-entrypoint-initdb.d/",
-		fmt.Sprintf("/tmp/%s:/mysql", tabletDir),
-	}
-
-	con := NewContainerProcess(containername, cn.Name, "192.168.0.2", port, env, mounts...)
+	con := NewContainerProcess(containername, cn.Name, "192.168.0.2", port, tabletDir, env)
 	if con == nil {
 		t.Errorf("init container process %s failed", containername)
 	}

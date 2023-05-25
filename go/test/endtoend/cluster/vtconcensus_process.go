@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package cluster
 
 import (
@@ -47,14 +52,18 @@ func (vtcon *VtconsensusProcess) Start() error {
 		"--topo_implementation", vtcon.TopoImpl,
 		"--topo_global_server_address", vtcon.TopoGlobalServerAddr,
 		"--topo_global_root", vtcon.TopoGlobalRoot,
-		"--scan_interval", fmt.Sprintf("%d", vtcon.ScanInterval),
-		"--refresh_interval", fmt.Sprintf("%d", vtcon.RefreshInterval),
-		"--scan_repair_timeout", fmt.Sprintf("%d", vtcon.ScanRepairTimeOut),
+		"--scan_interval", fmt.Sprintf("%ds", vtcon.ScanInterval),
+		"--refresh_interval", fmt.Sprintf("%ds", vtcon.RefreshInterval),
+		"--scan_repair_timeout", fmt.Sprintf("%ds", vtcon.ScanRepairTimeOut),
 		"--log_dir", vtcon.LogDirectory,
 		"--db_username", vtcon.DBUserName,
-		"--db_password", vtcon.DBPasswd}
+		fmt.Sprintf("--db_password=\"%s\"", vtcon.DBPasswd),
+	}
 
 	args = append(args, vtcon.ExtraArgs...)
+
+	tmp := strings.Join(args, " ")
+	fmt.Println(tmp)
 
 	vtcon.proc = exec.Command(vtcon.Binary,
 		args...,

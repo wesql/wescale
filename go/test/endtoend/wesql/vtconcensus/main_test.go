@@ -50,7 +50,7 @@ func runAllTests(m *testing.M) int {
 		Name: KeyspaceName,
 	}
 	clusterInstance.VtTabletExtraArgs = []string{"--queryserver-config-transaction-timeout", "3", "--queryserver-config-max-result-size", "30"}
-	if err := clusterInstance.StartUnshardedKeyspace(*Keyspace, 0, false); err != nil {
+	if err := clusterInstance.StartUnshardedKeyspaceWithThreeNodeWesql(*Keyspace, 2, false); err != nil {
 		log.Fatal(err.Error())
 		return 1
 	}
