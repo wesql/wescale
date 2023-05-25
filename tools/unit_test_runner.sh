@@ -87,6 +87,7 @@ for pkg in $flaky_tests; do
     if [ $((++attempt)) -gt $max_attempts ]; then
       echo "ERROR: Flaky Go unit tests in package $pkg failed too often (after $max_attempts retries). Please reduce the flakiness."
 #      exit 1
+      break
     fi
   done
 done
