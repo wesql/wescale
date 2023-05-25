@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -522,15 +527,15 @@ func createExecutorEnv() (executor *Executor, sbc1, sbc2, sbclookup *sandboxconn
 	// Below is needed so that SendAnyWherePlan doesn't fail
 	_ = hc.AddTestTablet(cell, "random", 1, "TestXBadVSchema", "-20", topodatapb.TabletType_PRIMARY, true, 1, nil)
 
-	createSandbox(KsTestUnsharded)
-	sbclookup = hc.AddTestTablet(cell, "0", 1, KsTestUnsharded, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
+	createSandbox(KsTestDefaultShard)
+	sbclookup = hc.AddTestTablet(cell, "0", 1, KsTestDefaultShard, "0", topodatapb.TabletType_PRIMARY, true, 1, nil)
 
 	// Ues the 'X' in the name to ensure it's not alphabetically first.
 	// Otherwise, it would become the default keyspace for the dual table.
 	bad := createSandbox("TestXBadSharding")
 	bad.VSchema = badVSchema
 
-	getSandbox(KsTestUnsharded).VSchema = unshardedVSchema
+	getSandbox(KsTestDefaultShard).VSchema = unshardedVSchema
 	executor = NewExecutor(context.Background(), serv, cell, resolver, false, false, testBufferSize, cache.DefaultConfig, nil, false, querypb.ExecuteOptions_V3)
 
 	key.AnyShardPicker = DestinationAnyShardPickerFirstShard{}
