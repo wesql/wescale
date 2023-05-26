@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"testing"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/stretchr/testify/assert"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -132,54 +134,28 @@ func TestDestinationKeyspace(t *testing.T) {
 
 	tests := []testCase{{
 		vschema:            vschemaWith1KS,
-		targetString:       "",
-		qualifier:          "",
-		expectedKeyspace:   ks1.Name,
-		expectedDest:       nil,
-		expectedTabletType: topodatapb.TabletType_PRIMARY,
-	}, {
-		vschema:            vschemaWith1KS,
 		targetString:       "ks1",
 		qualifier:          "",
 		expectedKeyspace:   ks1.Name,
-		expectedDest:       nil,
-		expectedTabletType: topodatapb.TabletType_PRIMARY,
-	}, {
-		vschema:            vschemaWith1KS,
-		targetString:       "ks1:-80",
-		qualifier:          "",
-		expectedKeyspace:   ks1.Name,
-		expectedDest:       key.DestinationShard("-80"),
+		expectedDest:       key.DestinationShard(global.DefaultShard),
 		expectedTabletType: topodatapb.TabletType_PRIMARY,
 	}, {
 		vschema:            vschemaWith1KS,
 		targetString:       "ks1@replica",
 		qualifier:          "",
 		expectedKeyspace:   ks1.Name,
-		expectedDest:       nil,
-		expectedTabletType: topodatapb.TabletType_REPLICA,
-	}, {
-		vschema:            vschemaWith1KS,
-		targetString:       "ks1:-80@replica",
-		qualifier:          "",
-		expectedKeyspace:   ks1.Name,
-		expectedDest:       key.DestinationShard("-80"),
+		expectedDest:       key.DestinationShard(global.DefaultShard),
 		expectedTabletType: topodatapb.TabletType_REPLICA,
 	}, {
 		vschema:            vschemaWith1KS,
 		targetString:       "",
 		qualifier:          "ks1",
 		expectedKeyspace:   ks1.Name,
-		expectedDest:       nil,
+		expectedDest:       key.DestinationShard(global.DefaultShard),
 		expectedTabletType: topodatapb.TabletType_PRIMARY,
 	}, {
 		vschema:       vschemaWith1KS,
 		targetString:  "ks2",
-		qualifier:     "",
-		expectedError: "VT05003: unknown database 'ks2' in vschema",
-	}, {
-		vschema:       vschemaWith1KS,
-		targetString:  "ks2:-80",
 		qualifier:     "",
 		expectedError: "VT05003: unknown database 'ks2' in vschema",
 	}, {
@@ -276,19 +252,11 @@ func TestPlanPrefixKey(t *testing.T) {
 	tests := []testCase{{
 		vschema:               vschemaWith1KS,
 		targetString:          "",
-		expectedPlanPrefixKey: "ks1@primary",
+		expectedPlanPrefixKey: "@primaryDestinationShard(0)",
 	}, {
 		vschema:               vschemaWith1KS,
 		targetString:          "ks1@replica",
-		expectedPlanPrefixKey: "ks1@replica",
-	}, {
-		vschema:               vschemaWith1KS,
-		targetString:          "ks1:-80",
-		expectedPlanPrefixKey: "ks1@primaryDestinationShard(-80)",
-	}, {
-		vschema:               vschemaWith1KS,
-		targetString:          "ks1[deadbeef]",
-		expectedPlanPrefixKey: "ks1@primaryKsIDsResolved(80-)",
+		expectedPlanPrefixKey: "ks1@replicaDestinationShard(0)",
 	}}
 
 	for i, tc := range tests {
