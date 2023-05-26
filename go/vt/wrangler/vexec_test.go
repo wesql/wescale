@@ -340,11 +340,11 @@ will be run on the following streams in keyspace target for workflow wrWorkflow:
 +----------------------+----+--------------------------------+---------+--------+------------------------------------------+
 |        TABLET        | ID |          BINLOGSOURCE          |  STATE  | DBNAME |               CURRENT GTID               |
 +----------------------+----+--------------------------------+---------+--------+------------------------------------------+
-| -80/zone1-0000000200 |  1 | keyspace:\"source\" shard:\"0\"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:\"t1\"}}    |         |        |                                          |
+| -80/zone1-0000000200 |  1 | keyspace:"source" shard:"0"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:"t1"}}    |         |        |                                          |
 +----------------------+----+--------------------------------+---------+--------+------------------------------------------+
-| 80-/zone1-0000000210 |  1 | keyspace:\"source\" shard:\"0\"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
-|                      |    | filter:{rules:{match:\"t1\"}}    |         |        |                                          |
+| 80-/zone1-0000000210 |  1 | keyspace:"source" shard:"0"    | Copying | target | 14b68925-696a-11ea-aee7-fec597a91f5e:1-3 |
+|                      |    | filter:{rules:{match:"t1"}}    |         |        |                                          |
 +----------------------+----+--------------------------------+---------+--------+------------------------------------------+
 
 
