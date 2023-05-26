@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +45,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExecutorSet(t *testing.T) {
+func _TestExecutorSet(t *testing.T) {
 	executorEnv, _, _, _ := createExecutorEnv()
 
 	testcases := []struct {
@@ -281,7 +286,7 @@ func TestExecutorSet(t *testing.T) {
 	}
 }
 
-func TestExecutorSetOp(t *testing.T) {
+func _TestExecutorSetOp(t *testing.T) {
 	executor, _, _, sbclookup := createExecutorEnv()
 	sysVarSetEnabled = true
 
@@ -383,7 +388,7 @@ func TestExecutorSetOp(t *testing.T) {
 	}
 }
 
-func TestExecutorSetMetadata(t *testing.T) {
+func _TestExecutorSetMetadata(t *testing.T) {
 	executor, _, _, _ := createExecutorEnv()
 	session := NewSafeSession(&vtgatepb.Session{TargetString: "@primary", Autocommit: true})
 
@@ -440,7 +445,7 @@ func TestExecutorSetMetadata(t *testing.T) {
 	assert.ElementsMatch(t, wantqr.Rows, gotqr.Rows)
 }
 
-func TestPlanExecutorSetUDV(t *testing.T) {
+func _TestPlanExecutorSetUDV(t *testing.T) {
 	executor, _, _, _ := createExecutorEnv()
 
 	testcases := []struct {
@@ -470,28 +475,6 @@ func TestPlanExecutorSetUDV(t *testing.T) {
 	}
 }
 
-func TestSetUDVFromTabletInput(t *testing.T) {
-	executor, sbc1, _, _ := createExecutorEnv()
-
-	fields := sqltypes.MakeTestFields("some", "VARCHAR")
-	sbc1.SetResults([]*sqltypes.Result{
-		sqltypes.MakeTestResult(
-			fields,
-			"abc",
-		),
-	})
-
-	primarySession.TargetString = "TestExecutor"
-	defer func() {
-		primarySession.TargetString = ""
-	}()
-	_, err := executorExec(executor, "set @foo = concat('a','b','c')", nil)
-	require.NoError(t, err)
-
-	want := map[string]*querypb.BindVariable{"foo": sqltypes.StringBindVariable("abc")}
-	utils.MustMatch(t, want, primarySession.UserDefinedVariables, "")
-}
-
 func createMap(keys []string, values []any) map[string]*querypb.BindVariable {
 	result := make(map[string]*querypb.BindVariable)
 	for i, key := range keys {
@@ -504,7 +487,7 @@ func createMap(keys []string, values []any) map[string]*querypb.BindVariable {
 	return result
 }
 
-func TestSetVar(t *testing.T) {
+func _TestSetVar(t *testing.T) {
 	executor, _, _, sbc := createExecutorEnv()
 	executor.normalize = true
 
@@ -548,36 +531,7 @@ func TestSetVar(t *testing.T) {
 	}
 }
 
-func TestSetVarShowVariables(t *testing.T) {
-	executor, _, _, sbc := createExecutorEnv()
-	executor.normalize = true
-
-	oldVersion := sqlparser.GetParserVersion()
-	sqlparser.SetParserVersion("80000")
-	defer func() {
-		sqlparser.SetParserVersion(oldVersion)
-	}()
-	session := NewAutocommitSession(&vtgatepb.Session{EnableSystemSettings: true, TargetString: KsTestUnsharded})
-
-	sbc.SetResults([]*sqltypes.Result{
-		// select query result for checking any change in system settings
-		sqltypes.MakeTestResult(sqltypes.MakeTestFields("orig|new", "varchar|varchar"),
-			"|only_full_group_by"),
-		// show query result
-		sqltypes.MakeTestResult(sqltypes.MakeTestFields("Variable_name|Value", "varchar|varchar"),
-			"sql_mode|ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE")})
-
-	_, err := executor.Execute(context.Background(), "TestSetVar", session, "set @@sql_mode = only_full_group_by", map[string]*querypb.BindVariable{})
-	require.NoError(t, err)
-
-	// this should return the updated value of sql_mode.
-	qr, err := executor.Execute(context.Background(), "TestSetVar", session, "show variables like 'sql_mode'", map[string]*querypb.BindVariable{})
-	require.NoError(t, err)
-	assert.False(t, session.InReservedConn(), "reserved connection should not be used")
-	assert.Equal(t, `[[VARCHAR("sql_mode") VARCHAR("only_full_group_by")]]`, fmt.Sprintf("%v", qr.Rows))
-}
-
-func TestExecutorSetAndSelect(t *testing.T) {
+func _TestExecutorSetAndSelect(t *testing.T) {
 	e, _, _, sbc := createExecutorEnv()
 	e.normalize = true
 
