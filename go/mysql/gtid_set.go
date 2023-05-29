@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,6 +54,9 @@ type GTIDSet interface {
 
 	// Union returns a union of the receiver GTIDSet and the supplied GTIDSet.
 	Union(GTIDSet) GTIDSet
+
+	// Intersect return the intersection of the receiver GTIDSet and the supplied GTIDSet
+	Intersect(GTIDSet) GTIDSet
 
 	// Union returns a union of the receiver GTIDSet and the supplied GTIDSet.
 	Last() string

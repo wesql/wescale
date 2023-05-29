@@ -366,6 +366,137 @@ func (set Mysql56GTIDSet) AddGTID(gtid GTID) GTIDSet {
 	return newSet
 }
 
+// Intersect implements GTIDSet
+func (set Mysql56GTIDSet) Intersect(other GTIDSet) GTIDSet {
+	// If the receiver GTIDSet or the given GTIDSet is nil, return an empty GTIDSet.
+	if set == nil || other == nil {
+		return make(Mysql56GTIDSet)
+	}
+
+	// Convert the given GTIDSet to the Mysql56GTIDSet type.
+	mydbOther, ok := other.(Mysql56GTIDSet)
+	if !ok {
+		return make(Mysql56GTIDSet)
+	}
+
+	// Create a new empty Mysql56GTIDSet object to store the intersection result.
+	intersectSet := make(Mysql56GTIDSet)
+
+	// Iterate over each Server ID and Interval in the receiver GTIDSet.
+	for sid, intervals := range set {
+		otherIntervals, ok := mydbOther[sid]
+		if !ok {
+			return intersectSet
+		}
+		otherIntervalsIndex := 0
+		intervalsIndex := 0
+		var intersectIntervals []interval
+		var tmpIntersect interval
+		for intervalsIndex < len(intervals) {
+			tmpIntersect = intervals[intervalsIndex]
+			exitsIntersect := false
+			for otherIntervalsIndex < len(otherIntervals) {
+				otherInterval := otherIntervals[otherIntervalsIndex]
+				if tmpIntersect.start > otherInterval.end {
+					otherIntervalsIndex++
+					continue
+				}
+				if tmpIntersect.end < otherInterval.start {
+					break
+				}
+				max := func(a, b int64) int64 {
+					if a > b {
+						return a
+					}
+					return b
+				}
+				min := func(a, b int64) int64 {
+					if a < b {
+						return a
+					}
+					return b
+				}
+				tmpIntersect.start = max(tmpIntersect.start, otherInterval.start)
+				tmpIntersect.end = min(tmpIntersect.end, otherInterval.end)
+				exitsIntersect = true
+				otherIntervalsIndex++
+			}
+			if exitsIntersect {
+				intersectIntervals = append(intersectIntervals, tmpIntersect)
+			}
+			if otherIntervalsIndex >= len(otherIntervals) {
+				// not exits intersection
+				break
+			}
+			if intervals[intervalsIndex].start > otherIntervals[otherIntervalsIndex].end ||
+				intervals[intervalsIndex].end < otherIntervals[otherIntervalsIndex].start {
+				intervalsIndex++
+			}
+		}
+		if len(intersectIntervals) > 0 {
+			intersectSet[sid] = intersectIntervals
+		}
+	}
+
+	return intersectSet
+}
+
+func (set Mysql56GTIDSet) Merge(other GTIDSet) GTIDSet {
+	if set == nil {
+		return nil
+	}
+	if other == nil {
+		return set
+	}
+	mydbOther, ok := other.(Mysql56GTIDSet)
+	if !ok {
+		return set
+	}
+	max := func(a, b int64) int64 {
+		if a > b {
+			return a
+		}
+		return b
+	}
+	min := func(a, b int64) int64 {
+		if a < b {
+			return a
+		}
+		return b
+	}
+	// Make a copy and add the new GTID in the proper place.
+	// This function is not supposed to modify the original set.
+	newSet := make(Mysql56GTIDSet)
+	for sid, intervals := range set {
+		otherIntervals, ok := mydbOther[sid]
+		if !ok {
+			newSet[sid] = intervals
+			continue
+		}
+		otherIntervalsIndex := 0
+		lastIntervalsIndex := 0
+		var newIntervals []interval
+		for ; lastIntervalsIndex < len(intervals); lastIntervalsIndex++ {
+			tmpInterval := intervals[lastIntervalsIndex]
+			for (lastIntervalsIndex+1 < len(intervals) && tmpInterval.end+1 >= intervals[lastIntervalsIndex+1].start) ||
+				(otherIntervalsIndex < len(otherIntervals) && tmpInterval.end+1 >= otherIntervals[otherIntervalsIndex].start) {
+				if lastIntervalsIndex+1 < len(intervals) && tmpInterval.end+1 >= intervals[lastIntervalsIndex+1].start {
+					tmpInterval.end = max(tmpInterval.end, intervals[lastIntervalsIndex+1].end)
+					lastIntervalsIndex++
+				}
+				if otherIntervalsIndex < len(otherIntervals) && tmpInterval.end+1 >= otherIntervals[otherIntervalsIndex].start {
+					tmpInterval.end = max(tmpInterval.end, otherIntervals[otherIntervalsIndex].end)
+					tmpInterval.start = min(tmpInterval.start, otherIntervals[otherIntervalsIndex].start)
+					otherIntervalsIndex++
+				}
+			}
+			newIntervals = append(newIntervals, tmpInterval)
+		}
+		newSet[sid] = newIntervals
+	}
+	return newSet
+}
+
 // Union implements GTIDSet.Union().
 func (set Mysql56GTIDSet) Union(other GTIDSet) GTIDSet {
 	if set == nil && other != nil {

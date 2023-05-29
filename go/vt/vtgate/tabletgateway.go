@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/discovery"
@@ -496,6 +497,15 @@ func (gw *TabletGateway) AddGtid(gtid string) {
 	if err != nil {
 		log.Errorf("Error adding gtid: %v", err)
 	}
+}
+func (gw *TabletGateway) CompressGtid() {
+	var gtidSets []*mysql.GTIDSet
+	tabletStats := gw.hc.GetAllHealthyTabletStats()
+	for _, tableHealth := range tabletStats {
+		gtidSets = append(gtidSets, &tableHealth.Position.GTIDSet)
+	}
+	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
+	log.Infof("lastSeenGtid: %v", gw.lastSeenGtid)
 }
 
 // LastSeenGtidString returns the last seen gtid as a string

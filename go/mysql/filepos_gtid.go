@@ -142,6 +142,16 @@ func (gtid filePosGTID) AddGTID(other GTID) GTIDSet {
 	return filePosOther
 }
 
+// TODO : implement filePosGTID's Intersect
+// Intersect implements GTIDSet.Intersect().
+func (gtid filePosGTID) Intersect(other GTIDSet) GTIDSet {
+	filePosOther, ok := other.(filePosGTID)
+	if !ok || gtid.Contains(other) {
+		return gtid
+	}
+	return filePosOther
+}
+
 // Union implements GTIDSet.Union().
 func (gtid filePosGTID) Union(other GTIDSet) GTIDSet {
 	filePosOther, ok := other.(filePosGTID)

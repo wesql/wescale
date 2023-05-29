@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -436,6 +441,80 @@ func TestMysql56GTIDSetAddGTID(t *testing.T) {
 			t.Errorf("AddGTID(%#v) = %#v, want %#v", input, got, want)
 		}
 	}
+}
+
+func TestMysql56GTIDSetIntersect(t *testing.T) {
+	sid1 := SID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	sid2 := SID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16}
+	sid3 := SID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17}
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{20, 30}, {35, 40}, {42, 45}},
+		sid2: []interval{{1, 5}, {20, 50}, {60, 70}},
+	}
+
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{20, 31}, {35, 37}, {41, 46}},
+		sid2: []interval{{3, 6}, {22, 49}, {67, 72}},
+		sid3: []interval{{1, 45}},
+	}
+
+	got := set1.Intersect(set2)
+
+	want := Mysql56GTIDSet{
+		sid1: []interval{{20, 30}, {35, 37}, {42, 45}},
+		sid2: []interval{{3, 5}, {22, 49}, {67, 70}},
+	}
+	assert.True(t, got.Equal(want), "set1: %#v, set1.Union(%#v) = %#v, want %#v", set1, set2, got, want)
+}
+func TestMysql56GTIDSetIntersect2(t *testing.T) {
+	sid1 := SID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{1, 2}},
+	}
+
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{2, 7}, {9, 12}, {13, 16}},
+	}
+	set3 := Mysql56GTIDSet{
+		sid1: []interval{{2, 6}, {9, 14}},
+	}
+	got := set1.Intersect(set2)
+	got = got.Intersect(set3)
+	want := Mysql56GTIDSet{
+		sid1: []interval{{2, 2}},
+	}
+	assert.True(t, got.Equal(want), "set1: %#v, set1.Union(%#v) = %#v, want %#v", set1, set2, got, want)
+}
+func TestMysql56GTIDSetIntersect3(t *testing.T) {
+	sid1 := SID{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{1, 100}},
+	}
+
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{2, 7}, {9, 12}, {13, 16}},
+	}
+	got := set1.Intersect(set2)
+	want := Mysql56GTIDSet{
+		sid1: []interval{{2, 7}, {9, 12}, {13, 16}},
+	}
+	assert.True(t, got.Equal(want), "set1: %#v, set1.Union(%#v) = %#v, want %#v", set1, set2, got, want)
+}
+func TestMysql56GTIDSetIntersect4(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{1, 2, 3}: []interval{{1, 10}, {20, 30}},
+		SID{4, 5, 6}: []interval{{5, 15}, {25, 35}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{1, 2, 3}: []interval{{8, 12}, {22, 28}},
+		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
+	}
+	got := set1.Intersect(set2)
+	want := Mysql56GTIDSet{
+		SID{1, 2, 3}: []interval{{8, 10}, {22, 28}},
+		SID{4, 5, 6}: []interval{{10, 15}, {28, 32}},
+	}
+	assert.True(t, got.Equal(want), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1, set2, got, want)
 }
 
 func TestMysql56GTIDSetUnion(t *testing.T) {

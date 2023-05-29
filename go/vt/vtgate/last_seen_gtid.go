@@ -49,6 +49,40 @@ func (g *LastSeenGtid) AddGtid(gtidStr string) error {
 	return nil
 }
 
+// MergeGtidSets Why not use Union function?
+// because LastSeenGtid is a requirement,it maybe increases the number of segment.
+// for example:
+// LastSeenGtid : [1,3],[5,6]
+// set : [1,4] [8,9]
+// result: [1,6],[8,9]
+// expect result: [1,6]
+func (g *LastSeenGtid) MergeGtidSets(set *mysql.GTIDSet) {
+	if set == nil {
+		return
+	}
+	localSet, ok := g.gtidSet.(mysql.Mysql56GTIDSet)
+	if !ok {
+		return
+	}
+	other, ok := (*set).(mysql.Mysql56GTIDSet)
+	if !ok {
+		return
+	}
+	g.gtidSet = localSet.Merge(other)
+}
+func (g *LastSeenGtid) CompressWithGtidSets(sets []*mysql.GTIDSet) {
+	if sets == nil {
+		return
+	}
+	// Get The Intersection of all set come from tablet
+	joinGtidSet := *sets[0]
+	for i := 1; i < len(sets); i++ {
+		joinGtidSet = joinGtidSet.Intersect(*sets[i])
+	}
+	// Merge joinGTIDSet and localGtidset
+	g.MergeGtidSets(&joinGtidSet)
+}
+
 func (g *LastSeenGtid) String() string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
