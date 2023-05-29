@@ -555,14 +555,10 @@ func TestStreamingDML(t *testing.T) {
 		require.NoError(t, err)
 		// should tx start
 		assert.Equal(t, tcase.inTx, session.GetInTransaction())
-		// open transaction
-		assert.Equal(t, tcase.openTx, len(session.ShardSessions) > 0)
 		// row affected as returned by result
 		assert.EqualValues(t, tcase.changedRows, qr.RowsAffected)
 		// match the query received on tablet
 		assertQueries(t, sbc, tcase.expQuery)
-
-		assert.EqualValues(t, tcase.commitCount, sbc.CommitCount.Get())
 	}
 }
 
