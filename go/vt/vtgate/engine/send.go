@@ -183,6 +183,18 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 		}
 		multiBindVars[i] = bv
 	}
+	if s.IsDML {
+		result, errors := vcursor.ExecuteMultiShard(ctx, s, rss, []*querypb.BoundQuery{
+			{
+				Sql:           s.Query,
+				BindVariables: bindVars,
+			},
+		}, true, true)
+		if errors != nil {
+			return vterrors.Aggregate(errors)
+		}
+		return callback(result)
+	}
 	errors := vcursor.StreamExecuteMulti(ctx, s, s.Query, rss, multiBindVars, s.IsDML, s.canAutoCommit(vcursor, rss), callback)
 	return vterrors.Aggregate(errors)
 }
