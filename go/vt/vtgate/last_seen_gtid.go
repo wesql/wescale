@@ -105,6 +105,7 @@ func (g *LastSeenGtid) GetMaxIntervals() int {
 	}
 	return maxLen
 }
+
 func (g *LastSeenGtid) String() string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()

@@ -511,6 +511,15 @@ func (gw *TabletGateway) AddGtid(gtid string) {
 		log.Errorf("Error adding gtid: %v", err)
 	}
 }
+func (gw *TabletGateway) CompressGtid() {
+	var gtidSets []*mysql.GTIDSet
+	tabletStats := gw.hc.GetAllHealthyTabletStats()
+	for _, tableHealth := range tabletStats {
+		gtidSets = append(gtidSets, &tableHealth.Position.GTIDSet)
+	}
+	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
+	log.Infof("lastSeenGtid: %v", gw.lastSeenGtid)
+}
 
 func (gw *TabletGateway) CompressGtidSets() {
 	var gtidSets []*mysql.GTIDSet
