@@ -39,16 +39,7 @@ import (
 	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
-func compareTimingCounts(t *testing.T, op string, delta int64, before, after map[string]int64) {
-	t.Helper()
-	countBefore := before[op]
-	countAfter := after[op]
-	if countAfter-countBefore != delta {
-		t.Errorf("Expected %s to increase by %d, got %d (%d => %d)", op, delta, countAfter-countBefore, countBefore, countAfter)
-	}
-}
-
-func TestDBConnExec(t *testing.T) {
+func TestDBConnExecWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 
@@ -66,11 +57,11 @@ func TestDBConnExec(t *testing.T) {
 	connPool := newPool()
 	mysqlTimings := connPool.env.Stats().MySQLTimings
 	startCounts := mysqlTimings.Counts()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -121,7 +112,7 @@ func TestDBConnExec(t *testing.T) {
 	compareTimingCounts(t, "PoolTest.Exec", 1, startCounts, mysqlTimings.Counts())
 }
 
-func TestDBConnExecLost(t *testing.T) {
+func TestDBConnExecLostWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 
@@ -139,11 +130,11 @@ func TestDBConnExecLost(t *testing.T) {
 	connPool := newPool()
 	mysqlTimings := connPool.env.Stats().MySQLTimings
 	startCounts := mysqlTimings.Counts()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -179,7 +170,7 @@ func TestDBConnExecLost(t *testing.T) {
 	compareTimingCounts(t, "PoolTest.Exec", 1, startCounts, mysqlTimings.Counts())
 }
 
-func TestDBConnDeadline(t *testing.T) {
+func TestDBConnDeadlineWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	sql := "select * from test_table limit 1000"
@@ -197,14 +188,14 @@ func TestDBConnDeadline(t *testing.T) {
 	connPool := newPool()
 	mysqlTimings := connPool.env.Stats().MySQLTimings
 	startCounts := mysqlTimings.Counts()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 
 	db.SetConnDelay(100 * time.Millisecond)
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(50*time.Millisecond))
 	defer cancel()
 
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -251,13 +242,13 @@ func TestDBConnDeadline(t *testing.T) {
 	compareTimingCounts(t, "PoolTest.Exec", 1, startCounts, mysqlTimings.Counts())
 }
 
-func TestDBConnKill(t *testing.T) {
+func TestDBConnKillWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -297,13 +288,13 @@ func TestDBConnKill(t *testing.T) {
 
 // TestDBConnClose tests that an Exec returns immediately if a connection
 // is asynchronously killed (and closed) in the middle of an execution.
-func TestDBConnClose(t *testing.T) {
+func TestDBConnCloseWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	require.NoError(t, err)
 	defer dbConn.Close()
 
@@ -323,12 +314,12 @@ func TestDBConnClose(t *testing.T) {
 	assert.True(t, time.Since(start) < 100*time.Millisecond, "%v %v", time.Since(start), 100*time.Millisecond)
 }
 
-func TestDBNoPoolConnKill(t *testing.T) {
+func TestDBNoPoolConnKillWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
-	dbConn, err := NewDBConnNoPool(context.Background(), db.ConnParams(), connPool.dbaPool, nil)
+	dbConn, err := NewDBConnNoPool(context.Background(), db.ConnParamsWithoutDB(), connPool.dbaPool, nil)
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -366,7 +357,7 @@ func TestDBNoPoolConnKill(t *testing.T) {
 	}
 }
 
-func TestDBConnStream(t *testing.T) {
+func TestDBConnStreamWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	sql := "select * from test_table limit 1000"
@@ -380,11 +371,11 @@ func TestDBConnStream(t *testing.T) {
 	}
 	db.AddQuery(sql, expectedResult)
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancel()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	if dbConn != nil {
 		defer dbConn.Close()
 	}
@@ -429,7 +420,7 @@ func TestDBConnStream(t *testing.T) {
 	}
 }
 
-func TestDBConnStreamKill(t *testing.T) {
+func TestDBConnStreamKillWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	sql := "select * from test_table limit 1000"
@@ -440,9 +431,9 @@ func TestDBConnStreamKill(t *testing.T) {
 	}
 	db.AddQuery(sql, expectedResult)
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	require.NoError(t, err)
 	defer dbConn.Close()
 
@@ -464,15 +455,15 @@ func TestDBConnStreamKill(t *testing.T) {
 	assert.Contains(t, err.Error(), "(errno 2013) due to")
 }
 
-func TestDBConnReconnect(t *testing.T) {
+func TestDBConnReconnectWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 
-	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParams())
+	dbConn, err := NewDBConn(context.Background(), connPool, db.ConnParamsWithoutDB())
 	require.NoError(t, err)
 	defer dbConn.Close()
 
@@ -488,24 +479,24 @@ func TestDBConnReconnect(t *testing.T) {
 	require.NotEqual(t, oldConnID, dbConn.conn.ID())
 }
 
-func TestDBConnReApplySetting(t *testing.T) {
+func TestDBConnReApplySettingWithoutDB(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	db.OrderMatters()
 
 	connPool := newPool()
-	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	connPool.Open(db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB(), db.ConnParamsWithoutDB())
 	defer connPool.Close()
 
 	ctx := context.Background()
-	dbConn, err := NewDBConn(ctx, connPool, db.ConnParams())
+	dbConn, err := NewDBConn(ctx, connPool, db.ConnParamsWithoutDB())
 	require.NoError(t, err)
 	defer dbConn.Close()
 
 	// apply system settings.
 	setQ := "set @@sql_mode='ANSI_QUOTES'"
 	db.AddExpectedQuery(setQ, nil)
-	err = dbConn.ApplySetting(ctx, pools.NewSetting(false, setQ, "set @@sql_mode = default"))
+	err = dbConn.ApplySetting(ctx, pools.NewSetting(true, setQ, "set @@sql_mode = default"))
 	require.NoError(t, err)
 
 	// close the connection and let the dbconn reconnect to start a new connection when required.

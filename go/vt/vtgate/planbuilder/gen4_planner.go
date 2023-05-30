@@ -58,16 +58,6 @@ func gen4SelectStmtPlanner(
 	reservedVars *sqlparser.ReservedVars,
 	vschema plancontext.VSchema,
 ) (*planResult, error) {
-	switch node := stmt.(type) {
-	case *sqlparser.Select:
-		if node.With != nil {
-			return nil, vterrors.VT12001("WITH expression in SELECT statement")
-		}
-	case *sqlparser.Union:
-		if node.With != nil {
-			return nil, vterrors.VT12001("WITH expression in UNION statement")
-		}
-	}
 
 	sel, isSel := stmt.(*sqlparser.Select)
 	if isSel {
@@ -94,41 +84,11 @@ func gen4SelectStmtPlanner(
 		sel.SQLCalcFoundRows = false
 	}
 
-	getPlan := func(selStatement sqlparser.SelectStatement) (logicalPlan, *semantics.SemTable, []string, error) {
-		return newBuildSelectPlan(selStatement, reservedVars, vschema, plannerVersion)
-	}
-
-	plan, _, tablesUsed, err := getPlan(stmt)
+	plan, err := buildPlanForBypass(stmt, reservedVars, vschema)
 	if err != nil {
 		return nil, err
 	}
-
-	if shouldRetryAfterPredicateRewriting(plan) {
-		// by transforming the predicates to CNF, the planner will sometimes find better plans
-		plan2, _, tablesUsed := gen4PredicateRewrite(stmt, getPlan)
-		if plan2 != nil {
-			return newPlanResult(plan2.Primitive(), tablesUsed...), nil
-		}
-	}
-
-	primitive := plan.Primitive()
-	if !isSel {
-		return newPlanResult(primitive, tablesUsed...), nil
-	}
-
-	// this is done because engine.Route doesn't handle the empty result well
-	// if it doesn't find a shard to send the query to.
-	// All other engine primitives can handle this, so we only need it when
-	// Route is the last (and only) instruction before the user sees a result
-	if isOnlyDual(sel) || (len(sel.GroupBy) == 0 && sel.SelectExprs.AllAggregation()) {
-		switch prim := primitive.(type) {
-		case *engine.Route:
-			prim.NoRoutesSpecialHandling = true
-		case *engine.VindexLookup:
-			prim.SendTo.NoRoutesSpecialHandling = true
-		}
-	}
-	return newPlanResult(primitive, tablesUsed...), nil
+	return plan, nil
 }
 
 func gen4planSQLCalcFoundRows(vschema plancontext.VSchema, sel *sqlparser.Select, query string, reservedVars *sqlparser.ReservedVars) (*planResult, error) {

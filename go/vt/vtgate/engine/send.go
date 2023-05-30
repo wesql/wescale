@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,6 +81,9 @@ func (s *Send) RouteType() string {
 
 // GetKeyspaceName implements Primitive interface
 func (s *Send) GetKeyspaceName() string {
+	if s.Keyspace == nil {
+		return ""
+	}
 	return s.Keyspace.Name
 }
 
@@ -88,12 +96,18 @@ func (s *Send) GetTableName() string {
 func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
 	ctx, cancelFunc := addQueryTimeout(ctx, vcursor, 0)
 	defer cancelFunc()
-	rss, _, err := vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	var rss []*srvtopo.ResolvedShard
+	var err error
+	if s.Keyspace == nil {
+		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
+	} else {
+		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	if !s.Keyspace.Sharded && len(rss) != 1 {
+	if s.Keyspace != nil && !s.Keyspace.Sharded && len(rss) != 1 {
 		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "Keyspace does not have exactly one shard: %v", rss)
 	}
 
@@ -140,12 +154,19 @@ func copyBindVars(in map[string]*querypb.BindVariable) map[string]*querypb.BindV
 
 // TryStreamExecute implements Primitive interface
 func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
-	rss, _, err := vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	var rss []*srvtopo.ResolvedShard
+	var err error
+	if s.Keyspace == nil {
+		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
+	} else {
+		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
+	}
+
 	if err != nil {
 		return err
 	}
 
-	if !s.Keyspace.Sharded && len(rss) != 1 {
+	if s.Keyspace != nil && !s.Keyspace.Sharded && len(rss) != 1 {
 		return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "Keyspace does not have exactly one shard: %v", rss)
 	}
 
@@ -161,6 +182,18 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 			bv[ShardName] = sqltypes.StringBindVariable(rs.Target.Shard)
 		}
 		multiBindVars[i] = bv
+	}
+	if s.IsDML {
+		result, errors := vcursor.ExecuteMultiShard(ctx, s, rss, []*querypb.BoundQuery{
+			{
+				Sql:           s.Query,
+				BindVariables: bindVars,
+			},
+		}, true, true)
+		if errors != nil {
+			return vterrors.Aggregate(errors)
+		}
+		return callback(result)
 	}
 	errors := vcursor.StreamExecuteMulti(ctx, s, s.Query, rss, multiBindVars, s.IsDML, s.canAutoCommit(vcursor, rss), callback)
 	return vterrors.Aggregate(errors)

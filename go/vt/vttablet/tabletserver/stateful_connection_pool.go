@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,8 +59,13 @@ type StatefulConnectionPool struct {
 	// pool is needed because this option can only be set at
 	// connection time.
 	foundRowsPool *connpool.Pool
-	active        *pools.Numbered
-	lastID        sync2.AtomicInt64
+
+	// connsWithoutDB and foundRowsWithoutDBPool is pool that connections
+	// without database.
+	connsWithoutDB         *connpool.Pool
+	foundRowsWithoutDBPool *connpool.Pool
+	active                 *pools.Numbered
+	lastID                 sync2.AtomicInt64
 }
 
 // NewStatefulConnPool creates an ActivePool
@@ -63,11 +73,13 @@ func NewStatefulConnPool(env tabletenv.Env) *StatefulConnectionPool {
 	config := env.Config()
 
 	return &StatefulConnectionPool{
-		env:           env,
-		conns:         connpool.NewPool(env, "TransactionPool", config.TxPool),
-		foundRowsPool: connpool.NewPool(env, "FoundRowsPool", config.TxPool),
-		active:        pools.NewNumbered(),
-		lastID:        sync2.NewAtomicInt64(time.Now().UnixNano()),
+		env:                    env,
+		conns:                  connpool.NewPool(env, "TransactionPool", config.TxPool),
+		foundRowsPool:          connpool.NewPool(env, "FoundRowsPool", config.TxPool),
+		connsWithoutDB:         connpool.NewPool(env, "TransactionWithoutDBPool", config.TxPool),
+		foundRowsWithoutDBPool: connpool.NewPool(env, "FoundRowsWithoutDBPool", config.TxPool),
+		active:                 pools.NewNumbered(),
+		lastID:                 sync2.NewAtomicInt64(time.Now().UnixNano()),
 	}
 }
 
@@ -78,8 +90,25 @@ func (sf *StatefulConnectionPool) Open(appParams, dbaParams, appDebugParams dbco
 	sf.conns.Open(appParams, dbaParams, appDebugParams)
 	foundRowsParam, _ := appParams.MysqlParams()
 	foundRowsParam.EnableClientFoundRows()
-	appParams = dbconfigs.New(foundRowsParam)
-	sf.foundRowsPool.Open(appParams, dbaParams, appDebugParams)
+	appFoundRowsParams := dbconfigs.New(foundRowsParam)
+	sf.foundRowsPool.Open(appFoundRowsParams, dbaParams, appDebugParams)
+
+	newAppParam, _ := appParams.MysqlParams()
+	newAppParam.SetDBName("")
+	appWithoutDBParams := dbconfigs.New(newAppParam)
+	newDbaParam, _ := dbaParams.MysqlParams()
+	newDbaParam.SetDBName("")
+	dbaWithoutDBParams := dbconfigs.New(newDbaParam)
+	newAppDebugParam, _ := appDebugParams.MysqlParams()
+	newAppDebugParam.SetDBName("")
+	debugWithoutDBParams := dbconfigs.New(newAppDebugParam)
+	sf.connsWithoutDB.Open(appWithoutDBParams, dbaWithoutDBParams, debugWithoutDBParams)
+
+	newFoundRowsParam, _ := appFoundRowsParams.MysqlParams()
+	newFoundRowsParam.SetDBName("")
+	appFoundRowsWithoutDBParam := dbconfigs.New(newFoundRowsParam)
+	sf.foundRowsWithoutDBPool.Open(appFoundRowsWithoutDBParam, dbaWithoutDBParams, debugWithoutDBParams)
+
 	sf.state.Set(scpOpen)
 }
 
@@ -98,6 +127,8 @@ func (sf *StatefulConnectionPool) Close() {
 	}
 	sf.conns.Close()
 	sf.foundRowsPool.Close()
+	sf.connsWithoutDB.Close()
+	sf.foundRowsWithoutDBPool.Close()
 	sf.state.Set(scpClosed)
 }
 
@@ -173,10 +204,18 @@ func (sf *StatefulConnectionPool) NewConn(ctx context.Context, options *querypb.
 	var conn *connpool.DBConn
 	var err error
 
-	if options.GetClientFoundRows() {
-		conn, err = sf.foundRowsPool.Get(ctx, setting)
+	if setting != nil && setting.GetWithoutDBName() {
+		if options.GetClientFoundRows() {
+			conn, err = sf.foundRowsWithoutDBPool.Get(ctx, setting)
+		} else {
+			conn, err = sf.connsWithoutDB.Get(ctx, setting)
+		}
 	} else {
-		conn, err = sf.conns.Get(ctx, setting)
+		if options.GetClientFoundRows() {
+			conn, err = sf.foundRowsPool.Get(ctx, setting)
+		} else {
+			conn, err = sf.conns.Get(ctx, setting)
+		}
 	}
 	if err != nil {
 		return nil, err

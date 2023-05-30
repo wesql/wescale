@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +23,8 @@ package srvtopo
 
 import (
 	"testing"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/stretchr/testify/require"
 
@@ -55,6 +62,14 @@ func initResolver(t *testing.T, name string) *Resolver {
 		}
 	}
 
+	// Create default unsharded keyspace and shard
+	if err := ts.CreateKeyspace(ctx, global.DefaultKeyspace, &topodatapb.Keyspace{}); err != nil {
+		t.Fatalf("CreateKeyspace(uks) failed: %v", err)
+	}
+	if err := ts.CreateShard(ctx, global.DefaultKeyspace, "0"); err != nil {
+		t.Fatalf("CreateShard(0) failed: %v", err)
+	}
+
 	// Create unsharded keyspace and shard.
 	if err := ts.CreateKeyspace(ctx, "uks", &topodatapb.Keyspace{}); err != nil {
 		t.Fatalf("CreateKeyspace(uks) failed: %v", err)
@@ -64,7 +79,7 @@ func initResolver(t *testing.T, name string) *Resolver {
 	}
 
 	// And rebuild both.
-	for _, keyspace := range []string{"sks", "uks"} {
+	for _, keyspace := range []string{global.DefaultKeyspace, "sks", "uks"} {
 		if err := topotools.RebuildKeyspace(ctx, logutil.NewConsoleLogger(), ts, keyspace, []string{cell}, false); err != nil {
 			t.Fatalf("RebuildKeyspace(%v) failed: %v", keyspace, err)
 		}
@@ -255,6 +270,44 @@ func TestResolveDestinations(t *testing.T) {
 		}
 		if !ValuesEqual(values, testCase.expectedValues) {
 			t.Errorf("%v: values != testCase.expectedValues: got values=%v", testCase.name, values)
+		}
+	}
+}
+
+func TestResolveDefaultDestinations(t *testing.T) {
+	resolver := initResolver(t, "TestResolveDefaultDestinations")
+
+	var testCases = []struct {
+		name string
+
+		destination      key.Destination
+		errString        string
+		expectedShard    string
+		expectedKeySpace string
+	}{
+		{
+			name:             "unsharded keyspace, no keyspace",
+			destination:      key.DestinationShard("0"),
+			expectedShard:    "0",
+			expectedKeySpace: "",
+		},
+	}
+	for _, testCase := range testCases {
+		ctx := context.Background()
+		rss, _ := resolver.ResolveDefaultDestination(ctx, topodatapb.TabletType_PRIMARY, testCase.destination)
+
+		// Check the ResolvedShard are correct.
+		if len(rss) != 1 {
+			t.Errorf("%v: expected %v ResolvedShard, but got: %v", testCase.name, testCase.expectedShard, rss)
+			continue
+		}
+		for i, rs := range rss {
+			if rs.Target.Shard != testCase.expectedShard {
+				t.Errorf("%v: expected rss[%v] shard to be '%v', but got: %v", testCase.name, i, testCase.expectedShard, rs.Target.Shard)
+			}
+			if rs.Target.Keyspace != testCase.expectedKeySpace {
+				t.Errorf("%v: expected rss[%v] keyspace to be '%v', but got: %v", testCase.name, i, testCase.expectedShard, rs.Target.Shard)
+			}
 		}
 	}
 }

@@ -941,9 +941,17 @@ func (qre *QueryExecutor) execOther() (*sqltypes.Result, error) {
 func (qre *QueryExecutor) getConn() (*connpool.DBConn, error) {
 	span, ctx := trace.NewSpan(qre.ctx, "QueryExecutor.getConn")
 	defer span.Finish()
-
+	var conn *connpool.DBConn
+	var err error
 	start := time.Now()
-	conn, err := qre.tsv.qe.conns.Get(ctx, qre.setting)
+
+	// If the obtained connection does not need to specify a database, create a connection without dbname directly
+	// from the non-connection pool
+	if qre.setting != nil && qre.setting.GetWithoutDBName() {
+		conn, err = qre.tsv.qe.withoutDBConns.Get(ctx, qre.setting)
+	} else {
+		conn, err = qre.tsv.qe.conns.Get(ctx, qre.setting)
+	}
 
 	switch err {
 	case nil:
@@ -958,9 +966,15 @@ func (qre *QueryExecutor) getConn() (*connpool.DBConn, error) {
 func (qre *QueryExecutor) getStreamConn() (*connpool.DBConn, error) {
 	span, ctx := trace.NewSpan(qre.ctx, "QueryExecutor.getStreamConn")
 	defer span.Finish()
+	var conn *connpool.DBConn
+	var err error
 
 	start := time.Now()
-	conn, err := qre.tsv.qe.streamConns.Get(ctx, qre.setting)
+	if qre.setting != nil && qre.setting.GetWithoutDBName() {
+		conn, err = qre.tsv.qe.streamWithoutDBConns.Get(ctx, qre.setting)
+	} else {
+		conn, err = qre.tsv.qe.streamConns.Get(ctx, qre.setting)
+	}
 	switch err {
 	case nil:
 		qre.logStats.WaitingForConnection += time.Since(start)

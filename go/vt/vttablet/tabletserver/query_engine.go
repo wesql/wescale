@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -143,6 +148,9 @@ type QueryEngine struct {
 	// Pools
 	conns       *connpool.Pool
 	streamConns *connpool.Pool
+	// Pools that connections without database.
+	withoutDBConns       *connpool.Pool
+	streamWithoutDBConns *connpool.Pool
 
 	// Services
 	consolidator       *sync2.Consolidator
@@ -198,6 +206,8 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 
 	qe.conns = connpool.NewPool(env, "ConnPool", config.OltpReadPool)
 	qe.streamConns = connpool.NewPool(env, "StreamConnPool", config.OlapReadPool)
+	qe.withoutDBConns = connpool.NewPool(env, "ConnWithoutDBPool", config.OltpReadPool)
+	qe.streamWithoutDBConns = connpool.NewPool(env, "StreamWithoutDBConnPool", config.OlapReadPool)
 	qe.consolidatorMode.Set(config.Consolidator)
 	qe.consolidator = sync2.NewConsolidator()
 	if config.ConsolidatorStreamTotalSize > 0 && config.ConsolidatorStreamQuerySize > 0 {
@@ -287,6 +297,10 @@ func (qe *QueryEngine) Open() error {
 	}
 
 	qe.streamConns.Open(qe.env.Config().DB.AppWithDB(), qe.env.Config().DB.DbaWithDB(), qe.env.Config().DB.AppDebugWithDB())
+
+	qe.withoutDBConns.Open(qe.env.Config().DB.AppConnector(), qe.env.Config().DB.DbaConnector(), qe.env.Config().DB.AppDebugConnector())
+	qe.streamWithoutDBConns.Open(qe.env.Config().DB.AppConnector(), qe.env.Config().DB.DbaConnector(), qe.env.Config().DB.AppDebugConnector())
+
 	qe.se.RegisterNotifier("qe", qe.schemaChanged)
 	qe.isOpen = true
 	return nil
@@ -303,6 +317,8 @@ func (qe *QueryEngine) Close() {
 	qe.se.UnregisterNotifier("qe")
 	qe.plans.Clear()
 	qe.tables = make(map[string]*schema.Table)
+	qe.streamWithoutDBConns.Close()
+	qe.withoutDBConns.Close()
 	qe.streamConns.Close()
 	qe.conns.Close()
 	qe.isOpen = false
@@ -397,7 +413,7 @@ func (qe *QueryEngine) GetConnSetting(ctx context.Context, settings []string) (*
 	if err != nil {
 		return nil, err
 	}
-	connSetting := pools.NewSetting(query, resetQuery)
+	connSetting := pools.NewSetting(false, query, resetQuery)
 
 	// store the connSetting in the cache
 	qe.plans.Set(cacheKey, connSetting)

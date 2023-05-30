@@ -327,6 +327,10 @@ func (t *noopVCursor) ResolveDestinations(ctx context.Context, keyspace string, 
 	return nil, nil, nil
 }
 
+func (t *noopVCursor) ResolveDefaultDestination(ctx context.Context, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	return nil, nil
+}
+
 func (t *noopVCursor) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
 	panic("unimplemented")
 }
@@ -581,6 +585,39 @@ func (f *loggingVCursor) ResolveDestinations(ctx context.Context, keyspace strin
 		}
 	}
 	return rss, values, nil
+}
+
+func (f *loggingVCursor) ResolveDefaultDestination(ctx context.Context, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	f.log = append(f.log, fmt.Sprintf("ResolveDestinations without keyspace %v", destination.String()))
+	if f.shardErr != nil {
+		return nil, f.shardErr
+	}
+
+	var rss []*srvtopo.ResolvedShard
+	var shards []string
+
+	switch destination.(type) {
+	case key.DestinationAnyShard:
+		// Take the first shard.
+		shards = f.shards[:1]
+	case key.DestinationNone:
+		// Nothing to do here.
+	case key.DestinationShard:
+		shards = []string{destination.String()}
+	default:
+		return nil, fmt.Errorf("unsupported destination: %v", destination)
+	}
+
+	for _, shard := range shards {
+		rss = append(rss, &srvtopo.ResolvedShard{
+			Target: &querypb.Target{
+				Keyspace:   "",
+				Shard:      shard,
+				TabletType: f.resolvedTargetTabletType,
+			},
+		})
+	}
+	return rss, nil
 }
 
 func (f *loggingVCursor) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {

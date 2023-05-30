@@ -127,6 +127,7 @@ var (
 	defaultReadWriteSplittingPolicy = string(schema.ReadWriteSplittingPolicyDisable)
 	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
 	defaultReadAfterWriteTimeout = float64(30.0)
+	enableDefaultUnShardedMode   = true
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -163,6 +164,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&enableViews, "enable-views", enableViews, "Enable views support in vtgate.")
 	fs.StringVar(&defaultReadWriteSplittingPolicy, "read_write_splitting_policy", defaultReadWriteSplittingPolicy, "Enable read write splitting.")
 	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
+	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)

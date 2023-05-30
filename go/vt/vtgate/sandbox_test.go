@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,8 @@ import (
 	"fmt"
 	"sync"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/vt/grpcclient"
 	"vitess.io/vitess/go/vt/key"
@@ -39,6 +46,7 @@ import (
 // sandbox_test.go provides a sandbox for unit testing VTGate.
 
 const (
+	KsTestDefaultShard        = global.DefaultKeyspace
 	KsTestSharded             = "TestExecutor"
 	KsTestUnsharded           = "TestUnsharded"
 	KsTestUnshardedServedFrom = "TestUnshardedServedFrom"
@@ -47,6 +55,7 @@ const (
 
 func init() {
 	ksToSandbox = make(map[string]*sandbox)
+	createSandbox(KsTestDefaultShard)
 	createSandbox(KsTestSharded)
 	createSandbox(KsTestUnsharded)
 	createSandbox(KsTestBadVSchema)
@@ -274,6 +283,8 @@ func (sct *sandboxTopo) GetSrvKeyspace(ctx context.Context, cell, keyspace strin
 		}
 		return servedFromKeyspace, nil
 	case KsTestUnsharded:
+		return createUnshardedKeyspace()
+	case KsTestDefaultShard:
 		return createUnshardedKeyspace()
 	}
 

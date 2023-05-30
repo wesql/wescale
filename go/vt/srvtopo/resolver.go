@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +23,8 @@ package srvtopo
 
 import (
 	"sort"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/sqltypes"
 
@@ -322,6 +329,36 @@ func (r *Resolver) ResolveDestinations(ctx context.Context, keyspace string, tab
 func (r *Resolver) ResolveDestination(ctx context.Context, keyspace string, tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
 	rss, _, err := r.ResolveDestinations(ctx, keyspace, tabletType, nil, []key.Destination{destination})
 	return rss, err
+}
+
+// ResolveDefaultDestination resolves values and default destination without keyspace into the respective.
+func (r *Resolver) ResolveDefaultDestination(ctx context.Context, tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
+	var result []*ResolvedShard
+	_, _, allShards, err := r.GetKeyspaceShards(ctx, global.DefaultKeyspace, tabletType)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := destination.Resolve(allShards, func(shard string) error {
+		target := &querypb.Target{
+			Keyspace:   "",
+			Shard:      shard,
+			TabletType: tabletType,
+			Cell:       r.localCell,
+		}
+		// Right now we always set the Cell to ""
+		// Later we can fallback to another cell if needed.
+		// We would then need to read the SrvKeyspace there too.
+		target.Cell = ""
+		result = append(result, &ResolvedShard{
+			Target:  target,
+			Gateway: r.gateway,
+		})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // ValuesEqual is a helper method to compare arrays of values.

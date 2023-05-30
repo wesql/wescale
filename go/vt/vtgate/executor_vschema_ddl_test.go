@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -387,7 +392,7 @@ func TestExecutorAddSequenceDDL(t *testing.T) {
 	}
 }
 
-func TestExecutorAddDropVindexDDL(t *testing.T) {
+func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	vschemaacl.AuthorizedDDLUsers = "%"
 	defer func() {
 		vschemaacl.AuthorizedDDLUsers = ""

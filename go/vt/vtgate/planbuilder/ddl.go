@@ -1,7 +1,14 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package planbuilder
 
 import (
 	"fmt"
+
+	"vitess.io/vitess/go/vt/schema"
 
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -54,6 +61,9 @@ func (fk *fkContraint) FkWalk(node sqlparser.SQLNode) (kontinue bool, err error)
 // and which chooses which of the two to invoke at runtime.
 func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
 	if vschema.Destination() != nil {
+		if !enableDirectDDL {
+			return nil, schema.ErrDirectDDLDisabled
+		}
 		return buildByPassDDLPlan(sql, vschema)
 	}
 	normalDDLPlan, onlineDDLPlan, err := buildDDLPlans(sql, ddlStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
@@ -91,7 +101,9 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 
 func buildByPassDDLPlan(sql string, vschema plancontext.VSchema) (*planResult, error) {
 	keyspace, err := vschema.DefaultKeyspace()
-	if err != nil {
+	// If no keyspace is specified in this SQL or Session, the SQL can be processed directly by vttablet,
+	// because vttablet can now handle SQL without any database specified.
+	if err != nil && err.Error() != vterrors.VT09005().Error() {
 		return nil, err
 	}
 	send := &engine.Send{
