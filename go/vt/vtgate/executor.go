@@ -778,6 +778,16 @@ func (e *Executor) showShards(ctx context.Context, filter *sqlparser.ShowFilter,
 	}, nil
 }
 
+func (e *Executor) showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+	rows := [][]sqltypes.Value{}
+	lastSeenGTID := e.scatterConn.gateway.lastSeenGtid.String()
+	rows = append(rows, buildVarCharRow(lastSeenGTID))
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("LastSeenGTID"),
+		Rows:   rows,
+	}, nil
+}
+
 func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	getTabletFilters := func(filter *sqlparser.ShowFilter) []tabletFilter {
 		var filters []tabletFilter

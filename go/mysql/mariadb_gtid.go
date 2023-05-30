@@ -221,24 +221,26 @@ func (gtidSet MariadbGTIDSet) AddGTID(other GTID) GTIDSet {
 	return newSet
 }
 
-// TODO : For convinient testing,the code of this function is same as MariadbGTIDSed.Union,we need specialy implement MariadbGTIDSet's intersect
 // Intersect implements GTIDSet.Intersect(). This is a pure method, and does not mutate the receiver.
 func (gtidSet MariadbGTIDSet) Intersect(other GTIDSet) GTIDSet {
-	if gtidSet == nil && other != nil {
-		return other
-	}
 	if gtidSet == nil || other == nil {
-		return gtidSet
+		return nil
 	}
-
 	mdbOther, ok := other.(MariadbGTIDSet)
 	if !ok {
-		return gtidSet
+		return nil
 	}
-
-	newSet := gtidSet.deepCopy()
+	newSet := make(MariadbGTIDSet)
 	for _, otherGTID := range mdbOther {
-		newSet.addGTID(otherGTID)
+		gtid, ok := newSet[otherGTID.Domain]
+		if !ok {
+			continue
+		}
+		if otherGTID.Sequence < gtid.Sequence {
+			newSet[otherGTID.Domain] = otherGTID
+		} else {
+			newSet[otherGTID.Domain] = gtid
+		}
 	}
 	return newSet
 }

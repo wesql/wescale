@@ -92,9 +92,10 @@ type LocalProcessCluster struct {
 	CurrentVTDATAROOT  string
 	ReusingVTDATAROOT  bool
 
-	VtgateMySQLPort int
-	VtgateGrpcPort  int
-	VtctldHTTPPort  int
+	VtgateMySQLPort  int
+	Vtgate2MysqlPort int
+	VtgateGrpcPort   int
+	VtctldHTTPPort   int
 
 	// major version numbers
 	VtTabletMajorVersion int
@@ -109,6 +110,7 @@ type LocalProcessCluster struct {
 	TopoProcess     TopoProcess
 	VtctldProcess   VtctldProcess
 	VtgateProcess   VtgateProcess
+	VtgateProcess2  VtgateProcess
 	VtbackupProcess VtbackupProcess
 	VTOrcProcesses  []*VTOrcProcess
 
@@ -661,6 +663,25 @@ func (cluster *LocalProcessCluster) SetupCluster(keyspace *Keyspace, shards []Sh
 	return err
 }
 
+func (cluster *LocalProcessCluster) StartTwoVtgate() (err error) {
+	if cluster.HasPartialKeyspaces {
+		cluster.VtGateExtraArgs = append(cluster.VtGateExtraArgs, "--enable-partial-keyspace-migration")
+	}
+	vtgateInstance := *cluster.NewVtgateInstanceNotSetPort()
+	cluster.VtgateProcess = vtgateInstance
+	err = cluster.VtgateProcess.Setup()
+	if err != nil {
+		return err
+	}
+	cluster.VtgateMySQLPort = cluster.VtgateProcess.MySQLServerPort
+
+	cluster.VtgateProcess2 = *cluster.NewVtgateInstanceNotSetPort()
+	cluster.VtgateProcess2.MySQLServerSocketPath = path.Join(cluster.TmpDirectory, "mysql2.sock")
+	err = cluster.VtgateProcess2.Setup()
+	cluster.Vtgate2MysqlPort = cluster.VtgateProcess2.MySQLServerPort
+	return err
+}
+
 // StartVtgate starts vtgate
 func (cluster *LocalProcessCluster) StartVtgate() (err error) {
 	if cluster.HasPartialKeyspaces {
@@ -671,6 +692,26 @@ func (cluster *LocalProcessCluster) StartVtgate() (err error) {
 	log.Infof("Starting vtgate on port %d", vtgateInstance.Port)
 	log.Infof("Vtgate started, connect to mysql using : mysql -h 127.0.0.1 -P %d", cluster.VtgateMySQLPort)
 	return cluster.VtgateProcess.Setup()
+}
+
+// NewVtgateInstanceNotSetPort NewVtgateInstance returns an instance of vtgateprocess but not set the properties of cluster
+func (cluster *LocalProcessCluster) NewVtgateInstanceNotSetPort() *VtgateProcess {
+	vtgateHTTPPort := cluster.GetAndReservePort()
+	vtgateGrpcPort := cluster.GetAndReservePort()
+	vtgateMySQLPort := cluster.GetAndReservePort()
+	vtgateProcInstance := VtgateProcessInstance(
+		vtgateHTTPPort,
+		vtgateGrpcPort,
+		vtgateMySQLPort,
+		cluster.Cell,
+		cluster.Cell,
+		cluster.Hostname,
+		"PRIMARY,REPLICA",
+		cluster.TopoProcess.Port,
+		cluster.TmpDirectory,
+		cluster.VtGateExtraArgs,
+		cluster.VtGatePlannerVersion)
+	return vtgateProcInstance
 }
 
 // NewVtgateInstance returns an instance of vtgateprocess

@@ -68,10 +68,12 @@ func (g *LastSeenGtid) MergeGtidSets(set *mysql.GTIDSet) {
 	if !ok {
 		return
 	}
-	g.gtidSet = localSet.Merge(other)
+	remainSets := localSet.TrimGTIDSet(other)
+	g.gtidSet = g.gtidSet.Union(remainSets)
 }
+
 func (g *LastSeenGtid) CompressWithGtidSets(sets []*mysql.GTIDSet) {
-	if sets == nil {
+	if len(sets) == 0 {
 		return
 	}
 	// Get The Intersection of all set come from tablet
@@ -80,9 +82,29 @@ func (g *LastSeenGtid) CompressWithGtidSets(sets []*mysql.GTIDSet) {
 		joinGtidSet = joinGtidSet.Intersect(*sets[i])
 	}
 	// Merge joinGTIDSet and localGtidset
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.MergeGtidSets(&joinGtidSet)
 }
 
+// GetMaxIntervals return LastSeenGtid max len of intervals
+func (g *LastSeenGtid) GetMaxIntervals() int {
+	localSet, ok := g.gtidSet.(mysql.Mysql56GTIDSet)
+	if !ok {
+		return -1
+	}
+	max := func(a int, b int) int {
+		if a > b {
+			return a
+		}
+		return b
+	}
+	maxLen := 0
+	for _, intervals := range localSet {
+		maxLen = max(maxLen, len(intervals))
+	}
+	return maxLen
+}
 func (g *LastSeenGtid) String() string {
 	g.mu.RLock()
 	defer g.mu.RUnlock()

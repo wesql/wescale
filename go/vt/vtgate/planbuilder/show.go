@@ -129,7 +129,7 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 		return buildPluginsPlan()
 	case sqlparser.Engines:
 		return buildEnginesPlan()
-	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload:
+	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.LastSeenGTID, sqlparser.Workload:
 		return &engine.ShowExec{
 			Command:    show.Command,
 			ShowFilter: show.Filter,
@@ -147,13 +147,13 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 
 func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
 	switch show.Command {
-	case sqlparser.Keyspace:
+	case sqlparser.Keyspace, sqlparser.Database:
 		return buildDBPlan(show, vschema)
 	case sqlparser.VitessMigrations:
 		return buildShowVMigrationsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
-	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload:
+	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload, sqlparser.LastSeenGTID:
 		return &engine.ShowExec{
 			Command:    show.Command,
 			ShowFilter: show.Filter,

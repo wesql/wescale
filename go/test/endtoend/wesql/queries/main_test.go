@@ -62,7 +62,7 @@ func runAllTests(m *testing.M) int {
 		"--planner-version=gen4",
 		"--warn_sharded_only=true",
 	}
-	if err := clusterInstance.StartVtgate(); err != nil {
+	if err := clusterInstance.StartTwoVtgate(); err != nil {
 		log.Fatal(err.Error())
 		return 1
 	}
@@ -127,6 +127,27 @@ func execWithConn(t *testing.T, db string, f func(conn *mysql.Conn)) {
 	vtParams := mysql.ConnParams{
 		Host:   "localhost",
 		Port:   clusterInstance.VtgateMySQLPort,
+		DbName: db,
+	}
+	conn, err := mysql.Connect(ctx, &vtParams)
+	require.Nil(t, err)
+	defer conn.Close()
+
+	f(conn)
+}
+
+func execWithConnByVtgate(t *testing.T, db string, vtgateID int, f func(conn *mysql.Conn)) {
+	defer cluster.PanicHandler(t)
+	ctx := context.Background()
+	var port int
+	if vtgateID == 1 {
+		port = clusterInstance.VtgateMySQLPort
+	} else {
+		port = clusterInstance.Vtgate2MysqlPort
+	}
+	vtParams := mysql.ConnParams{
+		Host:   "localhost",
+		Port:   port,
 		DbName: db,
 	}
 	conn, err := mysql.Connect(ctx, &vtParams)

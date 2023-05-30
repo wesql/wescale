@@ -1877,6 +1877,8 @@ func (ty ShowCommandType) ToString() string {
 		return KeyspaceStr
 	case Workload:
 		return WorkloadStr
+	case LastSeenGTID:
+		return LastSeenGTIDStr
 	default:
 		return "" +
 			"Unknown ShowCommandType"

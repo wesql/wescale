@@ -386,53 +386,54 @@ func (set Mysql56GTIDSet) Intersect(other GTIDSet) GTIDSet {
 	for sid, intervals := range set {
 		otherIntervals, ok := mydbOther[sid]
 		if !ok {
-			return intersectSet
+			continue
 		}
 		otherIntervalsIndex := 0
 		intervalsIndex := 0
 		var intersectIntervals []interval
 		var tmpIntersect interval
-		for intervalsIndex < len(intervals) {
+		for intervalsIndex < len(intervals) && otherIntervalsIndex < len(otherIntervals) {
 			tmpIntersect = intervals[intervalsIndex]
-			exitsIntersect := false
-			for otherIntervalsIndex < len(otherIntervals) {
-				otherInterval := otherIntervals[otherIntervalsIndex]
-				if tmpIntersect.start > otherInterval.end {
-					otherIntervalsIndex++
-					continue
-				}
-				if tmpIntersect.end < otherInterval.start {
-					break
-				}
-				max := func(a, b int64) int64 {
-					if a > b {
-						return a
-					}
-					return b
-				}
-				min := func(a, b int64) int64 {
-					if a < b {
-						return a
-					}
-					return b
-				}
-				tmpIntersect.start = max(tmpIntersect.start, otherInterval.start)
-				tmpIntersect.end = min(tmpIntersect.end, otherInterval.end)
-				exitsIntersect = true
+			otherInterval := otherIntervals[otherIntervalsIndex]
+			// Advance the index if the current interval and the other interval do not intersect.
+			if tmpIntersect.start > otherInterval.end {
 				otherIntervalsIndex++
+				continue
 			}
-			if exitsIntersect {
-				intersectIntervals = append(intersectIntervals, tmpIntersect)
+			if tmpIntersect.end < otherInterval.start {
+				intervalsIndex++
+				continue
 			}
-			if otherIntervalsIndex >= len(otherIntervals) {
-				// not exits intersection
-				break
+
+			// Helper functions to find maximum and minimum between two int64 values.
+			max := func(a, b int64) int64 {
+				if a > b {
+					return a
+				}
+				return b
 			}
-			if intervals[intervalsIndex].start > otherIntervals[otherIntervalsIndex].end ||
-				intervals[intervalsIndex].end < otherIntervals[otherIntervalsIndex].start {
+			min := func(a, b int64) int64 {
+				if a < b {
+					return a
+				}
+				return b
+			}
+
+			// Find the intersection of the current interval and the other interval.
+			tmpIntersect.start = max(tmpIntersect.start, otherInterval.start)
+			tmpIntersect.end = min(tmpIntersect.end, otherInterval.end)
+
+			// Add the intersection to the new set.
+			intersectIntervals = append(intersectIntervals, tmpIntersect)
+
+			// Move to the next interval in the set that has the smaller end value.
+			if intervals[intervalsIndex].end > otherIntervals[otherIntervalsIndex].end {
+				otherIntervalsIndex++
+			} else {
 				intervalsIndex++
 			}
 		}
+		// Add the intersecting intervals for this Server ID to the intersection set.
 		if len(intersectIntervals) > 0 {
 			intersectSet[sid] = intersectIntervals
 		}
@@ -493,6 +494,58 @@ func (set Mysql56GTIDSet) Merge(other GTIDSet) GTIDSet {
 			newIntervals = append(newIntervals, tmpInterval)
 		}
 		newSet[sid] = newIntervals
+	}
+	return newSet
+}
+
+// TrimGTIDSet is a function that trims a set of GTIDs based on another set of GTIDs.
+// It returns a new GTID set which does not exceed current GTID set.
+func (set Mysql56GTIDSet) TrimGTIDSet(other GTIDSet) GTIDSet {
+	if set == nil || other == nil {
+		return nil
+	}
+	mydbOther, ok := other.(Mysql56GTIDSet)
+
+	// Try to cast the "other" GTIDSet to Mysql56GTIDSet.
+	// If the casting is unsuccessful, return nil
+	if !ok {
+		return nil
+	}
+	// Make a copy and add the new GTID in the proper place.
+	// This function is not supposed to modify the original set.
+	newSet := make(Mysql56GTIDSet)
+
+	for otherSID, otherIntervals := range mydbOther {
+		intervlas, ok := set[otherSID]
+		if !ok {
+			continue
+		}
+		min := func(a, b int64) int64 {
+			if a > b {
+				return b
+			}
+			return a
+		}
+		lastInterval := intervlas[len(intervlas)-1]
+		var newIntervals []interval
+
+		// Loop over each interval in the "other" set for this Server ID
+		for _, otherInterval := range otherIntervals {
+
+			// If the end of the "other" interval is less than the end of the last original interval,
+			// append the "other" interval to the new set
+			// If the start of the "other" interval is less or equal than the end of the last original interval,
+			// adjust the end of the "other" interval to be the minimum of the two ends and append it to the new set
+			if otherInterval.end < lastInterval.end {
+				newIntervals = append(newIntervals, otherInterval)
+			} else if otherInterval.start <= lastInterval.end {
+				otherInterval.end = min(otherInterval.end, lastInterval.end)
+				newIntervals = append(newIntervals, otherInterval)
+			} else {
+				break
+			}
+		}
+		newSet[otherSID] = newIntervals
 	}
 	return newSet
 }
