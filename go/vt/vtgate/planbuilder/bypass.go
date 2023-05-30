@@ -57,11 +57,19 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		}
 	}
 
+	isDML := sqlparser.IsDMLStatement(stmt)
+	fieldQuery := ""
+	if !isDML {
+		buffer := sqlparser.NewTrackedBuffer(sqlparser.FormatImpossibleQuery)
+		node := buffer.WriteNode(stmt)
+		fieldQuery = node.ParsedQuery().Query
+	}
 	send := &engine.Send{
 		Keyspace:             keyspace,
 		TargetDestination:    vschema.Destination(),
 		Query:                sqlparser.String(stmt),
-		IsDML:                sqlparser.IsDMLStatement(stmt),
+		FieldQuery:           fieldQuery,
+		IsDML:                isDML,
 		SingleShardOnly:      false,
 		MultishardAutocommit: sqlparser.MultiShardAutocommitDirective(stmt),
 	}
