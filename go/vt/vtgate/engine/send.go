@@ -53,9 +53,6 @@ type Send struct {
 	// SingleShardOnly specifies that the query must be send to only single shard
 	SingleShardOnly bool
 
-	// ShardNameNeeded specified that the shard name is added to the bind variables
-	ShardNameNeeded bool
-
 	// MultishardAutocommit specifies that a multishard transaction query can autocommit
 	MultishardAutocommit bool
 
@@ -116,12 +113,8 @@ func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[str
 	}
 
 	queries := make([]*querypb.BoundQuery, len(rss))
-	for i, rs := range rss {
+	for i := range rss {
 		bv := bindVars
-		if s.ShardNameNeeded {
-			bv = copyBindVars(bindVars)
-			bv[ShardName] = sqltypes.StringBindVariable(rs.Target.Shard)
-		}
 		queries[i] = &querypb.BoundQuery{
 			Sql:           s.Query,
 			BindVariables: bv,
@@ -175,12 +168,8 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 	}
 
 	multiBindVars := make([]map[string]*querypb.BindVariable, len(rss))
-	for i, rs := range rss {
+	for i := range rss {
 		bv := bindVars
-		if s.ShardNameNeeded {
-			bv = copyBindVars(bindVars)
-			bv[ShardName] = sqltypes.StringBindVariable(rs.Target.Shard)
-		}
 		multiBindVars[i] = bv
 	}
 	if s.IsDML {
@@ -219,9 +208,6 @@ func (s *Send) description() PrimitiveDescription {
 	}
 	if s.SingleShardOnly {
 		other["SingleShardOnly"] = true
-	}
-	if s.ShardNameNeeded {
-		other["ShardNameNeeded"] = true
 	}
 	if s.MultishardAutocommit {
 		other["MultishardAutocommit"] = true

@@ -121,8 +121,6 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 		return buildSendAnywherePlan(show, vschema)
 	case sqlparser.VitessMigrations:
 		return buildShowVMigrationsPlan(show, vschema)
-	case sqlparser.VGtidExecGlobal:
-		return buildShowVGtidPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
 	case sqlparser.Warnings:
@@ -153,8 +151,6 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 		return buildDBPlan(show, vschema)
 	case sqlparser.VitessMigrations:
 		return buildShowVMigrationsPlan(show, vschema)
-	case sqlparser.VGtidExecGlobal:
-		return buildShowVGtidPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
 	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables:
@@ -589,25 +585,6 @@ func buildCreatePlan(show *sqlparser.ShowCreate, vschema plancontext.VSchema) (e
 
 }
 
-func buildShowVGtidPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
-	send, err := buildShowGtidPlan(show, vschema)
-	if err != nil {
-		return nil, err
-	}
-	return &engine.OrderedAggregate{
-		PreProcess: true,
-		Aggregates: []*engine.AggregateParams{
-			{
-				Opcode: engine.AggregateGtid,
-				Col:    1,
-				Alias:  "global vgtid_executed",
-			},
-		},
-		TruncateColumnCount: 2,
-		Input:               send,
-	}, nil
-}
-
 func buildShowGtidPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
 	dbName := ""
 	if !show.DbName.IsEmpty() {
@@ -624,8 +601,7 @@ func buildShowGtidPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (
 	return &engine.Send{
 		Keyspace:          ks,
 		TargetDestination: dest,
-		Query:             fmt.Sprintf(`select '%s' as db_name, @@global.gtid_executed as gtid_executed, :%s as shard`, ks.Name, engine.ShardName),
-		ShardNameNeeded:   true,
+		Query:             fmt.Sprintf(`select '%s' as db_name, @@global.gtid_executed as gtid_executed`, ks.Name),
 	}, nil
 }
 
