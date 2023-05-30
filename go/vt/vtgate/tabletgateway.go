@@ -59,6 +59,8 @@ var (
 	initialTabletTimeout = 30 * time.Second
 	// retryCount is the number of times a query will be retried on error
 	retryCount = 2
+	//compressThreshold: If the length of lastSeenGtid's intervals is greater than this value, CompressGtidSets will be executed.
+	compressThreshold = 50
 )
 
 func init() {
@@ -510,15 +512,21 @@ func (gw *TabletGateway) AddGtid(gtid string) {
 	if err != nil {
 		log.Errorf("Error adding gtid: %v", err)
 	}
+
+	maxIntervalsLen := gw.lastSeenGtid.GetMaxIntervals()
+	if maxIntervalsLen > compressThreshold {
+		log.Infof("call CompressGtidSets")
+		gw.CompressGtidSets()
+	}
 }
-func (gw *TabletGateway) CompressGtid() {
+
+func (gw *TabletGateway) CompressGtidSets() {
 	var gtidSets []*mysql.GTIDSet
 	tabletStats := gw.hc.GetAllHealthyTabletStats()
 	for _, tableHealth := range tabletStats {
 		gtidSets = append(gtidSets, &tableHealth.Position.GTIDSet)
 	}
 	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
-	log.Infof("lastSeenGtid: %v", gw.lastSeenGtid)
 }
 
 func (gw *TabletGateway) CompressGtidSets() {

@@ -615,6 +615,18 @@ func TestMysql56GTIDSetIntersectSingleElement(t *testing.T) {
 	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set3.String(), got1.String(), want.String())
 }
 
+func TestMysql56GTIDSetTrimSetsEmpty(t *testing.T) {
+	set1 := Mysql56GTIDSet{}
+	set2 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
+	}
+	got := set1.TrimGTIDSet(set2)
+	want := Mysql56GTIDSet{}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
 func TestMysql56GTIDSetIntersectMultiSid(t *testing.T) {
 	set1 := Mysql56GTIDSet{
 		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
@@ -645,18 +657,6 @@ func TestMysql56GTIDSetIntersectMultiSid2(t *testing.T) {
 	t.Logf("want: %s", want.String())
 	t.Logf("got: %s", got.String())
 	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
-}
-
-func TestMysql56GTIDSetTrimSetsEmpty(t *testing.T) {
-	set1 := Mysql56GTIDSet{}
-	set2 := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
-	}
-	got := set1.TrimGTIDSet(set2)
-	want := Mysql56GTIDSet{}
-	t.Logf("want: %s", want.String())
-	t.Logf("got: %s", got.String())
-	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
 }
 
 func TestMysql56GTIDSetTrimSetsNoOverlap(t *testing.T) {
@@ -705,38 +705,6 @@ func TestMysql56GTIDSetTrimSetsCompleteOverlap(t *testing.T) {
 	t.Logf("want: %s", want.String())
 	t.Logf("got: %s", got.String())
 	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
-}
-
-func TestMysql56GTIDSetIntersect5(t *testing.T) {
-	set1 := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
-	}
-	set2 := Mysql56GTIDSet{
-		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
-		SID{7, 8, 9}: []interval{{9, 21}},
-	}
-	got := set1.Intersect(set2)
-	want := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{9, 10}, {20, 21}},
-	}
-	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
-}
-
-func TestMysql56GTIDSetIntersect6(t *testing.T) {
-	set1 := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{9, 21}},
-		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
-	}
-	set2 := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
-	}
-	got := set1.Intersect(set2)
-	want := Mysql56GTIDSet{
-		SID{7, 8, 9}: []interval{{9, 10}, {20, 21}},
-	}
-	t.Logf("want: %s", want.String())
-	t.Logf("got: %s", got.String())
-	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
 }
 
 func TestMysql56GTIDSetUnion(t *testing.T) {

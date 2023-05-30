@@ -280,7 +280,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if qr.SessionStateChanges != "" {
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
 				stc.gateway.AddGtid(qr.SessionStateChanges)
-				stc.gateway.CompressGtid()
 			}
 			return newInfo, nil
 		},
