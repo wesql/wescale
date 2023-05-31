@@ -865,7 +865,7 @@ func (e *Executor) showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result,
 		))
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Alias", "Type", "QueryCount", "Qps", "AvgLatency", "QueryError"),
+		Fields: buildVarCharFields("Tablet Alias", "Type", "TotalQueries(60s)", "Qps", "AvgLatency(ms)", "QueryError"),
 		Rows:   rows,
 	}, nil
 }
