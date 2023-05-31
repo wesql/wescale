@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -666,6 +671,7 @@ var keywords = []keyword{
 	{"vitess_replication_status", VITESS_REPLICATION_STATUS},
 	{"vitess_shards", VITESS_SHARDS},
 	{"vitess_tablets", VITESS_TABLETS},
+	{"workload", WORKLOAD},
 	{"vitess_target", VITESS_TARGET},
 	{"vitess_throttled_apps", VITESS_THROTTLED_APPS},
 	{"vitess_throttler", VITESS_THROTTLER},

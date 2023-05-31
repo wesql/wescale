@@ -851,6 +851,25 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}, nil
 }
 
+func (e *Executor) showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+	rows := [][]sqltypes.Value{}
+	status := e.scatterConn.GetGatewayCacheStatus()
+	for _, s := range status {
+		rows = append(rows, buildVarCharRow(
+			s.Name,
+			s.TabletType.String(),
+			fmt.Sprintf("%v", s.QueryCount),
+			fmt.Sprintf("%v", s.QPS),
+			fmt.Sprintf("%v", s.AvgLatency),
+			fmt.Sprintf("%v", s.QueryError),
+		))
+	}
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("Tablet Alias", "Type", "TotalQueries(60s)", "Qps", "AvgLatency(ms)", "QueryError"),
+		Rows:   rows,
+	}, nil
+}
+
 func (e *Executor) showVitessReplicationStatus(ctx context.Context, filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, healthCheckTimeout)
 	defer cancel()
