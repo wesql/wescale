@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestPullImage(t *testing.T) {
@@ -117,7 +118,11 @@ func TestContainerProcess_Start(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	t.Log("mysqld container has started...")
+	time.Sleep(1 * time.Second)
+	status := con.CheckState()
+	if status == "running" {
+		t.Log("mysqld container has started...")
+	}
 	defer con.TeardownAndClearUp()
 
 }

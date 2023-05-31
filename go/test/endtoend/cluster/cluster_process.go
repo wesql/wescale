@@ -23,6 +23,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -509,14 +510,14 @@ func (cluster *LocalProcessCluster) StartUnshardedKeyspaceWithThreeNodeWesql(key
 
 	// assembly cluster info
 	var clusterInfo string
-	var clusterIp []string
+	var clusterIP []string
 	for i := 0; i < totalTabletsRequired; i++ {
-		memIp, err := cluster.ContainerNetwork.GetReservedIpAddr()
+		memIP, err := cluster.ContainerNetwork.GetReservedIPAddr()
 		if err != nil {
 			return err
 		}
-		clusterInfo += fmt.Sprintf("%s:%s;", memIp, DefaultConsensusPot)
-		clusterIp = append(clusterIp, memIp)
+		clusterInfo += fmt.Sprintf("%s:%s;", memIP, DefaultConsensusPot)
+		clusterIP = append(clusterIP, memIP)
 	}
 
 	for i := 0; i < totalTabletsRequired; i++ {
@@ -566,15 +567,20 @@ func (cluster *LocalProcessCluster) StartUnshardedKeyspaceWithThreeNodeWesql(key
 		shard.Vttablets = append(shard.Vttablets, tablet)
 
 		containerName := fmt.Sprintf("wesql-server%d", i)
-		clusterInfoWithId := clusterInfo[:len(clusterInfo)-1] + "@" + fmt.Sprintf("%d", i+1)
+		clusterInfoWithID := clusterInfo[:len(clusterInfo)-1] + "@" + fmt.Sprintf("%d", i+1)
 		envs := make(map[string]string)
-		envs["CLUSTER_INFO"] = clusterInfoWithId
+		envs["CLUSTER_INFO"] = clusterInfoWithID
 
-		tablet.WesqlProcess = NewContainerProcess(containerName, cluster.ContainerNetwork.Name, clusterIp[i],
+		tablet.WesqlProcess = NewContainerProcess(containerName, cluster.ContainerNetwork.Name, clusterIP[i],
 			tablet.MySQLPort, tablet.VttabletProcess.Directory, envs)
 
 		// start wesql
 		if err := tablet.WesqlProcess.Start(); err != nil {
+			log.Error(err)
+			return err
+		}
+		// wait wesql to run
+		if err := tablet.WesqlProcess.WaitForListen(); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -588,17 +594,12 @@ func (cluster *LocalProcessCluster) StartUnshardedKeyspaceWithThreeNodeWesql(key
 			log.Errorf("error starting vttablet for tablet uid %d, grpc port %d: %v", tablet.TabletUID, tablet.GrpcPort, err)
 			return err
 		}
+
+		// wait for vttablet start
+		if err := tablet.VttabletProcess.WaitForTabletListen(); err != nil {
+			return err
+		}
 	}
-
-	// todo wait for all vttablet start
-
-	// Make first tablet as primary
-	//if err := cluster.VtctlclientProcess.InitializeShard(keyspace.Name, "0", cluster.Cell, shard.Vttablets[0].TabletUID); err != nil {
-	//	log.Errorf("error running InitializeShard on keyspace %v, shard %v: %v", keyspace.Name, "0", err)
-	//	return err
-	//}
-	// todo
-	// set correct durability policy for the keyspace
 
 	tmpProcess := exec.Command(cluster.VtctldClientProcess.Binary,
 		"--server", fmt.Sprintf("%s:%d", cluster.Hostname, cluster.VtctldProcess.GrpcPort),
@@ -653,10 +654,50 @@ func (cluster *LocalProcessCluster) StartUnshardedKeyspaceWithThreeNodeWesql(key
 		return err
 	}
 
-	// todo wait for healthy shard to be elected
-	// vtconsensus ScanAndRepair seem not to work properly
+	// wait for healthy primary in shard to be elected
+	if err := cluster.WaitForHealthyShardPrimayTimeOut(keyspace.Name, "0", 40*time.Second); err != nil {
+		log.Error(err)
+		return err
+	}
 
 	return nil
+}
+
+func (cluster *LocalProcessCluster) WaitForHealthyShardPrimayTimeOut(keyspace string, shard string, timeout time.Duration) error {
+	waitUntil := time.Now().Add(timeout)
+	for time.Now().Before(waitUntil) {
+		if cluster.CheckForHealthyShard(keyspace, shard) {
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return fmt.Errorf("primary tablet, not serving in %s/%s, beyond duration %v ", keyspace, "0", timeout)
+}
+
+func (cluster *LocalProcessCluster) CheckForHealthyShard(keyspace, shard string) bool {
+	check := exec.Command(
+		cluster.VtctldClientProcess.Binary,
+		"--server", fmt.Sprintf("%s:%d", cluster.Hostname, cluster.VtctldProcess.GrpcPort),
+		"GetShard",
+		fmt.Sprintf("%s/%s", keyspace, shard),
+	)
+
+	var state shardStatus
+	out, err := check.Output()
+	if err != nil {
+		log.Error(err)
+		return false
+	}
+
+	if err := json.Unmarshal(out, &state); err != nil {
+		log.Error(err)
+		return false
+	}
+
+	if state.Shard.PrimaryAlias != nil {
+		return true
+	}
+	return false
 }
 
 // StartUnshardedKeyspaceLegacy starts unshared keyspace with shard name as "0"
@@ -1134,17 +1175,26 @@ func (cluster *LocalProcessCluster) Teardown() {
 	for _, keyspace := range cluster.Keyspaces {
 		for _, shard := range keyspace.Shards {
 			for _, tablet := range shard.Vttablets {
-				if tablet.MysqlctlProcess.TabletUID > 0 {
-					if proc, err := tablet.MysqlctlProcess.StopProcess(); err != nil {
-						log.Errorf("Error in mysqlctl teardown: %v", err)
-					} else {
-						mysqlctlProcessList = append(mysqlctlProcessList, proc)
-						mysqlctlTabletUIDs = append(mysqlctlTabletUIDs, tablet.MysqlctlProcess.TabletUID)
+				switch *dbFlavor {
+				case "mysqlctl":
+					if tablet.MysqlctlProcess.TabletUID > 0 {
+						if proc, err := tablet.MysqlctlProcess.StopProcess(); err != nil {
+							log.Errorf("Error in mysqlctl teardown: %v", err)
+						} else {
+							mysqlctlProcessList = append(mysqlctlProcessList, proc)
+							mysqlctlTabletUIDs = append(mysqlctlTabletUIDs, tablet.MysqlctlProcess.TabletUID)
+						}
 					}
-				}
-				if tablet.MysqlctldProcess.TabletUID > 0 {
-					if err := tablet.MysqlctldProcess.Stop(); err != nil {
-						log.Errorf("Error in mysqlctl teardown: %v", err)
+					if tablet.MysqlctldProcess.TabletUID > 0 {
+						if err := tablet.MysqlctldProcess.Stop(); err != nil {
+							log.Errorf("Error in mysqlctl teardown: %v", err)
+						}
+					}
+				case "wesql":
+					if tablet.WesqlProcess.CheckState() == "running" {
+						if err := tablet.WesqlProcess.TeardownAndClearUp(); err != nil {
+							log.Errorf("Error in wesql container teardown")
+						}
 					}
 				}
 

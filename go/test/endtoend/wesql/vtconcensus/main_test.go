@@ -65,6 +65,7 @@ func runAllTests(m *testing.M) int {
 		return 1
 	}
 
+	// todo
 	primaryTablet := clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet().VttabletProcess
 	if _, err := primaryTablet.QueryTablet("show databases", KeyspaceName, false); err != nil {
 		log.Fatal(err.Error())

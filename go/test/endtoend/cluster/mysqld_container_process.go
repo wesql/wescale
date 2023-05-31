@@ -6,6 +6,7 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package cluster
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
 	"vitess.io/vitess/go/vt/log"
 )
 
@@ -97,7 +97,7 @@ type ContainerNetwork struct {
 
 	// next ip for container process
 	// available ip addr range [gateway+1,  subnet broad cast ip addr]
-	nextIpForProcess string
+	nextIPForProcess string
 }
 
 func pullImage() error {
@@ -173,7 +173,7 @@ func NewContainerNetWork(name string, driver string, gateway string, subnet stri
 		Driver:           driver,
 		Gateway:          gateway,
 		Subnet:           subnet,
-		nextIpForProcess: gateway,
+		nextIPForProcess: gateway,
 	}
 	return cn
 }
@@ -222,21 +222,21 @@ func (cn *ContainerNetwork) ClearUp() {
 	cn.CheckAndRemove()
 }
 
-func (cn *ContainerNetwork) GetReservedIpAddr() (string, error) {
-	ip := net.ParseIP(cn.nextIpForProcess)
+func (cn *ContainerNetwork) GetReservedIPAddr() (string, error) {
+	ip := net.ParseIP(cn.nextIPForProcess)
 	_, ipNet, _ := net.ParseCIDR(cn.Subnet)
 	ip = nextIP(ip)
 	if !ipNet.Contains(ip) {
-		return cn.nextIpForProcess, errors.New("overflowed CIDR while incrementing IP")
+		return cn.nextIPForProcess, errors.New("overflowed CIDR while incrementing IP")
 	}
-	cn.nextIpForProcess = ip.String()
-	return cn.nextIpForProcess, nil
+	cn.nextIPForProcess = ip.String()
+	return cn.nextIPForProcess, nil
 }
 
 func nextIP(ip net.IP) net.IP {
 	i := ip.To4()
 	v := uint(i[0])<<24 + uint(i[1])<<16 + uint(i[2])<<8 + uint(i[3])
-	v += 1
+	v++
 	v3 := byte(v & 0xFF)
 	v2 := byte((v >> 8) & 0xFF)
 	v1 := byte((v >> 16) & 0xFF)
@@ -251,7 +251,7 @@ func (container *ContainerProcess) Start() error {
 		"--name", container.Name,
 		"--network", container.Network,
 		"--ip", container.IPAddr,
-		"-p", fmt.Sprintf("127.0.0.1:%d:%s", container.Port, DefaultPort), // port mapping
+		"-p", fmt.Sprintf("0.0.0.0:%d:%s", container.Port, DefaultPort), // port mapping
 	}
 
 	// add mount mapping arg
@@ -346,8 +346,46 @@ func (container *ContainerProcess) TeardownAndClearUp() error {
 		log.Error(err)
 		return err
 	}
-
 	return nil
+}
+
+func (container *ContainerProcess) WaitForListen() error {
+	return container.WaitForContainerListenForTimeout(5 * time.Second)
+}
+
+// WaitForContainerListenForTimeout waits till tablet listen
+func (container *ContainerProcess) WaitForContainerListenForTimeout(timeout time.Duration) error {
+	time.Sleep(5 * time.Second)
+	waitUntil := time.Now().Add(timeout)
+	for time.Now().Before(waitUntil) {
+		if container.CheckState() == "running" {
+			return nil
+		}
+		select {
+		case err := <-container.exit:
+			return fmt.Errorf("process '%s' exited prematurely (err: %s)", container.Name, err)
+		default:
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
+	return fmt.Errorf("container %s, not listening, beyond duration %v ", container.Name, timeout)
+}
+
+func (container *ContainerProcess) CheckState() string {
+	inspect := exec.Command(
+		DefaultCommand,
+		"inspect",
+		container.Name,
+	)
+	var states []containerStatus
+	out, _ := inspect.Output()
+	if err := json.Unmarshal(out, &states); err != nil {
+		log.Error(err)
+	}
+	if len(states) > 0 {
+		return states[0].State.Status
+	}
+	return ""
 }
 
 func NewContainerProcessCluster(id int, network *ContainerNetwork, containers ...*ContainerProcess) *ContainerProcessCluster {

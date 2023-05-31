@@ -39,6 +39,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/log"
@@ -94,6 +95,12 @@ type VttabletProcess struct {
 	exit chan error
 }
 
+type shardStatus struct {
+	Shard struct {
+		PrimaryAlias interface{} `json:"primary_alias"`
+	} `json:"shard"`
+}
+
 // Setup starts vttablet process with required arguements
 func (vttablet *VttabletProcess) Setup() (err error) {
 
@@ -143,13 +150,13 @@ func (vttablet *VttabletProcess) Setup() (err error) {
 			"--db_port", fmt.Sprintf("%d", vttablet.DBPort),
 			"--db_host", vttablet.DBHostName,
 			fmt.Sprintf("--db_allprivs_user=%s", vttablet.DBRootName),
-			fmt.Sprintf("--db_allprivs_password=\"%s\"", vttablet.DBRootPassword),
+			//fmt.Sprintf("--db_allprivs_password=\"%s\"", vttablet.DBRootPassword),
 			fmt.Sprintf("--db_dba_user=%s", vttablet.DBRootName),
-			fmt.Sprintf("--db_dba_password=\"%s\"", vttablet.DBRootPassword),
+			//fmt.Sprintf("--db_dba_password=\"%s\"", vttablet.DBRootPassword),
 			fmt.Sprintf("--db_app_user=%s", vttablet.DBRootName),
-			fmt.Sprintf("--db_app_password=\"%s\"", vttablet.DBRootPassword),
+			//fmt.Sprintf("--db_app_password=\"%s\"", vttablet.DBRootPassword),
 			fmt.Sprintf("--db_filtered_user=%s", vttablet.DBRootName),
-			fmt.Sprintf("--db_filtered_password=\"%s\"", vttablet.DBRootPassword),
+			//fmt.Sprintf("--db_filtered_password=\"%s\"", vttablet.DBRootPassword),
 			"--grpc_port", fmt.Sprintf("%d", vttablet.GrpcPort),
 			"--service_map", "grpc-queryservice,grpc-tabletmanager,grpc-updatestream",
 			"--pid_file", vttablet.PidFile,

@@ -57,7 +57,7 @@ func (vtcon *VtconsensusProcess) Start() error {
 		"--scan_repair_timeout", fmt.Sprintf("%ds", vtcon.ScanRepairTimeOut),
 		"--log_dir", vtcon.LogDirectory,
 		"--db_username", vtcon.DBUserName,
-		fmt.Sprintf("--db_password=\"%s\"", vtcon.DBPasswd),
+		//fmt.Sprintf("--db_password=\"%s\"", vtcon.DBPasswd),
 	}
 
 	args = append(args, vtcon.ExtraArgs...)
