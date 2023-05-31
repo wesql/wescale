@@ -65,13 +65,12 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		fieldQuery = node.ParsedQuery().Query
 	}
 	send := &engine.Send{
-		Keyspace:             keyspace,
-		TargetDestination:    vschema.Destination(),
-		Query:                sqlparser.String(stmt),
-		FieldQuery:           fieldQuery,
-		IsDML:                isDML,
-		SingleShardOnly:      false,
-		MultishardAutocommit: sqlparser.MultiShardAutocommitDirective(stmt),
+		Keyspace:          keyspace,
+		TargetDestination: vschema.Destination(),
+		Query:             sqlparser.String(stmt),
+		FieldQuery:        fieldQuery,
+		IsDML:             isDML,
+		SingleShardOnly:   false,
 	}
 	return newPlanResult(send), nil
 }

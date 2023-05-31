@@ -56,14 +56,8 @@ type Send struct {
 	// SingleShardOnly specifies that the query must be send to only single shard
 	SingleShardOnly bool
 
-	// MultishardAutocommit specifies that a multishard transaction query can autocommit
-	MultishardAutocommit bool
-
 	noInputs
 }
-
-// ShardName as key for setting shard name in bind variables map
-const ShardName = "__vt_shard"
 
 // NeedsTransaction implements the Primitive interface
 func (s *Send) NeedsTransaction() bool {
@@ -135,7 +129,7 @@ func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[str
 
 func (s *Send) canAutoCommit(vcursor VCursor, rss []*srvtopo.ResolvedShard) bool {
 	if s.IsDML {
-		return (len(rss) == 1 || s.MultishardAutocommit) && vcursor.AutocommitApproval()
+		return len(rss) == 1 && vcursor.AutocommitApproval()
 	}
 	return false
 }
@@ -223,9 +217,6 @@ func (s *Send) description() PrimitiveDescription {
 	}
 	if s.SingleShardOnly {
 		other["SingleShardOnly"] = true
-	}
-	if s.MultishardAutocommit {
-		other["MultishardAutocommit"] = true
 	}
 	return PrimitiveDescription{
 		OperatorType:      "Send",
