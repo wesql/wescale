@@ -23,6 +23,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/key"
@@ -46,6 +47,8 @@ type Send struct {
 
 	// Query specifies the query to be executed.
 	Query string
+
+	FieldQuery string
 
 	// IsDML specifies how to deal with autocommit behaviour
 	IsDML bool
@@ -201,11 +204,23 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 
 // GetFields implements Primitive interface
 func (s *Send) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
-	qr, err := vcursor.ExecutePrimitive(ctx, s, bindVars, false)
+	var rss []*srvtopo.ResolvedShard
+	var err error
+	if s.Keyspace == nil {
+		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
+	} else {
+		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{key.DestinationAnyShard{}})
+	}
 	if err != nil {
 		return nil, err
 	}
-	qr.Rows = nil
+	if len(rss) != 1 {
+		return nil, fmt.Errorf("no shards for keyspace: [%s]", s.GetKeyspaceName())
+	}
+	qr, err := execShard(ctx, s, vcursor, s.FieldQuery, bindVars, rss[0], false /* rollbackOnError */, false /* canAutocommit */)
+	if err != nil {
+		return nil, err
+	}
 	return qr, nil
 }
 
