@@ -8,6 +8,9 @@ make run-mysql-tester
 
 # run the mysql-tester binary with Program Arguments
 make run-mysql-tester args='-port 15306 -path go/test/mysql-tester'
+
+# record the test output to the result file
+make run-mysql-tester args='-port 15306 -path go/test/mysql-tester -record'
 ```
 
 ## Program Arguments

@@ -271,9 +271,10 @@ func planSelectV3(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSch
 }
 
 func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (engine.Primitive, error) {
-	if !isOnlyDual(sel) {
-		return nil, nil
-	}
+	//keep the code in case we want to rollback
+	//if !isOnlyDual(sel) {
+	//	return nil, nil
+	//}
 
 	exprs := make([]evalengine.Expr, len(sel.SelectExprs))
 	cols := make([]string, len(sel.SelectExprs))

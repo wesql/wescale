@@ -44,3 +44,6 @@ create table test2_db1.user(id int, col int);
 insert into test2_db1.user values(1, 1);
 use test2_db1;
 (select sql_calc_found_rows id from user where id = 1 limit 1) union select id from user where id = 1;
+
+# https://github.com/apecloud/wesql-scale/issues/38
+select get_lock('xyz', 10) from test2_db1.user;
