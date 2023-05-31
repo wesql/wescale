@@ -272,9 +272,9 @@ func planSelectV3(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSch
 
 func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (engine.Primitive, error) {
 	//keep the code in case we want to rollback
-	//if !isOnlyDual(sel) {
-	//	return nil, nil
-	//}
+	if !isOnlyDual(sel) {
+		return nil, nil
+	}
 
 	exprs := make([]evalengine.Expr, len(sel.SelectExprs))
 	cols := make([]string, len(sel.SelectExprs))
@@ -347,9 +347,8 @@ func isOnlyDual(sel *sqlparser.Select) bool {
 	if !ok {
 		return false
 	}
-	tableName, ok := table.Expr.(sqlparser.TableName)
-
-	return ok && tableName.Name.String() == "dual" && tableName.Qualifier.IsEmpty()
+	_, ok = table.Expr.(sqlparser.TableName)
+	return ok
 }
 
 // pushFilter identifies the target route for the specified bool expr,
