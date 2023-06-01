@@ -41,3 +41,6 @@ use test2_db1;
 (select sql_calc_found_rows id from user where id = 1 limit 1) union select id from user where id = 1;
 id
 1
+select get_lock('xyz', 10) from test2_db1.user;
+get_lock('xyz', 10)
+1
