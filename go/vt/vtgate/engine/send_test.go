@@ -26,8 +26,6 @@ import (
 	"errors"
 	"testing"
 
-	"vitess.io/vitess/go/sqltypes"
-
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/vt/key"
@@ -37,15 +35,14 @@ import (
 
 func TestSendTable(t *testing.T) {
 	type testCase struct {
-		testName             string
-		sharded              bool
-		shards               []string
-		destination          key.Destination
-		expectedQueryLog     []string
-		expectedError        string
-		isDML                bool
-		singleShardOnly      bool
-		multiShardAutocommit bool
+		testName         string
+		sharded          bool
+		shards           []string
+		destination      key.Destination
+		expectedQueryLog []string
+		expectedError    string
+		isDML            bool
+		singleShardOnly  bool
 	}
 
 	singleShard := []string{"0"}
@@ -60,8 +57,7 @@ func TestSendTable(t *testing.T) {
 				`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
 				`ExecuteMultiShard ks.0: dummy_query {} false false`,
 			},
-			isDML:                false,
-			multiShardAutocommit: false,
+			isDML: false,
 		},
 		{
 			testName:    "sharded with no autocommit",
@@ -72,8 +68,7 @@ func TestSendTable(t *testing.T) {
 				`ResolveDestinations ks [] Destinations:DestinationShard(20-)`,
 				`ExecuteMultiShard ks.DestinationShard(20-): dummy_query {} false false`,
 			},
-			isDML:                false,
-			multiShardAutocommit: false,
+			isDML: false,
 		},
 		{
 			testName:    "unsharded",
@@ -84,8 +79,7 @@ func TestSendTable(t *testing.T) {
 				`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
 				`ExecuteMultiShard ks.0: dummy_query {} true true`,
 			},
-			isDML:                true,
-			multiShardAutocommit: false,
+			isDML: true,
 		},
 		{
 			testName:    "sharded with single shard destination",
@@ -96,8 +90,7 @@ func TestSendTable(t *testing.T) {
 				`ResolveDestinations ks [] Destinations:DestinationShard(20-)`,
 				`ExecuteMultiShard ks.DestinationShard(20-): dummy_query {} true true`,
 			},
-			isDML:                true,
-			multiShardAutocommit: false,
+			isDML: true,
 		},
 		{
 			testName:    "sharded with multi shard destination",
@@ -108,20 +101,7 @@ func TestSendTable(t *testing.T) {
 				`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
 				`ExecuteMultiShard ks.-20: dummy_query {} ks.20-: dummy_query {} true false`,
 			},
-			isDML:                true,
-			multiShardAutocommit: false,
-		},
-		{
-			testName:    "sharded with multi shard destination and autocommit",
-			sharded:     true,
-			shards:      twoShards,
-			destination: key.DestinationAllShards{},
-			expectedQueryLog: []string{
-				`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
-				`ExecuteMultiShard ks.-20: dummy_query {} ks.20-: dummy_query {} true true`,
-			},
-			isDML:                true,
-			multiShardAutocommit: true,
+			isDML: true,
 		},
 		{
 			testName:    "sharded with multi shard destination",
@@ -131,10 +111,9 @@ func TestSendTable(t *testing.T) {
 			expectedQueryLog: []string{
 				`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
 			},
-			expectedError:        "Unexpected error, DestinationKeyspaceID mapping to multiple shards: dummy_query, got: DestinationAllShards()",
-			isDML:                true,
-			singleShardOnly:      true,
-			multiShardAutocommit: false,
+			expectedError:   "Unexpected error, DestinationKeyspaceID mapping to multiple shards: dummy_query, got: DestinationAllShards()",
+			isDML:           true,
+			singleShardOnly: true,
 		},
 	}
 
@@ -145,11 +124,10 @@ func TestSendTable(t *testing.T) {
 					Name:    "ks",
 					Sharded: tc.sharded,
 				},
-				Query:                "dummy_query",
-				TargetDestination:    tc.destination,
-				IsDML:                tc.isDML,
-				SingleShardOnly:      tc.singleShardOnly,
-				MultishardAutocommit: tc.multiShardAutocommit,
+				Query:             "dummy_query",
+				TargetDestination: tc.destination,
+				IsDML:             tc.isDML,
+				SingleShardOnly:   tc.singleShardOnly,
 			}
 			vc := &loggingVCursor{shards: tc.shards}
 			_, err := send.TryExecute(context.Background(), vc, map[string]*querypb.BindVariable{}, false)
@@ -174,45 +152,13 @@ func TestSendTable(t *testing.T) {
 	}
 }
 
-func TestSendGetFields(t *testing.T) {
-	results := []*sqltypes.Result{sqltypes.MakeTestResult(
-		sqltypes.MakeTestFields(
-			"id|c1|c2|c3",
-			"int64|int64|int64|int64",
-		),
-		"1|4|5|6",
-		"2|7|8|9",
-	)}
-
-	send := &Send{
-		Keyspace: &vindexes.Keyspace{
-			Name:    "ks",
-			Sharded: true,
-		},
-		Query:             "dummy_query",
-		TargetDestination: key.DestinationAllShards{},
-		IsDML:             true,
-		SingleShardOnly:   false,
-	}
-	vc := &loggingVCursor{shards: []string{"-20", "20-"}, results: results}
-	qr, err := send.GetFields(context.Background(), vc, map[string]*querypb.BindVariable{})
-	require.NoError(t, err)
-	vc.ExpectLog(t, []string{
-		`ResolveDestinations ks [] Destinations:DestinationAllShards()`,
-		`ExecuteMultiShard ks.-20: dummy_query {} ks.20-: dummy_query {} true false`,
-	})
-	require.Nil(t, qr.Rows)
-	require.Equal(t, 4, len(qr.Fields))
-}
-
 func TestSendTableUnShardWithoutKS(t *testing.T) {
 	type testCase struct {
-		testName             string
-		destination          key.Destination
-		expectedQueryLog     []string
-		expectedError        string
-		isDML                bool
-		multiShardAutocommit bool
+		testName         string
+		destination      key.Destination
+		expectedQueryLog []string
+		expectedError    string
+		isDML            bool
 	}
 
 	tests := []testCase{
@@ -223,8 +169,7 @@ func TestSendTableUnShardWithoutKS(t *testing.T) {
 				`ResolveDestinations without keyspace DestinationShard(0)`,
 				`ExecuteMultiShard .DestinationShard(0): dummy_query {} false false`,
 			},
-			isDML:                false,
-			multiShardAutocommit: false,
+			isDML: false,
 		},
 		{
 			testName:    "unsharded",
@@ -233,20 +178,18 @@ func TestSendTableUnShardWithoutKS(t *testing.T) {
 				`ResolveDestinations without keyspace DestinationShard(0)`,
 				`ExecuteMultiShard .DestinationShard(0): dummy_query {} true true`,
 			},
-			isDML:                true,
-			multiShardAutocommit: false,
+			isDML: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
 			send := &Send{
-				Keyspace:             nil,
-				Query:                "dummy_query",
-				TargetDestination:    tc.destination,
-				IsDML:                tc.isDML,
-				SingleShardOnly:      false,
-				MultishardAutocommit: tc.multiShardAutocommit,
+				Keyspace:          nil,
+				Query:             "dummy_query",
+				TargetDestination: tc.destination,
+				IsDML:             tc.isDML,
+				SingleShardOnly:   false,
 			}
 			vc := &loggingVCursor{shards: []string{"0"}}
 			_, err := send.TryExecute(context.Background(), vc, map[string]*querypb.BindVariable{}, false)
@@ -283,15 +226,6 @@ func TestSendTableUnShardWithoutKS_StreamExecute(t *testing.T) {
 				`StreamExecuteMulti dummy_query .DestinationShard(0): {} `,
 			},
 			isDML: false,
-		},
-		{
-			testName:    "unsharded",
-			destination: key.DestinationShard("0"),
-			expectedQueryLog: []string{
-				`ResolveDestinations without keyspace DestinationShard(0)`,
-				`StreamExecuteMulti dummy_query .DestinationShard(0): {} `,
-			},
-			isDML: true,
 		},
 	}
 

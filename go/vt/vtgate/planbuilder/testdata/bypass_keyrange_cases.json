@@ -35,25 +35,6 @@
     }
   },
   {
-    "comment": "update bypass autocommit",
-    "query": "update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ user set val = 1 where id = 18446744073709551616 and id = 1",
-    "plan": {
-      "QueryType": "UPDATE",
-      "Original": "update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ user set val = 1 where id = 18446744073709551616 and id = 1",
-      "Instructions": {
-        "OperatorType": "Send",
-        "Keyspace": {
-          "Name": "main",
-          "Sharded": false
-        },
-        "TargetDestination": "ExactKeyRange(-)",
-        "IsDML": true,
-        "MultishardAutocommit": true,
-        "Query": "update /*vt+ MULTI_SHARD_AUTOCOMMIT=1 */ `user` set val = 1 where id = 18446744073709551616 and id = 1"
-      }
-    }
-  },
-  {
     "comment": "delete bypass",
     "query": "DELETE FROM USER WHERE ID = 42",
     "plan": {

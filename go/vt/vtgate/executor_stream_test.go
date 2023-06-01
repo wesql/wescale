@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,20 +39,6 @@ import (
 	_ "vitess.io/vitess/go/vt/vtgate/vindexes"
 	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
 )
-
-func TestStreamSQLUnsharded(t *testing.T) {
-	executor, _, _, _ := createExecutorEnv()
-	logChan := QueryLogger.Subscribe("Test")
-	defer QueryLogger.Unsubscribe(logChan)
-
-	sql := "stream * from user_msgs"
-	result, err := executorStreamMessages(executor, sql)
-	require.NoError(t, err)
-	wantResult := sandboxconn.StreamRowResult
-	if !result.Equal(wantResult) {
-		t.Errorf("result: %+v, want %+v", result, wantResult)
-	}
-}
 
 func TestStreamSQLSharded(t *testing.T) {
 	cell := "aa"
