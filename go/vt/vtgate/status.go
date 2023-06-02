@@ -246,19 +246,19 @@ func (tsa *TabletStatusAggregator) GetCacheStatus() *TabletCacheStatus {
 	defer tsa.mu.RUnlock()
 	status.TabletType = tsa.TabletType
 	status.Addr = tsa.Addr
-	status.QueryCount = tsa.QueryCount
 	status.QueryError = tsa.QueryError
-	var totalQuery uint64
+	var totalQueryInMinute uint64
 	for _, c := range tsa.queryCountInMinute {
-		totalQuery += c
+		totalQueryInMinute += c
 	}
 	var totalLatency time.Duration
 	for _, d := range tsa.latencyInMinute {
 		totalLatency += d
 	}
-	status.QPS = float64(totalQuery) / 60
-	if totalQuery > 0 {
-		status.AvgLatency = float64(totalLatency.Nanoseconds()) / float64(totalQuery) / 1000000
+	status.QueryCount = totalQueryInMinute
+	status.QPS = float64(totalQueryInMinute) / 60
+	if totalQueryInMinute > 0 {
+		status.AvgLatency = float64(totalLatency.Nanoseconds()) / float64(totalQueryInMinute) / 1000000
 	}
 	return status
 }
