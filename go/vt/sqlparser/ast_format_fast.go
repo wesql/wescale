@@ -94,7 +94,6 @@ func (node *Union) formatFast(buf *TrackedBuffer) {
 	if node.With != nil {
 		node.With.formatFast(buf)
 	}
-
 	if requiresParen(node.Left) {
 		buf.WriteByte('(')
 		node.Left.formatFast(buf)
