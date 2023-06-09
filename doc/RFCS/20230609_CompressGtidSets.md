@@ -46,11 +46,11 @@ Within tablet_health_check, vtgate sends a heartbeat packet to vttablet. The res
 + Get the intersection of all mysql GTID sets.
     Example:
     ```yaml
-    tablet1 : 1~6,8~10,11~15
-    tablet2 : 2~7,9~12,13~16
-    tablet3 : 2~5,7~13,14~17
+    tablet1 : 1~6,8~10,13~15
+    tablet2 : 2~7,9~12,14~16
+    tablet3 : 2~5,7~12,14~17
      
-    inttersectionSet: 2~5,9~10,14~15
+    inttersectionSet: 2~5,9~11,14~15
     ```
 + Merge intersectionSet and lastSeenGtid.
     The lastSeenGtid refers to the gtid sets maintained by vtagte. In this section, we utilize the mysql56GtidSet.Union function for implementation.
