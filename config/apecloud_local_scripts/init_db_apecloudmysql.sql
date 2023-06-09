@@ -30,12 +30,6 @@ CREATE USER 'vt_dba'@'localhost';
 GRANT ALL ON *.* TO 'vt_dba'@'localhost';
 GRANT GRANT OPTION ON *.* TO 'vt_dba'@'localhost';
 
-
-CREATE USER 'root'@'gateway';
-GRANT ALL ON *.* TO 'root'@'gateway';
-GRANT GRANT OPTION ON *.* TO 'root'@'gateway';
-
-
 CREATE USER 'vt_dba'@'gateway';
 GRANT ALL ON *.* TO 'vt_dba'@'gateway';
 GRANT GRANT OPTION ON *.* TO 'vt_dba'@'gateway';

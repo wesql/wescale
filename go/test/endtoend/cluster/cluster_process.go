@@ -608,9 +608,6 @@ func (cluster *LocalProcessCluster) StartUnshardedKeyspaceWithThreeNodeWesql(key
 		keyspace.Name,
 	)
 
-	tmp := strings.Join(tmpProcess.Args, " ")
-	fmt.Println(tmp)
-
 	if err := tmpProcess.Start(); err != nil {
 		log.Error(err)
 		return err

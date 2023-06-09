@@ -277,11 +277,7 @@ func (container *ContainerProcess) Start() error {
 	}
 
 	args = append(args, image)
-
-	tmp := strings.Join(args, " ")
-
-	fmt.Println(tmp)
-
+	
 	container.proc = exec.Command(
 		DefaultCommand,
 		args...,

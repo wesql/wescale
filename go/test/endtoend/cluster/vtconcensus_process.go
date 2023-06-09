@@ -62,9 +62,6 @@ func (vtcon *VtconsensusProcess) Start() error {
 
 	args = append(args, vtcon.ExtraArgs...)
 
-	tmp := strings.Join(args, " ")
-	fmt.Println(tmp)
-
 	vtcon.proc = exec.Command(vtcon.Binary,
 		args...,
 	)

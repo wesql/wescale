@@ -181,9 +181,6 @@ func (vttablet *VttabletProcess) Setup() (err error) {
 
 	vttablet.proc.Args = append(vttablet.proc.Args, vttablet.ExtraArgs...)
 
-	tmp := strings.Join(vttablet.proc.Args, " ")
-	fmt.Println(tmp)
-
 	fname := path.Join(vttablet.LogDir, vttablet.TabletPath+"-vttablet-stderr.txt")
 	errFile, _ := os.Create(fname)
 	vttablet.proc.Stderr = errFile
