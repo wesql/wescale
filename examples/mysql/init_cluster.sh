@@ -34,5 +34,5 @@ wait_for_healthy_shard _vt 0 || exit 1
 CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
 
 # start vtadmin
-../common/scripts/vtadmin-up.sh
+#../common/scripts/vtadmin-up.sh
 

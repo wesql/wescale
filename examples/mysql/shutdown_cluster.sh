@@ -8,7 +8,7 @@
 
 source ../common/env.sh
 
-../common/scripts/vtadmin-down.sh
+#../common/scripts/vtadmin-down.sh
 
 ../common/scripts/vtorc-down.sh
 

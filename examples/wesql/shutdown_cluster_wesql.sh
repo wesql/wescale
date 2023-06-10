@@ -21,7 +21,7 @@
 
 source ../common/env-apecloud.sh
 
-../common/scripts-apecloud/vtadmin-down.sh
+#../common/scripts-apecloud/vtadmin-down.sh
 
 ../common/scripts-apecloud/vtgate-down.sh
 

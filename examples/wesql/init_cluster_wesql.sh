@@ -54,7 +54,7 @@ wait_for_healthy_shard _vt 0 || exit 1
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 
 # start vtadmin
-../common/scripts-apecloud/vtadmin-up.sh
+#../common/scripts-apecloud/vtadmin-up.sh
 
 echo "wesql-scale client connection: mysql -uroot
 "
