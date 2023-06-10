@@ -33,7 +33,19 @@ wait_for_healthy_shard _vt 0 || exit 1
 # start vtgate
 CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
 
-echo "wesql-scale client connection:
+echo "
+
+------------------------------------------------------------------------
+
+"
+
+echo "MySQL endpoint:
+mysql -h127.0.0.1 -P17100
+mysql -h127.0.0.1 -P17101
+mysql -h127.0.0.1 -P17102
+"
+
+echo "VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 "
 

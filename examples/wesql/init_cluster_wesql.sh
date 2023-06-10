@@ -56,7 +56,13 @@ CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 # start vtadmin
 #../common/scripts-apecloud/vtadmin-up.sh
 
-echo "wesql-scale client connection:
+echo "
+
+------------------------------------------------------------------------
+
+"
+
+echo "VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 "
 
