@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
 # @link https://gist.github.com/mattscilipoti/8424018
 #
 # Called by "git push" after it has checked the remote status,
@@ -21,7 +24,7 @@
 
 
 
-protected_branch='vitess-release-16.0-dev'
+protected_branch='chore/test_pre_push'
 
 policy="\n\n[Policy] Never push code directly to the "$protected_branch" branch! (Prevented with pre-push hook.)\n\n"
 
