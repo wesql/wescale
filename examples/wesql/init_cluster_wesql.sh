@@ -56,7 +56,8 @@ CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 # start vtadmin
 #../common/scripts-apecloud/vtadmin-up.sh
 
-echo "wesql-scale client connection: mysql -uroot
+echo "wesql-scale client connection:
+mysql -h127.0.0.1 -P15306
 "
 
 echo "Staring add new follower node and tablet for wesql-scale cluster ... "
