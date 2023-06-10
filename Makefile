@@ -181,9 +181,6 @@ vtctldclient: go/vt/proto/vtctlservice/vtctlservice.pb.go
 parser:
 	make -C go/vt/sqlparser
 
-demo:
-	go install ./examples/demo/demo.go
-
 codegen: asthelpergen sizegen parser
 
 visitor: asthelpergen
