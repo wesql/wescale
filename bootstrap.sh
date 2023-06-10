@@ -35,9 +35,9 @@ source ./dev.env
 # 0. Initialization and helper methods.
 # 1. Installation of dependencies.
 
-BUILD_JAVA=${BUILD_JAVA:-1}
-BUILD_CONSUL=${BUILD_CONSUL:-1}
-BUILD_CHROME=${BUILD_CHROME:-1}
+BUILD_JAVA=${BUILD_JAVA:-0}
+BUILD_CONSUL=${BUILD_CONSUL:-0}
+BUILD_CHROME=${BUILD_CHROME:-0}
 BUILD_K3S=${BUILD_K3S:-1}
 BUILD_ETCD=${BUILD_ETCD:-1}
 
