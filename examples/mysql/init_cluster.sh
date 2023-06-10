@@ -49,6 +49,11 @@ echo "VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 "
 
+# if env var debug=on, kill the vtgate process and vttablet processes
+if [ "$debug" == "on" ]; then
+  killall vtgate vttablet
+  echo "vtgate and vttablet processes killed"
+fi
+
 # start vtadmin
 #../common/scripts/vtadmin-up.sh
-
