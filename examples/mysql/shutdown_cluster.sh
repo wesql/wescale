@@ -8,13 +8,13 @@
 
 source ../common/env.sh
 
-../common/scripts/vtadmin-down.sh
+#../common/scripts/vtadmin-down.sh
 
 ../common/scripts/vtorc-down.sh
 
 ../common/scripts/vtgate-down.sh
 
-for tablet in 100 200 300 400; do
+for tablet in 100; do
 	if vtctlclient --action_timeout 1s --server localhost:15999 GetTablet zone1-$tablet >/dev/null 2>&1; then
 		# The zero tablet is up. Try to shutdown 0-2 tablet + mysqlctl
 		for i in 0 1 2; do
@@ -29,15 +29,7 @@ done
 
 ../common/scripts/vtctld-down.sh
 
-if [ "${TOPO}" = "zk2" ]; then
-	CELL=zone1 ../common/scripts/zk-down.sh
-elif [ "${TOPO}" = "k8s" ]; then
-	CELL=zone1 ../common/scripts/k3s-down.sh
-elif [ "${TOPO}" = "consul" ]; then
-	CELL=zone1 ../common/scripts/consul-down.sh
-else
-	CELL=zone1 ../common/scripts/etcd-down.sh
-fi
+CELL=zone1 ../common/scripts/etcd-down.sh
 
 # pedantic check: grep for any remaining processes
 

@@ -9,15 +9,7 @@
 source ../common/env.sh
 
 # start topo server
-if [ "${TOPO}" = "zk2" ]; then
-	CELL=zone1 ../common/scripts/zk-up.sh
-elif [ "${TOPO}" = "k8s" ]; then
-	CELL=zone1 ../common/scripts/k3s-up.sh
-elif [ "${TOPO}" = "consul" ]; then
-	CELL=zone1 ../common/scripts/consul-up.sh
-else
-	CELL=zone1 ../common/scripts/etcd-up.sh
-fi
+CELL=zone1 ../common/scripts/etcd-up.sh
 
 # start vtctld
 CELL=zone1 ../common/scripts/vtctld-up.sh
@@ -41,6 +33,22 @@ wait_for_healthy_shard _vt 0 || exit 1
 # start vtgate
 CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
 
+echo "
+
+------------------------------------------------------------------------
+
+"
+
+echo "MySQL endpoint:
+mysql -h127.0.0.1 -P17100
+mysql -h127.0.0.1 -P17101
+mysql -h127.0.0.1 -P17102
+"
+
+echo "VTGate endpoint:
+mysql -h127.0.0.1 -P15306
+"
+
 # start vtadmin
-../common/scripts/vtadmin-up.sh
+#../common/scripts/vtadmin-up.sh
 
