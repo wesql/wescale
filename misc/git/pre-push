@@ -20,6 +20,7 @@
 # `git push --delete origin master`
 
 
+
 protected_branch='vitess-release-16.0-dev'
 
 policy="\n\n[Policy] Never push code directly to the "$protected_branch" branch! (Prevented with pre-push hook.)\n\n"
