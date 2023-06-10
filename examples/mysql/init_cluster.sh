@@ -57,4 +57,3 @@ fi
 
 # start vtadmin
 #../common/scripts/vtadmin-up.sh
-
