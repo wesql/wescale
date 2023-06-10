@@ -31,7 +31,7 @@ ERR=false
 FAIL=false
 
 checklicenseignore() {
-  for file in $( git diff --name-only HEAD ); do
+  for file in $( git diff --name-only --diff-filter=AM HEAD ); do
     ignore=true
     if [[ -f .checklicenseignore ]]; then
       # read ignored patterns from .checklicenseignore file

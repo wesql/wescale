@@ -7,7 +7,7 @@ For a more detailed writeup, refer to the [original RFC](https://github.com/vite
 ## Setup
 
 The simplest VTAdmin deployment involves a single Vitess cluster. You can look
-at the [local example](../../../examples/local/scripts/vtadmin-up.sh) for a
+at the [local example](../../../examples/wesql/scripts/vtadmin-up.sh) for a
 minimal invocation of the `vtadmin-api` and `vtadmin-web` binaries.
 
 ### Important `vtadmin-api` flags
