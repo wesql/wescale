@@ -21,9 +21,8 @@
 # `git push origin master`
 # `git push --force origin master`
 # `git push --delete origin master`
-echo 'executing pre-push hook...'
 
-protected_branch='chore/test_pre_push'
+protected_branch='test_pre_push'
 
 policy="\n\n[Policy] Never push code directly to the "$protected_branch" branch! (Prevented with pre-push hook.)\n\n"
 
