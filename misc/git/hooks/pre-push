@@ -24,6 +24,7 @@
 
 
 
+
 protected_branch='chore/test_pre_push'
 
 policy="\n\n[Policy] Never push code directly to the "$protected_branch" branch! (Prevented with pre-push hook.)\n\n"
