@@ -17,9 +17,10 @@ In the context of wesql-scale, there are two levels of Read After Write (RAW), n
 
 ![multivtgate](images/multivtgate.jpg)
 vtgate1:
-![vtgate1](images/vtgate1.png)
+`gtidset=df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:25081:25083:25085:25087`
+
 vtgate2:
-![vtgate2](images/vtgate2.png)
+`gtidset=df74afe2-d9b4-11ed-b2c8-f8b7ac3813b5:25709-25080:25082:25084:25086:25088`
 
 ## Why need Compress GtidSets?
 
@@ -30,6 +31,11 @@ For the relevant issue, please refer to [#37](https://github.com/apecloud/wesql-
 The proposed change aims to compress the Gtid set to prevent SQL commands from becoming excessively lengthy.
 
 # Technical design
+
+## When we need CompressGtidSet?
+
+We made some tradeoffs and finally decided to perform compression after the return of the heartbeat packet. Moreover, there is an optimization that triggers compression when the length of the gtidset exceeds a certain threshold.
+
 
 ## Design Details
 
@@ -63,10 +69,6 @@ Within tablet_health_check, vtgate sends a heartbeat packet to vttablet. The res
         result: 2~5:9~11
         ```
     + Then, calculate the union of lastSeenGtid andthe remaining portion after truncation.
-### When we need CompressGtidSet?
-
-We made some tradeoffs and finally decided to perform compression after the return of the heartbeat packet. Moreover, there is an optimization that triggers compression when the length of the gtidset exceeds a certain threshold.
-
 ### Conclusion
 
 After the return of the heartbeat packet, we compress the gtidset within the vtgate. In a scenario with multiple vtgates, we ensured read-after-write (RAW) consistency and prevented the SQL statement from becoming too lengthy. However, the mechanism is still reliant on the return of the heartbeat packet from all MySQL instances.
