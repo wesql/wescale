@@ -225,6 +225,9 @@ type HealthCheck interface {
 	// GetTabletHealth results the TabletHealth of the tablet that matches the given alias
 	GetTabletHealth(kst KeyspaceShardTabletType, alias *topodata.TabletAlias) (*TabletHealth, error)
 
+	// GetAllHealthyTabletStats return all TabletHealth of the tablet in healthy.
+	GetAllHealthyTabletStats() []*TabletHealth
+
 	// GetTabletHealthByAlias results the TabletHealth of the tablet that matches the given alias
 	GetTabletHealthByAlias(alias *topodata.TabletAlias) (*TabletHealth, error)
 
@@ -675,6 +678,13 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 				result = append(result, th)
 			}
 		}
+	}
+	return result
+}
+func (hc *HealthCheckImpl) GetAllHealthyTabletStats() []*TabletHealth {
+	var result []*TabletHealth
+	for _, value := range hc.healthy {
+		result = append(result, value...)
 	}
 	return result
 }

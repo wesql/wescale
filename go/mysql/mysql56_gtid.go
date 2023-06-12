@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +52,7 @@ func parseMysql56GTID(s string) (GTID, error) {
 	seq, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "invalid MySQL 5.6 GTID Sequence number (%v)", parts[1])
+
 	}
 
 	return Mysql56GTID{Server: sid, Sequence: seq}, nil

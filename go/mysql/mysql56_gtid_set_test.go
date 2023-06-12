@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +23,11 @@ package mysql
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -436,6 +443,268 @@ func TestMysql56GTIDSetAddGTID(t *testing.T) {
 			t.Errorf("AddGTID(%#v) = %#v, want %#v", input, got, want)
 		}
 	}
+}
+
+func generateRandomGTID() SID {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	sid := SID{}
+	for j := 0; j < 16; j++ {
+		sid[j] = byte(rand.Intn(128))
+	}
+
+	return sid
+}
+
+func generateRandomGTIDSet(sid SID) Mysql56GTIDSet {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	set := Mysql56GTIDSet{}
+
+	// 生成随机的 SID 和 interval 数量
+	intervalCount := rand.Intn(5) + 1
+
+	intervals := []interval{}
+	nowStart := 1
+	var nowEnd int
+	for j := 0; j < intervalCount; j++ {
+		gap := rand.Intn(10) + 1
+		length := rand.Intn(10) + 1
+		nowStart += gap
+		nowEnd = nowStart + length
+		intervals = append(intervals, interval{int64(nowStart), int64(nowEnd)})
+		nowStart = nowEnd
+	}
+
+	set[sid] = intervals
+
+	return set
+}
+
+func generateRandomIntervals() []interval {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// 生成随机的 SID 和 interval 数量
+	intervalCount := rand.Intn(5) + 1
+
+	intervals := []interval{}
+	nowStart := 1
+	var nowEnd int
+	for j := 0; j < intervalCount; j++ {
+		gap := rand.Intn(10) + 1
+		length := rand.Intn(10) + 1
+		nowStart += gap
+		nowEnd = nowStart + length
+		intervals = append(intervals, interval{int64(nowStart), int64(nowEnd)})
+		nowStart = nowEnd
+	}
+
+	return intervals
+}
+
+// testing set1.Intersect(set2) == set2.Intersect(set1)
+func TestMysql56GTIDSetAddGTIDExchange(t *testing.T) {
+	iter := 10000
+	for i := 0; i < iter; i++ {
+		sid := generateRandomGTID()
+		set1 := generateRandomGTIDSet(sid)
+		set2 := generateRandomGTIDSet(sid)
+		//fmt.Printf("set1 : %v,set2 : %v\n", set1.String(), set2.String())
+		assert.Equalf(t, set1.Intersect(set2).String(), set2.Intersect(set1).String(), "set1 : %#v, set1.Intersect(set)= %#v ,set2 : %#v, set2.Intersect(%#v)", set1.String(), set1.Intersect(set2).String(), set2, set2.Intersect(set1).String())
+	}
+}
+
+// testing the situation that set1 is contained set2 and
+// the situation that set2 is contained set1
+func TestMysql56GTIDSetIntersectContain(t *testing.T) {
+	sid1 := generateRandomGTID()
+	sid2 := generateRandomGTID()
+	sid3 := generateRandomGTID()
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{25, 31}, {37, 37}},
+		sid2: []interval{{5, 6}, {30, 49}, {72, 72}},
+		sid3: []interval{{23, 45}},
+	}
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{20, 31}, {35, 37}, {41, 46}},
+		sid2: []interval{{3, 6}, {22, 49}, {67, 72}},
+		sid3: []interval{{1, 45}},
+	}
+
+	got := set1.Intersect(set2)
+	got1 := set2.Intersect(set1)
+	want := Mysql56GTIDSet{
+		sid1: []interval{{25, 31}, {37, 37}},
+		sid2: []interval{{5, 6}, {30, 49}, {72, 72}},
+		sid3: []interval{{23, 45}},
+	}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got1.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectPartially(t *testing.T) {
+	sid1 := generateRandomGTID()
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{1, 5}, {10, 15}},
+	}
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{3, 7}},
+	}
+
+	got := set1.Intersect(set2)
+	got1 := set2.Intersect(set1)
+	want := Mysql56GTIDSet{
+		sid1: []interval{{3, 5}},
+	}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got1.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectNoOverlap(t *testing.T) {
+	sid1 := generateRandomGTID()
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{1, 5}},
+	}
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{6, 10}},
+	}
+
+	got := set1.Intersect(set2)
+	got1 := set2.Intersect(set1)
+	want := Mysql56GTIDSet{}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got1.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectBothEmpty(t *testing.T) {
+	set1 := Mysql56GTIDSet{}
+	set2 := Mysql56GTIDSet{}
+
+	got := set1.Intersect(set2)
+	got1 := set2.Intersect(set1)
+	want := Mysql56GTIDSet{}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got1.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectSingleElement(t *testing.T) {
+	sid1 := generateRandomGTID()
+	sid2 := generateRandomGTID()
+	set1 := Mysql56GTIDSet{
+		sid1: []interval{{1, 1}},
+	}
+	set2 := Mysql56GTIDSet{
+		sid1: []interval{{1, 1}},
+	}
+	set3 := Mysql56GTIDSet{
+		sid2: []interval{{2, 2}},
+	}
+
+	got := set1.Intersect(set2)
+	got1 := set2.Intersect(set1)
+	want := Mysql56GTIDSet{
+		sid1: []interval{{1, 1}},
+	}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got1.String(), want.String())
+
+	got = set1.Intersect(set3)
+	got1 = set3.Intersect(set1)
+	want = Mysql56GTIDSet{}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set3.String(), got.String(), want.String())
+	assert.Equalf(t, want.String(), got1.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set3.String(), got1.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectMultiSid(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
+		SID{7, 8, 9}: []interval{{9, 21}},
+	}
+	got := set1.Intersect(set2)
+	want := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 10}, {20, 21}},
+	}
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
+func TestMysql56GTIDSetIntersectMultiSid2(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 21}},
+		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
+	}
+	got := set1.Intersect(set2)
+	want := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 10}, {20, 21}},
+	}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.Intersect(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
+func TestMysql56GTIDSetTrimSetsEmpty(t *testing.T) {
+	set1 := Mysql56GTIDSet{}
+	set2 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{1, 10}, {20, 30}},
+	}
+	got := set1.TrimGTIDSet(set2)
+	want := Mysql56GTIDSet{}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
+func TestMysql56GTIDSetTrimSetsNoOverlap(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{1, 2, 3}: []interval{{1, 10}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{4, 5, 6}: []interval{{20, 30}},
+	}
+	got := set1.TrimGTIDSet(set2)
+	want := Mysql56GTIDSet{}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
+func TestMysql56GTIDSetTrimSetsPartialOverlap(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 21}},
+		SID{4, 5, 6}: []interval{{10, 18}, {28, 32}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{7, 8, 9}:    []interval{{1, 10}, {20, 30}},
+		SID{10, 11, 12}: []interval{{40, 50}},
+	}
+	got := set1.TrimGTIDSet(set2)
+	want := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{1, 10}, {20, 21}},
+	}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
+}
+
+func TestMysql56GTIDSetTrimSetsCompleteOverlap(t *testing.T) {
+	set1 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 21}},
+	}
+	set2 := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 21}},
+	}
+	got := set1.TrimGTIDSet(set2)
+	want := Mysql56GTIDSet{
+		SID{7, 8, 9}: []interval{{9, 21}},
+	}
+	t.Logf("want: %s", want.String())
+	t.Logf("got: %s", got.String())
+	assert.Equalf(t, want.String(), got.String(), "set1: %#v, set1.TrimGTIDSet(%#v) = %#v, want %#v", set1.String(), set2.String(), got.String(), want.String())
 }
 
 func TestMysql56GTIDSetUnion(t *testing.T) {

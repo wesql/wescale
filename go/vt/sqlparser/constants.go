@@ -307,6 +307,7 @@ const (
 	VschemaVindexesStr         = " vschema vindexes"
 	WarningsStr                = " warnings"
 	WorkloadStr                = " workload"
+	LastSeenGTIDStr            = " lastseengtid"
 
 	// DropKeyType strings
 	PrimaryKeyTypeStr = "primary key"
@@ -810,6 +811,7 @@ const (
 	Warnings
 	Keyspace
 	Workload
+	LastSeenGTID
 )
 
 // DropKeyType constants

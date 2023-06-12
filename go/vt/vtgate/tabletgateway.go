@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/discovery"
@@ -53,8 +54,7 @@ import (
 var (
 	_ discovery.HealthCheck = (*discovery.HealthCheckImpl)(nil)
 	// CellsToWatch is the list of cells the healthcheck operates over. If it is empty, only the local cell is watched
-	CellsToWatch string
-
+	CellsToWatch         string
 	bufferImplementation = "keyspace_events"
 	initialTabletTimeout = 30 * time.Second
 	// retryCount is the number of times a query will be retried on error
@@ -125,6 +125,7 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 	gw.setupBuffering(ctx)
 	gw.QueryService = queryservice.Wrap(nil, gw.withRetry)
 	go gw.RunBuildCacheStatusMap()
+	go gw.UpdateCompressGtidSets()
 	return gw
 }
 
@@ -248,7 +249,20 @@ func (gw *TabletGateway) CacheStatus() TabletCacheStatusList {
 	return res
 }
 
-// RunBuildCacheStatusMap builds a map of TabletCacheStatus per second
+// UpdateCompressGtidSets CompressGtidSets when hc.boardcast()
+func (gw *TabletGateway) UpdateCompressGtidSets() {
+	ch := gw.hc.Subscribe()
+	for range ch {
+		result := <-ch
+		// Gateway is closed when result == nil
+		if result == nil {
+			return
+		}
+		gw.CompressGtidSets()
+	}
+}
+
+// BuildCacheStatusMap builds a map of TabletCacheStatus per second
 // load balancer will use this to decide which tablet to use
 func (gw *TabletGateway) RunBuildCacheStatusMap() {
 	ticker := time.NewTicker(time.Second)
@@ -496,6 +510,15 @@ func (gw *TabletGateway) AddGtid(gtid string) {
 	if err != nil {
 		log.Errorf("Error adding gtid: %v", err)
 	}
+}
+
+func (gw *TabletGateway) CompressGtidSets() {
+	var gtidSets []*mysql.GTIDSet
+	tabletStats := gw.hc.GetAllHealthyTabletStats()
+	for _, tableHealth := range tabletStats {
+		gtidSets = append(gtidSets, &tableHealth.Position.GTIDSet)
+	}
+	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
 }
 
 // LastSeenGtidString returns the last seen gtid as a string

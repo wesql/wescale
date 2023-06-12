@@ -67,6 +67,11 @@ type FakeHealthCheck struct {
 	ch chan *TabletHealth
 }
 
+func (fhc *FakeHealthCheck) GetAllHealthyTabletStats() []*TabletHealth {
+	//TODO implement me
+	panic("implement me")
+}
+
 type fhcItem struct {
 	ts *TabletHealth
 }

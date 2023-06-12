@@ -84,7 +84,7 @@ type iExecute interface {
 	showVitessMetadata(ctx context.Context, filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	setVitessMetadata(ctx context.Context, name, value string) error
 	showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
-
+	showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
 	VSchema() *vindexes.VSchema
@@ -1097,6 +1097,8 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 		return vc.executor.showVitessMetadata(ctx, filter)
 	case sqlparser.Workload:
 		return vc.executor.showWorkload(filter)
+	case sqlparser.LastSeenGTID:
+		return vc.executor.showLastSeenGTID(filter)
 	default:
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)
 	}
