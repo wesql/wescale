@@ -20,7 +20,6 @@ VtGate acts like a MySQL for Client Applications. A client application first sen
 
 
 ## From VtGate to VtTablet
-
 ![VTGateToVTTablet](images/VTGateToVTTablet.png)
 
 VTGate implements the MySQL wire protocol, which means it can behave like a MySQL database.
@@ -29,12 +28,11 @@ Due to VTGate being a database proxy, the backend is usually mapped to multiple 
 During execution stage, the Executor takes the `PLAN` and eventually sends gRPC requests to VTTablet to execute the queries.
 
 ## From VtTablet to MySQL
-![](images/VTTabletToMySQL.jpg)
+![VTTabletToMySQL](images/VTTabletToMySQL.png)
 
 Once VtTablet received an gRPC call from VtGate, it does a few checks before passing the query to MySQL. First, it validates the current VtTablet state including the session id, then generates a query plan and applies predefined query rules and does ACL checks. It also checks whether the query hits the row cache and returns the result immediately if so. In addition, VtTablet consolidates duplicate queries from executing simultaneously and shares results between them. 
 Finally, VtTablet will acquire a connection from the connection pool and pass the query down to MySQL layer and wait for the result.
 The connection pool is the most important component of VTTablet.
 
 ## Putting it all together
-
 ![](images/PutAllTogether.png)
