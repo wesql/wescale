@@ -1,7 +1,6 @@
 # 20230414_ReadAfterWrite
 
 - Feature: ReadAfterWrite
-- Status: in-progress
 - Start Date: 2023-04-14
 - Authors: @earayu
 - RFC PR: https://github.com/apecloud/wesql-scale/pull/23
@@ -22,7 +21,7 @@ The ReadAfterWrite feature is being proposed to address the issue of read reques
 This feature would support use cases where read requests need to be performed immediately after write requests, such as in high-traffic applications or when dealing with time-sensitive data.
 
 The Picture below shows why the read request is not able to get the latest data.
-![MOzGxDQEp9](./images/MOzGxDQEp9.jpg)
+![MOzGxDQEp9](images/MOzGxDQEp9.jpg)
 
 # Technical design
 
@@ -97,7 +96,7 @@ All the Steps above will not introduce additional network rounds, so the perform
 The users need to enable GTID to enable the feature.
 
 The Picture below shows why the ReadAfterWrite feature ensures the read request is able to get the latest data.
-![QlSyswIybc](./images/QlSyswIybc.jpg)
+![QlSyswIybc](images/QlSyswIybc.jpg)
 
 ## Road Map
 
@@ -129,7 +128,7 @@ set @@read_after_write_timeout = 0; -- won't timeout wait forever
 
 Monotonic read may be supported in the future. Monotonic read means a user will get more and more updated data. Suppose a user connects to WeSQL-Scale and runs 2 read operations which are identical. If the ReadWriteSplitting feature is enabled, the second read operation may be executed on a MySQL node that has applied lesser GTIDs compared to the first one. As a consequence, the second read returns stale data in comparison to the first one.
 
-# Reference
+# References
 
 - ProxySQL’s Solution: [https://proxysql.com/blog/proxysql-gtid-causal-reads/](https://proxysql.com/blog/proxysql-gtid-causal-reads/)
 - MaxScale’s Solution: [https://mariadb.com/docs/architecture/components/maxscale/routers/readwritesplit/ensure-causal-consistency-maxscale-read-write-split-router/](https://mariadb.com/docs/architecture/components/maxscale/routers/readwritesplit/ensure-causal-consistency-maxscale-read-write-split-router/)
