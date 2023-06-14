@@ -294,7 +294,7 @@ func TestResolveDefaultDestinations(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		ctx := context.Background()
-		rss, _ := resolver.ResolveDefaultDestination(ctx, topodatapb.TabletType_PRIMARY, testCase.destination)
+		rss, _ := resolver.ResolveDefaultDestination(ctx, "", topodatapb.TabletType_PRIMARY, testCase.destination)
 
 		// Check the ResolvedShard are correct.
 		if len(rss) != 1 {
