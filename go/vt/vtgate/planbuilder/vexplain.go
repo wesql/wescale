@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +50,8 @@ func buildExplainPlan(stmt sqlparser.Explain, reservedVars *sqlparser.ReservedVa
 			vschema.PlannerWarning("EXPLAIN FORMAT = VTEXPLAIN is deprecated, please use VEXPLAIN QUERIES instead.")
 			return buildVExplainLoggingPlan(&sqlparser.VExplainStmt{Type: sqlparser.QueriesVExplainType, Statement: explain.Statement, Comments: explain.Comments}, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 		default:
-			return buildOtherReadAndAdmin(sqlparser.String(explain), vschema)
+			return buildPlanForBypass(stmt, reservedVars, vschema)
+			//return buildOtherReadAndAdmin(sqlparser.String(explain), vschema)
 		}
 	}
 	return nil, vterrors.VT13001(fmt.Sprintf("unexpected explain type: %T", stmt))
