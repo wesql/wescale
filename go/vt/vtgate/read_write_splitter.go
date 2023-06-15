@@ -21,7 +21,7 @@ func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreate
 		return suggestedTabletType, nil
 	}
 	// if not in transaction, and the query is read-only, use REPLICA
-	ro, err := IsReadOnly(sql)
+	ro, err := isReadOnly(sql)
 	if err != nil {
 		return suggestedTabletType, err
 	}
@@ -32,7 +32,7 @@ func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreate
 }
 
 // IsReadOnly : whether the query should be routed to a read-only vttablet
-func IsReadOnly(query string) (bool, error) {
+func isReadOnly(query string) (bool, error) {
 	s, _, err := sqlparser.Parse2(query)
 	if err != nil {
 		return false, err

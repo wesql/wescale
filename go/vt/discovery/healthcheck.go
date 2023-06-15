@@ -49,6 +49,10 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/exp/slices"
+
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/netutil"
@@ -669,12 +673,21 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
-	if hc.healthy[KeyFromTarget(target)] != nil {
-		return append(result, hc.healthy[KeyFromTarget(target)]...)
+	targetTypes := make([]topodata.TabletType, 0)
+	if target.TabletType == topodata.TabletType_REPLICA || target.TabletType == topodata.TabletType_RDONLY {
+		if global.ReadWriteSplitEnablesREPLICA {
+			targetTypes = append(targetTypes, topodata.TabletType_REPLICA)
+		}
+		if global.ReadWriteSplitEnablesRDONLY {
+			targetTypes = append(targetTypes, topodata.TabletType_RDONLY)
+		}
+	} else {
+		targetTypes = append(targetTypes, target.TabletType)
 	}
+
 	for _, value := range hc.healthy {
 		for _, th := range value {
-			if th.Target.TabletType == target.TabletType {
+			if slices.Contains(targetTypes, th.Target.TabletType) {
 				result = append(result, th)
 			}
 		}

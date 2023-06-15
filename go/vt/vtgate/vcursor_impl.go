@@ -1015,20 +1015,6 @@ func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetStr
 
 func (vc *vcursorImpl) planPrefixKey(ctx context.Context) string {
 	if vc.destination != nil {
-		switch vc.destination.(type) {
-		case key.DestinationKeyspaceID, key.DestinationKeyspaceIDs:
-			resolved, _, err := vc.ResolveDestinations(ctx, vc.keyspace, nil, []key.Destination{vc.destination})
-			if err == nil && len(resolved) > 0 {
-				shards := make([]string, len(resolved))
-				for i := 0; i < len(shards); i++ {
-					shards[i] = resolved[i].Target.GetShard()
-				}
-				sort.Strings(shards)
-				return fmt.Sprintf("%s%sKsIDsResolved(%s)", vc.keyspace, vindexes.TabletTypeSuffix[vc.tabletType], strings.Join(shards, ","))
-			}
-		default:
-			// use destination string (out of the switch)
-		}
 		return fmt.Sprintf("%s%s%s", vc.keyspace, vindexes.TabletTypeSuffix[vc.tabletType], vc.destination.String())
 	}
 	return fmt.Sprintf("%s%s", vc.keyspace, vindexes.TabletTypeSuffix[vc.tabletType])
@@ -1090,7 +1076,7 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 	case sqlparser.VitessReplicationStatus:
 		return vc.executor.showVitessReplicationStatus(ctx, filter)
 	case sqlparser.VitessShards:
-		return vc.executor.showShards(ctx, filter, vc.tabletType)
+		return vc.executor.showShards(ctx, filter, topodatapb.TabletType_PRIMARY)
 	case sqlparser.VitessTablets:
 		return vc.executor.showTablets(filter)
 	case sqlparser.VitessVariables:
