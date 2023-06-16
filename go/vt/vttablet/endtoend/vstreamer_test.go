@@ -44,9 +44,9 @@ type test struct {
 func getSchemaVersionTableCreationEvents() []string {
 	tableCreationEvents := []string{"gtid", "other", "gtid", "other", "gtid", "other"}
 	client := framework.NewClient()
-	_, err := client.Execute("describe _vt.schema_version", nil)
+	_, err := client.Execute("describe mysql.schema_version", nil)
 	if err != nil {
-		log.Errorf("_vt.schema_version not found, will expect its table creation events")
+		log.Errorf("mysql.schema_version not found, will expect its table creation events")
 		return tableCreationEvents
 	}
 	return nil
@@ -69,7 +69,7 @@ func TestSchemaVersioning(t *testing.T) {
 	defer cancel()
 	tsv.EnableHistorian(true)
 	tsv.SetTracking(true)
-	time.Sleep(100 * time.Millisecond) // wait for _vt tables to be created
+	time.Sleep(100 * time.Millisecond) // wait formysqltables to be created
 	target := &querypb.Target{
 		Keyspace:   "vttest",
 		Shard:      "0",
@@ -322,7 +322,7 @@ func TestSchemaVersioning(t *testing.T) {
 
 	client := framework.NewClient()
 	client.Execute("drop table vitess_version", nil)
-	client.Execute("drop table _vt.schema_version", nil)
+	client.Execute("drop table mysql.schema_version", nil)
 
 	log.Info("=== END OF TEST")
 }
@@ -451,7 +451,7 @@ func encodeString(in string) string {
 }
 
 func validateSchemaInserted(client *framework.QueryClient, ddl string) bool {
-	qr, _ := client.Execute(fmt.Sprintf("select * from _vt.schema_version where ddl = %s", encodeString(ddl)), nil)
+	qr, _ := client.Execute(fmt.Sprintf("select * from mysql.schema_version where ddl = %s", encodeString(ddl)), nil)
 	if len(qr.Rows) == 1 {
 		log.Infof("Found ddl in schema_version: %s", ddl)
 		return true

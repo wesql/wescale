@@ -73,7 +73,7 @@ var (
 )
 
 const (
-	tsCheckJournals = "select val from _vt.resharding_journal where id=.*"
+	tsCheckJournals = "select val from mysql.resharding_journal where id=.*"
 )
 
 // TestTableMigrate tests table mode migrations.
@@ -322,30 +322,30 @@ func TestTableMigrateMainflow(t *testing.T) {
 	})
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 	cancelMigration := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
 
 		deleteReverseReplicaion()
 	}
@@ -393,70 +393,70 @@ func TestTableMigrateMainflow(t *testing.T) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('Stopped')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	waitForCatchup()
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal1 := "insert into mysql.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
-		journal2 := "insert into _vt.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
+		journal2 := "insert into mysql.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
 		tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	startReverseVReplication := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 	}
 	startReverseVReplication()
 
 	deleteTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	deleteTargetVReplication()
 
@@ -628,40 +628,40 @@ func TestShardMigrateMainflow(t *testing.T) {
 	checkIfPrimaryServing(t, tme.ts, "ks:80-", false)
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
 	stopStreams := func() {
-		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 	}
 	stopStreams()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid3, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid3, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 	cancelMigration := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
 
 		deleteReverseReplicaion()
 	}
@@ -696,63 +696,63 @@ func TestShardMigrateMainflow(t *testing.T) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('stopped for cutover')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	waitForCatchup()
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*-80.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*-80.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*80-.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*-80.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*-80.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*80-.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal1 := "insert into mysql.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
-		journal2 := "insert into _vt.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal2 := "insert into mysql.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	startReverseVReplication := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 	}
 	startReverseVReplication()
 
 	freezeTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	freezeTargetVReplication()
 
@@ -818,55 +818,55 @@ func testTableMigrateOneToMany(t *testing.T, keepData, keepRoutingRules bool) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('Stopped')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
 	}
 	waitForCatchup()
 
 	deleteReverseReplication := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 
 	createReverseVReplication := func() {
 		deleteReverseReplication()
 
-		tme.dbSourceClients[0].addQueryRE(`insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*from `+"`"+"t1`"+`\\".*t2.*from `+"`"+"t2`"+`\\"`, &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[0].addQueryRE(`insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*from `+"`"+"t1`"+`\\".*t2.*from `+"`"+"t2`"+`\\"`, &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE(`insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*from `+"`"+"t1`"+`\\".*t2.*from `+"`"+"t2`"+`\\"`, &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[0].addQueryRE(`insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*from `+"`"+"t1`"+`\\".*t2.*from `+"`"+"t2`"+`\\"`, &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*MariaDB/5-456-893.*participants.*0"
+		journal1 := "insert into mysql.resharding_journal.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*MariaDB/5-456-893.*participants.*0"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	freezeTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
 	}
 	freezeTargetVReplication()
 
 	dropSourcesInvalid := func() {
-		tme.dbTargetClients[0].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
 	}
 	dropSourcesInvalid()
 	_, err = tme.wr.DropSources(ctx, tme.targetKeyspace, "test", workflow.DropTable, keepData, keepRoutingRules, false, false)
@@ -881,8 +881,8 @@ func testTableMigrateOneToMany(t *testing.T, keepData, keepRoutingRules bool) {
 	}
 
 	dropSourcesDryRun := func() {
-		tme.dbTargetClients[0].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
 	}
 	dropSourcesDryRun()
 	wantdryRunDropSources := []string{
@@ -911,8 +911,8 @@ func testTableMigrateOneToMany(t *testing.T, keepData, keepRoutingRules bool) {
 	checkDenyList(t, tme.ts, fmt.Sprintf("%s:%s", "ks1", "0"), []string{"t1", "t2"})
 
 	dropSourcesDryRunRename := func() {
-		tme.dbTargetClients[0].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
 	}
 	dropSourcesDryRunRename()
 	wantdryRunRenameSources := []string{
@@ -941,13 +941,13 @@ func testTableMigrateOneToMany(t *testing.T, keepData, keepRoutingRules bool) {
 	checkDenyList(t, tme.ts, fmt.Sprintf("%s:%s", "ks1", "0"), []string{"t1", "t2"})
 
 	dropSources := func() {
-		tme.dbTargetClients[0].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", &sqltypes.Result{}, nil)
 		tme.tmeDB.AddQuery(fmt.Sprintf("rename table `ks1`.`t1` TO `ks1`.`%s`", getRenameFileName("t1")), &sqltypes.Result{})
 		tme.tmeDB.AddQuery(fmt.Sprintf("rename table `ks1`.`t2` TO `ks1`.`%s`", getRenameFileName("t2")), &sqltypes.Result{})
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", &sqltypes.Result{}, nil) //
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", &sqltypes.Result{}, nil) //
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", &sqltypes.Result{}, nil)
 	}
 	dropSources()
 
@@ -1041,58 +1041,58 @@ func TestTableMigrateOneToManyDryRun(t *testing.T) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('Stopped')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
 	}
 	waitForCatchup()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE(`insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*from t1\\".*t2.*from t2\\"`, &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[0].addQueryRE(`insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*from t1\\".*t2.*from t2\\"`, &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE(`insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*from t1\\".*t2.*from t2\\"`, &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[0].addQueryRE(`insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*from t1\\".*t2.*from t2\\"`, &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*MariaDB/5-456-893.*participants.*0"
+		journal1 := "insert into mysql.resharding_journal.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*MariaDB/5-456-893.*participants.*0"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	deleteTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
 
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("delete from _vt.vreplication where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("delete from _vt.vreplication where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("delete from mysql.vreplication where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("delete from mysql.vreplication where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (1)", &sqltypes.Result{}, nil)
 	}
 	deleteTargetVReplication()
 
@@ -1119,8 +1119,8 @@ func TestMigrateFailJournal(t *testing.T) {
 	require.NoError(t, err)
 
 	// mi.checkJournals
-	tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
-	tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 
 	// mi.waitForCatchup-> mi.wr.tmc.VReplicationWaitForPos
 	state := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -1128,61 +1128,61 @@ func TestMigrateFailJournal(t *testing.T) {
 		"varchar|varchar|varchar"),
 		"MariaDB/5-456-892|Running",
 	)
-	tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-	tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
-	tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-	tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
+	tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+	tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
+	tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+	tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
 
 	// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('stopped for cutover')
-	tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-	tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-	tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-	tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-	tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-	tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-	tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+	tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+	tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+	tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+	tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+	tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 
 	// mi.cancelMigration: these must not get called.
-	cancel1 := "update _vt.vreplication set state = 'Running', stop_pos = null where id in (1)"
-	cancel2 := "update _vt.vreplication set state = 'Running', stop_pos = null where id in (2)"
+	cancel1 := "update mysql.vreplication set state = 'Running', stop_pos = null where id in (1)"
+	cancel2 := "update mysql.vreplication set state = 'Running', stop_pos = null where id in (2)"
 	tme.dbTargetClients[0].addQuery(cancel1, &sqltypes.Result{}, nil)
 	tme.dbTargetClients[0].addQuery(cancel2, &sqltypes.Result{}, nil)
 	tme.dbTargetClients[1].addQuery(cancel1, &sqltypes.Result{}, nil)
 	tme.dbTargetClients[1].addQuery(cancel2, &sqltypes.Result{}, nil)
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	// Make the journal call fail.
-	tme.dbSourceClients[0].addQueryRE("insert into _vt.resharding_journal", nil, errors.New("journaling intentionally failed"))
-	tme.dbSourceClients[1].addQueryRE("insert into _vt.resharding_journal", nil, errors.New("journaling intentionally failed"))
+	tme.dbSourceClients[0].addQueryRE("insert into mysql.resharding_journal", nil, errors.New("journaling intentionally failed"))
+	tme.dbSourceClients[1].addQueryRE("insert into mysql.resharding_journal", nil, errors.New("journaling intentionally failed"))
 
 	switchWrites(tme)
 	_, _, err = tme.wr.SwitchWrites(ctx, tme.targetKeyspace, "test", 1*time.Second, false, false, true, false)
@@ -1219,32 +1219,32 @@ func TestTableMigrateJournalExists(t *testing.T) {
 		t.Fatal(err)
 	}
 	// mi.checkJournals: Show one journal as created.
-	tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", sqltypes.MakeTestResult(sqltypes.MakeTestFields("val", "varbinary"), ""), nil)
-	tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", sqltypes.MakeTestResult(sqltypes.MakeTestFields("val", "varbinary"), ""), nil)
+	tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 
 	// mi.createJournals: Create the missing journal.
-	journal2 := "insert into _vt.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
+	journal2 := "insert into mysql.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
 	tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 
 	// mi.startReverseVReplication
-	tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1'", resultid34, nil)
-	tme.dbSourceClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-	tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-	tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
-	tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1'", resultid34, nil)
-	tme.dbSourceClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-	tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-	tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+	tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1'", resultid34, nil)
+	tme.dbSourceClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+	tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
+	tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1'", resultid34, nil)
+	tme.dbSourceClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+	tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 
 	// mi.deleteTargetVReplication
-	tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-	tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-	tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-	tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-	tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+	tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+	tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+	tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 
 	switchWrites(tme)
 	_, _, err = tme.wr.SwitchWrites(ctx, tme.targetKeyspace, "test", 1*time.Second, false, false, true, false)
@@ -1298,31 +1298,31 @@ func TestShardMigrateJournalExists(t *testing.T) {
 	}
 
 	// mi.checkJournals
-	tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", sqltypes.MakeTestResult(sqltypes.MakeTestFields("val", "varbinary"), ""), nil)
-	tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", sqltypes.MakeTestResult(sqltypes.MakeTestFields("val", "varbinary"), ""), nil)
+	tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
 
 	// mi.creaetJournals: Create the missing journal.
-	journal2 := "insert into _vt.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
+	journal2 := "insert into mysql.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
 	tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 
 	// mi.startReverseVReplication
-	tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-	tme.dbSourceClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-	tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-	tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
-	tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-	tme.dbSourceClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-	tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-	tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+	tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+	tme.dbSourceClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+	tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
+	tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+	tme.dbSourceClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+	tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+	tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 
 	// mi.deleteTargetVReplication
-	tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-	tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-	tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-	tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
-	tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
-	tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+	tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+	tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+	tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
+	tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
+	tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 
 	switchWrites(tme)
 	_, _, err = tme.wr.SwitchWrites(ctx, tme.targetKeyspace, "test", 1*time.Second, false, false, true, false)
@@ -1360,30 +1360,30 @@ func TestTableMigrateCancel(t *testing.T) {
 	}
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 	cancelMigration := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
 
 		deleteReverseReplicaion()
 	}
@@ -1422,30 +1422,30 @@ func TestTableMigrateCancelDryRun(t *testing.T) {
 	}
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 	cancelMigration := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
 
 		deleteReverseReplicaion()
 	}
@@ -1474,8 +1474,8 @@ func TestTableMigrateNoReverse(t *testing.T) {
 	}
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=7672494164556733923", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
@@ -1486,69 +1486,69 @@ func TestTableMigrateNoReverse(t *testing.T) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('Stopped')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	waitForCatchup()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*-40.*t2.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*-80.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*test_reverse.*ks2.*80-.*t1.*in_keyrange.*c1.*hash.*40-.*t2.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal1 := "insert into mysql.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
-		journal2 := "insert into _vt.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
+		journal2 := "insert into mysql.resharding_journal.*7672494164556733923,.*tables.*t1.*t2.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*80.*participants.*40.*40"
 		tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	deleteTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	deleteTargetVReplication()
 
@@ -1765,7 +1765,7 @@ func TestReverseVReplicationUpdateQuery(t *testing.T) {
 		sourceCell     string
 		want           string
 	}
-	updateQuery := "update _vt.vreplication set cell = '%s', tablet_types = '%s' where workflow = 'wf' and db_name = 'db'"
+	updateQuery := "update mysql.vreplication set cell = '%s', tablet_types = '%s' where workflow = 'wf' and db_name = 'db'"
 	tCases := []tCase{
 		{
 			targetCell: "cell1", sourceCell: "cell1", optCells: "cell1", optTabletTypes: "",
@@ -1930,40 +1930,40 @@ func TestShardMigrateNoAvailableTabletsForReverseReplication(t *testing.T) {
 	checkIfPrimaryServing(t, tme.ts, "ks:80-", false)
 
 	checkJournals := func() {
-		tme.dbSourceClients[0].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select val from _vt.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select val from mysql.resharding_journal where id=6432976123657117097", &sqltypes.Result{}, nil)
 	}
 	checkJournals()
 
 	stopStreams := func() {
-		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 	}
 	stopStreams()
 
 	deleteReverseReplicaion := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid3, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.vreplication where id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.copy_state where vrepl_id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("delete from _vt.post_copy_action where vrepl_id in (3)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("delete from _vt.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid3, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.vreplication where id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.vreplication where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.copy_state where vrepl_id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("delete from mysql.post_copy_action where vrepl_id in (3)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.copy_state where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("delete from mysql.post_copy_action where vrepl_id in (3, 4)", &sqltypes.Result{}, nil)
 	}
 	cancelMigration := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", runningResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", runningResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", runningResult(2), nil)
 
 		deleteReverseReplicaion()
 	}
@@ -1999,63 +1999,63 @@ func TestShardMigrateNoAvailableTabletsForReverseReplication(t *testing.T) {
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running",
 		)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=1", state, nil)
-		tme.dbTargetClients[1].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
-		tme.dbTargetClients[0].addQuery("select pos, state, message from _vt.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=1", state, nil)
+		tme.dbTargetClients[1].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
+		tme.dbTargetClients[0].addQuery("select pos, state, message from mysql.vreplication where id=2", state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('stopped for cutover')
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 1", resultid1, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where id = 2", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 1", resultid1, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where id = 2", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	waitForCatchup()
 
 	createReverseVReplication := func() {
 		deleteReverseReplicaion()
 
-		tme.dbSourceClients[0].addQueryRE("insert into _vt.vreplication.*-80.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*-80.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
-		tme.dbSourceClients[1].addQueryRE("insert into _vt.vreplication.*80-.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbSourceClients[0].addQueryRE("insert into mysql.vreplication.*-80.*-40.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*-80.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 1}, nil)
+		tme.dbSourceClients[1].addQueryRE("insert into mysql.vreplication.*80-.*40-.*MariaDB/5-456-893.*Stopped", &sqltypes.Result{InsertID: 2}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	createReverseVReplication()
 
 	createJournals := func() {
-		journal1 := "insert into _vt.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal1 := "insert into mysql.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*-80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[0].addQueryRE(journal1, &sqltypes.Result{}, nil)
-		journal2 := "insert into _vt.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
+		journal2 := "insert into mysql.resharding_journal.*6432976123657117097.*migration_type:SHARDS.*local_position.*MariaDB/5-456-892.*shard_gtids.*80.*MariaDB/5-456-893.*shard_gtids.*80.*MariaDB/5-456-893.*participants.*40.*40"
 		tme.dbSourceClients[1].addQueryRE(journal2, &sqltypes.Result{}, nil)
 	}
 	createJournals()
 
 	startReverseVReplication := func() {
-		tme.dbSourceClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-		tme.dbSourceClients[0].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[0].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
-		tme.dbSourceClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-		tme.dbSourceClients[1].addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		tme.dbSourceClients[1].addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+		tme.dbSourceClients[0].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[0].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
+		tme.dbSourceClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+		tme.dbSourceClients[1].addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		tme.dbSourceClients[1].addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 	}
 	startReverseVReplication()
 
 	freezeTargetVReplication := func() {
-		tme.dbTargetClients[0].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		tme.dbTargetClients[0].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		tme.dbTargetClients[0].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
-		tme.dbTargetClients[1].addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
-		tme.dbTargetClients[1].addQuery("update _vt.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
-		tme.dbTargetClients[1].addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[0].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		tme.dbTargetClients[0].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		tme.dbTargetClients[0].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
+		tme.dbTargetClients[1].addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid2, nil)
+		tme.dbTargetClients[1].addQuery("update mysql.vreplication set message = 'FROZEN' where id in (2)", &sqltypes.Result{}, nil)
+		tme.dbTargetClients[1].addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 	freezeTargetVReplication()
 

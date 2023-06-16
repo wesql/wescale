@@ -256,7 +256,7 @@ func (client *FakeTabletManagerClient) VExec(ctx context.Context, tablet *topoda
 
 // VReplicationExec is part of the tmclient.TabletManagerClient interface.
 func (client *FakeTabletManagerClient) VReplicationExec(ctx context.Context, tablet *topodatapb.Tablet, query string) (*querypb.QueryResult, error) {
-	// This result satisfies 'select pos from _vt.vreplication...' called from split clone unit tests in go/vt/worker.
+	// This result satisfies 'select pos from mysql.vreplication...' called from split clone unit tests in go/vt/worker.
 	result := sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields("pos", "varchar"),
 		"MariaDB/1-1-1",

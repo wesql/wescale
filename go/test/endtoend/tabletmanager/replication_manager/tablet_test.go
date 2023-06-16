@@ -183,7 +183,7 @@ func TestReplicationRepairAfterPrimaryTabletChange(t *testing.T) {
 
 	sidecarDDLCount, err := getSidecarDBDDLQueryCount(primaryTablet.VttabletProcess)
 	require.NoError(t, err)
-	// sidecar db should create all _vt tables when vttablet started
+	// sidecar db should create allmysqltables when vttablet started
 	require.Greater(t, sidecarDDLCount, int64(0))
 
 	// Stop the primary tablet
@@ -202,6 +202,6 @@ func TestReplicationRepairAfterPrimaryTabletChange(t *testing.T) {
 
 	sidecarDDLCount, err = getSidecarDBDDLQueryCount(primaryTablet.VttabletProcess)
 	require.NoError(t, err)
-	// sidecardb should find the desired _vt schema and not apply any new creates or upgrades when the tablet comes up again
+	// sidecardb should find the desiredmysqlschema and not apply any new creates or upgrades when the tablet comes up again
 	require.Equal(t, sidecarDDLCount, int64(0))
 }

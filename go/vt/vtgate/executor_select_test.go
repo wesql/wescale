@@ -1053,7 +1053,7 @@ func TestGen4SelectQualifiedReferenceTable(t *testing.T) {
 	require.NoError(t, err)
 	wantQueries := []*querypb.BoundQuery{
 		{
-			Sql:           "select * from _vt.zip_detail",
+			Sql:           "select * from mysql.zip_detail",
 			BindVariables: map[string]*querypb.BindVariable{},
 		},
 	}

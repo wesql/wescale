@@ -23,73 +23,73 @@ import (
 func TestShowOnlineDDL_All(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "all",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid like '%'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid like '%'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Recent(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "recent",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where requested_timestamp > now() - interval 1 week  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where requested_timestamp > now() - interval 1 week  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_ID(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "82fa54ac_e83e_11ea_96b7_f875a4d24e90",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Order_Descending(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "--order", "descending", "testkeyspace", "show", "all",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid like '%'  order by `id` DESC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid like '%'  order by `id` DESC ")
 }
 
 func TestShowOnlineDDL_Order_Ascending(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "all", "--order", "ascending",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid like '%'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid like '%'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Skip(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "--skip", "20", "--limit", "5", "testkeyspace", "show", "all",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid like '%'  order by `id` ASC LIMIT 20,5")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid like '%'  order by `id` ASC LIMIT 20,5")
 }
 
 func TestShowOnlineDDL_Limit(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "--limit", "55", "testkeyspace", "show", "all",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_uuid like '%'  order by `id` ASC LIMIT 0,55")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_uuid like '%'  order by `id` ASC LIMIT 0,55")
 }
 
 func TestShowOnlineDDL_Running(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "running",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_status='running'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_status='running'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Complete(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "complete",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_status='complete'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_status='complete'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Failed(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "show", "failed",
-	}, "select\n\t\t\t\t*\n\t\t\t\tfrom _vt.schema_migrations where migration_status='failed'  order by `id` ASC ")
+	}, "select\n\t\t\t\t*\n\t\t\t\tfrom mysql.schema_migrations where migration_status='failed'  order by `id` ASC ")
 }
 
 func TestShowOnlineDDL_Retry(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "retry", "82fa54ac_e83e_11ea_96b7_f875a4d24e90",
-	}, "update _vt.schema_migrations set migration_status='retry' where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'")
+	}, "update mysql.schema_migrations set migration_status='retry' where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'")
 }
 
 func TestShowOnlineDDL_Cancel(t *testing.T) {
 	onlineDDLTest(t, []string{
 		"OnlineDDL", "testkeyspace", "cancel", "82fa54ac_e83e_11ea_96b7_f875a4d24e90",
-	}, "update _vt.schema_migrations set migration_status='cancel' where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'")
+	}, "update mysql.schema_migrations set migration_status='cancel' where migration_uuid='82fa54ac_e83e_11ea_96b7_f875a4d24e90'")
 }
 
 func onlineDDLTest(t *testing.T, args []string, expectedQuery string) {

@@ -11,7 +11,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const GetCurrentTablesQuery = "show tables from _vt"
+const GetCurrentTablesQuery = "show tables from mysql"
 
 func getSidecarDBTables(t *testing.T, tabletID string) (numTablets int, tables []string) {
 	output, err := vc.VtctlClient.ExecuteCommandWithOutput("ExecuteFetchAsDba", "--", "--json", tabletID, GetCurrentTablesQuery)
@@ -42,11 +42,11 @@ func init() {
 		"vdiff", "vdiff_log", "vdiff_table", "views", "vreplication", "vreplication_log"}
 	numSidecarDBTables = len(sidecarDBTables)
 	ddls1 = []string{
-		"drop table _vt.vreplication_log",
-		"alter table _vt.vreplication drop column defer_secondary_keys",
+		"drop table mysql.vreplication_log",
+		"alter table mysql.vreplication drop column defer_secondary_keys",
 	}
 	ddls2 = []string{
-		"alter table _vt.vreplication modify column defer_secondary_keys boolean default false",
+		"alter table mysql.vreplication modify column defer_secondary_keys boolean default false",
 	}
 }
 

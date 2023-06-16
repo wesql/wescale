@@ -2998,7 +2998,7 @@ func commandOnlineDDL(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfla
 
 		executeFetchQuery = fmt.Sprintf(`select
 				*
-				from _vt.schema_migrations where %s %s %s`, condition, order, skipLimit)
+				from mysql.schema_migrations where %s %s %s`, condition, order, skipLimit)
 	case "retry":
 		if arg == "" {
 			return fmt.Errorf("UUID required")

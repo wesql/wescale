@@ -227,7 +227,7 @@ func (vc *vcopier) initTablesForCopy(ctx context.Context) error {
 	// Insert the table list only if at least one table matches.
 	if len(plan.TargetTables) != 0 {
 		var buf strings.Builder
-		buf.WriteString("insert into _vt.copy_state(vrepl_id, table_name) values ")
+		buf.WriteString("insert into mysql.copy_state(vrepl_id, table_name) values ")
 		prefix := ""
 		for name := range plan.TargetTables {
 			fmt.Fprintf(&buf, "%s(%d, %s)", prefix, vc.vr.id, encodeString(name))
@@ -292,7 +292,7 @@ func (vc *vcopier) initTablesForCopy(ctx context.Context) error {
 // primary key that was copied. A nil Result means that nothing has been copied.
 // A table that was fully copied is removed from copyState.
 func (vc *vcopier) copyNext(ctx context.Context, settings binlogplayer.VRSettings) error {
-	qr, err := vc.vr.dbClient.Execute(fmt.Sprintf("select table_name, lastpk from _vt.copy_state where vrepl_id = %d and id in (select max(id) from _vt.copy_state group by vrepl_id, table_name)", vc.vr.id))
+	qr, err := vc.vr.dbClient.Execute(fmt.Sprintf("select table_name, lastpk from mysql.copy_state where vrepl_id = %d and id in (select max(id) from mysql.copy_state group by vrepl_id, table_name)", vc.vr.id))
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 				// number of rows does not have a big impact on the queries used for
 				// the workflow.
 				go func() {
-					gcQuery := fmt.Sprintf("delete from _vt.copy_state where vrepl_id = %d and table_name = %s and id < (select maxid from (select max(id) as maxid from _vt.copy_state where vrepl_id = %d and table_name = %s) as depsel)",
+					gcQuery := fmt.Sprintf("delete from mysql.copy_state where vrepl_id = %d and table_name = %s and id < (select maxid from (select max(id) as maxid from mysql.copy_state where vrepl_id = %d and table_name = %s) as depsel)",
 						vc.vr.id, encodeString(tableName), vc.vr.id, encodeString(tableName))
 					dbClient := vc.vr.vre.getDBClient(false)
 					if err := dbClient.Connect(); err != nil {
@@ -489,7 +489,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 			pkfields = append(pkfields, rows.Pkfields...)
 			buf := sqlparser.NewTrackedBuffer(nil)
 			buf.Myprintf(
-				"insert into _vt.copy_state (lastpk, vrepl_id, table_name) values (%a, %s, %s)", ":lastpk",
+				"insert into mysql.copy_state (lastpk, vrepl_id, table_name) values (%a, %s, %s)", ":lastpk",
 				strconv.Itoa(int(vc.vr.id)),
 				encodeString(tableName))
 			addLatestCopyState := buf.ParsedQuery()
@@ -518,7 +518,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 
 		// Use prevCh to Sequence the prevT with the currT so that:
 		// * The prevT is completed before we begin updating
-		//   _vt.copy_state for currT.
+		//   mysql.copy_state for currT.
 		// * If prevT fails or is canceled, the current task is
 		//   canceled.
 		// prevCh is nil only for the first task in the vcopier run.
@@ -1071,7 +1071,7 @@ func (vbc *vcopierCopyWorker) execute(ctx context.Context, task *vcopierCopyTask
 		case vcopierCopyTaskInsertCopyState:
 			advanceFn = func(ctx context.Context, args *vcopierCopyTaskArgs) error {
 				if err := vbc.insertCopyState(ctx, args.lastpk); err != nil {
-					return vterrors.Wrapf(err, "error updating _vt.copy_state")
+					return vterrors.Wrapf(err, "error updating mysql.copy_state")
 				}
 				return nil
 			}

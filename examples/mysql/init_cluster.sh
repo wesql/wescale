@@ -14,21 +14,21 @@ CELL=zone1 ../common/scripts/etcd-up.sh
 # start vtctld
 CELL=zone1 ../common/scripts/vtctld-up.sh
 
-# start vttablets for keyspace _vt
+# start vttablets for keyspace mysql
 for i in 100 101 102; do
 	CELL=zone1 TABLET_UID=$i ../common/scripts/mysqlctl-up.sh
 	CELL=zone1 TABLET_UID=$i ../common/scripts/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
-vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync _vt || fail "Failed to set keyspace durability policy on the _vt keyspace"
+vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync mysql || fail "Failed to set keyspace durability policy on the mysql keyspace"
 
 # start vtorc
 ../common/scripts/vtorc-up.sh
 
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
-wait_for_healthy_shard _vt 0 || exit 1
+wait_for_healthy_shard mysql 0 || exit 1
 
 # start vtgate
 CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh

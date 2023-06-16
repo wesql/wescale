@@ -113,7 +113,7 @@ func StreamMigratorFinalize(ctx context.Context, ts ITrafficSwitcher, workflows 
 
 	workflowList := stringListify(workflows)
 	err := ts.ForAllSources(func(source *MigrationSource) error {
-		query := fmt.Sprintf("delete from _vt.vreplication where db_name=%s and workflow in (%s)", encodeString(source.GetPrimary().DbName()), workflowList)
+		query := fmt.Sprintf("delete from mysql.vreplication where db_name=%s and workflow in (%s)", encodeString(source.GetPrimary().DbName()), workflowList)
 		_, err := ts.VReplicationExec(ctx, source.GetPrimary().Alias, query)
 		return err
 	})
@@ -123,7 +123,7 @@ func StreamMigratorFinalize(ctx context.Context, ts ITrafficSwitcher, workflows 
 	}
 
 	err = ts.ForAllTargets(func(target *MigrationTarget) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Running' where db_name=%s and workflow in (%s)", encodeString(target.GetPrimary().DbName()), workflowList)
+		query := fmt.Sprintf("update mysql.vreplication set state='Running' where db_name=%s and workflow in (%s)", encodeString(target.GetPrimary().DbName()), workflowList)
 		_, err := ts.VReplicationExec(ctx, target.GetPrimary().Alias, query)
 		return err
 	})
@@ -156,7 +156,7 @@ func (sm *StreamMigrator) CancelMigration(ctx context.Context) {
 	_ = sm.deleteTargetStreams(ctx)
 
 	err := sm.ts.ForAllSources(func(source *MigrationSource) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Running', stop_pos=null, message='' where db_name=%s and workflow != %s", encodeString(source.GetPrimary().DbName()), encodeString(sm.ts.ReverseWorkflowName()))
+		query := fmt.Sprintf("update mysql.vreplication set state='Running', stop_pos=null, message='' where db_name=%s and workflow != %s", encodeString(source.GetPrimary().DbName()), encodeString(sm.ts.ReverseWorkflowName()))
 		_, err := sm.ts.VReplicationExec(ctx, source.GetPrimary().Alias, query)
 		return err
 	})
@@ -199,7 +199,7 @@ func (sm *StreamMigrator) StopStreams(ctx context.Context) ([]string, error) {
 /* tablet streams */
 
 func (sm *StreamMigrator) readTabletStreams(ctx context.Context, ti *topo.TabletInfo, constraint string) ([]*VReplicationStream, error) {
-	query := fmt.Sprintf("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name=%s and workflow != %s",
+	query := fmt.Sprintf("select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name=%s and workflow != %s",
 		encodeString(ti.DbName()), encodeString(sm.ts.ReverseWorkflowName()))
 	if constraint != "" {
 		query += fmt.Sprintf(" and %s", constraint)
@@ -321,7 +321,7 @@ func (sm *StreamMigrator) readSourceStreams(ctx context.Context, cancelMigrate b
 			return nil
 		}
 
-		query := fmt.Sprintf("select distinct vrepl_id from _vt.copy_state where vrepl_id in %s", VReplicationStreams(tabletStreams).Values())
+		query := fmt.Sprintf("select distinct vrepl_id from mysql.copy_state where vrepl_id in %s", VReplicationStreams(tabletStreams).Values())
 		p3qr, err := sm.ts.TabletManagerClient().VReplicationExec(ctx, source.GetPrimary().Tablet, query)
 		switch {
 		case err != nil:
@@ -400,7 +400,7 @@ func (sm *StreamMigrator) stopSourceStreams(ctx context.Context) error {
 			return nil
 		}
 
-		query := fmt.Sprintf("update _vt.vreplication set state='Stopped', message='for cutover' where id in %s", VReplicationStreams(tabletStreams).Values())
+		query := fmt.Sprintf("update mysql.vreplication set state='Stopped', message='for cutover' where id in %s", VReplicationStreams(tabletStreams).Values())
 		_, err := sm.ts.TabletManagerClient().VReplicationExec(ctx, source.GetPrimary().Tablet, query)
 		if err != nil {
 			return err
@@ -471,7 +471,7 @@ func (sm *StreamMigrator) syncSourceStreams(ctx context.Context) (map[string]mys
 					return
 				}
 
-				query := fmt.Sprintf("update _vt.vreplication set state='Running', stop_pos='%s', message='synchronizing for cutover' where id=%d", mysql.EncodePosition(pos), vrs.ID)
+				query := fmt.Sprintf("update mysql.vreplication set state='Running', stop_pos='%s', message='synchronizing for cutover' where id=%d", mysql.EncodePosition(pos), vrs.ID)
 				if _, err := sm.ts.TabletManagerClient().VReplicationExec(ctx, primary.Tablet, query); err != nil {
 					allErrors.RecordError(err)
 					return
@@ -595,7 +595,7 @@ func (sm *StreamMigrator) deleteTargetStreams(ctx context.Context) error {
 
 	workflows := stringListify(sm.workflows)
 	err := sm.ts.ForAllTargets(func(target *MigrationTarget) error {
-		query := fmt.Sprintf("delete from _vt.vreplication where db_name=%s and workflow in (%s)", encodeString(target.GetPrimary().DbName()), workflows)
+		query := fmt.Sprintf("delete from mysql.vreplication where db_name=%s and workflow in (%s)", encodeString(target.GetPrimary().DbName()), workflows)
 		_, err := sm.ts.VReplicationExec(ctx, target.GetPrimary().Alias, query)
 		return err
 	})

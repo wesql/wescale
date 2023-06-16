@@ -40,7 +40,7 @@ func TestVExec(t *testing.T) {
 	ctx := context.Background()
 	workflow := "wrWorkflow"
 	keyspace := "target"
-	query := "update _vt.vreplication set state = 'Running'"
+	query := "update mysql.vreplication set state = 'Running'"
 	env := newWranglerTestEnv([]string{"0"}, []string{"-80", "80-"}, "", nil, time.Now().Unix())
 	defer env.close()
 	var logger = logutil.NewMemoryLogger()
@@ -98,7 +98,7 @@ func TestVExec(t *testing.T) {
 	)
 	testCases = append(testCases, &TestCase{
 		name:   "select",
-		query:  "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication",
+		query:  "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication",
 		result: result,
 	})
 	result = &sqltypes.Result{
@@ -107,7 +107,7 @@ func TestVExec(t *testing.T) {
 	}
 	testCases = append(testCases, &TestCase{
 		name:   "delete",
-		query:  "delete from _vt.vreplication where message != ''",
+		query:  "delete from mysql.vreplication where message != ''",
 		result: result,
 	})
 	result = &sqltypes.Result{
@@ -116,21 +116,21 @@ func TestVExec(t *testing.T) {
 	}
 	testCases = append(testCases, &TestCase{
 		name:   "update",
-		query:  "update _vt.vreplication set state='Stopped', message='for wrangler test'",
+		query:  "update mysql.vreplication set state='Stopped', message='for wrangler test'",
 		result: result,
 	})
 
 	errorString := "query not supported by vexec"
 	testCases = append(testCases, &TestCase{
 		name:        "insert",
-		query:       "insert into _vt.vreplication(state, workflow, db_name) values ('Running', 'wk1', 'ks1'), ('Stopped', 'wk1', 'ks1')",
+		query:       "insert into mysql.vreplication(state, workflow, db_name) values ('Running', 'wk1', 'ks1'), ('Stopped', 'wk1', 'ks1')",
 		errorString: errorString,
 	})
 
 	errorString = "table not supported by vexec"
 	testCases = append(testCases, &TestCase{
 		name:        "delete invalid-other-table",
-		query:       "delete from _vt.copy_state",
+		query:       "delete from mysql.copy_state",
 		errorString: errorString,
 	})
 
@@ -153,11 +153,11 @@ func TestVExec(t *testing.T) {
 		})
 	}
 
-	query = "delete from _vt.vreplication"
+	query = "delete from mysql.vreplication"
 	_, err = wr.VExec(ctx, workflow, keyspace, query, true)
 	require.NoError(t, err)
 	dryRunResults := []string{
-		"Query: delete from _vt.vreplication where db_name = 'target' and workflow = 'wrWorkflow'",
+		"Query: delete from mysql.vreplication where db_name = 'target' and workflow = 'wrWorkflow'",
 		"will be run on the following streams in keyspace target for workflow wrWorkflow:\n\n",
 		`+----------------------+----+--------------------------------+---------+--------+------------------------------------------+
 |        TABLET        | ID |          BINLOGSOURCE          |  STATE  | DBNAME |               CURRENT GTID               |
@@ -333,7 +333,7 @@ func TestWorkflowListStreams(t *testing.T) {
 	results, err = wr.execWorkflowAction(ctx, workflow, keyspace, "stop", true)
 	require.Nil(t, err)
 	require.Equal(t, "map[]", fmt.Sprintf("%v", results))
-	dryRunResult := `Query: update _vt.vreplication set state = 'Stopped' where db_name = 'target' and workflow = 'wrWorkflow'
+	dryRunResult := `Query: update mysql.vreplication set state = 'Stopped' where db_name = 'target' and workflow = 'wrWorkflow'
 will be run on the following streams in keyspace target for workflow wrWorkflow:
 
 
@@ -398,13 +398,13 @@ func TestVExecValidations(t *testing.T) {
 		},
 		{
 			name:        "incorrect table",
-			query:       "select * from _vt.vreplication2",
-			errorString: "table not supported by vexec: _vt.vreplication2",
+			query:       "select * from mysql.vreplication2",
+			errorString: "table not supported by vexec: mysql.vreplication2",
 		},
 		{
 			name:        "unsupported query",
-			query:       "describe _vt.vreplication",
-			errorString: "query not supported by vexec: explain _vt.vreplication",
+			query:       "describe mysql.vreplication",
+			errorString: "query not supported by vexec: explain mysql.vreplication",
 		},
 	}
 	for _, bq := range badQueries {
@@ -421,7 +421,7 @@ func TestVExecValidations(t *testing.T) {
 		want          string
 		expectedError error
 	}
-	updateSQL := "update _vt.vreplication set state = %s"
+	updateSQL := "update mysql.vreplication set state = %s"
 	actions := []action{
 		{
 			name:          "start",
@@ -435,7 +435,7 @@ func TestVExecValidations(t *testing.T) {
 		},
 		{
 			name:          "delete",
-			want:          "delete from _vt.vreplication",
+			want:          "delete from mysql.vreplication",
 			expectedError: nil,
 		},
 		{

@@ -336,55 +336,55 @@ func newTabletEnvironment(ddls []sqlparser.DDLStatement, opts *Options) (*tablet
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"create database if not exists `_vt`": {
+		"create database if not exists `mysql`": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"drop table if exists `_vt`.redo_log_transaction": {
+		"drop table if exists `mysql`.redo_log_transaction": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"drop table if exists `_vt`.redo_log_statement": {
+		"drop table if exists `mysql`.redo_log_statement": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"drop table if exists `_vt`.transaction": {
+		"drop table if exists `mysql`.transaction": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"drop table if exists `_vt`.participant": {
+		"drop table if exists `mysql`.participant": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"create table if not exists `_vt`.redo_state(\n  dtid varbinary(512),\n  state bigint,\n  time_created bigint,\n  primary key(dtid)\n\t) engine=InnoDB": {
+		"create table if not exists `mysql`.redo_state(\n  dtid varbinary(512),\n  state bigint,\n  time_created bigint,\n  primary key(dtid)\n\t) engine=InnoDB": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"create table if not exists `_vt`.redo_statement(\n  dtid varbinary(512),\n  id bigint,\n  statement mediumblob,\n  primary key(dtid, id)\n\t) engine=InnoDB": {
+		"create table if not exists `mysql`.redo_statement(\n  dtid varbinary(512),\n  id bigint,\n  statement mediumblob,\n  primary key(dtid, id)\n\t) engine=InnoDB": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"create table if not exists `_vt`.dt_state(\n  dtid varbinary(512),\n  state bigint,\n  time_created bigint,\n  primary key(dtid)\n\t) engine=InnoDB": {
+		"create table if not exists `mysql`.dt_state(\n  dtid varbinary(512),\n  state bigint,\n  time_created bigint,\n  primary key(dtid)\n\t) engine=InnoDB": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"create table if not exists `_vt`.dt_participant(\n  dtid varbinary(512),\n\tid bigint,\n\tkeyspace varchar(256),\n\tshard varchar(256),\n  primary key(dtid, id)\n\t) engine=InnoDB": {
+		"create table if not exists `mysql`.dt_participant(\n  dtid varbinary(512),\n\tid bigint,\n\tkeyspace varchar(256),\n\tshard varchar(256),\n  primary key(dtid, id)\n\t) engine=InnoDB": {
 
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,

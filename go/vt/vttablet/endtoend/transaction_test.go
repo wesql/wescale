@@ -702,7 +702,7 @@ func TestManualTwopcz(t *testing.T) {
 	err = client.Prepare("dtidfail")
 	defer client.RollbackPrepared("dtidfail", 0)
 	require.NoError(t, err)
-	conn.ExecuteFetch(fmt.Sprintf("update _vt.redo_state set state = %d where dtid = 'dtidfail'", tabletserver.RedoStateFailed), 10, false)
+	conn.ExecuteFetch(fmt.Sprintf("update mysql.redo_state set state = %d where dtid = 'dtidfail'", tabletserver.RedoStateFailed), 10, false)
 	conn.ExecuteFetch("commit", 10, false)
 
 	// Distributed transaction.

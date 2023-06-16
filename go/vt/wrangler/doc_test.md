@@ -52,7 +52,7 @@ Used to set primary positions to provide/validate gtids.
 `go/vt/wrangler/fake_dbclient_test.go`
 
 This defines a mock db which is limited in scope to the vreplication engine. All queries that it mocks are related to
-the `_vt` database only. The queries specified serve to validate that the expected set of queries were generated. When
+the `mysql` database only. The queries specified serve to validate that the expected set of queries were generated. When
 updating/adding tests, you will need to tell each test what queries are valid. For queries that can happen often and
 asynchronously, like updating heartbeats or setting gtid positions, we have the mechanism to ignore them or return a
 fixed result.

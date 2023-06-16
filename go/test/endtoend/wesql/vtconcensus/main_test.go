@@ -24,7 +24,7 @@ var (
 	clusterInstance     *cluster.LocalProcessCluster
 	cell                = "zone1"
 	hostname            = "localhost"
-	KeyspaceName        = "_vt"
+	KeyspaceName        = "mysql"
 	DefaultKeyspaceName = "wesql"
 )
 

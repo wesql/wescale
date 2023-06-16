@@ -161,7 +161,7 @@ func testPlayerCopyCharPK(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -169,17 +169,17 @@ func testPlayerCopyCharPK(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"insert into dst(idc,val) values ('a\\0',1)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:BINARY} rows:{lengths:2 values:\\"a\\\\x00\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:BINARY} rows:{lengths:2 values:\\"a\\\\x00\\"}'.*`,
 		`update dst set val=3 where idc='a\0' and ('a\0') <= ('a\0')`,
 		"insert into dst(idc,val) values ('c\\0',2)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:BINARY} rows:{lengths:2 values:\\"c\\\\x00\\"}'.*`,
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
-		"/update _vt.vreplication set state='Running",
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:BINARY} rows:{lengths:2 values:\\"c\\\\x00\\"}'.*`,
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/update mysql.vreplication set state='Running",
 	))
 
 	expectData(t, "dst", [][]string{
@@ -268,7 +268,7 @@ func testPlayerCopyVarcharPKCaseInsensitive(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -276,13 +276,13 @@ func testPlayerCopyVarcharPKCaseInsensitive(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		// Copy mode.
 		"insert into dst(idc,val) values ('a',1)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"a\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"a\\"}'.*`,
 		// Copy-catchup mode.
 		`/insert into dst\(idc,val\) select 'B', 3 from dual where \( .* 'B' COLLATE .* \) <= \( .* 'a' COLLATE .* \)`,
 	).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
@@ -292,17 +292,17 @@ func testPlayerCopyVarcharPKCaseInsensitive(t *testing.T) {
 		//upd1 := expect.
 		upd1 := expect.Then(qh.Eventually(
 			"insert into dst(idc,val) values ('B',3)",
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"B\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"B\\"}'.*`,
 		))
 		upd2 := expect.Then(qh.Eventually(
 			"insert into dst(idc,val) values ('c',2)",
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"c\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"idc\\" type:VARCHAR} rows:{lengths:1 values:\\"c\\"}'.*`,
 		))
 		upd1.Then(upd2.Eventually())
 		return upd2
 	}).Then(qh.Immediately(
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst", [][]string{
@@ -391,7 +391,7 @@ func testPlayerCopyVarcharCompositePKCaseSensitiveCollation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -399,21 +399,21 @@ func testPlayerCopyVarcharCompositePKCaseSensitiveCollation(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		// Copy mode.
 		"insert into dst(id,idc,idc2,val) values (1,'a','a',1)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"idc\\" type:VARBINARY} fields:{name:\\"idc2\\" type:VARBINARY} rows:{lengths:1 lengths:1 lengths:1 values:\\"1aa\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"idc\\" type:VARBINARY} fields:{name:\\"idc2\\" type:VARBINARY} rows:{lengths:1 lengths:1 lengths:1 values:\\"1aa\\"}'.*`,
 		// Copy-catchup mode.
 		`insert into dst(id,idc,idc2,val) select 1, 'B', 'B', 3 from dual where (1,'B','B') <= (1,'a','a')`,
 		// Copy mode.
 		"insert into dst(id,idc,idc2,val) values (1,'c','c',2)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"idc\\" type:VARBINARY} fields:{name:\\"idc2\\" type:VARBINARY} rows:{lengths:1 lengths:1 lengths:1 values:\\"1cc\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"idc\\" type:VARBINARY} fields:{name:\\"idc2\\" type:VARBINARY} rows:{lengths:1 lengths:1 lengths:1 values:\\"1cc\\"}'.*`,
 		// Wrap-up.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/update mysql.vreplication set state='Running'",
 	))
 
 	expectData(t, "dst", [][]string{
@@ -473,17 +473,17 @@ func testPlayerCopyTablesWithFK(t *testing.T) {
 	require.NoError(t, err)
 
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"select @@foreign_key_checks;",
 		// Create the list of tables to copy and transition to Copying state.
 		"begin",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"commit",
 		"set foreign_key_checks=0;",
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
 		// With parallel inserts, new db client connects are created on-the-fly.
 		if vreplicationParallelInsertWorkers > 1 {
@@ -495,16 +495,16 @@ func testPlayerCopyTablesWithFK(t *testing.T) {
 		// Inserts may happen out-of-order. Update happen in-order.
 		"begin",
 		"insert into dst1(id,id2) values (1,1), (2,2)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 	)).Then(qh.Immediately(
 		"set foreign_key_checks=0;",
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		// The next FF executes and updates the position before copying.
 		"set foreign_key_checks=0;",
 		"begin",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	)).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
 		// With parallel inserts, new db client connects are created on-the-fly.
@@ -516,15 +516,15 @@ func testPlayerCopyTablesWithFK(t *testing.T) {
 		// copy dst2
 		"begin",
 		"insert into dst2(id,id2) values (1,21), (2,22)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 	)).Then(qh.Immediately(
 		"set foreign_key_checks=0;",
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst2",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst2",
 		// All tables copied. Final catch up followed by Running state.
 		"set foreign_key_checks=1;",
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst1", [][]string{
@@ -538,16 +538,16 @@ func testPlayerCopyTablesWithFK(t *testing.T) {
 
 	validateCopyRowCountStat(t, 4)
 
-	query = fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+	query = fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 	if _, err := playerEngine.Exec(query); err != nil {
 		t.Fatal(err)
 	}
 	expectDBClientQueries(t, qh.Expect(
 		"set foreign_key_checks=1;",
 		"begin",
-		"/delete from _vt.vreplication",
-		"/delete from _vt.copy_state",
-		"/delete from _vt.post_copy_action",
+		"/delete from mysql.vreplication",
+		"/delete from mysql.copy_state",
+		"/delete from mysql.post_copy_action",
 		"commit",
 	))
 }
@@ -597,7 +597,7 @@ func testPlayerCopyTables(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -605,29 +605,29 @@ func testPlayerCopyTables(t *testing.T) {
 	}()
 
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		// Create the list of tables to copy and transition to Copying state.
 		"begin",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"commit",
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"begin",
 		"insert into dst1(id,val,val2,d) values (1,'aaa','aaa',0), (2,'bbb','bbb',1)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		// The next FF executes and updates the position before copying.
 		"begin",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 		// Nothing to copy from yes. Delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*yes",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*yes",
 		// All tables copied. Final catch up followed by Running state.
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	))
 	expectData(t, "dst1", [][]string{
 		{"1", "aaa", "aaa", "0"},
@@ -647,7 +647,7 @@ func testPlayerCopyTables(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			query = fmt.Sprintf("select count(*) from _vt.vreplication_log where type = '%s'", testCase.typ)
+			query = fmt.Sprintf("select count(*) from mysql.vreplication_log where type = '%s'", testCase.typ)
 			qr, err := env.Mysqld.FetchSuperQuery(ctx, query)
 			require.NoError(t, err)
 			require.NotNil(t, qr)
@@ -736,7 +736,7 @@ func testPlayerCopyBigTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -744,13 +744,13 @@ func testPlayerCopyBigTable(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/insert into _vt.copy_state",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.copy_state",
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set state='Copying'",
+		"/update mysql.vreplication set state='Copying'",
 		"insert into dst(id,val) values (1,'aaa')",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"1\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"1\\"}'.*`,
 		// The next catchup executes the new row insert, but will be a no-op.
 		"insert into dst(id,val) select 3, 'ccc' from dual where (3) <= (1)",
 		// fastForward has nothing to add. Just saves position.
@@ -760,21 +760,21 @@ func testPlayerCopyBigTable(t *testing.T) {
 	).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
 		ins1 := expect.Then(qh.Eventually("insert into dst(id,val) values (2,'bbb')"))
 		upd1 := ins1.Then(qh.Eventually(
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		))
 		// Third row copied without going back to catchup state.
 		ins3 := expect.Then(qh.Eventually("insert into dst(id,val) values (3,'ccc')"))
 		upd3 := ins3.Then(qh.Eventually(
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"3\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"3\\"}'.*`,
 		))
 		upd1.Then(upd3.Eventually())
 		return upd3
 	}).Then(qh.Eventually(
 		// Wrap-up.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
 		// Copy is done. Go into running state.
 		// All tables copied. Final catch up followed by Running state.
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst", [][]string{
@@ -866,7 +866,7 @@ func testPlayerCopyWildcardRule(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -874,13 +874,13 @@ func testPlayerCopyWildcardRule(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		// The first fast-forward has no starting point. So, it just saves the current position.
 		"insert into src(id,val) values (1,'aaa')",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"1\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"1\\"}'.*`,
 		// The next catchup executes the new row insert, but will be a no-op.
 		"insert into src(id,val) select 3, 'ccc' from dual where (3) <= (1)",
 		// fastForward has nothing to add. Just saves position.
@@ -890,20 +890,20 @@ func testPlayerCopyWildcardRule(t *testing.T) {
 	).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
 		ins1 := expect.Then(qh.Eventually("insert into src(id,val) values (2,'bbb')"))
 		upd1 := ins1.Then(qh.Eventually(
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		))
 		// Third row copied without going back to catchup state.
 		ins3 := expect.Then(qh.Eventually("insert into src(id,val) values (3,'ccc')"))
 		upd3 := ins3.Then(qh.Eventually(
-			`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"3\\"}'.*`,
+			`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"3\\"}'.*`,
 		))
 		upd1.Then(upd3.Eventually())
 		return upd3
 	}).Then(qh.Immediately(
 		// Wrap-up.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*src",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*src",
 		// Copy is done. Go into running state.
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "src", [][]string{
@@ -1012,16 +1012,16 @@ func testPlayerCopyTableContinuation(t *testing.T) {
 	))
 	lastpk.RowsAffected = 0
 	execStatements(t, []string{
-		fmt.Sprintf("insert into _vt.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst1", encodeString(fmt.Sprintf("%v", lastpk))),
-		fmt.Sprintf("insert into _vt.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', null)", qr.InsertID, "not_copied"),
+		fmt.Sprintf("insert into mysql.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst1", encodeString(fmt.Sprintf("%v", lastpk))),
+		fmt.Sprintf("insert into mysql.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', null)", qr.InsertID, "not_copied"),
 	})
 	id := qr.InsertID
-	_, err = playerEngine.Exec(fmt.Sprintf("update _vt.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
+	_, err = playerEngine.Exec(fmt.Sprintf("update mysql.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", id)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", id)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1036,7 +1036,7 @@ func testPlayerCopyTableContinuation(t *testing.T) {
 
 	expectNontxQueries(t, qh.Expect(
 		// Catchup
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"insert into dst1(id,val) select 1, 'insert in' from dual where (1,1) <= (6,6)",
 		"insert into dst1(id,val) select 7, 'insert out' from dual where (7,7) <= (6,6)",
 		"update dst1 set val='updated' where id=3 and (3,3) <= (6,6)",
@@ -1055,16 +1055,16 @@ func testPlayerCopyTableContinuation(t *testing.T) {
 	).Then(qh.Immediately(
 		"insert into dst1(id,val) values (7,'insert out'), (8,'no change'), (10,'updated'), (12,'move out')",
 	)).Then(qh.Eventually(
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id1\\" type:INT32} fields:{name:\\"id2\\" type:INT32} rows:{lengths:2 lengths:1 values:\\"126\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id1\\" type:INT32} fields:{name:\\"id2\\" type:INT32} rows:{lengths:2 lengths:1 values:\\"126\\"}'.*`,
 	)).Then(qh.Immediately(
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		"insert into not_copied(id,val) values (1,'bbb')",
 	)).Then(qh.Eventually(
 		// Copy again. There should be no events for catchup.
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\\"id\\\" type:INT32} rows:{lengths:1 values:\\\"1\\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\\"id\\\" type:INT32} rows:{lengths:1 values:\\\"1\\\"}'.*`,
 	)).Then(qh.Immediately(
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*not_copied",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*not_copied",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst1", [][]string{
@@ -1146,15 +1146,15 @@ func testPlayerCopyWildcardTableContinuation(t *testing.T) {
 	))
 	lastpk.RowsAffected = 0
 	execStatements(t, []string{
-		fmt.Sprintf("insert into _vt.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst", encodeString(fmt.Sprintf("%v", lastpk))),
+		fmt.Sprintf("insert into mysql.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst", encodeString(fmt.Sprintf("%v", lastpk))),
 	})
 	id := qr.InsertID
-	_, err = playerEngine.Exec(fmt.Sprintf("update _vt.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
+	_, err = playerEngine.Exec(fmt.Sprintf("update mysql.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", id)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", id)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1164,18 +1164,18 @@ func testPlayerCopyWildcardTableContinuation(t *testing.T) {
 	optimizeInsertsEnabled := vreplicationExperimentalFlags /**/ & /**/ vreplicationExperimentalFlagOptimizeInserts != 0
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set state = 'Copying'",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set state = 'Copying'",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 	).Then(func(expect qh.ExpectationSequencer) qh.ExpectationSequencer {
 		if !optimizeInsertsEnabled {
 			expect = expect.Then(qh.Immediately("insert into dst(id,val) select 4, 'new' from dual where (4) <= (2)"))
 		}
 		return expect.Then(qh.Immediately("insert into dst(id,val) values (3,'uncopied'), (4,'new')"))
 	}).Then(qh.Immediately(
-		`/insert into _vt.copy_state .*`,
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
-		"/update _vt.vreplication set state='Running'",
+		`/insert into mysql.copy_state .*`,
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst", [][]string{
@@ -1243,15 +1243,15 @@ func TestPlayerCopyWildcardTableContinuationWithOptimizeInserts(t *testing.T) {
 	))
 	lastpk.RowsAffected = 0
 	execStatements(t, []string{
-		fmt.Sprintf("insert into _vt.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst", encodeString(fmt.Sprintf("%v", lastpk))),
+		fmt.Sprintf("insert into mysql.copy_state (vrepl_id, table_name, lastpk) values(%d, '%s', %s)", qr.InsertID, "dst", encodeString(fmt.Sprintf("%v", lastpk))),
 	})
 	id := qr.InsertID
-	_, err = playerEngine.Exec(fmt.Sprintf("update _vt.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
+	_, err = playerEngine.Exec(fmt.Sprintf("update mysql.vreplication set state='Copying', pos=%s where id=%d", encodeString(pos), id))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", id)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", id)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1260,14 +1260,14 @@ func TestPlayerCopyWildcardTableContinuationWithOptimizeInserts(t *testing.T) {
 
 	expectNontxQueries(t, qh.Expect(
 		// Catchup
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set state = 'Copying'",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set state = 'Copying'",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		// Copy
 		"insert into dst(id,val) values (3,'uncopied'), (4,'new')",
-		`/insert into _vt.copy_state .*`,
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
-		"/update _vt.vreplication set state='Running'",
+		`/insert into mysql.copy_state .*`,
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst",
+		"/update mysql.vreplication set state='Running'",
 	))
 	expectData(t, "dst", [][]string{
 		{"2", "copied"},
@@ -1306,7 +1306,7 @@ func testPlayerCopyTablesNone(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1314,10 +1314,10 @@ func testPlayerCopyTablesNone(t *testing.T) {
 	}()
 
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"begin",
-		"/update _vt.vreplication set state='Stopped'",
+		"/update mysql.vreplication set state='Stopped'",
 		"commit",
 	))
 }
@@ -1360,7 +1360,7 @@ func testPlayerCopyTablesStopAfterCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1368,25 +1368,25 @@ func testPlayerCopyTablesStopAfterCopy(t *testing.T) {
 	}()
 
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		// Create the list of tables to copy and transition to Copying state.
 		"begin",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"commit",
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	).Then(qh.Eventually(
 		"begin",
 		"insert into dst1(id,val) values (1,'aaa'), (2,'bbb')",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 	)).Then(qh.Immediately(
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		// All tables copied. Stop vreplication because we requested it.
-		"/update _vt.vreplication set state='Stopped'",
+		"/update mysql.vreplication set state='Stopped'",
 	)))
 
 	expectData(t, "dst1", [][]string{
@@ -1443,7 +1443,7 @@ func testPlayerCopyTableCancel(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1452,27 +1452,27 @@ func testPlayerCopyTableCancel(t *testing.T) {
 
 	// Make sure rows get copied in spite of the early context cancel.
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		// Create the list of tables to copy and transition to Copying state.
 		"begin",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"commit",
 		// The first copy will do nothing because we set the timeout to be too low.
 		// The next copy should proceed as planned because we've made the timeout high again.
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	).Then(qh.Eventually(
 		"begin",
 		"insert into dst1(id,val) values (1,'aaa'), (2,'bbb')",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 	)).Then(qh.Immediately(
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		// All tables copied. Go into running state.
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst1", [][]string{
@@ -1532,7 +1532,7 @@ func testPlayerCopyTablesWithGeneratedColumn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1540,20 +1540,20 @@ func testPlayerCopyTablesWithGeneratedColumn(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message=",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message=",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state",
 		// The first fast-forward has no starting point. So, it just saves the current position.
 		"insert into dst1(id,val,val3,id2) values (1,'aaa','aaa1',10), (2,'bbb','bbb2',20)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:<name:\\"id\\" type:INT32 > rows:<lengths:1 values:\\"2\\" > '.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:<name:\\"id\\" type:INT32 > rows:<lengths:1 values:\\"2\\" > '.*`,
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		"insert into dst2(val3,val,id2) values ('aaa1','aaa',10), ('bbb2','bbb',20)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:<name:\\"id\\" type:INT32 > rows:<lengths:1 values:\\"2\\" > '.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:<name:\\"id\\" type:INT32 > rows:<lengths:1 values:\\"2\\" > '.*`,
 		// copy of dst2 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst2",
-		"/update _vt.vreplication set state",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst2",
+		"/update mysql.vreplication set state",
 	))
 
 	expectData(t, "dst1", [][]string{
@@ -1612,25 +1612,25 @@ func testCopyTablesWithInvalidDates(t *testing.T) {
 	require.NoError(t, err)
 
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		// Create the list of tables to copy and transition to Copying state.
 		"begin",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		"commit",
 		// The first fast-forward has no starting point. So, it just saves the current position.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	).Then(qh.Eventually(
 		"begin",
 		"insert into dst1(id,dt) values (1,'2020-01-12'), (2,'0000-00-00')",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} rows:{lengths:1 values:\\"2\\"}'.*`,
 		"commit",
 	)).Then(qh.Immediately(
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
 		// All tables copied. Final catch up followed by Running state.
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set state='Running'",
 	)))
 
 	expectData(t, "dst1", [][]string{
@@ -1638,15 +1638,15 @@ func testCopyTablesWithInvalidDates(t *testing.T) {
 		{"2", "0000-00-00"},
 	})
 
-	query = fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+	query = fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 	if _, err := playerEngine.Exec(query); err != nil {
 		t.Fatal(err)
 	}
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
-		"/delete from _vt.vreplication",
-		"/delete from _vt.copy_state",
-		"/delete from _vt.post_copy_action",
+		"/delete from mysql.vreplication",
+		"/delete from mysql.copy_state",
+		"/delete from mysql.post_copy_action",
 		"commit",
 	))
 }
@@ -1701,7 +1701,7 @@ func testCopyInvisibleColumns(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}
@@ -1709,16 +1709,16 @@ func testCopyInvisibleColumns(t *testing.T) {
 	}()
 
 	expectNontxQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message=",
-		"/insert into _vt.copy_state",
-		"/update _vt.vreplication set state='Copying'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message=",
+		"/insert into mysql.copy_state",
+		"/update mysql.vreplication set state='Copying'",
 		// The first fast-forward has no starting point. So, it just saves the current position.
 		"insert into dst1(id,id2,inv1,inv2) values (1,10,100,1000), (2,20,200,2000)",
-		`/insert into _vt.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"inv1\\" type:INT32} rows:{lengths:1 lengths:3 values:\\"2200\\"}'.*`,
+		`/insert into mysql.copy_state \(lastpk, vrepl_id, table_name\) values \('fields:{name:\\"id\\" type:INT32} fields:{name:\\"inv1\\" type:INT32} rows:{lengths:1 lengths:3 values:\\"2200\\"}'.*`,
 		// copy of dst1 is done: delete from copy_state.
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name.*dst1",
+		"/update mysql.vreplication set state='Running'",
 	))
 
 	expectData(t, "dst1", [][]string{

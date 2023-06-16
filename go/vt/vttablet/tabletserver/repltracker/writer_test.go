@@ -43,7 +43,7 @@ func TestWriteHeartbeat(t *testing.T) {
 
 	tw := newTestWriter(db, mockNowFunc)
 	upsert := fmt.Sprintf("INSERT INTO %s.heartbeat (ts, tabletUid, keyspaceShard) VALUES (%d, %d, '%s') ON DUPLICATE KEY UPDATE ts=VALUES(ts), tabletUid=VALUES(tabletUid)",
-		"_vt", now.UnixNano(), tw.tabletAlias.Uid, tw.keyspaceShard)
+		"mysql", now.UnixNano(), tw.tabletAlias.Uid, tw.keyspaceShard)
 	db.AddQuery(upsert, &sqltypes.Result{})
 
 	writes.Reset()

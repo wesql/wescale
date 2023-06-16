@@ -301,7 +301,7 @@ func tearDown(t *testing.T, initMysql bool) {
 		require.Nil(t, err)
 		_, err = tablet.VttabletProcess.QueryTablet(disableSemiSyncCommands, keyspaceName, true)
 		require.Nil(t, err)
-		for _, db := range []string{"_vt", "vt_insert_test"} {
+		for _, db := range []string{"mysql", "vt_insert_test"} {
 			_, err = tablet.VttabletProcess.QueryTablet(fmt.Sprintf("drop database if exists %s", db), keyspaceName, true)
 			require.Nil(t, err)
 		}

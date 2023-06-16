@@ -42,22 +42,22 @@ func TestVReplicationQueryPlanner_PlanQuery(t *testing.T) {
 	}{
 		{
 			name:  "basic select",
-			query: "SELECT id FROM _vt.vreplication",
+			query: "SELECT id FROM mysql.vreplication",
 			err:   nil,
 		},
 		{
 			name:  "insert not supported",
-			query: "INSERT INTO _vt.vreplication (id) VALUES (1)",
+			query: "INSERT INTO mysql.vreplication (id) VALUES (1)",
 			err:   ErrUnsupportedQuery,
 		},
 		{
 			name:  "basic update",
-			query: "UPDATE _vt.vreplication SET workflow = 'my workflow'",
+			query: "UPDATE mysql.vreplication SET workflow = 'my workflow'",
 			err:   nil,
 		},
 		{
 			name:  "basic delete",
-			query: "DELETE FROM _vt.vreplication",
+			query: "DELETE FROM mysql.vreplication",
 			err:   nil,
 		},
 		{
@@ -99,21 +99,21 @@ func TestVReplicationQueryPlanner_planSelect(t *testing.T) {
 	}{
 		{
 			name:                 "simple select",
-			query:                "SELECT id FROM _vt.vreplication WHERE id > 10",
-			expectedPlannedQuery: "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
+			query:                "SELECT id FROM mysql.vreplication WHERE id > 10",
+			expectedPlannedQuery: "SELECT id FROM mysql.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
 		},
 		{
 			name:                 "select with workflow and dbname columns already in WHERE",
-			query:                "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
-			expectedPlannedQuery: "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
+			query:                "SELECT id FROM mysql.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
+			expectedPlannedQuery: "SELECT id FROM mysql.vreplication WHERE id > 10 AND db_name = 'testkeyspace' AND workflow = 'testworkflow'",
 		},
 		{
 			// In this case, the QueryParams for the planner (which have
 			// workflow = "testworkflow"; db_name = "testkeyspace") are
 			// ignored because the WHERE clause was explicit.
 			name:                 "select with workflow and dbname columns with different values",
-			query:                "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'different_keyspace' AND workflow = 'otherworkflow'",
-			expectedPlannedQuery: "SELECT id FROM _vt.vreplication WHERE id > 10 AND db_name = 'different_keyspace' AND workflow = 'otherworkflow'",
+			query:                "SELECT id FROM mysql.vreplication WHERE id > 10 AND db_name = 'different_keyspace' AND workflow = 'otherworkflow'",
+			expectedPlannedQuery: "SELECT id FROM mysql.vreplication WHERE id > 10 AND db_name = 'different_keyspace' AND workflow = 'otherworkflow'",
 		},
 	}
 
@@ -149,26 +149,26 @@ func TestVReplicationQueryPlanner_planUpdate(t *testing.T) {
 		{
 			name:                 "simple update",
 			planner:              NewVReplicationQueryPlanner(nil, "testworkflow", "testkeyspace"),
-			query:                "UPDATE _vt.vreplication SET state = 'Running'",
-			expectedPlannedQuery: "UPDATE _vt.vreplication SET state = 'Running' WHERE db_name = 'testkeyspace' AND workflow = 'testworkflow'",
+			query:                "UPDATE mysql.vreplication SET state = 'Running'",
+			expectedPlannedQuery: "UPDATE mysql.vreplication SET state = 'Running' WHERE db_name = 'testkeyspace' AND workflow = 'testworkflow'",
 			expectedErr:          nil,
 		},
 		{
 			name:        "including an ORDER BY is an error",
 			planner:     NewVReplicationQueryPlanner(nil, "", ""),
-			query:       "UPDATE _vt.vreplication SET state = 'Running' ORDER BY id DESC",
+			query:       "UPDATE mysql.vreplication SET state = 'Running' ORDER BY id DESC",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 		{
 			name:        "including a LIMIT is an error",
 			planner:     NewVReplicationQueryPlanner(nil, "", ""),
-			query:       "UPDATE _vt.vreplication SET state = 'Running' LIMIT 5",
+			query:       "UPDATE mysql.vreplication SET state = 'Running' LIMIT 5",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 		{
 			name:        "cannot update id column",
 			planner:     NewVReplicationQueryPlanner(nil, "", "testkeyspace"),
-			query:       "UPDATE _vt.vreplication SET id = 5",
+			query:       "UPDATE mysql.vreplication SET id = 5",
 			expectedErr: ErrCannotUpdateImmutableColumn,
 		},
 	}
@@ -206,28 +206,28 @@ func TestVReplicationQueryPlanner_planDelete(t *testing.T) {
 	}{
 		{
 			name:                 "simple delete",
-			query:                "DELETE FROM _vt.vreplication WHERE id = 1",
-			expectedPlannedQuery: "DELETE FROM _vt.vreplication WHERE id = 1 AND db_name = 'testkeyspace'",
+			query:                "DELETE FROM mysql.vreplication WHERE id = 1",
+			expectedPlannedQuery: "DELETE FROM mysql.vreplication WHERE id = 1 AND db_name = 'testkeyspace'",
 			expectedErr:          nil,
 		},
 		{
 			name:        "DELETE with USING clause is not supported",
-			query:       "DELETE FROM _vt.vreplication, _vt.schema_migrations USING _vt.vreplication INNER JOIN _vt.schema_migrations",
+			query:       "DELETE FROM mysql.vreplication, mysql.schema_migrations USING mysql.vreplication INNER JOIN mysql.schema_migrations",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 		{
 			name:        "DELETE with a PARTITION clause is not supported",
-			query:       "DELETE FROM _vt.vreplication PARTITION (p1)",
+			query:       "DELETE FROM mysql.vreplication PARTITION (p1)",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 		{
 			name:        "DELETE with ORDER BY is not supported",
-			query:       "DELETE FROM _vt.vreplication ORDER BY id DESC",
+			query:       "DELETE FROM mysql.vreplication ORDER BY id DESC",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 		{
 			name:        "DELETE with LIMIT is not supported",
-			query:       "DELETE FROM _vt.vreplication LIMIT 5",
+			query:       "DELETE FROM mysql.vreplication LIMIT 5",
 			expectedErr: ErrUnsupportedQueryConstruct,
 		},
 	}
@@ -273,7 +273,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 				targetStreamIDs: map[string][]int64{
 					"a": {1, 2},
 				},
-				query: "select * from _vt.vreplication_log",
+				query: "select * from mysql.vreplication_log",
 				assertion: func(t *testing.T, plan QueryPlan) {
 					t.Helper()
 					qp, ok := plan.(*PerTargetQueryPlan)
@@ -282,7 +282,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 					}
 
 					expected := map[string]string{
-						"a": "select * from _vt.vreplication_log where vrepl_id in (1, 2)",
+						"a": "select * from mysql.vreplication_log where vrepl_id in (1, 2)",
 					}
 					assertQueryMapsMatch(t, expected, qp.ParsedQueries)
 				},
@@ -291,7 +291,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 				targetStreamIDs: map[string][]int64{
 					"a": nil,
 				},
-				query: "select * from _vt.vreplication_log",
+				query: "select * from mysql.vreplication_log",
 				assertion: func(t *testing.T, plan QueryPlan) {
 					t.Helper()
 					qp, ok := plan.(*PerTargetQueryPlan)
@@ -300,7 +300,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 					}
 
 					expected := map[string]string{
-						"a": "select * from _vt.vreplication_log where 1 != 1",
+						"a": "select * from mysql.vreplication_log where 1 != 1",
 					}
 					assertQueryMapsMatch(t, expected, qp.ParsedQueries)
 				},
@@ -309,7 +309,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 				targetStreamIDs: map[string][]int64{
 					"a": {1},
 				},
-				query: "select * from _vt.vreplication_log",
+				query: "select * from mysql.vreplication_log",
 				assertion: func(t *testing.T, plan QueryPlan) {
 					t.Helper()
 					qp, ok := plan.(*PerTargetQueryPlan)
@@ -318,13 +318,13 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 					}
 
 					expected := map[string]string{
-						"a": "select * from _vt.vreplication_log where vrepl_id = 1",
+						"a": "select * from mysql.vreplication_log where vrepl_id = 1",
 					}
 					assertQueryMapsMatch(t, expected, qp.ParsedQueries)
 				},
 			},
 			{
-				query: "select * from _vt.vreplication_log where vrepl_id = 1",
+				query: "select * from mysql.vreplication_log where vrepl_id = 1",
 				assertion: func(t *testing.T, plan QueryPlan) {
 					t.Helper()
 					qp, ok := plan.(*FixedQueryPlan)
@@ -332,14 +332,14 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 						require.FailNow(t, "failed type check", "expected plan to be FixedQueryPlan, got %T: %v", plan, plan)
 					}
 
-					assert.Equal(t, "select * from _vt.vreplication_log where vrepl_id = 1", qp.ParsedQuery.Query)
+					assert.Equal(t, "select * from mysql.vreplication_log where vrepl_id = 1", qp.ParsedQuery.Query)
 				},
 			},
 			{
 				targetStreamIDs: map[string][]int64{
 					"a": {1, 2},
 				},
-				query: "select * from _vt.vreplication_log where foo = 'bar'",
+				query: "select * from mysql.vreplication_log where foo = 'bar'",
 				assertion: func(t *testing.T, plan QueryPlan) {
 					t.Helper()
 					qp, ok := plan.(*PerTargetQueryPlan)
@@ -348,7 +348,7 @@ func TestVReplicationLogQueryPlanner(t *testing.T) {
 					}
 
 					expected := map[string]string{
-						"a": "select * from _vt.vreplication_log where vrepl_id in (1, 2) and foo = 'bar'",
+						"a": "select * from mysql.vreplication_log where vrepl_id in (1, 2) and foo = 'bar'",
 					}
 					assertQueryMapsMatch(t, expected, qp.ParsedQueries)
 				},

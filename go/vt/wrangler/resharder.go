@@ -167,7 +167,7 @@ func (wr *Wrangler) buildResharder(ctx context.Context, keyspace, workflow strin
 func (rs *resharder) validateTargets(ctx context.Context) error {
 	err := rs.forAll(rs.targetShards, func(target *topo.ShardInfo) error {
 		targetPrimary := rs.targetPrimaries[target.ShardName()]
-		query := fmt.Sprintf("select 1 from _vt.vreplication where db_name=%s", encodeString(targetPrimary.DbName()))
+		query := fmt.Sprintf("select 1 from mysql.vreplication where db_name=%s", encodeString(targetPrimary.DbName()))
 		p3qr, err := rs.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query)
 		if err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
@@ -185,7 +185,7 @@ func (rs *resharder) readRefStreams(ctx context.Context) error {
 	err := rs.forAll(rs.sourceShards, func(source *topo.ShardInfo) error {
 		sourcePrimary := rs.sourcePrimaries[source.ShardName()]
 
-		query := fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name=%s and message != 'FROZEN'", encodeString(sourcePrimary.DbName()))
+		query := fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name=%s and message != 'FROZEN'", encodeString(sourcePrimary.DbName()))
 		p3qr, err := rs.wr.tmc.VReplicationExec(ctx, sourcePrimary.Tablet, query)
 		if err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", sourcePrimary.Tablet, query)
@@ -359,7 +359,7 @@ func (rs *resharder) createStreams(ctx context.Context) error {
 func (rs *resharder) startStreams(ctx context.Context) error {
 	err := rs.forAll(rs.targetShards, func(target *topo.ShardInfo) error {
 		targetPrimary := rs.targetPrimaries[target.ShardName()]
-		query := fmt.Sprintf("update _vt.vreplication set state='Running' where db_name=%s", encodeString(targetPrimary.DbName()))
+		query := fmt.Sprintf("update mysql.vreplication set state='Running' where db_name=%s", encodeString(targetPrimary.DbName()))
 		if _, err := rs.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
 		}

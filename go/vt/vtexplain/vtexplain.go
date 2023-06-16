@@ -385,7 +385,7 @@ func (vte *VTExplain) specialHandlingOfSavepoints(q *MysqlQuery) error {
 	if !ok {
 		return fmt.Errorf("savepoint expected, got: %s", q.SQL)
 	}
-	if !strings.Contains(sp.Name.String(), "_vt") {
+	if !strings.Contains(sp.Name.String(), "mysql") {
 		return nil
 	}
 

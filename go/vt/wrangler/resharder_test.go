@@ -39,8 +39,8 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
 
-const rsSelectFrozenQuery = "select 1 from _vt.vreplication where db_name='ks' and message='FROZEN' and workflow_sub_type != 1"
-const insertPrefix = `/insert into _vt.vreplication\(workflow, source, pos, max_tps, max_replication_lag, cell, tablet_types, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type, defer_secondary_keys\) values `
+const rsSelectFrozenQuery = "select 1 from mysql.vreplication where db_name='ks' and message='FROZEN' and workflow_sub_type != 1"
+const insertPrefix = `/insert into mysql.vreplication\(workflow, source, pos, max_tps, max_replication_lag, cell, tablet_types, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type, defer_secondary_keys\) values `
 const eol = "$"
 
 func TestResharderOneToMany(t *testing.T) {
@@ -108,8 +108,8 @@ func TestResharderOneToMany(t *testing.T) {
 					tc.cells+`', '`+tc.tabletTypes+`', [0-9]*, 0, 'Stopped', 'ks', 4, 0, false\)`+eol,
 				&sqltypes.Result{},
 			)
-			env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-			env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+			env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+			env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 			err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, tc.cells, tc.tabletTypes, defaultOnDDL, true, false, false)
 			require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestResharderManyToOne(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -185,8 +185,8 @@ func TestResharderManyToMany(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -238,8 +238,8 @@ func TestResharderOneRefTable(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -339,7 +339,7 @@ func TestResharderOneRefStream(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	refRow := `\('t1', 'keyspace:\\"ks1\\" shard:\\"0\\" filter:{rules:{match:\\"t1\\"}}', '', [0-9]*, [0-9]*, 'cell1', 'primary,replica', [0-9]*, 0, 'Stopped', 'ks', 4, 0, false\)`
 	env.tmc.expectVRQuery(
@@ -357,8 +357,8 @@ func TestResharderOneRefStream(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -417,7 +417,7 @@ func TestResharderNoRefStream(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	env.tmc.expectVRQuery(
 		200,
@@ -434,8 +434,8 @@ func TestResharderNoRefStream(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -474,8 +474,8 @@ func TestResharderCopySchema(t *testing.T) {
 		&sqltypes.Result{},
 	)
 
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, "update _vt.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, "update mysql.vreplication set state='Running' where db_name='ks'", &sqltypes.Result{})
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, false, "", "", defaultOnDDL, true, false, false)
 	assert.NoError(t, err)
@@ -496,14 +496,14 @@ func TestResharderDupWorkflow(t *testing.T) {
 	}
 	env.tmc.schema = schm
 
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 	result := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"1",
 		"int64"),
 		"1",
 	)
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), result)
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), result)
 
 	env.tmc.expectVRQuery(200, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(100, rsSelectFrozenQuery, &sqltypes.Result{})
@@ -527,27 +527,27 @@ func TestResharderServingState(t *testing.T) {
 	}
 	env.tmc.schema = schm
 
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 	env.tmc.expectVRQuery(100, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(210, rsSelectFrozenQuery, &sqltypes.Result{})
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, []string{"-80"}, nil, true, "", "", defaultOnDDL, true, false, false)
 	assert.EqualError(t, err, "buildResharder: source shard -80 is not in serving state")
 
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 	env.tmc.expectVRQuery(100, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(210, rsSelectFrozenQuery, &sqltypes.Result{})
 	err = env.wr.Reshard(context.Background(), env.keyspace, env.workflow, []string{"0"}, []string{"0"}, true, "", "", defaultOnDDL, true, false, false)
 	assert.EqualError(t, err, "buildResharder: target shard 0 is in serving state")
 
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 	env.tmc.expectVRQuery(100, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(210, rsSelectFrozenQuery, &sqltypes.Result{})
@@ -569,9 +569,9 @@ func TestResharderTargetAlreadyResharding(t *testing.T) {
 	}
 	env.tmc.schema = schm
 
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s'", env.keyspace, env.workflow), &sqltypes.Result{})
 
 	result := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"1",
@@ -580,8 +580,8 @@ func TestResharderTargetAlreadyResharding(t *testing.T) {
 	)
 	env.tmc.expectVRQuery(200, rsSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(210, rsSelectFrozenQuery, &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s'", env.keyspace), result)
-	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s'", env.keyspace), &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s'", env.keyspace), result)
+	env.tmc.expectVRQuery(210, fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s'", env.keyspace), &sqltypes.Result{})
 	env.tmc.expectVRQuery(100, rsSelectFrozenQuery, &sqltypes.Result{})
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.EqualError(t, err, "buildResharder: validateTargets: some streams already exist in the target shards, please clean them up and retry the command")
@@ -629,7 +629,7 @@ func TestResharderUnnamedStream(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.EqualError(t, err, "buildResharder: readRefStreams: VReplication streams must have named workflows for migration: shard: ks:0")
@@ -677,7 +677,7 @@ func TestResharderMismatchedRefStreams(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls1),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result1)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result1)
 	bls2 := &binlogdatapb.BinlogSource{
 		Keyspace: "ks2",
 		Shard:    "0",
@@ -693,7 +693,7 @@ func TestResharderMismatchedRefStreams(t *testing.T) {
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls1),
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls2),
 	)
-	env.tmc.expectVRQuery(110, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result2)
+	env.tmc.expectVRQuery(110, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result2)
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	want := "buildResharder: readRefStreams: streams are mismatched across source shards"
@@ -733,7 +733,7 @@ func TestResharderTableNotInVSchema(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	assert.EqualError(t, err, "buildResharder: readRefStreams: blsIsReference: table t1 not found in vschema")
@@ -797,7 +797,7 @@ func TestResharderMixedTablesOrder1(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1t2|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	want := "buildResharder: readRefStreams: blsIsReference: cannot reshard streams with a mix of reference and sharded tables"
@@ -864,7 +864,7 @@ func TestResharderMixedTablesOrder2(t *testing.T) {
 		"varchar|varchar|varchar|varchar"),
 		fmt.Sprintf("t1t2|%v|cell1|primary,replica", bls),
 	)
-	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from _vt.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
+	env.tmc.expectVRQuery(100, fmt.Sprintf("select workflow, source, cell, tablet_types from mysql.vreplication where db_name='%s' and message != 'FROZEN'", env.keyspace), result)
 
 	err := env.wr.Reshard(context.Background(), env.keyspace, env.workflow, env.sources, env.targets, true, "", "", defaultOnDDL, true, false, false)
 	want := "buildResharder: readRefStreams: blsIsReference: cannot reshard streams with a mix of reference and sharded tables"

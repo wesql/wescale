@@ -213,15 +213,15 @@ func TestDeferSecondaryKeys(t *testing.T) {
 	defer dbClient.Close()
 	dbName := dbClient.DBName()
 	// Ensure there's a dummy vreplication workflow record
-	_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into _vt.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s') on duplicate key update workflow='test', source='', pos='', max_tps=99999, max_replication_lag=99999, time_updated=0, transaction_timestamp=0, state='Running', db_name='%s'",
+	_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into mysql.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s') on duplicate key update workflow='test', source='', pos='', max_tps=99999, max_replication_lag=99999, time_updated=0, transaction_timestamp=0, state='Running', db_name='%s'",
 		id, dbName, dbName), 1)
 	require.NoError(t, err)
 	defer func() {
-		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from _vt.vreplication where id = %d", id), 1)
+		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from mysql.vreplication where id = %d", id), 1)
 		require.NoError(t, err)
 	}()
 	vr := newVReplicator(id, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
-	getActionsSQLf := "select action from _vt.post_copy_action where table_name='%s'"
+	getActionsSQLf := "select action from mysql.post_copy_action where table_name='%s'"
 	getCurrentDDL := func(tableName string) string {
 		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{tableName}}
 		sd, err := env.Mysqld.GetSchema(ctx, dbName, req)
@@ -320,7 +320,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 			postStashHook: func() error {
 				myid := id + 1000
 				// Insert second vreplication record to simulate a second controller/vreplicator
-				_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into _vt.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s')",
+				_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into mysql.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s')",
 					myid, dbName), 1)
 				if err != nil {
 					return err
@@ -338,7 +338,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into _vt.post_copy_action (vrepl_id, table_name, action) values (%d, 't1', '%s')",
+				_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into mysql.post_copy_action (vrepl_id, table_name, action) values (%d, 't1', '%s')",
 					myid, string(addlAction)), 1)
 				if err != nil {
 					return err
@@ -421,7 +421,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 			defer func() {
 				_, err = dbClient.ExecuteFetch(fmt.Sprintf("drop table %s.%s", dbName, tcase.tableName), 1)
 				require.NoError(t, err)
-				_, err = dbClient.ExecuteFetch("delete from _vt.post_copy_action", 1)
+				_, err = dbClient.ExecuteFetch("delete from mysql.post_copy_action", 1)
 				require.NoError(t, err)
 			}()
 
@@ -548,11 +548,11 @@ func TestCancelledDeferSecondaryKeys(t *testing.T) {
 	defer dbClient.Close()
 	dbName := dbClient.DBName()
 	// Ensure there's a dummy vreplication workflow record
-	_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into _vt.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s') on duplicate key update workflow='test', source='', pos='', max_tps=99999, max_replication_lag=99999, time_updated=0, transaction_timestamp=0, state='Running', db_name='%s'",
+	_, err = dbClient.ExecuteFetch(fmt.Sprintf("insert into mysql.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name) values (%d, 'test', '', '', 99999, 99999, 0, 0, 'Running', '%s') on duplicate key update workflow='test', source='', pos='', max_tps=99999, max_replication_lag=99999, time_updated=0, transaction_timestamp=0, state='Running', db_name='%s'",
 		id, dbName, dbName), 1)
 	require.NoError(t, err)
 	defer func() {
-		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from _vt.vreplication where id = %d", id), 1)
+		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from mysql.vreplication where id = %d", id), 1)
 		require.NoError(t, err)
 	}()
 	vr := newVReplicator(id, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
@@ -564,7 +564,7 @@ func TestCancelledDeferSecondaryKeys(t *testing.T) {
 		require.Equal(t, 1, len(sd.TableDefinitions))
 		return removeVersionDifferences(sd.TableDefinitions[0].Schema)
 	}
-	getActionsSQLf := "select action from _vt.post_copy_action where vrepl_id=%d and table_name='%s'"
+	getActionsSQLf := "select action from mysql.post_copy_action where vrepl_id=%d and table_name='%s'"
 
 	tableName := "t1"
 	ddl := fmt.Sprintf("create table %s.t1 (id int not null, c1 int default null, c2 int default null, primary key(id), key c1 (c1), key c2 (c2))", dbName)

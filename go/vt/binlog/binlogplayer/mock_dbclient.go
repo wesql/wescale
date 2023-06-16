@@ -53,9 +53,9 @@ func NewMockDBClient(t *testing.T) *MockDBClient {
 		UName: mockClientUNameFiltered,
 		done:  make(chan struct{}),
 		invariants: map[string]*sqltypes.Result{
-			"CREATE TABLE IF NOT EXISTS _vt.vreplication_log":           {},
-			"select id, type, state, message from _vt.vreplication_log": {},
-			"insert into _vt.vreplication_log":                          {},
+			"CREATE TABLE IF NOT EXISTS mysql.vreplication_log":           {},
+			"select id, type, state, message from mysql.vreplication_log": {},
+			"insert into mysql.vreplication_log":                          {},
 		},
 	}
 }

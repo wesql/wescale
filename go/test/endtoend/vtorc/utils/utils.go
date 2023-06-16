@@ -327,7 +327,7 @@ func cleanAndStartVttablet(t *testing.T, clusterInfo *VTOrcClusterInfo, vttablet
 	// remove the databases if they exist
 	_, err = RunSQL(t, "DROP DATABASE IF EXISTS ks", vttablet, "")
 	require.NoError(t, err)
-	_, err = RunSQL(t, "DROP DATABASE IF EXISTS _vt", vttablet, "")
+	_, err = RunSQL(t, "DROP DATABASE IF EXISTS mysql", vttablet, "")
 	require.NoError(t, err)
 	// stop the replication
 	_, err = RunSQL(t, "STOP SLAVE", vttablet, "")

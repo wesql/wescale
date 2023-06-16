@@ -170,7 +170,7 @@ func TestVReplicationTimeUpdated(t *testing.T) {
 	})
 
 	var getTimestamps = func() (int64, int64, int64) {
-		qr, err := env.Mysqld.FetchSuperQuery(ctx, "select time_updated, transaction_timestamp, time_heartbeat from _vt.vreplication")
+		qr, err := env.Mysqld.FetchSuperQuery(ctx, "select time_updated, transaction_timestamp, time_heartbeat from mysql.vreplication")
 		require.NoError(t, err)
 		require.NotNil(t, qr)
 		require.Equal(t, 1, len(qr.Rows))
@@ -310,7 +310,7 @@ func TestCharPK(t *testing.T) {
 		output := qh.Expect(
 			"begin",
 			tcases.output,
-			"/update _vt.vreplication set pos",
+			"/update mysql.vreplication set pos",
 			"commit",
 		)
 		expectDBClientQueries(t, output)
@@ -368,7 +368,7 @@ func TestRollup(t *testing.T) {
 		output := qh.Expect(
 			"begin",
 			tcases.output,
-			"/update _vt.vreplication set pos",
+			"/update mysql.vreplication set pos",
 			"commit",
 		)
 		expectDBClientQueries(t, output)
@@ -410,7 +410,7 @@ func TestPlayerSavepoint(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id) values (1)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
@@ -430,7 +430,7 @@ func TestPlayerSavepoint(t *testing.T) {
 		"begin",
 		"/insert into t1.*2.*",
 		"/insert into t1.*3.*",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 	cancel()
@@ -472,7 +472,7 @@ func TestPlayerStatementModeWithFilter(t *testing.T) {
 	output := qh.Expect(
 		"begin",
 		"rollback",
-		"/update _vt.vreplication set message='filter rules are not supported for SBR",
+		"/update mysql.vreplication set message='filter rules are not supported for SBR",
 	)
 
 	execStatements(t, input)
@@ -516,7 +516,7 @@ func TestPlayerStatementMode(t *testing.T) {
 	output := qh.Expect(
 		"begin",
 		"insert into src1 values(1, 'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	)
 
@@ -614,7 +614,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into dst1(id,val) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst1",
@@ -632,7 +632,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update dst1 set val='bbb' where id=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst1",
@@ -649,7 +649,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"delete from dst1 where id=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst1",
@@ -664,7 +664,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into dst2(id,val1,sval2,rcount) values (1,2,ifnull(3, 0),1) on duplicate key update val1=values(val1), sval2=sval2+ifnull(values(sval2), 0), rcount=rcount+1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst2",
@@ -681,7 +681,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update dst2 set val1=5, sval2=sval2-ifnull(3, 0)+ifnull(1, 0), rcount=rcount where id=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst2",
@@ -698,7 +698,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update dst2 set val1=null, sval2=sval2-ifnull(1, 0), rcount=rcount-1 where id=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst2",
@@ -711,7 +711,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert ignore into dst3(id,val) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst3",
@@ -724,7 +724,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert ignore into dst3(id,val) values (1,'bbb')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst3",
@@ -736,7 +736,7 @@ func TestPlayerFilters(t *testing.T) {
 		input: "delete from src3 where id=1",
 		output: qh.Expect(
 			"begin",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst3",
@@ -749,7 +749,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into yes(id,val) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "yes",
@@ -762,7 +762,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update yes set val='bbb' where id=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "yes",
@@ -779,7 +779,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into nopk(id,val) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "nopk",
@@ -793,7 +793,7 @@ func TestPlayerFilters(t *testing.T) {
 			"begin",
 			"delete from nopk where id=1 and val='aaa'",
 			"insert into nopk(id,val) values (1,'bbb')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "nopk",
@@ -806,7 +806,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"delete from nopk where id=1 and val='bbb'",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "nopk",
@@ -818,7 +818,7 @@ func TestPlayerFilters(t *testing.T) {
 			"begin",
 			"insert into dst4(id1,val) values (1,'aaa')",
 			"insert into dst4(id1,val) values (3,'ccc')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst4",
@@ -830,7 +830,7 @@ func TestPlayerFilters(t *testing.T) {
 			"begin",
 			"insert into dst5(id1,val) values (1,'abc')",
 			"insert into dst5(id1,val) values (4,'abc')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst5",
@@ -841,7 +841,7 @@ func TestPlayerFilters(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into dstCharset(id1,val,val2) values (1,concat(substr(_utf8mb4 '木元' collate utf8mb4_bin, 1, 1), 'abcxyz'),concat(substr(_utf8mb4 '木元' collate utf8mb4_bin, 1, 1), 'abcxyz'))",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dstCharset",
@@ -917,7 +917,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into `begin`(`primary`,`column`) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "begin",
@@ -929,7 +929,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update `begin` set `column`='bbb' where `primary`=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "begin",
@@ -941,7 +941,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"delete from `begin` where `primary`=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "begin",
@@ -951,7 +951,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into `rollback`(`primary`,`column`) values (1,'aaa')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "rollback",
@@ -963,7 +963,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update `rollback` set `column`='bbb' where `primary`=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "rollback",
@@ -975,7 +975,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"delete from `rollback` where `primary`=1",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "rollback",
@@ -985,7 +985,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into `commit`(`primary`,`column`) values (1 + 1,concat('aaa', 'a'))",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "commit",
@@ -997,7 +997,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"update `commit` set `column`=concat('bbb', 'a') where `primary`=(1 + 1)",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "commit",
@@ -1010,7 +1010,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 			"begin",
 			"delete from `commit` where `primary`=(1 + 1)",
 			"insert into `commit`(`primary`,`column`) values (2 + 1,concat('bbb', 'a'))",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "commit",
@@ -1022,7 +1022,7 @@ func TestPlayerKeywordNames(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"delete from `commit` where `primary`=(2 + 1)",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "commit",
@@ -1101,7 +1101,7 @@ func TestPlayerKeyspaceID(t *testing.T) {
 		output: qh.Expect(
 			"begin",
 			"insert into dst1(id,val) values (1,'\x16k@\xb4J\xbaK\xd6')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst1",
@@ -1159,7 +1159,7 @@ func TestUnicode(t *testing.T) {
 			"begin",
 			// We should expect the "Mojibaked" version.
 			"insert into dst1(id,val) values (1,'ðŸ‘\u008d')",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		),
 		table: "dst1",
@@ -1290,13 +1290,13 @@ func TestPlayerUpdates(t *testing.T) {
 		output := qh.Expect(
 			"begin",
 			tcases.output,
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		)
 		if tcases.output == "" {
 			output = qh.Expect(
 				"begin",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 			)
 		}
@@ -1344,7 +1344,7 @@ func TestPlayerRowMove(t *testing.T) {
 		"insert into dst(val1,sval2,rcount) values (1,ifnull(1, 0),1) on duplicate key update sval2=sval2+ifnull(values(sval2), 0), rcount=rcount+1",
 		"insert into dst(val1,sval2,rcount) values (2,ifnull(2, 0),1) on duplicate key update sval2=sval2+ifnull(values(sval2), 0), rcount=rcount+1",
 		"insert into dst(val1,sval2,rcount) values (2,ifnull(3, 0),1) on duplicate key update sval2=sval2+ifnull(values(sval2), 0), rcount=rcount+1",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 	expectData(t, "dst", [][]string{
@@ -1360,7 +1360,7 @@ func TestPlayerRowMove(t *testing.T) {
 		"begin",
 		"update dst set sval2=sval2-ifnull(3, 0), rcount=rcount-1 where val1=2",
 		"insert into dst(val1,sval2,rcount) values (1,ifnull(4, 0),1) on duplicate key update sval2=sval2+ifnull(values(sval2), 0), rcount=rcount+1",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 	expectData(t, "dst", [][]string{
@@ -1536,7 +1536,7 @@ func TestPlayerTypes(t *testing.T) {
 		want := qh.Expect(
 			"begin",
 			tcases.output,
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 			"commit",
 		)
 		expectDBClientQueries(t, want)
@@ -1578,15 +1578,15 @@ func TestPlayerDDL(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id) values (1)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
 	execStatements(t, []string{"alter table t1 add column val varchar(128)"})
 	execStatements(t, []string{"alter table t1 drop column val"})
 	expectDBClientQueries(t, qh.Expect(
-		"/update _vt.vreplication set pos=",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 	cancel()
 	bls = &binlogdatapb.BinlogSource{
@@ -1602,8 +1602,8 @@ func TestPlayerDDL(t *testing.T) {
 	// The stop position must be the GTID of the first DDL
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
-		fmt.Sprintf("/update _vt.vreplication set pos='%s'", pos1),
-		"/update _vt.vreplication set state='Stopped'",
+		fmt.Sprintf("/update mysql.vreplication set pos='%s'", pos1),
+		"/update mysql.vreplication set state='Stopped'",
 		"commit",
 	))
 	pos2b := primaryPosition(t)
@@ -1612,18 +1612,18 @@ func TestPlayerDDL(t *testing.T) {
 	log.Errorf("Expected log:: TestPlayerDDL Positions are: before first alter %v, after first alter %v, before second alter %v, after second alter %v",
 		pos0, pos1, pos2b, pos2) //For debugging only: to check what are the positions when test works and if/when it fails
 	// Restart vreplication
-	if _, err := playerEngine.Exec(fmt.Sprintf(`update _vt.vreplication set state = 'Running', message='' where id=%d`, id)); err != nil {
+	if _, err := playerEngine.Exec(fmt.Sprintf(`update mysql.vreplication set state = 'Running', message='' where id=%d`, id)); err != nil {
 		t.Fatal(err)
 	}
 	// It should stop at the next DDL
 	expectDBClientQueries(t, qh.Expect(
 		"/update.*'Running'",
 		// Second update is from vreplicator.
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"/update.*'Running'",
 		"begin",
 		fmt.Sprintf("/update.*'%s'", pos2),
-		"/update _vt.vreplication set state='Stopped'",
+		"/update mysql.vreplication set state='Stopped'",
 		"commit",
 	))
 	cancel()
@@ -1638,15 +1638,15 @@ func TestPlayerDDL(t *testing.T) {
 	execStatements(t, []string{"alter table t1 add column val1 varchar(128)"})
 	expectDBClientQueries(t, qh.Expect(
 		"alter table t1 add column val1 varchar(128)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		// The apply of the DDL on target generates an "other" event.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 	execStatements(t, []string{"alter table t1 add column val2 varchar(128)"})
 	expectDBClientQueries(t, qh.Expect(
 		"alter table t1 add column val2 varchar(128)",
-		"/update _vt.vreplication set message='Duplicate",
-		"/update _vt.vreplication set state='Error', message='Duplicate",
+		"/update mysql.vreplication set message='Duplicate",
+		"/update mysql.vreplication set state='Error', message='Duplicate",
 	))
 	cancel()
 
@@ -1667,14 +1667,14 @@ func TestPlayerDDL(t *testing.T) {
 	execStatements(t, []string{"alter table t1 add column val1 varchar(128)"})
 	expectDBClientQueries(t, qh.Expect(
 		"alter table t1 add column val1 varchar(128)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		// The apply of the DDL on target generates an "other" event.
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 	execStatements(t, []string{"alter table t1 add column val2 varchar(128)"})
 	expectDBClientQueries(t, qh.Expect(
 		"alter table t1 add column val2 varchar(128)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 	cancel()
 }
@@ -1682,7 +1682,7 @@ func TestPlayerDDL(t *testing.T) {
 func TestGTIDCompress(t *testing.T) {
 	ctx := context.Background()
 	defer deleteTablet(addTablet(100))
-	err := env.Mysqld.ExecuteSuperQuery(ctx, "insert into _vt.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state,db_name) values (1, '', '', '', 0,0,0,0,'Stopped','')")
+	err := env.Mysqld.ExecuteSuperQuery(ctx, "insert into mysql.vreplication (id, workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state,db_name) values (1, '', '', '', 0,0,0,0,'Stopped','')")
 	require.NoError(t, err)
 
 	type testCase struct {
@@ -1704,9 +1704,9 @@ func TestGTIDCompress(t *testing.T) {
 			if tCase.compress {
 				strGTID = fmt.Sprintf("compress(%s)", strGTID)
 			}
-			err := env.Mysqld.ExecuteSuperQuery(ctx, fmt.Sprintf("update _vt.vreplication set pos=%s where id = 1", strGTID))
+			err := env.Mysqld.ExecuteSuperQuery(ctx, fmt.Sprintf("update mysql.vreplication set pos=%s where id = 1", strGTID))
 			require.NoError(t, err)
-			qr, err := env.Mysqld.FetchSuperQuery(ctx, "select pos from _vt.vreplication where id = 1")
+			qr, err := env.Mysqld.FetchSuperQuery(ctx, "select pos from mysql.vreplication where id = 1")
 			require.NoError(t, err)
 			require.NotNil(t, qr)
 			require.Equal(t, 1, len(qr.Rows))
@@ -1766,7 +1766,7 @@ func TestPlayerStopPos(t *testing.T) {
 	}
 	id := uint32(qr.InsertID)
 	for q := range globalDBQueries {
-		if strings.HasPrefix(q, "insert into _vt.vreplication") {
+		if strings.HasPrefix(q, "insert into mysql.vreplication") {
 			break
 		}
 	}
@@ -1783,7 +1783,7 @@ func TestPlayerStopPos(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"/update.*'Running'",
 		// Second update is from vreplicator.
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"/update.*'Running'",
 		"begin",
 		"insert into yes(id,val) values (1,'aaa')",
@@ -1808,7 +1808,7 @@ func TestPlayerStopPos(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"/update.*'Running'",
 		// Second update is from vreplicator.
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"/update.*'Running'",
 		"begin",
 		// Since 'no' generates empty transactions that are skipped by
@@ -1826,7 +1826,7 @@ func TestPlayerStopPos(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"/update.*'Running'",
 		// Second update is from vreplicator.
-		"/update _vt.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
 		"/update.*'Running'",
 		"/update.*'Stopped'.*already reached",
 	))
@@ -1870,12 +1870,12 @@ func TestPlayerStopAtOther(t *testing.T) {
 	}
 	id := uint32(qr.InsertID)
 	for q := range globalDBQueries {
-		if strings.HasPrefix(q, "insert into _vt.vreplication") {
+		if strings.HasPrefix(q, "insert into mysql.vreplication") {
 			break
 		}
 	}
 	defer func() {
-		if _, err := playerEngine.Exec(fmt.Sprintf("delete from _vt.vreplication where id = %d", id)); err != nil {
+		if _, err := playerEngine.Exec(fmt.Sprintf("delete from mysql.vreplication where id = %d", id)); err != nil {
 			t.Fatal(err)
 		}
 		expectDeleteQueries(t)
@@ -1929,13 +1929,13 @@ func TestPlayerStopAtOther(t *testing.T) {
 	// This is approximately the expected sequence of updates.
 	expectDBClientQueries(t, qh.Expect(
 		"update t1 set val='ccc' where id=1",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 		"begin",
 		"insert into t1(id,val) values (2,'ddd')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
-		fmt.Sprintf("/update _vt.vreplication set pos='%s'", stopPos),
+		fmt.Sprintf("/update mysql.vreplication set pos='%s'", stopPos),
 		"/update.*'Stopped'",
 	))
 }
@@ -1978,10 +1978,10 @@ func TestPlayerIdleUpdate(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id,val) values (1,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	),
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	)
 	// The above write will generate a new binlog event, and
 	// that event will loopback into player as an empty event.
@@ -1989,7 +1989,7 @@ func TestPlayerIdleUpdate(t *testing.T) {
 	// The exact positions are hard to verify because of this
 	// loopback mechanism.
 	expectDBClientQueries(t, qh.Expect(
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 	if duration := time.Since(start); duration < idleTimeout {
 		t.Errorf("duration: %v, must be at least %v", duration, idleTimeout)
@@ -2037,7 +2037,7 @@ func TestPlayerSplitTransaction(t *testing.T) {
 		"begin",
 		"insert into t1(id,val) values (1,'123456')",
 		"insert into t1(id,val) values (2,'789012')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 }
@@ -2079,7 +2079,7 @@ func TestPlayerLockErrors(t *testing.T) {
 		"begin",
 		"insert into t1(id,val) values (1,'aaa')",
 		"insert into t1(id,val) values (2,'bbb')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
@@ -2117,7 +2117,7 @@ func TestPlayerLockErrors(t *testing.T) {
 		"begin",
 		"update t1 set val='ccc' where id=1",
 		"update t1 set val='ccc' where id=2",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 }
@@ -2157,7 +2157,7 @@ func TestPlayerCancelOnLock(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id,val) values (1,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
@@ -2233,7 +2233,7 @@ func TestPlayerBatching(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id,val) values (1,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
@@ -2275,20 +2275,20 @@ func TestPlayerBatching(t *testing.T) {
 	// DDLs should be on their own.
 	expectDBClientQueries(t, qh.Expect(
 		"update t1 set val='ccc' where id=1",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 		"begin",
 		"insert into t1(id,val) values (2,'aaa')",
 		"insert into t1(id,val) values (3,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 		"alter table t1 add column val2 varbinary(128)",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"alter table t1 drop column val2",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		// The apply of the DDLs on target generates two "other" event.
-		"/update _vt.vreplication set pos=",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 	))
 }
 
@@ -2339,7 +2339,7 @@ func TestPlayerRelayLogMaxSize(t *testing.T) {
 			expectDBClientQueries(t, qh.Expect(
 				"begin",
 				"insert into t1(id,val) values (1,'123456')",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 			))
 
@@ -2381,16 +2381,16 @@ func TestPlayerRelayLogMaxSize(t *testing.T) {
 			// them.
 			expectDBClientQueries(t, qh.Expect(
 				"update t1 set val='ccc' where id=1",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 				"begin",
 				"insert into t1(id,val) values (2,'789012')",
 				"insert into t1(id,val) values (3,'345678')",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 				"begin",
 				"insert into t1(id,val) values (4,'901234')",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 			))
 		}()
@@ -2434,24 +2434,24 @@ func TestRestartOnVStreamEnd(t *testing.T) {
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into t1(id,val) values (1,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
 	streamerEngine.Close()
 	expectDBClientQueries(t, qh.Expect(
-		"/update _vt.vreplication set message='vstream ended'",
+		"/update mysql.vreplication set message='vstream ended'",
 	))
 	streamerEngine.Open()
 	execStatements(t, []string{
 		"insert into t1 values(2, 'aaa')",
 	})
 	expectDBClientQueries(t, qh.Expect(
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set state='Running'",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set state='Running'",
 		"begin",
 		"insert into t1(id,val) values (2,'aaa')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 }
@@ -2499,7 +2499,7 @@ func TestTimestamp(t *testing.T) {
 		// The insert value for ts will be in UTC.
 		// We'll check the row instead.
 		"/insert into t1",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 
@@ -2593,7 +2593,7 @@ func TestPlayerJSONDocs(t *testing.T) {
 			want := qh.Expect(
 				"begin",
 				"/insert into vitess_json",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 			)
 			expectDBClientQueries(t, want)
@@ -2660,7 +2660,7 @@ func TestPlayerJSONTwoColumns(t *testing.T) {
 			want := qh.Expect(
 				"begin",
 				"/insert into vitess_json2",
-				"/update _vt.vreplication set pos=",
+				"/update mysql.vreplication set pos=",
 				"commit",
 			)
 			expectDBClientQueries(t, want)
@@ -2677,7 +2677,7 @@ func TestVReplicationLogs(t *testing.T) {
 	require.NoError(t, err)
 	defer dbClient.Close()
 	vdbc := newVDBClient(dbClient, binlogplayer.NewStats())
-	query := "select vrepl_id, state, message, count from _vt.vreplication_log order by id desc limit 1"
+	query := "select vrepl_id, state, message, count from mysql.vreplication_log order by id desc limit 1"
 
 	expected := []string{
 		"[[INT32(1) VARBINARY(\"Running\") TEXT(\"message1\") INT64(1)]]",
@@ -2901,15 +2901,15 @@ func startVReplication(t *testing.T, bls *binlogdatapb.BinlogSource, pos string)
 		t.Fatal(err)
 	}
 	expectDBClientQueries(t, qh.Expect(
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set state='Running'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set state='Running'",
 	))
 	var once sync.Once
 	return func() {
 		t.Helper()
 		once.Do(func() {
-			query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+			query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 			if _, err := playerEngine.Exec(query); err != nil {
 				t.Fatal(err)
 			}

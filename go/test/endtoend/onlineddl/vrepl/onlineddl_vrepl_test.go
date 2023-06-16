@@ -374,8 +374,8 @@ func TestSchemaChange(t *testing.T) {
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusRunning)
 		testRows(t)
 
-		// gotta give the migration a few seconds to read throttling info from _vt.vreplication and write
-		// to _vt.schema_migrations
+		// gotta give the migration a few seconds to read throttling info from mysql.vreplication and write
+		// to mysql.schema_migrations
 		row, startedTimestamp, lastThrottledTimestamp := onlineddl.WaitForThrottledTimestamp(t, &vtParams, uuid, normalMigrationWait)
 		require.NotNil(t, row)
 		// vplayer and vcopier update throttle timestamp every second, so we expect the value
@@ -416,8 +416,8 @@ func TestSchemaChange(t *testing.T) {
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusRunning)
 			testRows(t)
 
-			// gotta give the migration a few seconds to read throttling info from _vt.vreplication and write
-			// to _vt.schema_migrations
+			// gotta give the migration a few seconds to read throttling info from mysql.vreplication and write
+			// to mysql.schema_migrations
 			row, startedTimestamp, lastThrottledTimestamp := onlineddl.WaitForThrottledTimestamp(t, &vtParams, uuid, normalMigrationWait)
 			require.NotNil(t, row)
 			// rowstreamer throttle timestamp only updates once in 10 seconds, so greater or equals" is good enough here.
@@ -587,7 +587,7 @@ func TestSchemaChange(t *testing.T) {
 
 			t.Run("Check tablet post PRS", func(t *testing.T) {
 				// onlineddl.Executor will find that a vrepl migration started in a different tablet.
-				// it will own the tablet and will update 'tablet' column in _vt.schema_migrations with its own
+				// it will own the tablet and will update 'tablet' column in mysql.schema_migrations with its own
 				// (promoted primary) tablet alias.
 				rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
 				require.NotNil(t, rs)
@@ -672,7 +672,7 @@ func TestSchemaChange(t *testing.T) {
 				onlineddl.PrintQueryResult(os.Stdout, rs)
 			})
 			t.Run("complete and expect completion", func(t *testing.T) {
-				query := fmt.Sprintf("select * from _vt.vreplication where workflow ='%s'", uuid)
+				query := fmt.Sprintf("select * from mysql.vreplication where workflow ='%s'", uuid)
 				rs, err := reparentTablet.VttabletProcess.QueryTablet(query, "", true)
 				assert.NoError(t, err)
 				onlineddl.PrintQueryResult(os.Stdout, rs)
@@ -685,7 +685,7 @@ func TestSchemaChange(t *testing.T) {
 
 			t.Run("Check tablet post PRS", func(t *testing.T) {
 				// onlineddl.Executor will find that a vrepl migration started in a different tablet.
-				// it will own the tablet and will update 'tablet' column in _vt.schema_migrations with its own
+				// it will own the tablet and will update 'tablet' column in mysql.schema_migrations with its own
 				// (promoted primary) tablet alias.
 				rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
 				require.NotNil(t, rs)

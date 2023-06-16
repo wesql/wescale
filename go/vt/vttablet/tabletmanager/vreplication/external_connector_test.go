@@ -65,16 +65,16 @@ func TestExternalConnectorCopy(t *testing.T) {
 	expectDBClientAndVreplicationQueries(t, []string{
 		"begin",
 		"insert into tab1(id,val) values (1,'a'), (2,'b')",
-		"/insert into _vt.copy_state",
+		"/insert into mysql.copy_state",
 		"commit",
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
+		"/update mysql.vreplication set state='Running'",
 	}, "")
 	execStatements(t, []string{"insert into tab1 values(3, 'c')"})
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
 		"insert into tab1(id,val) values (3,'c')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	))
 	// Cancel immediately so we don't deal with spurious updates.
@@ -97,10 +97,10 @@ func TestExternalConnectorCopy(t *testing.T) {
 	expectDBClientAndVreplicationQueries(t, []string{
 		"begin",
 		"insert into tab2(id,val) values (1,'a'), (2,'b')",
-		"/insert into _vt.copy_state",
+		"/insert into mysql.copy_state",
 		"commit",
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
+		"/update mysql.vreplication set state='Running'",
 	}, "")
 	cancel2()
 
@@ -122,10 +122,10 @@ func TestExternalConnectorCopy(t *testing.T) {
 	expectDBClientAndVreplicationQueries(t, []string{
 		"begin",
 		"insert into tab3(id,val) values (1,'a'), (2,'b')",
-		"/insert into _vt.copy_state",
+		"/insert into mysql.copy_state",
 		"commit",
-		"/delete cs, pca from _vt.copy_state as cs left join _vt.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
-		"/update _vt.vreplication set state='Running'",
+		"/delete cs, pca from mysql.copy_state as cs left join mysql.post_copy_action as pca on cs.vrepl_id=pca.vrepl_id and cs.table_name=pca.table_name",
+		"/update mysql.vreplication set state='Running'",
 	}, "")
 	cancel3()
 
@@ -165,7 +165,7 @@ func TestExternalConnectorPlay(t *testing.T) {
 		"begin",
 		"insert into tab1(id,val) values (1,'a')",
 		"insert into tab1(id,val) values (2,'b')",
-		"/update _vt.vreplication set pos=",
+		"/update mysql.vreplication set pos=",
 		"commit",
 	}, pos)
 }
@@ -180,17 +180,17 @@ func expectDBClientAndVreplicationQueries(t *testing.T, queries []string, pos st
 func getExpectedVreplicationQueries(t *testing.T, pos string) []string {
 	if pos == "" {
 		return []string{
-			"/insert into _vt.vreplication",
+			"/insert into mysql.vreplication",
 			"begin",
-			"/insert into _vt.copy_state",
-			"/update _vt.vreplication set state='Copying'",
+			"/insert into mysql.copy_state",
+			"/update mysql.vreplication set state='Copying'",
 			"commit",
-			"/update _vt.vreplication set pos=",
+			"/update mysql.vreplication set pos=",
 		}
 	}
 	return []string{
-		"/insert into _vt.vreplication",
-		"/update _vt.vreplication set state='Running'",
+		"/insert into mysql.vreplication",
+		"/update mysql.vreplication set state='Running'",
 	}
 }
 
@@ -202,7 +202,7 @@ func startExternalVReplication(t *testing.T, bls *binlogdatapb.BinlogSource, pos
 	}
 	return func() {
 		t.Helper()
-		query := fmt.Sprintf("delete from _vt.vreplication where id = %d", qr.InsertID)
+		query := fmt.Sprintf("delete from mysql.vreplication where id = %d", qr.InsertID)
 		if _, err := playerEngine.Exec(query); err != nil {
 			t.Fatal(err)
 		}

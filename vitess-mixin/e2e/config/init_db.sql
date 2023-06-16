@@ -19,13 +19,13 @@ DROP DATABASE IF EXISTS test;
 CREATE DATABASE IF NOT EXISTS _vt;
 # Note that definitions of local_metadata and shard_metadata should be the same
 # as in production which is defined in go/vt/mysqlctl/metadata_tables.go.
-CREATE TABLE IF NOT EXISTS _vt.local_metadata (
+CREATE TABLE IF NOT EXISTS mysql.local_metadata (
   name VARCHAR(255) NOT NULL,
   value VARCHAR(255) NOT NULL,
   db_name VARBINARY(255) NOT NULL,
   PRIMARY KEY (db_name, name)
   ) ENGINE=InnoDB;
-CREATE TABLE IF NOT EXISTS _vt.shard_metadata (
+CREATE TABLE IF NOT EXISTS mysql.shard_metadata (
   name VARCHAR(255) NOT NULL,
   value MEDIUMBLOB NOT NULL,
   db_name VARBINARY(255) NOT NULL,

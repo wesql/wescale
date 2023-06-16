@@ -155,7 +155,7 @@ func TestVTGateExecuteWithKeyspaceShard(t *testing.T) {
 		nil,
 	)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `no healthy tablet available for 'keyspace:"_vt" shard:"noshard" tablet_type:PRIMARY`)
+	require.Contains(t, err.Error(), `no healthy tablet available for 'keyspace:"mysql" shard:"noshard" tablet_type:PRIMARY`)
 }
 
 func TestVTGateStreamExecute(t *testing.T) {

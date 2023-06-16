@@ -138,9 +138,9 @@ streams from the same source. The main difference between an external source vs 
 source is that the source proto contains an "external_mysql" field instead of keyspace and shard.
 That field is the key into the externalConnections section of the input yaml.
 
-VReplicationExec: insert into _vt.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('product', 'vt_commerce', 'filter:<rules:<match:\"product\" > > external_mysql:\"product\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
-VReplicationExec: insert into _vt.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('customer', 'vt_commerce', 'filter:<rules:<match:\"customer\" > > external_mysql:\"customer\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
-VReplicationExec: insert into _vt.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('orders', 'vt_commerce', 'filter:<rules:<match:\"orders\" > > external_mysql:\"customer\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
+VReplicationExec: insert into mysql.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('product', 'vt_commerce', 'filter:<rules:<match:\"product\" > > external_mysql:\"product\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
+VReplicationExec: insert into mysql.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('customer', 'vt_commerce', 'filter:<rules:<match:\"customer\" > > external_mysql:\"customer\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
+VReplicationExec: insert into mysql.vreplication (workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('orders', 'vt_commerce', 'filter:<rules:<match:\"orders\" > > external_mysql:\"customer\" ', ”, 9999, 9999, 'primary', 0, 0, 'Running')
 */
 func TestMigration(t *testing.T) {
 	yamlFile := startCluster(t)
@@ -221,7 +221,7 @@ func migrate(t *testing.T, fromdb, toks string, tables []string) {
 	val := sqltypes.NewVarBinary(fmt.Sprintf("%v", bls))
 	var sqlEscaped bytes.Buffer
 	val.EncodeSQL(&sqlEscaped)
-	query := fmt.Sprintf("insert into _vt.vreplication "+
+	query := fmt.Sprintf("insert into mysql.vreplication "+
 		"(workflow, db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values"+
 		"('%s', '%s', %s, '', 9999, 9999, 'primary', 0, 0, 'Running')", tables[0], toks, sqlEscaped.String())
 	fmt.Printf("VReplicationExec: %s\n", query)
@@ -287,9 +287,9 @@ func populate(t *testing.T, socket, sql string) {
 // waitForVReplicationToCatchup: logic copied from go/test/endtoend/vreplication/cluster.go
 func waitForVReplicationToCatchup(t *testing.T, vttablet *cluster.VttabletProcess, duration time.Duration) {
 	queries := []string{
-		`select count(*) from _vt.vreplication where pos = ''`,
-		"select count(*) from information_schema.tables where table_schema='_vt' and table_name='copy_state' limit 1;",
-		`select count(*) from _vt.copy_state`,
+		`select count(*) from mysql.vreplication where pos = ''`,
+		"select count(*) from information_schema.tables where table_schema='mysql' and table_name='copy_state' limit 1;",
+		`select count(*) from mysql.copy_state`,
 	}
 	results := []string{"[INT64(0)]", "[INT64(1)]", "[INT64(0)]"}
 	for ind, query := range queries {

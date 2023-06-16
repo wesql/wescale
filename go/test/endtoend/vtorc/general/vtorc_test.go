@@ -59,7 +59,7 @@ func TestPrimaryElection(t *testing.T) {
 		}
 	}
 
-	res, err := utils.RunSQL(t, "select * from reparent_journal", primary, "_vt")
+	res, err := utils.RunSQL(t, "select * from reparent_journal", primary, "mysql")
 	require.NoError(t, err)
 	require.Len(t, res.Rows, 1, "There should only be 1 primary tablet which was elected")
 }

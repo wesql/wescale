@@ -194,9 +194,9 @@ func resetBinlogClient() {
 // has verified the necessary behavior.
 func shortCircuitTestAfterQuery(query string, dbClient *binlogplayer.MockDBClient) {
 	dbClient.ExpectRequest(query, singleRowAffected, fmt.Errorf("Short circuiting test"))
-	dbClient.ExpectRequest("update _vt.vdiff set state = 'error', last_error = 'Short circuiting test'  where id = 1", singleRowAffected, nil)
-	dbClient.ExpectRequest("insert into _vt.vdiff_log(vdiff_id, message) values (1, 'State changed to: error')", singleRowAffected, nil)
-	dbClient.ExpectRequest("insert into _vt.vdiff_log(vdiff_id, message) values (1, 'Error: Short circuiting test')", singleRowAffected, nil)
+	dbClient.ExpectRequest("update mysql.vdiff set state = 'error', last_error = 'Short circuiting test'  where id = 1", singleRowAffected, nil)
+	dbClient.ExpectRequest("insert into mysql.vdiff_log(vdiff_id, message) values (1, 'State changed to: error')", singleRowAffected, nil)
+	dbClient.ExpectRequest("insert into mysql.vdiff_log(vdiff_id, message) values (1, 'Error: Short circuiting test')", singleRowAffected, nil)
 }
 
 //--------------------------------------
@@ -544,12 +544,12 @@ func newTestVDiffEnv(t *testing.T) *testVDiffEnv {
 	// But this is one statement per stream.
 	vdiffenv.tmc.setVRResults(
 		primary.tablet,
-		"/update _vt.vreplication set state='Running', stop_pos='MySQL56/.*', message='synchronizing for vdiff' where id=1",
+		"/update mysql.vreplication set state='Running', stop_pos='MySQL56/.*', message='synchronizing for vdiff' where id=1",
 		noResults,
 	)
 
 	// vdiff.stopTargets
-	vdiffenv.tmc.setVRResults(primary.tablet, fmt.Sprintf("update _vt.vreplication set state='Stopped', message='for vdiff' where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), singleRowAffected)
+	vdiffenv.tmc.setVRResults(primary.tablet, fmt.Sprintf("update mysql.vreplication set state='Stopped', message='for vdiff' where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), singleRowAffected)
 
 	// vdiff.syncTargets (continued)
 	vdiffenv.tmc.vrpos[tabletID] = vdiffSourceGtid
@@ -559,9 +559,9 @@ func newTestVDiffEnv(t *testing.T) *testVDiffEnv {
 	vdiffenv.tmc.waitpos[tabletID] = vdiffTargetPrimaryPosition
 
 	// vdiff.restartTargets
-	vdiffenv.tmc.setVRResults(primary.tablet, fmt.Sprintf("update _vt.vreplication set state='Running', message='', stop_pos='' where db_name='%s' and workflow='%s'", vdiffDBName, vdiffenv.workflow), singleRowAffected)
+	vdiffenv.tmc.setVRResults(primary.tablet, fmt.Sprintf("update mysql.vreplication set state='Running', message='', stop_pos='' where db_name='%s' and workflow='%s'", vdiffDBName, vdiffenv.workflow), singleRowAffected)
 
-	vdiffenv.dbClient.ExpectRequest("select * from _vt.vdiff where state in ('started','pending')", noResults, nil)
+	vdiffenv.dbClient.ExpectRequest("select * from mysql.vdiff where state in ('started','pending')", noResults, nil)
 	vdiffenv.vde.Open(context.Background(), vdiffenv.vre)
 	assert.True(t, vdiffenv.vde.IsOpen())
 	assert.Equal(t, 0, len(vdiffenv.vde.controllers))

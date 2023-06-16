@@ -10,7 +10,7 @@ import (
 
 const (
 	// TableQualifier is the standard schema used by VExec commands
-	TableQualifier = "_vt"
+	TableQualifier = "mysql"
 )
 
 var (

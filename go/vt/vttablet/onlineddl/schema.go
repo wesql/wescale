@@ -17,7 +17,7 @@ limitations under the License.
 package onlineddl
 
 const (
-	sqlInsertMigration = `INSERT IGNORE INTO _vt.schema_migrations (
+	sqlInsertMigration = `INSERT IGNORE INTO mysql.schema_migrations (
 		migration_uuid,
 		keyspace,
 		shard,
@@ -49,163 +49,163 @@ const (
 			postpone_launch,
 			postpone_completion,
 			ready_to_complete
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='queued'
 			AND reviewed_timestamp IS NOT NULL
 		ORDER BY id
 	`
-	sqlUpdateMySQLTable = `UPDATE _vt.schema_migrations
+	sqlUpdateMySQLTable = `UPDATE mysql.schema_migrations
 			SET mysql_table=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationStatus = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationStatus = `UPDATE mysql.schema_migrations
 			SET migration_status=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationStatusFailedOrCancelled = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationStatusFailedOrCancelled = `UPDATE mysql.schema_migrations
 			SET migration_status=IF(cancelled_timestamp IS NULL, 'failed', 'cancelled')
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationProgress = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationProgress = `UPDATE mysql.schema_migrations
 			SET progress=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationETASeconds = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationETASeconds = `UPDATE mysql.schema_migrations
 			SET eta_seconds=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationRowsCopied = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationRowsCopied = `UPDATE mysql.schema_migrations
 			SET rows_copied=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationIsView = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationIsView = `UPDATE mysql.schema_migrations
 			SET is_view=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationSetImmediateOperation = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationSetImmediateOperation = `UPDATE mysql.schema_migrations
 			SET is_immediate_operation=1
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationReadyToComplete = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationReadyToComplete = `UPDATE mysql.schema_migrations
 			SET ready_to_complete=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationStowawayTable = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationStowawayTable = `UPDATE mysql.schema_migrations
 			SET stowaway_table=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationUserThrottleRatio = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationUserThrottleRatio = `UPDATE mysql.schema_migrations
 			SET user_throttle_ratio=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationStartedTimestamp = `UPDATE _vt.schema_migrations SET
+	sqlUpdateMigrationStartedTimestamp = `UPDATE mysql.schema_migrations SET
 			started_timestamp =IFNULL(started_timestamp,  NOW(6)),
 			liveness_timestamp=IFNULL(liveness_timestamp, NOW(6))
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationTimestamp = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationTimestamp = `UPDATE mysql.schema_migrations
 			SET %s=NOW(6)
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationVitessLivenessIndicator = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationVitessLivenessIndicator = `UPDATE mysql.schema_migrations
 			SET vitess_liveness_indicator=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationLogPath = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationLogPath = `UPDATE mysql.schema_migrations
 			SET log_path=%a, log_file=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateArtifacts = `UPDATE _vt.schema_migrations
+	sqlUpdateArtifacts = `UPDATE mysql.schema_migrations
 			SET artifacts=concat(%a, ',', artifacts), cleanup_timestamp=NULL
 		WHERE
 			migration_uuid=%a
 	`
-	sqlClearArtifacts = `UPDATE _vt.schema_migrations
+	sqlClearArtifacts = `UPDATE mysql.schema_migrations
 			SET artifacts=''
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateSpecialPlan = `UPDATE _vt.schema_migrations
+	sqlUpdateSpecialPlan = `UPDATE mysql.schema_migrations
 			SET special_plan=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateStage = `UPDATE _vt.schema_migrations
+	sqlUpdateStage = `UPDATE mysql.schema_migrations
 			SET stage=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlIncrementCutoverAttempts = `UPDATE _vt.schema_migrations
+	sqlIncrementCutoverAttempts = `UPDATE mysql.schema_migrations
 			SET cutover_attempts=cutover_attempts+1
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateReadyForCleanup = `UPDATE _vt.schema_migrations
+	sqlUpdateReadyForCleanup = `UPDATE mysql.schema_migrations
 			SET retain_artifacts_seconds=-1
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateLaunchMigration = `UPDATE _vt.schema_migrations
+	sqlUpdateLaunchMigration = `UPDATE mysql.schema_migrations
 			SET postpone_launch=0
 		WHERE
 			migration_uuid=%a
 			AND postpone_launch != 0
 	`
-	sqlUpdateCompleteMigration = `UPDATE _vt.schema_migrations
+	sqlUpdateCompleteMigration = `UPDATE mysql.schema_migrations
 			SET postpone_completion=0
 		WHERE
 			migration_uuid=%a
 			AND postpone_completion != 0
 	`
-	sqlUpdateTablet = `UPDATE _vt.schema_migrations
+	sqlUpdateTablet = `UPDATE mysql.schema_migrations
 			SET tablet=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateTabletFailure = `UPDATE _vt.schema_migrations
+	sqlUpdateTabletFailure = `UPDATE mysql.schema_migrations
 			SET tablet_failure=1
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateDDLAction = `UPDATE _vt.schema_migrations
+	sqlUpdateDDLAction = `UPDATE mysql.schema_migrations
 			SET ddl_action=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMessage = `UPDATE _vt.schema_migrations
+	sqlUpdateMessage = `UPDATE mysql.schema_migrations
 			SET message=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateSchemaAnalysis = `UPDATE _vt.schema_migrations
+	sqlUpdateSchemaAnalysis = `UPDATE mysql.schema_migrations
 			SET added_unique_keys=%a, removed_unique_keys=%a, removed_unique_key_names=%a,
 			dropped_no_default_column_names=%a, expanded_column_names=%a,
 			revertible_notes=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationTableRows = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationTableRows = `UPDATE mysql.schema_migrations
 			SET table_rows=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationProgressByRowsCopied = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationProgressByRowsCopied = `UPDATE mysql.schema_migrations
 			SET
 				progress=CASE
 					WHEN table_rows=0 THEN 100
@@ -214,7 +214,7 @@ const (
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationETASecondsByProgress = `UPDATE _vt.schema_migrations
+	sqlUpdateMigrationETASecondsByProgress = `UPDATE mysql.schema_migrations
 			SET
 				eta_seconds=CASE
 					WHEN progress=0 THEN -1
@@ -226,12 +226,12 @@ const (
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateLastThrottled = `UPDATE _vt.schema_migrations
+	sqlUpdateLastThrottled = `UPDATE mysql.schema_migrations
 			SET last_throttled_timestamp=FROM_UNIXTIME(%a), component_throttled=%a
 		WHERE
 			migration_uuid=%a
 	`
-	sqlRetryMigrationWhere = `UPDATE _vt.schema_migrations
+	sqlRetryMigrationWhere = `UPDATE mysql.schema_migrations
 		SET
 			migration_status='queued',
 			tablet=%a,
@@ -251,7 +251,7 @@ const (
 			AND (%s)
 			LIMIT 1
 	`
-	sqlRetryMigration = `UPDATE _vt.schema_migrations
+	sqlRetryMigration = `UPDATE mysql.schema_migrations
 		SET
 			migration_status='queued',
 			tablet=%a,
@@ -280,14 +280,14 @@ const (
 			postpone_completion,
 			stowaway_table,
 			timestampdiff(second, started_timestamp, now()) as elapsed_seconds
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='running'
 	`
 	sqlSelectCompleteMigrationsOnTable = `SELECT
 			migration_uuid,
 			strategy
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='complete'
 			AND keyspace=%a
@@ -299,7 +299,7 @@ const (
 	sqlSelectCompleteMigrationsByContextAndSQL = `SELECT
 			migration_uuid,
 			strategy
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='complete'
 			AND keyspace=%a
@@ -309,7 +309,7 @@ const (
 	`
 	sqlSelectStaleMigrations = `SELECT
 			migration_uuid
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='running'
 			AND liveness_timestamp < NOW() - INTERVAL %a MINUTE
@@ -319,14 +319,14 @@ const (
 			keyspace,
 			mysql_table,
 			migration_status
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status IN ('queued', 'ready', 'running')
 		ORDER BY id
 	`
 	sqlSelectQueuedUnreviewedMigrations = `SELECT
 			migration_uuid
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='queued'
 			AND reviewed_timestamp IS NULL
@@ -336,7 +336,7 @@ const (
 			migration_uuid,
 			artifacts,
 			log_path
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status IN ('complete', 'failed')
 			AND cleanup_timestamp IS NULL
@@ -345,7 +345,7 @@ const (
 				NOW() - INTERVAL retain_artifacts_seconds SECOND
 			)
 	`
-	sqlFixCompletedTimestamp = `UPDATE _vt.schema_migrations
+	sqlFixCompletedTimestamp = `UPDATE mysql.schema_migrations
 		SET
 			completed_timestamp=NOW(6)
 		WHERE
@@ -393,13 +393,13 @@ const (
 			postpone_completion,
 			is_immediate_operation,
 			reviewed_timestamp
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_uuid=%a
 	`
 	sqlSelectReadyMigrations = `SELECT
 			migration_uuid
-		FROM _vt.schema_migrations
+		FROM mysql.schema_migrations
 		WHERE
 			migration_status='ready'
 		ORDER BY id
@@ -517,9 +517,9 @@ const (
 	sqlAlterTableExchangePartition  = "ALTER TABLE `%a` EXCHANGE PARTITION `%a` WITH TABLE `%a`"
 	sqlAlterTableRemovePartitioning = "ALTER TABLE `%a` REMOVE PARTITIONING"
 	sqlAlterTableDropPartition      = "ALTER TABLE `%a` DROP PARTITION `%a`"
-	sqlStartVReplStream             = "UPDATE _vt.vreplication set state='Running' where db_name=%a and workflow=%a"
-	sqlStopVReplStream              = "UPDATE _vt.vreplication set state='Stopped' where db_name=%a and workflow=%a"
-	sqlDeleteVReplStream            = "DELETE FROM _vt.vreplication where db_name=%a and workflow=%a"
+	sqlStartVReplStream             = "UPDATE mysql.vreplication set state='Running' where db_name=%a and workflow=%a"
+	sqlStopVReplStream              = "UPDATE mysql.vreplication set state='Stopped' where db_name=%a and workflow=%a"
+	sqlDeleteVReplStream            = "DELETE FROM mysql.vreplication where db_name=%a and workflow=%a"
 	sqlReadVReplStream              = `SELECT
 			id,
 			workflow,
@@ -533,14 +533,14 @@ const (
 			state,
 			message,
 			rows_copied
-		FROM _vt.vreplication
+		FROM mysql.vreplication
 		WHERE
 			workflow=%a
 		`
 	sqlReadCountCopyState = `SELECT
 			count(*) as cnt
 		FROM
-			_vt.copy_state
+			mysql.copy_state
 		WHERE vrepl_id=%a
 		`
 	sqlSwapTables         = "RENAME TABLE `%a` TO `%a`, `%a` TO `%a`, `%a` TO `%a`"

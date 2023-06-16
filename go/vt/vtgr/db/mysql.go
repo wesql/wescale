@@ -325,7 +325,7 @@ func (agent *SQLAgentImpl) Failover(instance *inst.InstanceKey) error {
 
 // heartbeatCheck returns heartbeat check freshness result
 func (agent *SQLAgentImpl) heartbeatCheck(instanceKey *inst.InstanceKey) (int, error) {
-	query := `select timestampdiff(SECOND, from_unixtime(truncate(ts * 0.000000001, 0)), NOW()) as diff from _vt.heartbeat;`
+	query := `select timestampdiff(SECOND, from_unixtime(truncate(ts * 0.000000001, 0)), NOW()) as diff from mysql.heartbeat;`
 	var result int
 	err := fetchInstance(instanceKey, query, func(m sqlutils.RowMap) error {
 		result = m.GetInt("diff")
@@ -375,7 +375,7 @@ func (agent *SQLAgentImpl) FetchGroupView(alias string, instanceKey *inst.Instan
 	if agent.enableHeartbeat {
 		heartbeatStaleness, err := agent.heartbeatCheck(instanceKey)
 		if err != nil {
-			// We can run into Error 1146: Table '_vt.heartbeat' doesn't exist on new provisioned shard:
+			// We can run into Error 1146: Table 'mysql.heartbeat' doesn't exist on new provisioned shard:
 			//   vtgr is checking heartbeat table
 			//   -> heartbeat table is waiting primary tablet
 			//   -> primary tablet needs vtgr.

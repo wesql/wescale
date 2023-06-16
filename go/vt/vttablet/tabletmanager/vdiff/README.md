@@ -43,7 +43,7 @@ The user invokes `vtctlclient VDiff` on an existing workflow by specifying the t
 
 ### Database Schema
 
-A new set of tables have been added to the `_vt` database to support vdiff2.
+A new set of tables have been added to the `mysql` database to support vdiff2.
 
 #### vdiff
 Contains one row per workflow for which vdiff has been requested. Currently only one vdiff can run at a time for a given workflow, so if it has to be restarted its state will be reset. It maintains the state of the vdiff and options specified.
@@ -73,7 +73,7 @@ Sets up all the tables that needed to be diffed using the TableDiffer and serial
 
 #### Table Differ (table_differ.go)
 
-This is the main module that runs a diff on each table, keeps intermediate state and periodically updates this in the `_vt` tables.
+This is the main module that runs a diff on each table, keeps intermediate state and periodically updates this in the `mysql` tables.
 
 #### Shard Streamer (shard_streamer.go)
 

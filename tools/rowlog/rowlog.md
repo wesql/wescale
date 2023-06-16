@@ -30,6 +30,6 @@ data being copied is consistent.
 
 Initial version is for unsharded keyspaces but can be easily extended for sharded. 
 
-Another possible enhancement is to also stream the events to the _vt.vreplication table so that we can track the 
+Another possible enhancement is to also stream the events to the mysql.vreplication table so that we can track the 
 source gtid positions related to the sql applied on the target. However this requires changes in vreplication: 
-currently the sidecar _vt database is not streamed.
+currently the sidecarmysqldatabase is not streamed.

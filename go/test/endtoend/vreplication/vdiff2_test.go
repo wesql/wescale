@@ -48,7 +48,7 @@ type testCase struct {
 }
 
 const (
-	sqlSimulateError = `update _vt.vdiff as vd, _vt.vdiff_table as vdt set vd.state = 'error', vdt.state = 'error', vd.completed_at = NULL,
+	sqlSimulateError = `update mysql.vdiff as vd, mysql.vdiff_table as vdt set vd.state = 'error', vdt.state = 'error', vd.completed_at = NULL,
 						vd.last_error = 'vttablet: rpc error: code = Unknown desc = (errno 1213) (sqlstate 40001): Deadlock found when trying to get lock; try restarting transaction'
 						where vd.vdiff_uuid = %s and vd.id = vdt.vdiff_id`
 	sqlAnalyzeTable = `analyze table %s`
@@ -252,7 +252,7 @@ func testDelete(t *testing.T, ksWorkflow, cells string) {
 
 func testNoOrphanedData(t *testing.T, keyspace, workflow string, shards []string) {
 	t.Run("No orphaned data", func(t *testing.T) {
-		query := fmt.Sprintf("select vd.id as vdiff_id, vdt.vdiff_id as vdiff_table_id, vdl.vdiff_id as vdiff_log_id from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id) inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id) where vd.keyspace = %s and vd.workflow = %s",
+		query := fmt.Sprintf("select vd.id as vdiff_id, vdt.vdiff_id as vdiff_table_id, vdl.vdiff_id as vdiff_log_id from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id) inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id) where vd.keyspace = %s and vd.workflow = %s",
 			encodeString(keyspace), encodeString(workflow))
 		for _, shard := range shards {
 			res, err := vc.getPrimaryTablet(t, keyspace, shard).QueryTablet(query, keyspace, false)

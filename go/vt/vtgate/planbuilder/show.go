@@ -276,14 +276,14 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 	var rows [][]sqltypes.Value
 
 	for _, v := range ks {
-		if filter.MatchString(v.Name) && v.Name != "_vt" {
+		if filter.MatchString(v.Name) {
 			rows = append(rows, buildVarCharRow(v.Name))
 		}
 	}
 	return engine.NewRowsPrimitive(rows, buildVarCharFields("Database")), nil
 }
 
-// buildShowVMigrationsPlan serves `SHOW VITESS_MIGRATIONS ...` queries. It invokes queries on _vt.schema_migrations on all PRIMARY tablets on keyspace's shards.
+// buildShowVMigrationsPlan serves `SHOW VITESS_MIGRATIONS ...` queries. It invokes queries on mysql.schema_migrations on all PRIMARY tablets on keyspace's shards.
 func buildShowVMigrationsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
 	dest, ks, tabletType, err := vschema.TargetDestination(show.DbName.String())
 	if err != nil {
@@ -301,7 +301,7 @@ func buildShowVMigrationsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 		dest = key.DestinationAllShards{}
 	}
 
-	sql := "SELECT * FROM _vt.schema_migrations"
+	sql := "SELECT * FROM mysql.schema_migrations"
 
 	if show.Filter != nil {
 		if show.Filter.Filter != nil {

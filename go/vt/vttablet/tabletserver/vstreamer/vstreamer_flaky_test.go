@@ -268,11 +268,11 @@ func TestVersion(t *testing.T) {
 	defer engine.Close()
 
 	execStatements(t, []string{
-		"create database if not exists _vt",
-		"create table if not exists _vt.schema_version(id int, pos varbinary(10000), time_updated bigint(20), ddl varchar(10000), schemax blob, primary key(id))",
+		"create database if not exists mysql",
+		"create table if not exists mysql.schema_version(id int, pos varbinary(10000), time_updated bigint(20), ddl varchar(10000), schemax blob, primary key(id))",
 	})
 	defer execStatements(t, []string{
-		"drop table _vt.schema_version",
+		"drop table mysql.schema_version",
 	})
 	dbSchema := &binlogdatapb.MinimalSchema{
 		Tables: []*binlogdatapb.MinimalTable{{
@@ -284,7 +284,7 @@ func TestVersion(t *testing.T) {
 	gtid := "MariaDB/0-41983-20"
 	testcases := []testcase{{
 		input: []string{
-			fmt.Sprintf("insert into _vt.schema_version values(1, '%s', 123, 'create table t1', %v)", gtid, encodeString(string(blob))),
+			fmt.Sprintf("insert into mysql.schema_version values(1, '%s', 123, 'create table t1', %v)", gtid, encodeString(string(blob))),
 		},
 		// External table events don't get sent.
 		output: [][]string{{
@@ -1822,10 +1822,10 @@ func TestJournal(t *testing.T) {
 	}
 
 	execStatements(t, []string{
-		"create table if not exists _vt.resharding_journal(id int, db_name varchar(128), val blob, primary key(id))",
+		"create table if not exists mysql.resharding_journal(id int, db_name varchar(128), val blob, primary key(id))",
 	})
 	defer execStatements(t, []string{
-		"drop table _vt.resharding_journal",
+		"drop table mysql.resharding_journal",
 	})
 	engine.se.Reload(context.Background())
 
@@ -1840,8 +1840,8 @@ func TestJournal(t *testing.T) {
 	testcases := []testcase{{
 		input: []string{
 			"begin",
-			fmt.Sprintf("insert into _vt.resharding_journal values(1, 'vttest', '%v')", journal1.String()),
-			fmt.Sprintf("insert into _vt.resharding_journal values(2, 'nosend', '%v')", journal2.String()),
+			fmt.Sprintf("insert into mysql.resharding_journal values(1, 'vttest', '%v')", journal1.String()),
+			fmt.Sprintf("insert into mysql.resharding_journal values(2, 'nosend', '%v')", journal2.String()),
 			"commit",
 		},
 		// External table events don't get sent.

@@ -46,7 +46,7 @@ func TestBuildPlanSuccess(t *testing.T) {
 		fmt.Sprintf("1|%s|%s|%s|%s|%s|%s|%s|", UUID, vdiffenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, PendingState, optionsJS),
 	)
 
-	vdiffenv.dbClient.ExpectRequest("select * from _vt.vdiff where id = 1", noResults, nil)
+	vdiffenv.dbClient.ExpectRequest("select * from mysql.vdiff where id = 1", noResults, nil)
 	ct, err := newController(context.Background(), controllerQR.Named().Row(), vdiffenv.dbClientFactory, tstenv.TopoServ, vdiffenv.vde, vdiffenv.opts)
 	require.NoError(t, err)
 
@@ -486,7 +486,7 @@ func TestBuildPlanInclude(t *testing.T) {
 	),
 		fmt.Sprintf("1|%s|%s|%s|%s|%s|%s|%s|", uuid.New(), vdiffenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, PendingState, optionsJS),
 	)
-	vdiffenv.dbClient.ExpectRequest("select * from _vt.vdiff where id = 1", noResults, nil)
+	vdiffenv.dbClient.ExpectRequest("select * from mysql.vdiff where id = 1", noResults, nil)
 	ct, err := newController(context.Background(), controllerQR.Named().Row(), vdiffenv.dbClientFactory, tstenv.TopoServ, vdiffenv.vde, vdiffenv.opts)
 	require.NoError(t, err)
 
@@ -538,7 +538,7 @@ func TestBuildPlanInclude(t *testing.T) {
 		require.NoError(t, err)
 		for _, table := range tcase.tables {
 			query := fmt.Sprintf(`select vdt.lastpk as lastpk, vdt.mismatch as mismatch, vdt.report as report
-						from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
 						where vdt.vdiff_id = 1 and vdt.table_name = '%s'`, table)
 			dbc.ExpectRequest(query, noResults, nil)
 		}
@@ -559,7 +559,7 @@ func TestBuildPlanFailure(t *testing.T) {
 	),
 		fmt.Sprintf("1|%s|%s|%s|%s|%s|%s|%s|", UUID, vdiffenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, PendingState, optionsJS),
 	)
-	vdiffenv.dbClient.ExpectRequest("select * from _vt.vdiff where id = 1", noResults, nil)
+	vdiffenv.dbClient.ExpectRequest("select * from mysql.vdiff where id = 1", noResults, nil)
 	ct, err := newController(context.Background(), controllerQR.Named().Row(), vdiffenv.dbClientFactory, tstenv.TopoServ, vdiffenv.vde, vdiffenv.opts)
 	require.NoError(t, err)
 

@@ -112,7 +112,7 @@ func TestHistorian(t *testing.T) {
 	tables := make(map[string]*binlogdatapb.MinimalTable)
 	tables["t1"] = table
 	blob1 = getDbSchemaBlob(t, tables)
-	db.AddQuery("select id, pos, ddl, time_updated, schemax from _vt.schema_version where id > 0 order by id asc", &sqltypes.Result{
+	db.AddQuery("select id, pos, ddl, time_updated, schemax from mysql.schema_version where id > 0 order by id asc", &sqltypes.Result{
 		Fields: fields,
 		Rows: [][]sqltypes.Value{
 			{sqltypes.NewInt32(1), sqltypes.NewVarBinary(gtid1), sqltypes.NewVarBinary(ddl1), sqltypes.NewInt32(int32(ts1)), sqltypes.NewVarBinary(blob1)},
@@ -132,7 +132,7 @@ func TestHistorian(t *testing.T) {
 	blob2 := getDbSchemaBlob(t, tables)
 	ddl2 := "alter table t1 modify column id2 varbinary"
 	ts2 := ts1 + 100
-	db.AddQuery("select id, pos, ddl, time_updated, schemax from _vt.schema_version where id > 1 order by id asc", &sqltypes.Result{
+	db.AddQuery("select id, pos, ddl, time_updated, schemax from mysql.schema_version where id > 1 order by id asc", &sqltypes.Result{
 		Fields: fields,
 		Rows: [][]sqltypes.Value{
 			{sqltypes.NewInt32(2), sqltypes.NewVarBinary(gtid2), sqltypes.NewVarBinary(ddl2), sqltypes.NewInt32(int32(ts2)), sqltypes.NewVarBinary(blob2)},
@@ -152,7 +152,7 @@ func TestHistorian(t *testing.T) {
 	blob3 := getDbSchemaBlob(t, tables)
 	ddl3 := "alter table t1 add column id3 int"
 	ts3 := ts2 + 100
-	db.AddQuery("select id, pos, ddl, time_updated, schemax from _vt.schema_version where id > 2 order by id asc", &sqltypes.Result{
+	db.AddQuery("select id, pos, ddl, time_updated, schemax from mysql.schema_version where id > 2 order by id asc", &sqltypes.Result{
 		Fields: fields,
 		Rows: [][]sqltypes.Value{
 			{sqltypes.NewInt32(3), sqltypes.NewVarBinary(gtid3), sqltypes.NewVarBinary(ddl3), sqltypes.NewInt32(int32(ts3)), sqltypes.NewVarBinary(blob3)},

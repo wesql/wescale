@@ -359,7 +359,7 @@ func TestAutocommitDirectTarget(t *testing.T) {
 	executor, _, _, sbclookup := createExecutorEnv()
 
 	session := &vtgatepb.Session{
-		TargetString:    "_vt/0@primary",
+		TargetString:    "mysql/0@primary",
 		Autocommit:      true,
 		TransactionMode: vtgatepb.TransactionMode_MULTI,
 	}

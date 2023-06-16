@@ -40,182 +40,182 @@ func TestControllerPlan(t *testing.T) {
 		err  string
 	}{{
 		// Insert
-		in: "insert into _vt.vreplication values(null)",
+		in: "insert into mysql.vreplication values(null)",
 		plan: &testControllerPlan{
-			query:      "insert into _vt.vreplication values(null)",
+			query:      "insert into mysql.vreplication values(null)",
 			opcode:     insertQuery,
 			numInserts: 1,
 		},
 	}, {
-		in: "insert into _vt.vreplication(id) values(null)",
+		in: "insert into mysql.vreplication(id) values(null)",
 		plan: &testControllerPlan{
-			query:      "insert into _vt.vreplication(id) values(null)",
+			query:      "insert into mysql.vreplication(id) values(null)",
 			opcode:     insertQuery,
 			numInserts: 1,
 		},
 	}, {
-		in: "insert into _vt.vreplication(workflow, id) values('', null)",
+		in: "insert into mysql.vreplication(workflow, id) values('', null)",
 		plan: &testControllerPlan{
-			query:      "insert into _vt.vreplication(workflow, id) values('', null)",
+			query:      "insert into mysql.vreplication(workflow, id) values('', null)",
 			opcode:     insertQuery,
 			numInserts: 1,
 		},
 	}, {
-		in: "insert into _vt.vreplication values(null), (null)",
+		in: "insert into mysql.vreplication values(null), (null)",
 		plan: &testControllerPlan{
-			query:      "insert into _vt.vreplication values(null), (null)",
+			query:      "insert into mysql.vreplication values(null), (null)",
 			opcode:     insertQuery,
 			numInserts: 2,
 		},
 	}, {
-		in: "insert into _vt.resharding_journal values (1)",
+		in: "insert into mysql.resharding_journal values (1)",
 		plan: &testControllerPlan{
-			query:  "insert into _vt.resharding_journal values (1)",
+			query:  "insert into mysql.resharding_journal values (1)",
 			opcode: reshardingJournalQuery,
 		},
 	}, {
-		in:  "replace into _vt.vreplication values(null)",
-		err: "unsupported construct: replace into _vt.vreplication values (null)",
+		in:  "replace into mysql.vreplication values(null)",
+		err: "unsupported construct: replace into mysql.vreplication values (null)",
 	}, {
-		in:  "insert ignore into _vt.vreplication values(null)",
-		err: "unsupported construct: insert ignore into _vt.vreplication values (null)",
+		in:  "insert ignore into mysql.vreplication values(null)",
+		err: "unsupported construct: insert ignore into mysql.vreplication values (null)",
 	}, {
 		in:  "insert into other values(null)",
 		err: "invalid table name: other",
 	}, {
-		in:  "insert into _vt.vreplication partition(a) values(null)",
-		err: "unsupported construct: insert into _vt.vreplication partition (a) values (null)",
+		in:  "insert into mysql.vreplication partition(a) values(null)",
+		err: "unsupported construct: insert into mysql.vreplication partition (a) values (null)",
 	}, {
-		in:  "insert into _vt.vreplication values(null) on duplicate key update id=3",
-		err: "unsupported construct: insert into _vt.vreplication values (null) on duplicate key update id = 3",
+		in:  "insert into mysql.vreplication values(null) on duplicate key update id=3",
+		err: "unsupported construct: insert into mysql.vreplication values (null) on duplicate key update id = 3",
 	}, {
-		in:  "insert into _vt.vreplication select * from a",
-		err: "unsupported construct: insert into _vt.vreplication select * from a",
+		in:  "insert into mysql.vreplication select * from a",
+		err: "unsupported construct: insert into mysql.vreplication select * from a",
 	}, {
-		in:  "insert into _vt.vreplication(a, b, id) values(null)",
-		err: "malformed statement: insert into _vt.vreplication(a, b, id) values (null)",
+		in:  "insert into mysql.vreplication(a, b, id) values(null)",
+		err: "malformed statement: insert into mysql.vreplication(a, b, id) values (null)",
 	}, {
-		in:  "insert into _vt.vreplication(workflow, id) values('aa', 1)",
-		err: "id should not have a value: insert into _vt.vreplication(workflow, id) values ('aa', 1)",
+		in:  "insert into mysql.vreplication(workflow, id) values('aa', 1)",
+		err: "id should not have a value: insert into mysql.vreplication(workflow, id) values ('aa', 1)",
 	}, {
-		in:  "insert into _vt.vreplication values(1)",
-		err: "id should not have a value: insert into _vt.vreplication values (1)",
+		in:  "insert into mysql.vreplication values(1)",
+		err: "id should not have a value: insert into mysql.vreplication values (1)",
 
 		// Update
 	}, {
-		in: "update _vt.vreplication set state='Running' where id = 1",
+		in: "update mysql.vreplication set state='Running' where id = 1",
 		plan: &testControllerPlan{
-			query:    "update _vt.vreplication set state='Running' where id = 1",
+			query:    "update mysql.vreplication set state='Running' where id = 1",
 			opcode:   updateQuery,
-			selector: "select id from _vt.vreplication where id = 1",
-			applier:  "update _vt.vreplication set state = 'Running' where id in ::ids",
+			selector: "select id from mysql.vreplication where id = 1",
+			applier:  "update mysql.vreplication set state = 'Running' where id in ::ids",
 		},
 	}, {
-		in: "update _vt.vreplication set state='Running'",
+		in: "update mysql.vreplication set state='Running'",
 		plan: &testControllerPlan{
-			query:    "update _vt.vreplication set state='Running'",
+			query:    "update mysql.vreplication set state='Running'",
 			opcode:   updateQuery,
-			selector: "select id from _vt.vreplication",
-			applier:  "update _vt.vreplication set state = 'Running' where id in ::ids",
+			selector: "select id from mysql.vreplication",
+			applier:  "update mysql.vreplication set state = 'Running' where id in ::ids",
 		},
 	}, {
-		in: "update _vt.vreplication set state='Running' where a = 1",
+		in: "update mysql.vreplication set state='Running' where a = 1",
 		plan: &testControllerPlan{
-			query:    "update _vt.vreplication set state='Running' where a = 1",
+			query:    "update mysql.vreplication set state='Running' where a = 1",
 			opcode:   updateQuery,
-			selector: "select id from _vt.vreplication where a = 1",
-			applier:  "update _vt.vreplication set state = 'Running' where id in ::ids",
+			selector: "select id from mysql.vreplication where a = 1",
+			applier:  "update mysql.vreplication set state = 'Running' where id in ::ids",
 		},
 	}, {
-		in: "update _vt.resharding_journal set col = 1",
+		in: "update mysql.resharding_journal set col = 1",
 		plan: &testControllerPlan{
-			query:  "update _vt.resharding_journal set col = 1",
+			query:  "update mysql.resharding_journal set col = 1",
 			opcode: reshardingJournalQuery,
 		},
 	}, {
 		in:  "update a set state='Running' where id = 1",
 		err: "invalid table name: a",
 	}, {
-		in:  "update _vt.vreplication set state='Running' where id = 1 order by id",
-		err: "unsupported construct: update _vt.vreplication set state = 'Running' where id = 1 order by id asc",
+		in:  "update mysql.vreplication set state='Running' where id = 1 order by id",
+		err: "unsupported construct: update mysql.vreplication set state = 'Running' where id = 1 order by id asc",
 	}, {
-		in:  "update _vt.vreplication set state='Running' where id = 1 limit 1",
-		err: "unsupported construct: update _vt.vreplication set state = 'Running' where id = 1 limit 1",
+		in:  "update mysql.vreplication set state='Running' where id = 1 limit 1",
+		err: "unsupported construct: update mysql.vreplication set state = 'Running' where id = 1 limit 1",
 	}, {
-		in:  "update _vt.vreplication set state='Running', id = 2 where id = 1",
+		in:  "update mysql.vreplication set state='Running', id = 2 where id = 1",
 		err: "id cannot be changed: id = 2",
 
 		// Delete
 	}, {
-		in: "delete from _vt.vreplication where id = 1",
+		in: "delete from mysql.vreplication where id = 1",
 		plan: &testControllerPlan{
-			query:             "delete from _vt.vreplication where id = 1",
+			query:             "delete from mysql.vreplication where id = 1",
 			opcode:            deleteQuery,
-			selector:          "select id from _vt.vreplication where id = 1",
-			applier:           "delete from _vt.vreplication where id in ::ids",
-			delCopyState:      "delete from _vt.copy_state where vrepl_id in ::ids",
-			delPostCopyAction: "delete from _vt.post_copy_action where vrepl_id in ::ids",
+			selector:          "select id from mysql.vreplication where id = 1",
+			applier:           "delete from mysql.vreplication where id in ::ids",
+			delCopyState:      "delete from mysql.copy_state where vrepl_id in ::ids",
+			delPostCopyAction: "delete from mysql.post_copy_action where vrepl_id in ::ids",
 		},
 	}, {
-		in: "delete from _vt.vreplication",
+		in: "delete from mysql.vreplication",
 		plan: &testControllerPlan{
-			query:             "delete from _vt.vreplication",
+			query:             "delete from mysql.vreplication",
 			opcode:            deleteQuery,
-			selector:          "select id from _vt.vreplication",
-			applier:           "delete from _vt.vreplication where id in ::ids",
-			delCopyState:      "delete from _vt.copy_state where vrepl_id in ::ids",
-			delPostCopyAction: "delete from _vt.post_copy_action where vrepl_id in ::ids",
+			selector:          "select id from mysql.vreplication",
+			applier:           "delete from mysql.vreplication where id in ::ids",
+			delCopyState:      "delete from mysql.copy_state where vrepl_id in ::ids",
+			delPostCopyAction: "delete from mysql.post_copy_action where vrepl_id in ::ids",
 		},
 	}, {
-		in: "delete from _vt.vreplication where a = 1",
+		in: "delete from mysql.vreplication where a = 1",
 		plan: &testControllerPlan{
-			query:             "delete from _vt.vreplication where a = 1",
+			query:             "delete from mysql.vreplication where a = 1",
 			opcode:            deleteQuery,
-			selector:          "select id from _vt.vreplication where a = 1",
-			applier:           "delete from _vt.vreplication where id in ::ids",
-			delCopyState:      "delete from _vt.copy_state where vrepl_id in ::ids",
-			delPostCopyAction: "delete from _vt.post_copy_action where vrepl_id in ::ids",
+			selector:          "select id from mysql.vreplication where a = 1",
+			applier:           "delete from mysql.vreplication where id in ::ids",
+			delCopyState:      "delete from mysql.copy_state where vrepl_id in ::ids",
+			delPostCopyAction: "delete from mysql.post_copy_action where vrepl_id in ::ids",
 		},
 	}, {
-		in: "delete from _vt.resharding_journal where id = 1",
+		in: "delete from mysql.resharding_journal where id = 1",
 		plan: &testControllerPlan{
-			query:  "delete from _vt.resharding_journal where id = 1",
+			query:  "delete from mysql.resharding_journal where id = 1",
 			opcode: reshardingJournalQuery,
 		},
 	}, {
 		in:  "delete from a where id = 1",
 		err: "invalid table name: a",
 	}, {
-		in:  "delete a, b from _vt.vreplication where id = 1",
-		err: "unsupported construct: delete a, b from _vt.vreplication where id = 1",
+		in:  "delete a, b from mysql.vreplication where id = 1",
+		err: "unsupported construct: delete a, b from mysql.vreplication where id = 1",
 	}, {
-		in:  "delete from _vt.vreplication where id = 1 order by id",
-		err: "unsupported construct: delete from _vt.vreplication where id = 1 order by id asc",
+		in:  "delete from mysql.vreplication where id = 1 order by id",
+		err: "unsupported construct: delete from mysql.vreplication where id = 1 order by id asc",
 	}, {
-		in:  "delete from _vt.vreplication where id = 1 limit 1",
-		err: "unsupported construct: delete from _vt.vreplication where id = 1 limit 1",
+		in:  "delete from mysql.vreplication where id = 1 limit 1",
+		err: "unsupported construct: delete from mysql.vreplication where id = 1 limit 1",
 	}, {
-		in:  "delete from _vt.vreplication partition (a) where id = 1 limit 1",
-		err: "unsupported construct: delete from _vt.vreplication partition (a) where id = 1 limit 1",
+		in:  "delete from mysql.vreplication partition (a) where id = 1 limit 1",
+		err: "unsupported construct: delete from mysql.vreplication partition (a) where id = 1 limit 1",
 
 		// Select
 	}, {
-		in: "select * from _vt.vreplication",
+		in: "select * from mysql.vreplication",
 		plan: &testControllerPlan{
 			opcode: selectQuery,
-			query:  "select * from _vt.vreplication",
+			query:  "select * from mysql.vreplication",
 		},
 	}, {
-		in: "select * from _vt.resharding_journal",
+		in: "select * from mysql.resharding_journal",
 		plan: &testControllerPlan{
 			opcode: selectQuery,
-			query:  "select * from _vt.resharding_journal",
+			query:  "select * from mysql.resharding_journal",
 		},
 	}, {
-		in: "select * from _vt.copy_state",
+		in: "select * from mysql.copy_state",
 		plan: &testControllerPlan{
 			opcode: selectQuery,
-			query:  "select * from _vt.copy_state",
+			query:  "select * from mysql.copy_state",
 		},
 	}, {
 		in:  "select * from a",

@@ -236,14 +236,14 @@ func TestCopyProgress(t *testing.T) {
 
 func expectCopyProgressQueries(t *testing.T, tme *testMigraterEnv) {
 	db := tme.tmeDB
-	query := "select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1"
+	query := "select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1"
 	rows := []string{"t1", "t2"}
 	result := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"table_name",
 		"varchar"),
 		rows...)
 	db.AddQuery(query, result)
-	query = "select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2"
+	query = "select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2"
 	db.AddQuery(query, result)
 
 	query = "select table_name, table_rows, data_length from information_schema.tables where table_schema = 'ks2' and table_name in ('t1','t2')"
@@ -263,7 +263,7 @@ func expectCopyProgressQueries(t *testing.T, tme *testMigraterEnv) {
 	db.AddQuery(query, result)
 
 	for _, id := range []int{1, 2} {
-		query = fmt.Sprintf("select distinct 1 from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = %d", id)
+		query = fmt.Sprintf("select distinct 1 from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = %d", id)
 		result = sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 			"dummy",
 			"int64"),
@@ -564,105 +564,105 @@ func TestReshardV2Cancel(t *testing.T) {
 }
 
 func expectReshardQueries(t *testing.T, tme *testShardMigraterEnv, params *VReplicationWorkflowParams) {
-	vdiffDeleteQuery := fmt.Sprintf(`delete from vd, vdt, vdl using _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
-						inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
+	vdiffDeleteQuery := fmt.Sprintf(`delete from vd, vdt, vdl using mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
 						where vd.keyspace = '%s' and vd.workflow = '%s'`,
 		params.TargetKeyspace, params.Workflow)
-	vdiffDeleteReverseQuery := fmt.Sprintf(`delete from vd, vdt, vdl using _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
-						inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
+	vdiffDeleteReverseQuery := fmt.Sprintf(`delete from vd, vdt, vdl using mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
 						where vd.keyspace = '%s' and vd.workflow = '%s_reverse'`,
 		params.SourceKeyspace, params.Workflow)
 
 	sourceQueries := []string{
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse'",
 	}
 	noResult := &sqltypes.Result{}
 	for _, dbclient := range tme.dbSourceClients {
 		for _, query := range sourceQueries {
 			dbclient.addInvariant(query, noResult)
 		}
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid1)
-		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("insert into _vt.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
-		dbclient.addInvariant("select id from _vt.vreplication where id = 1", resultid1)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 2", resultid2)
-		dbclient.addInvariant("select * from _vt.vreplication where id = 1", runningResult(1))
-		dbclient.addInvariant("select * from _vt.vreplication where id = 2", runningResult(2))
-		dbclient.addInvariant("insert into _vt.resharding_journal", noResult)
-		dbclient.addInvariant("alter table _vt.copy_state auto_increment = 1", noResult)
+		dbclient.addInvariant("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid1)
+		dbclient.addInvariant("delete from mysql.vreplication where id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.copy_state where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.post_copy_action where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("insert into mysql.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
+		dbclient.addInvariant("select id from mysql.vreplication where id = 1", resultid1)
+		dbclient.addInvariant("select id from mysql.vreplication where id = 2", resultid2)
+		dbclient.addInvariant("select * from mysql.vreplication where id = 1", runningResult(1))
+		dbclient.addInvariant("select * from mysql.vreplication where id = 2", runningResult(2))
+		dbclient.addInvariant("insert into mysql.resharding_journal", noResult)
+		dbclient.addInvariant("alter table mysql.copy_state auto_increment = 1", noResult)
 	}
 
 	targetQueries := []string{
-		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
+		"select id, workflow, source, pos, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name='ks' and workflow != 'test_reverse' and state = 'Stopped' and message != 'FROZEN'",
 	}
 
 	for _, dbclient := range tme.dbTargetClients {
 		for _, query := range targetQueries {
 			dbclient.addInvariant(query, noResult)
 		}
-		dbclient.addInvariant("select id from _vt.vreplication where id = 1", resultid1)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 2", resultid2)
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
-		dbclient.addInvariant("select * from _vt.vreplication where id = 1", runningResult(1))
-		dbclient.addInvariant("select * from _vt.vreplication where id = 2", runningResult(2))
+		dbclient.addInvariant("select id from mysql.vreplication where id = 1", resultid1)
+		dbclient.addInvariant("select id from mysql.vreplication where id = 2", resultid2)
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
+		dbclient.addInvariant("select * from mysql.vreplication where id = 1", runningResult(1))
+		dbclient.addInvariant("select * from mysql.vreplication where id = 2", runningResult(2))
 		state := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 			"pos|state|message",
 			"varchar|varchar|varchar"),
 			"MariaDB/5-456-892|Running")
-		dbclient.addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
-		dbclient.addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid1)
-		dbclient.addInvariant("update _vt.vreplication set message = 'FROZEN'", noResult)
-		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("select pos, state, message from mysql.vreplication where id=2", state)
+		dbclient.addInvariant("select pos, state, message from mysql.vreplication where id=1", state)
+		dbclient.addInvariant("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid1)
+		dbclient.addInvariant("update mysql.vreplication set message = 'FROZEN'", noResult)
+		dbclient.addInvariant("delete from mysql.vreplication where id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.copy_state where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.post_copy_action where vrepl_id in (1)", noResult)
 	}
 	tme.tmeDB.AddQuery("USE `ks`", noResult)
-	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)
-	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2", noResult)
+	tme.tmeDB.AddQuery("select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)
+	tme.tmeDB.AddQuery("select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2", noResult)
 	tme.tmeDB.AddQuery(vdiffDeleteQuery, noResult)
 	tme.tmeDB.AddQuery(vdiffDeleteReverseQuery, noResult)
-	tme.tmeDB.AddQuery("alter table _vt.copy_state auto_increment = 1", noResult)
-	tme.tmeDB.AddQuery("optimize table _vt.copy_state", noResult)
+	tme.tmeDB.AddQuery("alter table mysql.copy_state auto_increment = 1", noResult)
+	tme.tmeDB.AddQuery("optimize table mysql.copy_state", noResult)
 }
 
 func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplicationWorkflowParams) {
-	vdiffDeleteQuery := fmt.Sprintf(`delete from vd, vdt, vdl using _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
-	inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
+	vdiffDeleteQuery := fmt.Sprintf(`delete from vd, vdt, vdl using mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+	inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
 	where vd.keyspace = '%s' and vd.workflow = '%s'`,
 		params.TargetKeyspace, params.Workflow)
-	vdiffDeleteReverseQuery := fmt.Sprintf(`delete from vd, vdt, vdl using _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
-	inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
+	vdiffDeleteReverseQuery := fmt.Sprintf(`delete from vd, vdt, vdl using mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+	inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
 	where vd.keyspace = '%s' and vd.workflow = '%s_reverse'`,
 		params.SourceKeyspace, params.Workflow)
 
 	var query string
 	noResult := &sqltypes.Result{}
 	for _, dbclient := range tme.dbTargetClients {
-		query = "update _vt.vreplication set state = 'Running', message = '' where id in (1)"
+		query = "update mysql.vreplication set state = 'Running', message = '' where id in (1)"
 		dbclient.addInvariant(query, noResult)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1)
-		dbclient.addInvariant("select * from _vt.vreplication where id = 1", runningResult(1))
-		dbclient.addInvariant("select * from _vt.vreplication where id = 2", runningResult(2))
-		query = "update _vt.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1"
+		dbclient.addInvariant("select id from mysql.vreplication where db_name = 'ks2' and workflow = 'test'", resultid1)
+		dbclient.addInvariant("select * from mysql.vreplication where id = 1", runningResult(1))
+		dbclient.addInvariant("select * from mysql.vreplication where id = 2", runningResult(2))
+		query = "update mysql.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1"
 		dbclient.addInvariant(query, noResult)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 1", resultid1)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 2", resultid2)
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
-		dbclient.addInvariant("insert into _vt.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
-		dbclient.addInvariant("update _vt.vreplication set message = 'FROZEN'", noResult)
-		dbclient.addInvariant("select 1 from _vt.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", noResult)
-		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("insert into _vt.resharding_journal", noResult)
-		dbclient.addInvariant("select val from _vt.resharding_journal", noResult)
-		dbclient.addInvariant("select id, source, message, cell, tablet_types from _vt.vreplication where workflow='test_reverse' and db_name='ks1'",
+		dbclient.addInvariant("select id from mysql.vreplication where id = 1", resultid1)
+		dbclient.addInvariant("select id from mysql.vreplication where id = 2", resultid2)
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
+		dbclient.addInvariant("insert into mysql.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
+		dbclient.addInvariant("update mysql.vreplication set message = 'FROZEN'", noResult)
+		dbclient.addInvariant("select 1 from mysql.vreplication where db_name='ks2' and workflow='test' and message!='FROZEN'", noResult)
+		dbclient.addInvariant("delete from mysql.vreplication where id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.copy_state where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.post_copy_action where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("insert into mysql.resharding_journal", noResult)
+		dbclient.addInvariant("select val from mysql.resharding_journal", noResult)
+		dbclient.addInvariant("select id, source, message, cell, tablet_types from mysql.vreplication where workflow='test_reverse' and db_name='ks1'",
 			sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"id|source|message|cell|tablet_types",
 				"int64|varchar|varchar|varchar|varchar"),
@@ -671,21 +671,21 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 	}
 
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addInvariant("select val from _vt.resharding_journal", noResult)
-		dbclient.addInvariant("update _vt.vreplication set message = 'FROZEN'", noResult)
-		dbclient.addInvariant("insert into _vt.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
-		dbclient.addInvariant("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 1", resultid1)
-		dbclient.addInvariant("select id from _vt.vreplication where id = 2", resultid2)
-		dbclient.addInvariant("select id from _vt.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid1)
-		dbclient.addInvariant("delete from _vt.vreplication where id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.copy_state where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("delete from _vt.post_copy_action where vrepl_id in (1)", noResult)
-		dbclient.addInvariant("insert into _vt.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
-		dbclient.addInvariant("select * from _vt.vreplication where id = 1", runningResult(1))
-		dbclient.addInvariant("select * from _vt.vreplication where id = 2", runningResult(2))
-		dbclient.addInvariant("insert into _vt.resharding_journal", noResult)
+		dbclient.addInvariant("select val from mysql.resharding_journal", noResult)
+		dbclient.addInvariant("update mysql.vreplication set message = 'FROZEN'", noResult)
+		dbclient.addInvariant("insert into mysql.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (1)", noResult)
+		dbclient.addInvariant("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (2)", noResult)
+		dbclient.addInvariant("select id from mysql.vreplication where id = 1", resultid1)
+		dbclient.addInvariant("select id from mysql.vreplication where id = 2", resultid2)
+		dbclient.addInvariant("select id from mysql.vreplication where db_name = 'ks1' and workflow = 'test_reverse'", resultid1)
+		dbclient.addInvariant("delete from mysql.vreplication where id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.copy_state where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("delete from mysql.post_copy_action where vrepl_id in (1)", noResult)
+		dbclient.addInvariant("insert into mysql.vreplication (workflow, source, pos, max_tps, max_replication_lag, time_updated, transaction_timestamp, state, db_name, workflow_type, workflow_sub_type)", &sqltypes.Result{InsertID: uint64(1)})
+		dbclient.addInvariant("select * from mysql.vreplication where id = 1", runningResult(1))
+		dbclient.addInvariant("select * from mysql.vreplication where id = 2", runningResult(2))
+		dbclient.addInvariant("insert into mysql.resharding_journal", noResult)
 		dbclient.addInvariant(reverseStreamExtInfoKs1, noResult)
 	}
 	state := sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -693,32 +693,32 @@ func expectMoveTablesQueries(t *testing.T, tme *testMigraterEnv, params *VReplic
 		"varchar|varchar|varchar"),
 		"MariaDB/5-456-892|Running",
 	)
-	tme.dbTargetClients[0].addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-	tme.dbTargetClients[0].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
-	tme.dbTargetClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-	tme.dbTargetClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
+	tme.dbTargetClients[0].addInvariant("select pos, state, message from mysql.vreplication where id=1", state)
+	tme.dbTargetClients[0].addInvariant("select pos, state, message from mysql.vreplication where id=2", state)
+	tme.dbTargetClients[1].addInvariant("select pos, state, message from mysql.vreplication where id=1", state)
+	tme.dbTargetClients[1].addInvariant("select pos, state, message from mysql.vreplication where id=2", state)
 
 	state = sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"pos|state|message",
 		"varchar|varchar|varchar"),
 		"MariaDB/5-456-893|Running",
 	)
-	tme.dbSourceClients[0].addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-	tme.dbSourceClients[0].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
-	tme.dbSourceClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=1", state)
-	tme.dbSourceClients[1].addInvariant("select pos, state, message from _vt.vreplication where id=2", state)
+	tme.dbSourceClients[0].addInvariant("select pos, state, message from mysql.vreplication where id=1", state)
+	tme.dbSourceClients[0].addInvariant("select pos, state, message from mysql.vreplication where id=2", state)
+	tme.dbSourceClients[1].addInvariant("select pos, state, message from mysql.vreplication where id=1", state)
+	tme.dbSourceClients[1].addInvariant("select pos, state, message from mysql.vreplication where id=2", state)
 	tme.tmeDB.AddQuery("USE `ks1`", noResult)
 	tme.tmeDB.AddQuery("USE `ks2`", noResult)
 	tme.tmeDB.AddQuery("drop table `ks1`.`t1`", noResult)
 	tme.tmeDB.AddQuery("drop table `ks1`.`t2`", noResult)
 	tme.tmeDB.AddQuery("drop table `ks2`.`t1`", noResult)
 	tme.tmeDB.AddQuery("drop table `ks2`.`t2`", noResult)
-	tme.tmeDB.AddQuery("update _vt.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1", noResult)
+	tme.tmeDB.AddQuery("update mysql.vreplication set message='Picked source tablet: cell:\"cell1\" uid:10 ' where id=1", noResult)
 	tme.tmeDB.AddQuery("lock tables `t1` read,`t2` read", &sqltypes.Result{})
-	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)
-	tme.tmeDB.AddQuery("select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2", noResult)
+	tme.tmeDB.AddQuery("select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 1", noResult)
+	tme.tmeDB.AddQuery("select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = 2", noResult)
 	tme.tmeDB.AddQuery(vdiffDeleteQuery, noResult)
 	tme.tmeDB.AddQuery(vdiffDeleteReverseQuery, noResult)
-	tme.tmeDB.AddQuery("alter table _vt.copy_state auto_increment = 1", noResult)
-	tme.tmeDB.AddQuery("optimize table _vt.copy_state", noResult)
+	tme.tmeDB.AddQuery("alter table mysql.copy_state auto_increment = 1", noResult)
+	tme.tmeDB.AddQuery("optimize table mysql.copy_state", noResult)
 }

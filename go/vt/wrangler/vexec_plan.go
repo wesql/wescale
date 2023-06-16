@@ -53,7 +53,7 @@ type vexecPlanner interface {
 	dryRun(ctx context.Context) error
 }
 
-// vreplicationPlanner is a vexecPlanner implementation, specific to _vt.vreplication table
+// vreplicationPlanner is a vexecPlanner implementation, specific to mysql.vreplication table
 type vreplicationPlanner struct {
 	vx *vexec
 	d  *vexecPlannerParams
@@ -109,7 +109,7 @@ func (p vreplicationPlanner) dryRun(ctx context.Context) error {
 	return nil
 }
 
-// schemaMigrationsPlanner is a vexecPlanner implementation, specific to _vt.schema_migrations table
+// schemaMigrationsPlanner is a vexecPlanner implementation, specific to mysql.schema_migrations table
 type schemaMigrationsPlanner struct {
 	vx *vexec
 	d  *vexecPlannerParams
@@ -122,12 +122,12 @@ func newSchemaMigrationsPlanner(vx *vexec) vexecPlanner {
 			dbNameColumn:   "mysql_schema",
 			workflowColumn: "migration_uuid",
 			updateTemplates: []string{
-				`update _vt.schema_migrations set migration_status='val1'`,
-				`update _vt.schema_migrations set migration_status='val1' where migration_uuid='val2'`,
-				`update _vt.schema_migrations set migration_status='val1' where migration_uuid='val2' and shard='val3'`,
+				`update mysql.schema_migrations set migration_status='val1'`,
+				`update mysql.schema_migrations set migration_status='val1' where migration_uuid='val2'`,
+				`update mysql.schema_migrations set migration_status='val1' where migration_uuid='val2' and shard='val3'`,
 			},
 			insertTemplates: []string{
-				`INSERT IGNORE INTO _vt.schema_migrations (
+				`INSERT IGNORE INTO mysql.schema_migrations (
 					migration_uuid,
 					keyspace,
 					shard,
@@ -168,7 +168,7 @@ const (
 	selectQuery
 )
 
-// extractTableName returns the qualified table name (e.g. "_vt.schema_migrations") from a SELECT/DELETE/UPDATE statement
+// extractTableName returns the qualified table name (e.g. "mysql.schema_migrations") from a SELECT/DELETE/UPDATE statement
 func extractTableName(stmt sqlparser.Statement) (string, error) {
 	switch stmt := stmt.(type) {
 	case *sqlparser.Update:
@@ -183,7 +183,7 @@ func extractTableName(stmt sqlparser.Statement) (string, error) {
 	return "", fmt.Errorf("query not supported by vexec: %+v", sqlparser.String(stmt))
 }
 
-// qualifiedTableName qualifies a table with "_vt." schema
+// qualifiedTableName qualifies a table with "mysql." schema
 func qualifiedTableName(tableName string) string {
 	return fmt.Sprintf("%s.%s", vexecTableQualifier, tableName)
 }
