@@ -655,8 +655,8 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 	return rss, values, err
 }
 
-func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
-	result, _ := vc.resolver.ResolveDefaultDestination(ctx, vc.tabletType, destination)
+func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace string, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
+	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, vc.tabletType, destination)
 	return result, nil
 }
 

@@ -86,17 +86,22 @@ func (s *Send) GetTableName() string {
 	return ""
 }
 
+func (s *Send) Resolve(ctx context.Context, vcursor VCursor) ([]*srvtopo.ResolvedShard, error) {
+	keyspace := ""
+	if s.Keyspace != nil {
+		keyspace = s.Keyspace.Name
+	}
+	rss, err := vcursor.ResolveDefaultDestination(ctx, keyspace, s.TargetDestination)
+	return rss, err
+}
+
 // TryExecute implements Primitive interface
 func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
 	ctx, cancelFunc := addQueryTimeout(ctx, vcursor, 0)
 	defer cancelFunc()
 	var rss []*srvtopo.ResolvedShard
 	var err error
-	if s.Keyspace == nil {
-		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
-	} else {
-		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
-	}
+	rss, err = s.Resolve(ctx, vcursor)
 	if err != nil {
 		return nil, err
 	}
@@ -146,11 +151,7 @@ func copyBindVars(in map[string]*querypb.BindVariable) map[string]*querypb.BindV
 func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
 	var rss []*srvtopo.ResolvedShard
 	var err error
-	if s.Keyspace == nil {
-		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
-	} else {
-		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{s.TargetDestination})
-	}
+	rss, err = s.Resolve(ctx, vcursor)
 
 	if err != nil {
 		return err
@@ -189,11 +190,7 @@ func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars m
 func (s *Send) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	var rss []*srvtopo.ResolvedShard
 	var err error
-	if s.Keyspace == nil {
-		rss, err = vcursor.ResolveDefaultDestination(ctx, s.TargetDestination)
-	} else {
-		rss, _, err = vcursor.ResolveDestinations(ctx, s.Keyspace.Name, nil, []key.Destination{key.DestinationAnyShard{}})
-	}
+	rss, err = s.Resolve(ctx, vcursor)
 	if err != nil {
 		return nil, err
 	}
