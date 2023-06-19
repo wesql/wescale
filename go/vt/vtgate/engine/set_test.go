@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,8 +124,8 @@ func TestSetTable(t *testing.T) {
 			"2020-10-28",
 		)},
 		expectedQueryLog: []string{
-			`ResolveDestinations ks [] Destinations:DestinationAnyShard()`,
-			`ExecuteMultiShard ks.-20: select now() from dual {} false false`,
+			`ResolveDestinations without keyspace DestinationAnyShard()`,
+			`ExecuteMultiShard .-20: select now() from dual {} false false`,
 			`UDV set with (x,DATETIME("2020-10-28"))`,
 		},
 		input: &Send{

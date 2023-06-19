@@ -461,7 +461,7 @@ func TestSelectSystemVariables(t *testing.T) {
 			{Name: "@@enable_system_settings", Type: sqltypes.Int64},
 			{Name: "@@sql_select_limit", Type: sqltypes.Int64},
 			{Name: "@@transaction_mode", Type: sqltypes.VarChar},
-			{Name: "@@workload", Type: sqltypes.VarChar},
+			{Name: "@@`workload`", Type: sqltypes.VarChar},
 			{Name: "@@read_after_write_gtid", Type: sqltypes.VarChar},
 			{Name: "@@read_after_write_timeout", Type: sqltypes.Float64},
 			{Name: "@@session_track_gtids", Type: sqltypes.VarChar},

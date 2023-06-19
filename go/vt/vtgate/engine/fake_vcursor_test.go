@@ -604,6 +604,8 @@ func (f *loggingVCursor) ResolveDefaultDestination(ctx context.Context, keyspace
 		// Nothing to do here.
 	case key.DestinationShard:
 		shards = []string{destination.String()}
+	case key.DestinationAllShards:
+		shards = append([]string{}, f.shards...)
 	default:
 		return nil, fmt.Errorf("unsupported destination: %v", destination)
 	}

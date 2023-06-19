@@ -168,7 +168,7 @@ func TestRewrites(in *testing.T) {
 		transactionMode: true,
 	}, {
 		in:       "SELECT @@workload",
-		expected: "SELECT :__vtworkload as `@@workload`",
+		expected: "SELECT :__vtworkload as `@@``workload```",
 		workload: true,
 	}, {
 		in:       "SELECT @@socket",

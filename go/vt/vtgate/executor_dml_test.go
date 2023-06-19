@@ -578,7 +578,7 @@ func TestInsertSelectFromDual(t *testing.T) {
 
 	for _, workload := range []string{"olap", "oltp"} {
 		sbclookup.Queries = nil
-		wQuery := fmt.Sprintf("set @@workload = %s", workload)
+		wQuery := fmt.Sprintf("set @@`workload` = %s", workload)
 		_, err := executor.Execute(context.Background(), "TestInsertSelect", session, wQuery, nil)
 		require.NoError(t, err)
 
@@ -609,7 +609,7 @@ func TestInsertSelectFromTable(t *testing.T) {
 
 	for _, workload := range []string{"olap", "oltp"} {
 		sbclookup.Queries = nil
-		wQuery := fmt.Sprintf("set @@workload = %s", workload)
+		wQuery := fmt.Sprintf("set @@`workload` = %s", workload)
 		_, err := executor.Execute(context.Background(), "TestInsertSelect", session, wQuery, nil)
 		require.NoError(t, err)
 
