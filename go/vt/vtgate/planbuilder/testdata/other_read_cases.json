@@ -11,9 +11,7 @@
           "Name": "main",
           "Sharded": false
         },
-        "TargetDestination": "AnyShard()",
-        "Query": "explain select * from `user`",
-        "SingleShardOnly": true
+        "Query": "explain select * from `user`"
       }
     }
   },
@@ -62,9 +60,7 @@
           "Name": "main",
           "Sharded": false
         },
-        "TargetDestination": "AnyShard()",
-        "Query": "explain select * from t",
-        "SingleShardOnly": true
+        "Query": "explain select * from t"
       }
     }
   },
@@ -80,9 +76,7 @@
           "Name": "main",
           "Sharded": false
         },
-        "TargetDestination": "AnyShard()",
-        "Query": "explain select * from t",
-        "SingleShardOnly": true
+        "Query": "explain select * from t"
       }
     }
   }

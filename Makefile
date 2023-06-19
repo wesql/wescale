@@ -219,7 +219,7 @@ cleanall: clean
 	# Remind people to run bootstrap.sh again
 	echo "Please run 'make tools' again to setup your environment"
 
-unit_test: build dependency_check demo
+unit_test: build dependency_check
 	echo $$(date): Running unit tests
 	tools/unit_test_runner.sh
 

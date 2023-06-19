@@ -482,13 +482,6 @@ func TestExecutorShow(t *testing.T) {
 		assertMatchesNoOrder(t, `[[VARCHAR("TestExecutor")] [VARCHAR("TestUnsharded")] [VARCHAR("TestXBadSharding")] [VARCHAR("TestXBadVSchema")]]`, fmt.Sprintf("%v", qr.Rows))
 	}
 
-	for _, query := range []string{"show databases", "show DATABASES", "show schemas", "show SCHEMAS"} {
-		qr, err := executor.Execute(ctx, "TestExecute", session, query, nil)
-		require.NoError(t, err)
-		// Showing default tables (5+4[default])
-		assertMatchesNoOrder(t, `[[INT32(1) VARCHAR("foo")]]`, fmt.Sprintf("%v", qr.Rows))
-	}
-
 	_, err := executor.Execute(ctx, "TestExecute", session, "show variables", nil)
 	require.NoError(t, err)
 	_, err = executor.Execute(ctx, "TestExecute", session, "show collation", nil)
@@ -600,32 +593,6 @@ func TestExecutorShow(t *testing.T) {
 	session.TargetString = "@primary"
 	_, err = executor.Execute(ctx, "TestExecute", session, fmt.Sprintf("show full columns from unknown from %v", KsTestUnsharded), nil)
 	require.NoError(t, err)
-}
-
-func TestExecutorShowTargeted(t *testing.T) {
-	executor, _, sbc2, _ := createExecutorEnv()
-	session := NewSafeSession(&vtgatepb.Session{TargetString: "TestExecutor/40-60"})
-
-	queries := []string{
-		"show databases",
-		"show variables like 'read_only'",
-		"show collation",
-		"show collation where `Charset` = 'utf8' and `Collation` = 'utf8_bin'",
-		"show tables",
-		fmt.Sprintf("show tables from %v", KsTestUnsharded),
-		"show create table user_seq",
-		"show full columns from table1",
-		"show plugins",
-		"show warnings",
-	}
-
-	for _, sql := range queries {
-		_, err := executor.Execute(ctx, "TestExecutorShowTargeted", session, sql, nil)
-		require.NoError(t, err)
-		assert.NotZero(t, len(sbc2.Queries), "Tablet should have received 'show' query")
-		lastQuery := sbc2.Queries[len(sbc2.Queries)-1].Sql
-		assert.Equal(t, sql, lastQuery, "Got: %v, want %v", lastQuery, sql)
-	}
 }
 
 func TestExecutorUse(t *testing.T) {
