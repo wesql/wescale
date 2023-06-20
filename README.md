@@ -1,7 +1,7 @@
 [![LICENSE](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://go.dev/)
 
-# Vitess 
+# WeSQL-Scale 
 
 wesql-scale is designed to enhance the scalability, performance, security, and resilience of your applications. 
 By managing connections, read-write-split, read-after-write-consistency, load balancing, wesql-scale offers 
