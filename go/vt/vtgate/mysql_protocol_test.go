@@ -72,7 +72,7 @@ func TestMySQLProtocolStreamExecute(t *testing.T) {
 	}
 	defer c.Close()
 
-	_, err = c.ExecuteFetch("set workload='olap'", 1, true /* wantfields */)
+	_, err = c.ExecuteFetch("set `workload`='olap'", 1, true /* wantfields */)
 	require.NoError(t, err)
 
 	qr, err := c.ExecuteFetch("select id from t1", 10, true /* wantfields */)

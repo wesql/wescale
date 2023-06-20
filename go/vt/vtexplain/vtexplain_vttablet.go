@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 
+	"vitess.io/vitess/go/vt/mysqlctl/fakemysqldaemon"
 	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/mysql"
@@ -146,7 +147,8 @@ func (vte *VTExplain) newTablet(opts *Options, t *topodatapb.Tablet) *explainTab
 		Shard:      t.Shard,
 		TabletType: topodatapb.TabletType_PRIMARY,
 	}
-	tsv.StartService(&target, dbcfgs, nil /* mysqld */)
+
+	tsv.StartService(&target, dbcfgs, &fakemysqldaemon.FakeMysqlDaemon{} /* mysqld */)
 
 	// clear all the schema initialization queries out of the tablet
 	// to avoid cluttering the output

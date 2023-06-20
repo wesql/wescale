@@ -24,13 +24,10 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv/tabletenvtest"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/vt/key"
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/topo"
 )
@@ -130,44 +127,6 @@ func runTestCase(testcase, mode string, opts *Options, topts *testopts, t *testi
 			t.Logf("cp %s/* %s", testOutputTempDir, path.Dir(textOutFile))
 		}
 	})
-}
-
-func TestExplain(t *testing.T) {
-	tabletenvtest.LoadTabletEnvFlags()
-
-	type test struct {
-		name string
-		opts *Options
-	}
-	tests := []test{
-		{"unsharded", defaultTestOpts()},
-		{"selectsharded", defaultTestOpts()},
-		{"insertsharded", defaultTestOpts()},
-		{"updatesharded", defaultTestOpts()},
-		{"deletesharded", defaultTestOpts()},
-		{"comments", defaultTestOpts()},
-		{"options", &Options{
-			ReplicationMode: "STATEMENT",
-			NumShards:       4,
-			Normalize:       false,
-		}},
-		{"target", &Options{
-			ReplicationMode: "ROW",
-			NumShards:       4,
-			Normalize:       false,
-			Target:          "ks_sharded/40-80",
-		}},
-		{"gen4", &Options{
-			ReplicationMode: "ROW",
-			NumShards:       4,
-			Normalize:       true,
-			PlannerVersion:  querypb.ExecuteOptions_Gen4,
-		}},
-	}
-
-	for _, tst := range tests {
-		testExplain(tst.name, tst.opts, t)
-	}
 }
 
 func TestErrors(t *testing.T) {

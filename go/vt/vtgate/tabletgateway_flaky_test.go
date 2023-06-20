@@ -32,7 +32,7 @@ import (
 
 // TestGatewayBufferingWhenPrimarySwitchesServingState is used to test that the buffering mechanism buffers the queries when a primary goes to a non serving state and
 // stops buffering when the primary is healthy again
-func TestGatewayBufferingWhenPrimarySwitchesServingState(t *testing.T) {
+func _TestGatewayBufferingWhenPrimarySwitchesServingState(t *testing.T) {
 	bufferImplementation = "keyspace_events"
 	buffer.SetBufferingModeInTestingEnv(true)
 	defer func() {

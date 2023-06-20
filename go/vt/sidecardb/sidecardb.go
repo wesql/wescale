@@ -51,8 +51,8 @@ const (
 	SelectCurrentDatabaseQuery = "select database()"
 	ShowCreateTableQuery       = "show create table mysql.%s"
 
-	CreateTableRegexp = "CREATE TABLE .* `\\mysql`\\..*"
-	AlterTableRegexp  = "ALTER TABLE `\\mysql`\\..*"
+	CreateTableRegexp = "CREATE TABLE .* `mysql`\\..*"
+	AlterTableRegexp  = "ALTER TABLE `mysql`\\..*"
 )
 
 // All tables needed in the sidecar database have their schema in the schema subdirectory.
