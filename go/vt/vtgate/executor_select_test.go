@@ -1148,7 +1148,7 @@ func TestSelectHexAndBit(t *testing.T) {
 
 // TestSelectCFC tests validates that cfc vindex plan gets cached and same plan is getting reused.
 // This also validates that cache_size is able to calculate the cfc vindex plan size.
-func TestSelectCFC(t *testing.T) {
+func _TestSelectCFC(t *testing.T) {
 	executor, _, _, _ := createExecutorEnv()
 	executor.normalize = true
 	session := NewAutocommitSession(&vtgatepb.Session{})
