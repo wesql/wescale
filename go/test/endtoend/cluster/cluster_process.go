@@ -108,15 +108,15 @@ type LocalProcessCluster struct {
 	VtctlProcess        VtctlProcess
 
 	// background executable processes
-	TopoProcess     TopoProcess
-	VtctldProcess   VtctldProcess
-	VtgateProcess   VtgateProcess
-	VtgateProcess2  VtgateProcess
-	VtbackupProcess VtbackupProcess
-	VTOrcProcesses  []*VTOrcProcess
-  VtconsensusProcess *VtconsensusProcess
+	TopoProcess        TopoProcess
+	VtctldProcess      VtctldProcess
+	VtgateProcess      VtgateProcess
+	VtgateProcess2     VtgateProcess
+	VtbackupProcess    VtbackupProcess
+	VTOrcProcesses     []*VTOrcProcess
+	VtconsensusProcess *VtconsensusProcess
 
-  	// wesql container network
+	// wesql container network
 	ContainerNetwork *ContainerNetwork
 
 	nextPortForProcess int

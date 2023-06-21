@@ -695,7 +695,7 @@ func VttabletProcessInstance(port, grpcPort, tabletUID int, cell, shard, keyspac
 		VtctldAddress:               fmt.Sprintf("http://%s:%d", hostname, vtctldPort),
 		ExtraArgs:                   extraArgs,
 		SupportsBackup:              true,
-		ServingStatus:               "NOT_SERVING",
+		ServingStatus:               "SERVING",
 		BackupStorageImplementation: "file",
 		FileBackupStorageRoot:       path.Join(os.Getenv("VTDATAROOT"), "/backups"),
 		VreplicationTabletType:      "replica",
