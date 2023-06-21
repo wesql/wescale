@@ -486,7 +486,7 @@ release-notes:
 	go run ./go/tools/release-notes --from "$(FROM)" --to "$(TO)" --version "$(VERSION)" --summary "$(SUMMARY)"
 
 install_kubectl_kind:
-	./tools/get_kubectl_kind.sh
+	./tools/get_ksubectl_kind.sh
 
 .PHONY: check-license-header
 check-license-header: ## Run license header check.
