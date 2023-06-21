@@ -47,7 +47,7 @@ const (
 	SidecarDBName              = "mysql"
 	CreateSidecarDatabaseQuery = "create database if not exists mysql"
 	UseSidecarDatabaseQuery    = "use mysql"
-	ShowSidecarDatabasesQuery  = "SHOW DATABASES LIKE '\\mysql'"
+	ShowSidecarDatabasesQuery  = "SHOW DATABASES LIKE 'mysql'"
 	SelectCurrentDatabaseQuery = "select database()"
 	ShowCreateTableQuery       = "show create table mysql.%s"
 
