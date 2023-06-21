@@ -140,8 +140,11 @@ jobs:
     - name: Check test results
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
       run: |
-          # check if there are no '0 FAILED' in output.txt, then testcase is successful, otherwise it is failed
+          # check if any test failed
           if grep -q -- '--- FAIL' output.txt; then
+              echo "Testcase is failed"
+              exit 1
+          else if grep -q -- 'FAIL	vitess.io' output.txt; then
               echo "Testcase is failed"
               exit 1
           else
