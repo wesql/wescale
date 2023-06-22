@@ -3,6 +3,7 @@
 name: Cluster (vtconsensus)
 on:
   pull_request:
+  push:
   workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (wesql)')
