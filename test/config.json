@@ -102,7 +102,7 @@
 		},
 		"wesql_vtconcensus": {
 			"File": "unused.go",
-			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/vtconcensus", "-timeout", "30m"],
+			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/vtconcensus", "-timeout", "30m", "-db-flavor", "wesql"],
 			"Command": [],
 			"Manual": false,
 			"Shard": "wesql",

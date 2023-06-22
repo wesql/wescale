@@ -41,6 +41,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"

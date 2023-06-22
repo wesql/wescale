@@ -16,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
 	"vitess.io/vitess/go/vt/log"
 )
 
