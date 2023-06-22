@@ -108,7 +108,7 @@
 			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/vtconcensus", "-timeout", "30m", "-db-flavor", "wesql"],
 			"Command": [],
 			"Manual": false,
-			"Shard": "vtconcensus",
+			"Shard": "wesql",
 			"RetryMax": 1,
 			"Tags": []
 		},
