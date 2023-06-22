@@ -82,12 +82,7 @@ jobs:
 
     - name: Setup docker
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-      uses: docker-practice/actions-setup-docker@master
-      timeout-minutes: 12
-      run: |
-        set -x 
-        docker version
-        docker run --rm hello-world
+      uses: docker-practice/actions-setup-docker@v1
 
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
