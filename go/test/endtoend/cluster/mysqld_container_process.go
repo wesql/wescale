@@ -376,6 +376,7 @@ func (container *ContainerProcess) CheckState() string {
 	)
 	var states []containerStatus
 	out, _ := inspect.Output()
+	fmt.Println(out)
 	if err := json.Unmarshal(out, &states); err != nil {
 		log.Error(err)
 	}
