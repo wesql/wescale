@@ -90,9 +90,9 @@ jobs:
         set -x 
         docker version
         
-        docker run --rm hello-world
+        docker run hello-world
         
-        docker container inspect hello-world
+        docker inspect hello-world
 
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
