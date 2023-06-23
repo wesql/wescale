@@ -40,7 +40,7 @@ for i in ${TABLETS_UID[@]}; do
 done
 
 # set the correct durability policy for the keyspace
-vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync mysql || fail "Failed to set keyspace durability policy on the mysql keyspace"
+vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync _vt || fail "Failed to set keyspace durability policy on the _vt keyspace"
 
 # start vtconsensus for apecloud mysql
 CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
@@ -48,7 +48,7 @@ CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 echo "wait for healthy shard for a primary tablet to be elected"
-wait_for_healthy_shard mysql 0 || exit 1
+wait_for_healthy_shard _vt 0 || exit 1
 
 # start vtgate
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
