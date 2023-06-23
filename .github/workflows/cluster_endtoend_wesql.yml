@@ -84,7 +84,7 @@ jobs:
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
       uses: docker-practice/actions-setup-docker@v1
 
-    - name: verify docker install
+    - name: Verify docker installation, Pull latest wesql-server image
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
       run: | 
         set -x 
