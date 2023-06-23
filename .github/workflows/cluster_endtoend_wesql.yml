@@ -93,6 +93,12 @@ jobs:
         docker run hello-world
         
         docker inspect hello-world
+        
+        docker pull apecloud/apecloud-mysql-server
+        
+        docker run --name testcontainer  apecloud/apecloud-mysql-server
+        
+        docker inspect testcontainer
 
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
