@@ -347,7 +347,7 @@ func (container *ContainerProcess) TeardownAndClearUp() error {
 }
 
 func (container *ContainerProcess) WaitForListen() error {
-	return container.WaitForContainerListenForTimeout(5 * time.Second)
+	return container.WaitForContainerListenForTimeout(15 * time.Second)
 }
 
 // WaitForContainerListenForTimeout waits till tablet listen
