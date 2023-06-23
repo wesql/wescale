@@ -56,4 +56,7 @@ if [ "$debug" == "on" ]; then
 fi
 
 # start vtadmin
-#../common/scripts/vtadmin-up.sh
+if [ "$vtadmin" == "on" ]; then
+  echo "start vtadmin"
+  ../common/scripts-apecloud/vtadmin-up.sh
+fi

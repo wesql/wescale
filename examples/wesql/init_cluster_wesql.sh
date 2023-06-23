@@ -54,7 +54,10 @@ wait_for_healthy_shard mysql 0 || exit 1
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 
 # start vtadmin
-../common/scripts-apecloud/vtadmin-up.sh
+if [ "$vtadmin" == "on" ]; then
+  echo "start vtadmin"
+  ../common/scripts-apecloud/vtadmin-up.sh
+fi
 
 echo "
 
