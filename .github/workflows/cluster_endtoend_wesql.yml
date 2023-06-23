@@ -84,6 +84,16 @@ jobs:
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
       uses: docker-practice/actions-setup-docker@v1
 
+    - name: verify docker install
+      if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
+      run: | 
+        set -x 
+        docker version
+        
+        docker run --rm hello-world
+        
+        docker container inspect hello-world
+
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
       run: |
