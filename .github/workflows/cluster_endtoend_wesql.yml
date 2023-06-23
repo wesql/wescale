@@ -96,7 +96,7 @@ jobs:
         
         docker pull apecloud/apecloud-mysql-server
         
-        docker run --name testcontainer  apecloud/apecloud-mysql-server
+        docker run -idt --name testcontainer  apecloud/apecloud-mysql-server || true
         
         docker inspect testcontainer
 
