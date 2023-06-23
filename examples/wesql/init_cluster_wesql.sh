@@ -40,7 +40,7 @@ for i in ${TABLETS_UID[@]}; do
 done
 
 # set the correct durability policy for the keyspace
-vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync _vt || fail "Failed to set keyspace durability policy on the _vt keyspace"
+vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync mysql || fail "Failed to set keyspace durability policy on the mysql keyspace"
 
 # start vtconsensus for apecloud mysql
 CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
@@ -48,13 +48,13 @@ CELL=zone1 ../common/scripts-apecloud/vtconsensus-up.sh
 # Wait for all the tablets to be up and registered in the topology server
 # and for a primary tablet to be elected in the shard and become healthy/serving.
 echo "wait for healthy shard for a primary tablet to be elected"
-wait_for_healthy_shard _vt 0 || exit 1
+wait_for_healthy_shard mysql 0 || exit 1
 
 # start vtgate
 CELL=zone1 ../common/scripts-apecloud/vtgate-up.sh
 
 # start vtadmin
-#../common/scripts-apecloud/vtadmin-up.sh
+../common/scripts-apecloud/vtadmin-up.sh
 
 echo "
 
@@ -62,25 +62,36 @@ echo "
 
 "
 
+echo "MySQL endpoint:
+mysql -h127.0.0.1 -uroot -P17001
+mysql -h127.0.0.1 -uroot -P17002
+mysql -h127.0.0.1 -uroot -P17003
+"
+
 echo "VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 "
 
-echo "Staring add new follower node and tablet for wesql-scale cluster ... "
-TABLETS_UID=(11)
-for i in ${TABLETS_UID[@]}; do
-	CELL=zone1 TABLET_UID=$i NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-add-node.sh
-	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
-done
-echo ""
-echo "Staring add new learner node and tablet for wesql-scale cluster ..."
-# create ont wesql-server learner node.
-TABLETS_UID=(12 13)
-for i in ${TABLETS_UID[@]}; do
-	CELL=zone1 TABLET_UID=$i NODE_ROLE=learner ../common/scripts-apecloud/apecloudmysql-add-node.sh
-	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
-done
+#echo "Staring add new follower node and tablet for wesql-scale cluster ... "
+#TABLETS_UID=(11)
+#for i in ${TABLETS_UID[@]}; do
+#	CELL=zone1 TABLET_UID=$i NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-add-node.sh
+#	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
+#done
+#echo ""
+#echo "Staring add new learner node and tablet for wesql-scale cluster ..."
+## create ont wesql-server learner node.
+#TABLETS_UID=(12 13)
+#for i in ${TABLETS_UID[@]}; do
+#	CELL=zone1 TABLET_UID=$i NODE_ROLE=learner ../common/scripts-apecloud/apecloudmysql-add-node.sh
+#	CELL=zone1 TABLET_UID=$i TABLET_TYPE=rdonly ../common/scripts-apecloud/vttablet-up.sh
+#done
+#
+#echo ""
+#echo "wesql-scale initial cluster setup done"
 
-echo ""
-echo "wesql-scale initial cluster setup done"
-
+# if env var debug=on, kill the vtgate process and vttablet processes
+if [ "$debug" == "on" ]; then
+  killall vtgate vttablet
+  echo "vtgate and vttablet processes killed"
+fi
