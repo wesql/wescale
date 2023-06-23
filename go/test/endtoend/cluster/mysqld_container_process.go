@@ -156,6 +156,7 @@ func NewContainerProcess(name string, network string, ipaddr string, port int, t
 	mounts = append(mounts, mount2)
 	mounts = append(mounts, mount3)
 
+	fmt.Printf("!!! contianer %s using image %s:%s", name, ImgRepo, ImgTag)
 	return &ContainerProcess{
 		Name:    name,
 		Network: network,
