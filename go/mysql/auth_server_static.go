@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 /*
 Copyright 2019 The Vitess Authors.
 
@@ -78,7 +77,7 @@ type AuthServerStatic struct {
 }
 
 // Note: AuthServerStatic does not support the full use of authMethod
-func (a *AuthServerStatic) UserEntryWithFullAuth(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerStatic) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
 	return nil, nil
 }
 

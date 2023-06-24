@@ -190,7 +190,7 @@ type PlainTextStorage interface {
 // practices to prevent various types of attacks, including timing-based attacks
 // on the password, by using mechanisms like `subtle.ConstantTimeCompare`.
 type FullAuthStorage interface {
-	UserEntryWithFullAuth(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error)
+	UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error)
 }
 
 // CachingStorage describes an object that is suitable to retrieve user information
@@ -542,8 +542,40 @@ func ScrambleSha2Password(plaintext string, pwhash []byte) (string, error) {
 	return buf.String(), nil
 }
 
+// ScramblePassword return SHA256(SHA256(password))
+func ScramblePassword(password []byte) []byte {
+	// Compute SHA256(password)
+	hash := sha256.New()
+	hash.Write(password)
+	passwordHash := hash.Sum(nil)
+
+	return passwordHash
+}
+
+// XOR(password, SHA256(password, salt))
+func XORHashAndSalt(password []byte, salt []byte) []byte {
+	// Compute SHA256(password)
+	hash := sha256.New()
+	hash.Write(password)
+	passwordHash := hash.Sum(nil)
+
+	// Compute SHA256(password + salt)
+	hash.Reset()
+	hash.Write(passwordHash)
+	hash.Write(salt)
+	passwordSaltHash := hash.Sum(nil)
+
+	// XOR two hashes
+	for i := range passwordSaltHash {
+		password[i] ^= passwordSaltHash[i]
+	}
+
+	return password
+}
+
 // ScrambleCachingSha2Password computes the hash of the password using SHA256 as required by
 // caching_sha2_password plugin for "fast" authentication
+// XOR(SHA256(password), SHA256(SHA256(SHA256(password)), salt))
 func ScrambleCachingSha2Password(salt []byte, password []byte) []byte {
 	if len(password) == 0 {
 		return nil
@@ -753,7 +785,7 @@ func (n *mysqlCachingSha2AuthMethod) HandleAuthPluginData(c *Conn, user string, 
 			return nil, err
 		}
 
-		return n.storage.UserEntryWithFullAuth(c, user, password, remoteAddr)
+		return n.storage.UserEntryWithFullAuth(c, salt, user, password, remoteAddr)
 	default:
 		// Somehow someone returned an unknown state, let's error with access denied.
 		return nil, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
