@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,6 +75,11 @@ type AuthServerStatic struct {
 
 	sigChan chan os.Signal
 	ticker  *time.Ticker
+}
+
+// Note: AuthServerStatic does not support the full use of authMethod
+func (a *AuthServerStatic) UserEntryWithFullAuth(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
+	return nil, nil
 }
 
 // AuthServerStaticEntry stores the values for a given user.
@@ -148,8 +159,8 @@ func NewAuthServerStaticWithAuthMethodDescription(file, jsonConfig string, reloa
 
 	var authMethod AuthMethod
 	switch authMethodDescription {
-	case CachingSha2Password:
-		authMethod = NewSha2CachingAuthMethod(a, a, a)
+	//case CachingSha2Password:
+	//	authMethod = NewSha2CachingAuthMethod(a, a, a)
 	case MysqlNativePassword:
 		authMethod = NewMysqlNativeAuthMethod(a, a)
 	case MysqlClearPassword:
@@ -167,7 +178,7 @@ func NewAuthServerStaticWithAuthMethodDescription(file, jsonConfig string, reloa
 
 // HandleUser is part of the Validator interface. We
 // handle any user here since we don't check up front.
-func (a *AuthServerStatic) HandleUser(user string) bool {
+func (a *AuthServerStatic) HandleUser(user string, plugin string) bool {
 	return true
 }
 

@@ -132,6 +132,8 @@ order by table_name, ordinal_position`
 	FetchViews = `select table_name, create_statement from mysql.views where table_schema = database()`
 
 	FetchDbList = `select schema_name from information_schema.schemata`
+
+	FetchUser = `select user,plugin,authentication_string from mysql.user`
 )
 
 // BaseShowTablesFields contains the fields returned by a BaseShowTables or a BaseShowTablesForTable command.

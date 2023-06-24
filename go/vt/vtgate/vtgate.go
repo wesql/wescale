@@ -34,9 +34,10 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/vt/vtgate/engine"
 
@@ -254,6 +255,9 @@ func Init(
 	// TabletGateway can create it's own healthcheck
 	gw := NewTabletGateway(ctx, hc, serv, cell)
 	gw.RegisterStats()
+	if mysqlAuthServerImpl == "MysqlBase" {
+		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
 	if err := gw.WaitForTablets(tabletTypesToWait); err != nil {
 		log.Fatalf("tabletGateway.WaitForTablets failed: %v", err)
 	}

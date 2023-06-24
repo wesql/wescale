@@ -30,10 +30,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"vitess.io/vitess/go/mysql"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/discovery"

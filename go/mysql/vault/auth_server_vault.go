@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -175,7 +181,7 @@ func (a *AuthServerVault) DefaultAuthMethodDescription() mysql.AuthMethodDescrip
 
 // HandleUser is part of the Validator interface. We
 // handle any user here since we don't check up front.
-func (a *AuthServerVault) HandleUser(user string) bool {
+func (a *AuthServerVault) HandleUser(user string, plugin string) bool {
 	return true
 }
 
