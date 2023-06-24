@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 package mysql
 
 import (
@@ -36,7 +35,7 @@ type AuthServerMysqlBase struct {
 	// entries contains the users, passwords and user data.
 	queryservice.QueryService
 	entries      map[string][]*AuthServerMysqlBaseEntry
-	cacheEntries map[string][]*AuthServerMysqlBaseEntry
+	cacheEntries map[string]*AuthServerMysqlBaseEntry
 	sigChan      chan os.Signal
 	ticker       *time.Ticker
 }
@@ -66,6 +65,7 @@ type AuthServerMysqlBaseEntry struct {
 	// MysqlNativePassword's format looks like "*6C8989366EAF75BB670AD8EA7A7FC1176A95CEF4", it store a hashing value.
 	// Use MysqlNativePassword in auth config, maybe more secure. After all, it is cryptographic storage.
 	MysqlNativePassword string
+	ScramblePassword    []byte
 	Password            string
 	UserData            string
 	plugin              string
@@ -76,6 +76,7 @@ type AuthServerMysqlBaseEntry struct {
 func NewAuthServerMysqlBase() *AuthServerMysqlBase {
 	a := &AuthServerMysqlBase{
 		entries:        make(map[string][]*AuthServerMysqlBaseEntry),
+		cacheEntries:   make(map[string]*AuthServerMysqlBaseEntry),
 		reloadInterval: mysqlAuthServerMysqlBaseReloadInterval,
 	}
 	a.methods = []AuthMethod{NewMysqlNativeAuthMethod(a, a)}
@@ -108,13 +109,14 @@ func (a *AuthServerMysqlBase) installSignalHandlers() {
 
 func (a *AuthServerMysqlBase) deleteUserFromCache(user string) {
 	a.cacheLatch.Lock()
+	defer a.cacheLatch.Unlock()
 	delete(a.cacheEntries, user)
-	a.cacheLatch.Unlock()
 }
 func (a *AuthServerMysqlBase) addUserToCache(user string, entry *AuthServerMysqlBaseEntry) {
 	a.cacheLatch.Lock()
-	a.cacheEntries[user] = append(a.cacheEntries[user], entry)
-	a.cacheLatch.Unlock()
+	defer a.cacheLatch.Unlock()
+	a.cacheEntries[user] = entry
+
 }
 
 // reLoadUser load user information from mysql.user
@@ -178,21 +180,20 @@ func (a *AuthServerMysqlBase) DefaultAuthMethodDescription() AuthMethodDescripti
 	return CachingSha2Password
 }
 func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
-	a.mu.Lock()
-	entries, ok := a.cacheEntries[user]
-	a.mu.Unlock()
+	a.cacheLatch.Lock()
+	entry, ok := a.cacheEntries[user]
+	a.cacheLatch.Unlock()
 	if !ok {
-		return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
+		return &StaticUserData{}, AuthNeedMoreData, nil
 	}
-	for _, entry := range entries {
-		// Validate the password.
-		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, []byte(entry.Password)) == 1 {
-			return &StaticUserData{entry.UserData, entry.Groups}, AuthAccepted, nil
-		}
+	// Validate the password.
+	hashPassword := XORHashAndSalt(entry.ScramblePassword, salt)
+	if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, hashPassword) == 1 {
+		return &StaticUserData{entry.UserData, entry.Groups}, AuthAccepted, nil
 	}
-	return &StaticUserData{}, AuthNeedMoreData, nil
+	return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 }
-func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()
@@ -203,6 +204,8 @@ func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, user string, pas
 		// Validate the password.
 		pwhash, _ := ScrambleSha2Password(password, []byte(entry.MysqlCachingSha2Password))
 		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare([]byte(pwhash), []byte(entry.MysqlCachingSha2Password)) == 1 {
+			entry.ScramblePassword = ScramblePassword([]byte(password))
+			a.addUserToCache(user, entry)
 			return &StaticUserData{entry.UserData, entry.Groups}, nil
 		}
 	}
@@ -240,7 +243,9 @@ func (a *AuthServerMysqlBase) UserEntryWithHash(conn *Conn, salt []byte, user st
 		}
 	}
 	return &StaticUserData{}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
-} // NewHashPassword creates a new password for caching_sha2_password
+}
+
+// NewHashPassword creates a new password for caching_sha2_password
 func NewHashPassword(pwd string, pwhash string) string {
 	pwHash, _ := ScrambleSha2Password(pwd, []byte(pwhash))
 	return pwHash
