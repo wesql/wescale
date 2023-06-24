@@ -257,6 +257,9 @@ func Init(
 	// TabletGateway can create it's own healthcheck
 	gw := NewTabletGateway(ctx, hc, serv, cell)
 	gw.RegisterStats()
+	if mysqlAuthServerImpl == "MysqlBase" {
+		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
 	if err := gw.WaitForTablets(tabletTypesToWait); err != nil {
 		log.Fatalf("tabletGateway.WaitForTablets failed: %v", err)
 	}
