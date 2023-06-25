@@ -522,15 +522,6 @@ func (gw *TabletGateway) CompressGtidSets() {
 	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
 }
 
-func (gw *TabletGateway) CompressGtidSets() {
-	var gtidSets []*mysql.GTIDSet
-	tabletStats := gw.hc.GetAllHealthyTabletStats()
-	for _, tableHealth := range tabletStats {
-		gtidSets = append(gtidSets, &tableHealth.Position.GTIDSet)
-	}
-	gw.lastSeenGtid.CompressWithGtidSets(gtidSets)
-}
-
 // LastSeenGtidString returns the last seen gtid as a string
 func (gw *TabletGateway) LastSeenGtidString() string {
 	return gw.lastSeenGtid.String()
