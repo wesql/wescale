@@ -119,7 +119,7 @@ func (a *AuthServerMysqlBase) addUserToCache(user string, entry *AuthServerMysql
 
 }
 
-// reLoadUser load user information from mysql.user
+// reLoadUser load user information from mysql.user and update entries and cacheEntries
 func (a *AuthServerMysqlBase) reLoadUser() error {
 	if a.QueryService == nil {
 		return nil
@@ -128,13 +128,13 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 	target := &querypb.Target{
 		TabletType: topodata.TabletType_PRIMARY,
 	}
+	// pull user from mysql.user
 	qr, err := a.QueryService.Execute(ctx, target, FetchUser, nil, 0, 0, nil)
 	entries := make(map[string][]*AuthServerMysqlBaseEntry)
 	for _, rows := range qr.Rows {
 		user := rows[0].ToString()
 		plugin := rows[1].ToString()
 		authenticationString := rows[2].ToString()
-
 		entrie := AuthServerMysqlBaseEntry{
 			MysqlCachingSha2Password: authenticationString,
 			MysqlNativePassword:      authenticationString,
@@ -145,12 +145,20 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 	a.mu.Lock()
 	a.entries = entries
 	a.mu.Unlock()
+	// remove user who had been deleted from cacheEntries
+	for key := range a.cacheEntries {
+		_, ok := a.entries[key]
+		if !ok {
+			delete(a.cacheEntries, key)
+		}
+	}
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// SetQueryService set QueryService
 func (a *AuthServerMysqlBase) SetQueryService(conn queryservice.QueryService) {
 	a.QueryService = conn
 }
@@ -179,6 +187,9 @@ func (a *AuthServerMysqlBase) HandleUser(user string, plugin string) bool {
 func (a *AuthServerMysqlBase) DefaultAuthMethodDescription() AuthMethodDescription {
 	return CachingSha2Password
 }
+
+// UserEntryWithCacheHash implements password lookup based on a
+// caching_sha2_password fast authentication hash that is negotiated with the client.
 func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
 	a.cacheLatch.Lock()
 	entry, ok := a.cacheEntries[user]
@@ -193,6 +204,9 @@ func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, us
 	}
 	return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 }
+
+// UserEntryWithFullAuth implements password lookup based on a
+// caching_sha2_password full authentication hash that is negotiated with the client.
 func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
