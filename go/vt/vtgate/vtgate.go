@@ -36,9 +36,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/mysql"
 
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/vtgate/engine"
 
 	"vitess.io/vitess/go/acl"
@@ -255,9 +255,6 @@ func Init(
 	// TabletGateway can create it's own healthcheck
 	gw := NewTabletGateway(ctx, hc, serv, cell)
 	gw.RegisterStats()
-	if mysqlAuthServerImpl == "MysqlBase" {
-		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
-	}
 	if err := gw.WaitForTablets(tabletTypesToWait); err != nil {
 		log.Fatalf("tabletGateway.WaitForTablets failed: %v", err)
 	}
@@ -285,7 +282,6 @@ func Init(
 	srvResolver := srvtopo.NewResolver(serv, gw, cell)
 	resolver := NewResolver(srvResolver, serv, cell, sc)
 	vsm := newVStreamManager(srvResolver, serv, cell)
-
 	var si SchemaInfo // default nil
 	var st *vtschema.Tracker
 	if enableSchemaChangeSignal {
@@ -293,7 +289,9 @@ func Init(
 		addKeyspaceToTracker(ctx, srvResolver, st, gw)
 		si = st
 	}
-
+	if mysqlAuthServerImpl == "mysqlbased" {
+		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
 	cacheCfg := &cache.Config{
 		MaxEntries:     queryPlanCacheSize,
 		MaxMemoryUsage: queryPlanCacheMemory,

@@ -195,7 +195,7 @@ func (a *AuthServerStatic) UserEntryWithPassword(conn *Conn, user string, passwo
 	for _, entry := range entries {
 		// Validate the password.
 		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare([]byte(password), []byte(entry.Password)) == 1 {
-			return &StaticUserData{entry.UserData, entry.Groups}, nil
+			return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 		}
 	}
 	return &StaticUserData{}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -216,18 +216,18 @@ func (a *AuthServerStatic) UserEntryWithHash(conn *Conn, salt []byte, user strin
 		if entry.MysqlNativePassword != "" {
 			hash, err := DecodeMysqlNativePasswordHex(entry.MysqlNativePassword)
 			if err != nil {
-				return &StaticUserData{entry.UserData, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 			}
 
 			isPass := VerifyHashedMysqlNativePassword(authResponse, salt, hash)
 			if MatchSourceHost(remoteAddr, entry.SourceHost) && isPass {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		} else {
 			computedAuthResponse := ScrambleMysqlNativePassword(salt, []byte(entry.Password))
 			// Validate the password.
 			if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, computedAuthResponse) == 1 {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func (a *AuthServerStatic) UserEntryWithCacheHash(conn *Conn, salt []byte, user 
 
 		// Validate the password.
 		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, computedAuthResponse) == 1 {
-			return &StaticUserData{entry.UserData, entry.Groups}, AuthAccepted, nil
+			return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, AuthAccepted, nil
 		}
 	}
 	return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -359,24 +359,10 @@ func validateConfig(config map[string][]*AuthServerStaticEntry) error {
 	return nil
 }
 
-// MatchSourceHost validates host entry in auth configuration
-func MatchSourceHost(remoteAddr net.Addr, targetSourceHost string) bool {
-	// Legacy support, there was not matcher defined default to true
-	if targetSourceHost == "" {
-		return true
-	}
-	switch remoteAddr.(type) {
-	case *net.UnixAddr:
-		if targetSourceHost == localhostName {
-			return true
-		}
-	}
-	return false
-}
-
 // StaticUserData holds the username and groups
 type StaticUserData struct {
 	Username string
+	host     string
 	Groups   []string
 }
 

@@ -47,6 +47,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 
 	"vitess.io/vitess/go/vt/log"
@@ -549,7 +550,10 @@ func ScramblePassword(password []byte) []byte {
 	hash.Write(password)
 	passwordHash := hash.Sum(nil)
 
-	return passwordHash
+	hash.Reset()
+	hash.Write(passwordHash)
+	doubleHash := hash.Sum(nil)
+	return doubleHash
 }
 
 // XOR(password, SHA256(password, salt))
@@ -856,4 +860,27 @@ func readPacketPasswordString(c *Conn) (string, error) {
 		return "", vterrors.Errorf(vtrpc.Code_INTERNAL, "received invalid response packet, datalen=%v", len(data))
 	}
 	return string(data[:len(data)-1]), nil
+}
+
+// MatchSourceHost validates host entry in auth configuration
+func MatchSourceHost(remoteAddr net.Addr, targetSourceHost string) bool {
+	// Legacy support, there was not matcher defined default to true
+	if targetSourceHost == "" {
+		return true
+	}
+	switch remoteAddr.(type) {
+	case *net.UnixAddr:
+		if targetSourceHost == localhostName {
+			return true
+		}
+	}
+	return false
+}
+func ExtractIPAddr(remoteAddr net.Addr) string {
+	switch remoteAddr.(type) {
+	case *net.TCPAddr:
+		addrParts := strings.Split(remoteAddr.String(), ":") // IP : addrParts[0] , port : addrParts[1]
+		return addrParts[0]
+	}
+	return ""
 }

@@ -133,7 +133,7 @@ order by table_name, ordinal_position`
 
 	FetchDbList = `select schema_name from information_schema.schemata`
 
-	FetchUser = `select user,plugin,authentication_string from mysql.user`
+	FetchUser = `select user,host,plugin,authentication_string from mysql.user`
 )
 
 // BaseShowTablesFields contains the fields returned by a BaseShowTables or a BaseShowTablesForTable command.

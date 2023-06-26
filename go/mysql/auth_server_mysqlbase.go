@@ -8,12 +8,18 @@ package mysql
 import (
 	"context"
 	"crypto/subtle"
+	"log"
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"golang.org/x/exp/slices"
+
+	stringutil "vitess.io/vitess/go/mysql/utils"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/proto/topodata"
@@ -32,12 +38,14 @@ type AuthServerMysqlBase struct {
 	// This mutex helps us prevent data races between the multiple updates of cacheEntries.
 	cacheLatch     sync.Mutex
 	reloadInterval time.Duration
+	qs             queryservice.QueryService
 	// entries contains the users, passwords and user data.
-	queryservice.QueryService
-	entries      map[string][]*AuthServerMysqlBaseEntry
-	cacheEntries map[string]*AuthServerMysqlBaseEntry
+	entries map[string][]*AuthServerMysqlBaseEntry
+	//cacheEntries used by fast-authentication
+	cacheEntries map[string][]*AuthServerMysqlBaseEntry
 	sigChan      chan os.Signal
 	ticker       *time.Ticker
+	skipPassword bool
 }
 
 var instance *AuthServerMysqlBase
@@ -71,18 +79,21 @@ type AuthServerMysqlBaseEntry struct {
 	plugin              string
 	SourceHost          string
 	Groups              []string
+	// patChars is compiled from Host, cached for pattern match performance.
+	patChars []byte
+	patTypes []byte
 }
 
 func NewAuthServerMysqlBase() *AuthServerMysqlBase {
 	a := &AuthServerMysqlBase{
 		entries:        make(map[string][]*AuthServerMysqlBaseEntry),
-		cacheEntries:   make(map[string]*AuthServerMysqlBaseEntry),
+		cacheEntries:   make(map[string][]*AuthServerMysqlBaseEntry),
 		reloadInterval: mysqlAuthServerMysqlBaseReloadInterval,
 	}
 	a.methods = []AuthMethod{NewMysqlNativeAuthMethod(a, a)}
 	a.methods = append(a.methods, NewSha2CachingAuthMethod(a, a, a))
 
-	RegisterAuthServer("MysqlBase", a)
+	RegisterAuthServer("mysqlbased", a)
 	a.installSignalHandlers()
 	return a
 }
@@ -115,13 +126,23 @@ func (a *AuthServerMysqlBase) deleteUserFromCache(user string) {
 func (a *AuthServerMysqlBase) addUserToCache(user string, entry *AuthServerMysqlBaseEntry) {
 	a.cacheLatch.Lock()
 	defer a.cacheLatch.Unlock()
-	a.cacheEntries[user] = entry
+	a.cacheEntries[user] = append(a.cacheEntries[user], entry)
 
+}
+
+// isExistsEntryInList use to remove entry from cache
+func isExistsEntryInList(user string, host string, list []*AuthServerMysqlBaseEntry) bool {
+	for _, entry := range list {
+		if entry.UserData == user && entry.SourceHost == host {
+			return true
+		}
+	}
+	return false
 }
 
 // reLoadUser load user information from mysql.user and update entries and cacheEntries
 func (a *AuthServerMysqlBase) reLoadUser() error {
-	if a.QueryService == nil {
+	if a.qs == nil {
 		return nil
 	}
 	ctx := context.Background()
@@ -129,38 +150,67 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 		TabletType: topodata.TabletType_PRIMARY,
 	}
 	// pull user from mysql.user
-	qr, err := a.QueryService.Execute(ctx, target, FetchUser, nil, 0, 0, nil)
-	entries := make(map[string][]*AuthServerMysqlBaseEntry)
-	for _, rows := range qr.Rows {
-		user := rows[0].ToString()
-		plugin := rows[1].ToString()
-		authenticationString := rows[2].ToString()
-		entrie := AuthServerMysqlBaseEntry{
-			MysqlCachingSha2Password: authenticationString,
-			MysqlNativePassword:      authenticationString,
-			plugin:                   plugin,
-		}
-		entries[user] = append(entries[user], &entrie)
-	}
-	a.mu.Lock()
-	a.entries = entries
-	a.mu.Unlock()
-	// remove user who had been deleted from cacheEntries
-	for key := range a.cacheEntries {
-		_, ok := a.entries[key]
-		if !ok {
-			delete(a.cacheEntries, key)
-		}
-	}
+	qr, err := a.qs.Execute(ctx, target, FetchUser, nil, 0, 0, nil)
 	if err != nil {
 		return err
 	}
+	entries := make(map[string][]*AuthServerMysqlBaseEntry)
+	for _, rows := range qr.Rows {
+		user := rows[0].ToString()
+		host := rows[1].ToString()
+		plugin := rows[2].ToString()
+		authenticationString := rows[3].ToString()
+		entrie := AuthServerMysqlBaseEntry{
+			plugin:     plugin,
+			UserData:   user,
+			SourceHost: host,
+		}
+		entrie.patChars, entrie.patTypes = stringutil.CompilePatternBytes(host, '\\')
+		if plugin == "caching_sha2_password" {
+			entrie.MysqlCachingSha2Password = authenticationString
+		}
+		if plugin == "mysql_native_password" {
+			entrie.MysqlNativePassword = authenticationString
+		}
+		entries[user] = append(entries[user], &entrie)
+	}
+	// sort by host
+	for _, list := range entries {
+		slices.SortFunc(list, compareBaseRecord)
+	}
+	// remove user who had been deleted from cacheEntries
+	a.cacheLatch.Lock()
+	defer a.cacheLatch.Unlock()
+	for key := range a.cacheEntries {
+		list, ok := entries[key]
+		if !ok {
+			delete(a.cacheEntries, key)
+		} else {
+			newEntries := make([]*AuthServerMysqlBaseEntry, 0)
+			// Only cache users who are listed in the mysql.user table
+			for _, entry := range a.cacheEntries[key] {
+				if isExistsEntryInList(entry.UserData, entry.SourceHost, list) {
+					newEntries = append(newEntries, entry)
+				}
+			}
+			// sort by host
+			slices.SortFunc(newEntries, compareBaseRecord)
+			a.cacheEntries[key] = newEntries
+		}
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.entries = entries
 	return nil
 }
 
 // SetQueryService set QueryService
 func (a *AuthServerMysqlBase) SetQueryService(conn queryservice.QueryService) {
-	a.QueryService = conn
+	a.qs = conn
+	err := a.reLoadUser()
+	if err != nil {
+		log.Println("reload fail")
+	}
 }
 
 // AuthMethods returns the AuthMethod instances this auth server can handle.
@@ -168,8 +218,7 @@ func (a *AuthServerMysqlBase) AuthMethods() []AuthMethod {
 	return a.methods
 }
 
-// HandleUser is part of the Validator interface. We
-// handle any user here since we don't check up front.
+// HandleUser is part of the Validator interface.
 func (a *AuthServerMysqlBase) HandleUser(user string, plugin string) bool {
 	if a.entries[user] == nil {
 		return false
@@ -192,15 +241,17 @@ func (a *AuthServerMysqlBase) DefaultAuthMethodDescription() AuthMethodDescripti
 // caching_sha2_password fast authentication hash that is negotiated with the client.
 func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
 	a.cacheLatch.Lock()
-	entry, ok := a.cacheEntries[user]
+	entries, ok := a.cacheEntries[user]
 	a.cacheLatch.Unlock()
 	if !ok {
 		return &StaticUserData{}, AuthNeedMoreData, nil
 	}
 	// Validate the password.
-	hashPassword := XORHashAndSalt(entry.ScramblePassword, salt)
-	if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, hashPassword) == 1 {
-		return &StaticUserData{entry.UserData, entry.Groups}, AuthAccepted, nil
+	for _, entry := range entries {
+		isPass := VerifyHashedCachingSha2Password(authResponse, salt, entry.ScramblePassword)
+		if MatchHost(remoteAddr, entry) && isPass {
+			return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, AuthAccepted, nil
+		}
 	}
 	return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 }
@@ -216,11 +267,18 @@ func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, salt []byte, use
 	}
 	for _, entry := range entries {
 		// Validate the password.
-		pwhash, _ := ScrambleSha2Password(password, []byte(entry.MysqlCachingSha2Password))
-		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare([]byte(pwhash), []byte(entry.MysqlCachingSha2Password)) == 1 {
-			entry.ScramblePassword = ScramblePassword([]byte(password))
-			a.addUserToCache(user, entry)
-			return &StaticUserData{entry.UserData, entry.Groups}, nil
+		if entry.MysqlCachingSha2Password != "" {
+			pwhash, _ := ScrambleSha2Password(password, []byte(entry.MysqlCachingSha2Password))
+			if MatchHost(remoteAddr, entry) && subtle.ConstantTimeCompare([]byte(pwhash), []byte(entry.MysqlCachingSha2Password)) == 1 {
+				entry.ScramblePassword = ScramblePassword([]byte(password))
+				a.addUserToCache(user, entry)
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
+			}
+		} else {
+			// Validate the host.
+			if MatchHost(remoteAddr, entry) {
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
+			}
 		}
 	}
 	return &StaticUserData{}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -241,22 +299,106 @@ func (a *AuthServerMysqlBase) UserEntryWithHash(conn *Conn, salt []byte, user st
 		if entry.MysqlNativePassword != "" {
 			hash, err := DecodeMysqlNativePasswordHex(entry.MysqlNativePassword)
 			if err != nil {
-				return &StaticUserData{entry.UserData, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 			}
-
 			isPass := VerifyHashedMysqlNativePassword(authResponse, salt, hash)
-			if MatchSourceHost(remoteAddr, entry.SourceHost) && isPass {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+			if MatchHost(remoteAddr, entry) && isPass {
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		} else {
-			computedAuthResponse := ScrambleMysqlNativePassword(salt, []byte(entry.Password))
-			// Validate the password.
-			if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, computedAuthResponse) == 1 {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+			// Validate the host.
+			if MatchHost(remoteAddr, entry) {
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		}
 	}
 	return &StaticUserData{}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
+}
+
+func compareBaseRecord(x, y *AuthServerMysqlBaseEntry) bool {
+	// Compare two item by user's host first.
+	c1 := compareHost(x.SourceHost, y.SourceHost)
+	if c1 < 0 {
+		return true
+	}
+	if c1 > 0 {
+		return false
+	}
+
+	// Then, compare item by user's name value.
+	return x.UserData < y.UserData
+}
+
+// compareHost compares two host string using some special rules, return value 1, 0, -1 means > = <.
+// TODO: geray Check how MySQL do it exactly, instead of guess its rules.
+func compareHost(x, y string) int {
+	// The more-specific, the smaller it is.
+	// The pattern '%' means “any host” and is least specific.
+	if y == `%` {
+		if x == `%` {
+			return 0
+		}
+		return -1
+	}
+
+	// The empty string '' also means “any host” but sorts after '%'.
+	if y == "" {
+		if x == "" {
+			return 0
+		}
+		return -1
+	}
+
+	// One of them end with `%`.
+	xEnd := strings.HasSuffix(x, `%`)
+	yEnd := strings.HasSuffix(y, `%`)
+	if xEnd || yEnd {
+		switch {
+		case !xEnd && yEnd:
+			return -1
+		case xEnd && !yEnd:
+			return 1
+		case xEnd && yEnd:
+			// 192.168.199.% smaller than 192.168.%
+			// A not very accurate comparison, compare them by length.
+			if len(x) > len(y) {
+				return -1
+			}
+		}
+		return 0
+	}
+
+	// For other case, the order is nondeterministic.
+	switch x < y {
+	case true:
+		return -1
+	case false:
+		return 1
+	}
+	return 0
+}
+
+func MatchHost(remoteAddr net.Addr, entry *AuthServerMysqlBaseEntry) bool {
+	if entry.SourceHost == "" {
+		return true
+	}
+	switch remoteAddr.(type) {
+	case *net.UnixAddr:
+		if entry.SourceHost == localhostName {
+			return true
+		}
+	case *net.TCPAddr:
+		if patternMatch(ExtractIPAddr(remoteAddr), entry.patChars, entry.patTypes) {
+			return true
+		}
+	}
+	return false
+}
+
+// patternMatch matches "%" the same way as ".*" in regular expression, for example,
+// "10.0.%" would match "10.0.1" "10.0.1.118" ...
+func patternMatch(str string, patChars, patTypes []byte) bool {
+	return stringutil.DoMatchBytes(str, patChars, patTypes)
 }
 
 // NewHashPassword creates a new password for caching_sha2_password
