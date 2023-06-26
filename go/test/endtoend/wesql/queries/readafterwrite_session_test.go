@@ -39,6 +39,18 @@ func TestReadAfterWrite_Instance_Transaction_OLAP(t *testing.T) {
 	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true)
 }
 
+func TestReadAfterWrite_Global(t *testing.T) {
+	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, false, false)
+}
+
+func TestReadAfterWrite_Global_Transaction(t *testing.T) {
+	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, false)
+}
+
+func TestReadAfterWrite_Global_Transaction_OLAP(t *testing.T) {
+	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, true)
+}
+
 func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
 	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
@@ -58,6 +70,51 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 		}
 
 		for i := 0; i < 1000; i++ {
+			if enableTransaction {
+				utils.Exec(t, rwConn, "begin")
+			}
+			result := utils.Exec(t, rwConn, "insert into t1(c1, c2) values(null, 1)")
+			if enableTransaction {
+				utils.Exec(t, rwConn, "commit")
+			}
+			lastInsertID := result.InsertID
+			qr := utils.Exec(t, roConn, "select c1 from t1 order by c1 desc limit 1")
+			if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
+				t.Fatalf("read_after_write get empty result")
+			}
+			c1Val, err := qr.Rows[0][0].ToUint64()
+			if err != nil {
+				t.Fatalf("ToUint64 failed: %v", err)
+			}
+			assert.Equal(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
+		}
+	})
+}
+
+func runReadAfterWriteGlobalTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
+	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
+		rwConn := getConn()
+		roConn := rwConn
+		if separateConn {
+			roConn = getConn()
+		}
+		execMulti(t, rwConn, "create table t1(c1 int primary key auto_increment, c2 int);insert into t1(c1, c2) values(null, 1)")
+
+		// enable read after write & enable read after write for session
+		if enableReadWriteSplitting {
+			utils.Exec(t, roConn, "set session read_write_splitting_policy='random'")
+		}
+		utils.Exec(t, roConn, fmt.Sprintf("set @@read_after_write_consistency='%s'", readAfterWriteConsistency))
+		if olap {
+			utils.Exec(t, roConn, "set @@workload='OLAP'")
+		}
+
+		for i := 0; i < 1000; i++ {
+			rwConn = getConn()
+			roConn = rwConn
+			if separateConn {
+				roConn = getConn()
+			}
 			if enableTransaction {
 				utils.Exec(t, rwConn, "begin")
 			}

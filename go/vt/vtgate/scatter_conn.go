@@ -23,10 +23,10 @@ package vtgate
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
-
 	"vitess.io/vitess/go/vt/schema"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -182,25 +182,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil && session.Session.Options != nil {
-				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
-					if err != nil {
-						return nil, err
-					}
-				}
-				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-			}
-
-			if autocommit {
-				// As this is auto-commit, the transactionID is supposed to be zero.
-				if transactionID != int64(0) {
-					return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "in autocommit mode, transactionID should be zero but was: %d", transactionID)
-				}
-			}
-
 			qs, err = getQueryService(rs, info, session, false)
 			if err != nil {
 				return nil, err
@@ -217,6 +198,46 @@ func (stc *ScatterConn) ExecuteMultiShard(
 					// if we need to reset a reserved connection, here is our chance to try executing again,
 					// against a new connection
 					exec()
+				}
+			}
+
+			queryGTID := func() (string, error) {
+				queryGTIDQuery := fmt.Sprintf("select @@global.gtid_executed;")
+				//result, err := ExecuteMultiShard(context.Background(), nil, vcursor, checkSysVarQuery, make(map[string]*querypb.BindVariable), rss[0], false, false)
+				innerqr, err = qs.Execute(ctx, rs.Target, queryGTIDQuery, queries[i].BindVariables, info.transactionID, info.reservedID, opts)
+				if err != nil {
+					retryRequest(func() {
+						// we seem to have lost our connection. it was a reserved connection, let's try to recreate it
+						info.actionNeeded = reserve
+						var state queryservice.ReservedState
+						state, innerqr, err = qs.ReserveExecute(ctx, rs.Target, session.SetPreQueries(), queries[i].Sql, queries[i].BindVariables, 0 /*transactionId*/, opts)
+						reservedID = state.ReservedID
+						alias = state.TabletAlias
+					})
+				}
+				if err != nil {
+					return "", vterrors.Aggregate(errs)
+				}
+				return innerqr.Rows[0][0].ToString(), nil
+			}
+
+			if session != nil && session.Session != nil && session.Session.Options != nil {
+				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				//if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() {
+					err = setReadAfterWriteOpts(opts, session, stc.gateway, queryGTID)
+					if err != nil {
+						return nil, err
+					}
+				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
+			}
+
+			if autocommit {
+				// As this is auto-commit, the transactionID is supposed to be zero.
+				if transactionID != int64(0) {
+					return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "in autocommit mode, transactionID should be zero but was: %d", transactionID)
 				}
 			}
 
@@ -396,7 +417,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
+					err = setReadAfterWriteOpts(opts, session, stc.gateway, nil)
 					if err != nil {
 						return nil, err
 					}
@@ -902,7 +923,7 @@ const (
 	begin
 )
 
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway) error {
+func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, queryGTID func() (string, error)) error {
 	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
 		return nil
 	}
@@ -917,6 +938,13 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, g
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
+	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
+		if gtid, err := queryGTID(); err != nil {
+			return err
+		} else {
+			opts.ReadAfterWriteGtid = gtid
+		}
+		//opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 	}
 	return nil
 }

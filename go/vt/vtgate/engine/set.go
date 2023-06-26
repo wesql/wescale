@@ -552,7 +552,7 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return err
 		}
 		out, ok := vtgatepb.ReadAfterWriteConsistency_value[strings.ToUpper(str)]
-		if !ok || vtgatepb.ReadAfterWriteConsistency(out) == vtgatepb.ReadAfterWriteConsistency_GLOBAL {
+		if !ok {
 			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadAfterWriteConsistency: %s", str)
 		}
 		ok, err = checkVariableValue(vcursor, "gtid_mode", "ON")
