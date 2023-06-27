@@ -91,7 +91,6 @@
 			"RetryMax": 1,
 			"Tags": []
 		},
-
 		"wesql_queries": {
 			"File": "unused.go",
 			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/queries", "-timeout", "30m"],
@@ -101,14 +100,12 @@
 			"RetryMax": 1,
 			"Tags": []
 		},
-
-
 		"e2e_vtconcensus_test": {
 			"File": "unused.go",
 			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/vtconcensus", "-timeout", "30m", "-db-flavor", "wesql"],
 			"Command": [],
 			"Manual": false,
-			"Shard": "wesql",
+			"Shard": "vtconcensus",
 			"RetryMax": 1,
 			"Tags": []
 		},

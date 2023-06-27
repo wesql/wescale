@@ -80,30 +80,6 @@ jobs:
         echo "fs.aio-max-nr = 1048576" | sudo tee -a /etc/sysctl.conf
         sudo sysctl -p /etc/sysctl.conf
 
-    - name: Setup docker
-      if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-      uses: docker-practice/actions-setup-docker@v1
-
-    - name: Verify docker installation, Pull latest wesql-server image
-      if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-      run: | 
-        set -x 
-        docker version
-        
-        docker run hello-world
-        
-        docker inspect hello-world
-        
-        docker pull apecloud/apecloud-mysql-server
-        
-        docker run -idt --name testcontainer  apecloud/apecloud-mysql-server || true
-        
-        docker stop testcontainer
-        
-        sudo apt update 
-        sudo apt install mysql-client
-        mysql --version
-
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
       run: |
