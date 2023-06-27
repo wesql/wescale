@@ -98,7 +98,11 @@ jobs:
         
         docker run -idt --name testcontainer  apecloud/apecloud-mysql-server || true
         
-        docker inspect testcontainer
+        docker stop testcontainer
+        
+        sudo apt update 
+        sudo apt install mysql-client
+        mysql --version
 
     - name: Get dependencies
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
