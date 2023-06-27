@@ -201,32 +201,11 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 			}
 
-			queryGTID := func() (string, error) {
-				queryGTIDQuery := fmt.Sprintf("select @@global.gtid_executed;")
-				//result, err := ExecuteMultiShard(context.Background(), nil, vcursor, checkSysVarQuery, make(map[string]*querypb.BindVariable), rss[0], false, false)
-				innerqr, err = qs.Execute(ctx, rs.Target, queryGTIDQuery, queries[i].BindVariables, info.transactionID, info.reservedID, opts)
-				if err != nil {
-					retryRequest(func() {
-						// we seem to have lost our connection. it was a reserved connection, let's try to recreate it
-						info.actionNeeded = reserve
-						var state queryservice.ReservedState
-						state, innerqr, err = qs.ReserveExecute(ctx, rs.Target, session.SetPreQueries(), queries[i].Sql, queries[i].BindVariables, 0 /*transactionId*/, opts)
-						reservedID = state.ReservedID
-						alias = state.TabletAlias
-					})
-				}
-				if err != nil {
-					return "", vterrors.Aggregate(errs)
-				}
-				return innerqr.Rows[0][0].ToString(), nil
-			}
-
 			if session != nil && session.Session != nil && session.Session.Options != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				//if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway, queryGTID)
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					err = setReadAfterWriteOpts(opts, session, stc.gateway, qs, ctx, rs.Target)
 					if err != nil {
 						return nil, err
 					}
@@ -417,7 +396,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway, nil)
+					err = setReadAfterWriteOpts(opts, session, stc.gateway, qs, ctx, rs.Target)
 					if err != nil {
 						return nil, err
 					}
@@ -923,7 +902,7 @@ const (
 	begin
 )
 
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, queryGTID func() (string, error)) error {
+func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, qs queryservice.QueryService, ctx context.Context, target *querypb.Target) error {
 	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
 		return nil
 	}
@@ -939,12 +918,32 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, g
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
-		if gtid, err := queryGTID(); err != nil {
+		if gtid, err := queryGTIDFromPrimary(ctx, qs, target); err != nil {
 			return err
 		} else {
 			opts.ReadAfterWriteGtid = gtid
 		}
-		//opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 	}
 	return nil
+}
+
+func queryGTIDFromPrimary(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
+	if target.TabletType != topodatapb.TabletType_PRIMARY {
+		primaryTarget := *target
+		primaryTarget.TabletType = topodatapb.TabletType_PRIMARY
+		return queryGTID(ctx, qs, &primaryTarget)
+	}
+	return queryGTID(ctx, qs, target)
+}
+
+func queryGTID(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
+	queryGTIDQuery := fmt.Sprintf("select @@global.gtid_executed;")
+	innerqr, err := qs.Execute(ctx, target, queryGTIDQuery, nil, 0, 0, nil)
+	if err != nil {
+		return "", vterrors.Wrap(err, "query GTID from primary failed")
+	}
+	if len(innerqr.Rows) == 0 || len(innerqr.Rows[0]) == 0 {
+		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected GTID query result")
+	}
+	return innerqr.Rows[0][0].ToString(), nil
 }
