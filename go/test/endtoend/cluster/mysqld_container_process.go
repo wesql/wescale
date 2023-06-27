@@ -23,7 +23,7 @@ import (
 const (
 	DefaultCommand                = "docker"
 	DefaultImageRepo              = "apecloud/apecloud-mysql-server"
-	DefaultImageTag               = "latest"
+	DefaultImageTag               = "8.0.30-5.alpha2.20230105.gd6b8719.2"
 	DefaultConfigMountDestination = "/etc/mysql/conf.d"
 	DefaultScriptMountDestination = "/docker-entrypoint-initdb.d/"
 	DefaultDataMountDestination   = "/mysql"
@@ -156,7 +156,7 @@ func NewContainerProcess(name string, network string, ipaddr string, port int, t
 	mounts = append(mounts, mount2)
 	mounts = append(mounts, mount3)
 
-	fmt.Printf("!!! contianer %s using image %s:%s", name, ImgRepo, ImgTag)
+	fmt.Printf("!!! contianer %s using image %s:%s\n", name, ImgRepo, ImgTag)
 	return &ContainerProcess{
 		Name:    name,
 		Network: network,
@@ -294,7 +294,7 @@ func (container *ContainerProcess) Start() error {
 	go func() {
 		if container.proc != nil {
 			container.exit <- container.proc.Wait()
-			log.Infof("vtconsensus exiting")
+			log.Infof("wesql container exiting")
 			close(container.exit)
 		}
 	}()
