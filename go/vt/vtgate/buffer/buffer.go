@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +36,8 @@ import (
 	"fmt"
 	"sync"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/sync2"
 	"vitess.io/vitess/go/vt/discovery"
 	"vitess.io/vitess/go/vt/log"
@@ -58,6 +65,11 @@ const (
 	bufferModeEnabled
 	// bufferModeDryRun will track the failover, but not actually buffer requests.
 	bufferModeDryRun
+)
+
+const (
+	defaultKeyspaceForBuffer = global.DefaultKeyspace
+	defaultShardForBuffer    = global.DefaultShard
 )
 
 // RetryDoneFunc will be returned for each buffered request and must be called
@@ -127,7 +139,7 @@ func (b *Buffer) WaitForFailoverEnd(ctx context.Context, keyspace, shard string,
 		return nil, nil
 	}
 
-	sb := b.getOrCreateBuffer(keyspace, shard)
+	sb := b.getOrCreateBuffer(defaultKeyspaceForBuffer, defaultShardForBuffer)
 	if sb == nil {
 		// Buffer is shut down. Ignore all calls.
 		requestsSkipped.Add([]string{keyspace, shard, skippedShutdown}, 1)
@@ -154,7 +166,7 @@ func (b *Buffer) ProcessPrimaryHealth(th *discovery.TabletHealth) {
 		return
 	}
 
-	sb := b.getOrCreateBuffer(th.Target.Keyspace, th.Target.Shard)
+	sb := b.getOrCreateBuffer(defaultKeyspaceForBuffer, defaultShardForBuffer)
 	if sb == nil {
 		// Buffer is shut down. Ignore all calls.
 		return
@@ -164,13 +176,14 @@ func (b *Buffer) ProcessPrimaryHealth(th *discovery.TabletHealth) {
 
 func (b *Buffer) HandleKeyspaceEvent(ksevent *discovery.KeyspaceEvent) {
 	for _, shard := range ksevent.Shards {
-		sb := b.getOrCreateBuffer(shard.Target.Keyspace, shard.Target.Shard)
+		sb := b.getOrCreateBuffer(defaultKeyspaceForBuffer, defaultShardForBuffer)
 		if sb != nil {
 			sb.recordKeyspaceEvent(shard.Tablet, shard.Serving)
 		}
 	}
 }
 
+// todo earayu: consisder remove keyspace and shard params
 // getOrCreateBuffer returns the ShardBuffer for the given keyspace and shard.
 // It returns nil if Buffer is shut down and all calls should be ignored.
 func (b *Buffer) getOrCreateBuffer(keyspace, shard string) *shardBuffer {
