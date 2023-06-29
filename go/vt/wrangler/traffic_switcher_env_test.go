@@ -51,9 +51,9 @@ import (
 )
 
 const (
-	streamInfoQuery    = "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where workflow='%s' and db_name='%s'"
-	streamExtInfoQuery = "select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from _vt.vreplication where db_name = '%s' and workflow = '%s'"
-	copyStateQuery     = "select table_name, lastpk from _vt.copy_state where vrepl_id = %d and id in (select max(id) from _vt.copy_state where vrepl_id = %d group by vrepl_id, table_name)"
+	streamInfoQuery    = "select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where workflow='%s' and db_name='%s'"
+	streamExtInfoQuery = "select id, source, pos, stop_pos, max_replication_lag, state, db_name, time_updated, transaction_timestamp, time_heartbeat, time_throttled, component_throttled, message, tags, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where db_name = '%s' and workflow = '%s'"
+	copyStateQuery     = "select table_name, lastpk from mysql.copy_state where vrepl_id = %d and id in (select max(id) from mysql.copy_state where vrepl_id = %d group by vrepl_id, table_name)"
 )
 
 var (
@@ -514,7 +514,7 @@ func (tme *testShardMigraterEnv) forAllStreams(f func(i, j int)) {
 
 func (tme *testShardMigraterEnv) expectCheckJournals() {
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQueryRE("select val from _vt.resharding_journal where id=.*", &sqltypes.Result{}, nil)
+		dbclient.addQueryRE("select val from mysql.resharding_journal where id=.*", &sqltypes.Result{}, nil)
 	}
 }
 
@@ -525,12 +525,12 @@ func (tme *testShardMigraterEnv) expectWaitForCatchup() {
 		"MariaDB/5-456-892|Running",
 	)
 	tme.forAllStreams(func(i, j int) {
-		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select pos, state, message from _vt.vreplication where id=%d", j+1), state, nil)
+		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select pos, state, message from mysql.vreplication where id=%d", j+1), state, nil)
 
 		// mi.waitForCatchup-> mi.wr.tmc.VReplicationExec('stopped for cutover')
-		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select id from _vt.vreplication where id = %d", j+1), &sqltypes.Result{Rows: [][]sqltypes.Value{{sqltypes.NewInt64(int64(j + 1))}}}, nil)
-		tme.dbTargetClients[i].addQuery(fmt.Sprintf("update _vt.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (%d)", j+1), &sqltypes.Result{}, nil)
-		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select * from _vt.vreplication where id = %d", j+1), stoppedResult(j+1), nil)
+		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select id from mysql.vreplication where id = %d", j+1), &sqltypes.Result{Rows: [][]sqltypes.Value{{sqltypes.NewInt64(int64(j + 1))}}}, nil)
+		tme.dbTargetClients[i].addQuery(fmt.Sprintf("update mysql.vreplication set state = 'Stopped', message = 'stopped for cutover' where id in (%d)", j+1), &sqltypes.Result{}, nil)
+		tme.dbTargetClients[i].addQuery(fmt.Sprintf("select * from mysql.vreplication where id = %d", j+1), stoppedResult(j+1), nil)
 	})
 }
 
@@ -538,24 +538,24 @@ func (tme *testShardMigraterEnv) expectDeleteReverseVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid12, nil)
-		dbclient.addQuery("delete from _vt.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("delete from _vt.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("delete from _vt.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test_reverse'", resultid12, nil)
+		dbclient.addQuery("delete from mysql.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("delete from mysql.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("delete from mysql.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
 	}
 }
 
 func (tme *testShardMigraterEnv) expectCreateReverseVReplication() {
 	tme.expectDeleteReverseVReplication()
 	tme.forAllStreams(func(i, j int) {
-		tme.dbSourceClients[j].addQueryRE(fmt.Sprintf("insert into _vt.vreplication.*%s.*%s.*MariaDB/5-456-893.*Stopped", tme.targetShards[i], key.KeyRangeString(tme.sourceKeyRanges[j])), &sqltypes.Result{InsertID: uint64(j + 1)}, nil)
-		tme.dbSourceClients[j].addQuery(fmt.Sprintf("select * from _vt.vreplication where id = %d", j+1), stoppedResult(j+1), nil)
+		tme.dbSourceClients[j].addQueryRE(fmt.Sprintf("insert into mysql.vreplication.*%s.*%s.*MariaDB/5-456-893.*Stopped", tme.targetShards[i], key.KeyRangeString(tme.sourceKeyRanges[j])), &sqltypes.Result{InsertID: uint64(j + 1)}, nil)
+		tme.dbSourceClients[j].addQuery(fmt.Sprintf("select * from mysql.vreplication where id = %d", j+1), stoppedResult(j+1), nil)
 	})
 }
 
 func (tme *testShardMigraterEnv) expectCreateJournals() {
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQueryRE("insert into _vt.resharding_journal.*", &sqltypes.Result{}, nil)
+		dbclient.addQueryRE("insert into mysql.resharding_journal.*", &sqltypes.Result{}, nil)
 	}
 }
 
@@ -563,10 +563,10 @@ func (tme *testShardMigraterEnv) expectStartReverseVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks'", resultid34, nil)
-		dbclient.addQuery("update _vt.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("select * from _vt.vreplication where id = 3", runningResult(3), nil)
-		dbclient.addQuery("select * from _vt.vreplication where id = 4", runningResult(4), nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks'", resultid34, nil)
+		dbclient.addQuery("update mysql.vreplication set state = 'Running', message = '' where id in (3, 4)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select * from mysql.vreplication where id = 3", runningResult(3), nil)
+		dbclient.addQuery("select * from mysql.vreplication where id = 4", runningResult(4), nil)
 	}
 }
 
@@ -574,10 +574,10 @@ func (tme *testShardMigraterEnv) expectFrozenTargetVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		dbclient.addQuery("update _vt.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("select * from _vt.vreplication where id = 1", stoppedResult(1), nil)
-		dbclient.addQuery("select * from _vt.vreplication where id = 2", stoppedResult(2), nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		dbclient.addQuery("update mysql.vreplication set message = 'FROZEN' where id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select * from mysql.vreplication where id = 1", stoppedResult(1), nil)
+		dbclient.addQuery("select * from mysql.vreplication where id = 2", stoppedResult(2), nil)
 	}
 }
 
@@ -585,19 +585,19 @@ func (tme *testShardMigraterEnv) expectDeleteTargetVReplication() {
 	// NOTE: this is not a faithful reproduction of what should happen.
 	// The ids returned are not accurate.
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
-		dbclient.addQuery("delete from _vt.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("delete from _vt.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
-		dbclient.addQuery("delete from _vt.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", resultid12, nil)
+		dbclient.addQuery("delete from mysql.vreplication where id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("delete from mysql.copy_state where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
+		dbclient.addQuery("delete from mysql.post_copy_action where vrepl_id in (1, 2)", &sqltypes.Result{}, nil)
 	}
 }
 
 func (tme *testShardMigraterEnv) expectCancelMigration() {
 	for _, dbclient := range tme.dbTargetClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow = 'test'", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow = 'test'", &sqltypes.Result{}, nil)
 	}
 	for _, dbclient := range tme.dbSourceClients {
-		dbclient.addQuery("select id from _vt.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
+		dbclient.addQuery("select id from mysql.vreplication where db_name = 'ks' and workflow != 'test_reverse'", &sqltypes.Result{}, nil)
 	}
 	tme.expectDeleteReverseVReplication()
 }

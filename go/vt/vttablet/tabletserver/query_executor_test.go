@@ -1645,7 +1645,7 @@ func addQueryExecutorSupportedQueries(db *fakesqldb.DB) {
 		"begin":    {},
 		"commit":   {},
 		"rollback": {},
-		fmt.Sprintf(sqlReadAllRedo, "_vt", "_vt"): {},
+		fmt.Sprintf(sqlReadAllRedo, "mysql", "mysql"): {},
 	}
 
 	sidecardb.AddSchemaInitQueries(db, true)

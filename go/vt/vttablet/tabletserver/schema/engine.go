@@ -130,7 +130,7 @@ func (se *Engine) InitDBConfig(cp dbconfigs.Connector) {
 }
 
 // syncSidecarDB is called either the first time a primary starts, or on subsequent loads, to possibly upgrade to a
-// new Vitess version. This is the only entry point into the sidecardb module to get the _vt database to the desired
+// new Vitess version. This is the only entry point into the sidecardb module to get themysqldatabase to the desired
 // schema for the running Vitess version.
 // There is some extra logging in here which can be removed in a future version (>v16) once the new schema init
 // functionality is stable.
@@ -171,7 +171,7 @@ func (se *Engine) EnsureConnectionAndDB(tabletType topodatapb.TabletType) error 
 	conn, err := dbconnpool.NewDBConnection(ctx, se.env.Config().DB.AllPrivsWithDB())
 	if err == nil {
 		se.dbCreationFailed = false
-		// upgrade _vt if required, for a tablet with an existing database
+		// upgrademysqlif required, for a tablet with an existing database
 		if tabletType == topodatapb.TabletType_PRIMARY {
 			if err := se.syncSidecarDB(ctx, conn); err != nil {
 				conn.Close()
@@ -562,7 +562,7 @@ func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn
 	return nil
 }
 
-// RegisterVersionEvent is called by the vstream when it encounters a version event (an insert into _vt.schema_tracking)
+// RegisterVersionEvent is called by the vstream when it encounters a version event (an insert into mysql.schema_tracking)
 // It triggers the historian to load the newer rows from the database to update its cache
 func (se *Engine) RegisterVersionEvent() error {
 	return se.historian.RegisterVersionEvent()

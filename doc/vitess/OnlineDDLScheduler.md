@@ -115,7 +115,7 @@ To avoid a cascading failure scenario, a migration is only auto-retried _once_. 
 
 ## Cross tablet VReplication migrations
 
-VReplication is more capable than `gh-ost` and `pt-osc`, since it tracks its state transactionally in the same database server as the migration/ghost table. This means a stream can automatically recover after e.g. a failover. The new `primary` tablet has all the information in `_vt.vreplication`, `_vt.copy_state` to keep on running the stream.
+VReplication is more capable than `gh-ost` and `pt-osc`, since it tracks its state transactionally in the same database server as the migration/ghost table. This means a stream can automatically recover after e.g. a failover. The new `primary` tablet has all the information in `mysql.vreplication`, `mysql.copy_state` to keep on running the stream.
 
 The scheduler supports that. It is able to identify a stream which started with a previous tablet, and is able to take ownership of such a stream. Because VReplication will recover/resume a stream independently of the scheduler, the scheduler will then implicitly find that the stream is _running_ and be able to assert its _liveness_.
 

@@ -190,7 +190,7 @@ func TestMoveTablesTZ(t *testing.T) {
 	output, err = vc.VtctlClient.ExecuteCommandWithOutput("MoveTables", "--", "SwitchTraffic", ksWorkflow)
 	require.NoError(t, err, output)
 
-	qr, err := productTab.QueryTablet(fmt.Sprintf("select * from _vt.vreplication where workflow='%s_reverse'", workflow), "", false)
+	qr, err := productTab.QueryTablet(fmt.Sprintf("select * from mysql.vreplication where workflow='%s_reverse'", workflow), "", false)
 	if err != nil {
 		return
 	}

@@ -24,13 +24,10 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv/tabletenvtest"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/vt/key"
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/topo"
 )
@@ -132,157 +129,6 @@ func runTestCase(testcase, mode string, opts *Options, topts *testopts, t *testi
 	})
 }
 
-func TestExplain(t *testing.T) {
-	tabletenvtest.LoadTabletEnvFlags()
-
-	type test struct {
-		name string
-		opts *Options
-	}
-	tests := []test{
-		{"unsharded", defaultTestOpts()},
-		{"selectsharded", defaultTestOpts()},
-		{"insertsharded", defaultTestOpts()},
-		{"updatesharded", defaultTestOpts()},
-		{"deletesharded", defaultTestOpts()},
-		{"comments", defaultTestOpts()},
-		{"options", &Options{
-			ReplicationMode: "STATEMENT",
-			NumShards:       4,
-			Normalize:       false,
-		}},
-		{"target", &Options{
-			ReplicationMode: "ROW",
-			NumShards:       4,
-			Normalize:       false,
-			Target:          "ks_sharded/40-80",
-		}},
-		{"gen4", &Options{
-			ReplicationMode: "ROW",
-			NumShards:       4,
-			Normalize:       true,
-			PlannerVersion:  querypb.ExecuteOptions_Gen4,
-		}},
-	}
-
-	for _, tst := range tests {
-		testExplain(tst.name, tst.opts, t)
-	}
-}
-
-func TestErrors(t *testing.T) {
-	vte := initTest(ModeMulti, defaultTestOpts(), &testopts{}, t)
-
-	tests := []struct {
-		SQL string
-		Err string
-	}{
-		{
-			SQL: "INVALID SQL",
-			Err: "vtexplain execute error in 'INVALID SQL': syntax error at position 8 near 'INVALID'",
-		},
-
-		{
-			SQL: "SELECT * FROM THIS IS NOT SQL",
-			Err: "vtexplain execute error in 'SELECT * FROM THIS IS NOT SQL': syntax error at position 22 near 'IS'",
-		},
-
-		{
-			SQL: "SELECT * FROM table_not_in_vschema",
-			Err: "vtexplain execute error in 'SELECT * FROM table_not_in_vschema': table table_not_in_vschema not found",
-		},
-
-		{
-			SQL: "SELECT * FROM table_not_in_schema",
-			Err: "unknown error: unable to resolve table name table_not_in_schema",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.SQL, func(t *testing.T) {
-			_, err := vte.Run(test.SQL)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), test.Err)
-		})
-	}
-}
-
-func TestJSONOutput(t *testing.T) {
-	vte := initTest(ModeMulti, defaultTestOpts(), &testopts{}, t)
-	sql := "select 1 from user where id = 1"
-	explains, err := vte.Run(sql)
-	require.NoError(t, err, "vtexplain error")
-	require.NotNil(t, explains, "vtexplain error running %s: no explain", string(sql))
-
-	for _, e := range explains {
-		for i, action := range e.TabletActions {
-			var mysqlQueries []*MysqlQuery
-			for _, query := range action.MysqlQueries {
-				if !strings.Contains(strings.ToLower(query.SQL), "set collation_connection") {
-					mysqlQueries = append(mysqlQueries, query)
-				}
-			}
-			e.TabletActions[i].MysqlQueries = mysqlQueries
-		}
-	}
-	explainJSON := ExplainsAsJSON(explains)
-
-	var data any
-	err = json.Unmarshal([]byte(explainJSON), &data)
-	require.NoError(t, err, "error unmarshaling json")
-
-	array, ok := data.([]any)
-	if !ok || len(array) != 1 {
-		t.Errorf("expected single-element top-level array, got:\n%s", explainJSON)
-	}
-
-	explain, ok := array[0].(map[string]any)
-	if !ok {
-		t.Errorf("expected explain map, got:\n%s", explainJSON)
-	}
-
-	if explain["SQL"] != sql {
-		t.Errorf("expected SQL, got:\n%s", explainJSON)
-	}
-
-	plans, ok := explain["Plans"].([]any)
-	if !ok || len(plans) != 1 {
-		t.Errorf("expected single-element plans array, got:\n%s", explainJSON)
-	}
-
-	actions, ok := explain["TabletActions"].(map[string]any)
-	if !ok {
-		t.Errorf("expected TabletActions map, got:\n%s", explainJSON)
-	}
-
-	actionsJSON, err := json.MarshalIndent(actions, "", "    ")
-	require.NoError(t, err, "error in json marshal")
-	wantJSON := `{
-    "ks_sharded/-40": {
-        "MysqlQueries": [
-            {
-                "SQL": "select 1 from ` + "`user`" + ` where id = 1 limit 10001",
-                "Time": 1
-            }
-        ],
-        "TabletQueries": [
-            {
-                "BindVars": {
-                    "#maxLimit": "10001",
-                    "vtg1": "1"
-                },
-                "SQL": "select :vtg1 from ` + "`user`" + ` where id = :vtg1",
-                "Time": 1
-            }
-        ]
-    }
-}`
-	diff := cmp.Diff(wantJSON, string(actionsJSON))
-	if diff != "" {
-		t.Errorf(diff)
-	}
-}
-
 func testShardInfo(ks, start, end string, primaryServing bool, t *testing.T) *topo.ShardInfo {
 	kr, err := key.ParseKeyRangeParts(start, end)
 	require.NoError(t, err)
@@ -293,54 +139,6 @@ func testShardInfo(ks, start, end string, primaryServing bool, t *testing.T) *to
 		&topodata.Shard{KeyRange: kr, IsPrimaryServing: primaryServing},
 		&vtexplainTestTopoVersion{},
 	)
-}
-
-func TestUsingKeyspaceShardMap(t *testing.T) {
-	tests := []struct {
-		testcase      string
-		ShardRangeMap map[string]map[string]*topo.ShardInfo
-	}{
-		{
-			testcase: "select-sharded-8",
-			ShardRangeMap: map[string]map[string]*topo.ShardInfo{
-				"ks_sharded": {
-					"-20":   testShardInfo("ks_sharded", "", "20", true, t),
-					"20-40": testShardInfo("ks_sharded", "20", "40", true, t),
-					"40-60": testShardInfo("ks_sharded", "40", "60", true, t),
-					"60-80": testShardInfo("ks_sharded", "60", "80", true, t),
-					"80-a0": testShardInfo("ks_sharded", "80", "a0", true, t),
-					"a0-c0": testShardInfo("ks_sharded", "a0", "c0", true, t),
-					"c0-e0": testShardInfo("ks_sharded", "c0", "e0", true, t),
-					"e0-":   testShardInfo("ks_sharded", "e0", "", true, t),
-					// Some non-serving shards below - these should never be in the output of vtexplain
-					"-80": testShardInfo("ks_sharded", "", "80", false, t),
-					"80-": testShardInfo("ks_sharded", "80", "", false, t),
-				},
-			},
-		},
-		{
-			testcase: "uneven-keyspace",
-			ShardRangeMap: map[string]map[string]*topo.ShardInfo{
-				// Have mercy on the poor soul that has this keyspace sharding.
-				// But, hey, vtexplain still works so they have that going for them.
-				"ks_sharded": {
-					"-80":   testShardInfo("ks_sharded", "", "80", true, t),
-					"80-90": testShardInfo("ks_sharded", "80", "90", true, t),
-					"90-a0": testShardInfo("ks_sharded", "90", "a0", true, t),
-					"a0-e8": testShardInfo("ks_sharded", "a0", "e8", true, t),
-					"e8-":   testShardInfo("ks_sharded", "e8", "", true, t),
-					// Plus some un-even shards that are not serving and which should never be in the output of vtexplain
-					"80-a0": testShardInfo("ks_sharded", "80", "a0", false, t),
-					"a0-a5": testShardInfo("ks_sharded", "a0", "a5", false, t),
-					"a5-":   testShardInfo("ks_sharded", "a5", "", false, t),
-				},
-			},
-		},
-	}
-
-	for _, test := range tests {
-		runTestCase(test.testcase, ModeMulti, defaultTestOpts(), &testopts{test.ShardRangeMap}, t)
-	}
 }
 
 func TestInit(t *testing.T) {

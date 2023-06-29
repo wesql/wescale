@@ -134,10 +134,10 @@ func TestValidateSchema(t *testing.T) {
 		mustError bool
 	}
 	testCases := []testCase{
-		{"valid", "t1", "create table if not exists _vt.t1(i int)", false},
-		{"no if not exists", "t1", "create table _vt.t1(i int)", true},
-		{"invalid table name", "t2", "create table if not exists _vt.t1(i int)", true},
-		{"invalid table name", "t1", "create table if not exists _vt.t2(i int)", true},
+		{"valid", "t1", "create table if not exists mysql.t1(i int)", false},
+		{"no if not exists", "t1", "create table mysql.t1(i int)", true},
+		{"invalid table name", "t2", "create table if not exists mysql.t1(i int)", true},
+		{"invalid table name", "t1", "create table if not exists mysql.t2(i int)", true},
 		{"invalid qualifier", "t1", "create table if not exists vt_product.t1(i int)", true},
 		{"invalid qualifier", "t1", "create table if not exists t1(i int)", true},
 	}
@@ -162,8 +162,8 @@ func TestAlterTableAlgorithm(t *testing.T) {
 		desiredSchema string
 	}
 	testCases := []testCase{
-		{"add column", "t1", "create table if not exists _vt.t1(i int)", "create table if not exists _vt.t1(i int, i1 int)"},
-		{"modify column", "t1", "create table if not exists _vt.t1(i int)", "create table if not exists _vt.t(i float)"},
+		{"add column", "t1", "create table if not exists mysql.t1(i int)", "create table if not exists mysql.t1(i int, i1 int)"},
+		{"modify column", "t1", "create table if not exists mysql.t1(i int)", "create table if not exists mysql.t(i float)"},
 	}
 	si := &schemaInit{}
 	copyAlgo := sqlparser.AlgorithmValue("COPY")
@@ -241,5 +241,5 @@ func TestMiscSidecarDB(t *testing.T) {
 
 	require.False(t, MatchesInitQuery("abc"))
 	require.True(t, MatchesInitQuery(SelectCurrentDatabaseQuery))
-	require.True(t, MatchesInitQuery("CREATE TABLE IF NOT EXISTS `_vt`.vreplication"))
+	require.True(t, MatchesInitQuery("CREATE TABLE IF NOT EXISTS `mysql`.vreplication"))
 }

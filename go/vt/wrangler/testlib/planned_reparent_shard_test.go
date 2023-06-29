@@ -84,7 +84,7 @@ func TestPlannedReparentShardNoPrimaryProvided(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -200,7 +200,7 @@ func TestPlannedReparentShardNoError(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -323,7 +323,7 @@ func TestPlannedReparentInitialization(t *testing.T) {
 	}
 	newPrimary.FakeMysqlDaemon.ExpectedExecuteSuperQueryList = []string{
 		mysqlctl.GenerateInitialBinlogEntry(),
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -421,7 +421,7 @@ func TestPlannedReparentShardWaitForPositionFail(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -532,7 +532,7 @@ func TestPlannedReparentShardWaitForPositionTimeout(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -625,7 +625,7 @@ func TestPlannedReparentShardRelayLogError(t *testing.T) {
 		},
 	}
 	primary.FakeMysqlDaemon.ExpectedExecuteSuperQueryList = []string{
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	primary.StartActionLoop(t, wr)
 	defer primary.StopActionLoop(t)
@@ -703,7 +703,7 @@ func TestPlannedReparentShardRelayLogErrorStartReplication(t *testing.T) {
 		},
 	}
 	primary.FakeMysqlDaemon.ExpectedExecuteSuperQueryList = []string{
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	primary.StartActionLoop(t, wr)
 	defer primary.StopActionLoop(t)
@@ -801,7 +801,7 @@ func TestPlannedReparentShardPromoteReplicaFail(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	newPrimary.StartActionLoop(t, wr)
 	defer newPrimary.StopActionLoop(t)
@@ -877,7 +877,7 @@ func TestPlannedReparentShardPromoteReplicaFail(t *testing.T) {
 		"RESET SLAVE ALL",
 		"FAKE SET MASTER",
 		"START SLAVE",
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	oldPrimary.FakeMysqlDaemon.ExpectedExecuteSuperQueryList = []string{
 		"RESET SLAVE ALL",
@@ -932,7 +932,7 @@ func TestPlannedReparentShardSamePrimary(t *testing.T) {
 		},
 	}
 	oldPrimary.FakeMysqlDaemon.ExpectedExecuteSuperQueryList = []string{
-		"SUBINSERT INTO _vt.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
+		"SUBINSERT INTO mysql.reparent_journal (time_created_ns, action_name, primary_alias, replication_position) VALUES",
 	}
 	oldPrimary.StartActionLoop(t, wr)
 	defer oldPrimary.StopActionLoop(t)

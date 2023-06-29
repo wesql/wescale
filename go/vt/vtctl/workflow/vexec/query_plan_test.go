@@ -48,7 +48,7 @@ func TestQueryPlanExecute(t *testing.T) {
 			name: "success",
 			plan: FixedQueryPlan{
 				ParsedQuery: &sqlparser.ParsedQuery{
-					Query: "SELECT id FROM _vt.vreplication",
+					Query: "SELECT id FROM mysql.vreplication",
 				},
 				tmc: &testutil.TabletManagerClient{
 					VReplicationExecResults: map[string]map[string]struct {
@@ -56,7 +56,7 @@ func TestQueryPlanExecute(t *testing.T) {
 						Error  error
 					}{
 						"zone1-0000000100": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Result: &querypb.QueryResult{
 									RowsAffected: 1,
 								},
@@ -82,7 +82,7 @@ func TestQueryPlanExecute(t *testing.T) {
 			name: "no rows affected",
 			plan: FixedQueryPlan{
 				ParsedQuery: &sqlparser.ParsedQuery{
-					Query: "SELECT id FROM _vt.vreplication",
+					Query: "SELECT id FROM mysql.vreplication",
 				},
 				tmc: &testutil.TabletManagerClient{
 					VReplicationExecResults: map[string]map[string]struct {
@@ -90,7 +90,7 @@ func TestQueryPlanExecute(t *testing.T) {
 						Error  error
 					}{
 						"zone1-0000000100": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Result: &querypb.QueryResult{
 									RowsAffected: 0,
 								},
@@ -116,7 +116,7 @@ func TestQueryPlanExecute(t *testing.T) {
 			name: "error",
 			plan: FixedQueryPlan{
 				ParsedQuery: &sqlparser.ParsedQuery{
-					Query: "SELECT id FROM _vt.vreplication",
+					Query: "SELECT id FROM mysql.vreplication",
 				},
 				tmc: &testutil.TabletManagerClient{
 					VReplicationExecResults: map[string]map[string]struct {
@@ -124,7 +124,7 @@ func TestQueryPlanExecute(t *testing.T) {
 						Error  error
 					}{
 						"zone1-0000000100": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Error: assert.AnError,
 							},
 						},
@@ -194,7 +194,7 @@ func TestQueryPlanExecuteScatter(t *testing.T) {
 			name: "success",
 			plan: FixedQueryPlan{
 				ParsedQuery: &sqlparser.ParsedQuery{
-					Query: "SELECT id FROM _vt.vreplication",
+					Query: "SELECT id FROM mysql.vreplication",
 				},
 				tmc: &testutil.TabletManagerClient{
 					VReplicationExecResults: map[string]map[string]struct {
@@ -202,14 +202,14 @@ func TestQueryPlanExecuteScatter(t *testing.T) {
 						Error  error
 					}{
 						"zone1-0000000100": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Result: &querypb.QueryResult{
 									RowsAffected: 10,
 								},
 							},
 						},
 						"zone1-0000000101": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Result: &querypb.QueryResult{
 									RowsAffected: 5,
 								},
@@ -250,7 +250,7 @@ func TestQueryPlanExecuteScatter(t *testing.T) {
 			name: "some targets fail",
 			plan: FixedQueryPlan{
 				ParsedQuery: &sqlparser.ParsedQuery{
-					Query: "SELECT id FROM _vt.vreplication",
+					Query: "SELECT id FROM mysql.vreplication",
 				},
 				tmc: &testutil.TabletManagerClient{
 					VReplicationExecResults: map[string]map[string]struct {
@@ -258,12 +258,12 @@ func TestQueryPlanExecuteScatter(t *testing.T) {
 						Error  error
 					}{
 						"zone1-0000000100": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Error: assert.AnError,
 							},
 						},
 						"zone1-0000000101": {
-							"select id from _vt.vreplication": {
+							"select id from mysql.vreplication": {
 								Result: &querypb.QueryResult{
 									RowsAffected: 5,
 								},

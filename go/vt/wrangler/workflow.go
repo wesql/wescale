@@ -571,7 +571,7 @@ func (vrw *VReplicationWorkflow) canSwitch(keyspace, workflowName string) (reaso
 // GetCopyProgress returns the progress of all tables being copied in the workflow
 func (vrw *VReplicationWorkflow) GetCopyProgress() (*CopyProgress, error) {
 	ctx := context.Background()
-	getTablesQuery := "select distinct table_name from _vt.copy_state cs, _vt.vreplication vr where vr.id = cs.vrepl_id and vr.id = %d"
+	getTablesQuery := "select distinct table_name from mysql.copy_state cs, mysql.vreplication vr where vr.id = cs.vrepl_id and vr.id = %d"
 	getRowCountQuery := "select table_name, table_rows, data_length from information_schema.tables where table_schema = %s and table_name in (%s)"
 	tables := make(map[string]bool)
 	const MaxRows = 1000
@@ -705,8 +705,8 @@ func (vrw *VReplicationWorkflow) GetCopyProgress() (*CopyProgress, error) {
 
 // deleteWorkflowVDiffData cleans up any potential VDiff related data associated with the workflow on the given tablet
 func (wr *Wrangler) deleteWorkflowVDiffData(ctx context.Context, tablet *topodatapb.Tablet, workflow string) {
-	sqlDeleteVDiffs := `delete from vd, vdt, vdl using _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
-						inner join _vt.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
+	sqlDeleteVDiffs := `delete from vd, vdt, vdl using mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						inner join mysql.vdiff_log as vdl on (vd.id = vdl.vdiff_id)
 						where vd.keyspace = %s and vd.workflow = %s`
 	query := fmt.Sprintf(sqlDeleteVDiffs, encodeString(tablet.Keyspace), encodeString(workflow))
 	rows := -1
@@ -749,7 +749,7 @@ func (wr *Wrangler) optimizeCopyStateTable(tablet *topodatapb.Tablet) {
 		}()
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
-		sqlOptimizeTable := "optimize table _vt.copy_state"
+		sqlOptimizeTable := "optimize table mysql.copy_state"
 		if _, err := wr.tmc.ExecuteFetchAsAllPrivs(ctx, tablet, &tabletmanagerdatapb.ExecuteFetchAsAllPrivsRequest{
 			Query:   []byte(sqlOptimizeTable),
 			MaxRows: uint64(100), // always produces 1+rows with notes and status
@@ -760,7 +760,7 @@ func (wr *Wrangler) optimizeCopyStateTable(tablet *topodatapb.Tablet) {
 			log.Warningf("Failed to optimize the copy_state table on %q: %v", tablet.Alias.String(), err)
 		}
 		// This will automatically set the value to 1 or the current max value in the table, whichever is greater
-		sqlResetAutoInc := "alter table _vt.copy_state auto_increment = 1"
+		sqlResetAutoInc := "alter table mysql.copy_state auto_increment = 1"
 		if _, err := wr.tmc.ExecuteFetchAsAllPrivs(ctx, tablet, &tabletmanagerdatapb.ExecuteFetchAsAllPrivsRequest{
 			Query:   []byte(sqlResetAutoInc),
 			MaxRows: uint64(0),

@@ -30,7 +30,7 @@ import (
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 )
 
-var qSelAllRows = "select table_schema, table_name, create_statement from _vt.views"
+var qSelAllRows = "select table_schema, table_name, create_statement from mysql.views"
 
 // Test will validate create view ddls.
 func TestCreateViewDDL(t *testing.T) {
@@ -46,7 +46,7 @@ func TestCreateViewDDL(t *testing.T) {
 	_, err := client.Execute("create view vitess_view as select * from vitess_a", nil)
 	require.NoError(t, err)
 
-	// validate the row in _vt.views.
+	// validate the row in mysql.views.
 	qr, err := client.Execute(qSelAllRows, nil)
 	require.NoError(t, err)
 	require.Equal(t,
@@ -61,7 +61,7 @@ func TestCreateViewDDL(t *testing.T) {
 	_, err = client.Execute("create or replace view vitess_view as select id, foo from vitess_a", nil)
 	require.NoError(t, err)
 
-	// validate the row in _vt.views.
+	// validate the row in mysql.views.
 	qr, err = client.Execute(qSelAllRows, nil)
 	require.NoError(t, err)
 	require.Equal(t,
@@ -92,7 +92,7 @@ func TestAlterViewDDL(t *testing.T) {
 	_, err = client.Execute("alter view vitess_view as select id, foo from vitess_a", nil)
 	require.NoError(t, err)
 
-	// validate the row in _vt.views.
+	// validate the row in mysql.views.
 	qr, err := client.Execute(qSelAllRows, nil)
 	require.NoError(t, err)
 	require.Equal(t,
@@ -133,7 +133,7 @@ func TestDropViewDDL(t *testing.T) {
 	_, err = client.Execute("drop view vitess_view1, vitess_view2, vitess_view3", nil)
 	require.ErrorContains(t, err, "Unknown table 'vttest.vitess_view1,vttest.vitess_view3'")
 
-	// validate ZERO rows in _vt.views.
+	// validate ZERO rows in mysql.views.
 	qr, err := client.Execute(qSelAllRows, nil)
 	require.NoError(t, err)
 	require.Zero(t, qr.Rows)
@@ -146,7 +146,7 @@ func TestDropViewDDL(t *testing.T) {
 	_, err = client.Execute("drop view if exists vitess_view1, vitess_view2, vitess_view3", nil)
 	require.NoError(t, err)
 
-	// validate ZERO rows in _vt.views.
+	// validate ZERO rows in mysql.views.
 	qr, err = client.Execute(qSelAllRows, nil)
 	require.NoError(t, err)
 	require.Zero(t, qr.Rows)

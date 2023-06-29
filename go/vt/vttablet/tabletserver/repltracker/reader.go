@@ -189,7 +189,7 @@ func (r *heartbeatReader) bindHeartbeatFetch() (string, error) {
 	bindVars := map[string]*querypb.BindVariable{
 		"ks": sqltypes.StringBindVariable(r.keyspaceShard),
 	}
-	parsed := sqlparser.BuildParsedQuery(sqlFetchMostRecentHeartbeat, "_vt", ":ks")
+	parsed := sqlparser.BuildParsedQuery(sqlFetchMostRecentHeartbeat, "mysql", ":ks")
 	bound, err := parsed.GenerateQuery(bindVars, nil)
 	if err != nil {
 		return "", err

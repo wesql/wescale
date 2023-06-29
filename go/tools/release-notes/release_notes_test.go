@@ -71,7 +71,7 @@ rohTEST@planetscale.com	Added comments and refactored tests	b6d39acb08939ba56e9e
 rohTEST@planetscale.com	Add logs for start and end of the copy phase	1cf72866ddfbd554700d6c9e32b9835ebb3b444c	ebb3b444c
 rohTEST@planetscale.com	Fix test	0992d39c6d473b548679d012cfa5a889ffa448ef	9ffa448ef
 rohTEST@planetscale.com	Add test for vreplication log and fix string conversion bug	b616143b14b75e7c23042c2eef4f6b27a275b0f7	7a275b0f7
-rohTEST@planetscale.com	Ignore queries related to _vt.vreplication_log in tests	e6926932c14da9a2213be246bc2de5f011668551	011668551
+rohTEST@planetscale.com	Ignore queries related to mysql.vreplication_log in tests	e6926932c14da9a2213be246bc2de5f011668551	011668551
 rohTEST@planetscale.com	Create log table. Util functions to insert logs. Insert logs in VReplicationExec and setMessage/State	37c09d3be83922a8ef936fbc028a5031f96b7dbf	1f96b7dbf
 harshTEST@planetscale.com	Merge pull request #7951 from vmg/vmg/vr-client-perf    7794c62651066970e1176181cb7000d385d0b327	172fac7dec8b11937a4efb26ebf4bedf1771f189	f1771f189
 alkin.tezuysTEST@gmail.com	java: Bump SNAPSHOT version to 11.0.0-SNAPSHOT after Vitess release v10	7794c62651066970e1176181cb7000d385d0b327	385d0b327

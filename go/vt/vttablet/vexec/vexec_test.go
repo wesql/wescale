@@ -38,13 +38,13 @@ func TestNewTabletVExec(t *testing.T) {
 }
 
 func TestAnalyzeQuerySelect1(t *testing.T) {
-	query := `select migration_status, strategy from _vt.schema_migrations where migration_uuid='123'`
+	query := `select migration_status, strategy from mysql.schema_migrations where migration_uuid='123'`
 	vx := NewTabletVExec(tWorkflow, tKeyspace)
 	err := vx.AnalyzeQuery(context.Background(), query)
 	assert.NoError(t, err)
 
 	assert.Equal(t, vx.Query, query)
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	_, ok := vx.WhereCols["migration_uuid"]
 	assert.True(t, ok)
@@ -55,13 +55,13 @@ func TestAnalyzeQuerySelect1(t *testing.T) {
 	assert.False(t, ok)
 }
 func TestAnalyzeQuerySelect2(t *testing.T) {
-	query := `select migration_status, strategy from _vt.schema_migrations where migration_uuid='123' or requested_timestamp<now()`
+	query := `select migration_status, strategy from mysql.schema_migrations where migration_uuid='123' or requested_timestamp<now()`
 	vx := NewTabletVExec(tWorkflow, tKeyspace)
 	err := vx.AnalyzeQuery(context.Background(), query)
 	assert.NoError(t, err)
 
 	assert.Equal(t, vx.Query, query)
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	_, ok := vx.WhereCols["migration_uuid"]
 	assert.False(t, ok)
@@ -75,13 +75,13 @@ func TestAnalyzeQuerySelect2(t *testing.T) {
 }
 
 func TestAnalyzeQueryUpdate1(t *testing.T) {
-	query := `update _vt.schema_migrations set migration_status='running', liveness_timestamp=now() where migration_uuid='123' and requested_timestamp<now() and strategy='pt-osc'`
+	query := `update mysql.schema_migrations set migration_status='running', liveness_timestamp=now() where migration_uuid='123' and requested_timestamp<now() and strategy='pt-osc'`
 	vx := NewTabletVExec(tWorkflow, tKeyspace)
 	err := vx.AnalyzeQuery(context.Background(), query)
 	assert.NoError(t, err)
 
 	assert.Equal(t, vx.Query, query)
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	_, ok := vx.WhereCols["migration_uuid"]
 	assert.True(t, ok)
@@ -99,7 +99,7 @@ func TestAnalyzeQueryUpdate1(t *testing.T) {
 }
 
 func TestAnalyzeQueryInsert1(t *testing.T) {
-	query := `insert into _vt.schema_migrations
+	query := `insert into mysql.schema_migrations
 		(migration_uuid, migration_status, count, liveness_timestamp) values
 		('abc123', 'running', 5, now())
 		`
@@ -108,7 +108,7 @@ func TestAnalyzeQueryInsert1(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, vx.Query, query)
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	_, ok := vx.InsertCols["migration_uuid"]
 	assert.True(t, ok)
@@ -143,7 +143,7 @@ func TestAnalyzeQueryInsert1(t *testing.T) {
 }
 
 func TestAnalyzeQueryInsert2(t *testing.T) {
-	query := `insert into _vt.schema_migrations
+	query := `insert into mysql.schema_migrations
 		(migration_uuid, migration_status, count, liveness_timestamp) values
 		('abc123', 'running', 5, now())
 		`
@@ -167,7 +167,7 @@ func TestAnalyzeQueryInsert2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, vx.Query, query)
 
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	testVals := func() {
 		_, ok := vx.InsertCols["migration_uuid"]
@@ -203,7 +203,7 @@ func TestAnalyzeQueryInsert2(t *testing.T) {
 }
 
 func TestAnalyzeQueryInsert3(t *testing.T) {
-	query := `insert into _vt.schema_migrations
+	query := `insert into mysql.schema_migrations
 		(migration_uuid, migration_status, count, liveness_timestamp) values
 		('abc123', 'running', 5, now())
 		`
@@ -228,7 +228,7 @@ func TestAnalyzeQueryInsert3(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, vx.Query, query)
 
-	assert.Equal(t, vx.TableName, "_vt.schema_migrations")
+	assert.Equal(t, vx.TableName, "mysql.schema_migrations")
 
 	testVals := func() {
 		_, ok := vx.InsertCols["migration_uuid"]

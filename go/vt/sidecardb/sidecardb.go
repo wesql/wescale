@@ -44,15 +44,15 @@ import (
 )
 
 const (
-	SidecarDBName              = "_vt"
-	CreateSidecarDatabaseQuery = "create database if not exists _vt"
-	UseSidecarDatabaseQuery    = "use _vt"
-	ShowSidecarDatabasesQuery  = "SHOW DATABASES LIKE '\\_vt'"
+	SidecarDBName              = "mysql"
+	CreateSidecarDatabaseQuery = "create database if not exists mysql"
+	UseSidecarDatabaseQuery    = "use mysql"
+	ShowSidecarDatabasesQuery  = "SHOW DATABASES LIKE 'mysql'"
 	SelectCurrentDatabaseQuery = "select database()"
-	ShowCreateTableQuery       = "show create table _vt.%s"
+	ShowCreateTableQuery       = "show create table mysql.%s"
 
-	CreateTableRegexp = "CREATE TABLE .* `\\_vt`\\..*"
-	AlterTableRegexp  = "ALTER TABLE `\\_vt`\\..*"
+	CreateTableRegexp = "CREATE TABLE .* `mysql`\\..*"
+	AlterTableRegexp  = "ALTER TABLE `mysql`\\..*"
 )
 
 // All tables needed in the sidecar database have their schema in the schema subdirectory.

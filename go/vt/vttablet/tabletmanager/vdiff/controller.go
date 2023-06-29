@@ -54,7 +54,7 @@ const (
 )
 
 type controller struct {
-	id              int64 // id from row in _vt.vdiff
+	id              int64 // id from row in mysql.vdiff
 	uuid            string
 	workflow        string
 	cancel          context.CancelFunc
@@ -70,7 +70,7 @@ type controller struct {
 
 	targetShardStreamer *shardStreamer
 	filter              *binlogdatapb.Filter            // vreplication row filter
-	options             *tabletmanagerdata.VDiffOptions // options initially from vtctld command and later from _vt.vdiff
+	options             *tabletmanagerdata.VDiffOptions // options initially from vtctld command and later from mysql.vdiff
 
 	sourceTimeZone, targetTimeZone string // named time zones if conversions are necessary for datetime values
 

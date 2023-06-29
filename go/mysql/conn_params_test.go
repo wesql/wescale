@@ -156,10 +156,10 @@ func TestConnParams_SslRequiredVerifyIdentity(t *testing.T) {
 
 func TestConnParams_SetDBName(t *testing.T) {
 	p := ConnParams{
-		DbName: "_vt",
+		DbName: "mysql",
 	}
 	assert := assert.New(t)
-	assert.EqualValues(p.DbName, "_vt", "should with default database")
+	assert.EqualValues(p.DbName, "mysql", "should with default database")
 	p.SetDBName("")
 	assert.EqualValues(p.DbName, "", "should without database")
 }

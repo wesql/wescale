@@ -46,19 +46,19 @@ func TestEngineOpen(t *testing.T) {
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 	require.False(t, vre.IsOpen())
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source|tablet_types",
 			"int64|varchar|varchar|varbinary",
 		),
 		fmt.Sprintf(`1|Running|keyspace:"%s" shard:"0" key_range:{end:"\x80"}|PRIMARY,REPLICA`, env.KeyspaceName),
 	), nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
-	dbClient.ExpectRequest("update _vt.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
-	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from _vt.vreplication where id=1", testSettingsResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
+	dbClient.ExpectRequest("update mysql.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
+	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from mysql.vreplication where id=1", testSettingsResponse, nil)
 	dbClient.ExpectRequest("begin", nil, nil)
 	dbClient.ExpectRequest("insert into t values(1)", testDMLResponse, nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
@@ -86,9 +86,9 @@ func TestEngineOpenRetry(t *testing.T) {
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	// Fail twice to ensure the retry retries at least once.
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", nil, errors.New("err"))
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", nil, errors.New("err"))
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source",
 			"int64|varchar|varchar",
@@ -121,11 +121,11 @@ func TestEngineOpenRetry(t *testing.T) {
 	vre.Close()
 	assert.False(t, vre.IsOpen())
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
 	vre.Open(context.Background())
 
 	// A second Open should cancel the existing retry and start a new one.
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
 	vre.Open(context.Background())
 
 	start := time.Now()
@@ -148,28 +148,28 @@ func TestEngineExec(t *testing.T) {
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("insert into _vt.vreplication values(null)", &sqltypes.Result{InsertID: 1}, nil)
-	dbClient.ExpectRequest("select * from _vt.vreplication where id = 1", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("insert into mysql.vreplication values(null)", &sqltypes.Result{InsertID: 1}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where id = 1", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source|tablet_types",
 			"int64|varchar|varchar|varbinary",
 		),
 		fmt.Sprintf(`1|Running|keyspace:"%s" shard:"0" key_range:{end:"\x80"}|PRIMARY,REPLICA`, env.KeyspaceName),
 	), nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
-	dbClient.ExpectRequest("update _vt.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
-	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from _vt.vreplication where id=1", testSettingsResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
+	dbClient.ExpectRequest("update mysql.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
+	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from mysql.vreplication where id=1", testSettingsResponse, nil)
 	dbClient.ExpectRequest("begin", nil, nil)
 	dbClient.ExpectRequest("insert into t values(1)", testDMLResponse, nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	qr, err := vre.Exec("insert into _vt.vreplication values(null)")
+	qr, err := vre.Exec("insert into mysql.vreplication values(null)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,25 +193,25 @@ func TestEngineExec(t *testing.T) {
 
 	savedBlp := ct.blpStats
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("select id from _vt.vreplication where id = 1", testSelectorResponse1, nil)
-	dbClient.ExpectRequest("update _vt.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id in (1)", testDMLResponse, nil)
-	dbClient.ExpectRequest("select * from _vt.vreplication where id = 1", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select id from mysql.vreplication where id = 1", testSelectorResponse1, nil)
+	dbClient.ExpectRequest("update mysql.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id in (1)", testDMLResponse, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where id = 1", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source",
 			"int64|varchar|varchar",
 		),
 		fmt.Sprintf(`1|Running|keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
 	), nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
-	dbClient.ExpectRequest("update _vt.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
-	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from _vt.vreplication where id=1", testSettingsResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
+	dbClient.ExpectRequest("update mysql.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
+	dbClient.ExpectRequest("select pos, stop_pos, max_tps, max_replication_lag, state, workflow_type, workflow, workflow_sub_type, defer_secondary_keys from mysql.vreplication where id=1", testSettingsResponse, nil)
 	dbClient.ExpectRequest("begin", nil, nil)
 	dbClient.ExpectRequest("insert into t values(1)", testDMLResponse, nil)
-	dbClient.ExpectRequestRE("update _vt.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
+	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	qr, err = vre.Exec("update _vt.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id = 1")
+	qr, err = vre.Exec("update mysql.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id = 1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,9 +234,9 @@ func TestEngineExec(t *testing.T) {
 	}
 
 	// Test no update
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("select id from _vt.vreplication where id = 2", &sqltypes.Result{}, nil)
-	_, err = vre.Exec("update _vt.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id = 2")
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select id from mysql.vreplication where id = 2", &sqltypes.Result{}, nil)
+	_, err = vre.Exec("update mysql.vreplication set pos = 'MariaDB/0-1-1084', state = 'Running' where id = 2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,15 +244,15 @@ func TestEngineExec(t *testing.T) {
 
 	// Test Delete
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("select id from _vt.vreplication where id = 1", testSelectorResponse1, nil)
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select id from mysql.vreplication where id = 1", testSelectorResponse1, nil)
 	dbClient.ExpectRequest("begin", nil, nil)
-	dbClient.ExpectRequest("delete from _vt.vreplication where id in (1)", testDMLResponse, nil)
-	dbClient.ExpectRequest("delete from _vt.copy_state where vrepl_id in (1)", nil, nil)
-	dbClient.ExpectRequest("delete from _vt.post_copy_action where vrepl_id in (1)", nil, nil)
+	dbClient.ExpectRequest("delete from mysql.vreplication where id in (1)", testDMLResponse, nil)
+	dbClient.ExpectRequest("delete from mysql.copy_state where vrepl_id in (1)", nil, nil)
+	dbClient.ExpectRequest("delete from mysql.post_copy_action where vrepl_id in (1)", nil, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	qr, err = vre.Exec("delete from _vt.vreplication where id = 1")
+	qr, err = vre.Exec("delete from mysql.vreplication where id = 1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,24 +274,24 @@ func TestEngineExec(t *testing.T) {
 
 	// Test Delete of multiple rows
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("select id from _vt.vreplication where id > 1", testSelectorResponse2, nil)
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select id from mysql.vreplication where id > 1", testSelectorResponse2, nil)
 	dbClient.ExpectRequest("begin", nil, nil)
-	dbClient.ExpectRequest("delete from _vt.vreplication where id in (1, 2)", testDMLResponse, nil)
-	dbClient.ExpectRequest("delete from _vt.copy_state where vrepl_id in (1, 2)", nil, nil)
-	dbClient.ExpectRequest("delete from _vt.post_copy_action where vrepl_id in (1, 2)", nil, nil)
+	dbClient.ExpectRequest("delete from mysql.vreplication where id in (1, 2)", testDMLResponse, nil)
+	dbClient.ExpectRequest("delete from mysql.copy_state where vrepl_id in (1, 2)", nil, nil)
+	dbClient.ExpectRequest("delete from mysql.post_copy_action where vrepl_id in (1, 2)", nil, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	_, err = vre.Exec("delete from _vt.vreplication where id > 1")
+	_, err = vre.Exec("delete from mysql.vreplication where id > 1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	dbClient.Wait()
 
 	// Test no delete
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("select id from _vt.vreplication where id = 3", &sqltypes.Result{}, nil)
-	_, err = vre.Exec("delete from _vt.vreplication where id = 3")
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select id from mysql.vreplication where id = 3", &sqltypes.Result{}, nil)
+	_, err = vre.Exec("delete from mysql.vreplication where id = 3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,13 +310,13 @@ func TestEngineBadInsert(t *testing.T) {
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	dbClient.ExpectRequest("insert into _vt.vreplication values(null)", &sqltypes.Result{}, nil)
-	_, err := vre.Exec("insert into _vt.vreplication values(null)")
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("insert into mysql.vreplication values(null)", &sqltypes.Result{}, nil)
+	_, err := vre.Exec("insert into mysql.vreplication values(null)")
 	want := "insert failed to generate an id"
 	if err == nil || err.Error() != want {
 		t.Errorf("vre.Exec err: %v, want %v", err, want)
@@ -338,12 +338,12 @@ func TestEngineSelect(t *testing.T) {
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
 
-	dbClient.ExpectRequest("use _vt", &sqltypes.Result{}, nil)
-	wantQuery := "select * from _vt.vreplication where workflow = 'x'"
+	dbClient.ExpectRequest("use mysql", &sqltypes.Result{}, nil)
+	wantQuery := "select * from mysql.vreplication where workflow = 'x'"
 	wantResult := sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source|pos",
@@ -371,15 +371,15 @@ func TestWaitForPos(t *testing.T) {
 	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
 		sqltypes.NewVarBinary("MariaDB/0-1-1083"),
 		sqltypes.NewVarBinary("Running"),
 		sqltypes.NewVarBinary(""),
 	}}}, nil)
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
 		sqltypes.NewVarBinary("MariaDB/0-1-1084"),
 		sqltypes.NewVarBinary("Running"),
 		sqltypes.NewVarBinary(""),
@@ -405,7 +405,7 @@ func TestWaitForPosError(t *testing.T) {
 		t.Errorf("WaitForPos: %v, want %v", err, want)
 	}
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
 	err = vre.WaitForPos(context.Background(), 1, "BadFlavor/0-1-1084")
@@ -414,12 +414,12 @@ func TestWaitForPosError(t *testing.T) {
 		t.Errorf("WaitForPos: %v, want %v", err, want)
 	}
 
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{}}}, nil)
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{}}}, nil)
 	err = vre.WaitForPos(context.Background(), 1, "MariaDB/0-1-1084")
 	want = "unexpected result: &{[] 0 0 [[]]  0 }"
 	assert.EqualError(t, err, want, "WaitForPos:")
 
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
 		sqltypes.NewVarBinary("MariaDB/0-1-1083"),
 	}, {
 		sqltypes.NewVarBinary("MariaDB/0-1-1083"),
@@ -435,10 +435,10 @@ func TestWaitForPosCancel(t *testing.T) {
 	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
 		sqltypes.NewVarBinary("MariaDB/0-1-1083"),
 		sqltypes.NewVarBinary("Running"),
 		sqltypes.NewVarBinary(""),
@@ -456,7 +456,7 @@ func TestWaitForPosCancel(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 		vre.Close()
 	}()
-	dbClient.ExpectRequest("select pos, state, message from _vt.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
+	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
 		sqltypes.NewVarBinary("MariaDB/0-1-1083"),
 		sqltypes.NewVarBinary("Running"),
 		sqltypes.NewVarBinary(""),

@@ -87,7 +87,7 @@ func registerThrottlerFlags(fs *pflag.FlagSet) {
 }
 
 var (
-	replicationLagQuery = `select unix_timestamp(now(6))-max(ts/1000000000) as replication_lag from _vt.heartbeat`
+	replicationLagQuery = `select unix_timestamp(now(6))-max(ts/1000000000) as replication_lag from mysql.heartbeat`
 
 	ErrThrottlerNotReady = errors.New("throttler not enabled/ready")
 )

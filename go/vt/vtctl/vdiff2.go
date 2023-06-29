@@ -586,10 +586,10 @@ func buildVDiff2SingleSummary(wr *wrangler.Wrangler, keyspace, workflow, uuid st
 	} else if tableStateCounts[vdiff.CompletedState] == (len(tableSummaryMap) * len(shards)) {
 		// When doing shard consolidations/merges, we cannot rely solely on the
 		// vdiff_table state as there are N sources that we process rows from sequentially
-		// with each one writing to the shared _vt.vdiff_table record for the target shard.
+		// with each one writing to the shared mysql.vdiff_table record for the target shard.
 		// So we only mark the vdiff for the shard as completed when we've finished processing
 		// rows from all of the sources -- which is recorded by marking the vdiff done for the
-		// shard by setting _vt.vdiff.state = completed.
+		// shard by setting mysql.vdiff.state = completed.
 		if shardStateCounts[vdiff.CompletedState] == len(shards) {
 			summary.State = vdiff.CompletedState
 		} else {

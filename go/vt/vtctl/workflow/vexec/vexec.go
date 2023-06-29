@@ -34,7 +34,7 @@ import (
 const (
 	// VExecTableQualifier is the qualifier that all tables supported by vexec
 	// are prefixed by.
-	VExecTableQualifier = "_vt"
+	VExecTableQualifier = "mysql"
 
 	// SchemaMigrationsTableName is the unqualified name of the schema
 	// migrations table supported by vexec.
@@ -62,12 +62,12 @@ var ( // Query parsing and planning errors.
 	ErrUnsupportedQuery = errors.New("query not supported by vexec")
 	// ErrUnsupportedTable occurs when attempting to run vexec on an unsupported
 	// table. At the time of writing, this occurs when attempting to query any
-	// table other than _vt.vreplication.
+	// table other than mysql.vreplication.
 	ErrUnsupportedTable = errors.New("table not supported by vexec")
 )
 
 // VExec provides the main interface to planning and executing vexec queries
-// (normally, queries on tables in the `_vt` database). It currently supports
+// (normally, queries on tables in the `mysql` database). It currently supports
 // some limited vreplication queries; this set of supported behavior will expand
 // over time. It may be extended to support schema_migrations queries as well.
 type VExec struct {
@@ -214,7 +214,7 @@ func (vx *VExec) GetPlanner(ctx context.Context, table string) (QueryPlanner, er
 	case qualifiedTableName(VReplicationTableName):
 		return NewVReplicationQueryPlanner(vx.tmc, vx.workflow, vx.primaries[0].DbName()), nil
 	case qualifiedTableName(VReplicationLogTableName):
-		results, err := vx.QueryContext(ctx, "select id from _vt.vreplication")
+		results, err := vx.QueryContext(ctx, "select id from mysql.vreplication")
 		if err != nil {
 			return nil, err
 		}

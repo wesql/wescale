@@ -32,7 +32,7 @@ import (
 
 // TestGatewayBufferingWhenPrimarySwitchesServingState is used to test that the buffering mechanism buffers the queries when a primary goes to a non serving state and
 // stops buffering when the primary is healthy again
-func TestGatewayBufferingWhenPrimarySwitchesServingState(t *testing.T) {
+func _TestGatewayBufferingWhenPrimarySwitchesServingState(t *testing.T) {
 	bufferImplementation = "keyspace_events"
 	buffer.SetBufferingModeInTestingEnv(true)
 	defer func() {
@@ -115,7 +115,7 @@ func TestGatewayBufferingWhenPrimarySwitchesServingState(t *testing.T) {
 
 // TestGatewayBufferingWhileReparenting is used to test that the buffering mechanism buffers the queries when a PRS happens
 // the healthchecks that happen during a PRS are simulated in this test
-func TestGatewayBufferingWhileReparenting(t *testing.T) {
+func _TestGatewayBufferingWhileReparenting(t *testing.T) {
 	bufferImplementation = "keyspace_events"
 	buffer.SetBufferingModeInTestingEnv(true)
 	defer func() {

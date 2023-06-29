@@ -290,7 +290,7 @@ func TestFirstSortedKeyspace(t *testing.T) {
 }
 
 func Test_vcursorImpl_DefaultKeyspace(t *testing.T) {
-	defaultKs := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "_vt"}}
+	defaultKs := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "mysql"}}
 	ks1Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "xks1"}}
 	ks2Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "aks2"}}
 	ks3Schema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: "aks1"}}
@@ -308,7 +308,7 @@ func Test_vcursorImpl_DefaultKeyspace(t *testing.T) {
 			fields: fields{
 				vschema: &vindexes.VSchema{
 					Keyspaces: map[string]*vindexes.KeyspaceSchema{
-						"_vt":                   defaultKs,
+						"mysql":                 defaultKs,
 						ks1Schema.Keyspace.Name: ks1Schema,
 						ks2Schema.Keyspace.Name: ks2Schema,
 						ks3Schema.Keyspace.Name: ks3Schema,

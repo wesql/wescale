@@ -70,10 +70,10 @@ func pkColsToGroupByParams(pkCols []int) []*engine.GroupByParams {
 }
 
 func insertVDiffLog(ctx context.Context, dbClient binlogplayer.DBClient, vdiffID int64, message string) {
-	query := "insert into _vt.vdiff_log(vdiff_id, message) values (%d, %s)"
+	query := "insert into mysql.vdiff_log(vdiff_id, message) values (%d, %s)"
 	query = fmt.Sprintf(query, vdiffID, encodeString(message))
 	if _, err := dbClient.ExecuteFetch(query, 1); err != nil {
-		log.Error("Error inserting into _vt.vdiff_log: %v", err)
+		log.Error("Error inserting into mysql.vdiff_log: %v", err)
 	}
 }
 

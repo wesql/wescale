@@ -736,12 +736,12 @@ func (df *vdiff) stopTargets(ctx context.Context) error {
 	var mu sync.Mutex
 
 	err := df.forAll(df.targets, func(shard string, target *shardStreamer) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Stopped', message='for vdiff' where db_name=%s and workflow=%s", encodeString(target.primary.DbName()), encodeString(df.ts.WorkflowName()))
+		query := fmt.Sprintf("update mysql.vreplication set state='Stopped', message='for vdiff' where db_name=%s and workflow=%s", encodeString(target.primary.DbName()), encodeString(df.ts.WorkflowName()))
 		_, err := df.ts.TabletManagerClient().VReplicationExec(ctx, target.primary.Tablet, query)
 		if err != nil {
 			return err
 		}
-		query = fmt.Sprintf("select source, pos from _vt.vreplication where db_name=%s and workflow=%s", encodeString(target.primary.DbName()), encodeString(df.ts.WorkflowName()))
+		query = fmt.Sprintf("select source, pos from mysql.vreplication where db_name=%s and workflow=%s", encodeString(target.primary.DbName()), encodeString(df.ts.WorkflowName()))
 		p3qr, err := df.ts.TabletManagerClient().VReplicationExec(ctx, target.primary.Tablet, query)
 		if err != nil {
 			return err
@@ -875,7 +875,7 @@ func (df *vdiff) syncTargets(ctx context.Context, filteredReplicationWaitTime ti
 	err := df.ts.ForAllUIDs(func(target *workflow.MigrationTarget, uid uint32) error {
 		bls := target.Sources[uid]
 		pos := df.sources[bls.Shard].snapshotPosition
-		query := fmt.Sprintf("update _vt.vreplication set state='Running', stop_pos='%s', message='synchronizing for vdiff' where id=%d", pos, uid)
+		query := fmt.Sprintf("update mysql.vreplication set state='Running', stop_pos='%s', message='synchronizing for vdiff' where id=%d", pos, uid)
 		if _, err := df.ts.TabletManagerClient().VReplicationExec(ctx, target.GetPrimary().Tablet, query); err != nil {
 			return err
 		}
@@ -906,7 +906,7 @@ func (df *vdiff) syncTargets(ctx context.Context, filteredReplicationWaitTime ti
 // restartTargets restarts the stopped target vreplication streams.
 func (df *vdiff) restartTargets(ctx context.Context) error {
 	return df.forAll(df.targets, func(shard string, target *shardStreamer) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Running', message='', stop_pos='' where db_name=%s and workflow=%s",
+		query := fmt.Sprintf("update mysql.vreplication set state='Running', message='', stop_pos='' where db_name=%s and workflow=%s",
 			encodeString(target.primary.DbName()), encodeString(df.ts.WorkflowName()))
 		log.Infof("Restarting the %q VReplication workflow on %q using %q", df.ts.WorkflowName(), target.primary.Alias, query)
 		var err error

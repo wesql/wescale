@@ -35,7 +35,7 @@ import (
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
-const getSchemaVersions = "select id, pos, ddl, time_updated, schemax from _vt.schema_version where id > %d order by id asc"
+const getSchemaVersions = "select id, pos, ddl, time_updated, schemax from mysql.schema_version where id > %d order by id asc"
 
 // vl defines the glog verbosity level for the package
 const vl = 10
@@ -115,7 +115,7 @@ func (h *historian) Close() {
 	log.Info("Historian: closed")
 }
 
-// RegisterVersionEvent is called by the vstream when it encounters a version event (an insert into _vt.schema_tracking)
+// RegisterVersionEvent is called by the vstream when it encounters a version event (an insert into mysql.schema_tracking)
 // It triggers the historian to load the newer rows from the database to update its cache
 func (h *historian) RegisterVersionEvent() error {
 	h.mu.Lock()

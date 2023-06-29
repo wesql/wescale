@@ -76,13 +76,13 @@ var (
 )
 
 var vexecUpdateTemplates = []string{
-	`update _vt.schema_migrations set migration_status='val1' where mysql_schema='val2'`,
-	`update _vt.schema_migrations set migration_status='val1' where migration_uuid='val2' and mysql_schema='val3'`,
-	`update _vt.schema_migrations set migration_status='val1' where migration_uuid='val2' and mysql_schema='val3' and shard='val4'`,
+	`update mysql.schema_migrations set migration_status='val1' where mysql_schema='val2'`,
+	`update mysql.schema_migrations set migration_status='val1' where migration_uuid='val2' and mysql_schema='val3'`,
+	`update mysql.schema_migrations set migration_status='val1' where migration_uuid='val2' and mysql_schema='val3' and shard='val4'`,
 }
 
 var vexecInsertTemplates = []string{
-	`INSERT IGNORE INTO _vt.schema_migrations (
+	`INSERT IGNORE INTO mysql.schema_migrations (
 		migration_uuid,
 		keyspace,
 		shard,
@@ -711,7 +711,7 @@ func (e *Executor) primaryPosition(ctx context.Context) (pos mysql.Position, err
 	return pos, err
 }
 
-// terminateVReplMigration stops vreplication, then removes the _vt.vreplication entry for the given migration
+// terminateVReplMigration stops vreplication, then removes the mysql.vreplication entry for the given migration
 func (e *Executor) terminateVReplMigration(ctx context.Context, uuid string) error {
 	tmClient := e.tabletManagerClient()
 	defer tmClient.Close()
@@ -738,7 +738,7 @@ func (e *Executor) terminateVReplMigration(ctx context.Context, uuid string) err
 	return nil
 }
 
-// cutOverVReplMigration stops vreplication, then removes the _vt.vreplication entry for the given migration
+// cutOverVReplMigration stops vreplication, then removes the mysql.vreplication entry for the given migration
 func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) error {
 	if err := e.incrementCutoverAttempts(ctx, s.workflow); err != nil {
 		return err
@@ -1416,8 +1416,8 @@ func (e *Executor) ExecuteWithVReplication(ctx context.Context, onlineDDL *schem
 		}
 
 		{
-			// temporary hack. todo: this should be done when inserting any _vt.vreplication record across all workflow types
-			query := fmt.Sprintf("update _vt.vreplication set workflow_type = %d where workflow = '%s'",
+			// temporary hack. todo: this should be done when inserting any mysql.vreplication record across all workflow types
+			query := fmt.Sprintf("update mysql.vreplication set workflow_type = %d where workflow = '%s'",
 				binlogdatapb.VReplicationWorkflowType_OnlineDDL, v.workflow)
 			if _, err := e.vreplicationExec(ctx, tablet.Tablet, query); err != nil {
 				return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", tablet.Tablet, query)
@@ -3356,7 +3356,7 @@ func (e *Executor) dropPTOSCMigrationTriggers(ctx context.Context, onlineDDL *sc
 	return err
 }
 
-// readVReplStream reads _vt.vreplication entries for given workflow
+// readVReplStream reads mysql.vreplication entries for given workflow
 func (e *Executor) readVReplStream(ctx context.Context, uuid string, okIfMissing bool) (*VReplStream, error) {
 	query, err := sqlparser.ParseAndBind(sqlReadVReplStream,
 		sqltypes.StringBindVariable(uuid),
@@ -3547,7 +3547,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 		switch onlineDDL.StrategySetting().Strategy {
 		case schema.DDLStrategyOnline, schema.DDLStrategyVitess:
 			{
-				// We check the _vt.vreplication table
+				// We check the mysql.vreplication table
 				s, err := e.readVReplStream(ctx, uuid, true)
 				if err != nil {
 					return countRunnning, cancellable, err
@@ -3801,7 +3801,7 @@ func (e *Executor) reloadSchema(ctx context.Context) error {
 	return tmClient.ReloadSchema(ctx, tablet.Tablet, "")
 }
 
-// deleteVReplicationEntry cleans up a _vt.vreplication entry; this function is called as part of
+// deleteVReplicationEntry cleans up a mysql.vreplication entry; this function is called as part of
 // migration termination and as part of artifact cleanup
 func (e *Executor) deleteVReplicationEntry(ctx context.Context, uuid string) error {
 	query, err := sqlparser.ParseAndBind(sqlDeleteVReplStream,

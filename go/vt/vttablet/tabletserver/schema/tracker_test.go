@@ -34,15 +34,15 @@ func TestTracker(t *testing.T) {
 	defer cancel()
 	gtid1 := "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10"
 	ddl1 := "create table tracker_test (id int)"
-	query := "CREATE TABLE IF NOT EXISTS _vt.schema_version.*"
+	query := "CREATE TABLE IF NOT EXISTS mysql.schema_version.*"
 	db.AddQueryPattern(query, &sqltypes.Result{})
 
-	db.AddQueryPattern("insert into _vt.schema_version.*1-10.*", &sqltypes.Result{})
-	db.AddQueryPatternWithCallback("insert into _vt.schema_version.*1-3.*", &sqltypes.Result{}, func(query string) {
+	db.AddQueryPattern("insert into mysql.schema_version.*1-10.*", &sqltypes.Result{})
+	db.AddQueryPatternWithCallback("insert into mysql.schema_version.*1-3.*", &sqltypes.Result{}, func(query string) {
 		initialSchemaInserted = true
 	})
 	// simulates empty schema_version table, so initial schema should be inserted
-	db.AddQuery("select id from _vt.schema_version limit 1", &sqltypes.Result{Rows: [][]sqltypes.Value{}})
+	db.AddQuery("select id from mysql.schema_version limit 1", &sqltypes.Result{Rows: [][]sqltypes.Value{}})
 	// called to get current position
 	db.AddQuery("SELECT @@GLOBAL.gtid_executed", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"",
@@ -96,7 +96,7 @@ func TestTrackerShouldNotInsertInitialSchema(t *testing.T) {
 
 	defer cancel()
 	// simulates existing rows in schema_version, so initial schema should not be inserted
-	db.AddQuery("select id from _vt.schema_version limit 1", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+	db.AddQuery("select id from mysql.schema_version limit 1", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"id",
 		"int"),
 		"1",
@@ -107,7 +107,7 @@ func TestTrackerShouldNotInsertInitialSchema(t *testing.T) {
 		"varchar"),
 		"7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-3",
 	))
-	db.AddQueryPatternWithCallback("insert into _vt.schema_version.*1-3.*", &sqltypes.Result{}, func(query string) {
+	db.AddQueryPatternWithCallback("insert into mysql.schema_version.*1-3.*", &sqltypes.Result{}, func(query string) {
 		initialSchemaInserted = true
 	})
 	vs := &fakeVstreamer{
@@ -162,7 +162,7 @@ func TestMustReloadSchemaOnDDL(t *testing.T) {
 		{"create table db2.x(i int);", db2, true},
 		{"rename table db2.x to db2.y;", db2, true},
 		{"create table db1.x(i int);", db2, false},
-		{"create table _vt.x(i int);", db1, false},
+		{"create table mysql.x(i int);", db1, false},
 		{"DROP VIEW IF EXISTS `pseudo_gtid`.`_pseudo_gtid_hint__asc:55B364E3:0000000000056EE2:6DD57B85`", db2, false},
 		{"create database db1;", db1, false},
 		{"create table db1._4e5dcf80_354b_11eb_82cd_f875a4d24e90_20201203114014_gho(i int);", db1, false},

@@ -88,7 +88,7 @@ type TwoPC struct {
 // NewTwoPC creates a TwoPC variable.
 func NewTwoPC(readPool *connpool.Pool) *TwoPC {
 	tpc := &TwoPC{readPool: readPool}
-	dbname := "_vt"
+	dbname := "mysql"
 	tpc.insertRedoTx = sqlparser.BuildParsedQuery(
 		"insert into %s.redo_state(dtid, state, time_created) values (%a, %a, %a)",
 		dbname, ":dtid", ":state", ":time_created")

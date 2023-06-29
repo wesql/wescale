@@ -47,7 +47,7 @@ var ( // Query execution errors.
 
 // QueryPlanner defines the interface that VExec uses to build QueryPlans for
 // various vexec workflows. A given vexec table, which is to say a table in the
-// "_vt" database, will have at most one QueryPlanner implementation, which is
+// "mysql" database, will have at most one QueryPlanner implementation, which is
 // responsible for defining both what queries are supported for that table, as
 // well as how to build plans for those queries.
 //
@@ -88,7 +88,7 @@ type QueryParams struct {
 }
 
 // VReplicationQueryPlanner implements the QueryPlanner interface for queries on
-// the _vt.vreplication table.
+// the mysql.vreplication table.
 type VReplicationQueryPlanner struct {
 	tmc tmclient.TabletManagerClient
 
@@ -217,7 +217,7 @@ func (planner *VReplicationQueryPlanner) planUpdate(upd *sqlparser.Update) (*Fix
 		)
 	}
 
-	// For updates on the _vt.vreplication table, we ban updates to the `id`
+	// For updates on the mysql.vreplication table, we ban updates to the `id`
 	// column, and allow updates to all other columns.
 	for _, expr := range upd.Exprs {
 		if expr.Name.Name.EqualString("id") {
@@ -243,7 +243,7 @@ func (planner *VReplicationQueryPlanner) planUpdate(upd *sqlparser.Update) (*Fix
 }
 
 // VReplicationLogQueryPlanner implements the QueryPlanner interface for queries
-// on the _vt.vreplication_log table.
+// on the mysql.vreplication_log table.
 type VReplicationLogQueryPlanner struct {
 	tmc             tmclient.TabletManagerClient
 	tabletStreamIDs map[string][]int64

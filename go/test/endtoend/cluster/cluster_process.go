@@ -41,6 +41,7 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
@@ -108,15 +109,15 @@ type LocalProcessCluster struct {
 	VtctlProcess        VtctlProcess
 
 	// background executable processes
-	TopoProcess     TopoProcess
-	VtctldProcess   VtctldProcess
-	VtgateProcess   VtgateProcess
-	VtgateProcess2  VtgateProcess
-	VtbackupProcess VtbackupProcess
-	VTOrcProcesses  []*VTOrcProcess
-  VtconsensusProcess *VtconsensusProcess
+	TopoProcess        TopoProcess
+	VtctldProcess      VtctldProcess
+	VtgateProcess      VtgateProcess
+	VtgateProcess2     VtgateProcess
+	VtbackupProcess    VtbackupProcess
+	VTOrcProcesses     []*VTOrcProcess
+	VtconsensusProcess *VtconsensusProcess
 
-  	// wesql container network
+	// wesql container network
 	ContainerNetwork *ContainerNetwork
 
 	nextPortForProcess int

@@ -44,10 +44,10 @@ import (
 	"vitess.io/vitess/go/vt/topo/memorytopo"
 )
 
-const mzUpdateQuery = "update _vt.vreplication set state='Running' where db_name='targetks' and workflow='workflow'"
-const mzSelectIDQuery = "select id from _vt.vreplication where db_name='targetks' and workflow='workflow'"
-const mzSelectFrozenQuery = "select 1 from _vt.vreplication where db_name='targetks' and message='FROZEN' and workflow_sub_type != 1"
-const mzCheckJournal = "/select val from _vt.resharding_journal where id="
+const mzUpdateQuery = "update mysql.vreplication set state='Running' where db_name='targetks' and workflow='workflow'"
+const mzSelectIDQuery = "select id from mysql.vreplication where db_name='targetks' and workflow='workflow'"
+const mzSelectFrozenQuery = "select 1 from mysql.vreplication where db_name='targetks' and message='FROZEN' and workflow_sub_type != 1"
+const mzCheckJournal = "/select val from mysql.resharding_journal where id="
 
 var defaultOnDDL = binlogdatapb.OnDDLAction_name[int32(binlogdatapb.OnDDLAction_IGNORE)]
 
@@ -200,7 +200,7 @@ func TestMoveTablesStopFlags(t *testing.T) {
 		env.tmc.expectVRQuery(100, mzCheckJournal, &sqltypes.Result{})
 		env.tmc.expectVRQuery(200, mzSelectFrozenQuery, &sqltypes.Result{})
 		// insert expects flag stop_after_copy to be true
-		insert := `/insert into _vt.vreplication\(workflow, source, pos, max_tps, max_replication_lag, cell, tablet_types.*stop_after_copy:true.*`
+		insert := `/insert into mysql.vreplication\(workflow, source, pos, max_tps, max_replication_lag, cell, tablet_types.*stop_after_copy:true.*`
 
 		env.tmc.expectVRQuery(200, insert, &sqltypes.Result{})
 		env.tmc.expectVRQuery(200, mzSelectIDQuery, &sqltypes.Result{})
@@ -323,7 +323,7 @@ func TestCreateLookupVindexFull(t *testing.T) {
 	env.tmc.expectVRQuery(200, mzSelectFrozenQuery, &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, "/CREATE TABLE `lkp`", &sqltypes.Result{})
 	env.tmc.expectVRQuery(200, insertPrefix, &sqltypes.Result{})
-	env.tmc.expectVRQuery(200, "update _vt.vreplication set state='Running' where db_name='targetks' and workflow='lkp_vdx'", &sqltypes.Result{})
+	env.tmc.expectVRQuery(200, "update mysql.vreplication set state='Running' where db_name='targetks' and workflow='lkp_vdx'", &sqltypes.Result{})
 
 	ctx := context.Background()
 	err := env.wr.CreateLookupVindex(ctx, ms.SourceKeyspace, specs, "cell", "PRIMARY", false)
@@ -1723,13 +1723,13 @@ func TestExternalizeVindex(t *testing.T) {
 			t.Fatal(err)
 		}
 		if tcase.vrResponse != nil {
-			validationQuery := "select id, state, message, source from _vt.vreplication where workflow='lkp_vdx' and db_name='targetks'"
+			validationQuery := "select id, state, message, source from mysql.vreplication where workflow='lkp_vdx' and db_name='targetks'"
 			env.tmc.expectVRQuery(200, validationQuery, tcase.vrResponse)
 			env.tmc.expectVRQuery(210, validationQuery, tcase.vrResponse)
 		}
 
 		if tcase.expectDelete {
-			deleteQuery := "delete from _vt.vreplication where db_name='targetks' and workflow='lkp_vdx'"
+			deleteQuery := "delete from mysql.vreplication where db_name='targetks' and workflow='lkp_vdx'"
 			env.tmc.expectVRQuery(200, deleteQuery, &sqltypes.Result{})
 			env.tmc.expectVRQuery(210, deleteQuery, &sqltypes.Result{})
 		}
@@ -2826,7 +2826,7 @@ func TestMoveTablesDDLFlag(t *testing.T) {
 				// for prototext fields so we use the default insert stmt.
 				env.tmc.expectVRQuery(200, insertPrefix, &sqltypes.Result{})
 			} else {
-				env.tmc.expectVRQuery(200, fmt.Sprintf(`/insert into _vt.vreplication\(.*on_ddl:%s.*`, onDDLAction),
+				env.tmc.expectVRQuery(200, fmt.Sprintf(`/insert into mysql.vreplication\(.*on_ddl:%s.*`, onDDLAction),
 					&sqltypes.Result{})
 			}
 			env.tmc.expectVRQuery(200, mzSelectIDQuery, &sqltypes.Result{})

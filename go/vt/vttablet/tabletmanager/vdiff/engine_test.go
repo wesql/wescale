@@ -68,14 +68,14 @@ func TestEngineOpen(t *testing.T) {
 				fmt.Sprintf("1|%s|%s|%s|%s|%s|%s|%s|", UUID, vdenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, tt.state, optionsJS),
 			)
 
-			vdenv.dbClient.ExpectRequest("select * from _vt.vdiff where state in ('started','pending')", initialQR, nil)
-			vdenv.dbClient.ExpectRequest("select * from _vt.vdiff where id = 1", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+			vdenv.dbClient.ExpectRequest("select * from mysql.vdiff where state in ('started','pending')", initialQR, nil)
+			vdenv.dbClient.ExpectRequest("select * from mysql.vdiff where id = 1", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				vdiffTestCols,
 				vdiffTestColTypes,
 			),
 				fmt.Sprintf("1|%s|%s|%s|%s|%s|%s|%s|", UUID, vdiffenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, tt.state, optionsJS),
 			), nil)
-			vdenv.dbClient.ExpectRequest(fmt.Sprintf("select * from _vt.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+			vdenv.dbClient.ExpectRequest(fmt.Sprintf("select * from mysql.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 				"id|workflow|source|pos|stop_pos|max_tps|max_replication_lag|cell|tablet_types|time_updated|transaction_timestamp|state|message|db_name|rows_copied|tags|time_heartbeat|workflow_type|time_throttled|component_throttled|workflow_sub_type",
 				"int64|varbinary|blob|varbinary|varbinary|int64|int64|varbinary|varbinary|int64|int64|varbinary|varbinary|varbinary|int64|varbinary|int64|int64|int64|varchar|int64",
 			),
@@ -83,7 +83,7 @@ func TestEngineOpen(t *testing.T) {
 			), nil)
 
 			// Now let's short circuit the vdiff as we know that the open has worked as expected.
-			shortCircuitTestAfterQuery("update _vt.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = 1", vdiffenv.dbClient)
+			shortCircuitTestAfterQuery("update mysql.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = 1", vdiffenv.dbClient)
 
 			vdenv.vde.Open(context.Background(), vdiffenv.vre)
 			defer vdenv.vde.Close()
@@ -123,17 +123,17 @@ func TestVDiff(t *testing.T) {
 		fmt.Sprintf("1|%s|%s|%s|%s|%s|pending|%s|", UUID, vdenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, optionsJS),
 	)
 
-	vdenv.dbClient.ExpectRequest("select * from _vt.vdiff where id = 1", controllerQR, nil)
-	vdenv.dbClient.ExpectRequest(fmt.Sprintf("select * from _vt.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+	vdenv.dbClient.ExpectRequest("select * from mysql.vdiff where id = 1", controllerQR, nil)
+	vdenv.dbClient.ExpectRequest(fmt.Sprintf("select * from mysql.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"id|workflow|source|pos|stop_pos|max_tps|max_replication_lag|cell|tablet_types|time_updated|transaction_timestamp|state|message|db_name|rows_copied|tags|time_heartbeat|workflow_type|time_throttled|component_throttled|workflow_sub_type",
 		"int64|varbinary|blob|varbinary|varbinary|int64|int64|varbinary|varbinary|int64|int64|varbinary|varbinary|varbinary|int64|varbinary|int64|int64|int64|varchar|int64",
 	),
 		fmt.Sprintf("1|%s|%s|%s||9223372036854775807|9223372036854775807||PRIMARY,REPLICA|1669511347|0|Running||%s|200||1669511347|1|0||1", vdiffenv.workflow, vreplSource, vdiffSourceGtid, vdiffDBName),
 	), nil)
-	vdenv.dbClient.ExpectRequest("update _vt.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = 1", singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest("insert into _vt.vdiff_log(vdiff_id, message) values (1, 'State changed to: started')", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("update mysql.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = 1", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("insert into mysql.vdiff_log(vdiff_id, message) values (1, 'State changed to: started')", singleRowAffected, nil)
 	vdenv.dbClient.ExpectRequest(`select vdt.lastpk as lastpk, vdt.mismatch as mismatch, vdt.report as report
-						from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
 						where vdt.vdiff_id = 1 and vdt.table_name = 't1'`, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"lastpk|mismatch|report",
 		"varbinary|int64|json",
@@ -147,7 +147,7 @@ func TestVDiff(t *testing.T) {
 		"t1|1",
 	), nil)
 	vdenv.dbClient.ExpectRequest(`select vdt.lastpk as lastpk, vdt.mismatch as mismatch, vdt.report as report
-						from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
 						where vdt.vdiff_id = 1 and vdt.table_name = 't1'`, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"lastpk|mismatch|report",
 		"varbinary|int64|json",
@@ -155,39 +155,39 @@ func TestVDiff(t *testing.T) {
 		`fields:{name:"c1" type:INT64 table:"t1" org_table:"t1" database:"vt_customer" org_name:"c1" column_length:20 charset:63 flags:53251} rows:{lengths:1 values:"1"}|0|{"TableName": "t1", "MatchingRows": 1, "ProcessedRows": 1, "MismatchedRows": 0, "ExtraRowsSource": 0, "ExtraRowsTarget": 0}`,
 	), nil)
 
-	vdenv.dbClient.ExpectRequest("update _vt.vdiff_table set table_rows = 1 where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("update mysql.vdiff_table set table_rows = 1 where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
 	vdenv.dbClient.ExpectRequest(`select vdt.lastpk as lastpk, vdt.mismatch as mismatch, vdt.report as report
-						from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
 						where vdt.vdiff_id = 1 and vdt.table_name = 't1'`, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"lastpk|mismatch|report",
 		"varbinary|int64|json",
 	),
 		`fields:{name:"c1" type:INT64 table:"t1" org_table:"t1" database:"vt_customer" org_name:"c1" column_length:20 charset:63 flags:53251} rows:{lengths:1 values:"1"}|0|{"TableName": "t1", "MatchingRows": 1, "ProcessedRows": 1, "MismatchedRows": 0, "ExtraRowsSource": 0, "ExtraRowsTarget": 0}`,
 	), nil)
-	vdenv.dbClient.ExpectRequest("update _vt.vdiff_table set state = 'started' where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest(`insert into _vt.vdiff_log(vdiff_id, message) values (1, 'started: table \'t1\'')`, singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest(fmt.Sprintf("select id, source, pos from _vt.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+	vdenv.dbClient.ExpectRequest("update mysql.vdiff_table set state = 'started' where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(`insert into mysql.vdiff_log(vdiff_id, message) values (1, 'started: table \'t1\'')`, singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(fmt.Sprintf("select id, source, pos from mysql.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"id|source|pos",
 		"int64|varbinary|varbinary",
 	),
 		fmt.Sprintf("1|%s|%s", vreplSource, vdiffSourceGtid),
 	), nil)
 	vdenv.dbClient.ExpectRequest(`select vdt.lastpk as lastpk, vdt.mismatch as mismatch, vdt.report as report
-						from _vt.vdiff as vd inner join _vt.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
+						from mysql.vdiff as vd inner join mysql.vdiff_table as vdt on (vd.id = vdt.vdiff_id)
 						where vdt.vdiff_id = 1 and vdt.table_name = 't1'`, sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"lastpk|mismatch|report",
 		"varbinary|int64|json",
 	),
 		`fields:{name:"c1" type:INT64 table:"t1" org_table:"t1" database:"vt_customer" org_name:"c1" column_length:20 charset:63 flags:53251} rows:{lengths:1 values:"1"}|0|{}`,
 	), nil)
-	vdenv.dbClient.ExpectRequest(`update _vt.vdiff_table set rows_compared = 0, report = '{\"TableName\":\"t1\",\"ProcessedRows\":0,\"MatchingRows\":0,\"MismatchedRows\":0,\"ExtraRowsSource\":0,\"ExtraRowsTarget\":0}' where vdiff_id = 1 and table_name = 't1'`, singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest(`update _vt.vdiff_table set state = 'completed', rows_compared = 0, report = '{\"TableName\":\"t1\",\"ProcessedRows\":0,\"MatchingRows\":0,\"MismatchedRows\":0,\"ExtraRowsSource\":0,\"ExtraRowsTarget\":0}' where vdiff_id = 1 and table_name = 't1'`, singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest(`insert into _vt.vdiff_log(vdiff_id, message) values (1, 'completed: table \'t1\'')`, singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest("update _vt.vdiff_table set state = 'completed' where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest(`insert into _vt.vdiff_log(vdiff_id, message) values (1, 'completed: table \'t1\'')`, singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest("select table_name as table_name from _vt.vdiff_table where vdiff_id = 1 and state != 'completed'", singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest("update _vt.vdiff set state = 'completed', last_error = '' , completed_at = utc_timestamp() where id = 1", singleRowAffected, nil)
-	vdenv.dbClient.ExpectRequest("insert into _vt.vdiff_log(vdiff_id, message) values (1, 'State changed to: completed')", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(`update mysql.vdiff_table set rows_compared = 0, report = '{\"TableName\":\"t1\",\"ProcessedRows\":0,\"MatchingRows\":0,\"MismatchedRows\":0,\"ExtraRowsSource\":0,\"ExtraRowsTarget\":0}' where vdiff_id = 1 and table_name = 't1'`, singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(`update mysql.vdiff_table set state = 'completed', rows_compared = 0, report = '{\"TableName\":\"t1\",\"ProcessedRows\":0,\"MatchingRows\":0,\"MismatchedRows\":0,\"ExtraRowsSource\":0,\"ExtraRowsTarget\":0}' where vdiff_id = 1 and table_name = 't1'`, singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(`insert into mysql.vdiff_log(vdiff_id, message) values (1, 'completed: table \'t1\'')`, singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("update mysql.vdiff_table set state = 'completed' where vdiff_id = 1 and table_name = 't1'", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest(`insert into mysql.vdiff_log(vdiff_id, message) values (1, 'completed: table \'t1\'')`, singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("select table_name as table_name from mysql.vdiff_table where vdiff_id = 1 and state != 'completed'", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("update mysql.vdiff set state = 'completed', last_error = '' , completed_at = utc_timestamp() where id = 1", singleRowAffected, nil)
+	vdenv.dbClient.ExpectRequest("insert into mysql.vdiff_log(vdiff_id, message) values (1, 'State changed to: completed')", singleRowAffected, nil)
 
 	vdenv.vde.mu.Lock()
 	err := vdenv.vde.addController(controllerQR.Named().Row(), options)
@@ -236,7 +236,7 @@ func TestEngineRetryErroredVDiffs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vdiffenv.dbClient.ExpectRequest("select * from _vt.vdiff where state = 'error' and json_unquote(json_extract(options, '$.core_options.auto_retry')) = 'true'", tt.retryQueryResults, nil)
+			vdiffenv.dbClient.ExpectRequest("select * from mysql.vdiff where state = 'error' and json_unquote(json_extract(options, '$.core_options.auto_retry')) = 'true'", tt.retryQueryResults, nil)
 
 			// Right now this only supports a single row as with multiple rows we have
 			// multiple controllers in separate goroutines and the order is not
@@ -248,14 +248,14 @@ func TestEngineRetryErroredVDiffs(t *testing.T) {
 			for _, row := range tt.retryQueryResults.Rows {
 				id := row[0].ToString()
 				if tt.expectRetry {
-					vdiffenv.dbClient.ExpectRequestRE("update _vt.vdiff as vd left join _vt.vdiff_table as vdt on \\(vd.id = vdt.vdiff_id\\) set vd.state = 'pending'.*", singleRowAffected, nil)
-					vdiffenv.dbClient.ExpectRequest(fmt.Sprintf("select * from _vt.vdiff where id = %s", id), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+					vdiffenv.dbClient.ExpectRequestRE("update mysql.vdiff as vd left join mysql.vdiff_table as vdt on \\(vd.id = vdt.vdiff_id\\) set vd.state = 'pending'.*", singleRowAffected, nil)
+					vdiffenv.dbClient.ExpectRequest(fmt.Sprintf("select * from mysql.vdiff where id = %s", id), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 						vdiffTestCols,
 						vdiffTestColTypes,
 					),
 						fmt.Sprintf("%s|%s|%s|%s|%s|%s|pending|%s|", id, UUID, vdiffenv.workflow, tstenv.KeyspaceName, tstenv.ShardName, vdiffDBName, optionsJS),
 					), nil)
-					vdiffenv.dbClient.ExpectRequest(fmt.Sprintf("select * from _vt.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
+					vdiffenv.dbClient.ExpectRequest(fmt.Sprintf("select * from mysql.vreplication where workflow = '%s' and db_name = '%s'", vdiffenv.workflow, vdiffDBName), sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 						"id|workflow|source|pos|stop_pos|max_tps|max_replication_lag|cell|tablet_types|time_updated|transaction_timestamp|state|message|db_name|rows_copied|tags|time_heartbeat|workflow_type|time_throttled|component_throttled|workflow_sub_type",
 						"int64|varbinary|blob|varbinary|varbinary|int64|int64|varbinary|varbinary|int64|int64|varbinary|varbinary|varbinary|int64|varbinary|int64|int64|int64|varchar|int64",
 					),
@@ -263,7 +263,7 @@ func TestEngineRetryErroredVDiffs(t *testing.T) {
 					), nil)
 
 					// At this point we know that we kicked off the expected retry so we can short circit the vdiff.
-					shortCircuitTestAfterQuery(fmt.Sprintf("update _vt.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = %s", id), vdiffenv.dbClient)
+					shortCircuitTestAfterQuery(fmt.Sprintf("update mysql.vdiff set state = 'started', last_error = '' , started_at = utc_timestamp() where id = %s", id), vdiffenv.dbClient)
 
 					expectedControllerCnt++
 				}

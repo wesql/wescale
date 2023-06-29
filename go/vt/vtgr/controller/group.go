@@ -290,7 +290,7 @@ func (group *SQLGroup) resolveLocked() error {
 				group.logger.Warningf("found inconsistent member state for %v: %v vs %v", instance.Hostname, st.State, memberState)
 				if group.heartbeatThreshold != 0 &&
 					// Check minStalenessResult among the group is not math.MaxInt32
-					// which means at least one node returns the lag from _vt.heartbeat table
+					// which means at least one node returns the lag from mysql.heartbeat table
 					// otherwise we don't trigger backoff on inconsistent state
 					minStalenessResult != math.MaxInt32 &&
 					minStalenessResult >= group.heartbeatThreshold {

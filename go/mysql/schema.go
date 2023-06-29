@@ -51,7 +51,7 @@ FROM (
 	UNION ALL
 
 	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
-	FROM _vt.schemacopy
+	FROM mysql.schemacopy
 	WHERE table_schema = database()
 ) _inner
 GROUP BY table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
@@ -69,7 +69,7 @@ FROM (
 	UNION ALL
 
 	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
-	FROM _vt.schemacopy
+	FROM mysql.schemacopy
 	WHERE table_schema = database()
 ) _inner
 GROUP BY table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
@@ -77,10 +77,10 @@ HAVING COUNT(*) = 1
 `
 
 	// ClearSchemaCopy query clears the schemacopy table.
-	ClearSchemaCopy = `delete from _vt.schemacopy where table_schema = database()`
+	ClearSchemaCopy = `delete from mysql.schemacopy where table_schema = database()`
 
 	// InsertIntoSchemaCopy query copies over the schema information from information_schema.columns table.
-	InsertIntoSchemaCopy = `insert _vt.schemacopy
+	InsertIntoSchemaCopy = `insert mysql.schemacopy
 select table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 from information_schema.columns
 where table_schema = database()`
@@ -90,14 +90,14 @@ where table_schema = database()`
 
 	// FetchUpdatedTables queries fetches all information about updated tables
 	FetchUpdatedTables = `select  ` + fetchColumns + `
-from _vt.schemacopy
+from mysql.schemacopy
 where table_schema = database() and
 	table_name in ::tableNames
 order by table_name, ordinal_position`
 
 	// FetchTables queries fetches all information about tables
 	FetchTables = `select ` + fetchColumns + `
-from _vt.schemacopy
+from mysql.schemacopy
 where table_schema = database()
 order by table_name, ordinal_position`
 
@@ -105,31 +105,31 @@ order by table_name, ordinal_position`
 	GetColumnNamesQueryPatternForTable = `SELECT COLUMN_NAME.*TABLE_NAME.*%s.*`
 
 	// Views
-	InsertIntoViewsTable = `insert into _vt.views (
+	InsertIntoViewsTable = `insert into mysql.views (
     table_schema,
 	table_name,
 	create_statement) values (database(), :table_name, :create_statement)`
 
-	ReplaceIntoViewsTable = `replace into _vt.views (
+	ReplaceIntoViewsTable = `replace into mysql.views (
 	table_schema,
 	table_name,
 	create_statement) values (database(), :table_name, :create_statement)`
 
-	UpdateViewsTable = `update _vt.views 
+	UpdateViewsTable = `update mysql.views 
 	set create_statement = :create_statement 
 	where table_schema = database() and table_name = :table_name`
 
-	DeleteFromViewsTable = `delete from _vt.views where table_schema = database() and table_name in ::table_name`
+	DeleteFromViewsTable = `delete from mysql.views where table_schema = database() and table_name in ::table_name`
 
-	SelectFromViewsTable = `select table_name from _vt.views where table_schema = database() and table_name in ::table_name`
+	SelectFromViewsTable = `select table_name from mysql.views where table_schema = database() and table_name in ::table_name`
 
-	SelectAllViews = `select table_name, updated_at from _vt.views where table_schema = database()`
+	SelectAllViews = `select table_name, updated_at from mysql.views where table_schema = database()`
 
 	// FetchUpdatedViews queries fetches information about updated views
-	FetchUpdatedViews = `select table_name, create_statement from _vt.views where table_schema = database() and table_name in ::viewnames`
+	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_schema = database() and table_name in ::viewnames`
 
 	// FetchViews queries fetches all views
-	FetchViews = `select table_name, create_statement from _vt.views where table_schema = database()`
+	FetchViews = `select table_name, create_statement from mysql.views where table_schema = database()`
 
 	FetchDbList = `select schema_name from information_schema.schemata`
 )

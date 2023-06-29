@@ -68,8 +68,8 @@ done
 /vt/bin/vtctlclient --server $VTCTLD_SERVER GetSchema $dest_alias
 
 # Start vreplication
-/vt/bin/vtctlclient --server $VTCTLD_SERVER VReplicationExec $dest_alias 'insert into _vt.vreplication (db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('"'"''"$dest_keyspace"''"'"', '"'"'keyspace:\"'"$source_keyspace"'\" shard:\"'"$source_shard"'\" filter:<rules:<match:\"/.*\" > > on_ddl:EXEC_IGNORE '"'"', '"'"''"'"', 9999, 9999, '"'"'primary'"'"', 0, 0, '"'"'Running'"'"')'
+/vt/bin/vtctlclient --server $VTCTLD_SERVER VReplicationExec $dest_alias 'insert into mysql.vreplication (db_name, source, pos, max_tps, max_replication_lag, tablet_types, time_updated, transaction_timestamp, state) values('"'"''"$dest_keyspace"''"'"', '"'"'keyspace:\"'"$source_keyspace"'\" shard:\"'"$source_shard"'\" filter:<rules:<match:\"/.*\" > > on_ddl:EXEC_IGNORE '"'"', '"'"''"'"', 9999, 9999, '"'"'primary'"'"', 0, 0, '"'"'Running'"'"')'
 
 # Check vreplication status
-/vt/bin/vtctlclient --server $VTCTLD_SERVER VReplicationExec $dest_alias 'select * from _vt.vreplication'
+/vt/bin/vtctlclient --server $VTCTLD_SERVER VReplicationExec $dest_alias 'select * from mysql.vreplication'
 

@@ -99,7 +99,7 @@ func FuzzEngine(data []byte) int {
 	vre := NewTestEngine(topoServer, "cell1", mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	// Fuzzer fails if this expectation is not made first:
-	dbClient.ExpectRequest("select * from _vt.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
 	err = makeExpectations(dbClient, f)
 	if err != nil {
 		return 0

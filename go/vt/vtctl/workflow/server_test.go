@@ -137,7 +137,7 @@ func TestCheckReshardingJournalExistsOnTablet(t *testing.T) {
 			tmc := &fakeTMC{
 				vrepQueriesByTablet: map[string]map[string]*querypb.QueryResult{
 					topoproto.TabletAliasString(tablet.Alias): { // always use the tablet shared by these tests cases
-						"select val from _vt.resharding_journal where id=1": tt.result,
+						"select val from mysql.resharding_journal where id=1": tt.result,
 					},
 				},
 			}

@@ -107,7 +107,7 @@ func init() {
 	tabletconntest.SetProtocol("go.vt.vttablet.tabletmanager.vreplication.framework_test", "test")
 
 	binlogplayer.RegisterClientFactory("test", func() binlogplayer.Client { return globalFBC })
-	heartbeatRe = regexp.MustCompile(`update _vt.vreplication set time_updated=\d+ where id=\d+`)
+	heartbeatRe = regexp.MustCompile(`update mysql.vreplication set time_updated=\d+ where id=\d+`)
 }
 
 func TestMain(m *testing.M) {
@@ -435,9 +435,9 @@ func (dbc *realDBClient) ExecuteFetch(query string, maxrows int) (*sqltypes.Resu
 func expectDeleteQueries(t *testing.T) {
 	t.Helper()
 	expectNontxQueries(t, qh.Expect(
-		"/delete from _vt.vreplication",
-		"/delete from _vt.copy_state",
-		"/delete from _vt.post_copy_action",
+		"/delete from mysql.vreplication",
+		"/delete from mysql.copy_state",
+		"/delete from mysql.post_copy_action",
 	))
 }
 
@@ -482,7 +482,7 @@ func expectLogsAndUnsubscribe(t *testing.T, logs []LogExpectation, logCh chan an
 
 func shouldIgnoreQuery(query string) bool {
 	queriesToIgnore := []string{
-		"_vt.vreplication_log",   // ignore all selects, updates and inserts into this table
+		"mysql.vreplication_log", // ignore all selects, updates and inserts into this table
 		"@@session.sql_mode",     // ignore all selects, and sets of this variable
 		", time_heartbeat=",      // update of last heartbeat time, can happen out-of-band, so can't test for it
 		", time_throttled=",      // update of last throttle time, can happen out-of-band, so can't test for it
@@ -559,7 +559,7 @@ func expectDBClientQueries(t *testing.T, expectations qh.ExpectationSequence, sk
 }
 
 // expectNontxQueries disregards transactional statements like begin and commit.
-// It also disregards updates to _vt.vreplication.
+// It also disregards updates to mysql.vreplication.
 func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 	t.Helper()
 
@@ -576,7 +576,7 @@ func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 	retry:
 		select {
 		case got = <-globalDBQueries:
-			if got == "begin" || got == "commit" || got == "rollback" || strings.Contains(got, "update _vt.vreplication set pos") || shouldIgnoreQuery(got) {
+			if got == "begin" || got == "commit" || got == "rollback" || strings.Contains(got, "update mysql.vreplication set pos") || shouldIgnoreQuery(got) {
 				goto retry
 			}
 
@@ -594,7 +594,7 @@ func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 	for {
 		select {
 		case got := <-globalDBQueries:
-			if got == "begin" || got == "commit" || got == "rollback" || strings.Contains(got, "_vt.vreplication") {
+			if got == "begin" || got == "commit" || got == "rollback" || strings.Contains(got, "mysql.vreplication") {
 				continue
 			}
 			if shouldIgnoreQuery(got) {

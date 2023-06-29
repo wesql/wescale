@@ -19,10 +19,10 @@ package sidecardb
 /*
 
 The sidecardb module is used to create and upgrade the sidecar database schema on tablet init. The sidecar database
-is named `_vt`.
+is named `mysql`.
 
-The schema subdirectory has subdirectories, categorized by module, with one file per table in _vt. Each has the latest
-schema for each table in _vt (in the form of a create table statement).
+The schema subdirectory has subdirectories, categorized by module, with one file per table in mysql. Each has the latest
+schema for each table inmysql(in the form of a create table statement).
 
 sidecardb uses the schemadiff module in Vitess to reach the desired schema for each table.
 

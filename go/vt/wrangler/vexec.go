@@ -45,9 +45,9 @@ import (
 )
 
 const (
-	vexecTableQualifier   = "_vt"
+	vexecTableQualifier   = "mysql"
 	vreplicationTableName = "vreplication"
-	sqlVReplicationDelete = "delete from _vt.vreplication"
+	sqlVReplicationDelete = "delete from mysql.vreplication"
 )
 
 // vexec is the construct by which we run a query against backend shards. vexec is created by user-facing
@@ -294,7 +294,7 @@ func (wr *Wrangler) convertQueryResultToSQLTypesResult(results map[*topo.TabletI
 	return retResults
 }
 
-// WorkflowAction can start/stop/delete or list streams in _vt.vreplication on all primaries in the target keyspace of the workflow.
+// WorkflowAction can start/stop/delete or list streams in mysql.vreplication on all primaries in the target keyspace of the workflow.
 func (wr *Wrangler) WorkflowAction(ctx context.Context, workflow, keyspace, action string, dryRun bool) (map[*topo.TabletInfo]*sqltypes.Result, error) {
 
 	if action == "show" {
@@ -318,7 +318,7 @@ func (wr *Wrangler) WorkflowAction(ctx context.Context, workflow, keyspace, acti
 
 func (wr *Wrangler) getWorkflowActionQuery(action string) (string, error) {
 	var query string
-	updateSQL := "update _vt.vreplication set state = %s"
+	updateSQL := "update mysql.vreplication set state = %s"
 	switch action {
 	case "stop":
 		query = fmt.Sprintf(updateSQL, encodeString("Stopped"))
@@ -342,7 +342,7 @@ func (wr *Wrangler) execWorkflowAction(ctx context.Context, workflow, keyspace, 
 
 // WorkflowTagAction sets or clears the tags for a workflow in a keyspace
 func (wr *Wrangler) WorkflowTagAction(ctx context.Context, keyspace string, workflow string, tags string) (map[*topo.TabletInfo]*sqltypes.Result, error) {
-	query := fmt.Sprintf("update _vt.vreplication set tags = %s", encodeString(tags))
+	query := fmt.Sprintf("update mysql.vreplication set tags = %s", encodeString(tags))
 	results, err := wr.runVexec(ctx, workflow, keyspace, query, false)
 	return wr.convertQueryResultToSQLTypesResult(results), err
 }
@@ -399,41 +399,41 @@ type copyState struct {
 	LastPK string
 }
 
-// ReplicationStatus includes data from the _vt.vreplication table, along with other useful relevant data.
+// ReplicationStatus includes data from the mysql.vreplication table, along with other useful relevant data.
 type ReplicationStatus struct {
 	// Shard represents the relevant shard name.
 	Shard string
 	// Tablet is the tablet alias that the ReplicationStatus came from.
 	Tablet string
-	// ID represents the id column from the _vt.vreplication table.
+	// ID represents the id column from the mysql.vreplication table.
 	ID int64
 	// Bls represents the BinlogSource.
 	Bls *binlogdatapb.BinlogSource
-	// Pos represents the pos column from the _vt.vreplication table.
+	// Pos represents the pos column from the mysql.vreplication table.
 	Pos string
-	// StopPos represents the stop_pos column from the _vt.vreplication table.
+	// StopPos represents the stop_pos column from the mysql.vreplication table.
 	StopPos string
-	// State represents the state column from the _vt.vreplication table.
+	// State represents the state column from the mysql.vreplication table.
 	State string
-	// DbName represents the db_name column from the _vt.vreplication table.
+	// DbName represents the db_name column from the mysql.vreplication table.
 	DBName string
-	// TransactionTimestamp represents the transaction_timestamp column from the _vt.vreplication table.
+	// TransactionTimestamp represents the transaction_timestamp column from the mysql.vreplication table.
 	TransactionTimestamp int64
-	// TimeUpdated represents the time_updated column from the _vt.vreplication table.
+	// TimeUpdated represents the time_updated column from the mysql.vreplication table.
 	TimeUpdated int64
-	// TimeHeartbeat represents the time_heartbeat column from the _vt.vreplication table.
+	// TimeHeartbeat represents the time_heartbeat column from the mysql.vreplication table.
 	TimeHeartbeat int64
-	// TimeThrottled represents the time_throttled column from the _vt.vreplication table.
+	// TimeThrottled represents the time_throttled column from the mysql.vreplication table.
 	TimeThrottled int64
-	// ComponentThrottled represents the component_throttled column from the _vt.vreplication table.
+	// ComponentThrottled represents the component_throttled column from the mysql.vreplication table.
 	ComponentThrottled string
-	// Message represents the message column from the _vt.vreplication table.
+	// Message represents the message column from the mysql.vreplication table.
 	Message string
 	// Tags contain the tags specified for this stream
 	Tags            string
 	WorkflowType    string
 	WorkflowSubType string
-	// CopyState represents the rows from the _vt.copy_state table.
+	// CopyState represents the rows from the mysql.copy_state table.
 	CopyState []copyState
 	// sourceTimeZone represents the time zone of each stream, only set if not UTC
 	sourceTimeZone string
@@ -573,7 +573,7 @@ func (wr *Wrangler) getStreams(ctx context.Context, workflow, keyspace string) (
 		workflow_type, 
 		workflow_sub_type,
 		defer_secondary_keys
-	from _vt.vreplication`
+	from mysql.vreplication`
 	results, err := wr.runVexec(ctx, workflow, keyspace, query, false)
 	if err != nil {
 		return nil, err
@@ -690,7 +690,7 @@ func (wr *Wrangler) ListAllWorkflows(ctx context.Context, keyspace string, activ
 	if active {
 		where = " where state <> 'Stopped'"
 	}
-	query := "select distinct workflow from _vt.vreplication" + where
+	query := "select distinct workflow from mysql.vreplication" + where
 	vx := vtctldvexec.NewVExec(keyspace, "", wr.ts, wr.tmc)
 	results, err := vx.QueryContext(ctx, query)
 	if err != nil {
@@ -757,7 +757,7 @@ func (wr *Wrangler) printWorkflowList(keyspace string, workflows []string) {
 
 func (wr *Wrangler) getCopyState(ctx context.Context, tablet *topo.TabletInfo, id int64) ([]copyState, error) {
 	var cs []copyState
-	query := fmt.Sprintf("select table_name, lastpk from _vt.copy_state where vrepl_id = %d and id in (select max(id) from _vt.copy_state where vrepl_id = %d group by vrepl_id, table_name)",
+	query := fmt.Sprintf("select table_name, lastpk from mysql.copy_state where vrepl_id = %d and id in (select max(id) from mysql.copy_state where vrepl_id = %d group by vrepl_id, table_name)",
 		id, id)
 	qr, err := wr.VReplicationExec(ctx, tablet.Alias, query)
 	if err != nil {

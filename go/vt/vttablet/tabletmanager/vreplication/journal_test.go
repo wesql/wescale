@@ -67,21 +67,21 @@ func TestJournalOneToOne(t *testing.T) {
 			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10",
 		}},
 	}
-	query := fmt.Sprintf("insert into _vt.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
+	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
 	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from _vt.resharding_journal"})
+	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
 
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
-		`/insert into _vt.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"0\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10'`,
-		fmt.Sprintf("delete from _vt.vreplication where id=%d", firstID),
+		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"0\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10'`,
+		fmt.Sprintf("delete from mysql.vreplication where id=%d", firstID),
 		"commit",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set state='Running', message='' where id.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set state='Running', message='' where id.*",
 	))
 
 	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from _vt.vreplication"); err != nil {
+	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
 		t.Fatal(err)
 	}
 	expectDeleteQueries(t)
@@ -133,24 +133,24 @@ func TestJournalOneToMany(t *testing.T) {
 			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:5-10",
 		}},
 	}
-	query := fmt.Sprintf("insert into _vt.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
+	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
 	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from _vt.resharding_journal"})
+	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
 
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
-		`/insert into _vt.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"-80\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-5'`,
-		`/insert into _vt.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"80-\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:5-10'`,
-		fmt.Sprintf("delete from _vt.vreplication where id=%d", firstID),
+		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"-80\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-5'`,
+		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"80-\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:5-10'`,
+		fmt.Sprintf("delete from mysql.vreplication where id=%d", firstID),
 		"commit",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set state='Running', message='' where id.*",
-		"/update _vt.vreplication set state='Running', message='' where id.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set state='Running', message='' where id.*",
+		"/update mysql.vreplication set state='Running', message='' where id.*",
 	))
 
 	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from _vt.vreplication"); err != nil {
+	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
 		t.Fatal(err)
 	}
 	expectDeleteQueries(t)
@@ -197,21 +197,21 @@ func TestJournalTablePresent(t *testing.T) {
 			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10",
 		}},
 	}
-	query := fmt.Sprintf("insert into _vt.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
+	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
 	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from _vt.resharding_journal"})
+	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
 
 	expectDBClientQueries(t, qh.Expect(
 		"begin",
-		`/insert into _vt.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"0\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10'`,
-		fmt.Sprintf("delete from _vt.vreplication where id=%d", firstID),
+		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"0\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10'`,
+		fmt.Sprintf("delete from mysql.vreplication where id=%d", firstID),
 		"commit",
-		"/update _vt.vreplication set message='Picked source tablet.*",
-		"/update _vt.vreplication set state='Running', message='' where id.*",
+		"/update mysql.vreplication set message='Picked source tablet.*",
+		"/update mysql.vreplication set state='Running', message='' where id.*",
 	))
 
 	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from _vt.vreplication"); err != nil {
+	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
 		t.Fatal(err)
 	}
 	expectDeleteQueries(t)
@@ -259,12 +259,12 @@ func TestJournalTableNotPresent(t *testing.T) {
 			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10",
 		}},
 	}
-	query := fmt.Sprintf("insert into _vt.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
+	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
 	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from _vt.resharding_journal"})
+	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
 
 	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from _vt.vreplication"); err != nil {
+	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
 		t.Fatal(err)
 	}
 	expectDeleteQueries(t)
@@ -317,16 +317,16 @@ func TestJournalTableMixed(t *testing.T) {
 			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-10",
 		}},
 	}
-	query := fmt.Sprintf("insert into _vt.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
+	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
 	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from _vt.resharding_journal"})
+	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
 
 	expectDBClientQueries(t, qh.Expect(
-		"/update _vt.vreplication set state='Stopped', message='unable to handle journal event: tables were partially matched' where id",
+		"/update mysql.vreplication set state='Stopped', message='unable to handle journal event: tables were partially matched' where id",
 	))
 
 	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from _vt.vreplication"); err != nil {
+	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
 		t.Fatal(err)
 	}
 	expectDeleteQueries(t)

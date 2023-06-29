@@ -9,7 +9,7 @@ import "vitess.io/vitess/go/mysql"
 
 // Keyspace
 const (
-	DefaultKeyspace = "_vt"
+	DefaultKeyspace = "mysql"
 	DefaultShard    = "0"
 )
 

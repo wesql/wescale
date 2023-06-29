@@ -92,7 +92,7 @@ func (s *Server) CheckReshardingJournalExistsOnTablet(ctx context.Context, table
 		exists  bool
 	)
 
-	query := fmt.Sprintf("select val from _vt.resharding_journal where id=%v", migrationID)
+	query := fmt.Sprintf("select val from mysql.resharding_journal where id=%v", migrationID)
 	p3qr, err := s.tmc.VReplicationExec(ctx, tablet, query)
 	if err != nil {
 		return nil, false, err
@@ -298,7 +298,7 @@ func (s *Server) GetWorkflows(ctx context.Context, req *vtctldatapb.GetWorkflows
 			workflow_type,
 			workflow_sub_type
 		FROM
-			_vt.vreplication
+			mysql.vreplication
 		%s`,
 		where,
 	)
@@ -528,7 +528,7 @@ SELECT
 	updated_at,
 	count
 FROM
-	_vt.vreplication_log
+	mysql.vreplication_log
 ORDER BY
 	vrepl_id ASC,
 	id ASC
@@ -627,8 +627,8 @@ ORDER BY
 				}
 
 				// Earlier, in the main loop where we called scanWorkflow for
-				// each _vt.vreplication row, we also sorted each ShardStreams
-				// slice by ascending id, and our _vt.vreplication_log query
+				// each mysql.vreplication row, we also sorted each ShardStreams
+				// slice by ascending id, and our mysql.vreplication_log query
 				// ordered by (stream_id ASC, id ASC), so we can walk the
 				// streams in index order in O(n) amortized over all the rows
 				// for this tablet.
@@ -727,7 +727,7 @@ func (s *Server) getWorkflowCopyStates(ctx context.Context, tablet *topo.TabletI
 	span.Annotate("tablet_alias", tablet.AliasString())
 	span.Annotate("vrepl_id", id)
 
-	query := fmt.Sprintf("select table_name, lastpk from _vt.copy_state where vrepl_id = %d and id in (select max(id) from _vt.copy_state where vrepl_id = %d group by vrepl_id, table_name)", id, id)
+	query := fmt.Sprintf("select table_name, lastpk from mysql.copy_state where vrepl_id = %d and id in (select max(id) from mysql.copy_state where vrepl_id = %d group by vrepl_id, table_name)", id, id)
 	qr, err := s.tmc.VReplicationExec(ctx, tablet.Tablet, query)
 	if err != nil {
 		return nil, err

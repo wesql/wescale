@@ -148,7 +148,7 @@ func TestTxExecutorCommitRedoFail(t *testing.T) {
 	err := txe.Prepare(txid, "bb")
 	require.NoError(t, err)
 	defer txe.RollbackPrepared("bb", 0)
-	db.AddQuery("update _vt.redo_state set state = 'Failed' where dtid = 'bb'", &sqltypes.Result{})
+	db.AddQuery("update mysql.redo_state set state = 'Failed' where dtid = 'bb'", &sqltypes.Result{})
 	err = txe.CommitPrepared("bb")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "is not supported")
@@ -218,7 +218,7 @@ func TestExecutorStartCommit(t *testing.T) {
 	defer db.Close()
 	defer tsv.StopService()
 
-	commitTransition := fmt.Sprintf("update _vt.dt_state set state = %d where dtid = 'aa' and state = %d", int(querypb.TransactionState_COMMIT), int(querypb.TransactionState_PREPARE))
+	commitTransition := fmt.Sprintf("update mysql.dt_state set state = %d where dtid = 'aa' and state = %d", int(querypb.TransactionState_COMMIT), int(querypb.TransactionState_PREPARE))
 	db.AddQuery(commitTransition, &sqltypes.Result{RowsAffected: 1})
 	txid := newTxForPrep(tsv)
 	err := txe.StartCommit(txid, "aa")
@@ -236,7 +236,7 @@ func TestExecutorSetRollback(t *testing.T) {
 	defer db.Close()
 	defer tsv.StopService()
 
-	rollbackTransition := fmt.Sprintf("update _vt.dt_state set state = %d where dtid = 'aa' and state = %d", int(querypb.TransactionState_ROLLBACK), int(querypb.TransactionState_PREPARE))
+	rollbackTransition := fmt.Sprintf("update mysql.dt_state set state = %d where dtid = 'aa' and state = %d", int(querypb.TransactionState_ROLLBACK), int(querypb.TransactionState_PREPARE))
 	db.AddQuery(rollbackTransition, &sqltypes.Result{RowsAffected: 1})
 	txid := newTxForPrep(tsv)
 	err := txe.SetRollback("aa", txid)
@@ -254,8 +254,8 @@ func TestExecutorConcludeTransaction(t *testing.T) {
 	defer db.Close()
 	defer tsv.StopService()
 
-	db.AddQuery("delete from _vt.dt_state where dtid = 'aa'", &sqltypes.Result{})
-	db.AddQuery("delete from _vt.dt_participant where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.dt_state where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.dt_participant where dtid = 'aa'", &sqltypes.Result{})
 	err := txe.ConcludeTransaction("aa")
 	require.NoError(t, err)
 }
@@ -265,7 +265,7 @@ func TestExecutorReadTransaction(t *testing.T) {
 	defer db.Close()
 	defer tsv.StopService()
 
-	db.AddQuery("select dtid, state, time_created from _vt.dt_state where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("select dtid, state, time_created from mysql.dt_state where dtid = 'aa'", &sqltypes.Result{})
 	got, err := txe.ReadTransaction("aa")
 	require.NoError(t, err)
 	want := &querypb.TransactionMetadata{}
@@ -285,8 +285,8 @@ func TestExecutorReadTransaction(t *testing.T) {
 			sqltypes.NewVarBinary("1"),
 		}},
 	}
-	db.AddQuery("select dtid, state, time_created from _vt.dt_state where dtid = 'aa'", txResult)
-	db.AddQuery("select keyspace, shard from _vt.dt_participant where dtid = 'aa'", &sqltypes.Result{
+	db.AddQuery("select dtid, state, time_created from mysql.dt_state where dtid = 'aa'", txResult)
+	db.AddQuery("select keyspace, shard from mysql.dt_participant where dtid = 'aa'", &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{Type: sqltypes.VarChar},
 			{Type: sqltypes.VarChar},
@@ -331,7 +331,7 @@ func TestExecutorReadTransaction(t *testing.T) {
 			sqltypes.NewVarBinary("1"),
 		}},
 	}
-	db.AddQuery("select dtid, state, time_created from _vt.dt_state where dtid = 'aa'", txResult)
+	db.AddQuery("select dtid, state, time_created from mysql.dt_state where dtid = 'aa'", txResult)
 	want.State = querypb.TransactionState_COMMIT
 	got, err = txe.ReadTransaction("aa")
 	require.NoError(t, err)
@@ -351,7 +351,7 @@ func TestExecutorReadTransaction(t *testing.T) {
 			sqltypes.NewVarBinary("1"),
 		}},
 	}
-	db.AddQuery("select dtid, state, time_created from _vt.dt_state where dtid = 'aa'", txResult)
+	db.AddQuery("select dtid, state, time_created from mysql.dt_state where dtid = 'aa'", txResult)
 	want.State = querypb.TransactionState_ROLLBACK
 	got, err = txe.ReadTransaction("aa")
 	require.NoError(t, err)
@@ -499,8 +499,8 @@ func newTestTxExecutor(t *testing.T) (txe *TxExecutor, tsv *TabletServer, db *fa
 	tsv = newTestTabletServer(ctx, smallTxPool, db)
 	db.AddQueryPattern("insert into _vt\\.redo_state\\(dtid, state, time_created\\) values \\('aa', 1,.*", &sqltypes.Result{})
 	db.AddQueryPattern("insert into _vt\\.redo_statement.*", &sqltypes.Result{})
-	db.AddQuery("delete from _vt.redo_state where dtid = 'aa'", &sqltypes.Result{})
-	db.AddQuery("delete from _vt.redo_statement where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.redo_state where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.redo_statement where dtid = 'aa'", &sqltypes.Result{})
 	db.AddQuery("update test_table set `name` = 2 where pk = 1 limit 10001", &sqltypes.Result{})
 	return &TxExecutor{
 		ctx:      ctx,
@@ -516,8 +516,8 @@ func newShortAgeExecutor(t *testing.T) (txe *TxExecutor, tsv *TabletServer, db *
 	tsv = newTestTabletServer(ctx, smallTxPool|shortTwopcAge, db)
 	db.AddQueryPattern("insert into _vt\\.redo_state\\(dtid, state, time_created\\) values \\('aa', 1,.*", &sqltypes.Result{})
 	db.AddQueryPattern("insert into _vt\\.redo_statement.*", &sqltypes.Result{})
-	db.AddQuery("delete from _vt.redo_state where dtid = 'aa'", &sqltypes.Result{})
-	db.AddQuery("delete from _vt.redo_statement where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.redo_state where dtid = 'aa'", &sqltypes.Result{})
+	db.AddQuery("delete from mysql.redo_statement where dtid = 'aa'", &sqltypes.Result{})
 	db.AddQuery("update test_table set `name` = 2 where pk = 1 limit 10001", &sqltypes.Result{})
 	return &TxExecutor{
 		ctx:      ctx,

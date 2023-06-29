@@ -56,7 +56,7 @@ const (
 	// use pt-osc's naming convention, this format also ensures vstreamer ignores such tables
 	renameTableTemplate = "_%.59s_old" // limit table name to 64 characters
 
-	sqlDeleteWorkflow = "delete from _vt.vreplication where db_name = %s and workflow = %s"
+	sqlDeleteWorkflow = "delete from mysql.vreplication where db_name = %s and workflow = %s"
 )
 
 // accessType specifies the type of access for a shard (allow/disallow writes).
@@ -1247,7 +1247,7 @@ func (ts *trafficSwitcher) cancelMigration(ctx context.Context, sm *workflow.Str
 	sm.CancelMigration(ctx)
 
 	err = ts.ForAllTargets(func(target *workflow.MigrationTarget) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Running', message='' where db_name=%s and workflow=%s", encodeString(target.GetPrimary().DbName()), encodeString(ts.WorkflowName()))
+		query := fmt.Sprintf("update mysql.vreplication set state='Running', message='' where db_name=%s and workflow=%s", encodeString(target.GetPrimary().DbName()), encodeString(ts.WorkflowName()))
 		_, err := ts.TabletManagerClient().VReplicationExec(ctx, target.GetPrimary().Tablet, query)
 		return err
 	})
@@ -1354,7 +1354,7 @@ func (ts *trafficSwitcher) getReverseVReplicationUpdateQuery(targetCell string, 
 	}
 
 	if ts.optCells != "" || ts.optTabletTypes != "" {
-		query := fmt.Sprintf("update _vt.vreplication set cell = '%s', tablet_types = '%s' where workflow = '%s' and db_name = '%s'",
+		query := fmt.Sprintf("update mysql.vreplication set cell = '%s', tablet_types = '%s' where workflow = '%s' and db_name = '%s'",
 			ts.optCells, ts.optTabletTypes, ts.ReverseWorkflowName(), dbname)
 		return query
 	}
@@ -1413,7 +1413,7 @@ func (ts *trafficSwitcher) createJournals(ctx context.Context, sourceWorkflows [
 		}
 		log.Infof("Creating journal %v", journal)
 		ts.Logger().Infof("Creating journal: %v", journal)
-		statement := fmt.Sprintf("insert into _vt.resharding_journal "+
+		statement := fmt.Sprintf("insert into mysql.resharding_journal "+
 			"(id, db_name, val) "+
 			"values (%v, %v, %v)",
 			ts.id, encodeString(source.GetPrimary().DbName()), encodeString(journal.String()))
@@ -1546,7 +1546,7 @@ func (ts *trafficSwitcher) deleteShardRoutingRules(ctx context.Context) error {
 
 func (ts *trafficSwitcher) startReverseVReplication(ctx context.Context) error {
 	return ts.ForAllSources(func(source *workflow.MigrationSource) error {
-		query := fmt.Sprintf("update _vt.vreplication set state='Running', message='' where db_name=%s", encodeString(source.GetPrimary().DbName()))
+		query := fmt.Sprintf("update mysql.vreplication set state='Running', message='' where db_name=%s", encodeString(source.GetPrimary().DbName()))
 		_, err := ts.VReplicationExec(ctx, source.GetPrimary().Alias, query)
 		return err
 	})
@@ -1608,7 +1608,7 @@ func doValidateWorkflowHasCompleted(ctx context.Context, ts *trafficSwitcher) er
 	} else {
 		_ = ts.ForAllTargets(func(target *workflow.MigrationTarget) error {
 			wg.Add(1)
-			query := fmt.Sprintf("select 1 from _vt.vreplication where db_name='%s' and workflow='%s' and message!='FROZEN'", target.GetPrimary().DbName(), ts.WorkflowName())
+			query := fmt.Sprintf("select 1 from mysql.vreplication where db_name='%s' and workflow='%s' and message!='FROZEN'", target.GetPrimary().DbName(), ts.WorkflowName())
 			rs, _ := ts.VReplicationExec(ctx, target.GetPrimary().Alias, query)
 			if len(rs.Rows) > 0 {
 				rec.RecordError(fmt.Errorf("vreplication streams are not frozen on tablet %d", target.GetPrimary().Alias.Uid))
@@ -1714,7 +1714,7 @@ func (ts *trafficSwitcher) freezeTargetVReplication(ctx context.Context) error {
 	// re-invoked after a freeze, it will skip all the previous steps
 	err := ts.ForAllTargets(func(target *workflow.MigrationTarget) error {
 		ts.Logger().Infof("Marking target streams frozen for workflow %s db_name %s", ts.WorkflowName(), target.GetPrimary().DbName())
-		query := fmt.Sprintf("update _vt.vreplication set message = '%s' where db_name=%s and workflow=%s", workflow.Frozen, encodeString(target.GetPrimary().DbName()), encodeString(ts.WorkflowName()))
+		query := fmt.Sprintf("update mysql.vreplication set message = '%s' where db_name=%s and workflow=%s", workflow.Frozen, encodeString(target.GetPrimary().DbName()), encodeString(ts.WorkflowName()))
 		_, err := ts.TabletManagerClient().VReplicationExec(ctx, target.GetPrimary().Tablet, query)
 		return err
 	})
