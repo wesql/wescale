@@ -17,7 +17,7 @@ import (
 	"vitess.io/vitess/go/test/endtoend/utils"
 )
 
-func TestCompreeGtidOverTime(t *testing.T) {
+func TestCompressGtidOverTime(t *testing.T) {
 	execWithConnByVtgate(t, DefaultKeyspaceName, 1, func(conn *mysql.Conn) {
 		utils.Exec(t, conn, "create table t1 (c1 int PRIMARY KEY AUTO_INCREMENT, c2 int)")
 	})

@@ -7,9 +7,9 @@ package queries
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"sync"
+	"testing"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/test/endtoend/utils"
@@ -49,6 +49,10 @@ func TestReadAfterWrite_Global_Transaction(t *testing.T) {
 
 func TestReadAfterWrite_Global_Transaction_OLAP(t *testing.T) {
 	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, true)
+}
+
+func TestReadAfterWrite_Transaction_OLAP_CrossVTGate(t *testing.T) {
+	runReadAfterWriteGlobalCrossVTGateTest(t, true, "GLOBAL", true, true)
 }
 
 func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
@@ -134,6 +138,66 @@ func runReadAfterWriteGlobalTest(t *testing.T, enableReadWriteSplitting bool, re
 			assert.Equal(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
 		}
 	})
+}
+
+func runReadAfterWriteGlobalCrossVTGateTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, enableTransaction bool, olap bool) {
+	execWithConnByVtgate(t, DefaultKeyspaceName, 1, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, "create table t1 (c1 int PRIMARY KEY AUTO_INCREMENT, c2 int)")
+	})
+	defer execWithConnByVtgate(t, DefaultKeyspaceName, 1, func(conn *mysql.Conn) {
+		utils.Exec(t, conn, `drop table t1`)
+	})
+
+	// enable read after write & enable read after write for session
+	execWithConnByVtgate(t, DefaultKeyspaceName, 1, func(conn *mysql.Conn) {
+		if enableReadWriteSplitting {
+			utils.Exec(t, conn, "set session read_write_splitting_policy='random'")
+		}
+		utils.Exec(t, conn, fmt.Sprintf("set @@read_after_write_consistency='%s'", readAfterWriteConsistency))
+		if olap {
+			utils.Exec(t, conn, "set @@workload='OLAP'")
+		}
+	})
+
+	ch := make(chan uint64)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go execWithConnByVtgate(t, DefaultKeyspaceName, 1, func(conn *mysql.Conn) {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			if enableTransaction {
+				utils.Exec(t, conn, "begin")
+			}
+			result := utils.Exec(t, conn, "insert into t1(c1, c2) values(null, 1)")
+			if enableTransaction {
+				utils.Exec(t, conn, "commit")
+			}
+			lastInsertID := result.InsertID
+			ch <- lastInsertID
+		}
+		qr := utils.Exec(t, conn, "show lastseengtid")
+		assert.Truef(t, len(fmt.Sprintf("%v", qr.Rows[0])) < 100, "lastseengtid : %v ", qr.Rows[0])
+		//t.Logf("qr: %v len: %v", qr.Rows[0], len(fmt.Sprintf("%v", qr.Rows[0])))
+	})
+	go execWithConnByVtgate(t, DefaultKeyspaceName, 2, func(conn *mysql.Conn) {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			lastInsertID := <-ch
+			if enableTransaction {
+				utils.Exec(t, conn, "commit")
+			}
+			qr := utils.Exec(t, conn, "select c1 from t1 order by c1 desc limit 1")
+			if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
+				t.Fatalf("read_after_write get empty result")
+			}
+			c1Val, err := qr.Rows[0][0].ToUint64()
+			if err != nil {
+				t.Fatalf("ToUint64 failed: %v", err)
+			}
+			assert.Equal(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
+		}
+	})
+	wg.Wait()
 }
 
 func TestReadAfterWrite_Settings(t *testing.T) {

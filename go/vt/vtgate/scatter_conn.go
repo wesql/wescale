@@ -182,6 +182,13 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
+			if autocommit {
+				// As this is auto-commit, the transactionID is supposed to be zero.
+				if transactionID != int64(0) {
+					return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "in autocommit mode, transactionID should be zero but was: %d", transactionID)
+				}
+			}
+
 			qs, err = getQueryService(rs, info, session, false)
 			if err != nil {
 				return nil, err
@@ -205,19 +212,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway, qs, ctx, rs.Target)
+					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
 					if err != nil {
 						return nil, err
 					}
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-			}
-
-			if autocommit {
-				// As this is auto-commit, the transactionID is supposed to be zero.
-				if transactionID != int64(0) {
-					return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "in autocommit mode, transactionID should be zero but was: %d", transactionID)
-				}
 			}
 
 			switch info.actionNeeded {
@@ -396,7 +396,7 @@ func (stc *ScatterConn) StreamExecuteMulti(
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
 				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway, qs, ctx, rs.Target)
+					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
 					if err != nil {
 						return nil, err
 					}
@@ -902,7 +902,7 @@ const (
 	begin
 )
 
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, qs queryservice.QueryService, ctx context.Context, target *querypb.Target) error {
+func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, qs queryservice.QueryService, target *querypb.Target) error {
 	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
 		return nil
 	}
