@@ -18,7 +18,8 @@
 *.test
 *.result
 *.y
-
+go.mod
+go.sum
 .github/*
 bin/*
 config/*
