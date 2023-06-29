@@ -36,6 +36,11 @@
         time_from: $._config.defaultTimeFrom,
       },
 
+      local devDashboard = {
+        environments: ['dev'],
+        time_from: $._config.defaultTimeFrom,
+      },
+
       // Overview
       clusterOverview+: defaultDashboard {
         uid: 'vitess-cluster-overview',
@@ -63,6 +68,15 @@
         description: 'Detailed vtgate view by host',
         dashboardTags: $._config.grafanaDashboardMetadataDefault.dashboardTags + ['vtgate', 'host'],
       },
+
+      // Dev View
+      devOverview+: devDashboard{
+        uid: 'vitess-overview-dev',
+        title: 'overview dev %(dashboardNameSuffix)s' % $._config.grafanaDashboardMetadataDefault,
+        description: 'cluster overview in development environment',
+        dashboardTags: $._config.grafanaDashboardMetadataDefault.dashboardTags + ['devview', 'cluster'],
+      },
+
     },
   },
 

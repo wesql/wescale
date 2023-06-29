@@ -89,7 +89,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum by (plan_type)(
+                sum by (instance, plan_type)(
                   rate(
                     vttablet_queries_count{
                       instance=~"$host"
@@ -97,7 +97,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   )
                 )
               |||,
-            legendFormat: '{{plan_type}}',
+            legendFormat: '{{instance}} | {{plan_type}}',
           },
         ],
       },
@@ -140,7 +140,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum  by (table)(
+                sum by (instance, table)(
                   rate(
                     vttablet_query_counts{
                       instance=~"$host"
@@ -148,7 +148,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   )
                 )
               |||,
-            legendFormat: '{{table}}',
+            legendFormat: '{{instance}} | {{table}}',
             intervalFactor: 1,
           },
         ],
@@ -210,7 +210,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum by (plan)(
+                sum by (instance, plan)(
                   rate(
                     vttablet_query_error_counts{
                       instance=~"$host"
@@ -219,7 +219,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                 )
                 /
                 (
-                  sum by (plan)(
+                  sum by (instance, plan)(
                     rate(
                       vttablet_query_error_counts{
                         instance=~"$host"
@@ -227,7 +227,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                     )
                   )
                   +
-                  sum by (plan)(
+                  sum by (instance, plan)(
                     rate(
                       vttablet_query_counts{
                         instance=~"$host"
@@ -236,7 +236,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   )
                 )
               |||,
-            legendFormat: '{{plan}}',
+            legendFormat: '{{instance}} | {{plan}}',
           },
         ],
       },
@@ -254,7 +254,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum by (table)(
+                sum by (instance,table)(
                   rate(
                     vttablet_query_error_counts{
                       instance=~"$host"
@@ -263,7 +263,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                 )
                 /
                 (
-                  sum by (table)(
+                  sum by (instance,table)(
                     rate(
                       vttablet_query_error_counts{
                         instance=~"$host"
@@ -271,7 +271,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                     )
                   )
                   +
-                  sum by (table)(
+                  sum by (instance,table)(
                     rate(
                       vttablet_query_counts{
                         instance=~"$host"
@@ -280,7 +280,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   )
                 )
               |||,
-            legendFormat: '{{table}}',
+            legendFormat: '{{instance}} | {{table}}',
           },
         ],
       },
@@ -293,15 +293,15 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum by (table) (
+                sum by (instance,table) (
                   rate(
-                    vttablet_query_row_counts{
+                    vttablet_query_rows_returned{
                       instance=~"$host"
                     }[1m]
                   )
                 )
               |||,
-            legendFormat: '{{table}}',
+            legendFormat: '{{instance}} | {{table}}',
           },
         ],
       },
@@ -314,15 +314,15 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           {
             expr:
               |||
-                sum by (plan) (
+                sum by (instance,plan) (
                   rate(
-                    vttablet_query_row_counts{
+                    vttablet_query_rows_returned{
                       instance=~"$host"
                     }[1m]
                   )
                 )
               |||,
-            legendFormat: '{{plan}}',
+            legendFormat: '{{instance}} | {{plan}}',
           },
         ],
       },
@@ -460,7 +460,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             expr:
               |||
                 histogram_quantile(
-                  0.99,sum by(plan_type,le)(
+                  0.99,sum by(instance,plan_type,le)(
                     rate(
                       vttablet_queries_bucket{
                         instance=~"$host"
@@ -469,7 +469,34 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   )
                 )
               |||,
-            legendFormat: '{{plan_type}}',
+            legendFormat: '{{instance}} | {{plan_type}}',
+          },
+        ],
+      },
+
+    vttabletQueryDurationP99ByTableFilteredByInstance:
+      panel_template
+      + vitess_ct.panel.null_as_zeros {
+        title: 'Duration p99 (by table)',
+        format: 's',
+        legend_current: false,
+        legend_avg: true,
+        legend_sort: 'avg',
+        targets: [
+          {
+            expr:
+              |||
+                histogram_quantile(
+                  0.99,sum by(instance,table,le)(
+                    rate(
+                      vttablet_queries_bucket{
+                        instance=~"$host"
+                      }[1m]
+                    )
+                  )
+                )
+              |||,
+            legendFormat: '{{instance}} | {{table}}',
           },
         ],
       },
@@ -755,13 +782,13 @@ local vitess_ct = configuration_templates.prometheus_vitess;
       targets: [
         {
           expr: |||
-            sum by (error_code)(
+            sum by (instance,error_code)(
               vitess_mixin:vttablet_errors:rate1m{
                 instance=~"$host"
               }
             )
           |||,
-          legendFormat: 'ErrorCode: {{error_code}}',
+          legendFormat: '{{instance}} | ErrorCode: {{error_code}}',
         },
       ],
     },
@@ -882,7 +909,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
 
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vttabletGarbageCollectionCount: vitess_ct.panel.go_gc_ops {
-      title: 'GC Count',
+      title: 'GC Count (vttablet)',
       targets: [
         {
           expr:
@@ -903,7 +930,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
 
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vttabletGarbageCollectionDuration: vitess_ct.panel.go_gc_seconds {
-      title: 'GC Duration total per second',
+      title: 'GC Duration total per second (vttablet)',
       description: 'A summary of the pause duration of garbage collection cycles',
       targets: [
         {
@@ -924,7 +951,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     },
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vttabletGarbageCollectionDurationQuantiles: vitess_ct.panel.go_gc_seconds {
-      title: 'GC Duration quantiles (all hosts)',
+      title: 'GC Duration quantiles (vttablet - all hosts)',
       targets: [
         {
           expr:
