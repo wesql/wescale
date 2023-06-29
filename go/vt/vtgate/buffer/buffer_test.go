@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +24,6 @@ package buffer
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -31,10 +35,9 @@ import (
 )
 
 const (
-	keyspace = "ks1"
-	shard    = "0"
-	// shard2 is only used for tests with two concurrent failovers.
-	shard2 = "-80"
+	keyspace = defaultKeyspaceForBuffer
+	shard    = defaultShardForBuffer
+	shard2   = "-80"
 )
 
 var (
@@ -415,42 +418,6 @@ func testPassthroughDuringDrain1(t *testing.T, fail failover) {
 	}
 }
 
-// TestPassthroughIgnoredKeyspaceOrShard tests that the explicit whitelisting
-// of keyspaces (and optionally shards) ignores entries which are not listed.
-func TestPassthroughIgnoredKeyspaceOrShard(t *testing.T) {
-	testAllImplementations(t, testPassthroughIgnoredKeyspaceOrShard1)
-}
-
-func testPassthroughIgnoredKeyspaceOrShard1(t *testing.T, fail failover) {
-	cfg := NewDefaultConfig()
-	cfg.Enabled = true
-	cfg.Shards = map[string]bool{
-		topoproto.KeyspaceShardString(keyspace, shard): true,
-	}
-	b := New(cfg)
-
-	ignoredKeyspace := "ignored_ks"
-	if retryDone, err := b.WaitForFailoverEnd(context.Background(), ignoredKeyspace, shard, failoverErr); err != nil || retryDone != nil {
-		t.Fatalf("requests for ignored keyspaces must not be buffered. err: %v retryDone: %v", err, retryDone)
-	}
-	statsKeyJoined := strings.Join([]string{ignoredKeyspace, shard, skippedDisabled}, ".")
-	if got, want := requestsSkipped.Counts()[statsKeyJoined], int64(1); got != want {
-		t.Fatalf("request was not skipped as disabled: got = %v, want = %v", got, want)
-	}
-
-	ignoredShard := "ff-"
-	if retryDone, err := b.WaitForFailoverEnd(context.Background(), keyspace, ignoredShard, failoverErr); err != nil || retryDone != nil {
-		t.Fatalf("requests for ignored shards must not be buffered. err: %v retryDone: %v", err, retryDone)
-	}
-	if err := waitForPoolSlots(b, cfg.Size); err != nil {
-		t.Fatal(err)
-	}
-	statsKeyJoined = strings.Join([]string{keyspace, ignoredShard, skippedDisabled}, ".")
-	if got, want := requestsSkipped.Counts()[statsKeyJoined], int64(1); got != want {
-		t.Fatalf("request was not skipped as disabled: got = %v, want = %v", got, want)
-	}
-}
-
 // TestRequestCanceled_ExplicitEnd stops the buffering because the we see the
 // new primary.
 func TestRequestCanceled_ExplicitEnd(t *testing.T) {
@@ -591,66 +558,6 @@ func testEviction1(t *testing.T, fail failover) {
 	}
 }
 
-// TestEvictionNotPossible tests the case that the buffer is a) fully in use
-// by two failovers and b) the second failover doesn't use any slot in the
-// buffer and therefore cannot evict older entries.
-func TestEvictionNotPossible(t *testing.T) {
-	testAllImplementations(t, testEvictionNotPossible1)
-}
-
-func testEvictionNotPossible1(t *testing.T, fail failover) {
-	resetVariables()
-	defer checkVariables(t)
-
-	cfg := NewDefaultConfig()
-	cfg.Enabled = true
-	cfg.Shards = map[string]bool{
-		topoproto.KeyspaceShardString(keyspace, shard):  true,
-		topoproto.KeyspaceShardString(keyspace, shard2): true,
-	}
-	cfg.Size = 1
-
-	b := New(cfg)
-
-	// Make the buffer full (applies to all failovers).
-	// Also triggers buffering for the first shard.
-	stoppedFirstFailover := issueRequest(context.Background(), t, b, failoverErr)
-	if err := waitForRequestsInFlight(b, 1); err != nil {
-		t.Fatal(err)
-	}
-
-	// Newer requests of the second failover cannot evict anything because
-	// they have no entries buffered.
-	retryDone, bufferErr := b.WaitForFailoverEnd(context.Background(), keyspace, shard2, failoverErr)
-	if bufferErr == nil || retryDone != nil {
-		t.Fatalf("buffer should have returned an error because it's full: err: %v retryDone: %v", bufferErr, retryDone)
-	}
-	if got, want := vterrors.Code(bufferErr), vtrpcpb.Code_UNAVAILABLE; got != want {
-		t.Fatalf("wrong error code for evicted buffered request. got = %v, want = %v", got, want)
-	}
-	if got, want := bufferErr.Error(), bufferFullError.Error(); !strings.Contains(got, want) {
-		t.Fatalf("evicted buffered request should return a different error message. got = %v, want substring = %v", got, want)
-	}
-
-	// End of failover. Stop buffering.
-	fail(b, newPrimary, keyspace, shard, time.Unix(1, 0))
-
-	if err := <-stoppedFirstFailover; err != nil {
-		t.Fatalf("request should have been buffered and not returned an error: %v", err)
-	}
-	// Wait for the failover end to avoid races.
-	if err := waitForState(b, stateIdle); err != nil {
-		t.Fatal(err)
-	}
-	if err := waitForPoolSlots(b, 1); err != nil {
-		t.Fatal(err)
-	}
-	statsKeyJoined := strings.Join([]string{keyspace, shard2, string(skippedBufferFull)}, ".")
-	if got, want := requestsSkipped.Counts()[statsKeyJoined], int64(1); got != want {
-		t.Fatalf("skipped request was not tracked: got = %v, want = %v", got, want)
-	}
-}
-
 func TestWindow(t *testing.T) {
 	testAllImplementations(t, testWindow1)
 }
@@ -662,8 +569,7 @@ func testWindow1(t *testing.T, fail failover) {
 	cfg := NewDefaultConfig()
 	cfg.Enabled = true
 	cfg.Shards = map[string]bool{
-		topoproto.KeyspaceShardString(keyspace, shard):  true,
-		topoproto.KeyspaceShardString(keyspace, shard2): true,
+		topoproto.KeyspaceShardString(keyspace, shard): true,
 	}
 	cfg.Size = 1
 	cfg.Window = 1 * time.Millisecond
