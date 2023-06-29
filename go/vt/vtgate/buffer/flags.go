@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +52,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&bufferEnabledDryRun, "enable_buffer_dry_run", false, "Detect and log failover events, but do not actually buffer requests.")
 
 	fs.DurationVar(&bufferWindow, "buffer_window", 10*time.Second, "Duration for how long a request should be buffered at most.")
-	fs.IntVar(&bufferSize, "buffer_size", 1000, "Maximum number of buffered requests in flight (across all ongoing failovers).")
+	fs.IntVar(&bufferSize, "buffer_size", 10000, "Maximum number of buffered requests in flight (across all ongoing failovers).")
 	fs.DurationVar(&bufferMaxFailoverDuration, "buffer_max_failover_duration", 20*time.Second, "Stop buffering completely if a failover takes longer than this duration.")
 	fs.DurationVar(&bufferMinTimeBetweenFailovers, "buffer_min_time_between_failovers", 1*time.Minute, "Minimum time between the end of a failover and the start of the next one (tracked per shard). Faster consecutive failovers will not trigger buffering.")
 
@@ -70,8 +75,8 @@ func verifyFlags() error {
 	if bufferSize < 1 {
 		return fmt.Errorf("--buffer_size must be >= 1 (specified value: %d)", bufferSize)
 	}
-	if bufferMinTimeBetweenFailovers < bufferMaxFailoverDuration*time.Duration(2) {
-		return fmt.Errorf("--buffer_min_time_between_failovers should be at least twice the length of --buffer_max_failover_duration: %v vs. %v", bufferMinTimeBetweenFailovers, bufferMaxFailoverDuration)
+	if bufferMinTimeBetweenFailovers < bufferMaxFailoverDuration*time.Duration(1) {
+		return fmt.Errorf("--buffer_min_time_between_failovers should be at least the length of --buffer_max_failover_duration: %v vs. %v", bufferMinTimeBetweenFailovers, bufferMaxFailoverDuration)
 	}
 
 	if bufferDrainConcurrency < 1 {
