@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,8 @@ import (
 	"fmt"
 	"sync"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/log"
@@ -29,6 +36,11 @@ import (
 	"vitess.io/vitess/go/vt/srvtopo"
 	"vitess.io/vitess/go/vt/topo"
 	"vitess.io/vitess/go/vt/topo/topoproto"
+)
+
+const (
+	defaultKeyspaceForKew = global.DefaultKeyspace
+	defaultShardForKew    = global.DefaultShard
 )
 
 // KeyspaceEventWatcher is an auxiliary watcher that watches all availability incidents
@@ -193,18 +205,6 @@ func (kew *KeyspaceEventWatcher) run(ctx context.Context) {
 				}
 				kew.processHealthCheck(result)
 			}
-		}
-	}()
-
-	go func() {
-		// Seed the keyspace statuses once at startup
-		keyspaces, err := kew.ts.GetSrvKeyspaceNames(ctx, kew.localCell, true)
-		if err != nil {
-			log.Errorf("CEM: initialize failed for cell %q: %v", kew.localCell, err)
-			return
-		}
-		for _, ks := range keyspaces {
-			kew.getKeyspaceStatus(ks)
 		}
 	}()
 }
@@ -395,7 +395,7 @@ func newKeyspaceState(kew *KeyspaceEventWatcher, cell, keyspace string) *keyspac
 // processHealthCheck is the callback that is called by the global HealthCheck stream that was initiated
 // by this KeyspaceEventWatcher. it redirects the TabletHealth event to the corresponding keyspaceState
 func (kew *KeyspaceEventWatcher) processHealthCheck(th *TabletHealth) {
-	kss := kew.getKeyspaceStatus(th.Target.Keyspace)
+	kss := kew.getKeyspaceStatus()
 	if kss == nil {
 		return
 	}
@@ -405,18 +405,18 @@ func (kew *KeyspaceEventWatcher) processHealthCheck(th *TabletHealth) {
 
 // getKeyspaceStatus returns the keyspaceState object for the corresponding keyspace, allocating it
 // if we've never seen the keyspace before.
-func (kew *KeyspaceEventWatcher) getKeyspaceStatus(keyspace string) *keyspaceState {
+func (kew *KeyspaceEventWatcher) getKeyspaceStatus() *keyspaceState {
 	kew.mu.Lock()
 	defer kew.mu.Unlock()
 
-	kss := kew.keyspaces[keyspace]
+	kss := kew.keyspaces[defaultKeyspaceForKew]
 	if kss == nil {
-		kss = newKeyspaceState(kew, kew.localCell, keyspace)
-		kew.keyspaces[keyspace] = kss
+		kss = newKeyspaceState(kew, kew.localCell, defaultKeyspaceForKew)
+		kew.keyspaces[defaultKeyspaceForKew] = kss
 	}
 	if kss.deleted {
 		kss = nil
-		delete(kew.keyspaces, keyspace)
+		delete(kew.keyspaces, defaultKeyspaceForKew)
 	}
 	return kss
 }
@@ -430,11 +430,11 @@ func (kew *KeyspaceEventWatcher) TargetIsBeingResharded(target *query.Target) bo
 	if target.TabletType != topodatapb.TabletType_PRIMARY {
 		return false
 	}
-	ks := kew.getKeyspaceStatus(target.Keyspace)
+	ks := kew.getKeyspaceStatus()
 	if ks == nil {
 		return false
 	}
-	return ks.beingResharded(target.Shard)
+	return ks.beingResharded(defaultShardForKew)
 }
 
 // PrimaryIsNotServing checks if the reason why the given target is not accessible right now is
@@ -450,13 +450,13 @@ func (kew *KeyspaceEventWatcher) PrimaryIsNotServing(target *query.Target) bool 
 	if target.TabletType != topodatapb.TabletType_PRIMARY {
 		return false
 	}
-	ks := kew.getKeyspaceStatus(target.Keyspace)
+	ks := kew.getKeyspaceStatus()
 	if ks == nil {
 		return false
 	}
 	ks.mu.Lock()
 	defer ks.mu.Unlock()
-	if state, ok := ks.shards[target.Shard]; ok {
+	if state, ok := ks.shards[defaultShardForKew]; ok {
 		// If the primary tablet was present then externallyReparented will be non-zero and currentPrimary will be not nil
 		return !state.serving && !ks.consistent && state.externallyReparented != 0 && state.currentPrimary != nil
 	}

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +56,12 @@ func TestVariablesAreInitialized(t *testing.T) {
 	// Create a new buffer and make a call which will create the shardBuffer object.
 	// After that, the variables should be initialized for that shard.
 	b := New(NewDefaultConfig())
-	_, err := b.WaitForFailoverEnd(context.Background(), "init_test", "0", nil /* err */)
+	_, err := b.WaitForFailoverEnd(context.Background(), defaultKeyspaceForBuffer, defaultShardForBuffer, nil /* err */)
 	if err != nil {
 		t.Fatalf("buffer should just passthrough and not return an error: %v", err)
 	}
 
-	statsKey := []string{"init_test", "0"}
+	statsKey := []string{defaultKeyspaceForBuffer, defaultShardForBuffer}
 	type testCase struct {
 		desc     string
 		counter  *stats.CountersWithMultiLabels
