@@ -1755,7 +1755,7 @@ func TestACLHUP(t *testing.T) {
 	err = f.Close()
 	require.NoError(t, err)
 
-	tsv.InitACL(f.Name(), true, 0)
+	tsv.InitACL(nil, f.Name(), true, 0)
 
 	groups1 := tableacl.GetCurrentConfig().TableGroups
 	if name1 := groups1[0].GetName(); name1 != "group01" {

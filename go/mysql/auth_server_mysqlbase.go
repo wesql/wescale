@@ -167,7 +167,7 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 		TabletType: topodata.TabletType_PRIMARY,
 	}
 	// pull user from mysql.user
-	qr, err := a.qs.Execute(ctx, target, FetchUser, nil, 0, 0, nil)
+	qr, err := a.qs.ExecuteInternal(ctx, target, FetchUser, nil, 0, 0, nil)
 	if err != nil {
 		return err
 	}

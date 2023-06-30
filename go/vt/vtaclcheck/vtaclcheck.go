@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,7 @@ import (
 	"fmt"
 
 	"vitess.io/vitess/go/mysql"
+	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/tableacl"
 	"vitess.io/vitess/go/vt/tableacl/simpleacl"
 )
@@ -58,6 +64,8 @@ func Run() error {
 	if options.ACLFile != "" {
 		tableacl.Register("simpleacl", &simpleacl.Factory{})
 		err := tableacl.Init(
+			nil,
+			dbconfigs.New(nil),
 			options.ACLFile,
 			func() {},
 		)

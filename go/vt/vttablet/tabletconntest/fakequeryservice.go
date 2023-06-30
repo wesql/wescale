@@ -403,6 +403,11 @@ var ExecuteQueryResult = sqltypes.Result{
 	},
 }
 
+// ExecuteInternal is part of the queryservice.QueryService interface
+func (f *FakeQueryService) ExecuteInternal(ctx context.Context, target *querypb.Target, sql string, bindVariables map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
+	return f.Execute(ctx, target, sql, bindVariables, transactionID, reservedID, options)
+}
+
 // Execute is part of the queryservice.QueryService interface
 func (f *FakeQueryService) Execute(ctx context.Context, target *querypb.Target, sql string, bindVariables map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
 	if f.HasError {

@@ -441,6 +441,24 @@ type internalTabletConn struct {
 
 var _ queryservice.QueryService = (*internalTabletConn)(nil)
 
+// ExecuteInternal is part of queryservice.QueryService
+// We need to copy the bind variables as tablet server will change them.
+func (itc *internalTabletConn) ExecuteInternal(
+	ctx context.Context,
+	target *querypb.Target,
+	query string,
+	bindVars map[string]*querypb.BindVariable,
+	transactionID, reservedID int64,
+	options *querypb.ExecuteOptions,
+) (*sqltypes.Result, error) {
+	bindVars = sqltypes.CopyBindVariables(bindVars)
+	reply, err := itc.tablet.qsc.QueryService().ExecuteInternal(ctx, target, query, bindVars, transactionID, reservedID, options)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(vterrors.ToGRPC(err))
+	}
+	return reply, nil
+}
+
 // Execute is part of queryservice.QueryService
 // We need to copy the bind variables as tablet server will change them.
 func (itc *internalTabletConn) Execute(

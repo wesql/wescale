@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"vitess.io/vitess/go/vt/dbconfigs"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/tableacl/acl"
@@ -40,7 +47,7 @@ func (factory *fakeACLFactory) New(entries []string) (acl.ACL, error) {
 
 func TestInitWithInvalidFilePath(t *testing.T) {
 	tacl := tableACL{factory: &simpleacl.Factory{}}
-	if err := tacl.init("/invalid_file_path", func() {}); err == nil {
+	if err := tacl.init(nil, dbconfigs.New(nil), "/invalid_file_path", func() {}); err == nil {
 		t.Fatalf("init should fail for an invalid config file path")
 	}
 }
@@ -69,7 +76,7 @@ func TestInitWithValidConfig(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := tacl.init(f.Name(), func() {}); err != nil {
+	if err := tacl.init(nil, dbconfigs.New(nil), f.Name(), func() {}); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -115,6 +115,33 @@ func DialTablet(tablet *topodatapb.Tablet, failFast grpcclient.FailFast) (querys
 	return result, nil
 }
 
+// ExecuteInternal sends the internal query to VTTablet.
+func (conn *gRPCQueryClient) ExecuteInternal(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return nil, tabletconn.ConnClosed
+	}
+
+	req := &querypb.ExecuteRequest{
+		EffectiveCallerId: callerid.EffectiveCallerIDFromContext(ctx),
+		ImmediateCallerId: callerid.ImmediateCallerIDFromContext(ctx),
+		Target:            target,
+		Query: &querypb.BoundQuery{
+			Sql:           query,
+			BindVariables: bindVars,
+		},
+		TransactionId: transactionID,
+		Options:       options,
+		ReservedId:    reservedID,
+	}
+	er, err := conn.c.ExecuteInternal(ctx, req)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(err)
+	}
+	return sqltypes.Proto3ToResult(er.Result), nil
+}
+
 // Execute sends the query to VTTablet.
 func (conn *gRPCQueryClient) Execute(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
 	conn.mu.RLock()
