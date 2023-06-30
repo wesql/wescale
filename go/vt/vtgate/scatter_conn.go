@@ -392,18 +392,6 @@ func (stc *ScatterConn) StreamExecuteMulti(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil && session.Session.Options != nil {
-				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
-					if err != nil {
-						return nil, err
-					}
-				}
-				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-			}
-
 			if autocommit {
 				// As this is auto-commit, the transactionID is supposed to be zero.
 				if transactionID != int64(0) {
@@ -428,6 +416,18 @@ func (stc *ScatterConn) StreamExecuteMulti(
 					// against a new connection
 					exec()
 				}
+			}
+
+			if session != nil && session.Session != nil && session.Session.Options != nil {
+				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
+					if err != nil {
+						return nil, err
+					}
+				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
 
 			switch info.actionNeeded {

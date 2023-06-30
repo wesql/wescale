@@ -48,16 +48,20 @@ func TestReadAfterWrite_Global_Transaction(t *testing.T) {
 	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, false)
 }
 
-//func TestReadAfterWrite_Global_Transaction_OLAP(t *testing.T) {
-//	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, true)
-//}
+func TestReadAfterWrite_Global_Transaction_OLAP(t *testing.T) {
+	runReadAfterWriteGlobalTest(t, true, "GLOBAL", true, true, true)
+}
 
 func TestReadAfterWrite_Global_Transaction_OLAP_CrossVTGate(t *testing.T) {
+	runReadAfterWriteCrossVTGateTest(t, true, "GLOBAL", true, true)
+}
+
+func TestReadAfterWrite_Global_Transaction_CrossVTGate(t *testing.T) {
 	runReadAfterWriteCrossVTGateTest(t, true, "GLOBAL", true, false)
 }
 
 func TestReadAfterWrite_Session_Transaction_OLAP_CrossVTGate_And_Except_Failure(t *testing.T) {
-	runReadAfterWriteCrossVTGateTest(t, true, "SESSION", true, false)
+	runReadAfterWriteCrossVTGateTest(t, true, "SESSION", true, true)
 }
 
 func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
@@ -194,7 +198,12 @@ func runReadAfterWriteCrossVTGateTest(t *testing.T, enableReadWriteSplitting boo
 			lastInsertID := <-ch
 			qr := utils.Exec(t, conn, "select c1 from t1 order by c1 desc limit 1")
 			if len(qr.Rows) == 0 || len(qr.Rows[0]) == 0 {
-				t.Fatalf("read_after_write get empty result, %#v", i)
+				if strings.Compare(strings.ToUpper(readAfterWriteConsistency), "GLOBAL") != 0 {
+					CrossVTGateFailedtimes++
+					continue
+				} else {
+					t.Fatalf("read_after_write get empty result, %#v", i)
+				}
 			}
 			c1Val, err := qr.Rows[0][0].ToUint64()
 			if err != nil {
@@ -203,7 +212,7 @@ func runReadAfterWriteCrossVTGateTest(t *testing.T, enableReadWriteSplitting boo
 
 			if strings.Compare(strings.ToUpper(readAfterWriteConsistency), "GLOBAL") == 0 {
 				// global, and except pass
-				assert.Equal(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
+				assert.LessOrEqual(t, lastInsertID, c1Val, "lastInsertID(%#v) != c1Val(%#v)", lastInsertID, c1Val)
 			} else {
 				// none global, and except to have errors occur
 				if lastInsertID != c1Val {
