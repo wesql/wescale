@@ -18,7 +18,7 @@ require (
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
 	github.com/corpix/uarand v0.1.1 // indirect
 	github.com/dave/jennifer v1.6.0
-	github.com/evanphx/json-patch v5.6.0+incompatible
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/go-sql-driver/mysql v1.7.0
@@ -42,7 +42,6 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.15.15
 	github.com/klauspost/pgzip v1.2.5
-	github.com/krishicks/yaml-patch v0.0.10
 	github.com/magiconair/properties v1.8.7
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/minio/minio-go v0.0.0-20190131015406-c8a261de75c1

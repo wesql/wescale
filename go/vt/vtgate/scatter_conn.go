@@ -23,10 +23,10 @@ package vtgate
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
-
 	"vitess.io/vitess/go/vt/schema"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -182,18 +182,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil && session.Session.Options != nil {
-				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
-					if err != nil {
-						return nil, err
-					}
-				}
-				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-			}
-
 			if autocommit {
 				// As this is auto-commit, the transactionID is supposed to be zero.
 				if transactionID != int64(0) {
@@ -218,6 +206,18 @@ func (stc *ScatterConn) ExecuteMultiShard(
 					// against a new connection
 					exec()
 				}
+			}
+
+			if session != nil && session.Session != nil && session.Session.Options != nil {
+				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
+					if err != nil {
+						return nil, err
+					}
+				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
 
 			switch info.actionNeeded {
@@ -392,18 +392,6 @@ func (stc *ScatterConn) StreamExecuteMulti(
 			transactionID := info.transactionID
 			reservedID := info.reservedID
 
-			if session != nil && session.Session != nil && session.Session.Options != nil {
-				opts = session.Session.Options
-				// If the session possesses a GTID, we need to set it in the ExecuteOptions
-				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
-					err = setReadAfterWriteOpts(opts, session, stc.gateway)
-					if err != nil {
-						return nil, err
-					}
-				}
-				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-			}
-
 			if autocommit {
 				// As this is auto-commit, the transactionID is supposed to be zero.
 				if transactionID != int64(0) {
@@ -428,6 +416,18 @@ func (stc *ScatterConn) StreamExecuteMulti(
 					// against a new connection
 					exec()
 				}
+			}
+
+			if session != nil && session.Session != nil && session.Session.Options != nil {
+				opts = session.Session.Options
+				// If the session possesses a GTID, we need to set it in the ExecuteOptions
+				if session.IsNonWeakReadAfterWriteConsistencyEnable() && rs.Target.TabletType != topodatapb.TabletType_PRIMARY {
+					err = setReadAfterWriteOpts(ctx, opts, session, stc.gateway, qs, rs.Target)
+					if err != nil {
+						return nil, err
+					}
+				}
+				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
 
 			switch info.actionNeeded {
@@ -902,7 +902,7 @@ const (
 	begin
 )
 
-func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway) error {
+func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, session *SafeSession, gateway *TabletGateway, qs queryservice.QueryService, target *querypb.Target) error {
 	if opts == nil || session == nil || session.Session == nil || !session.IsNonWeakReadAfterWriteConsistencyEnable() {
 		return nil
 	}
@@ -917,6 +917,33 @@ func setReadAfterWriteOpts(opts *querypb.ExecuteOptions, session *SafeSession, g
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
+	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
+		if gtid, err := queryGTIDFromPrimary(ctx, qs, target); err != nil {
+			return err
+		} else {
+			opts.ReadAfterWriteGtid = gtid
+		}
 	}
 	return nil
+}
+
+func queryGTIDFromPrimary(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
+	if target.TabletType != topodatapb.TabletType_PRIMARY {
+		primaryTarget := *target
+		primaryTarget.TabletType = topodatapb.TabletType_PRIMARY
+		return queryGTID(ctx, qs, &primaryTarget)
+	}
+	return queryGTID(ctx, qs, target)
+}
+
+func queryGTID(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
+	queryGTIDQuery := fmt.Sprintf("select @@global.gtid_executed;")
+	innerqr, err := qs.Execute(ctx, target, queryGTIDQuery, nil, 0, 0, nil)
+	if err != nil {
+		return "", vterrors.Wrap(err, "query GTID from primary failed")
+	}
+	if len(innerqr.Rows) == 0 || len(innerqr.Rows[0]) == 0 {
+		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected GTID query result")
+	}
+	return innerqr.Rows[0][0].ToString(), nil
 }
