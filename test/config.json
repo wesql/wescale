@@ -91,7 +91,7 @@
 			"RetryMax": 1,
 			"Tags": []
 		},
-		"auth": {
+		"wesql_auth": {
 			"File": "unused.go",
 			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/auth", "-timeout", "30m"],
 			"Command": [],
