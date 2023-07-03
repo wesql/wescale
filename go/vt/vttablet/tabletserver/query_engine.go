@@ -222,8 +222,6 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 	qe.strictTableACL = config.StrictTableACL
 	qe.enableTableACLDryRun = config.EnableTableACLDryRun
 
-	qe.strictTransTables = config.EnforceStrictTransTables
-
 	if config.TableACLExemptACL != "" {
 		if f, err := tableacl.GetCurrentACLFactory(); err == nil {
 			if exemptACL, err := f.New([]string{config.TableACLExemptACL}); err == nil {
@@ -286,7 +284,7 @@ func (qe *QueryEngine) Open() error {
 		qe.conns.Close()
 		return err
 	}
-	err = conn.VerifyMode(qe.strictTransTables)
+	err = conn.VerifyMode()
 	// Recycle needs to happen before error check.
 	// Otherwise, qe.conns.Close will hang.
 	conn.Recycle()

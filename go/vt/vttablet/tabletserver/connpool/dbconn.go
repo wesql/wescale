@@ -304,20 +304,7 @@ var (
 
 // VerifyMode is a helper method to verify mysql is running with
 // sql_mode = STRICT_TRANS_TABLES or STRICT_ALL_TABLES and autocommit=ON.
-func (dbc *DBConn) VerifyMode(strictTransTables bool) error {
-	if strictTransTables {
-		qr, err := dbc.conn.ExecuteFetch(getModeSQL, 2, false)
-		if err != nil {
-			return err
-		}
-		if len(qr.Rows) != 1 {
-			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "incorrect rowcount received for %s: %d", getModeSQL, len(qr.Rows))
-		}
-		sqlMode := qr.Rows[0][0].ToString()
-		if !(strings.Contains(sqlMode, "STRICT_TRANS_TABLES") || strings.Contains(sqlMode, "STRICT_ALL_TABLES")) {
-			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "require sql_mode to be STRICT_TRANS_TABLES or STRICT_ALL_TABLES: got '%s'", qr.Rows[0][0].ToString())
-		}
-	}
+func (dbc *DBConn) VerifyMode() error {
 	qr, err := dbc.conn.ExecuteFetch(getAutocommit, 2, false)
 	if err != nil {
 		return err

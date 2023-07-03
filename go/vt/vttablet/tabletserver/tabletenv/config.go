@@ -160,7 +160,6 @@ func registerTabletEnvFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&heartbeatOnDemandDuration, "heartbeat_on_demand_duration", 0, "If non-zero, heartbeats are only written upon consumer request, and only run for up to given duration following the request. Frequent requests can keep the heartbeat running consistently; when requests are infrequent heartbeat may completely stop between requests")
 	flagutil.DualFormatBoolVar(fs, &currentConfig.EnableLagThrottler, "enable_lag_throttler", defaultConfig.EnableLagThrottler, "If true, vttablet will run a throttler service, and will implicitly enable heartbeats")
 
-	fs.BoolVar(&currentConfig.EnforceStrictTransTables, "enforce_strict_trans_tables", defaultConfig.EnforceStrictTransTables, "If true, vttablet requires MySQL to run with STRICT_TRANS_TABLES or STRICT_ALL_TABLES on. It is recommended to not turn this flag off. Otherwise MySQL may alter your supplied values before saving them to the database.")
 	flagutil.DualFormatBoolVar(fs, &enableConsolidator, "enable_consolidator", true, "This option enables the query consolidator.")
 	flagutil.DualFormatBoolVar(fs, &enableConsolidatorReplicas, "enable_consolidator_replicas", false, "This option enables the query consolidator only on replicas.")
 	fs.Int64Var(&currentConfig.ConsolidatorStreamQuerySize, "consolidator-stream-query-size", defaultConfig.ConsolidatorStreamQuerySize, "Configure the stream consolidator query size in bytes. Setting to 0 disables the stream consolidator.")
@@ -319,9 +318,8 @@ type TabletConfig struct {
 
 	TransactionLimitConfig `json:"-"`
 
-	EnforceStrictTransTables bool `json:"-"`
-	EnableOnlineDDL          bool `json:"-"`
-	EnableSettingsPool       bool `json:"-"`
+	EnableOnlineDDL    bool `json:"-"`
+	EnableSettingsPool bool `json:"-"`
 
 	RowStreamer RowStreamerConfig `json:"rowStreamer,omitempty"`
 
@@ -566,9 +564,8 @@ var defaultConfig = TabletConfig{
 
 	TransactionLimitConfig: defaultTransactionLimitConfig(),
 
-	EnforceStrictTransTables: true,
-	EnableOnlineDDL:          true,
-	EnableTableGC:            true,
+	EnableOnlineDDL: true,
+	EnableTableGC:   true,
 
 	RowStreamer: RowStreamerConfig{
 		MaxInnoDBTrxHistLen: 1000000,
