@@ -160,13 +160,24 @@ func InitFromProto(config *tableaclpb.Config) error {
 }
 
 func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+	entries := aclEntries{}
+	entriesFromMysql, err := tacl.GetGlobalFromMysqlBase(newACL)
+	if err != nil {
+		return nil, err
+	}
+	entries = append(entries, entriesFromMysql...)
+	return entries, nil
+}
+
+// TODO: geray this function used to implement table-level authority authentication
+func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	entries := aclEntries{}
 	conn, err := tacl.conns.Get(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
-	qr, err := conn.Exec(ctx, "SELECT USER,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user", 1000, false)
+	qr, err := conn.Exec(ctx, "SELECT USER,HOST,DB,TABLE_NAME,TABLE_PRIV from mysql.tables_priv", 1000, false)
 	if err != nil {
 		log.Infof("loadFromMysqlBase fail %v", err)
 	}
@@ -188,6 +199,69 @@ func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (
 		}
 		if superPriv == "Y" {
 			adminStrs = append(adminStrs, user)
+		}
+	}
+	readers, err := newACL(readerStrs)
+	if err != nil {
+		log.Infof("readers load from readerStrs fail")
+		return nil, err
+	}
+	writers, err := newACL(writerStrs)
+	if err != nil {
+		log.Infof("writers load from writerStrs fail")
+		return nil, err
+	}
+	admins, err := newACL(adminStrs)
+	if err != nil {
+		log.Infof("admins load from adminStrs fail")
+		return nil, err
+	}
+	entries = append(entries, aclEntry{
+		tableNameOrPrefix: "%",
+		groupName:         defaultACL,
+		acl: map[Role]acl.ACL{
+			READER: readers,
+			WRITER: writers,
+			ADMIN:  admins,
+		},
+	})
+	sort.Sort(entries)
+	return entries, nil
+}
+
+// GetGlobalFromMysqlBase implement global-level authority authentication
+func (tacl *tableACL) GetGlobalFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+	ctx := context.Background()
+	entries := aclEntries{}
+	conn, err := tacl.conns.Get(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	qr, err := conn.Exec(ctx, "SELECT USER,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user", 1000, false)
+	if err != nil {
+		log.Infof("loadFromMysqlBase fail %v", err)
+	}
+	var readerStrs []string
+	var writerStrs []string
+	var adminStrs []string
+	for _, rows := range qr.Rows {
+		user := rows[0].ToString()
+		selectPriv := rows[1].ToString()
+		insertPriv := rows[2].ToString()
+		updatePriv := rows[3].ToString()
+		deletePriv := rows[4].ToString()
+		superPriv := rows[5].ToString()
+		if superPriv == "Y" {
+			adminStrs = append(adminStrs, user)
+			readerStrs = append(readerStrs, user)
+			writerStrs = append(writerStrs, user)
+		} else {
+			if selectPriv == "Y" {
+				readerStrs = append(readerStrs, user)
+			}
+			if insertPriv == "Y" && updatePriv == "Y" && deletePriv == "Y" {
+				writerStrs = append(writerStrs, user)
+			}
 		}
 	}
 	readers, err := newACL(readerStrs)
