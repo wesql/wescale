@@ -49,52 +49,7 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema/schematest"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
-
-	querypb "vitess.io/vitess/go/vt/proto/query"
 )
-
-func TestStrictMode(t *testing.T) {
-	db := fakesqldb.New(t)
-	defer db.Close()
-	schematest.AddDefaultQueries(db)
-
-	// Test default behavior.
-	config := tabletenv.NewDefaultConfig()
-	config.DB = newDBConfigs(db)
-	env := tabletenv.NewEnv(config, "TabletServerTest")
-	se := schema.NewEngine(env)
-	qe := NewQueryEngine(env, se)
-	qe.se.InitDBConfig(newDBConfigs(db).DbaWithDB())
-	qe.se.Open()
-	if err := qe.Open(); err != nil {
-		t.Error(err)
-	}
-	qe.Close()
-
-	// Check that we fail if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is not set.
-	db.AddQuery(
-		"select @@global.sql_mode",
-		&sqltypes.Result{
-			Fields: []*querypb.Field{{Type: sqltypes.VarChar}},
-			Rows:   [][]sqltypes.Value{{sqltypes.NewVarBinary("")}},
-		},
-	)
-	qe = NewQueryEngine(env, se)
-	err := qe.Open()
-	wantErr := "require sql_mode to be STRICT_TRANS_TABLES or STRICT_ALL_TABLES: got ''"
-	if err == nil || err.Error() != wantErr {
-		t.Errorf("Open: %v, want %s", err, wantErr)
-	}
-	qe.Close()
-
-	// Test that we succeed if the enforcement flag is off.
-	config.EnforceStrictTransTables = false
-	qe = NewQueryEngine(env, se)
-	if err := qe.Open(); err != nil {
-		t.Fatal(err)
-	}
-	qe.Close()
-}
 
 func TestGetPlanPanicDuetoEmptyQuery(t *testing.T) {
 	db := fakesqldb.New(t)

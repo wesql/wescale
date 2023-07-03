@@ -131,7 +131,6 @@ if [ $tablet_role = "externalprimary" ]; then
                       --db_repl_user $DB_USER \
                       --db_repl_password $DB_PASS \
                       --enable_replication_reporter=false \
-                      --enforce_strict_trans_tables=false \
                       --track_schema_versions=true \
                       --vreplication_tablet_type=primary \
                       --watch_replication_stream=true"

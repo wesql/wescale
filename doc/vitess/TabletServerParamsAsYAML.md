@@ -139,7 +139,6 @@ sanitizeLogMessages: false               # sanitize_log_messages
 
 
 # The following flags are currently not supported.
-# enforce_strict_trans_tables
 # queryserver-config-strict-table-acl
 # queryserver-config-enable-table-acl-dry-run
 # queryserver-config-acl-exempt-acl
