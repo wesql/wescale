@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,7 +165,7 @@ func registerTabletEnvFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&heartbeatOnDemandDuration, "heartbeat_on_demand_duration", 0, "If non-zero, heartbeats are only written upon consumer request, and only run for up to given duration following the request. Frequent requests can keep the heartbeat running consistently; when requests are infrequent heartbeat may completely stop between requests")
 	flagutil.DualFormatBoolVar(fs, &currentConfig.EnableLagThrottler, "enable_lag_throttler", defaultConfig.EnableLagThrottler, "If true, vttablet will run a throttler service, and will implicitly enable heartbeats")
 
-	flagutil.DualFormatBoolVar(fs, &enableConsolidator, "enable_consolidator", true, "This option enables the query consolidator.")
+	flagutil.DualFormatBoolVar(fs, &enableConsolidator, "enable_consolidator", false, "This option enables the query consolidator.")
 	flagutil.DualFormatBoolVar(fs, &enableConsolidatorReplicas, "enable_consolidator_replicas", false, "This option enables the query consolidator only on replicas.")
 	fs.Int64Var(&currentConfig.ConsolidatorStreamQuerySize, "consolidator-stream-query-size", defaultConfig.ConsolidatorStreamQuerySize, "Configure the stream consolidator query size in bytes. Setting to 0 disables the stream consolidator.")
 	fs.Int64Var(&currentConfig.ConsolidatorStreamTotalSize, "consolidator-stream-total-size", defaultConfig.ConsolidatorStreamTotalSize, "Configure the stream consolidator total size in bytes. Setting to 0 disables the stream consolidator.")
@@ -174,7 +179,7 @@ func registerTabletEnvFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&transitionGracePeriod, "serving_state_grace_period", 0, "how long to pause after broadcasting health to vtgate, before enforcing a new serving state")
 
 	fs.BoolVar(&enableReplicationReporter, "enable_replication_reporter", false, "Use polling to track replication lag.")
-	fs.BoolVar(&currentConfig.EnableOnlineDDL, "queryserver_enable_online_ddl", true, "Enable online DDL.")
+	fs.BoolVar(&currentConfig.EnableOnlineDDL, "queryserver_enable_online_ddl", defaultConfig.EnableOnlineDDL, "Enable online DDL.")
 	fs.BoolVar(&currentConfig.SanitizeLogMessages, "sanitize_log_messages", false, "Remove potentially sensitive information in tablet INFO, WARNING, and ERROR log messages such as query parameters.")
 	fs.BoolVar(&currentConfig.EnableSettingsPool, "queryserver-enable-settings-pool", false, "Enable pooling of connections with modified system settings")
 
@@ -512,12 +517,12 @@ var defaultConfig = TabletConfig{
 		MaxWaiters:         5000,
 	},
 	Olap: OlapConfig{
-		TxTimeoutSeconds: 30,
+		TxTimeoutSeconds: 60,
 	},
 	Oltp: OltpConfig{
-		QueryTimeoutSeconds: 30,
-		TxTimeoutSeconds:    30,
-		MaxRows:             10000,
+		QueryTimeoutSeconds: 60,
+		TxTimeoutSeconds:    60,
+		MaxRows:             100000,
 	},
 	Healthcheck: HealthcheckConfig{
 		IntervalSeconds:           20,
@@ -537,7 +542,7 @@ var defaultConfig = TabletConfig{
 		// of them ready in MySQL and profit from a pipelining effect.
 		MaxConcurrency: 5,
 	},
-	Consolidator:                Enable,
+	Consolidator:                Disable,
 	ConsolidatorStreamTotalSize: 128 * 1024 * 1024,
 	ConsolidatorStreamQuerySize: 2 * 1024 * 1024,
 	// The value for StreamBufferSize was chosen after trying out a few of
@@ -564,8 +569,8 @@ var defaultConfig = TabletConfig{
 
 	TransactionLimitConfig: defaultTransactionLimitConfig(),
 
-	EnableOnlineDDL: true,
-	EnableTableGC:   true,
+	EnableOnlineDDL: false,
+	EnableTableGC:   false,
 
 	RowStreamer: RowStreamerConfig{
 		MaxInnoDBTrxHistLen: 1000000,
