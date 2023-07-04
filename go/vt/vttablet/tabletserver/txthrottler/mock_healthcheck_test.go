@@ -102,6 +102,20 @@ func (mr *MockHealthCheckMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockHealthCheck)(nil).Close))
 }
 
+// GetAllHealthyTabletStats mocks base method.
+func (m *MockHealthCheck) GetAllHealthyTabletStats() []*discovery.TabletHealth {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllHealthyTabletStats")
+	ret0, _ := ret[0].([]*discovery.TabletHealth)
+	return ret0
+}
+
+// GetAllHealthyTabletStats indicates an expected call of GetAllHealthyTabletStats.
+func (mr *MockHealthCheckMockRecorder) GetAllHealthyTabletStats() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllHealthyTabletStats", reflect.TypeOf((*MockHealthCheck)(nil).GetAllHealthyTabletStats))
+}
+
 // GetHealthyTabletStats mocks base method.
 func (m *MockHealthCheck) GetHealthyTabletStats(arg0 *query.Target) []*discovery.TabletHealth {
 	m.ctrl.T.Helper()

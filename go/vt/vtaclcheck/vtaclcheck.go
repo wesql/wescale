@@ -27,6 +27,8 @@ package vtaclcheck
 import (
 	"fmt"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/tableacl"
@@ -66,6 +68,7 @@ func Run() error {
 		err := tableacl.Init(
 			nil,
 			dbconfigs.New(nil),
+			global.TableACLModeMysqlBased,
 			options.ACLFile,
 			func() {},
 		)
