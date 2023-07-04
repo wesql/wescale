@@ -5,8 +5,6 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
 package global
 
-import "vitess.io/vitess/go/mysql"
-
 // Keyspace
 const (
 	DefaultKeyspace = "mysql"
@@ -18,7 +16,7 @@ const (
 	Pushdown = "Pushdown"
 )
 
-const DefaultFlavor = mysql.Mysql56FlavorID
+const DefaultFlavor = "MySQL56"
 
 // Schema Management
 const (

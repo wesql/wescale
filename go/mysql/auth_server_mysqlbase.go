@@ -17,6 +17,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/vt/servenv"
+
 	"golang.org/x/exp/slices"
 
 	stringutil "vitess.io/vitess/go/mysql/utils"
@@ -26,8 +31,8 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
-const (
-	mysqlAuthServerMysqlBaseReloadInterval = 5 * time.Second
+var (
+	mysqlAuthServerMysqlBaseReloadInterval time.Duration
 )
 
 // AuthServerMysqlBase implements AuthServer using a static configuration.
@@ -46,6 +51,12 @@ type AuthServerMysqlBase struct {
 	sigChan      chan os.Signal
 	ticker       *time.Ticker
 	skipPassword bool
+}
+
+func init() {
+	servenv.OnParseFor("vtgate", func(fs *pflag.FlagSet) {
+		fs.DurationVar(&mysqlAuthServerMysqlBaseReloadInterval, "mysql_auth_mysqlbased_reload_interval", 5, "Ticker to reload credentials")
+	})
 }
 
 var instance *AuthServerMysqlBase
@@ -109,7 +120,7 @@ func (a *AuthServerMysqlBase) installSignalHandlers() {
 
 	// If duration is set, it will reload configuration every interval
 	if a.reloadInterval > 0 {
-		a.ticker = time.NewTicker(a.reloadInterval)
+		a.ticker = time.NewTicker(a.reloadInterval * time.Second)
 		go func() {
 			for range a.ticker.C {
 				a.sigChan <- syscall.SIGHUP
@@ -130,8 +141,8 @@ func (a *AuthServerMysqlBase) addUserToCache(user string, entry *AuthServerMysql
 
 }
 
-// isExistsEntryInList use to remove entry from cache
-func isExistsEntryInList(user string, host string, list []*AuthServerMysqlBaseEntry) bool {
+// isCacheExistsInEntry use to remove entry from cache
+func isCacheExistsInEntry(user string, host string, list []*AuthServerMysqlBaseEntry) bool {
 	for _, entry := range list {
 		if entry.UserData == user && entry.SourceHost == host {
 			return true
@@ -147,6 +158,8 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 	}
 	ctx := context.Background()
 	target := &querypb.Target{
+		Keyspace:   global.DefaultKeyspace,
+		Shard:      global.DefaultShard,
 		TabletType: topodata.TabletType_PRIMARY,
 	}
 	// pull user from mysql.user
@@ -189,7 +202,7 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 			newEntries := make([]*AuthServerMysqlBaseEntry, 0)
 			// Only cache users who are listed in the mysql.user table
 			for _, entry := range a.cacheEntries[key] {
-				if isExistsEntryInList(entry.UserData, entry.SourceHost, list) {
+				if isCacheExistsInEntry(entry.UserData, entry.SourceHost, list) {
 					newEntries = append(newEntries, entry)
 				}
 			}
