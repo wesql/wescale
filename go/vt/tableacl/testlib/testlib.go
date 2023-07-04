@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +36,19 @@ import (
 )
 
 // TestSuite tests a concrete acl.Factory implementation.
+func TestSuiteMysqlBaseACL(t *testing.T, factory acl.Factory) {
+	name := fmt.Sprintf("tableacl-test-%d", rand.Int63())
+	tableacl.Register(name, factory)
+	tableacl.SetDefaultACL(name)
+
+	testValidConfigs(t)
+	testDenyReaderInsert(t)
+	testAllowReaderSelectInMysqlBasedACL(t)
+	testDenyReaderSelectInMysqlBasedACL(t)
+	testAllowUnmatchedTableInMysqlBasedACL(t)
+}
+
+// TestSuite tests a concrete acl.Factory implementation.
 func TestSuite(t *testing.T, factory acl.Factory) {
 	name := fmt.Sprintf("tableacl-test-%d", rand.Int63())
 	tableacl.Register(name, factory)
@@ -43,6 +62,7 @@ func TestSuite(t *testing.T, factory acl.Factory) {
 }
 
 var currentUser = "DummyUser"
+var currentHost = "localhost"
 
 func testValidConfigs(t *testing.T) {
 	config := newConfigProto("group01", []string{"table1"}, []string{"u1"}, []string{"vt"}, []string{})
@@ -65,6 +85,28 @@ func testDenyReaderInsert(t *testing.T) {
 	config := newConfigProto(
 		"group01", []string{"table%"}, []string{currentUser}, []string{"u3"}, []string{})
 	if err := checkAccess(config, "table1", tableacl.WRITER, false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func testAllowReaderSelectInMysqlBasedACL(t *testing.T) {
+	config := newConfigProto(
+		"group01", []string{"table1"}, []string{tableacl.BuildMysqlBasedACLKey(currentUser, currentHost)}, []string{"u3"}, []string{})
+	if err := checkAccess(config, "table1", tableacl.READER, true); err != nil {
+		t.Fatal(err)
+	}
+}
+func testDenyReaderSelectInMysqlBasedACL(t *testing.T) {
+	config := newConfigProto(
+		"group01", []string{"table1"}, []string{tableacl.BuildMysqlBasedACLKey(currentUser, currentHost)}, []string{"u3"}, []string{})
+	if err := checkAccess(config, "table1", tableacl.ADMIN, false); err != nil {
+		t.Fatal(err)
+	}
+}
+func testAllowUnmatchedTableInMysqlBasedACL(t *testing.T) {
+	config := newConfigProto(
+		"group01", []string{"table1"}, []string{tableacl.BuildMysqlBasedACLKey(currentUser, currentHost)}, []string{"u3"}, []string{})
+	if err := checkAccess(config, "UNMATCHED_TABLE", tableacl.ADMIN, false); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -121,7 +163,7 @@ func checkAccess(config *tableaclpb.Config, tableName string, role tableacl.Role
 	if err := checkLoad(config, true); err != nil {
 		return err
 	}
-	got := tableacl.Authorized(tableName, role).IsMember(&querypb.VTGateCallerID{Username: currentUser})
+	got := tableacl.Authorized(tableName, role).IsMember(&querypb.VTGateCallerID{Username: currentUser, Host: currentHost})
 	if want != got {
 		return fmt.Errorf("got %v, want %v", got, want)
 	}

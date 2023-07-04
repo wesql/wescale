@@ -118,8 +118,15 @@ func (m *VTGateCallerID) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			copy(dAtA[i:], m.Groups[iNdEx])
 			i = encodeVarint(dAtA, i, uint64(len(m.Groups[iNdEx])))
 			i--
-			dAtA[i] = 0x12
+			dAtA[i] = 0x1a
 		}
+	}
+	if len(m.Host) > 0 {
+		i -= len(m.Host)
+		copy(dAtA[i:], m.Host)
+		i = encodeVarint(dAtA, i, uint64(len(m.Host)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Username) > 0 {
 		i -= len(m.Username)
@@ -4324,6 +4331,10 @@ func (m *VTGateCallerID) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
+	l = len(m.Host)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
 	if len(m.Groups) > 0 {
 		for _, s := range m.Groups {
 			l = len(s)
@@ -6155,6 +6166,38 @@ func (m *VTGateCallerID) UnmarshalVT(dAtA []byte) error {
 			m.Username = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Host", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Host = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Groups", wireType)
 			}

@@ -165,6 +165,9 @@ func (tacl *tableACL) SetCallback(callback func()) {
 	defer tacl.Unlock()
 	tacl.callback = callback
 }
+func BuildMysqlBasedACLKey(username, host string) string {
+	return fmt.Sprintf("%s@%s", username, host)
+}
 
 // InitFromProto inits table ACLs from a proto.
 func InitFromProto(config *tableaclpb.Config) error {
@@ -183,62 +186,7 @@ func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (
 
 // TODO: geray this function used to implement table-level authority authentication
 func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
-	ctx := context.Background()
-	entries := aclEntries{}
-	conn, err := tacl.conns.Get(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	qr, err := conn.Exec(ctx, "SELECT USER,HOST,DB,TABLE_NAME,TABLE_PRIV from mysql.tables_priv", 1000, false)
-	if err != nil {
-		log.Infof("loadFromMysqlBase fail %v", err)
-	}
-	var readerStrs []string
-	var writerStrs []string
-	var adminStrs []string
-	for _, rows := range qr.Rows {
-		user := rows[0].ToString()
-		selectPriv := rows[1].ToString()
-		insertPriv := rows[2].ToString()
-		updatePriv := rows[3].ToString()
-		deletePriv := rows[4].ToString()
-		superPriv := rows[5].ToString()
-		if selectPriv == "Y" {
-			readerStrs = append(readerStrs, user)
-		}
-		if selectPriv == "Y" && insertPriv == "Y" && updatePriv == "Y" && deletePriv == "Y" {
-			writerStrs = append(writerStrs, user)
-		}
-		if superPriv == "Y" {
-			adminStrs = append(adminStrs, user)
-		}
-	}
-	readers, err := newACL(readerStrs)
-	if err != nil {
-		log.Infof("readers load from readerStrs fail")
-		return nil, err
-	}
-	writers, err := newACL(writerStrs)
-	if err != nil {
-		log.Infof("writers load from writerStrs fail")
-		return nil, err
-	}
-	admins, err := newACL(adminStrs)
-	if err != nil {
-		log.Infof("admins load from adminStrs fail")
-		return nil, err
-	}
-	entries = append(entries, aclEntry{
-		tableNameOrPrefix: "%",
-		groupName:         defaultACL,
-		acl: map[Role]acl.ACL{
-			READER: readers,
-			WRITER: writers,
-			ADMIN:  admins,
-		},
-	})
-	sort.Sort(entries)
-	return entries, nil
+	return nil, nil
 }
 
 // GetGlobalFromMysqlBase implement global-level authority authentication
@@ -249,7 +197,7 @@ func (tacl *tableACL) GetGlobalFromMysqlBase(newACL func([]string) (acl.ACL, err
 	if err != nil {
 		return nil, err
 	}
-	qr, err := conn.Exec(ctx, "SELECT USER,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user", 1000, false)
+	qr, err := conn.Exec(ctx, "SELECT USER,HOST,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user", 1000, false)
 	if err != nil {
 		log.Infof("loadFromMysqlBase fail %v", err)
 	}
@@ -258,21 +206,23 @@ func (tacl *tableACL) GetGlobalFromMysqlBase(newACL func([]string) (acl.ACL, err
 	var adminStrs []string
 	for _, rows := range qr.Rows {
 		user := rows[0].ToString()
-		selectPriv := rows[1].ToString()
-		insertPriv := rows[2].ToString()
-		updatePriv := rows[3].ToString()
-		deletePriv := rows[4].ToString()
-		superPriv := rows[5].ToString()
+		host := rows[1].ToString()
+		selectPriv := rows[2].ToString()
+		insertPriv := rows[3].ToString()
+		updatePriv := rows[4].ToString()
+		deletePriv := rows[5].ToString()
+		superPriv := rows[6].ToString()
+		userKey := BuildMysqlBasedACLKey(user, host)
 		if superPriv == "Y" {
-			adminStrs = append(adminStrs, user)
-			readerStrs = append(readerStrs, user)
-			writerStrs = append(writerStrs, user)
+			adminStrs = append(adminStrs, userKey)
+			readerStrs = append(readerStrs, userKey)
+			writerStrs = append(writerStrs, userKey)
 		} else {
 			if selectPriv == "Y" {
-				readerStrs = append(readerStrs, user)
+				readerStrs = append(readerStrs, userKey)
 			}
 			if insertPriv == "Y" && updatePriv == "Y" && deletePriv == "Y" {
-				writerStrs = append(writerStrs, user)
+				writerStrs = append(writerStrs, userKey)
 			}
 		}
 	}

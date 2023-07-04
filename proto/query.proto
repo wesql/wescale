@@ -54,7 +54,8 @@ message Target {
 // by the Vitess client.
 message VTGateCallerID {
   string username = 1;
-  repeated string groups = 2;
+  string host = 2;
+  repeated string groups = 3;
 }
 
 // EventToken is a structure that describes a point in time in a
