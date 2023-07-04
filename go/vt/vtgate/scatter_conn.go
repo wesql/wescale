@@ -208,6 +208,14 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 			}
 
+			var lockFunc *engine.LockFunc
+			var lName string
+			send, ok := primitive.(*engine.Send)
+
+			if ok {
+				lockFunc, lName = solveLockFunc(info, send.Stmt)
+			}
+
 			if session != nil && session.Session != nil && session.Session.Options != nil {
 				opts = session.Session.Options
 				// If the session possesses a GTID, we need to set it in the ExecuteOptions
@@ -264,6 +272,33 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] unexpected actionNeeded on query execution: %v", info.actionNeeded)
 			}
 			session.logging.log(primitive, rs.Target, rs.Gateway, queries[i].Sql, info.actionNeeded == begin || info.actionNeeded == reserveBegin, queries[i].BindVariables)
+
+			if lockFunc != nil {
+				lockRes := innerqr.Rows[0]
+				switch lockFunc.Typ.Type {
+				case sqlparser.IsFreeLock, sqlparser.IsUsedLock:
+				case sqlparser.GetLock:
+					if lockRes[0].ToString() == "1" {
+						session.AddAdvisoryLock(lName)
+					}
+				//case sqlparser.ReleaseAllLocks:
+				//	err = vcursor.ReleaseLock(ctx)
+				//	if err != nil {
+				//		return nil, err
+				//	}
+				case sqlparser.ReleaseLock:
+					// TODO: do not execute if lock not taken.
+					if lockRes[0].ToString() == "1" {
+						session.RemoveAdvisoryLock(lName)
+					}
+					//if !session.AnyAdvisoryLockTaken() {
+					//	err = session.ReleaseLock(ctx)
+					//	if err != nil {
+					//		return nil, err
+					//	}
+					//}
+				}
+			}
 
 			// We need to new shard info irrespective of the error.
 			newInfo := info.updateTransactionAndReservedID(transactionID, reservedID, alias)
@@ -660,6 +695,30 @@ func (stc *ScatterConn) multiGoTransaction(
 		startTime, statsKey := stc.startAction(name, rs.Target)
 		defer stc.endAction(startTime, allErrors, statsKey, &err, session)
 
+		//sel, isSel := stmt.(*sqlparser.Select)
+		//	if isSel {
+		//		// handle dual table for processing at vtgate.
+		//		p, err := handleDualSelects(sel, vschema)
+		//		if err != nil {
+		//			return nil, err
+		//		}
+		//		if p != nil {
+		//			used := "dual"
+		//			keyspace, ksErr := vschema.DefaultKeyspace()
+		//			if ksErr == nil {
+		//				// we are just getting the ks to log the correct table use.
+		//				// no need to fail this if we can't find the default keyspace
+		//				used = keyspace.Name + ".dual"
+		//			}
+		//			return newPlanResult(p, used), nil
+		//		}
+		//
+		//		if sel.SQLCalcFoundRows && sel.Limit != nil {
+		//			return gen4planSQLCalcFoundRows(vschema, sel, query, reservedVars)
+		//		}
+		//		// if there was no limit, we can safely ignore the SQLCalcFoundRows directive
+		//		sel.SQLCalcFoundRows = false
+		//	}
 		shardActionInfo, err := actionInfo(ctx, rs.Target, session, autocommit, stc.txConn.mode)
 		if err != nil {
 			return
@@ -946,4 +1005,35 @@ func queryGTID(ctx context.Context, qs queryservice.QueryService, target *queryp
 		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected GTID query result")
 	}
 	return innerqr.Rows[0][0].ToString(), nil
+}
+
+func solveLockFunc(info *shardActionInfo, stmt sqlparser.Statement) (*engine.LockFunc, string) {
+	if stmt == nil {
+		return nil, ""
+	}
+
+	sel, _ := stmt.(*sqlparser.Select)
+	//for _, e := range sel.SelectExprs {
+	e := sel.SelectExprs[0]
+	expr, ok := e.(*sqlparser.AliasedExpr)
+	if !ok {
+		return nil, ""
+	}
+	_, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
+	if isLFunc {
+		return nil, ""
+	}
+	lockFunctions := &engine.LockFunc{Typ: expr.Expr.(*sqlparser.LockingFunc)}
+	//}
+
+	// Only GetLock needs to start a reserved connection.
+	// Once in reserved connection, it will be used for other calls as well.
+	// But, we don't want to start a reserved connection for other calls like IsFreeLock, IsUsedLock, etc.
+	if lockFunctions.Typ.Type != sqlparser.GetLock {
+		return nil, ""
+	}
+	if info.reservedID == 0 {
+		info.actionNeeded = reserve
+	}
+	return nil, ""
 }

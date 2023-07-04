@@ -40,7 +40,7 @@ func gen4Planner(query string, plannerVersion querypb.ExecuteOptions_PlannerVers
 	return func(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
 		switch stmt := stmt.(type) {
 		case sqlparser.SelectStatement:
-			return gen4SelectStmtPlanner(query, plannerVersion, stmt, reservedVars, vschema)
+			return gen4SelectStmtPlanner(plannerVersion, stmt, reservedVars, vschema)
 		case *sqlparser.Update:
 			return gen4UpdateStmtPlanner(plannerVersion, stmt, reservedVars, vschema)
 		case *sqlparser.Delete:
@@ -52,38 +52,11 @@ func gen4Planner(query string, plannerVersion querypb.ExecuteOptions_PlannerVers
 }
 
 func gen4SelectStmtPlanner(
-	query string,
 	plannerVersion querypb.ExecuteOptions_PlannerVersion,
 	stmt sqlparser.SelectStatement,
 	reservedVars *sqlparser.ReservedVars,
 	vschema plancontext.VSchema,
 ) (*planResult, error) {
-
-	sel, isSel := stmt.(*sqlparser.Select)
-	if isSel {
-		// handle dual table for processing at vtgate.
-		p, err := handleDualSelects(sel, vschema)
-		if err != nil {
-			return nil, err
-		}
-		if p != nil {
-			used := "dual"
-			keyspace, ksErr := vschema.DefaultKeyspace()
-			if ksErr == nil {
-				// we are just getting the ks to log the correct table use.
-				// no need to fail this if we can't find the default keyspace
-				used = keyspace.Name + ".dual"
-			}
-			return newPlanResult(p, used), nil
-		}
-
-		if sel.SQLCalcFoundRows && sel.Limit != nil {
-			return gen4planSQLCalcFoundRows(vschema, sel, query, reservedVars)
-		}
-		// if there was no limit, we can safely ignore the SQLCalcFoundRows directive
-		sel.SQLCalcFoundRows = false
-	}
-
 	plan, err := buildPlanForBypass(stmt, reservedVars, vschema)
 	if err != nil {
 		return nil, err

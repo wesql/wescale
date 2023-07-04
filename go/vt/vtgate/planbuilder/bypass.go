@@ -30,7 +30,7 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
 
-func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
+func buildPlanForBypass(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
 	keyspace, err := vschema.DefaultKeyspace()
 	// If no keyspace is specified in this SQL or Session, the SQL can be processed directly by vttablet,
 	// because vttablet can now handle SQL without any database specified.
@@ -71,6 +71,19 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		FieldQuery:        fieldQuery,
 		IsDML:             isDML,
 		SingleShardOnly:   false,
+		Stmt:              stmt,
+	}
+
+	sel, _ := stmt.(*sqlparser.Select)
+	if isOnlyDual(sel) {
+		used := "dual"
+		keyspace, ksErr := vschema.DefaultKeyspace()
+		if ksErr == nil {
+			// we are just getting the ks to log the correct table use.
+			// no need to fail this if we can't find the default keyspace
+			used = keyspace.Name + ".dual"
+		}
+		return newPlanResult(send, used), nil
 	}
 	return newPlanResult(send), nil
 }

@@ -23,10 +23,9 @@ package planbuilder
 
 import (
 	"fmt"
+	"vitess.io/vitess/go/vt/key"
 
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-
-	"vitess.io/vitess/go/vt/key"
 
 	"vitess.io/vitess/go/vt/vterrors"
 
@@ -270,54 +269,32 @@ func planSelectV3(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSch
 	return ljt, frpb.plan, nil, err
 }
 
-func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (engine.Primitive, error) {
+func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (bool, error) {
 	//keep the code in case we want to rollback
 	if !isOnlyDual(sel) {
-		return nil, nil
+		return false, nil
 	}
 
-	exprs := make([]evalengine.Expr, len(sel.SelectExprs))
-	cols := make([]string, len(sel.SelectExprs))
 	var lockFunctions []*engine.LockFunc
-	for i, e := range sel.SelectExprs {
+	for _, e := range sel.SelectExprs {
 		expr, ok := e.(*sqlparser.AliasedExpr)
 		if !ok {
-			return nil, nil
+			return false, nil
 		}
-		var err error
-		lFunc, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
+		_, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
 		if isLFunc {
 			elem := &engine.LockFunc{Typ: expr.Expr.(*sqlparser.LockingFunc)}
-			if lFunc.Name != nil {
-				n, err := evalengine.Translate(lFunc.Name, nil)
-				if err != nil {
-					return nil, err
-				}
-				elem.Name = n
-			}
 			lockFunctions = append(lockFunctions, elem)
 			continue
 		}
 		if len(lockFunctions) > 0 {
-			return nil, vterrors.VT12001(fmt.Sprintf("LOCK function and other expression: [%s] in same select query", sqlparser.String(expr)))
-		}
-		exprs[i], err = evalengine.Translate(expr.Expr, evalengine.LookupDefaultCollation(vschema.ConnCollation()))
-		if err != nil {
-			return nil, nil
-		}
-		cols[i] = expr.As.String()
-		if cols[i] == "" {
-			cols[i] = sqlparser.String(expr.Expr)
+			return false, vterrors.VT12001(fmt.Sprintf("LOCK function and other expression: [%s] in same select query", sqlparser.String(expr)))
 		}
 	}
 	if len(lockFunctions) > 0 {
-		return buildLockingPrimitive(sel, vschema, lockFunctions)
+		return true, nil
 	}
-	return &engine.Projection{
-		Exprs: exprs,
-		Cols:  cols,
-		Input: &engine.SingleRow{},
-	}, nil
+	return true, nil
 }
 
 func buildLockingPrimitive(sel *sqlparser.Select, vschema plancontext.VSchema, lockFunctions []*engine.LockFunc) (engine.Primitive, error) {
