@@ -349,7 +349,7 @@ func (session *SafeSession) FindAndChangeSessionIfInSingleTxMode(keyspace, shard
 		sessions = session.PostSessions
 	}
 	for _, shardSession := range sessions {
-		if keyspace == shardSession.Target.Keyspace && tabletType == shardSession.Target.TabletType && shard == shardSession.Target.Shard {
+		if tabletType == shardSession.Target.TabletType {
 			if txMode != vtgatepb.TransactionMode_SINGLE || !shardSession.VindexOnly || session.queryFromVindex {
 				return shardSession.TransactionId, shardSession.ReservedId, shardSession.TabletAlias, nil
 			}
