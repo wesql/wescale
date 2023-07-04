@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,7 +125,7 @@ func TestDefaultConfig(t *testing.T) {
 	gotBytes, err := yaml2.Marshal(NewDefaultConfig())
 	require.NoError(t, err)
 	want := `cacheResultFields: true
-consolidator: enable
+consolidator: disable
 consolidatorStreamQuerySize: 2097152
 consolidatorStreamTotalSize: 134217728
 gracePeriods: {}
@@ -135,14 +140,14 @@ hotRowProtection:
   mode: disable
 messagePostponeParallelism: 4
 olap:
-  txTimeoutSeconds: 30
+  txTimeoutSeconds: 60
 olapReadPool:
   idleTimeoutSeconds: 1800
   size: 200
 oltp:
-  maxRows: 10000
-  queryTimeoutSeconds: 30
-  txTimeoutSeconds: 30
+  maxRows: 100000
+  queryTimeoutSeconds: 60
+  txTimeoutSeconds: 60
 oltpReadPool:
   idleTimeoutSeconds: 1800
   maxWaiters: 5000
@@ -206,7 +211,7 @@ func TestFlags(t *testing.T) {
 	want.OlapReadPool.IdleTimeoutSeconds = 1800
 	want.TxPool.IdleTimeoutSeconds = 1800
 	want.HotRowProtection.Mode = Disable
-	want.Consolidator = Enable
+	want.Consolidator = Disable
 	want.Healthcheck.IntervalSeconds = 20
 	want.Healthcheck.DegradedThresholdSeconds = 30
 	want.Healthcheck.UnhealthyThresholdSeconds = 7200
