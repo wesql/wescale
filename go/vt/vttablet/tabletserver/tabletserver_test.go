@@ -37,6 +37,8 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/vt/callerid"
@@ -1755,7 +1757,7 @@ func TestACLHUP(t *testing.T) {
 	err = f.Close()
 	require.NoError(t, err)
 
-	tsv.InitACL(nil, f.Name(), true, 0)
+	tsv.InitACL(nil, f.Name(), global.TableACLModeMysqlBased, true, 0)
 
 	groups1 := tableacl.GetCurrentConfig().TableGroups
 	if name1 := groups1[0].GetName(); name1 != "group01" {

@@ -5,6 +5,8 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
 package global
 
+import "vitess.io/vitess/go/mysql"
+
 // Keyspace
 const (
 	DefaultKeyspace = "mysql"
@@ -29,14 +31,4 @@ const (
 	ReadWriteSplitEnablesREPLICA = true
 	// ReadWriteSplitEnablesRDONLY means RdOnly nodes can be used for reads in read-write-split.
 	ReadWriteSplitEnablesRDONLY = false
-)
-
-const (
-	MysqlBased = "mysqlbased"
-)
-
-// AuthServer Management
-const (
-	AuthServerMysqlBased = MysqlBased
-	AuthServerStatic     = "static"
 )

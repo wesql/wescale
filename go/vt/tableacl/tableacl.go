@@ -31,6 +31,8 @@ import (
 	"strings"
 	"sync"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
@@ -112,27 +114,23 @@ var currentTableACL tableACL
 //	    }
 //	  ]
 //	}
-func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, configFile string, aclCB func()) error {
-	return currentTableACL.init(env, dbConfig, configFile, aclCB)
+func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, aclCB func()) error {
+	return currentTableACL.init(env, dbConfig, tableACLMode, configFile, aclCB)
 }
 
-func (tacl *tableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, configFile string, aclCB func()) error {
-	tacl.SetCallback(aclCB)
-	tacl.dbConfig = dbConfig
-	if configFile == "" {
-		return nil
-	}
+func (tacl *tableACL) InitMysqlBasedACL(env tabletenv.Env) error {
+	config := &tableaclpb.Config{}
+	pool := connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
+		Size:               1,
+		IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
+	})
+	tacl.conns = pool
+	tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
+	return tacl.LoadFromMysql(config)
+}
+func (tacl *tableACL) InitSimpleACL(configFile string) error {
 	config := &tableaclpb.Config{}
 	data, err := os.ReadFile(configFile)
-	if configFile == "mysqlbased" {
-		pool := connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
-			Size:               1,
-			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
-		})
-		tacl.conns = pool
-		tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
-		return tacl.SetFromMysql(config)
-	}
 	if err != nil {
 		log.Infof("unable to read tableACL config file: %v  Error: %v", configFile, err)
 		return err
@@ -145,7 +143,21 @@ func (tacl *tableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, conf
 		}
 	}
 	return tacl.Set(config)
+}
 
+func (tacl *tableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, aclCB func()) error {
+	tacl.SetCallback(aclCB)
+	tacl.dbConfig = dbConfig
+	if configFile == "" {
+		return nil
+	}
+	if tableACLMode == global.TableACLModeMysqlBased {
+		return tacl.InitMysqlBasedACL(env)
+	} else if tableACLMode == global.TableACLModeSimple {
+		return tacl.InitSimpleACL(configFile)
+	} else {
+		return fmt.Errorf("unrecognized tableACLMode : %v", tableACLMode)
+	}
 }
 
 func (tacl *tableACL) SetCallback(callback func()) {
@@ -334,7 +346,7 @@ func (tacl *tableACL) aclFactory() (acl.Factory, error) {
 	}
 	return tacl.factory, nil
 }
-func (tacl *tableACL) SetFromMysql(config *tableaclpb.Config) error {
+func (tacl *tableACL) LoadFromMysql(config *tableaclpb.Config) error {
 	factory, err := tacl.aclFactory()
 	if err != nil {
 		return err
@@ -345,6 +357,7 @@ func (tacl *tableACL) SetFromMysql(config *tableaclpb.Config) error {
 	}
 	tacl.Lock()
 	tacl.entries = entries
+	// TODO: geray can remove config?
 	tacl.config = proto.Clone(config).(*tableaclpb.Config)
 	callback := tacl.callback
 	tacl.Unlock()

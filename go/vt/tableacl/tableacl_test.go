@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/dbconfigs"
 
 	"google.golang.org/protobuf/proto"
@@ -47,7 +49,7 @@ func (factory *fakeACLFactory) New(entries []string) (acl.ACL, error) {
 
 func TestInitWithInvalidFilePath(t *testing.T) {
 	tacl := tableACL{factory: &simpleacl.Factory{}}
-	if err := tacl.init(nil, dbconfigs.New(nil), "/invalid_file_path", func() {}); err == nil {
+	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeMysqlBased, "/invalid_file_path", func() {}); err == nil {
 		t.Fatalf("init should fail for an invalid config file path")
 	}
 }
@@ -76,7 +78,7 @@ func TestInitWithValidConfig(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := tacl.init(nil, dbconfigs.New(nil), f.Name(), func() {}); err != nil {
+	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeMysqlBased, f.Name(), func() {}); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -327,11 +327,12 @@ func (tsv *TabletServer) SetQueryRules(ruleSource string, qrs *rules.Rules) erro
 	return nil
 }
 
-func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLConfigFile string, enforceTableACLConfig bool) {
+func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool) {
 	// tabletacl.Init loads ACL from file if *tableACLConfig is not empty
 	err := tableacl.Init(
 		env,
 		tsv.config.DB.DbaWithDB(),
+		tableACLMode,
 		tableACLConfigFile,
 		func() {
 			tsv.ClearQueryPlanCache()
@@ -346,13 +347,13 @@ func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLConfigFile string, e
 }
 
 // InitACL loads the table ACL and sets up a SIGHUP handler for reloading it.
-func (tsv *TabletServer) InitACL(env tabletenv.Env, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
-	tsv.initACL(env, tableACLConfigFile, enforceTableACLConfig)
+func (tsv *TabletServer) InitACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
+	tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
 		for range sigChan {
-			tsv.initACL(env, tableACLConfigFile, enforceTableACLConfig)
+			tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
 		}
 	}()
 
