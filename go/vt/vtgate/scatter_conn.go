@@ -23,10 +23,10 @@ package vtgate
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/schema"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -918,26 +918,26 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
-		if gtid, err := queryGTIDFromPrimary(ctx, qs, target); err != nil {
+		gtid, err := queryGTIDFromPrimary(ctx, qs, target)
+		if err != nil {
 			return err
-		} else {
-			opts.ReadAfterWriteGtid = gtid
 		}
+		opts.ReadAfterWriteGtid = gtid
 	}
 	return nil
 }
 
 func queryGTIDFromPrimary(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
 	if target.TabletType != topodatapb.TabletType_PRIMARY {
-		primaryTarget := *target
+		primaryTarget := target
 		primaryTarget.TabletType = topodatapb.TabletType_PRIMARY
-		return queryGTID(ctx, qs, &primaryTarget)
+		return queryGTID(ctx, qs, primaryTarget)
 	}
 	return queryGTID(ctx, qs, target)
 }
 
 func queryGTID(ctx context.Context, qs queryservice.QueryService, target *querypb.Target) (string, error) {
-	queryGTIDQuery := fmt.Sprintf("select @@global.gtid_executed;")
+	queryGTIDQuery := "select @@global.gtid_executed;"
 	innerqr, err := qs.Execute(ctx, target, queryGTIDQuery, nil, 0, 0, nil)
 	if err != nil {
 		return "", vterrors.Wrap(err, "query GTID from primary failed")

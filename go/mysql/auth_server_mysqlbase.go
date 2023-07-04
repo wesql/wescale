@@ -343,7 +343,6 @@ func compareBaseRecord(x, y *AuthServerMysqlBaseEntry) bool {
 }
 
 // compareHost compares two host string using some special rules, return value 1, 0, -1 means > = <.
-// TODO: geray Check how MySQL do it exactly, instead of guess its rules.
 func compareHost(x, y string) int {
 	// The more-specific, the smaller it is.
 	// The pattern '%' means “any host” and is least specific.

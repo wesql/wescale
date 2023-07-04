@@ -289,7 +289,7 @@ func Init(
 		addKeyspaceToTracker(ctx, srvResolver, st, gw)
 		si = st
 	}
-	if mysqlAuthServerImpl == "mysqlbased" {
+	if mysqlAuthServerImpl == global.MysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
 	}
 	cacheCfg := &cache.Config{
