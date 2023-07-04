@@ -158,8 +158,8 @@ func NewAuthServerStaticWithAuthMethodDescription(file, jsonConfig string, reloa
 
 	var authMethod AuthMethod
 	switch authMethodDescription {
-	//case CachingSha2Password:
-	//	authMethod = NewSha2CachingAuthMethod(a, a, a)
+	case CachingSha2Password:
+		authMethod = NewSha2CachingAuthMethod(a, a, a)
 	case MysqlNativePassword:
 		authMethod = NewMysqlNativeAuthMethod(a, a)
 	case MysqlClearPassword:
