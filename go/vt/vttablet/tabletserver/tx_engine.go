@@ -573,7 +573,7 @@ func (te *TxEngine) Reserve(ctx context.Context, options *querypb.ExecuteOptions
 
 // Reserve creates a reserved connection and returns the id to it
 func (te *TxEngine) reserve(ctx context.Context, options *querypb.ExecuteOptions, preQueries []string) (*StatefulConnection, error) {
-	conn, err := te.txPool.scp.NewConn(ctx, options, nil)
+	conn, err := te.txPool.scp.NewConn(ctx, options, pools.NewSetting(true, "", ""))
 	if err != nil {
 		return nil, err
 	}
