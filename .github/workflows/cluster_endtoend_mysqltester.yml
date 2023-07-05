@@ -4,9 +4,6 @@ name: mysql-tester
 on:
   pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - chore/mysqltester
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'mysql-tester')
   cancel-in-progress: true
