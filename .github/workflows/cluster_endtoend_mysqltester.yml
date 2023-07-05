@@ -85,26 +85,13 @@ jobs:
           echo "fs.aio-max-nr = 1048576" | sudo tee -a /etc/sysctl.conf
           sudo sysctl -p /etc/sysctl.conf
 
-      - name: Get dependencies
+      - name: Compile source and Get JUnit report formatter
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
+        timeout-minutes: 30
         run: |
           
-          # Get key to latest MySQL repo
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29
-          # Setup MySQL 8.0
-          wget -c https://dev.mysql.com/get/mysql-apt-config_0.8.24-1_all.deb
-          echo mysql-apt-config mysql-apt-config/select-server select mysql-8.0 | sudo debconf-set-selections
-          sudo DEBIAN_FRONTEND="noninteractive" dpkg -i mysql-apt-config*
-          sudo apt-get update
-          # Install everything else we need, and configure
-          sudo apt-get install -y mysql-server mysql-client make unzip g++ etcd curl git wget eatmydata xz-utils libncurses5
-          
-          sudo service mysql stop
-          sudo service etcd stop
-          sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
-          sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
-          go mod download
-          
+          make build
+
           # install JUnit report formatter
           go install github.com/vitessio/go-junit-report@HEAD
 
@@ -125,21 +112,11 @@ jobs:
         uses: docker-practice/actions-setup-docker@v1
         timeout-minutes: 12
 
-      - name: Build source
+      - name: Build and Run container
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
-          # build 
-          make build
-
-      - name: Build Image for build and Run container
-        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-        timeout-minutes: 45
-        run: |
-          # verify docker installation
-          docker version
           
-
           # build image
           DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
           
@@ -147,7 +124,7 @@ jobs:
           PWD=$(pwd)
           docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
           
-      - name: Build wesql-scale and Setup Cluster
+      - name: Setup Cluster
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
