@@ -181,7 +181,7 @@ jobs:
           launchable record tests --build "$GITHUB_RUN_ID" go-test . || true
           
           # print test output
-          cat output.txt
+          cd ./mysql-tester && cat output.txt
       - name: Check test results
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
         run: |
