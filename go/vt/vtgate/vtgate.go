@@ -34,10 +34,11 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/mysql"
+
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/vtgate/engine"
 
 	"vitess.io/vitess/go/acl"
@@ -281,7 +282,6 @@ func Init(
 	srvResolver := srvtopo.NewResolver(serv, gw, cell)
 	resolver := NewResolver(srvResolver, serv, cell, sc)
 	vsm := newVStreamManager(srvResolver, serv, cell)
-
 	var si SchemaInfo // default nil
 	var st *vtschema.Tracker
 	if enableSchemaChangeSignal {
@@ -289,7 +289,9 @@ func Init(
 		addKeyspaceToTracker(ctx, srvResolver, st, gw)
 		si = st
 	}
-
+	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
+		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
 	cacheCfg := &cache.Config{
 		MaxEntries:     queryPlanCacheSize,
 		MaxMemoryUsage: queryPlanCacheMemory,

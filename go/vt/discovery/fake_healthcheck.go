@@ -68,7 +68,7 @@ type FakeHealthCheck struct {
 }
 
 func (fhc *FakeHealthCheck) GetAllHealthyTabletStats() []*TabletHealth {
-	return fhc.GetAllHealthyTabletStats()
+	return nil
 }
 
 type fhcItem struct {

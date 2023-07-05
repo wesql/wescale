@@ -1064,6 +1064,9 @@ func (conn *gRPCQueryClient) GetSchema(ctx context.Context, target *querypb.Targ
 		}
 	}
 }
+func (conn *gRPCQueryClient) GetUser(ctx context.Context, target *querypb.Target) (*sqltypes.Result, error) {
+	return nil, nil
+}
 
 // Close closes underlying gRPC channel.
 func (conn *gRPCQueryClient) Close(ctx context.Context) error {

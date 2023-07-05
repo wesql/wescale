@@ -453,7 +453,6 @@ func initMySQLProtocol() {
 		initFn()
 	}
 	authServer := mysql.GetAuthServer(mysqlAuthServerImpl)
-
 	// Check mysql_default_workload
 	var ok bool
 	if mysqlDefaultWorkload, ok = querypb.ExecuteOptions_Workload_value[strings.ToUpper(mysqlDefaultWorkloadName)]; !ok {

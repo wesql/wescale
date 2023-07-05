@@ -83,6 +83,6 @@ releases
 venv
 .run/
 
-
+users.json
 .scannerwork
 report

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +92,7 @@ func (asl *AuthServerClientCert) DefaultAuthMethodDescription() AuthMethodDescri
 
 // HandleUser is part of the UserValidator interface. We
 // handle any user here since we don't check up front.
-func (asl *AuthServerClientCert) HandleUser(user string) bool {
+func (asl *AuthServerClientCert) HandleUser(user string, plugin string) bool {
 	return true
 }
 

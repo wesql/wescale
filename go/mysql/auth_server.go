@@ -1,4 +1,23 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+// Copyright 2015 PingCAP, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,18 +36,32 @@ limitations under the License.
 package mysql
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
+)
+
+const (
+	// MIXCHARS is the number of characters to use in the mix
+	MIXCHARS = 32
+	// SALTLENGTH is the length of the salt
+	SALTLENGTH = 20
+	// ITERATERMULNUM is the number of iterations to use
+	ITERATERMULNUM = 1000 //nolint: revive
 )
 
 // AuthServer is the interface that servers must implement to validate
@@ -102,7 +135,7 @@ type AuthMethod interface {
 // all the default helpers that create AuthMethod instances for
 // the various supported Mysql authentication methods.
 type UserValidator interface {
-	HandleUser(user string) bool
+	HandleUser(user string, plugin string) bool
 }
 
 // CacheState is a state that is returned by the UserEntryWithCacheHash
@@ -146,6 +179,19 @@ type HashStorage interface {
 // to prevent timing based attacks on the password.
 type PlainTextStorage interface {
 	UserEntryWithPassword(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error)
+}
+
+// FullAuthStorage describes an object that is suitable to retrieve user information
+// based on full authentication, specifically for the `caching_sha2_password` method.
+// Full authentication is a more secure process, which includes steps such as
+// sending the password, the server validating it, and sometimes requiring additional
+// steps like RSA key pair-based password encryption.
+//
+// When implementing the full authentication process, ensure the use of secure
+// practices to prevent various types of attacks, including timing-based attacks
+// on the password, by using mechanisms like `subtle.ConstantTimeCompare`.
+type FullAuthStorage interface {
+	UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error)
 }
 
 // CachingStorage describes an object that is suitable to retrieve user information
@@ -235,7 +281,7 @@ func NewMysqlDialogAuthMethod(layer PlainTextStorage, validator UserValidator, m
 //
 // This might change in the future if there's a good argument and implementation
 // for allowing the plain text path here as well.
-func NewSha2CachingAuthMethod(layer1 CachingStorage, layer2 PlainTextStorage, validator UserValidator) AuthMethod {
+func NewSha2CachingAuthMethod(layer1 CachingStorage, layer2 FullAuthStorage, validator UserValidator) AuthMethod {
 	authMethod := mysqlCachingSha2AuthMethod{
 		cache:     layer1,
 		storage:   layer2,
@@ -348,8 +394,192 @@ func VerifyHashedCachingSha2Password(reply, salt, hashedCachingSha2Password []by
 	return subtle.ConstantTimeCompare(candidateHash2, hashedCachingSha2Password) == 1
 }
 
+func b64From24bit(b []byte, n int, buf *bytes.Buffer) {
+	b64t := []byte("./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+
+	w := (int64(b[0]) << 16) | (int64(b[1]) << 8) | int64(b[2])
+	for n > 0 {
+		n--
+		buf.WriteByte(b64t[w&0x3f])
+		w >>= 6
+	}
+}
+
+// Sha256Hash is an util function to calculate sha256 hash.
+func Sha256Hash(input []byte) []byte {
+	res := sha256.Sum256(input)
+	return res[:]
+}
+
+// ScrambleSha2Password computes the hash of the password using SHA256 as required by
+// caching_sha2 password plugin for full authentication
+func ScrambleSha2Password(plaintext string, pwhash []byte) (string, error) {
+	pwhashParts := bytes.Split(pwhash, []byte("$"))
+	if len(pwhashParts) != 4 {
+		return "", errors.New("failed to decode hash parts")
+	}
+	hashType := string(pwhashParts[1])
+	if hashType != "A" {
+		return "", errors.New("digest type is incompatible")
+	}
+	iterations, err := strconv.ParseInt(string(pwhashParts[2]), 16, 64)
+	if err != nil {
+		return "", err
+	}
+	iterations = iterations * ITERATERMULNUM
+	salt := pwhashParts[3][:SALTLENGTH]
+
+	// 1, 2, 3
+	bufA := bytes.NewBuffer(make([]byte, 0, 4096))
+	bufA.WriteString(plaintext)
+	bufA.Write(salt)
+
+	// 4, 5, 6, 7, 8
+	bufB := bytes.NewBuffer(make([]byte, 0, 4096))
+	bufB.WriteString(plaintext)
+	bufB.Write(salt)
+	bufB.WriteString(plaintext)
+	sumB := Sha256Hash(bufB.Bytes())
+	bufB.Reset()
+
+	// 9, 10
+	var i int
+	for i = len(plaintext); i > MIXCHARS; i -= MIXCHARS {
+		bufA.Write(sumB[:MIXCHARS])
+	}
+	bufA.Write(sumB[:i])
+	// 11
+	for i = len(plaintext); i > 0; i >>= 1 {
+		if i%2 == 0 {
+			bufA.WriteString(plaintext)
+		} else {
+			bufA.Write(sumB[:])
+		}
+	}
+
+	// 12
+	sumA := Sha256Hash(bufA.Bytes())
+	bufA.Reset()
+
+	// 13, 14, 15
+	bufDP := bufA
+	for range []byte(plaintext) {
+		bufDP.WriteString(plaintext)
+	}
+	sumDP := Sha256Hash(bufDP.Bytes())
+	bufDP.Reset()
+
+	// 16
+	p := make([]byte, 0, sha256.Size)
+	for i = len(plaintext); i > 0; i -= MIXCHARS {
+		if i > MIXCHARS {
+			p = append(p, sumDP[:]...)
+		} else {
+			p = append(p, sumDP[0:i]...)
+		}
+	}
+	// 17, 18, 19
+	bufDS := bufA
+	for i = 0; i < 16+int(sumA[0]); i++ {
+		bufDS.Write(salt)
+	}
+	sumDS := Sha256Hash(bufDS.Bytes())
+	bufDS.Reset()
+
+	// 20
+	s := make([]byte, 0, 32)
+	for i = len(salt); i > 0; i -= MIXCHARS {
+		if i > MIXCHARS {
+			s = append(s, sumDS[:]...)
+		} else {
+			s = append(s, sumDS[0:i]...)
+		}
+	}
+
+	// 21
+	bufC := bufA
+	var sumC []byte
+	for i = 0; i < int(iterations); i++ {
+		bufC.Reset()
+		if i&1 != 0 {
+			bufC.Write(p)
+		} else {
+			bufC.Write(sumA[:])
+		}
+		if i%3 != 0 {
+			bufC.Write(s)
+		}
+		if i%7 != 0 {
+			bufC.Write(p)
+		}
+		if i&1 != 0 {
+			bufC.Write(sumA[:])
+		} else {
+			bufC.Write(p)
+		}
+		sumC = Sha256Hash(bufC.Bytes())
+		sumA = sumC
+	}
+	// 22
+	buf := bytes.NewBuffer(make([]byte, 0, 100))
+	buf.Write([]byte{'$', 'A', '$'})
+	rounds := fmt.Sprintf("%03X", iterations/ITERATERMULNUM)
+	buf.WriteString(rounds)
+	buf.Write([]byte{'$'})
+	buf.Write(salt)
+
+	b64From24bit([]byte{sumC[0], sumC[10], sumC[20]}, 4, buf)
+	b64From24bit([]byte{sumC[21], sumC[1], sumC[11]}, 4, buf)
+	b64From24bit([]byte{sumC[12], sumC[22], sumC[2]}, 4, buf)
+	b64From24bit([]byte{sumC[3], sumC[13], sumC[23]}, 4, buf)
+	b64From24bit([]byte{sumC[24], sumC[4], sumC[14]}, 4, buf)
+	b64From24bit([]byte{sumC[15], sumC[25], sumC[5]}, 4, buf)
+	b64From24bit([]byte{sumC[6], sumC[16], sumC[26]}, 4, buf)
+	b64From24bit([]byte{sumC[27], sumC[7], sumC[17]}, 4, buf)
+	b64From24bit([]byte{sumC[18], sumC[28], sumC[8]}, 4, buf)
+	b64From24bit([]byte{sumC[9], sumC[19], sumC[29]}, 4, buf)
+	b64From24bit([]byte{0, sumC[31], sumC[30]}, 3, buf)
+
+	return buf.String(), nil
+}
+
+// ScramblePassword return SHA256(SHA256(password))
+func ScramblePassword(password []byte) []byte {
+	// Compute SHA256(password)
+	hash := sha256.New()
+	hash.Write(password)
+	passwordHash := hash.Sum(nil)
+
+	hash.Reset()
+	hash.Write(passwordHash)
+	doubleHash := hash.Sum(nil)
+	return doubleHash
+}
+
+// XOR(password, SHA256(password, salt))
+func XORHashAndSalt(password []byte, salt []byte) []byte {
+	// Compute SHA256(password)
+	hash := sha256.New()
+	hash.Write(password)
+	passwordHash := hash.Sum(nil)
+
+	// Compute SHA256(password + salt)
+	hash.Reset()
+	hash.Write(passwordHash)
+	hash.Write(salt)
+	passwordSaltHash := hash.Sum(nil)
+
+	// XOR two hashes
+	for i := range passwordSaltHash {
+		password[i] ^= passwordSaltHash[i]
+	}
+
+	return password
+}
+
 // ScrambleCachingSha2Password computes the hash of the password using SHA256 as required by
 // caching_sha2_password plugin for "fast" authentication
+// XOR(SHA256(password), SHA256(SHA256(SHA256(password)), salt))
 func ScrambleCachingSha2Password(salt []byte, password []byte) []byte {
 	if len(password) == 0 {
 		return nil
@@ -410,7 +640,7 @@ func (n *mysqlNativePasswordAuthMethod) Name() AuthMethodDescription {
 }
 
 func (n *mysqlNativePasswordAuthMethod) HandleUser(conn *Conn, user string) bool {
-	return n.validator.HandleUser(user)
+	return n.validator.HandleUser(user, "mysql_native_password")
 }
 
 func (n *mysqlNativePasswordAuthMethod) AuthPluginData() ([]byte, error) {
@@ -444,7 +674,7 @@ func (n *mysqlClearAuthMethod) Name() AuthMethodDescription {
 }
 
 func (n *mysqlClearAuthMethod) HandleUser(conn *Conn, user string) bool {
-	return n.validator.HandleUser(user)
+	return n.validator.HandleUser(user, "mysql_clear_password")
 }
 
 func (n *mysqlClearAuthMethod) AuthPluginData() ([]byte, error) {
@@ -470,7 +700,7 @@ func (n *mysqlDialogAuthMethod) Name() AuthMethodDescription {
 }
 
 func (n *mysqlDialogAuthMethod) HandleUser(conn *Conn, user string) bool {
-	return n.validator.HandleUser(user)
+	return n.validator.HandleUser(user, "mysql_dialog_password")
 }
 
 func (n *mysqlDialogAuthMethod) AuthPluginData() ([]byte, error) {
@@ -490,7 +720,7 @@ func (n *mysqlDialogAuthMethod) AllowClearTextWithoutTLS() bool {
 
 type mysqlCachingSha2AuthMethod struct {
 	cache     CachingStorage
-	storage   PlainTextStorage
+	storage   FullAuthStorage
 	validator UserValidator
 }
 
@@ -502,7 +732,7 @@ func (n *mysqlCachingSha2AuthMethod) HandleUser(conn *Conn, user string) bool {
 	if !conn.TLSEnabled() && !conn.IsUnixSocket() {
 		return false
 	}
-	return n.validator.HandleUser(user)
+	return n.validator.HandleUser(user, "caching_sha2_password")
 }
 
 func (n *mysqlCachingSha2AuthMethod) AuthPluginData() ([]byte, error) {
@@ -559,7 +789,7 @@ func (n *mysqlCachingSha2AuthMethod) HandleAuthPluginData(c *Conn, user string, 
 			return nil, err
 		}
 
-		return n.storage.UserEntryWithPassword(c, user, password, remoteAddr)
+		return n.storage.UserEntryWithFullAuth(c, salt, user, password, remoteAddr)
 	default:
 		// Somehow someone returned an unknown state, let's error with access denied.
 		return nil, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -630,4 +860,27 @@ func readPacketPasswordString(c *Conn) (string, error) {
 		return "", vterrors.Errorf(vtrpc.Code_INTERNAL, "received invalid response packet, datalen=%v", len(data))
 	}
 	return string(data[:len(data)-1]), nil
+}
+
+// MatchSourceHost validates host entry in auth configuration
+func MatchSourceHost(remoteAddr net.Addr, targetSourceHost string) bool {
+	// Legacy support, there was not matcher defined default to true
+	if targetSourceHost == "" {
+		return true
+	}
+	switch remoteAddr.(type) {
+	case *net.UnixAddr:
+		if targetSourceHost == localhostName {
+			return true
+		}
+	}
+	return false
+}
+func ExtractIPAddr(remoteAddr net.Addr) string {
+	switch remoteAddr.(type) {
+	case *net.TCPAddr:
+		addrParts := strings.Split(remoteAddr.String(), ":") // IP : addrParts[0] , port : addrParts[1]
+		return addrParts[0]
+	}
+	return ""
 }

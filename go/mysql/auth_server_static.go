@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +31,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
 
@@ -69,6 +76,11 @@ type AuthServerStatic struct {
 
 	sigChan chan os.Signal
 	ticker  *time.Ticker
+}
+
+// Note: AuthServerStatic does not support the full use of authMethod
+func (a *AuthServerStatic) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
+	return nil, nil
 }
 
 // AuthServerStaticEntry stores the values for a given user.
@@ -117,7 +129,7 @@ func RegisterAuthServerStaticFromParams(file, jsonConfig string, reloadInterval 
 	if len(authServerStatic.entries) <= 0 {
 		log.Exitf("Failed to populate entries from file: %v", file)
 	}
-	RegisterAuthServer("static", authServerStatic)
+	RegisterAuthServer(global.AuthServerStatic, authServerStatic)
 }
 
 // NewAuthServerStatic returns a new empty AuthServerStatic.
@@ -167,7 +179,7 @@ func NewAuthServerStaticWithAuthMethodDescription(file, jsonConfig string, reloa
 
 // HandleUser is part of the Validator interface. We
 // handle any user here since we don't check up front.
-func (a *AuthServerStatic) HandleUser(user string) bool {
+func (a *AuthServerStatic) HandleUser(user string, plugin string) bool {
 	return true
 }
 
@@ -185,7 +197,7 @@ func (a *AuthServerStatic) UserEntryWithPassword(conn *Conn, user string, passwo
 	for _, entry := range entries {
 		// Validate the password.
 		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare([]byte(password), []byte(entry.Password)) == 1 {
-			return &StaticUserData{entry.UserData, entry.Groups}, nil
+			return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 		}
 	}
 	return &StaticUserData{}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -206,18 +218,18 @@ func (a *AuthServerStatic) UserEntryWithHash(conn *Conn, salt []byte, user strin
 		if entry.MysqlNativePassword != "" {
 			hash, err := DecodeMysqlNativePasswordHex(entry.MysqlNativePassword)
 			if err != nil {
-				return &StaticUserData{entry.UserData, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
 			}
 
 			isPass := VerifyHashedMysqlNativePassword(authResponse, salt, hash)
 			if MatchSourceHost(remoteAddr, entry.SourceHost) && isPass {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		} else {
 			computedAuthResponse := ScrambleMysqlNativePassword(salt, []byte(entry.Password))
 			// Validate the password.
 			if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, computedAuthResponse) == 1 {
-				return &StaticUserData{entry.UserData, entry.Groups}, nil
+				return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, nil
 			}
 		}
 	}
@@ -240,7 +252,7 @@ func (a *AuthServerStatic) UserEntryWithCacheHash(conn *Conn, salt []byte, user 
 
 		// Validate the password.
 		if MatchSourceHost(remoteAddr, entry.SourceHost) && subtle.ConstantTimeCompare(authResponse, computedAuthResponse) == 1 {
-			return &StaticUserData{entry.UserData, entry.Groups}, AuthAccepted, nil
+			return &StaticUserData{entry.UserData, entry.SourceHost, entry.Groups}, AuthAccepted, nil
 		}
 	}
 	return &StaticUserData{}, AuthRejected, NewSQLError(ERAccessDeniedError, SSAccessDeniedError, "Access denied for user '%v'", user)
@@ -349,24 +361,10 @@ func validateConfig(config map[string][]*AuthServerStaticEntry) error {
 	return nil
 }
 
-// MatchSourceHost validates host entry in auth configuration
-func MatchSourceHost(remoteAddr net.Addr, targetSourceHost string) bool {
-	// Legacy support, there was not matcher defined default to true
-	if targetSourceHost == "" {
-		return true
-	}
-	switch remoteAddr.(type) {
-	case *net.UnixAddr:
-		if targetSourceHost == localhostName {
-			return true
-		}
-	}
-	return false
-}
-
 // StaticUserData holds the username and groups
 type StaticUserData struct {
 	Username string
+	host     string
 	Groups   []string
 }
 
