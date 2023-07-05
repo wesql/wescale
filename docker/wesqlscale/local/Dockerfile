@@ -8,7 +8,7 @@ ARG image="vitess/bootstrap:${bootstrap_version}-common"
 
 FROM "${image}"
 
-RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+#RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
 
 RUN apt-get update
 RUN apt-get install -y sudo curl vim jq
@@ -26,7 +26,7 @@ ARG CGO_ENABLED=0
 # Re-copy sources from working tree.
 # COPY --chown=vitess:vitess localdocker /vt/src/vitess.io/vitess
 
-RUN mkdir /vt/src/mount  && chown vitess:vitess /vt/src/mount
+# RUN mkdir /vt/src/mount  && chown vitess:vitess /vt/src/mount
 
 RUN echo "source /vt/src/mount/examples/common/env.sh" >> /etc/bash.bashrc
 # Build and install Vitess in a temporary output directory.
@@ -35,7 +35,7 @@ USER vitess
 WORKDIR /vt/src/vitess.io/vitess
 
 # pre download go package
-RUN go mod download
+#RUN go mod download
 
 # mount for github source code
 VOLUME /vt/src/mount

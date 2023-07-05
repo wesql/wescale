@@ -125,6 +125,13 @@ jobs:
         uses: docker-practice/actions-setup-docker@v1
         timeout-minutes: 12
 
+      - name: Build source
+        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
+        timeout-minutes: 45
+        run: |
+          # build 
+          make build
+
       - name: Build Image for build and Run container
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
@@ -132,19 +139,20 @@ jobs:
           # verify docker installation
           docker version
           
+
           # build image
           DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
           
           # run container
           PWD=$(pwd)
-          docker run -idt -v $PWD:/vt/src/mount -v /tmp:/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
+          docker run -idt -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
           
       - name: Build wesql-scale and Setup Cluster
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
           # build wesql-scale and setup wesql-scale cluster
-          docker exec -it wesqlscale-build bash -c "make build && cd examples/mysql && ./init_cluster.sh"
+          docker exec -it wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
