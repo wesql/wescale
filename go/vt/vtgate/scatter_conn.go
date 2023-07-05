@@ -695,30 +695,6 @@ func (stc *ScatterConn) multiGoTransaction(
 		startTime, statsKey := stc.startAction(name, rs.Target)
 		defer stc.endAction(startTime, allErrors, statsKey, &err, session)
 
-		//sel, isSel := stmt.(*sqlparser.Select)
-		//	if isSel {
-		//		// handle dual table for processing at vtgate.
-		//		p, err := handleDualSelects(sel, vschema)
-		//		if err != nil {
-		//			return nil, err
-		//		}
-		//		if p != nil {
-		//			used := "dual"
-		//			keyspace, ksErr := vschema.DefaultKeyspace()
-		//			if ksErr == nil {
-		//				// we are just getting the ks to log the correct table use.
-		//				// no need to fail this if we can't find the default keyspace
-		//				used = keyspace.Name + ".dual"
-		//			}
-		//			return newPlanResult(p, used), nil
-		//		}
-		//
-		//		if sel.SQLCalcFoundRows && sel.Limit != nil {
-		//			return gen4planSQLCalcFoundRows(vschema, sel, query, reservedVars)
-		//		}
-		//		// if there was no limit, we can safely ignore the SQLCalcFoundRows directive
-		//		sel.SQLCalcFoundRows = false
-		//	}
 		shardActionInfo, err := actionInfo(ctx, rs.Target, session, autocommit, stc.txConn.mode)
 		if err != nil {
 			return
