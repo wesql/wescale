@@ -163,7 +163,7 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
         run: |
           # check if any test failed
-          if grep -q -- 'ERROR' ./mysql-tester/output.txt; then
+          if grep -q -- 'ERRO' ./mysql-tester/output.txt; then
               echo "Testcase is failed"
               exit 1
           else
