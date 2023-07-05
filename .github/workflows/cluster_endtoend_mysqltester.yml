@@ -56,7 +56,6 @@ jobs:
               - 'tools/**'
               - 'config/**'
               - 'bootstrap.sh'
-              - '.github/workflows/cluster_endtoend_wesql.yml'
               - '.github/workflows/cluster_endtoend_mysqltester.yml'
 
       - name: Set up Go
