@@ -144,7 +144,7 @@ jobs:
         timeout-minutes: 45
         run: |
           # build wesql-scale and setup wesql-scale cluster
-          docker exec -it wesql-build bash -c "make build && cd examples/mysql && ./init_cluster.sh"
+          docker exec -it wesqlscale-build bash -c "make build && cd examples/mysql && ./init_cluster.sh"
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
