@@ -145,14 +145,14 @@ jobs:
           
           # run container
           PWD=$(pwd)
-          docker run -idt -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
+          docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
           
       - name: Build wesql-scale and Setup Cluster
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
           # build wesql-scale and setup wesql-scale cluster
-          docker exec -it wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
+          docker exec wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
