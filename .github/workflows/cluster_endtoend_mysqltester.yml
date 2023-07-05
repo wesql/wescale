@@ -172,7 +172,7 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         run: |
           cd ./mysql-tester && \
-          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase | tee -a output.txt | go-junit-report -set-exit-code > report.xml
+          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale | tee -a output.txt | go-junit-report -set-exit-code > report.xml
 
       - name: Print test output and Record test result in launchable
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
