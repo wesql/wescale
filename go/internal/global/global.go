@@ -34,3 +34,9 @@ const (
 const (
 	MysqlBased = "mysqlbased"
 )
+
+// AuthServer Management
+const (
+	AuthServerMysqlBased = MysqlBased
+	AuthServerStatic     = "static"
+)

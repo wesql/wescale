@@ -62,6 +62,7 @@ func runAllTests(m *testing.M) int {
 		"--planner-version=gen4",
 		"--warn_sharded_only=true",
 		"--mysql_auth_server_impl=mysqlbased",
+		"--mysql_auth_mysqlbased_reload_interval=3s",
 	}
 	if err := clusterInstance.StartTwoVtgate(); err != nil {
 		log.Fatal(err.Error())

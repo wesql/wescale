@@ -35,6 +35,10 @@ var (
 	mysqlAuthServerMysqlBaseReloadInterval time.Duration
 )
 
+const (
+	defaultMysqlAuthServerMysqlBaseReloadInterval = 30 * time.Second
+)
+
 // AuthServerMysqlBase implements AuthServer using a static configuration.
 type AuthServerMysqlBase struct {
 	methods []AuthMethod
@@ -55,7 +59,7 @@ type AuthServerMysqlBase struct {
 
 func init() {
 	servenv.OnParseFor("vtgate", func(fs *pflag.FlagSet) {
-		fs.DurationVar(&mysqlAuthServerMysqlBaseReloadInterval, "mysql_auth_mysqlbased_reload_interval", 5, "Ticker to reload credentials")
+		fs.DurationVar(&mysqlAuthServerMysqlBaseReloadInterval, "mysql_auth_mysqlbased_reload_interval", defaultMysqlAuthServerMysqlBaseReloadInterval, "Ticker to reload credentials")
 	})
 }
 
@@ -104,7 +108,7 @@ func NewAuthServerMysqlBase() *AuthServerMysqlBase {
 	a.methods = []AuthMethod{NewMysqlNativeAuthMethod(a, a)}
 	a.methods = append(a.methods, NewSha2CachingAuthMethod(a, a, a))
 
-	RegisterAuthServer("mysqlbased", a)
+	RegisterAuthServer(global.AuthServerMysqlBased, a)
 	a.installSignalHandlers()
 	return a
 }
@@ -120,7 +124,7 @@ func (a *AuthServerMysqlBase) installSignalHandlers() {
 
 	// If duration is set, it will reload configuration every interval
 	if a.reloadInterval > 0 {
-		a.ticker = time.NewTicker(a.reloadInterval * time.Second)
+		a.ticker = time.NewTicker(a.reloadInterval)
 		go func() {
 			for range a.ticker.C {
 				a.sigChan <- syscall.SIGHUP

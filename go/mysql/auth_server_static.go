@@ -32,6 +32,8 @@ import (
 	"syscall"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/log"
@@ -127,7 +129,7 @@ func RegisterAuthServerStaticFromParams(file, jsonConfig string, reloadInterval 
 	if len(authServerStatic.entries) <= 0 {
 		log.Exitf("Failed to populate entries from file: %v", file)
 	}
-	RegisterAuthServer("static", authServerStatic)
+	RegisterAuthServer(global.AuthServerStatic, authServerStatic)
 }
 
 // NewAuthServerStatic returns a new empty AuthServerStatic.

@@ -33,7 +33,7 @@ func TestMysqlNativePassword(t *testing.T) {
 		conn.ExecuteFetch("DROP USER 'test_user1'@'127.0.0.1';", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	conn.ExecuteFetch("SELECT user,host,plugin from mysql.user", 1000, false)
 	vtParams := mysql.ConnParams{
 		Host:  host,
@@ -66,7 +66,7 @@ func TestCachingPassword(t *testing.T) {
 		conn.ExecuteFetch("DROP USER 'test_user1'@'localhost';", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	conn.ExecuteFetch("SELECT user,host,plugin from mysql.user", 1000, false)
 	vtParams := mysql.ConnParams{
 		Host:       host,
