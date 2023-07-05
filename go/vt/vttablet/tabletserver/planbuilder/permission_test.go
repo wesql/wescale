@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,7 +187,7 @@ func TestBuildPermissions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := BuildPermissions(stmt)
+		got := BuildPermissions(stmt, "")
 		if !reflect.DeepEqual(got, tcase.output) {
 			t.Errorf("BuildPermissions(%s): %v, want %v", tcase.input, got, tcase.output)
 		}

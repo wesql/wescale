@@ -31,13 +31,28 @@ import (
 // Permission associates the required access permission
 // for each table.
 type Permission struct {
+	Database  string
 	TableName string
 	Role      tableacl.Role
 }
 
+func (p *Permission) GetFullTableName() string {
+	return fmt.Sprintf("%s.%s", p.Database, p.TableName)
+}
+
+func BuildDataBasePermissions(permissions []Permission, dbName string) []Permission {
+	if dbName == "" {
+		return permissions
+	}
+	for _, permission := range permissions {
+		permission.Database = dbName
+	}
+	return permissions
+}
+
 // BuildPermissions builds the list of required permissions for all the
 // tables referenced in a query.
-func BuildPermissions(stmt sqlparser.Statement) []Permission {
+func BuildPermissions(stmt sqlparser.Statement, dbName string) []Permission {
 	var permissions []Permission
 	// All Statement types myst be covered here.
 	switch node := stmt.(type) {
@@ -74,6 +89,7 @@ func BuildPermissions(stmt sqlparser.Statement) []Permission {
 	default:
 		panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 	}
+	permissions = BuildDataBasePermissions(permissions, dbName)
 	return permissions
 }
 

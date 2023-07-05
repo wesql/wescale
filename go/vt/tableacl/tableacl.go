@@ -31,6 +31,8 @@ import (
 	"strings"
 	"sync"
 
+	"vitess.io/vitess/go/mysql"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/vt/dbconfigs"
@@ -96,6 +98,11 @@ type tableACL struct {
 	factory acl.Factory
 }
 
+type PrivEntry struct {
+	User string
+	role []Role
+}
+
 // currentTableACL stores current effective ACL information.
 var currentTableACL tableACL
 
@@ -121,7 +128,7 @@ func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, 
 func (tacl *tableACL) InitMysqlBasedACL(env tabletenv.Env) error {
 	config := &tableaclpb.Config{}
 	pool := connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
-		Size:               1,
+		Size:               2,
 		IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 	})
 	tacl.conns = pool
@@ -176,17 +183,126 @@ func InitFromProto(config *tableaclpb.Config) error {
 
 func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	entries := aclEntries{}
-	entriesFromMysql, err := tacl.GetGlobalFromMysqlBase(newACL)
+	globalEntries, err := tacl.GetGlobalFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
-	entries = append(entries, entriesFromMysql...)
+	entries = append(entries, globalEntries...)
+	tableEntries, err := tacl.GetTablePrivFromMysqlBase(newACL)
+	if err != nil {
+		return nil, err
+	}
+	entries = append(entries, tableEntries...)
 	return entries, nil
 }
 
-// TODO: geray this function used to implement table-level authority authentication
+func buildACLEntriesFromPrivMap(privMap map[string][]PrivEntry, newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+	entries := aclEntries{}
+	for key, privEntry := range privMap {
+		var readerStrs []string
+		var writerStrs []string
+		var adminStrs []string
+		for _, entry := range privEntry {
+			for _, role := range entry.role {
+				switch role {
+				case READER:
+					readerStrs = append(readerStrs, entry.User)
+				case WRITER:
+					writerStrs = append(writerStrs, entry.User)
+				case ADMIN:
+					adminStrs = append(adminStrs, entry.User)
+				}
+			}
+		}
+		readers, err := newACL(readerStrs)
+		if err != nil {
+			log.Infof("readers load from readerStrs fail")
+			return nil, err
+		}
+		writers, err := newACL(writerStrs)
+		if err != nil {
+			log.Infof("writers load from writerStrs fail")
+			return nil, err
+		}
+		admins, err := newACL(adminStrs)
+		if err != nil {
+			log.Infof("admins load from adminStrs fail")
+			return nil, err
+		}
+		entries = append(entries, aclEntry{
+			tableNameOrPrefix: key,
+			groupName:         key,
+			acl: map[Role]acl.ACL{
+				READER: readers,
+				WRITER: writers,
+				ADMIN:  admins,
+			},
+		})
+	}
+	return entries, nil
+}
+
 func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
-	return nil, nil
+	ctx := context.Background()
+	conn, err := tacl.conns.Get(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	qr, err := conn.Exec(ctx, mysql.FetchTablePriv, 1000, false)
+	if err != nil {
+		log.Infof("loadFromMysqlBase fail %v", err)
+	}
+	containsAllPrivs := func(privs []string, targets []string) bool {
+		for _, target := range targets {
+			found := false
+			for _, priv := range privs {
+				if strings.EqualFold(strings.ToLower(priv), strings.ToLower(target)) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+		return true
+	}
+	isReader := func(privs []string) bool {
+		return containsAllPrivs(privs, []string{"select"})
+	}
+	isWriter := func(privs []string) bool {
+		return containsAllPrivs(privs, []string{"insert", "update", "delete"})
+	}
+	isAdmin := func(privs []string) bool {
+		return containsAllPrivs(privs, []string{"select", "insert", "update", "delete", "create", "drop", "references", "index", "alter", "create view", "show view", "trigger"})
+	}
+	// key : 'database'.'table'
+	// value : 'user'.'host', {priv}
+	privMap := make(map[string][]PrivEntry)
+	for _, rows := range qr.Rows {
+		user := rows[0].ToString()
+		host := rows[1].ToString()
+		database := rows[2].ToString()
+		tableName := rows[3].ToString()
+		tablePrivs := strings.Split(rows[4].ToString(), ",")
+		userKey := fmt.Sprintf("%s@%s", user, host)
+		tableKey := fmt.Sprintf("%s.%s", database, tableName)
+		privEntry := PrivEntry{
+			User: userKey,
+		}
+		if isAdmin(tablePrivs) {
+			privEntry.role = append(privEntry.role, []Role{READER, WRITER, ADMIN}...)
+		} else {
+			if isWriter(tablePrivs) {
+				privEntry.role = append(privEntry.role, WRITER)
+			}
+			if isReader(tablePrivs) {
+				privEntry.role = append(privEntry.role, READER)
+			}
+		}
+		privMap[tableKey] = append(privMap[tableKey], privEntry)
+	}
+	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
 // GetGlobalFromMysqlBase implement global-level authority authentication
@@ -197,7 +313,7 @@ func (tacl *tableACL) GetGlobalFromMysqlBase(newACL func([]string) (acl.ACL, err
 	if err != nil {
 		return nil, err
 	}
-	qr, err := conn.Exec(ctx, "SELECT USER,HOST,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user", 1000, false)
+	qr, err := conn.Exec(ctx, mysql.FetchGlobalPriv, 1000, false)
 	if err != nil {
 		log.Infof("loadFromMysqlBase fail %v", err)
 	}

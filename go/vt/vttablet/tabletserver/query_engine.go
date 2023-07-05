@@ -100,7 +100,7 @@ func (ep *TabletPlan) Stats() (queryCount uint64, duration, mysqlTime time.Durat
 func (ep *TabletPlan) buildAuthorized() {
 	ep.Authorized = make([]*tableacl.ACLResult, len(ep.Permissions))
 	for i, perm := range ep.Permissions {
-		ep.Authorized[i] = tableacl.Authorized(perm.TableName, perm.Role)
+		ep.Authorized[i] = tableacl.Authorized(perm.GetFullTableName(), perm.Role)
 	}
 }
 
@@ -363,10 +363,10 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 
 // GetStreamPlan is similar to GetPlan, but doesn't use the cache
 // and doesn't enforce a limit. It just returns the parsed query.
-func (qe *QueryEngine) GetStreamPlan(sql string) (*TabletPlan, error) {
+func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, error) {
 	qe.mu.RLock()
 	defer qe.mu.RUnlock()
-	splan, err := planbuilder.BuildStreaming(sql, qe.tables)
+	splan, err := planbuilder.BuildStreaming(sql, qe.tables, dbName)
 	if err != nil {
 		return nil, err
 	}

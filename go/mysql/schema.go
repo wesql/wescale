@@ -134,6 +134,10 @@ order by table_name, ordinal_position`
 	FetchDbList = `select schema_name from information_schema.schemata`
 
 	FetchUser = `select user,host,plugin,authentication_string from mysql.user`
+
+	FetchGlobalPriv = `SELECT USER,HOST,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,SUPER_PRIV from mysql.user`
+
+	FetchTablePriv = `SELECT USER,HOST,DB,TABLE_NAME,TABLE_PRIV from mysql.tables_priv`
 )
 
 // BaseShowTablesFields contains the fields returned by a BaseShowTables or a BaseShowTablesForTable command.

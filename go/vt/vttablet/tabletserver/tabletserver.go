@@ -901,7 +901,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 				bindVariables = make(map[string]*querypb.BindVariable)
 			}
 			query, comments := sqlparser.SplitMarginComments(sql)
-			plan, err := tsv.qe.GetStreamPlan(query)
+			plan, err := tsv.qe.GetStreamPlan(query, target.Keyspace)
 			if err != nil {
 				return err
 			}

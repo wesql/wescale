@@ -262,12 +262,12 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 	if err != nil {
 		return nil, err
 	}
-	plan.Permissions = BuildPermissions(statement)
+	plan.Permissions = BuildPermissions(statement, dbName)
 	return plan, nil
 }
 
 // BuildStreaming builds a streaming plan based on the schema.
-func BuildStreaming(sql string, tables map[string]*schema.Table) (*Plan, error) {
+func BuildStreaming(sql string, tables map[string]*schema.Table, dbName string) (*Plan, error) {
 	statement, err := sqlparser.Parse(sql)
 	if err != nil {
 		return nil, err
@@ -276,7 +276,7 @@ func BuildStreaming(sql string, tables map[string]*schema.Table) (*Plan, error) 
 	plan := &Plan{
 		PlanID:      PlanSelectStream,
 		FullQuery:   GenerateFullQuery(statement),
-		Permissions: BuildPermissions(statement),
+		Permissions: BuildPermissions(statement, dbName),
 	}
 
 	switch stmt := statement.(type) {
