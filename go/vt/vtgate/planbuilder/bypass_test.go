@@ -83,7 +83,7 @@ func Test_buildPlanForBypass(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stmt, err := sqlparser.Parse(tt.args.sql)
 			assert.NoError(t, err)
-			plan, err := buildPlanForBypass(stmt, nil, tt.args.vschema)
+			plan, err := buildPlanForBypass(stmt, nil, tt.args.vschema, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("buildPlanForBypass(%v, nil, %v)", stmt, tt.args.vschema)) {
 				return
 			}

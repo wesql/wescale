@@ -894,17 +894,17 @@ func TestSelectDatabasePrepare(t *testing.T) {
 }
 
 func TestSelectLock(t *testing.T) {
-	executor, sbc1, _, _ := createExecutorEnv()
+	executor, _, _, sbclookup := createExecutorEnv()
 	session := NewSafeSession(nil)
 	session.Session.InTransaction = true
 	session.ShardSessions = []*vtgatepb.Session_ShardSession{{
 		Target: &querypb.Target{
-			Keyspace:   "TestExecutor",
-			Shard:      "-20",
+			Keyspace:   "mysql",
+			Shard:      "0",
 			TabletType: topodatapb.TabletType_PRIMARY,
 		},
 		TransactionId: 12345,
-		TabletAlias:   sbc1.Tablet().Alias,
+		TabletAlias:   sbclookup.Tablet().Alias,
 	}}
 
 	wantQueries := []*querypb.BoundQuery{{
@@ -915,28 +915,22 @@ func TestSelectLock(t *testing.T) {
 		InTransaction: true,
 		ShardSessions: []*vtgatepb.Session_ShardSession{{
 			Target: &querypb.Target{
-				Keyspace:   "TestExecutor",
-				Shard:      "-20",
+				Keyspace:   "mysql",
+				Shard:      "0",
 				TabletType: topodatapb.TabletType_PRIMARY,
 			},
 			TransactionId: 12345,
-			TabletAlias:   sbc1.Tablet().Alias,
+			TabletAlias:   sbclookup.Tablet().Alias,
 		}},
-		LockSession: &vtgatepb.Session_ShardSession{
-			Target:      &querypb.Target{Keyspace: "TestExecutor", Shard: "-20", TabletType: topodatapb.TabletType_PRIMARY},
-			TabletAlias: sbc1.Tablet().Alias,
-			ReservedId:  1,
-		},
-		AdvisoryLock: map[string]int64{"lock name": 1},
-		FoundRows:    1,
-		RowCount:     -1,
+		FoundRows: 1,
+		RowCount:  -1,
 	}
 
 	_, err := exec(executor, session, "select get_lock('lock name', 10) from dual")
 	require.NoError(t, err)
 	wantSession.LastLockHeartbeat = session.Session.LastLockHeartbeat // copying as this is current timestamp value.
 	utils.MustMatch(t, wantSession, session.Session, "")
-	utils.MustMatch(t, wantQueries, sbc1.Queries, "")
+	utils.MustMatch(t, wantQueries, sbclookup.Queries, "")
 
 	wantQueries = append(wantQueries, &querypb.BoundQuery{
 		Sql:           "select release_lock('lock name') from dual",
@@ -948,7 +942,7 @@ func TestSelectLock(t *testing.T) {
 	_, err = exec(executor, session, "select release_lock('lock name') from dual")
 	require.NoError(t, err)
 	wantSession.LastLockHeartbeat = session.Session.LastLockHeartbeat // copying as this is current timestamp value.
-	utils.MustMatch(t, wantQueries, sbc1.Queries, "")
+	utils.MustMatch(t, wantQueries, sbclookup.Queries, "")
 	utils.MustMatch(t, wantSession, session.Session, "")
 }
 

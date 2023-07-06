@@ -23,8 +23,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"vitess.io/vitess/go/vt/key"
-
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 
 	"vitess.io/vitess/go/vt/vterrors"
@@ -269,46 +267,40 @@ func planSelectV3(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSch
 	return ljt, frpb.plan, nil, err
 }
 
-func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (bool, error) {
+func handleSelectLock(stmt sqlparser.SelectStatement) (bool, error) {
+	sel, isSel := stmt.(*sqlparser.Select)
+	if !isSel {
+		return false, nil
+	}
+
 	//keep the code in case we want to rollback
 	if !isOnlyDual(sel) {
 		return false, nil
 	}
 
 	var lockFunctions []*engine.LockFunc
+	var needReverse bool
 	for _, e := range sel.SelectExprs {
 		expr, ok := e.(*sqlparser.AliasedExpr)
 		if !ok {
 			return false, nil
 		}
-		_, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
+		lFunc, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
 		if isLFunc {
-			elem := &engine.LockFunc{Typ: expr.Expr.(*sqlparser.LockingFunc)}
+			elem := &engine.LockFunc{Typ: lFunc}
 			lockFunctions = append(lockFunctions, elem)
+			switch lFunc.Type {
+			case sqlparser.GetLock:
+				needReverse = true
+			case sqlparser.IsFreeLock, sqlparser.ReleaseLock:
+			}
 			continue
 		}
 		if len(lockFunctions) > 0 {
 			return false, vterrors.VT12001(fmt.Sprintf("LOCK function and other expression: [%s] in same select query", sqlparser.String(expr)))
 		}
 	}
-	if len(lockFunctions) > 0 {
-		return true, nil
-	}
-	return true, nil
-}
-
-func buildLockingPrimitive(sel *sqlparser.Select, vschema plancontext.VSchema, lockFunctions []*engine.LockFunc) (engine.Primitive, error) {
-	ks, err := vschema.FirstSortedKeyspace()
-	if err != nil {
-		return nil, err
-	}
-	buf := sqlparser.NewTrackedBuffer(sqlparser.FormatImpossibleQuery).WriteNode(sel)
-	return &engine.Lock{
-		Keyspace:          ks,
-		TargetDestination: key.DestinationKeyspaceID{0},
-		FieldQuery:        buf.String(),
-		LockFunctions:     lockFunctions,
-	}, nil
+	return needReverse, nil
 }
 
 func isOnlyDual(sel *sqlparser.Select) bool {

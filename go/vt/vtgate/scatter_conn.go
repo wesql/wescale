@@ -208,12 +208,11 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 			}
 
-			var lockFunc *engine.LockFunc
-			var lName string
 			send, ok := primitive.(*engine.Send)
-
 			if ok {
-				lockFunc, lName = solveLockFunc(info, send.Stmt)
+				if reservedID == 0 && send.NeedReverse {
+					info.actionNeeded = reserve
+				}
 			}
 
 			if session != nil && session.Session != nil && session.Session.Options != nil {
@@ -272,33 +271,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] unexpected actionNeeded on query execution: %v", info.actionNeeded)
 			}
 			session.logging.log(primitive, rs.Target, rs.Gateway, queries[i].Sql, info.actionNeeded == begin || info.actionNeeded == reserveBegin, queries[i].BindVariables)
-
-			if lockFunc != nil {
-				lockRes := innerqr.Rows[0]
-				switch lockFunc.Typ.Type {
-				case sqlparser.IsFreeLock, sqlparser.IsUsedLock:
-				case sqlparser.GetLock:
-					if lockRes[0].ToString() == "1" {
-						session.AddAdvisoryLock(lName)
-					}
-				//case sqlparser.ReleaseAllLocks:
-				//	err = vcursor.ReleaseLock(ctx)
-				//	if err != nil {
-				//		return nil, err
-				//	}
-				case sqlparser.ReleaseLock:
-					// TODO: do not execute if lock not taken.
-					if lockRes[0].ToString() == "1" {
-						session.RemoveAdvisoryLock(lName)
-					}
-					//if !session.AnyAdvisoryLockTaken() {
-					//	err = session.ReleaseLock(ctx)
-					//	if err != nil {
-					//		return nil, err
-					//	}
-					//}
-				}
-			}
 
 			// We need to new shard info irrespective of the error.
 			newInfo := info.updateTransactionAndReservedID(transactionID, reservedID, alias)

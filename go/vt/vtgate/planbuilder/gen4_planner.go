@@ -57,52 +57,39 @@ func gen4SelectStmtPlanner(
 	reservedVars *sqlparser.ReservedVars,
 	vschema plancontext.VSchema,
 ) (*planResult, error) {
-	plan, err := buildPlanForBypass(stmt, reservedVars, vschema)
+	sel, isSel := stmt.(*sqlparser.Select)
+	if isSel {
+		if isOnlyDual(sel) {
+			_, err := handleSelectLock(stmt)
+			if err != nil {
+				return nil, err
+			}
+			return buildPlanForDual(stmt, reservedVars, vschema)
+		}
+	}
+
+	plan, err := buildPlanForBypass(stmt, reservedVars, vschema, false)
 	if err != nil {
 		return nil, err
 	}
 	return plan, nil
 }
 
-func gen4planSQLCalcFoundRows(vschema plancontext.VSchema, sel *sqlparser.Select, query string, reservedVars *sqlparser.ReservedVars) (*planResult, error) {
-	ksName := ""
-	if ks, _ := vschema.DefaultKeyspace(); ks != nil {
-		ksName = ks.Name
-	}
-	semTable, err := semantics.Analyze(sel, ksName, vschema)
-	if err != nil {
-		return nil, err
-	}
-	// record any warning as planner warning.
-	vschema.PlannerWarning(semTable.Warning)
-
-	plan, tablesUsed, err := buildSQLCalcFoundRowsPlan(query, sel, reservedVars, vschema, planSelectGen4)
-	if err != nil {
-		return nil, err
-	}
-	return newPlanResult(plan.Primitive(), tablesUsed...), nil
-}
-
-func planSelectGen4(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, sel *sqlparser.Select) (*jointab, logicalPlan, []string, error) {
-	plan, _, tablesUsed, err := newBuildSelectPlan(sel, reservedVars, vschema, 0)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return nil, plan, tablesUsed, nil
-}
-
-func gen4PredicateRewrite(stmt sqlparser.Statement, getPlan func(selStatement sqlparser.SelectStatement) (logicalPlan, *semantics.SemTable, []string, error)) (logicalPlan, *semantics.SemTable, []string) {
-	rewritten, isSel := sqlparser.RewritePredicate(stmt).(sqlparser.SelectStatement)
-	if !isSel {
-		// Fail-safe code, should never happen
-		return nil, nil, nil
-	}
-	plan2, st, op, err := getPlan(rewritten)
-	if err == nil && !shouldRetryAfterPredicateRewriting(plan2) {
-		// we only use this new plan if it's better than the old one we got
-		return plan2, st, op
-	}
-	return nil, nil, nil
+func buildPlanForDual(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
+	//sel, isSel := stmt.(*sqlparser.Select)
+	//if isSel {
+	//	if isOnlyDual(sel) {
+	//		//used := "dual"
+	//		keyspace, ksErr := vschema.DefaultKeyspace()
+	//		if ksErr == nil {
+	//			// we are just getting the ks to log the correct table use.
+	//			// no need to fail this if we can't find the default keyspace
+	//			used = keyspace.Name + ".dual"
+	//		}
+	//		//return newPlanResult(send, used), nil
+	//	}
+	//}
+	return nil, nil
 }
 
 func newBuildSelectPlan(

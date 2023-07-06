@@ -24,8 +24,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"vitess.io/vitess/go/vt/sqlparser"
-
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/key"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
@@ -57,8 +55,8 @@ type Send struct {
 	// SingleShardOnly specifies that the query must be send to only single shard
 	SingleShardOnly bool
 
-	// Stmt
-	Stmt sqlparser.Statement
+	// needReverse specifies that the query should be reserveExecuted
+	NeedReverse bool
 
 	noInputs
 }
