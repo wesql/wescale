@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +41,10 @@ func (cached *TabletPlan) CachedSize(alloc bool) int64 {
 	// field Authorized []*vitess.io/vitess/go/vt/tableacl.ACLResult
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.Authorized)) * int64(8))
-		for _, elem := range cached.Authorized {
-			size += elem.CachedSize(true)
+		for _, elems := range cached.Authorized {
+			for _, elem := range elems {
+				size += elem.CachedSize(true)
+			}
 		}
 	}
 	return size

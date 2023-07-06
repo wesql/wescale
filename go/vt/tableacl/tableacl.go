@@ -495,6 +495,30 @@ func Authorized(table string, role Role) *ACLResult {
 	return currentTableACL.Authorized(table, role)
 }
 
+// AuthorizedList returns the list of entities who have the specified role on a tablel.
+func AuthorizedList(table string, role Role) []*ACLResult {
+	return currentTableACL.AuthorizedList(table, role)
+}
+
+func (tacl *tableACL) AuthorizedList(table string, role Role) []*ACLResult {
+	tacl.RLock()
+	defer tacl.RUnlock()
+	var entries []*ACLResult
+	for _, entry := range tacl.entries {
+		val := entry.tableNameOrPrefix
+		if table == val || (strings.HasSuffix(val, "%") && strings.HasPrefix(table, val[:len(val)-1])) {
+			acl, ok := entry.acl[role]
+			if ok {
+				entries = append(entries, &ACLResult{
+					ACL:       acl,
+					GroupName: entry.groupName,
+				})
+			}
+		}
+	}
+	return entries
+}
+
 func (tacl *tableACL) Authorized(table string, role Role) *ACLResult {
 	tacl.RLock()
 	defer tacl.RUnlock()

@@ -65,7 +65,7 @@ type TabletPlan struct {
 	*planbuilder.Plan
 	Original   string
 	Rules      *rules.Rules
-	Authorized []*tableacl.ACLResult
+	Authorized [][]*tableacl.ACLResult
 
 	QueryCount   uint64
 	Time         uint64
@@ -98,9 +98,9 @@ func (ep *TabletPlan) Stats() (queryCount uint64, duration, mysqlTime time.Durat
 
 // buildAuthorized builds 'Authorized', which is the runtime part for 'Permissions'.
 func (ep *TabletPlan) buildAuthorized() {
-	ep.Authorized = make([]*tableacl.ACLResult, len(ep.Permissions))
+	ep.Authorized = make([][]*tableacl.ACLResult, len(ep.Permissions))
 	for i, perm := range ep.Permissions {
-		ep.Authorized[i] = tableacl.Authorized(perm.GetFullTableName(), perm.Role)
+		ep.Authorized[i] = append(ep.Authorized[i], tableacl.AuthorizedList(perm.GetFullTableName(), perm.Role)...)
 	}
 }
 
