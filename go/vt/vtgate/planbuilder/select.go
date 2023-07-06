@@ -273,11 +273,6 @@ func handleSelectLock(stmt sqlparser.SelectStatement) (bool, error) {
 		return false, nil
 	}
 
-	//keep the code in case we want to rollback
-	if !isOnlyDual(sel) {
-		return false, nil
-	}
-
 	var lockFunctions []*engine.LockFunc
 	var needReverse bool
 	for _, e := range sel.SelectExprs {
