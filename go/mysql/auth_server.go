@@ -47,7 +47,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 
 	"vitess.io/vitess/go/vt/log"
@@ -877,10 +876,9 @@ func MatchSourceHost(remoteAddr net.Addr, targetSourceHost string) bool {
 	return false
 }
 func ExtractIPAddr(remoteAddr net.Addr) string {
-	switch remoteAddr.(type) {
+	switch addr := remoteAddr.(type) {
 	case *net.TCPAddr:
-		addrParts := strings.Split(remoteAddr.String(), ":") // IP : addrParts[0] , port : addrParts[1]
-		return addrParts[0]
+		return addr.IP.String()
 	}
 	return ""
 }
