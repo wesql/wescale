@@ -57,11 +57,14 @@ func gen4SelectStmtPlanner(
 	reservedVars *sqlparser.ReservedVars,
 	vschema plancontext.VSchema,
 ) (*planResult, error) {
-	isReverse, err := handleSelectLock(stmt)
+	plan, err := handleSelectLock(stmt, reservedVars, vschema)
 	if err != nil {
 		return nil, err
 	}
-	plan, err := buildPlanForBypass(stmt, reservedVars, vschema, isReverse)
+	if plan != nil {
+		return plan, nil
+	}
+	plan, err = buildPlanForBypass(stmt, reservedVars, vschema)
 	if err != nil {
 		return nil, err
 	}

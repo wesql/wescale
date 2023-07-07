@@ -30,7 +30,11 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
 
-func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vschema plancontext.VSchema, needReserve bool) (*planResult, error) {
+func buildPlanForBypass(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
+	return buildLockedPlanForBypass(stmt, reservedVars, vschema, nil)
+}
+
+func buildLockedPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vschema plancontext.VSchema, lockList []*engine.SessionLock) (*planResult, error) {
 	keyspace, err := vschema.DefaultKeyspace()
 	// If no keyspace is specified in this SQL or Session, the SQL can be processed directly by vttablet,
 	// because vttablet can now handle SQL without any database specified.
@@ -71,20 +75,24 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		FieldQuery:        fieldQuery,
 		IsDML:             isDML,
 		SingleShardOnly:   false,
-		NeedReverse:       false,
-	}
-
-	if needReserve {
-		send.NeedReverse = true
 	}
 
 	sel, isSel := stmt.(*sqlparser.Select)
 	if isSel && isOnlyDual(sel) {
+
+		//TODO: Vitess System VAR
 		used := "dual"
 		if keyspace != nil && keyspace.Name != "" {
 			// we are just getting the ks to log the correct table use.
 			// no need to fail this if we can't find the default keyspace
 			used = keyspace.Name + ".dual"
+		}
+		if lockList != nil && len(lockList) != 0 {
+			lockedSend := &engine.LockedSend{
+				*send,
+				lockList,
+			}
+			return newPlanResult(lockedSend, used), nil
 		}
 		return newPlanResult(send, used), nil
 	}

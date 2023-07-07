@@ -55,11 +55,23 @@ type Send struct {
 	// SingleShardOnly specifies that the query must be send to only single shard
 	SingleShardOnly bool
 
-	// needReverse specifies that the query should be reserveExecuted
-	NeedReverse bool
-
 	noInputs
 }
+
+type LockedSend struct {
+	Send
+
+	// lockFuncs specifies that the sessionLocks should be executed
+	LockFuncs []*SessionLock
+}
+
+type LockAction int
+
+const (
+	NoLock LockAction = iota
+	GetLock
+	ReleaseLock
+)
 
 // NeedsTransaction implements the Primitive interface
 func (s *Send) NeedsTransaction() bool {

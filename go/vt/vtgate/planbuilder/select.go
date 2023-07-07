@@ -267,35 +267,34 @@ func planSelectV3(reservedVars *sqlparser.ReservedVars, vschema plancontext.VSch
 	return ljt, frpb.plan, nil, err
 }
 
-func handleSelectLock(stmt sqlparser.SelectStatement) (bool, error) {
+func handleSelectLock(stmt sqlparser.SelectStatement, vars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
 	sel, isSel := stmt.(*sqlparser.Select)
 	if !isSel {
-		return false, nil
+		return nil, nil
 	}
 
-	var lockFunctions []*engine.LockFunc
-	var needReverse bool
+	var lockFunctions []*engine.SessionLock
 	for _, e := range sel.SelectExprs {
 		expr, ok := e.(*sqlparser.AliasedExpr)
 		if !ok {
-			return false, nil
+			continue
 		}
 		lFunc, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
+		//Todo:check
+		name, ok := lFunc.Name.(sqlparser.Argument)
+		if !ok {
+			continue
+		}
 		if isLFunc {
-			elem := &engine.LockFunc{Typ: lFunc}
+			elem := &engine.SessionLock{Typ: lFunc.Type, Name: string(name)}
 			lockFunctions = append(lockFunctions, elem)
-			switch lFunc.Type {
-			case sqlparser.GetLock:
-				needReverse = true
-			case sqlparser.IsFreeLock, sqlparser.ReleaseLock:
-			}
 			continue
 		}
 		if len(lockFunctions) > 0 {
-			return false, vterrors.VT12001(fmt.Sprintf("LOCK function and other expression: [%s] in same select query", sqlparser.String(expr)))
+			return nil, vterrors.VT12001(fmt.Sprintf("LOCK function and other expression: [%s] in same select query", sqlparser.String(expr)))
 		}
 	}
-	return needReverse, nil
+	return buildLockedPlanForBypass(stmt, vars, vschema, lockFunctions)
 }
 
 func isOnlyDual(sel *sqlparser.Select) bool {

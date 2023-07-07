@@ -58,6 +58,11 @@ type LockFunc struct {
 	Name evalengine.Expr
 }
 
+type SessionLock struct {
+	Typ  sqlparser.LockingFuncType
+	Name string
+}
+
 // RouteType is part of the Primitive interface
 func (l *Lock) RouteType() string {
 	return "lock"

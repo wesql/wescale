@@ -18,12 +18,39 @@ package planbuilder
 
 import (
 	"vitess.io/vitess/go/vt/sqlparser"
+	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vtgate/engine"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+)
+
+const (
+	lockTablePrefix = "__locktable_"
 )
 
 // buildLockPlan plans lock tables statement.
 func buildLockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-	plan, err := buildPlanForBypass(stmt, reservedVars, vschema, true)
+	lockTables, ok := stmt.(*sqlparser.LockTables)
+	if !ok {
+		return nil, vterrors.VT13001("statement type unexpected, expect LockTables")
+	}
+	lockFuncs := []*engine.SessionLock{}
+	for _, lockTable := range lockTables.Tables {
+		t, ok := lockTable.Table.(*sqlparser.AliasedTableExpr)
+		if !ok {
+			continue
+		}
+		tableName, ok := t.Expr.(sqlparser.TableName)
+		if !ok {
+			continue
+		}
+		lockType := lockTable.Lock.ToString()
+		lockFuncs = append(lockFuncs, &engine.SessionLock{
+			Typ:  sqlparser.GetLock,
+			Name: lockTablePrefix + tableName.Name.String() + lockType,
+		})
+	}
+
+	plan, err := buildLockedPlanForBypass(stmt, reservedVars, vschema, lockFuncs)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +59,7 @@ func buildLockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVar
 
 // buildUnlockPlan plans lock tables statement.
 func buildUnlockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-	plan, err := buildPlanForBypass(stmt, reservedVars, vschema, false)
+	plan, err := buildPlanForBypass(stmt, reservedVars, vschema)
 	if err != nil {
 		return nil, err
 	}

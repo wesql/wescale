@@ -180,7 +180,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				qs      queryservice.QueryService
 			)
 			transactionID := info.transactionID
-			reservedID := info.reservedID
 
 			if autocommit {
 				// As this is auto-commit, the transactionID is supposed to be zero.
@@ -208,12 +207,11 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 			}
 
-			send, ok := primitive.(*engine.Send)
+			send, ok := primitive.(*engine.LockedSend)
 			if ok {
-				if reservedID == 0 && send.NeedReverse {
-					info.actionNeeded = reserve
-				}
+				stc.solveLockSession(ctx, session, rs, send, info)
 			}
+			reservedID := info.reservedID
 
 			if session != nil && session.Session != nil && session.Session.Options != nil {
 				opts = session.Session.Options
@@ -231,6 +229,10 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			case nothing:
 				innerqr, err = qs.Execute(ctx, rs.Target, queries[i].Sql, queries[i].BindVariables, info.transactionID, info.reservedID, opts)
 				if err != nil {
+					if wasConnectionClosed(err) {
+						// TODO: try to acquire lock again.
+						session.ResetLock()
+					}
 					retryRequest(func() {
 						// we seem to have lost our connection. it was a reserved connection, let's try to recreate it
 						info.actionNeeded = reserve
@@ -261,6 +263,13 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				state, innerqr, err = qs.ReserveExecute(ctx, rs.Target, session.SetPreQueries(), queries[i].Sql, queries[i].BindVariables, transactionID, opts)
 				reservedID = state.ReservedID
 				alias = state.TabletAlias
+				if reservedID != 0 {
+					session.SetLockSession(&vtgatepb.Session_ShardSession{
+						Target:      rs.Target,
+						ReservedId:  reservedID,
+						TabletAlias: alias,
+					})
+				}
 			case reserveBegin:
 				var state queryservice.ReservedTransactionState
 				state, innerqr, err = qs.ReserveBeginExecute(ctx, rs.Target, session.SetPreQueries(), session.SavePoints(), queries[i].Sql, queries[i].BindVariables, opts)
@@ -770,7 +779,6 @@ func (stc *ScatterConn) ExecuteLock(ctx context.Context, rs *srvtopo.ResolvedSha
 		if err != nil && reservedID != 0 {
 			_ = stc.txConn.ReleaseLock(ctx, session)
 		}
-
 		if reservedID != 0 {
 			session.SetLockSession(&vtgatepb.Session_ShardSession{
 				Target:      rs.Target,
@@ -984,4 +992,23 @@ func solveLockFunc(info *shardActionInfo, stmt sqlparser.Statement) (*engine.Loc
 		info.actionNeeded = reserve
 	}
 	return nil, ""
+}
+
+func (stc *ScatterConn) solveLockSession(ctx context.Context, session *SafeSession, rs *srvtopo.ResolvedShard, send *engine.LockedSend, info *shardActionInfo) error {
+	if session.LockSession != nil {
+		if !proto.Equal(rs.Target, session.LockSession.Target) {
+			_ = stc.txConn.ReleaseLock(ctx, session)
+			return vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "target does match the existing lock session target: (%v, %v)", rs.Target, session.LockSession.Target)
+		}
+		info.reservedID = session.LockSession.ReservedId
+		info.alias = session.LockSession.TabletAlias
+	}
+	//lockMap := map[string]string{}
+	//if len()
+	//
+	//// TODO
+	//if needLock == engine.GetLock && info.reservedID == 0 {
+	//	info.actionNeeded = reserve
+	//}
+	return nil
 }
