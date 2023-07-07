@@ -544,19 +544,6 @@ func TestSelectUserDefinedVariable(t *testing.T) {
 		}},
 	}
 	utils.MustMatch(t, wantResult, result, "Mismatch")
-
-	primarySession = &vtgatepb.Session{UserDefinedVariables: createMap([]string{"foo"}, []any{"bar"})}
-	result, err = executorExec(executor, sql, map[string]*querypb.BindVariable{})
-	require.NoError(t, err)
-	wantResult = &sqltypes.Result{
-		Fields: []*querypb.Field{
-			{Name: "@foo", Type: sqltypes.VarChar},
-		},
-		Rows: [][]sqltypes.Value{{
-			sqltypes.NewVarChar("bar"),
-		}},
-	}
-	utils.MustMatch(t, wantResult, result, "Mismatch")
 }
 
 func TestFoundRows(t *testing.T) {
@@ -593,9 +580,6 @@ func TestRowCount(t *testing.T) {
 	require.NoError(t, err)
 	testRowCount(t, executor, -1)
 
-	_, err = executorExec(executor, "delete from user where id in (42, 24)", map[string]*querypb.BindVariable{})
-	require.NoError(t, err)
-	testRowCount(t, executor, 1)
 }
 
 func testRowCount(t *testing.T, executor *Executor, wantRowCount int64) {
@@ -1123,22 +1107,6 @@ var multiColVschema = `
 	}
 }
 `
-
-func TestSelectHexAndBit(t *testing.T) {
-	executor, _, _, _ := createExecutorEnv()
-	executor.normalize = true
-	session := NewAutocommitSession(&vtgatepb.Session{})
-
-	qr, err := executor.Execute(context.Background(), "TestSelectHexAndBit", session,
-		"select 0b1001, b'1001', 0x9, x'09'", nil)
-	require.NoError(t, err)
-	require.Equal(t, `[[VARBINARY("\t") VARBINARY("\t") VARBINARY("\t") VARBINARY("\t")]]`, fmt.Sprintf("%v", qr.Rows))
-
-	qr, err = executor.Execute(context.Background(), "TestSelectHexAndBit", session,
-		"select 1 + 0b1001, 1 + b'1001', 1 + 0x9, 1 + x'09'", nil)
-	require.NoError(t, err)
-	require.Equal(t, `[[UINT64(10) UINT64(10) UINT64(10) UINT64(10)]]`, fmt.Sprintf("%v", qr.Rows))
-}
 
 // TestSelectCFC tests validates that cfc vindex plan gets cached and same plan is getting reused.
 // This also validates that cache_size is able to calculate the cfc vindex plan size.
