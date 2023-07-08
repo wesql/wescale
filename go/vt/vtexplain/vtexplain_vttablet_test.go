@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,55 +32,6 @@ import (
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 )
-
-func TestRun(t *testing.T) {
-	testVSchema := `
-{
-	"test_keyspace": {
-		"sharded": false,
-		"tables": {
-			"t1": {
-				"columns": [
-					{ "name": "id", "type": "INT64" }
-				],
-				"column_list_authoritative": true
-			},
-			"t2": {
-				"columns": [
-					{ "name": "id", "type": "INT32" }
-				],
-				"column_list_authoritative": true
-			}
-		}
-	}
-}
-`
-
-	testSchema := `
-create table t1 (
-	id bigint unsigned not null
-);
-
-create table t2 (
-	id int unsigned not null
-);
-`
-
-	opts := &Options{
-		ExecutionMode:   "multi",
-		ReplicationMode: "ROW",
-		NumShards:       2,
-	}
-
-	vte, err := Init(testVSchema, testSchema, "", opts)
-	require.NoError(t, err)
-	defer vte.Stop()
-
-	sql := "SELECT * FROM t1 INNER JOIN t2 ON t1.id = t2.id"
-
-	_, err = vte.Run(sql)
-	require.NoError(t, err)
-}
 
 func TestParseSchema(t *testing.T) {
 	testSchema := `

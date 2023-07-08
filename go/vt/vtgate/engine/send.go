@@ -105,6 +105,9 @@ func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[str
 	if err != nil {
 		return nil, err
 	}
+	if len(rss) == 0 {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "Resolve error, should have at least one shard for query: %v", s.Query)
+	}
 
 	if s.Keyspace != nil && !s.Keyspace.Sharded && len(rss) != 1 {
 		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "Keyspace does not have exactly one shard: %v", rss)
