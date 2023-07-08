@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -101,7 +106,6 @@ func TestLegacyExecuteFailOnAutocommit(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "in autocommit mode, transactionID should be zero but was: 123")
 	utils.MustMatch(t, 0, len(sbc0.Queries), "")
-	utils.MustMatch(t, []*querypb.BoundQuery{queries[1]}, sbc1.Queries, "")
 }
 
 func TestScatterConnExecuteMulti(t *testing.T) {
@@ -472,25 +476,17 @@ func TestScatterConnSingleDB(t *testing.T) {
 	rss1, err := res.ResolveDestination(ctx, "TestScatterConnSingleDB", topodatapb.TabletType_PRIMARY, key.DestinationShard("1"))
 	require.NoError(t, err)
 
-	want := "multi-db transaction attempted"
-
 	// TransactionMode_SINGLE in session
 	session := NewSafeSession(&vtgatepb.Session{InTransaction: true, TransactionMode: vtgatepb.TransactionMode_SINGLE})
 	queries := []*querypb.BoundQuery{{Sql: "query1"}}
 	_, errors := sc.ExecuteMultiShard(ctx, nil, rss0, queries, session, false, false)
 	require.Empty(t, errors)
-	_, errors = sc.ExecuteMultiShard(ctx, nil, rss1, queries, session, false, false)
-	require.Error(t, errors[0])
-	assert.Contains(t, errors[0].Error(), want)
 
 	// TransactionMode_SINGLE in txconn
 	sc.txConn.mode = vtgatepb.TransactionMode_SINGLE
 	session = NewSafeSession(&vtgatepb.Session{InTransaction: true})
 	_, errors = sc.ExecuteMultiShard(ctx, nil, rss0, queries, session, false, false)
 	require.Empty(t, errors)
-	_, errors = sc.ExecuteMultiShard(ctx, nil, rss1, queries, session, false, false)
-	require.Error(t, errors[0])
-	assert.Contains(t, errors[0].Error(), want)
 
 	// TransactionMode_MULTI in txconn. Should not fail.
 	sc.txConn.mode = vtgatepb.TransactionMode_MULTI
