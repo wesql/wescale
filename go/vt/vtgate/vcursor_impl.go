@@ -1102,6 +1102,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
+	case sysvars.ReadAfterWriteConsistency.Name:
+		return SetDefaultReadAfterWriteConsistency(value)
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		return SetDefaultReadAfterWriteTimeout(value)
 	}

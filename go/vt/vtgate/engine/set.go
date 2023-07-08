@@ -265,6 +265,8 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
+	case sysvars.ReadAfterWriteConsistency.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	}

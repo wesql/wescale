@@ -125,7 +125,8 @@ var (
 	messageStreamGracePeriod = 30 * time.Second
 
 	// read write splitting flags
-	defaultReadWriteSplittingPolicy = string(schema.ReadWriteSplittingPolicyDisable)
+	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyDisable)
+	defaultReadAfterWriteConsistencyName = vtgatepb.ReadAfterWriteConsistency_EVENTUAL.String()
 	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
 	defaultReadAfterWriteTimeout = float64(30.0)
 	enableDefaultUnShardedMode   = true
@@ -164,6 +165,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&messageStreamGracePeriod, "message_stream_grace_period", messageStreamGracePeriod, "the amount of time to give for a vttablet to resume if it ends a message stream, usually because of a reparent.")
 	fs.BoolVar(&enableViews, "enable-views", enableViews, "Enable views support in vtgate.")
 	fs.StringVar(&defaultReadWriteSplittingPolicy, "read_write_splitting_policy", defaultReadWriteSplittingPolicy, "Enable read write splitting.")
+	fs.StringVar(&defaultReadAfterWriteConsistencyName, "read_after_write_consistency", defaultReadAfterWriteConsistencyName, "Enable read write splitting.")
 	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
 	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
 }
@@ -275,6 +277,9 @@ func Init(
 	}
 	if _, err := schema.ParseReadWriteSplittingPolicySetting(defaultReadWriteSplittingPolicy); err != nil {
 		log.Fatalf("Invalid value for -read_write_splitting_policy: %v", err.Error())
+	}
+	if err := ValidateReadAfterWriteConsistency(defaultReadAfterWriteConsistencyName); err != nil {
+		log.Fatalf("Invalid value for -read_after_write_consistency: %v", err.Error())
 	}
 	tc := NewTxConn(gw, getTxMode())
 	// ScatterConn depends on TxConn to perform forced rollbacks.
@@ -681,6 +686,18 @@ func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", strategy)
 	}
 	defaultReadWriteSplittingPolicy = strategy
+	return nil
+}
+
+func SetDefaultReadAfterWriteConsistency(consistency string) error {
+	//return error if strategy is empty
+	if consistency == "" {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid consistency: %s", consistency)
+	}
+	if err := ValidateReadAfterWriteConsistency(consistency); err != nil {
+		return err
+	}
+	defaultReadAfterWriteConsistencyName = consistency
 	return nil
 }
 

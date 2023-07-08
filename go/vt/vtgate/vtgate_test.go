@@ -604,3 +604,55 @@ func TestSetDefaultReadAfterWriteTimeout1(t *testing.T) {
 		})
 	}
 }
+
+func TestSetDefaultReadAfterWriteConsistency(t *testing.T) {
+	type args struct {
+		consistency string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr assert.ErrorAssertionFunc
+	}{
+		{
+			name: "valid consistency",
+			args: args{
+				consistency: "eventual",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "valid consistency",
+			args: args{
+				consistency: "session",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "valid consistency",
+			args: args{
+				consistency: "instance",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "valid consistency",
+			args: args{
+				consistency: "global",
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "valid consistency",
+			args: args{
+				consistency: "foobar",
+			},
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.wantErr(t, SetDefaultReadAfterWriteConsistency(tt.args.consistency), fmt.Sprintf("SetDefaultReadAfterWriteConsistency(%v)", tt.args.consistency))
+		})
+	}
+}
