@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -563,6 +568,9 @@ const (
 
 	// server not available
 	ERServerIsntAvailable = 3168
+
+	ERConsensusLeaderChanged         = 7500
+	ERConsensusFollowerNotAllowWrite = 7504
 )
 
 // Sql states for errors.
@@ -674,6 +682,14 @@ func IsConnLostDuringQuery(err error) bool {
 	if sqlErr, ok := err.(*SQLError); ok {
 		num := sqlErr.Number()
 		return (num == CRServerLost)
+	}
+	return false
+}
+
+func IsLeaderChangedError(err error) bool {
+	if sqlErr, ok := err.(*SQLError); ok {
+		num := sqlErr.Number()
+		return num == ERConsensusLeaderChanged || num == ERConsensusFollowerNotAllowWrite
 	}
 	return false
 }

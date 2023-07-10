@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -97,6 +102,9 @@ func (sc *StatefulConnection) Exec(ctx context.Context, query string, maxrows in
 	}
 	r, err := sc.dbConn.ExecOnce(ctx, query, maxrows, wantfields)
 	if err != nil {
+		if mysql.IsLeaderChangedError(err) {
+			return nil, vterrors.Errorf(vtrpcpb.Code_CLUSTER_EVENT, err.Error())
+		}
 		if mysql.IsConnErr(err) {
 			select {
 			case <-ctx.Done():
