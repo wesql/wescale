@@ -216,6 +216,15 @@ local config = import '../config.libsonnet';
           },
         ],
       },
+      {
+        name: 'vitess_mixin_24',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_queries_bucket:rate1m',
+            expr: 'sum by(le)(rate(vttablet_queries_bucket[1m]))'
+          }
+        ]
+      }
     ],
   },
 }

@@ -8,7 +8,7 @@
     collapse: true,
   },
   queryErrors:: {
-    title: 'Queries/Errors',
+    title: 'Queries/Errors (VtTablet)',
     collapse: true,
   },
   vitessTimings:: {

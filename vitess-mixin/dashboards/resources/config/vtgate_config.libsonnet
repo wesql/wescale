@@ -373,8 +373,19 @@ local vitess_ct = configuration_templates.prometheus_vitess;
               )
             )
           |||,
-          legendFormat: 'Duration p50',
+          legendFormat: 'Duration p50 (vtgate)',
         },
+        {
+          expr: |||
+            histogram_quantile(
+              0.50,
+              sum by(le)(
+                vitess_mixin:vttablet_queries_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p50 (vttablet)',
+        }
       ],
     },
 
@@ -414,7 +425,18 @@ local vitess_ct = configuration_templates.prometheus_vitess;
               )
             )
           |||,
-          legendFormat: 'Duration p95',
+          legendFormat: 'Duration p95 (vtgate)',
+        },
+        {
+          expr: |||
+            histogram_quantile(
+              0.95,
+              sum by(le)(
+                vitess_mixin:vttablet_queries_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p95 (vttablet)',
         },
       ],
     },
@@ -461,8 +483,24 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                 )
               )
           |||,
-          legendFormat: 'Avg Latency',
+          legendFormat: 'Avg Latency (vtgate)',
         },
+        {
+          expr: |||
+            sum (
+              rate(
+                vttablet_queries_sum[5m]
+              )
+            )
+            /
+            sum (
+              rate(
+                vttablet_queries_count[5m]
+                )
+              )
+          |||,
+          legendFormat: 'Avg Latency (vttablet)',
+        }
       ],
     },
 
@@ -647,7 +685,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
 
     //TODO crete a recording rule for this prometheus vitess target
     vtgateGarbageCollectionCount: garbage_collector_panel_template {
-      title: 'GC Count',
+      title: 'GC Count (vtgate)',
       format: 'ops',
       targets: [
         {
@@ -668,7 +706,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     },
     //TODO crete a recording rule for this prometheus vitess target
     vtgateGarbageCollectionDuration: garbage_collector_panel_template {
-      title: 'GC Duration total per second',
+      title: 'GC Duration total per second (vtgate)',
       description: 'A summary of the pause duration of garbage collection cycles',
       targets: [
         {
@@ -689,7 +727,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     },
     //TODO crete a recording rule for this prometheus vitess target
     vtgateGarbageCollectionDurationQuantiles: garbage_collector_panel_template {
-      title: 'GC Duration quantiles',
+      title: 'GC Duration quantiles (vtgate)',
       targets: [
         {
           expr:

@@ -4,6 +4,12 @@ local row = grafana.row;
 
 //TODO move all rows to config/row_config.libsonnet and update the layouts to use grafonnet_helper.getRow()
 {
+
+  summary::
+    row.new(
+      title='Summary',
+    ),
+
   connection::
     row.new(
       title='Connection',
@@ -28,7 +34,7 @@ local row = grafana.row;
 
   errors::
     row.new(
-      title='Errors',
+      title='Errors (vtgate)',
       collapse=true,
     ),
 
@@ -96,21 +102,31 @@ local row = grafana.row;
       title='RED - Requests / Error rate / Duration',
     ),
 
+  REDVtgate::
+    row.new(
+      title='RED (vtgate) - Requests / Error rate / Duration',
+    ),
+
+  REDTablet::
+    row.new(
+      title='RED (tablet) - Requests / Error rate / Duration',
+    ),
+
   REDByKeyspace::
     row.new(
-      title='RED (by keyspace)',
+      title='RED (vtgate - by keyspace)',
       collapse=true
     ),
 
   REDByTabletType::
     row.new(
-      title='RED (by tablet type)',
+      title='RED (vtgate - by tablet type)',
       collapse=true
     ),
 
   REDByPlanType::
     row.new(
-      title='RED (by plan type)',
+      title='RED (tablet - by plan type)',
       collapse=true
     ),
 
@@ -122,7 +138,7 @@ local row = grafana.row;
 
   REDByTable::
     row.new(
-      title='RED (by table)',
+      title='RED (tablet - by table)',
       collapse=true
     ),
 
