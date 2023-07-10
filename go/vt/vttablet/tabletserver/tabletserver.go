@@ -829,8 +829,8 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 		connSetting.SetWithoutDBName(true)
 	} else {
 		connSetting.SetWithoutDBName(false)
-		query := fmt.Sprintf("use %s", topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}))
-		resetQuery := fmt.Sprintf("use %s", tsv.config.DB.DBName)
+		query := fmt.Sprintf("use `%s`", topoproto.TabletDbName(&topodatapb.Tablet{Keyspace: keyspaceName}))
+		resetQuery := fmt.Sprintf("use `%s`", tsv.config.DB.DBName)
 		if !settingNotInCache {
 			query = fmt.Sprintf("%s;%s", query, connSetting.GetQuery())
 			resetQuery = fmt.Sprintf("%s;%s", resetQuery, connSetting.GetResetQuery())
