@@ -37,6 +37,9 @@ type Permission struct {
 }
 
 func (p *Permission) GetFullTableName() string {
+	if p.Database == "" {
+		return p.TableName
+	}
 	return fmt.Sprintf("%s.%s", p.Database, p.TableName)
 }
 
@@ -44,8 +47,8 @@ func BuildDataBasePermissions(permissions []Permission, dbName string) []Permiss
 	if dbName == "" {
 		return permissions
 	}
-	for _, permission := range permissions {
-		permission.Database = dbName
+	for index := range permissions {
+		permissions[index].Database = dbName
 	}
 	return permissions
 }
@@ -136,6 +139,7 @@ func buildTableExprPermissions(node sqlparser.TableExpr, role tableacl.Role, per
 
 func buildTableNamePermissions(node sqlparser.TableName, role tableacl.Role, permissions []Permission) []Permission {
 	permissions = append(permissions, Permission{
+		Database:  node.Qualifier.String(),
 		TableName: node.Name.String(),
 		Role:      role,
 	})

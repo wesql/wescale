@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +67,7 @@ func TestGetPlanPanicDuetoEmptyQuery(t *testing.T) {
 
 	ctx := context.Background()
 	logStats := tabletenv.NewLogStats(ctx, "GetPlanStats")
-	_, err := qe.GetPlan(ctx, logStats, "", false)
+	_, err := qe.GetPlan(ctx, logStats, "", "", false)
 	require.EqualError(t, err, "Query was empty")
 }
 
@@ -150,10 +155,10 @@ func TestQueryPlanCache(t *testing.T) {
 		// this cache capacity is in number of elements
 		qe.SetQueryPlanCacheCap(1)
 	}
-	firstPlan, err := qe.GetPlan(ctx, logStats, firstQuery, false)
+	firstPlan, err := qe.GetPlan(ctx, logStats, "", firstQuery, false)
 	require.NoError(t, err)
 	require.NotNil(t, firstPlan, "plan should not be nil")
-	secondPlan, err := qe.GetPlan(ctx, logStats, secondQuery, false)
+	secondPlan, err := qe.GetPlan(ctx, logStats, "", secondQuery, false)
 	fmt.Println(secondPlan.CachedSize(true))
 	require.NoError(t, err)
 	require.NotNil(t, secondPlan, "plan should not be nil")
@@ -181,7 +186,7 @@ func TestNoQueryPlanCache(t *testing.T) {
 	ctx := context.Background()
 	logStats := tabletenv.NewLogStats(ctx, "GetPlanStats")
 	qe.SetQueryPlanCacheCap(1024)
-	firstPlan, err := qe.GetPlan(ctx, logStats, firstQuery, true)
+	firstPlan, err := qe.GetPlan(ctx, logStats, "", firstQuery, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +215,7 @@ func TestNoQueryPlanCacheDirective(t *testing.T) {
 	ctx := context.Background()
 	logStats := tabletenv.NewLogStats(ctx, "GetPlanStats")
 	qe.SetQueryPlanCacheCap(1024)
-	firstPlan, err := qe.GetPlan(ctx, logStats, firstQuery, false)
+	firstPlan, err := qe.GetPlan(ctx, logStats, "", firstQuery, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +239,7 @@ func TestStatsURL(t *testing.T) {
 	// warm up cache
 	ctx := context.Background()
 	logStats := tabletenv.NewLogStats(ctx, "GetPlanStats")
-	qe.GetPlan(ctx, logStats, query, false)
+	qe.GetPlan(ctx, logStats, "", query, false)
 
 	request, _ := http.NewRequest("GET", "/debug/tablet_plans", nil)
 	response := httptest.NewRecorder()
@@ -339,7 +344,7 @@ func BenchmarkPlanCacheThroughput(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		query := fmt.Sprintf("SELECT (a, b, c) FROM test_table_%d", rand.Intn(500))
-		_, err := qe.GetPlan(ctx, logStats, query, false)
+		_, err := qe.GetPlan(ctx, logStats, "", query, false)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -370,7 +375,7 @@ func benchmarkPlanCache(b *testing.B, db *fakesqldb.DB, lfu bool, par int) {
 
 		for pb.Next() {
 			query := fmt.Sprintf("SELECT (a, b, c) FROM test_table_%d", rand.Intn(500))
-			_, err := qe.GetPlan(ctx, logStats, query, false)
+			_, err := qe.GetPlan(ctx, logStats, "", query, false)
 			require.NoErrorf(b, err, "bad query: %s", query)
 		}
 	})
@@ -496,7 +501,7 @@ func TestPlanCachePollution(t *testing.T) {
 			query := sample()
 
 			start := time.Now()
-			_, err := qe.GetPlan(ctx, logStats, query, false)
+			_, err := qe.GetPlan(ctx, logStats, "", query, false)
 			require.NoErrorf(t, err, "bad query: %s", query)
 			stats.interval += time.Since(start)
 

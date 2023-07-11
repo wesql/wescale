@@ -128,7 +128,7 @@ func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, 
 func (tacl *tableACL) InitMysqlBasedACL(env tabletenv.Env) error {
 	config := &tableaclpb.Config{}
 	pool := connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
-		Size:               2,
+		Size:               3,
 		IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 	})
 	tacl.conns = pool
@@ -193,6 +193,11 @@ func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (
 		return nil, err
 	}
 	entries = append(entries, tableEntries...)
+	dbEntries, err := tacl.GetDatabasePrivFromMysqlBase(newACL)
+	if err != nil {
+		return nil, err
+	}
+	entries = append(entries, dbEntries...)
 	return entries, nil
 }
 
@@ -240,6 +245,59 @@ func buildACLEntriesFromPrivMap(privMap map[string][]PrivEntry, newACL func([]st
 		})
 	}
 	return entries, nil
+}
+
+func (tacl *tableACL) GetDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+	ctx := context.Background()
+	conn, err := tacl.conns.Get(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	qr, err := conn.Exec(ctx, mysql.FetchDataBasePriv, 1000, false)
+	if err != nil {
+		log.Infof("loadFromMysqlBase fail %v", err)
+	}
+	isReader := func(privs []string) bool {
+		return privs[0] == "Y"
+	}
+	isWriter := func(privs []string) bool {
+		return privs[1] == "Y" && privs[2] == "Y" && privs[3] == "Y"
+	}
+	isAdmin := func(privs []string) bool {
+		for _, flag := range privs {
+			if flag == "N" {
+				return false
+			}
+		}
+		return true
+	}
+	privMap := make(map[string][]PrivEntry)
+	for _, rows := range qr.Rows {
+		user := rows[0].ToString()
+		host := rows[1].ToString()
+		database := rows[2].ToString()
+		userKey := fmt.Sprintf("%s@%s", user, host)
+		tableKey := fmt.Sprintf("%s.%%", database)
+		privEntry := PrivEntry{
+			User: userKey,
+		}
+		var dbPrivs []string
+		for index := 3; index < len(rows); index++ {
+			dbPrivs = append(dbPrivs, rows[index].ToString())
+		}
+		if isAdmin(dbPrivs) {
+			privEntry.role = append(privEntry.role, []Role{READER, WRITER, ADMIN}...)
+		} else {
+			if isWriter(dbPrivs) {
+				privEntry.role = append(privEntry.role, WRITER)
+			}
+			if isReader(dbPrivs) {
+				privEntry.role = append(privEntry.role, READER)
+			}
+		}
+		privMap[tableKey] = append(privMap[tableKey], privEntry)
+	}
+	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
 func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {

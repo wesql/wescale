@@ -2,6 +2,11 @@
 // +build gofuzz
 
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,6 +72,6 @@ func FuzzGetPlan(data []byte) int {
 	qe.SetQueryPlanCacheCap(1024)
 
 	// Call target
-	_, _ = qe.GetPlan(context.Background(), logStats, query2, true)
+	_, _ = qe.GetPlan(context.Background(), logStats, "", query2, true)
 	return 1
 }

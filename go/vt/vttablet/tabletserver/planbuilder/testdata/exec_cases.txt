@@ -5,10 +5,12 @@
   "TableName": "",
   "Permissions": [
     {
+      "Database": "",
       "TableName": "a",
       "Role": 0
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 0
     }
@@ -23,10 +25,12 @@
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 0
     }
@@ -41,6 +45,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -55,6 +60,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -69,6 +75,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -83,6 +90,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -97,6 +105,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -111,6 +120,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -125,6 +135,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -139,6 +150,7 @@
   "TableName": "seq",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "seq",
       "Role": 0
     }
@@ -153,6 +165,7 @@
   "TableName": "seq",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "seq",
       "Role": 0
     }
@@ -168,6 +181,7 @@
   "TableName": "seq",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "seq",
       "Role": 0
     }
@@ -182,6 +196,7 @@
   "TableName": "seq",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "seq",
       "Role": 0
     }
@@ -204,6 +219,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -218,6 +234,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -232,6 +249,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -246,6 +264,7 @@
   "TableName": "",
   "Permissions": [
     {
+      "Database":"b",
       "TableName": "a",
       "Role": 1
     }
@@ -260,6 +279,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -274,10 +294,12 @@
   "TableName": "b",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "b",
       "Role": 1
     },
     {
+      "Database":"",
       "TableName": "a",
       "Role": 0
     }
@@ -292,6 +314,7 @@
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -306,6 +329,7 @@
   "TableName": "b",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "b",
       "Role": 1
     }
@@ -320,6 +344,7 @@
   "TableName": "d",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "d",
       "Role": 1
     }
@@ -334,6 +359,7 @@
   "TableName": "d",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "d",
       "Role": 1
     }
@@ -350,6 +376,7 @@ options:PassthroughDMLs
   "TableName": "d",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "d",
       "Role": 1
     }
@@ -365,6 +392,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"a",
       "TableName": "b",
       "Role": 1
     }
@@ -380,6 +408,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "bogus",
       "Role": 1
     }
@@ -396,6 +425,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "bogus",
       "Role": 1
     }
@@ -411,10 +441,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 1
     }
@@ -431,10 +463,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 1
     }
@@ -451,6 +485,7 @@ options:PassthroughDMLs
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -466,6 +501,7 @@ options:PassthroughDMLs
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -480,6 +516,7 @@ options:PassthroughDMLs
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -494,6 +531,7 @@ options:PassthroughDMLs
   "TableName": "d",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "d",
       "Role": 1
     }
@@ -510,6 +548,7 @@ options:PassthroughDMLs
   "TableName": "d",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "d",
       "Role": 1
     }
@@ -525,6 +564,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "bogus",
       "Role": 1
     }
@@ -540,6 +580,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "bogus",
       "Role": 1
     }
@@ -554,10 +595,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 1
     }
@@ -574,6 +617,7 @@ options:PassthroughDMLs
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -589,6 +633,7 @@ options:PassthroughDMLs
   "TableName": "a",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 1
     }
@@ -603,6 +648,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -617,6 +663,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -631,6 +678,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -645,6 +693,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -659,10 +708,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -677,10 +728,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -695,18 +748,22 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -721,6 +778,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -735,6 +793,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -749,10 +808,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -814,14 +875,6 @@ options:PassthroughDMLs
   "FullQuery": "show tables like 'key%'"
 }
 
-# show tables #2
-"show tables where Tables_in_keyspace='apa'"
-{
-  "PlanID": "Show",
-  "TableName":"",
-  "FullQuery": "show tables where Tables_in_dbName = 'apa'"
-}
-
 # show table status #1
 "show table status like 'key%'"
 {
@@ -859,7 +912,7 @@ options:PassthroughDMLs
 {
   "PlanID": "Show",
   "TableName": "",
-  "FullQuery": "show create database dbName"
+  "FullQuery": "show create database"
 }
 
 # load data
@@ -876,6 +929,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -890,6 +944,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     }
@@ -904,10 +959,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -922,10 +979,12 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "a",
       "Role": 2
     },
     {
+      "Database":"",
       "TableName": "b",
       "Role": 2
     }
@@ -948,6 +1007,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "function_default",
       "Role": 2
     }
@@ -962,6 +1022,7 @@ options:PassthroughDMLs
   "TableName": "",
   "Permissions": [
     {
+      "Database":"",
       "TableName": "temp",
       "Role": 2
     }
