@@ -8,10 +8,9 @@ ARG image="vitess/bootstrap:${bootstrap_version}-common"
 
 FROM "${image}"
 
-#RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
 
 RUN apt-get update
-RUN apt-get install -y sudo curl vim jq
+RUN apt-get install -y sudo curl vim jq default-mysql-client
 
 # Install dependencies
 COPY ./install_dependencies.sh /vt/dist/install_dependencies.sh

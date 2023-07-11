@@ -108,6 +108,9 @@ jobs:
         run: |
           # build wesql-scale and setup wesql-scale cluster
           docker exec wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
+          # enlarge mysql max_connections 
+          docker exec wesqlscale-build bash -c "mysql -uroot -h127.0.0.1 -P17101 -e \"SET @@GLOBAL.max_connections = 1000;\""
+        
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
