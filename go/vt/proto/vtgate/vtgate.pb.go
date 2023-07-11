@@ -36,6 +36,7 @@ import (
 	query "vitess.io/vitess/go/vt/proto/query"
 	topodata "vitess.io/vitess/go/vt/proto/topodata"
 	vtrpc "vitess.io/vitess/go/vt/proto/vtrpc"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 const (
@@ -1519,6 +1520,8 @@ type Session_ShardSession struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
+	// all locks held by a session
+	locks map[string]sqlparser.LockingFuncType
 
 	Target        *query.Target         `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	TransactionId int64                 `protobuf:"varint,2,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
@@ -1593,6 +1596,20 @@ func (x *Session_ShardSession) GetVindexOnly() bool {
 		return x.VindexOnly
 	}
 	return false
+}
+
+func (x *Session_ShardSession) GetLocks() map[string]sqlparser.LockingFuncType {
+	if x != nil {
+		return x.locks
+	}
+	return nil
+}
+
+func (x *Session_ShardSession) SetLocks(lockMap map[string]sqlparser.LockingFuncType) {
+	if x == nil {
+		return
+	}
+	x.locks = lockMap
 }
 
 var File_vtgate_proto protoreflect.FileDescriptor

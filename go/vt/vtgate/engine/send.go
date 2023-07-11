@@ -55,14 +55,14 @@ type Send struct {
 	// SingleShardOnly specifies that the query must be send to only single shard
 	SingleShardOnly bool
 
+	// lockFuncs specifies that the sessionLocks should be executed
+	LockFuncs []*SessionLock
+
 	noInputs
 }
 
 type LockedSend struct {
 	Send
-
-	// lockFuncs specifies that the sessionLocks should be executed
-	LockFuncs []*SessionLock
 }
 
 type LockAction int

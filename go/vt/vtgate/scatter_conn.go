@@ -207,9 +207,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 			}
 
-			send, ok := primitive.(*engine.LockedSend)
+			send, ok := primitive.(*engine.Send)
 			if ok {
-				stc.solveLockSession(ctx, session, rs, send, info)
+				if stc.solveLockFuncs(ctx, session, rs, send, info, queries[i].BindVariables) != nil {
+					_ = stc.txConn.ReleaseLock(ctx, session)
+					return nil, vterrors.Wrap(err, "Any previous held locks are released")
+				}
 			}
 			reservedID := info.reservedID
 
@@ -229,10 +232,10 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			case nothing:
 				innerqr, err = qs.Execute(ctx, rs.Target, queries[i].Sql, queries[i].BindVariables, info.transactionID, info.reservedID, opts)
 				if err != nil {
-					if wasConnectionClosed(err) {
-						// TODO: try to acquire lock again.
-						session.ResetLock()
-					}
+					//if wasConnectionClosed(err) {
+					//	// TODO: try to acquire lock again.
+					//	session.ResetLock()
+					//}
 					retryRequest(func() {
 						// we seem to have lost our connection. it was a reserved connection, let's try to recreate it
 						info.actionNeeded = reserve
@@ -241,6 +244,9 @@ func (stc *ScatterConn) ExecuteMultiShard(
 						reservedID = state.ReservedID
 						alias = state.TabletAlias
 					})
+				}
+				if reservedID != 0 {
+					setLockSession(send, innerqr, session, queries[i].BindVariables, rs.Target, reservedID, alias)
 				}
 			case begin:
 				var state queryservice.TransactionState
@@ -264,11 +270,8 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				reservedID = state.ReservedID
 				alias = state.TabletAlias
 				if reservedID != 0 {
-					session.SetLockSession(&vtgatepb.Session_ShardSession{
-						Target:      rs.Target,
-						ReservedId:  reservedID,
-						TabletAlias: alias,
-					})
+					session.Session.InReservedConn = true
+					setLockSession(send, innerqr, session, queries[i].BindVariables, rs.Target, reservedID, alias)
 				}
 			case reserveBegin:
 				var state queryservice.ReservedTransactionState
@@ -458,6 +461,9 @@ func (stc *ScatterConn) StreamExecuteMulti(
 						reservedID = state.ReservedID
 						alias = state.TabletAlias
 					})
+				}
+				if reservedID != 0 {
+					session.UpdateLockHeartbeat()
 				}
 			case begin:
 				var state queryservice.TransactionState
@@ -963,38 +969,7 @@ func queryGTID(ctx context.Context, qs queryservice.QueryService, target *queryp
 	return innerqr.Rows[0][0].ToString(), nil
 }
 
-func solveLockFunc(info *shardActionInfo, stmt sqlparser.Statement) (*engine.LockFunc, string) {
-	if stmt == nil {
-		return nil, ""
-	}
-
-	sel, _ := stmt.(*sqlparser.Select)
-	//for _, e := range sel.SelectExprs {
-	e := sel.SelectExprs[0]
-	expr, ok := e.(*sqlparser.AliasedExpr)
-	if !ok {
-		return nil, ""
-	}
-	_, isLFunc := expr.Expr.(*sqlparser.LockingFunc)
-	if isLFunc {
-		return nil, ""
-	}
-	lockFunctions := &engine.LockFunc{Typ: expr.Expr.(*sqlparser.LockingFunc)}
-	//}
-
-	// Only GetLock needs to start a reserved connection.
-	// Once in reserved connection, it will be used for other calls as well.
-	// But, we don't want to start a reserved connection for other calls like IsFreeLock, IsUsedLock, etc.
-	if lockFunctions.Typ.Type != sqlparser.GetLock {
-		return nil, ""
-	}
-	if info.reservedID == 0 {
-		info.actionNeeded = reserve
-	}
-	return nil, ""
-}
-
-func (stc *ScatterConn) solveLockSession(ctx context.Context, session *SafeSession, rs *srvtopo.ResolvedShard, send *engine.LockedSend, info *shardActionInfo) error {
+func (stc *ScatterConn) solveLockFuncs(ctx context.Context, session *SafeSession, rs *srvtopo.ResolvedShard, send *engine.Send, info *shardActionInfo, variables map[string]*querypb.BindVariable) error {
 	if session.LockSession != nil {
 		if !proto.Equal(rs.Target, session.LockSession.Target) {
 			_ = stc.txConn.ReleaseLock(ctx, session)
@@ -1003,12 +978,67 @@ func (stc *ScatterConn) solveLockSession(ctx context.Context, session *SafeSessi
 		info.reservedID = session.LockSession.ReservedId
 		info.alias = session.LockSession.TabletAlias
 	}
-	//lockMap := map[string]string{}
-	//if len()
-	//
-	//// TODO
-	//if needLock == engine.GetLock && info.reservedID == 0 {
-	//	info.actionNeeded = reserve
-	//}
+
+	if info.reservedID != 0 || send.LockFuncs == nil || len(send.LockFuncs) == 0 {
+		return nil
+	}
+
+	for _, lock := range send.LockFuncs {
+		if lock.Typ == sqlparser.GetLock {
+			if variables[lock.Name].Type != querypb.Type_VARCHAR {
+				return vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "unsupported lock name type, excepted varchar")
+			}
+			info.actionNeeded = reserve
+			continue
+		}
+	}
 	return nil
+}
+
+func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSession, variables map[string]*querypb.BindVariable, target *querypb.Target, reservedID int64, alias *topodatapb.TabletAlias) {
+	if send == nil || send.LockFuncs == nil || len(send.LockFuncs) == 0 {
+		return
+	}
+
+	session.mu.Lock()
+	defer session.mu.Unlock()
+
+	var lockMap map[string]sqlparser.LockingFuncType
+	if session.Session.LockSession == nil {
+		lockMap = map[string]sqlparser.LockingFuncType{}
+	} else {
+		lockMap = session.Session.LockSession.GetLocks()
+	}
+
+	rows := innerqr.Rows
+	for i, lock := range send.LockFuncs {
+		if rows[i][0].ToString() != "1" {
+			continue
+		}
+		variable := variables[lock.Name]
+		n := variable.String()
+		switch lock.Typ {
+		case sqlparser.IsUsedLock, sqlparser.IsFreeLock:
+		case sqlparser.GetLock:
+			lockMap[n] = lock.Typ
+		case sqlparser.ReleaseLock:
+			if _, ok := lockMap[n]; ok {
+				delete(lockMap, n)
+			}
+		case sqlparser.ReleaseAllLocks:
+			lockMap = map[string]sqlparser.LockingFuncType{}
+		}
+	}
+
+	if len(lockMap) == 0 {
+		session.Session.LockSession = nil
+	} else if session.Session.LockSession == nil {
+		session.Session.LockSession = &vtgatepb.Session_ShardSession{
+			Target:      target,
+			ReservedId:  reservedID,
+			TabletAlias: alias,
+		}
+	}
+	session.Session.LockSession.SetLocks(lockMap)
+	return
 }

@@ -33,6 +33,29 @@ func buildLockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVar
 	if !ok {
 		return nil, vterrors.VT13001("statement type unexpected, expect LockTables")
 	}
+	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.GetLock)
+	plan, err := buildPlanForBypassWithLocks(stmt, reservedVars, vschema, lockFuncs)
+	if err != nil {
+		return nil, err
+	}
+	return plan, nil
+}
+
+// buildUnlockPlan plans lock tables statement.
+func buildUnlockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
+	lockTables, ok := stmt.(*sqlparser.LockTables)
+	if !ok {
+		return nil, vterrors.VT13001("statement type unexpected, expect LockTables")
+	}
+	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.ReleaseLock)
+	plan, err := buildPlanForBypassWithLocks(stmt, reservedVars, vschema, lockFuncs)
+	if err != nil {
+		return nil, err
+	}
+	return plan, nil
+}
+
+func buildLockFuncFromLockTables(lockTables *sqlparser.LockTables, lockType sqlparser.LockingFuncType) []*engine.SessionLock {
 	lockFuncs := []*engine.SessionLock{}
 	for _, lockTable := range lockTables.Tables {
 		t, ok := lockTable.Table.(*sqlparser.AliasedTableExpr)
@@ -43,25 +66,10 @@ func buildLockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVar
 		if !ok {
 			continue
 		}
-		lockType := lockTable.Lock.ToString()
 		lockFuncs = append(lockFuncs, &engine.SessionLock{
-			Typ:  sqlparser.GetLock,
-			Name: lockTablePrefix + tableName.Name.String() + lockType,
+			Typ:  lockType,
+			Name: tableName.Name.String(),
 		})
 	}
-
-	plan, err := buildLockedPlanForBypass(stmt, reservedVars, vschema, lockFuncs)
-	if err != nil {
-		return nil, err
-	}
-	return plan, nil
-}
-
-// buildUnlockPlan plans lock tables statement.
-func buildUnlockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-	plan, err := buildPlanForBypass(stmt, reservedVars, vschema)
-	if err != nil {
-		return nil, err
-	}
-	return plan, nil
+	return lockFuncs
 }
