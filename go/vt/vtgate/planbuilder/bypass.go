@@ -77,6 +77,10 @@ func buildPlanForBypassWithLocks(stmt sqlparser.Statement, _ *sqlparser.Reserved
 		SingleShardOnly:   false,
 	}
 
+	if lockList != nil && len(lockList) != 0 {
+		send.LockFuncs = lockList
+	}
+
 	sel, isSel := stmt.(*sqlparser.Select)
 	if isSel && isOnlyDual(sel) {
 		used := "dual"
@@ -84,10 +88,6 @@ func buildPlanForBypassWithLocks(stmt sqlparser.Statement, _ *sqlparser.Reserved
 			// we are just getting the ks to log the correct table use.
 			used = keyspace.Name + ".dual"
 		}
-		if lockList == nil && len(lockList) == 0 {
-			return newPlanResult(send, used), nil
-		}
-		send.LockFuncs = lockList
 		return newPlanResult(send, used), nil
 	}
 	return newPlanResult(send), nil

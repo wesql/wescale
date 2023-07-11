@@ -232,10 +232,10 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			case nothing:
 				innerqr, err = qs.Execute(ctx, rs.Target, queries[i].Sql, queries[i].BindVariables, info.transactionID, info.reservedID, opts)
 				if err != nil {
-					//if wasConnectionClosed(err) {
-					//	// TODO: try to acquire lock again.
-					//	session.ResetLock()
-					//}
+					if wasConnectionClosed(err) {
+						// TODO: try to acquire lock again.
+						session.ResetLock()
+					}
 					retryRequest(func() {
 						// we seem to have lost our connection. it was a reserved connection, let's try to recreate it
 						info.actionNeeded = reserve
@@ -984,12 +984,15 @@ func (stc *ScatterConn) solveLockFuncs(ctx context.Context, session *SafeSession
 	}
 
 	for _, lock := range send.LockFuncs {
-		if lock.Typ == sqlparser.GetLock {
+		switch lock.Typ {
+		case sqlparser.GetLock:
 			if variables[lock.Name].Type != querypb.Type_VARCHAR {
 				return vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "unsupported lock name type, excepted varchar")
 			}
 			info.actionNeeded = reserve
 			continue
+		case sqlparser.GetTableLock:
+			info.actionNeeded = reserve
 		}
 	}
 	return nil
@@ -1018,13 +1021,15 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 		variable := variables[lock.Name]
 		n := variable.String()
 		switch lock.Typ {
-		case sqlparser.IsUsedLock, sqlparser.IsFreeLock:
+		case sqlparser.GetTableLock:
+			lockMap[lock.Name] = lock.Typ
 		case sqlparser.GetLock:
 			lockMap[n] = lock.Typ
 		case sqlparser.ReleaseLock:
 			if _, ok := lockMap[n]; ok {
 				delete(lockMap, n)
 			}
+		case sqlparser.IsUsedLock, sqlparser.IsFreeLock:
 		case sqlparser.ReleaseAllLocks:
 			lockMap = map[string]sqlparser.LockingFuncType{}
 		}

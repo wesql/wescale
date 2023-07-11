@@ -563,6 +563,8 @@ const (
 	IsUsedLock
 	ReleaseAllLocks
 	ReleaseLock
+	GetTableLock
+	ReleaseTableLock
 )
 
 // Constants for Enum Type - PerformanceSchemaType

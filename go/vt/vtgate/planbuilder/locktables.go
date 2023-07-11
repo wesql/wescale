@@ -33,7 +33,7 @@ func buildLockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVar
 	if !ok {
 		return nil, vterrors.VT13001("statement type unexpected, expect LockTables")
 	}
-	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.GetLock)
+	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.GetTableLock)
 	plan, err := buildPlanForBypassWithLocks(stmt, reservedVars, vschema, lockFuncs)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func buildUnlockPlan(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedV
 	if !ok {
 		return nil, vterrors.VT13001("statement type unexpected, expect LockTables")
 	}
-	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.ReleaseLock)
+	lockFuncs := buildLockFuncFromLockTables(lockTables, sqlparser.ReleaseTableLock)
 	plan, err := buildPlanForBypassWithLocks(stmt, reservedVars, vschema, lockFuncs)
 	if err != nil {
 		return nil, err
