@@ -54,7 +54,7 @@ ENV GONOSUMDB=github.com/apecloud
 ENV GOPRIVATE=github.com/apecloud
 ENV GOPROXY=${GOPROXY}
 
-EXPOSE 15306
+EXPOSE 15306 17100 17101 17102
 
 WORKDIR /vt/src/mount
 
