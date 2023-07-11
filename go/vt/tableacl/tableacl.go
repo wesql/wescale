@@ -155,7 +155,7 @@ func (tacl *tableACL) InitSimpleACL(configFile string) error {
 func (tacl *tableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, aclCB func()) error {
 	tacl.SetCallback(aclCB)
 	tacl.dbConfig = dbConfig
-	if configFile == "" {
+	if configFile == "" && tableACLMode == global.TableACLModeSimple {
 		return nil
 	}
 	if tableACLMode == global.TableACLModeMysqlBased {

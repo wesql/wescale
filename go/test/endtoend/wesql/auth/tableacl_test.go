@@ -34,7 +34,7 @@ func TestReaderPriv(t *testing.T) {
 		conn.ExecuteFetch("DROP DATABASE test", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	ctx := context.Background()
 	vtParams := mysql.ConnParams{
 		Host:  host,
@@ -55,7 +55,7 @@ func TestReaderPriv(t *testing.T) {
 }
 func TestWriterPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
-	username := "TestSelectPriv"
+	username := "TestWriterPriv"
 	password := "password"
 	host := "127.0.0.1"
 	// create user 'test_user1'@'localhost' by 'password'
@@ -71,7 +71,7 @@ func TestWriterPriv(t *testing.T) {
 		conn.ExecuteFetch("DROP DATABASE test", 1000, false)
 	}()
 	// waiting vtgate pull user from mysql.user
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	ctx := context.Background()
 	vtParams := mysql.ConnParams{
 		Host:  host,
@@ -114,7 +114,7 @@ func TestAdminPriv(t *testing.T) {
 		conn.ExecuteFetch("DROP DATABASE test", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	ctx := context.Background()
 	vtParams := mysql.ConnParams{
 		Host:  host,

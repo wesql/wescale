@@ -30,3 +30,18 @@ const (
 	// ReadWriteSplitEnablesRDONLY means RdOnly nodes can be used for reads in read-write-split.
 	ReadWriteSplitEnablesRDONLY = false
 )
+
+const (
+	MysqlBased = "mysqlbased"
+)
+
+// AuthServer Management
+const (
+	AuthServerMysqlBased = MysqlBased
+	AuthServerStatic     = "static"
+)
+
+const (
+	TableACLModeMysqlBased = MysqlBased
+	TableACLModeSimple     = "simple"
+)

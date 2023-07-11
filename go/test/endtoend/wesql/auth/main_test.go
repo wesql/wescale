@@ -51,7 +51,7 @@ func runAllTests(m *testing.M) int {
 	Keyspace := &cluster.Keyspace{
 		Name: KeyspaceName,
 	}
-	clusterInstance.VtTabletExtraArgs = []string{"--queryserver-config-transaction-timeout", "3", "--queryserver-config-max-result-size", "30", "--table-acl-config=mysqlbased",
+	clusterInstance.VtTabletExtraArgs = []string{"--queryserver-config-transaction-timeout", "3", "--queryserver-config-max-result-size", "30", "--table-acl-config-mode=mysqlbased",
 		"--table-acl-config-reload-interval=2s", "--queryserver-config-strict-table-acl"}
 	if err := clusterInstance.StartUnshardedKeyspace(*Keyspace, 1, false); err != nil {
 		log.Fatal(err.Error())
@@ -65,7 +65,7 @@ func runAllTests(m *testing.M) int {
 		"--mysql_auth_server_impl=mysqlbased",
 		"--mysql_auth_mysqlbased_reload_interval=3s",
 	}
-	if err := clusterInstance.StartTwoVtgate(); err != nil {
+	if err := clusterInstance.StartVtgate(); err != nil {
 		log.Fatal(err.Error())
 		return 1
 	}
