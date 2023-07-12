@@ -162,9 +162,9 @@ func (stc *ScatterConn) ExecuteMultiShard(
 	var mu sync.Mutex
 	qr = new(sqltypes.Result)
 
-	if session.InLockSession() && session.TriggerLockHeartBeat() {
-		go stc.runLockQuery(ctx, session)
-	}
+	//if session.InLockSession() && session.TriggerLockHeartBeat() {
+	//	go stc.runLockQuery(ctx, session)
+	//}
 
 	allErrors := stc.multiGoTransaction(
 		ctx,
@@ -987,11 +987,15 @@ func (stc *ScatterConn) solveLockFuncs(ctx context.Context, session *SafeSession
 	for _, lock := range send.LockFuncs {
 		switch lock.Typ {
 		case sqlparser.GetLock:
-			if variables[lock.Name].Type != querypb.Type_VARCHAR {
-				return vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "unsupported lock name type, excepted varchar")
+			if _, ok := variables[lock.Name]; !ok {
+				return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unsupported lock name type, excepted varchar")
 			}
 			info.actionNeeded = reserve
 			continue
+		case sqlparser.ReleaseLock:
+			if _, ok := variables[lock.Name]; !ok {
+				return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unsupported lock name type, excepted varchar")
+			}
 		case sqlparser.GetTableLock:
 			info.actionNeeded = reserve
 		}
@@ -1017,7 +1021,7 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 	for i, lock := range send.LockFuncs {
 
 		variable := variables[lock.Name]
-		n := variable.String()
+		n := variable.Value
 		switch lock.Typ {
 		case sqlparser.GetTableLock:
 			lockMap[sqlparser.TableLockPrefix+lock.Name] = lock.Typ
@@ -1032,14 +1036,14 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 			if rows[i][0].ToString() != "1" {
 				continue
 			}
-			lockMap[sqlparser.LockPrefix+n] = lock.Typ
+			lockMap[sqlparser.LockPrefix+string(n)] = lock.Typ
 		case sqlparser.ReleaseLock:
 			rows := innerqr.Rows
 			if rows[i][0].ToString() != "1" {
 				continue
 			}
-			if _, ok := lockMap[n]; ok {
-				delete(lockMap, sqlparser.LockPrefix+n)
+			if _, ok := lockMap[sqlparser.LockPrefix+string(n)]; ok {
+				delete(lockMap, sqlparser.LockPrefix+string(n))
 			}
 		case sqlparser.IsUsedLock, sqlparser.IsFreeLock:
 		case sqlparser.ReleaseAllLocks:

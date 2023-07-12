@@ -215,6 +215,8 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		}
 		// The execution is not required as this setting will be applied when any other query type is executed.
 		return &sqltypes.Result{}, nil
+	case p.PlanLockTables, p.PlanUnlockTables:
+		//TODO:
 	}
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] %s unexpected plan type", qre.plan.PlanID.String())
 }
