@@ -72,6 +72,17 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		IsDML:             isDML,
 		SingleShardOnly:   false,
 	}
+
+	sel, isSel := stmt.(*sqlparser.Select)
+	if isSel && isOnlyDual(sel) {
+		used := "dual"
+		if keyspace != nil && keyspace.Name != "" {
+			// we are just getting the ks to log the correct table use.
+			used = keyspace.Name + ".dual"
+		}
+		return newPlanResult(send, used), nil
+	}
+
 	return newPlanResult(send), nil
 }
 

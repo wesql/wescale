@@ -112,8 +112,6 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/nsf/jsondiff v0.0.0-20210926074059-1e845ec5d249
 	github.com/pingcap/errors v0.11.5-0.20210425183316-da1aaba5fb63
-	github.com/pingcap/tidb v2.0.11+incompatible
-	github.com/pingcap/tidb/parser v0.0.0-20230626075205-352b44e1e47c
 	golang.org/x/exp v0.0.0-20230519143937-03e91628a987
 	golang.org/x/tools/cmd/cover v0.1.0-deprecated
 	k8s.io/utils v0.0.0-20230115233650-391b47cb4029
@@ -133,6 +131,7 @@ require (
 	github.com/DataDog/sketches-go v1.4.1 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/andybalholm/cascadia v1.1.0 // indirect
+	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
