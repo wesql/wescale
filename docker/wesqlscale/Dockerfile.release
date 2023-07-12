@@ -107,7 +107,7 @@ FROM docker.io/alpine:3.17
 
 # install tools via apk
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk add --no-cache shadow bash mysql-client && rm -rf /var/cache/apk/*
+RUN apk add --no-cache shadow bash mysql-client coreutils && rm -rf /var/cache/apk/*
 RUN echo 'export PS1="[\u@\h \W]$"' > ~/.bashrc
 
 # export ENV
