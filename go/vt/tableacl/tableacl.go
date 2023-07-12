@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -181,19 +182,26 @@ func InitFromProto(config *tableaclpb.Config) error {
 	return currentTableACL.Set(config)
 }
 
-func (tacl *tableACL) GetFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// LoadFromMysqlBase method retrieves privilege information from mysql.user, mysql.db, mysql.table_priv,
+// and uses this information to create aclEntry instances.
+// For instance:
+// For global-level privileges, '*.*' is converted to '%'
+// For database-level privileges, 'database.*' is converted to 'database.%'
+// For table-level privileges, 'database.table' is used directly
+func (tacl *tableACL) LoadFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	entries := aclEntries{}
-	globalEntries, err := tacl.GetGlobalFromMysqlBase(newACL)
+	//
+	globalEntries, err := tacl.LoadGlobalFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
 	entries = append(entries, globalEntries...)
-	tableEntries, err := tacl.GetTablePrivFromMysqlBase(newACL)
+	tableEntries, err := tacl.LoadTablePrivFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
 	entries = append(entries, tableEntries...)
-	dbEntries, err := tacl.GetDatabasePrivFromMysqlBase(newACL)
+	dbEntries, err := tacl.LoadDatabasePrivFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +255,8 @@ func buildACLEntriesFromPrivMap(privMap map[string][]PrivEntry, newACL func([]st
 	return entries, nil
 }
 
-func (tacl *tableACL) GetDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// LoadDatabasePrivFromMysqlBase implement database-level authority authentication
+func (tacl *tableACL) LoadDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
 	if err != nil {
@@ -300,7 +309,8 @@ func (tacl *tableACL) GetDatabasePrivFromMysqlBase(newACL func([]string) (acl.AC
 	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
-func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// LoadTablePrivFromMysqlBase implement table-level authority authentication
+func (tacl *tableACL) LoadTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
 	if err != nil {
@@ -363,8 +373,8 @@ func (tacl *tableACL) GetTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, 
 	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
-// GetGlobalFromMysqlBase implement global-level authority authentication
-func (tacl *tableACL) GetGlobalFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// LoadGlobalFromMysqlBase implement global-level authority authentication
+func (tacl *tableACL) LoadGlobalFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	entries := aclEntries{}
 	conn, err := tacl.conns.Get(ctx, nil)
@@ -470,22 +480,26 @@ func (tacl *tableACL) aclFactory() (acl.Factory, error) {
 	}
 	return tacl.factory, nil
 }
+
+// LoadFromMysql construct aclEntries and call callback function to clear plan cache.
 func (tacl *tableACL) LoadFromMysql(config *tableaclpb.Config) error {
 	factory, err := tacl.aclFactory()
 	if err != nil {
 		return err
 	}
-	entries, err := tacl.GetFromMysqlBase(factory.New)
+	entries, err := tacl.LoadFromMysqlBase(factory.New)
 	if err != nil {
 		return err
 	}
 	tacl.Lock()
-	tacl.entries = entries
-	// TODO: geray can remove config?
+	isEqual := reflect.DeepEqual(tacl.entries, entries)
+	if !isEqual {
+		tacl.entries = entries
+	}
 	tacl.config = proto.Clone(config).(*tableaclpb.Config)
 	callback := tacl.callback
 	tacl.Unlock()
-	if callback != nil {
+	if callback != nil && !isEqual {
 		callback()
 	}
 	return nil

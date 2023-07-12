@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/vt/dbconfigs"
@@ -252,5 +254,168 @@ func TestGetCurrentACLFactoryWithWrongDefault(t *testing.T) {
 	_, err := GetCurrentACLFactory()
 	if err == nil {
 		t.Fatalf("there are more than one acl factories, but the default given does not match any of these.")
+	}
+}
+
+func IsMemberInList(name string, acls []*ACLResult) bool {
+	for _, acl := range acls {
+		if acl.IsMember(&querypb.VTGateCallerID{Username: name}) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestAuthorizedList(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	config := &tableaclpb.Config{
+		TableGroups: []*tableaclpb.TableGroupSpec{
+			{
+				Name:                 "group01",
+				TableNamesOrPrefixes: []string{"%"},
+				Readers:              []string{"u1", "u2"},
+				Writers:              []string{"u1", "u3"},
+				Admins:               []string{"u1"},
+			},
+		},
+	}
+	if err := tacl.Set(config); err != nil {
+		t.Fatalf("InitFromProto(<data>) = %v, want: nil", err)
+	}
+
+	readerACL := tacl.AuthorizedList("test_data_any", READER)
+	if !IsMemberInList("u1", readerACL) && !IsMemberInList("u2", readerACL) {
+		t.Fatalf("user u1 should have reader permission to table test_data_any")
+	}
+	if IsMemberInList("u3", readerACL) {
+		t.Fatalf("user u3 should not have reader permission to table test_data_any")
+	}
+	wriderACL := tacl.AuthorizedList("test_data_any", WRITER)
+	if !IsMemberInList("u1", wriderACL) && !IsMemberInList("u3", wriderACL) {
+		t.Fatalf("user u1 should have writer permission to table test_data_any")
+	}
+	if IsMemberInList("u2", wriderACL) {
+		t.Fatalf("user u3 should not have writer permission to table test_data_any")
+	}
+	adminsACL := tacl.AuthorizedList("test_data_any", ADMIN)
+	if !IsMemberInList("u1", adminsACL) {
+		t.Fatalf("user u1 should have writer permission to table test_data_any")
+	}
+	if IsMemberInList("u3", adminsACL) {
+		t.Fatalf("user u3 should not have writer permission to table test_data_any")
+	}
+}
+
+func TestAuthorizedListNoMatch(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	config := &tableaclpb.Config{
+		TableGroups: []*tableaclpb.TableGroupSpec{
+			{
+				Name:                 "group01",
+				TableNamesOrPrefixes: []string{"table1"},
+				Readers:              []string{"u1", "u2"},
+				Writers:              []string{"u1", "u3"},
+				Admins:               []string{"u1"},
+			},
+		},
+	}
+	if err := tacl.Set(config); err != nil {
+		t.Fatalf("InitFromProto(<data>) = %v, want: nil", err)
+	}
+
+	readerACL := tacl.AuthorizedList("non_existent_table", READER)
+	if len(readerACL) > 0 {
+		t.Fatalf("Non existent table should not have any permissions")
+	}
+}
+
+func TestAuthorizedListPartialMatch(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	config := &tableaclpb.Config{
+		TableGroups: []*tableaclpb.TableGroupSpec{
+			{
+				Name:                 "group01",
+				TableNamesOrPrefixes: []string{"test_data_%"},
+				Readers:              []string{"u1", "u2"},
+				Writers:              []string{"u1", "u3"},
+				Admins:               []string{"u1"},
+			},
+		},
+	}
+	if err := tacl.Set(config); err != nil {
+		t.Fatalf("InitFromProto(<data>) = %v, want: nil", err)
+	}
+
+	readerACL := tacl.AuthorizedList("test_data_any", READER)
+	if !IsMemberInList("u1", readerACL) && !IsMemberInList("u2", readerACL) {
+		t.Fatalf("user u1 and u2 should have reader permission to table test_data_any")
+	}
+
+	readerACL = tacl.AuthorizedList("other_table", READER)
+	if len(readerACL) > 0 {
+		t.Fatalf("other_table does not match the prefix test_data_%%, no permissions should be granted")
+	}
+}
+
+func TestAuthorizedListEmptyACL(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+
+	readerACL := tacl.AuthorizedList("test_data_any", READER)
+	if len(readerACL) > 0 {
+		t.Fatalf("No ACLs have been set, no permissions should be granted")
+	}
+}
+
+func TestAuthorizedListDatabaseWildcard(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	config := &tableaclpb.Config{
+		TableGroups: []*tableaclpb.TableGroupSpec{
+			{
+				Name:                 "group01",
+				TableNamesOrPrefixes: []string{"database.%"},
+				Readers:              []string{"u1", "u2"},
+				Writers:              []string{"u1", "u3"},
+				Admins:               []string{"u1"},
+			},
+		},
+	}
+	if err := tacl.Set(config); err != nil {
+		t.Fatalf("InitFromProto(<data>) = %v, want: nil", err)
+	}
+
+	// Validating access to a specific table in the "database" database.
+	readerACL := tacl.AuthorizedList("database.table1", READER)
+	if !IsMemberInList("u1", readerACL) && !IsMemberInList("u2", readerACL) {
+		t.Fatalf("user u1 and u2 should have reader permission to table database.table1")
+	}
+}
+
+func TestAuthorizedListSpecificTable(t *testing.T) {
+	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	config := &tableaclpb.Config{
+		TableGroups: []*tableaclpb.TableGroupSpec{
+			{
+				Name:                 "group01",
+				TableNamesOrPrefixes: []string{"database.table"},
+				Readers:              []string{"u1", "u2"},
+				Writers:              []string{"u1", "u3"},
+				Admins:               []string{"u1"},
+			},
+		},
+	}
+	if err := tacl.Set(config); err != nil {
+		t.Fatalf("InitFromProto(<data>) = %v, want: nil", err)
+	}
+
+	// Validating access to a specific table.
+	readerACL := tacl.AuthorizedList("database.table", READER)
+	if !IsMemberInList("u1", readerACL) && !IsMemberInList("u2", readerACL) {
+		t.Fatalf("user u1 and u2 should have reader permission to table database.table")
+	}
+
+	// Validating no access to other tables in the same database.
+	readerACL = tacl.AuthorizedList("database.other_table", READER)
+	if len(readerACL) > 0 {
+		t.Fatalf("user should not have access to table database.other_table")
 	}
 }
