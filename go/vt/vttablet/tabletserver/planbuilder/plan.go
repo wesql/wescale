@@ -256,6 +256,10 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 		plan, err = &Plan{PlanID: PlanFlush, FullQuery: GenerateFullQuery(stmt)}, nil
 	case *sqlparser.CallProc:
 		plan, err = &Plan{PlanID: PlanCallProc, FullQuery: GenerateFullQuery(stmt)}, nil
+	case *sqlparser.LockTables:
+		plan, err = &Plan{PlanID: PlanLockTables, FullQuery: GenerateFullQuery(stmt)}, nil
+	case *sqlparser.UnlockTables:
+		plan, err = &Plan{PlanID: PlanUnlockTables, FullQuery: GenerateFullQuery(stmt)}, nil
 	default:
 		return nil, vterrors.New(vtrpcpb.Code_INVALID_ARGUMENT, "invalid SQL")
 	}

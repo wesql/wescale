@@ -259,10 +259,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.Show:
 		return buildShowPlan(query, stmt, reservedVars, vschema)
 	case *sqlparser.LockTables:
-		// will not be executed, Lock Tables statement is ignored
 		return buildLockPlan(stmt, reservedVars, vschema)
 	case *sqlparser.UnlockTables:
-		// will not be executed, UnLock Tables statement is ignored
 		return buildUnlockPlan(stmt, reservedVars, vschema)
 	case *sqlparser.Flush:
 		return buildFlushPlan(stmt, vschema)

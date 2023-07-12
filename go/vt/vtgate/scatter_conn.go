@@ -24,6 +24,7 @@ package vtgate
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -269,7 +270,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				state, innerqr, err = qs.ReserveExecute(ctx, rs.Target, session.SetPreQueries(), queries[i].Sql, queries[i].BindVariables, transactionID, opts)
 				reservedID = state.ReservedID
 				alias = state.TabletAlias
-				if reservedID != 0 {
+				if reservedID != 0 && err == nil {
 					session.Session.InReservedConn = true
 					setLockSession(send, innerqr, session, queries[i].BindVariables, rs.Target, reservedID, alias)
 				}
@@ -1013,25 +1014,40 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 		lockMap = session.Session.LockSession.GetLocks()
 	}
 
-	rows := innerqr.Rows
 	for i, lock := range send.LockFuncs {
-		if rows[i][0].ToString() != "1" {
-			continue
-		}
+
 		variable := variables[lock.Name]
 		n := variable.String()
 		switch lock.Typ {
 		case sqlparser.GetTableLock:
-			lockMap[lock.Name] = lock.Typ
+			lockMap[sqlparser.TableLockPrefix+lock.Name] = lock.Typ
+		case sqlparser.ReleaseTableLock:
+			for k, _ := range lockMap {
+				if isTableLock(k) {
+					delete(lockMap, k)
+				}
+			}
 		case sqlparser.GetLock:
-			lockMap[n] = lock.Typ
+			rows := innerqr.Rows
+			if rows[i][0].ToString() != "1" {
+				continue
+			}
+			lockMap[sqlparser.LockPrefix+n] = lock.Typ
 		case sqlparser.ReleaseLock:
+			rows := innerqr.Rows
+			if rows[i][0].ToString() != "1" {
+				continue
+			}
 			if _, ok := lockMap[n]; ok {
-				delete(lockMap, n)
+				delete(lockMap, sqlparser.LockPrefix+n)
 			}
 		case sqlparser.IsUsedLock, sqlparser.IsFreeLock:
 		case sqlparser.ReleaseAllLocks:
-			lockMap = map[string]sqlparser.LockingFuncType{}
+			for k, _ := range lockMap {
+				if isLock(k) {
+					delete(lockMap, k)
+				}
+			}
 		}
 	}
 
@@ -1046,4 +1062,12 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 	}
 	session.Session.LockSession.SetLocks(lockMap)
 	return
+}
+
+func isLock(lockName string) bool {
+	return strings.HasPrefix(lockName, sqlparser.LockPrefix)
+}
+
+func isTableLock(lockName string) bool {
+	return strings.HasPrefix(lockName, sqlparser.TableLockPrefix)
 }

@@ -423,6 +423,10 @@ const (
 	SecondStr            = "second"
 	SecondMicrosecondStr = "second_microsecond"
 	YearMonthStr         = "year_month"
+
+	// LockSession prefix Strings
+	LockPrefix      = "__lock_"
+	TableLockPrefix = "__table_lock_"
 )
 
 // Constants for Enum Type - Insert.Action

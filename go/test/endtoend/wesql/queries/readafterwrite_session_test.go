@@ -105,7 +105,7 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 }
 
 func runReadAfterWriteGlobalTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
-	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
+	createDbExecDropDb(t, "readafterwrite_global_test", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
 		roConn := rwConn
 		if separateConn {
