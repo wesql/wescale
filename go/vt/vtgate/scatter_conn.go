@@ -1019,9 +1019,6 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 	}
 
 	for i, lock := range send.LockFuncs {
-
-		variable := variables[lock.Name]
-		n := variable.Value
 		switch lock.Typ {
 		case sqlparser.GetTableLock:
 			lockMap[sqlparser.TableLockPrefix+lock.Name] = lock.Typ
@@ -1032,16 +1029,16 @@ func setLockSession(send *engine.Send, innerqr *sqltypes.Result, session *SafeSe
 				}
 			}
 		case sqlparser.GetLock:
+			variable := variables[lock.Name]
+			n := variable.Value
 			rows := innerqr.Rows
 			if rows[i][0].ToString() != "1" {
 				continue
 			}
 			lockMap[sqlparser.LockPrefix+string(n)] = lock.Typ
 		case sqlparser.ReleaseLock:
-			rows := innerqr.Rows
-			if rows[i][0].ToString() != "1" {
-				continue
-			}
+			variable := variables[lock.Name]
+			n := variable.Value
 			if _, ok := lockMap[sqlparser.LockPrefix+string(n)]; ok {
 				delete(lockMap, sqlparser.LockPrefix+string(n))
 			}
