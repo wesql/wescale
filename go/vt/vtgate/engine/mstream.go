@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,12 +65,12 @@ func (m *MStream) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface
-func (m *MStream) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (m *MStream) TryExecute(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	return nil, vterrors.VT13001("TryExecute is not supported for MStream")
 }
 
 // TryStreamExecute implements the Primitive interface
-func (m *MStream) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
+func (m *MStream) TryStreamExecute(ctx context.Context, vcursor VCursor, _ map[string]*querypb.BindVariable, _ bool, callback func(*sqltypes.Result) error) error {
 	rss, _, err := vcursor.ResolveDestinations(ctx, m.Keyspace.Name, nil, []key.Destination{m.TargetDestination})
 	if err != nil {
 		return err
@@ -74,7 +79,7 @@ func (m *MStream) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVar
 }
 
 // GetFields implements the Primitive interface
-func (m *MStream) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+func (m *MStream) GetFields(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.VT13001("GetFields is not supported for MStream")
 }
 

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,6 +130,6 @@ func (ddl *DDL) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars 
 }
 
 // GetFields implements the Primitive interface
-func (ddl *DDL) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*query.BindVariable) (*sqltypes.Result, error) {
+func (ddl *DDL) GetFields(_ context.Context, _ VCursor, _ map[string]*query.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] GetFields in not reachable")
 }

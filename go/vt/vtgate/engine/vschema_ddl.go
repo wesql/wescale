@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +70,7 @@ func (v *AlterVSchema) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface
-func (v *AlterVSchema) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*query.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (v *AlterVSchema) TryExecute(ctx context.Context, vcursor VCursor, _ map[string]*query.BindVariable, _ bool) (*sqltypes.Result, error) {
 	err := vcursor.ExecuteVSchema(ctx, v.Keyspace.Name, v.AlterVschemaDDL)
 	if err != nil {
 		return nil, err
@@ -83,6 +88,6 @@ func (v *AlterVSchema) TryStreamExecute(ctx context.Context, vcursor VCursor, bi
 }
 
 // GetFields implements the Primitive interface
-func (v *AlterVSchema) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*query.BindVariable) (*sqltypes.Result, error) {
+func (v *AlterVSchema) GetFields(_ context.Context, _ VCursor, _ map[string]*query.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.VT13001("GetFields is not supported for AlterVSchema")
 }

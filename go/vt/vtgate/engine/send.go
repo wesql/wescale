@@ -96,7 +96,7 @@ func (s *Send) Resolve(ctx context.Context, vcursor VCursor) ([]*srvtopo.Resolve
 }
 
 // TryExecute implements Primitive interface
-func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (s *Send) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	ctx, cancelFunc := addQueryTimeout(ctx, vcursor, 0)
 	defer cancelFunc()
 	var rss []*srvtopo.ResolvedShard
@@ -148,7 +148,7 @@ func copyBindVars(in map[string]*querypb.BindVariable) map[string]*querypb.BindV
 }
 
 // TryStreamExecute implements Primitive interface
-func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
+func (s *Send) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool, callback func(*sqltypes.Result) error) error {
 	var rss []*srvtopo.ResolvedShard
 	var err error
 	rss, err = s.Resolve(ctx, vcursor)

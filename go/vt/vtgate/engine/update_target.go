@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +66,7 @@ func (updTarget *UpdateTarget) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface
-func (updTarget *UpdateTarget) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*query.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (updTarget *UpdateTarget) TryExecute(_ context.Context, vcursor VCursor, _ map[string]*query.BindVariable, _ bool) (*sqltypes.Result, error) {
 	err := vcursor.Session().SetTarget(updTarget.Target)
 	if err != nil {
 		return nil, err
@@ -79,6 +84,6 @@ func (updTarget *UpdateTarget) TryStreamExecute(ctx context.Context, vcursor VCu
 }
 
 // GetFields implements the Primitive interface
-func (updTarget *UpdateTarget) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*query.BindVariable) (*sqltypes.Result, error) {
+func (updTarget *UpdateTarget) GetFields(_ context.Context, _ VCursor, _ map[string]*query.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] GetFields not reachable for use statement")
 }

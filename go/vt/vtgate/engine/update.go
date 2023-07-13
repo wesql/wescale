@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +57,7 @@ type Update struct {
 }
 
 // TryExecute performs a non-streaming exec.
-func (upd *Update) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (upd *Update) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	ctx, cancelFunc := addQueryTimeout(ctx, vcursor, upd.QueryTimeout)
 	defer cancelFunc()
 
@@ -87,7 +92,7 @@ func (upd *Update) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVa
 }
 
 // GetFields fetches the field info.
-func (upd *Update) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+func (upd *Update) GetFields(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return nil, fmt.Errorf("BUG: unreachable code for %q", upd.Query)
 }
 
