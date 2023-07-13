@@ -316,7 +316,7 @@ func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (engi
 	return nil, nil
 }
 
-func buildLockingPrimitive(sel *sqlparser.Select, vschema plancontext.VSchema, lockFunctions []*engine.LockFunc) (engine.Primitive, error) {
+func buildLockingPrimitive(sel sqlparser.SQLNode, vschema plancontext.VSchema, lockFunctions []*engine.LockFunc) (engine.Primitive, error) {
 	ks, err := vschema.FirstSortedKeyspace()
 	if err != nil {
 		return nil, err
