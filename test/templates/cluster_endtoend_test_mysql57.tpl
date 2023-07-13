@@ -1,6 +1,6 @@
 name: {{.Name}}
 on:
-  pull_request:
+#  pull_request:
   workflow_dispatch:
 concurrency:
   group: format('{0}-{1}', ${{"{{"}} github.ref {{"}}"}}, '{{.Name}}')

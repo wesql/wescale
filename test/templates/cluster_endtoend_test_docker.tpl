@@ -1,6 +1,6 @@
 name: {{.Name}}
 on:
-  pull_request:
+#  pull_request:
   workflow_dispatch:
 
 jobs:
