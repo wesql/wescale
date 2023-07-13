@@ -114,31 +114,31 @@ local row = grafana.row;
 
   REDByKeyspace::
     row.new(
-      title='RED (vtgate - by keyspace)',
+      title='RED (vtgate - group by keyspace)',
       collapse=true
     ),
 
   REDByTabletType::
     row.new(
-      title='RED (vtgate - by tablet type)',
+      title='RED (vtgate - group by tablet type)',
       collapse=true
     ),
 
   REDByPlanType::
     row.new(
-      title='RED (tablet - by plan type)',
+      title='RED (tablet - group by plan type)',
       collapse=true
     ),
 
   REDByShard::
     row.new(
-      title='RED (by shard)',
+      title='RED (group by shard)',
       collapse=true
     ),
 
   REDByTable::
     row.new(
-      title='RED (tablet - by table)',
+      title='RED (tablet - group by table)',
       collapse=true
     ),
 
@@ -173,13 +173,13 @@ local row = grafana.row;
 
   vitessQueryPool::
     row.new(
-      title='Vitess - Query pool',
+      title='WeSQL-Scale - Query pool',
       collapse=true,
     ),
 
   vitessTransactionPool::
     row.new(
-      title='Vitess - Transaction pool',
+      title='WeSQL-Scale - Transaction pool',
       collapse=true,
     ),
 

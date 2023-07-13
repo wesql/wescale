@@ -25,12 +25,8 @@ local rows_helper = helpers.default;
         singlestats.vtgateSuccessRate { gridPos: { h: 4, w: 4, x: 0, y: 1 } },
         singlestats.vttabletQuerySuccess { gridPos: { h: 4, w: 4, x: 4, y: 1 } },
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQueryLatencyP99) { gridPos: { h: 4, w: 4, x: 8, y: 1 } },
-        helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQPS) { gridPos: { h: 2, w: 4, x: 12, y: 3 } },
-        helpers.vttablet.getSingleStat(config.vttablet.singlestats.vttabletQPS) { gridPos: { h: 2, w: 4, x: 12, y: 3 } },
-        singlestats.vtgateUp { gridPos: { h: 2, w: 2, x: 16, y: 1 } },
-        singlestats.vttabletUp { gridPos: { h: 2, w: 2, x: 16, y: 3 } },
-        singlestats.keyspaceCount { gridPos: { h: 2, w: 2, x: 18, y: 1 } },
-        singlestats.shardCount { gridPos: { h: 2, w: 2, x: 18, y: 3 } },
+        helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQPS) { gridPos: { h: 4, w: 4, x: 12, y: 1 } },
+        helpers.vttablet.getSingleStat(config.vttablet.singlestats.vttabletQPS) { gridPos: { h: 4, w: 4, x: 16, y: 1 } },
 
         # hostview
         # vtgate RED
@@ -39,14 +35,14 @@ local rows_helper = helpers.default;
         helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorRate) { gridPos: { h: 6, w: 8, x: 8, y: 8 } },
         helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP99) { gridPos: { h: 6, w: 8, x: 16, y: 8 } },
 
-        # vtgate RED by keyspace
-        rows.REDByKeyspace.addPanels([
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByKeyspace) { gridPos: { h: 8, w: 8, x: 0, y: 15 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorRateByKeyspace) { gridPos: { h: 8, w: 8, x: 8, y: 15 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP99ByKeyspace) { gridPos: { h: 8, w: 8, x: 16, y: 15 } },
-        ]){ gridPos: { h: 1, w: 24, x: 0, y: 14 } },
+        # # vtgate RED group by keyspace
+        # rows.REDByKeyspace.addPanels([
+        #   helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByKeyspace) { gridPos: { h: 8, w: 8, x: 0, y: 15 } },
+        #   helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorRateByKeyspace) { gridPos: { h: 8, w: 8, x: 8, y: 15 } },
+        #   helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP99ByKeyspace) { gridPos: { h: 8, w: 8, x: 16, y: 15 } },
+        # ]){ gridPos: { h: 1, w: 24, x: 0, y: 14 } },
 
-        # vtgate RED by tablet type
+        # vtgate RED group by tablet type
         rows.REDByTabletType.addPanels([
           helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByDBType) { gridPos: { h: 7, w: 8, x: 0, y: 24 } },
           helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorRateByDBType) { gridPos: { h: 7, w: 8, x: 8, y: 24 } },
@@ -66,25 +62,25 @@ local rows_helper = helpers.default;
           helpers.vttablet.getPanel(config.vttablet.panels.vttabletQueryDurationP99ByPlan) { gridPos: { h: 7, w: 8, x: 16, y: 40 } },
         ]) { gridPos: { h: 1, w: 24, x: 0, y: 39 } },
 
-        # vttablet RED by table
-        rows.REDByTable.addPanels([
-          helpers.vttablet.getPanel(config.vttablet.panels.vttabletRequestsByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 50 } },
-          helpers.vttablet.getPanel(config.vttablet.panels.vttabletErrorRateByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 8, y: 50 } },
-          helpers.vttablet.getPanel(config.vttablet.panels.vttabletQueryDurationP99ByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 16, y: 50 } },
-        ]) { gridPos: { h: 1, w: 24, x: 0, y: 47 } },
-
-        # vtgate errors 
-        rows.errors.addPanels([
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByCode) { gridPos: { h: 7, w: 8, x: 0, y: 58 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByOperation) { gridPos: { h: 7, w: 8, x: 8, y: 58 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByDbtype) { gridPos: { h: 7, w: 8, x: 16, y: 58 } },
-        ]) { gridPos: { h: 1, w: 24, x: 0, y: 57 } },
+        # # vttablet RED group by table
+        # rows.REDByTable.addPanels([
+        #   helpers.vttablet.getPanel(config.vttablet.panels.vttabletRequestsByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 50 } },
+        #   helpers.vttablet.getPanel(config.vttablet.panels.vttabletErrorRateByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 8, y: 50 } },
+        #   helpers.vttablet.getPanel(config.vttablet.panels.vttabletQueryDurationP99ByTableFilteredByInstance) { gridPos: { h: 7, w: 8, x: 16, y: 50 } },
+        # ]) { gridPos: { h: 1, w: 24, x: 0, y: 47 } },
 
         # vtgate duration
         rows.duration.addPanels([
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationAVG) { gridPos: { h: 7, w: 8, x: 0, y: 66 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP50) { gridPos: { h: 7, w: 8, x: 8, y: 66 } },
-          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP95) { gridPos: { h: 7, w: 8, x: 16, y: 66 } },
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationAVG) { gridPos: { h: 7, w: 8, x: 0, y: 58 } },
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP50) { gridPos: { h: 7, w: 8, x: 8, y: 58 } },
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateDurationP95) { gridPos: { h: 7, w: 8, x: 16, y: 58 } },
+        ]) { gridPos: { h: 1, w: 24, x: 0, y: 57 } },
+
+        # vtgate errors 
+        rows.errors.addPanels([
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByCode) { gridPos: { h: 7, w: 8, x: 0, y: 66 } },
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByOperation) { gridPos: { h: 7, w: 8, x: 8, y: 66 } },
+          helpers.vtgate.getPanel(config.vtgate.panels.vtgateErrorsByDbtype) { gridPos: { h: 7, w: 8, x: 16, y: 66 } },
         ]) { gridPos: { h: 1, w: 24, x: 0, y: 65 } },
 
         # vttablet row returned
