@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,4 +122,4 @@ func (r *_rpc) Expired(time.Duration) bool {
 
 // we only ever return the same rpc pointer. it's used as a sentinel and is
 // only used internally so using the same one over and over doesn't matter.
-func rpcResourceFactory(ctx context.Context) (Resource, error) { return rpc, nil }
+func rpcResourceFactory(_ context.Context) (Resource, error) { return rpc, nil }

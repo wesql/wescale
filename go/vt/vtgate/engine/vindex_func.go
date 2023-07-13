@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,12 +94,12 @@ func (vf *VindexFunc) GetTableName() string {
 }
 
 // TryExecute performs a non-streaming exec.
-func (vf *VindexFunc) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (vf *VindexFunc) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	return vf.mapVindex(ctx, vcursor, bindVars)
 }
 
 // TryStreamExecute performs a streaming exec.
-func (vf *VindexFunc) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
+func (vf *VindexFunc) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool, callback func(*sqltypes.Result) error) error {
 	r, err := vf.mapVindex(ctx, vcursor, bindVars)
 	if err != nil {
 		return err
@@ -106,7 +111,7 @@ func (vf *VindexFunc) TryStreamExecute(ctx context.Context, vcursor VCursor, bin
 }
 
 // GetFields fetches the field info.
-func (vf *VindexFunc) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+func (vf *VindexFunc) GetFields(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return &sqltypes.Result{Fields: vf.Fields}, nil
 }
 

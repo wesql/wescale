@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +48,7 @@ func (*uvindex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]
 	panic("unimplemented")
 }
 
-func (v *uvindex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (v *uvindex) Map(_ context.Context, _ vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
 	destinations := make([]key.Destination, 0, len(ids))
 	dkid := []byte("foo")
 	for i := 0; i < len(ids); i++ {
@@ -75,7 +80,7 @@ func (*nvindex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]
 	panic("unimplemented")
 }
 
-func (v *nvindex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (v *nvindex) Map(_ context.Context, _ vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
 	destinations := make([]key.Destination, 0)
 	for i := 0; i < len(ids); i++ {
 		if v.matchid {

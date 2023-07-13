@@ -126,7 +126,7 @@ func (s *Set) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface method.
-func (s *Set) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (s *Set) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	input, err := vcursor.ExecutePrimitive(ctx, s.Input, bindVars, false)
 	if err != nil {
 		return nil, err
@@ -197,7 +197,7 @@ func (u *UserDefinedVariable) VariableName() string {
 }
 
 // Execute implements the SetOp interface method.
-func (u *UserDefinedVariable) Execute(ctx context.Context, vcursor VCursor, env *evalengine.ExpressionEnv) error {
+func (u *UserDefinedVariable) Execute(_ context.Context, vcursor VCursor, env *evalengine.ExpressionEnv) error {
 	value, err := env.Evaluate(u.Expr)
 	if err != nil {
 		return err
@@ -668,7 +668,7 @@ func (svss *SysVarSetAware) VariableName() string {
 
 var _ SetOp = (*VitessMetadata)(nil)
 
-func (v *VitessMetadata) Execute(ctx context.Context, vcursor VCursor, env *evalengine.ExpressionEnv) error {
+func (v *VitessMetadata) Execute(ctx context.Context, vcursor VCursor, _ *evalengine.ExpressionEnv) error {
 	return vcursor.SetExec(ctx, v.Name, v.Value)
 }
 

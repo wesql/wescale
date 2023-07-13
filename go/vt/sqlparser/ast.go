@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -797,7 +802,7 @@ func (*RenameTable) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DDLStatement interface
-func (node *RenameTable) SetFullyParsed(fullyParsed bool) {}
+func (node *RenameTable) SetFullyParsed(_ bool) {}
 
 // IsFullyParsed implements the DDLStatement interface
 func (node *CreateTable) IsFullyParsed() bool {
@@ -825,7 +830,7 @@ func (node *CreateView) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DDLStatement interface
-func (node *CreateView) SetFullyParsed(fullyParsed bool) {}
+func (node *CreateView) SetFullyParsed(_ bool) {}
 
 // IsFullyParsed implements the DDLStatement interface
 func (node *DropView) IsFullyParsed() bool {
@@ -833,7 +838,7 @@ func (node *DropView) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DDLStatement interface
-func (node *DropView) SetFullyParsed(fullyParsed bool) {}
+func (node *DropView) SetFullyParsed(_ bool) {}
 
 // IsFullyParsed implements the DDLStatement interface
 func (node *DropTable) IsFullyParsed() bool {
@@ -841,7 +846,7 @@ func (node *DropTable) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DDLStatement interface
-func (node *DropTable) SetFullyParsed(fullyParsed bool) {}
+func (node *DropTable) SetFullyParsed(_ bool) {}
 
 // IsFullyParsed implements the DDLStatement interface
 func (node *AlterView) IsFullyParsed() bool {
@@ -849,7 +854,7 @@ func (node *AlterView) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DDLStatement interface
-func (node *AlterView) SetFullyParsed(fullyParsed bool) {}
+func (node *AlterView) SetFullyParsed(_ bool) {}
 
 // IsTemporary implements the DDLStatement interface
 func (*TruncateTable) IsTemporary() bool {
@@ -1226,22 +1231,22 @@ func (node *RenameTable) SetFromTables(tables TableNames) {
 }
 
 // SetFromTables implements DDLStatement.
-func (node *TruncateTable) SetFromTables(tables TableNames) {
+func (node *TruncateTable) SetFromTables(_ TableNames) {
 	// irrelevant
 }
 
 // SetFromTables implements DDLStatement.
-func (node *AlterTable) SetFromTables(tables TableNames) {
+func (node *AlterTable) SetFromTables(_ TableNames) {
 	// irrelevant
 }
 
 // SetFromTables implements DDLStatement.
-func (node *CreateTable) SetFromTables(tables TableNames) {
+func (node *CreateTable) SetFromTables(_ TableNames) {
 	// irrelevant
 }
 
 // SetFromTables implements DDLStatement.
-func (node *CreateView) SetFromTables(tables TableNames) {
+func (node *CreateView) SetFromTables(_ TableNames) {
 	// irrelevant
 }
 
@@ -1256,17 +1261,17 @@ func (node *DropView) SetFromTables(tables TableNames) {
 }
 
 // SetFromTables implements DDLStatement.
-func (node *AlterView) SetFromTables(tables TableNames) {
+func (node *AlterView) SetFromTables(_ TableNames) {
 	// irrelevant
 }
 
 // SetComments implements Commented interface.
-func (node *RenameTable) SetComments(comments Comments) {
+func (node *RenameTable) SetComments(_ Comments) {
 	// irrelevant
 }
 
 // SetComments implements Commented interface.
-func (node *TruncateTable) SetComments(comments Comments) {
+func (node *TruncateTable) SetComments(_ Comments) {
 	// irrelevant
 }
 
@@ -1550,13 +1555,13 @@ func (node *AlterView) SetTable(qualifier string, name string) {
 }
 
 // SetTable implements DDLStatement.
-func (node *RenameTable) SetTable(qualifier string, name string) {}
+func (node *RenameTable) SetTable(_ string, _ string) {}
 
 // SetTable implements DDLStatement.
-func (node *DropTable) SetTable(qualifier string, name string) {}
+func (node *DropTable) SetTable(_ string, _ string) {}
 
 // SetTable implements DDLStatement.
-func (node *DropView) SetTable(qualifier string, name string) {}
+func (node *DropView) SetTable(_ string, _ string) {}
 
 func (*DropDatabase) iDBDDLStatement()   {}
 func (*CreateDatabase) iDBDDLStatement() {}
@@ -1568,7 +1573,7 @@ func (node *DropDatabase) IsFullyParsed() bool {
 }
 
 // SetFullyParsed implements the DBDDLStatement interface
-func (node *DropDatabase) SetFullyParsed(fullyParsed bool) {}
+func (node *DropDatabase) SetFullyParsed(_ bool) {}
 
 // IsFullyParsed implements the DBDDLStatement interface
 func (node *CreateDatabase) IsFullyParsed() bool {

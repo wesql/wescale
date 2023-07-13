@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +100,7 @@ func (c *DBDDL) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface
-func (c *DBDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (c *DBDDL) TryExecute(ctx context.Context, vcursor VCursor, _ map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	name := vcursor.GetDBDDLPluginName()
 	plugin, ok := databaseCreatorPlugins[name]
 	if !ok {

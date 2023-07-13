@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,13 +52,13 @@ type TestResource struct {
 	failApply   bool
 }
 
-func (tr *TestResource) ResetSetting(ctx context.Context) error {
+func (tr *TestResource) ResetSetting(_ context.Context) error {
 	resetCount.Add(1)
 	tr.setting = ""
 	return nil
 }
 
-func (tr *TestResource) ApplySetting(ctx context.Context, setting *Setting) error {
+func (tr *TestResource) ApplySetting(_ context.Context, setting *Setting) error {
 	if tr.failApply {
 		return fmt.Errorf("ApplySetting failed")
 	}

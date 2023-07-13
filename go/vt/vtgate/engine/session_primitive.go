@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,12 +65,12 @@ func (s *SessionPrimitive) GetTableName() string {
 }
 
 // TryExecute implements the Primitive interface
-func (s *SessionPrimitive) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (s *SessionPrimitive) TryExecute(_ context.Context, vcursor VCursor, _ map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	return s.action(vcursor.Session())
 }
 
 // TryStreamExecute implements the Primitive interface
-func (s *SessionPrimitive) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
+func (s *SessionPrimitive) TryStreamExecute(_ context.Context, vcursor VCursor, _ map[string]*querypb.BindVariable, _ bool, callback func(*sqltypes.Result) error) error {
 	qr, err := s.action(vcursor.Session())
 	if err != nil {
 		return err
@@ -74,7 +79,7 @@ func (s *SessionPrimitive) TryStreamExecute(ctx context.Context, vcursor VCursor
 }
 
 // GetFields implements the Primitive interface
-func (s *SessionPrimitive) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+func (s *SessionPrimitive) GetFields(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.VT13001("GetFields is not supported for SessionPrimitive")
 }
 
