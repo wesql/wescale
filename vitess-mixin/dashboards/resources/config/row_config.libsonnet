@@ -12,7 +12,7 @@
     collapse: true,
   },
   vitessTimings:: {
-    title: 'Vitess Timings',
+    title: 'WeSQL-Scale Timings',
     collapse: true,
   },
 }
