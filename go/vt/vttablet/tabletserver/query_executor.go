@@ -609,9 +609,19 @@ func (qre *QueryExecutor) checkPermissions() error {
 	return nil
 }
 
-func (qre *QueryExecutor) checkAccess(authorized *tableacl.ACLResult, tableName string, callerID *querypb.VTGateCallerID) error {
-	statsKey := []string{tableName, authorized.GroupName, qre.plan.PlanID.String(), callerID.Username}
-	if !authorized.IsMember(callerID) {
+func (qre *QueryExecutor) checkAccess(authorized []*tableacl.ACLResult, tableName string, callerID *querypb.VTGateCallerID) error {
+	if len(authorized) == 0 {
+		return vterrors.Errorf(vtrpcpb.Code_PERMISSION_DENIED, "acl List is empty")
+	}
+	statsKey := []string{tableName, authorized[0].GroupName, qre.plan.PlanID.String(), callerID.Username}
+	isPass := false
+	for _, acl := range authorized {
+		if acl.IsMember(callerID) {
+			isPass = true
+			statsKey[1] = acl.GroupName
+		}
+	}
+	if !isPass {
 		if qre.tsv.qe.enableTableACLDryRun {
 			qre.tsv.Stats().TableaclPseudoDenied.Add(statsKey, 1)
 			return nil

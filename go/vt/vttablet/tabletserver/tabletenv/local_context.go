@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +30,10 @@ type localContextKey int
 // LocalContext returns a context that's local to the process.
 func LocalContext() context.Context {
 	return context.WithValue(context.Background(), localContextKey(0), 0)
+}
+
+func LocalContextKey() interface{} {
+	return localContextKey(0)
 }
 
 // IsLocalContext returns true if the context is based on LocalContext.

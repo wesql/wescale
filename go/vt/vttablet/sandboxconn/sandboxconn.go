@@ -167,6 +167,11 @@ func (sbc *SandboxConn) SetSchemaResult(r []map[string]string) {
 	sbc.getSchemaResult = r
 }
 
+// ExecuteInternal is part of the QueryService interface.
+func (sbc *SandboxConn) ExecuteInternal(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
+	return sbc.Execute(ctx, target, query, bindVars, transactionID, reservedID, options)
+}
+
 // Execute is part of the QueryService interface.
 func (sbc *SandboxConn) Execute(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (*sqltypes.Result, error) {
 	sbc.execMu.Lock()

@@ -327,9 +327,12 @@ func (tsv *TabletServer) SetQueryRules(ruleSource string, qrs *rules.Rules) erro
 	return nil
 }
 
-func (tsv *TabletServer) initACL(tableACLConfigFile string, enforceTableACLConfig bool) {
+func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool) {
 	// tabletacl.Init loads ACL from file if *tableACLConfig is not empty
 	err := tableacl.Init(
+		env,
+		tsv.config.DB.DbaWithDB(),
+		tableACLMode,
 		tableACLConfigFile,
 		func() {
 			tsv.ClearQueryPlanCache()
@@ -344,14 +347,13 @@ func (tsv *TabletServer) initACL(tableACLConfigFile string, enforceTableACLConfi
 }
 
 // InitACL loads the table ACL and sets up a SIGHUP handler for reloading it.
-func (tsv *TabletServer) InitACL(tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
-	tsv.initACL(tableACLConfigFile, enforceTableACLConfig)
-
+func (tsv *TabletServer) InitACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
+	tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
 		for range sigChan {
-			tsv.initACL(tableACLConfigFile, enforceTableACLConfig)
+			tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
 		}
 	}()
 
@@ -720,6 +722,19 @@ func (tsv *TabletServer) ReadTransaction(ctx context.Context, target *querypb.Ta
 	return metadata, err
 }
 
+// ExecuteInternal executes the query in vtgate internal and returns the result as response.
+func (tsv *TabletServer) ExecuteInternal(ctx context.Context, target *querypb.Target, sql string, bindVariables map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (result *sqltypes.Result, err error) {
+	span, ctx := trace.NewSpan(ctx, "TabletServer.ExecuteInternal")
+	ctx = context.WithValue(ctx, tabletenv.LocalContextKey(), 0)
+	trace.AnnotateSQL(span, sqlparser.Preview(sql))
+	defer span.Finish()
+	if transactionID != 0 && reservedID != 0 && transactionID != reservedID {
+		return nil, vterrors.New(vtrpcpb.Code_INTERNAL, "[BUG] transactionID and reserveID must match if both are non-zero")
+	}
+
+	return tsv.execute(ctx, target, sql, bindVariables, transactionID, reservedID, nil, options)
+}
+
 // Execute executes the query and returns the result as response.
 func (tsv *TabletServer) Execute(ctx context.Context, target *querypb.Target, sql string, bindVariables map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (result *sqltypes.Result, err error) {
 	span, ctx := trace.NewSpan(ctx, "TabletServer.Execute")
@@ -754,7 +769,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 				bindVariables = make(map[string]*querypb.BindVariable)
 			}
 			query, comments := sqlparser.SplitMarginComments(sql)
-			plan, err := tsv.qe.GetPlan(ctx, logStats, query, skipQueryPlanCache(options))
+			plan, err := tsv.qe.GetPlan(ctx, logStats, target.Keyspace, query, skipQueryPlanCache(options))
 			if err != nil {
 				return err
 			}
@@ -886,7 +901,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 				bindVariables = make(map[string]*querypb.BindVariable)
 			}
 			query, comments := sqlparser.SplitMarginComments(sql)
-			plan, err := tsv.qe.GetStreamPlan(query)
+			plan, err := tsv.qe.GetStreamPlan(query, target.Keyspace)
 			if err != nil {
 				return err
 			}
@@ -986,7 +1001,7 @@ func (tsv *TabletServer) beginWaitForSameRangeTransactions(ctx context.Context, 
 		"", "waitForSameRangeTransactions", nil,
 		target, options, false, /* allowOnShutdown */
 		func(ctx context.Context, logStats *tabletenv.LogStats) error {
-			k, table := tsv.computeTxSerializerKey(ctx, logStats, sql, bindVariables)
+			k, table := tsv.computeTxSerializerKey(ctx, logStats, target.Keyspace, sql, bindVariables)
 			if k == "" {
 				// Query is not subject to tx serialization/hot row protection.
 				return nil
@@ -1009,10 +1024,10 @@ func (tsv *TabletServer) beginWaitForSameRangeTransactions(ctx context.Context, 
 // Additionally, it returns the table name (needed for updating stats vars).
 // It returns an empty string as key if the row (range) cannot be parsed from
 // the query and bind variables or the table name is empty.
-func (tsv *TabletServer) computeTxSerializerKey(ctx context.Context, logStats *tabletenv.LogStats, sql string, bindVariables map[string]*querypb.BindVariable) (string, string) {
+func (tsv *TabletServer) computeTxSerializerKey(ctx context.Context, logStats *tabletenv.LogStats, dbName string, sql string, bindVariables map[string]*querypb.BindVariable) (string, string) {
 	// Strip trailing comments so we don't pollute the query cache.
 	sql, _ = sqlparser.SplitMarginComments(sql)
-	plan, err := tsv.qe.GetPlan(ctx, logStats, sql, false)
+	plan, err := tsv.qe.GetPlan(ctx, logStats, dbName, sql, false)
 	if err != nil {
 		logComputeRowSerializerKey.Errorf("failed to get plan for query: %v err: %v", sql, err)
 		return "", ""

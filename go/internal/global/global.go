@@ -40,3 +40,8 @@ const (
 	AuthServerMysqlBased = MysqlBased
 	AuthServerStatic     = "static"
 )
+
+const (
+	TableACLModeMysqlBased = MysqlBased
+	TableACLModeSimple     = "simple"
+)

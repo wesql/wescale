@@ -129,7 +129,7 @@ func (t *Tracker) loadTables(conn queryservice.QueryService, target *querypb.Tar
 		return nil
 	}
 
-	ftRes, err := conn.Execute(t.ctx, target, mysql.FetchTables, nil, 0, 0, nil)
+	ftRes, err := conn.ExecuteInternal(t.ctx, target, mysql.FetchTables, nil, 0, 0, nil)
 	if err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth, target *querypb
 		return false
 	}
 	bv := map[string]*querypb.BindVariable{"tableNames": tables}
-	res, err := th.Conn.Execute(t.ctx, target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
+	res, err := th.Conn.ExecuteInternal(t.ctx, target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
 	if err != nil {
 		t.tracked[target.Keyspace].setLoaded(false)
 		// TODO: optimize for the tables that got errored out.

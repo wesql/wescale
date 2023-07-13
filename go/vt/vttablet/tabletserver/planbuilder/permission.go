@@ -31,13 +31,31 @@ import (
 // Permission associates the required access permission
 // for each table.
 type Permission struct {
+	Database  string
 	TableName string
 	Role      tableacl.Role
 }
 
+func (p *Permission) GetFullTableName() string {
+	if p.Database == "" {
+		return p.TableName
+	}
+	return fmt.Sprintf("%s.%s", p.Database, p.TableName)
+}
+
+func BuildDataBasePermissions(permissions []Permission, dbName string) []Permission {
+	if dbName == "" {
+		return permissions
+	}
+	for index := range permissions {
+		permissions[index].Database = dbName
+	}
+	return permissions
+}
+
 // BuildPermissions builds the list of required permissions for all the
 // tables referenced in a query.
-func BuildPermissions(stmt sqlparser.Statement) []Permission {
+func BuildPermissions(stmt sqlparser.Statement, dbName string) []Permission {
 	var permissions []Permission
 	// All Statement types myst be covered here.
 	switch node := stmt.(type) {
@@ -74,6 +92,7 @@ func BuildPermissions(stmt sqlparser.Statement) []Permission {
 	default:
 		panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 	}
+	permissions = BuildDataBasePermissions(permissions, dbName)
 	return permissions
 }
 
@@ -120,6 +139,7 @@ func buildTableExprPermissions(node sqlparser.TableExpr, role tableacl.Role, per
 
 func buildTableNamePermissions(node sqlparser.TableName, role tableacl.Role, permissions []Permission) []Permission {
 	permissions = append(permissions, Permission{
+		Database:  node.Qualifier.String(),
 		TableName: node.Name.String(),
 		Role:      role,
 	})

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +90,7 @@ func testPlan(t *testing.T, fileName string) {
 			var err error
 			statement, err := sqlparser.Parse(tcase.input)
 			if err == nil {
-				plan, err = Build(statement, testSchema, "dbName", false)
+				plan, err = Build(statement, testSchema, "", false)
 			}
 			PassthroughDMLs = false
 
@@ -122,7 +127,7 @@ func TestPlanInReservedConn(t *testing.T) {
 			var err error
 			statement, err := sqlparser.Parse(tcase.input)
 			if err == nil {
-				plan, err = Build(statement, testSchema, "dbName", false)
+				plan, err = Build(statement, testSchema, "", false)
 			}
 			PassthroughDMLs = false
 
@@ -173,7 +178,7 @@ func TestCustom(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Got error: %v, parsing sql: %v", err.Error(), tcase.input)
 				}
-				plan, err := Build(statement, schem, "dbName", false)
+				plan, err := Build(statement, schem, "", false)
 				var out string
 				if err != nil {
 					out = err.Error()
@@ -195,7 +200,7 @@ func TestCustom(t *testing.T) {
 func TestStreamPlan(t *testing.T) {
 	testSchema := loadSchema("schema_test.json")
 	for tcase := range iterateExecFile("stream_cases.txt") {
-		plan, err := BuildStreaming(tcase.input, testSchema)
+		plan, err := BuildStreaming(tcase.input, testSchema, "")
 		var out string
 		if err != nil {
 			out = err.Error()
@@ -255,7 +260,7 @@ func TestLockPlan(t *testing.T) {
 			var err error
 			statement, err := sqlparser.Parse(tcase.input)
 			if err == nil {
-				plan, err = Build(statement, testSchema, "dbName", false)
+				plan, err = Build(statement, testSchema, "", false)
 			}
 
 			var out string

@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +32,9 @@ import "binlogdata.proto";
 
 // Query defines the tablet query service, implemented by vttablet.
 service Query {
+  // Execute executes the specified SQL query in vtgate internal (might be in a
+  // transaction context, if Query.transaction_id is set).
+  rpc ExecuteInternal(query.ExecuteRequest) returns (query.ExecuteResponse) {};
   // Execute executes the specified SQL query (might be in a
   // transaction context, if Query.transaction_id is set).
   rpc Execute(query.ExecuteRequest) returns (query.ExecuteResponse) {};

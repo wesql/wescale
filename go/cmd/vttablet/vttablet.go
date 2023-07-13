@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +27,9 @@ import (
 	"context"
 	"os"
 	"time"
+
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
 
 	"github.com/spf13/pflag"
 
@@ -50,6 +58,7 @@ import (
 var (
 	enforceTableACLConfig        bool
 	tableACLConfig               string
+	tableACLMode                 string
 	tableACLConfigReloadInterval time.Duration
 	tabletPath                   string
 	tabletConfig                 string
@@ -60,10 +69,10 @@ var (
 func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&enforceTableACLConfig, "enforce-tableacl-config", enforceTableACLConfig, "if this flag is true, vttablet will fail to start if a valid tableacl config does not exist")
 	fs.StringVar(&tableACLConfig, "table-acl-config", tableACLConfig, "path to table access checker config file; send SIGHUP to reload this file")
+	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeMysqlBased, "table acl config mode (simple or mysqlbased)")
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", tableACLConfigReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
 	fs.StringVar(&tabletConfig, "tablet_config", tabletConfig, "YAML file config for tablet")
-
 	acl.RegisterFlags(fs)
 }
 
@@ -83,6 +92,9 @@ func main() {
 	servenv.ParseFlags("vttablet")
 	servenv.Init()
 
+	if tableACLMode != global.TableACLModeSimple && tableACLMode != global.TableACLModeMysqlBased {
+		log.Exit("require table-acl-config-mode")
+	}
 	if tabletPath == "" {
 		log.Exit("--tablet-path required")
 	}
@@ -205,11 +217,15 @@ func extractOnlineDDL() error {
 }
 
 func createTabletServer(config *tabletenv.TabletConfig, ts *topo.Server, tabletAlias *topodatapb.TabletAlias) *tabletserver.TabletServer {
-	if tableACLConfig != "" {
-		// To override default simpleacl, other ACL plugins must set themselves to be default ACL factory
-		tableacl.Register("simpleacl", &simpleacl.Factory{})
-	} else if enforceTableACLConfig {
-		log.Exit("table acl config has to be specified with table-acl-config flag because enforce-tableacl-config is set.")
+	if tableACLMode == global.TableACLModeMysqlBased {
+		tableacl.Register("mysqlbasedacl", &mysqlbasedacl.Factory{})
+	} else {
+		if tableACLConfig != "" {
+			// To override default simpleacl, other ACL plugins must set themselves to be default ACL factory
+			tableacl.Register("simpleacl", &simpleacl.Factory{})
+		} else if enforceTableACLConfig {
+			log.Exit("table acl config has to be specified with table-acl-config flag because enforce-tableacl-config is set.")
+		}
 	}
 	// creates and registers the query service
 	qsc := tabletserver.NewTabletServer("", config, ts, tabletAlias)
@@ -217,7 +233,8 @@ func createTabletServer(config *tabletenv.TabletConfig, ts *topo.Server, tabletA
 		qsc.Register()
 		addStatusParts(qsc)
 	})
+
 	servenv.OnClose(qsc.StopService)
-	qsc.InitACL(tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
 	return qsc
 }

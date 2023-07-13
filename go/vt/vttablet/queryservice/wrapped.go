@@ -182,6 +182,18 @@ func (ws *wrappedService) ReadTransaction(ctx context.Context, target *querypb.T
 	return metadata, err
 }
 
+func (ws *wrappedService) ExecuteInternal(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (qr *sqltypes.Result, err error) {
+	inDedicatedConn := transactionID != 0 || reservedID != 0
+	err = ws.wrapper(ctx, target, ws.impl, "ExecuteInternal", inDedicatedConn, options, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
+		var innerErr error
+		qr, innerErr = conn.ExecuteInternal(ctx, target, query, bindVars, transactionID, reservedID, options)
+		// You cannot retry if you're in a transaction.
+		retryable := canRetry(ctx, innerErr) && (!inDedicatedConn)
+		return retryable, innerErr
+	})
+	return qr, err
+}
+
 func (ws *wrappedService) Execute(ctx context.Context, target *querypb.Target, query string, bindVars map[string]*querypb.BindVariable, transactionID, reservedID int64, options *querypb.ExecuteOptions) (qr *sqltypes.Result, err error) {
 	inDedicatedConn := transactionID != 0 || reservedID != 0
 	err = ws.wrapper(ctx, target, ws.impl, "Execute", inDedicatedConn, options, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {

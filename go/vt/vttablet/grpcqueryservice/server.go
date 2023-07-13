@@ -46,6 +46,22 @@ type query struct {
 
 var _ queryservicepb.QueryServer = (*query)(nil)
 
+// ExecuteInternal is part of the queryservice.QueryServer interface
+func (q *query) ExecuteInternal(ctx context.Context, request *querypb.ExecuteRequest) (response *querypb.ExecuteResponse, err error) {
+	defer q.server.HandlePanic(&err)
+	ctx = callerid.NewContext(callinfo.GRPCCallInfo(ctx),
+		request.EffectiveCallerId,
+		request.ImmediateCallerId,
+	)
+	result, err := q.server.ExecuteInternal(ctx, request.Target, request.Query.Sql, request.Query.BindVariables, request.TransactionId, request.ReservedId, request.Options)
+	if err != nil {
+		return nil, vterrors.ToGRPC(err)
+	}
+	return &querypb.ExecuteResponse{
+		Result: sqltypes.ResultToProto3(result),
+	}, nil
+}
+
 // Execute is part of the queryservice.QueryServer interface
 func (q *query) Execute(ctx context.Context, request *querypb.ExecuteRequest) (response *querypb.ExecuteResponse, err error) {
 	defer q.server.HandlePanic(&err)

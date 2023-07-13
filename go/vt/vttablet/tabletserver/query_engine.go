@@ -65,7 +65,7 @@ type TabletPlan struct {
 	*planbuilder.Plan
 	Original   string
 	Rules      *rules.Rules
-	Authorized []*tableacl.ACLResult
+	Authorized [][]*tableacl.ACLResult
 
 	QueryCount   uint64
 	Time         uint64
@@ -98,9 +98,9 @@ func (ep *TabletPlan) Stats() (queryCount uint64, duration, mysqlTime time.Durat
 
 // buildAuthorized builds 'Authorized', which is the runtime part for 'Permissions'.
 func (ep *TabletPlan) buildAuthorized() {
-	ep.Authorized = make([]*tableacl.ACLResult, len(ep.Permissions))
+	ep.Authorized = make([][]*tableacl.ACLResult, len(ep.Permissions))
 	for i, perm := range ep.Permissions {
-		ep.Authorized[i] = tableacl.Authorized(perm.TableName, perm.Role)
+		ep.Authorized[i] = tableacl.AuthorizedList(perm.GetFullTableName(), perm.Role)
 	}
 }
 
@@ -324,7 +324,7 @@ func (qe *QueryEngine) Close() {
 }
 
 // GetPlan returns the TabletPlan that for the query. Plans are cached in a cache.LRUCache.
-func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats, sql string, skipQueryPlanCache bool) (*TabletPlan, error) {
+func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats, dbName string, sql string, skipQueryPlanCache bool) (*TabletPlan, error) {
 	span, _ := trace.NewSpan(ctx, "QueryEngine.GetPlan")
 	defer span.Finish()
 	if !skipQueryPlanCache {
@@ -345,7 +345,7 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 	if err != nil {
 		return nil, err
 	}
-	splan, err := planbuilder.Build(statement, qe.tables, qe.env.Config().DB.DBName, qe.env.Config().EnableViews)
+	splan, err := planbuilder.Build(statement, qe.tables, dbName, qe.env.Config().EnableViews)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 	if plan.PlanID == planbuilder.PlanDDL || plan.PlanID == planbuilder.PlanSet {
 		return plan, nil
 	}
-	if !skipQueryPlanCache && !sqlparser.SkipQueryPlanCacheDirective(statement) {
+	if !skipQueryPlanCache && !sqlparser.SkipQueryPlanCacheDirective(statement) && plan.Authorized != nil {
 		qe.plans.Set(sql, plan)
 	}
 	return plan, nil
@@ -363,10 +363,10 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 
 // GetStreamPlan is similar to GetPlan, but doesn't use the cache
 // and doesn't enforce a limit. It just returns the parsed query.
-func (qe *QueryEngine) GetStreamPlan(sql string) (*TabletPlan, error) {
+func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, error) {
 	qe.mu.RLock()
 	defer qe.mu.RUnlock()
-	splan, err := planbuilder.BuildStreaming(sql, qe.tables)
+	splan, err := planbuilder.BuildStreaming(sql, qe.tables, dbName)
 	if err != nil {
 		return nil, err
 	}

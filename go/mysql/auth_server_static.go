@@ -364,11 +364,11 @@ func validateConfig(config map[string][]*AuthServerStaticEntry) error {
 // StaticUserData holds the username and groups
 type StaticUserData struct {
 	Username string
-	host     string
+	Host     string
 	Groups   []string
 }
 
 // Get returns the wrapped username and groups
 func (sud *StaticUserData) Get() *querypb.VTGateCallerID {
-	return &querypb.VTGateCallerID{Username: sud.Username, Groups: sud.Groups}
+	return &querypb.VTGateCallerID{Username: sud.Username, Groups: sud.Groups, Host: sud.Host}
 }

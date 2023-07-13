@@ -1500,7 +1500,7 @@ func newTransaction(tsv *TabletServer, options *querypb.ExecuteOptions) int64 {
 
 func newTestQueryExecutor(ctx context.Context, tsv *TabletServer, sql string, txID int64) *QueryExecutor {
 	logStats := tabletenv.NewLogStats(ctx, "TestQueryExecutor")
-	plan, err := tsv.qe.GetPlan(ctx, logStats, sql, false)
+	plan, err := tsv.qe.GetPlan(ctx, logStats, "", sql, false)
 	if err != nil {
 		panic(err)
 	}
@@ -1517,7 +1517,7 @@ func newTestQueryExecutor(ctx context.Context, tsv *TabletServer, sql string, tx
 
 func newTestQueryExecutorStreaming(ctx context.Context, tsv *TabletServer, sql string, txID int64) *QueryExecutor {
 	logStats := tabletenv.NewLogStats(ctx, "TestQueryExecutorStreaming")
-	plan, err := tsv.qe.GetStreamPlan(sql)
+	plan, err := tsv.qe.GetStreamPlan(sql, "")
 	if err != nil {
 		panic(err)
 	}
