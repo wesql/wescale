@@ -72,7 +72,6 @@ var (
 	// Hence, they are not listed in the list below.
 	clusterList = []string{
 		"vtctlbackup_sharded_clustertest_heavy",
-		"wesql",
 		"12",
 		"13",
 		"ers_prs_newfeatures_heavy",
