@@ -636,9 +636,32 @@ func (sbc *SandboxConn) getNextResult(stmt sqlparser.Statement) *sqltypes.Result
 		// if we didn't get a valid query, we'll assume we need a SELECT
 		return getSingleRowResult()
 	}
-	switch stmt.(type) {
-	case *sqlparser.Select,
-		*sqlparser.Union,
+	switch stmt := stmt.(type) {
+	case *sqlparser.Select:
+		fromExpr := stmt.From[0]
+		e, ok := fromExpr.(*sqlparser.AliasedTableExpr)
+		if !ok {
+			return getSingleRowResult()
+		}
+		from, ok := e.Expr.(sqlparser.TableName)
+		if !ok {
+			return getSingleRowResult()
+		}
+		if from.Name.String() != "dual" {
+			return getSingleRowResult()
+		}
+		exprs := stmt.SelectExprs
+		expr := exprs[0].(*sqlparser.AliasedExpr).Expr
+		//.Expr.(sqlparser.Argument)
+		switch expr.(type) {
+		case sqlparser.Argument:
+			return getArgumentResult(exprs)
+		case *sqlparser.ColName:
+			return getColNameResult(exprs)
+		}
+		return getSingleRowResult()
+
+	case *sqlparser.Union,
 		*sqlparser.Show,
 		sqlparser.Explain,
 		*sqlparser.OtherRead:
@@ -720,4 +743,157 @@ var StreamRowResult = &sqltypes.Result{
 		sqltypes.NewInt32(1),
 		sqltypes.NewVarChar("foo"),
 	}},
+}
+
+func getArgumentResult(exprs sqlparser.SelectExprs) *sqltypes.Result {
+	expr := exprs[0].(*sqlparser.AliasedExpr).Expr.(sqlparser.Argument)
+	switch expr {
+	case "__lastInsertId":
+		if exprs[0].(*sqlparser.AliasedExpr).As.String() == "x" {
+			return TestLastInsertIDInSubQueryExpression()
+		}
+		return getLastInsertIdResult()
+	case "__vtautocommit":
+		switch exprs[1].(*sqlparser.AliasedExpr).Expr.(sqlparser.Argument) {
+		case "__vtenable_system_settings":
+			return getSelectSystemVaribles1()
+		}
+		return getSelectSystemVaribles()
+	case "__vtudvfoo":
+		return getSelectUserDefinedVariable()
+	case "__vtfrows":
+		return getTestFoundRows()
+	case "__vtrcount":
+		return getTestRowCounts()
+	case "__vtdbname":
+		return getTestSelectDatabase()
+	}
+	return getSingleRowResult()
+}
+
+func TestLastInsertIDInSubQueryExpression() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "x", Type: sqltypes.Uint64},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewUint64(12345),
+		}},
+	}
+}
+
+func getTestSelectDatabase() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "database()", Type: sqltypes.VarChar},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewVarChar("TestExecutor@primary"),
+		}},
+	}
+}
+
+func getTestRowCounts() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "row_count()", Type: sqltypes.Int64},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewInt64(-1),
+		}},
+	}
+}
+
+func getTestFoundRows() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "found_rows()", Type: sqltypes.Int64},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewInt64(1),
+		}},
+	}
+}
+
+func getSelectUserDefinedVariable() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "@foo", Type: sqltypes.Null},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NULL,
+		}},
+	}
+}
+
+func getSelectSystemVaribles() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "@@autocommit", Type: sqltypes.Int64},
+			{Name: "@@client_found_rows", Type: sqltypes.Int64},
+			{Name: "@@skip_query_plan_cache", Type: sqltypes.Int64},
+			{Name: "@@enable_system_settings", Type: sqltypes.Int64},
+			{Name: "@@sql_select_limit", Type: sqltypes.Int64},
+			{Name: "@@transaction_mode", Type: sqltypes.VarChar},
+			{Name: "@@`workload`", Type: sqltypes.VarChar},
+			{Name: "@@read_after_write_gtid", Type: sqltypes.VarChar},
+			{Name: "@@read_after_write_timeout", Type: sqltypes.Float64},
+			{Name: "@@session_track_gtids", Type: sqltypes.VarChar},
+			{Name: "@@ddl_strategy", Type: sqltypes.VarChar},
+			{Name: "@@socket", Type: sqltypes.VarChar},
+			{Name: "@@query_timeout", Type: sqltypes.Int64},
+		},
+		Rows: [][]sqltypes.Value{{
+			// the following are the uninitialised session values
+			sqltypes.NewInt64(0),
+			sqltypes.NewInt64(0),
+			sqltypes.NewInt64(0),
+			sqltypes.NewInt64(0),
+			sqltypes.NewInt64(0),
+			sqltypes.NewVarChar("UNSPECIFIED"),
+			sqltypes.NewVarChar(""),
+			// these have been set at the beginning of the test
+			sqltypes.NewVarChar("a fine gtid"),
+			sqltypes.NewFloat64(13),
+			sqltypes.NewVarChar("own_gtid"),
+			sqltypes.NewVarChar(""),
+			sqltypes.NewVarChar(""),
+			sqltypes.NewInt64(0),
+		}},
+	}
+}
+
+func getSelectSystemVaribles1() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "@@autocommit", Type: sqltypes.Int64},
+			{Name: "@@enable_system_settings", Type: sqltypes.Int64},
+			{Name: "@@query_timeout", Type: sqltypes.Int64},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewInt64(1),
+			sqltypes.NewInt64(1),
+			sqltypes.NewInt64(75),
+		}},
+	}
+}
+
+func getColNameResult(exprs sqlparser.SelectExprs) *sqltypes.Result {
+	expr := exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.ColName).CompliantName()
+	switch expr {
+	case "__lastInsertId":
+		return getLastInsertIdResult()
+	}
+	return getSingleRowResult()
+}
+
+func getLastInsertIdResult() *sqltypes.Result {
+	return &sqltypes.Result{
+		Fields: []*querypb.Field{
+			{Name: "last_insert_id()", Type: sqltypes.Uint64},
+		},
+		Rows: [][]sqltypes.Value{{
+			sqltypes.NewUint64(52),
+		}},
+	}
 }

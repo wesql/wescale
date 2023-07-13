@@ -313,11 +313,7 @@ func handleDualSelects(sel *sqlparser.Select, vschema plancontext.VSchema) (engi
 	if len(lockFunctions) > 0 {
 		return buildLockingPrimitive(sel, vschema, lockFunctions)
 	}
-	return &engine.Projection{
-		Exprs: exprs,
-		Cols:  cols,
-		Input: &engine.SingleRow{},
-	}, nil
+	return nil, nil
 }
 
 func buildLockingPrimitive(sel *sqlparser.Select, vschema plancontext.VSchema, lockFunctions []*engine.LockFunc) (engine.Primitive, error) {

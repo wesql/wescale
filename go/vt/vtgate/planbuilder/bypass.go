@@ -72,6 +72,7 @@ func buildPlanForBypass(stmt sqlparser.Statement, _ *sqlparser.ReservedVars, vsc
 		IsDML:             isDML,
 		SingleShardOnly:   false,
 	}
+
 	return newPlanResult(send), nil
 }
 
