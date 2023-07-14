@@ -1788,834 +1788,833 @@ var (
 	}, {
 		input:  "check table a",
 		output: "otherread",
-	},
-		{
-			input: "flush tables",
-		}, {
-			input: "flush tables with read lock",
-		}, {
-			input: "flush tables a, c.v, b",
-		}, {
-			input: "flush local tables a, c.v, b with read lock",
-		}, {
-			input: "flush tables a, c.v, b for export",
-		}, {
-			input: "flush local binary logs, engine logs, error logs, general logs, hosts, logs, privileges, optimizer_costs",
-		}, {
-			input:  "flush no_write_to_binlog slow logs, status, user_resources, relay logs, relay logs for channel s",
-			output: "flush local slow logs, status, user_resources, relay logs, relay logs for channel s",
-		}, {
-			input:  "show binary logs",
-			output: "show binary logs",
-		}, {
-			input:  "show binlog events",
-			output: "show binlog",
-		}, {
-			input:  "show character set",
-			output: "show charset",
-		}, {
-			input:  "show character set like '%foo'",
-			output: "show charset like '%foo'",
-		}, {
-			input:  "show charset",
-			output: "show charset",
-		}, {
-			input:  "show charset like '%foo'",
-			output: "show charset like '%foo'",
-		}, {
-			input:  "show charset where 'charset' = 'utf8'",
-			output: "show charset where 'charset' = 'utf8'",
-		}, {
-			input:  "show charset where 'charset' = '%foo'",
-			output: "show charset where 'charset' = '%foo'",
-		}, {
-			input:  "show collation",
-			output: "show collation",
-		}, {
-			input:  "show collation where `Charset` = 'utf8' and `Collation` = 'utf8_bin'",
-			output: "show collation where `Charset` = 'utf8' and `Collation` = 'utf8_bin'",
-		}, {
-			input: "show create database d",
-		}, {
-			input: "show create event e",
-		}, {
-			input: "show create function f",
-		}, {
-			input: "show create procedure p",
-		}, {
-			input: "show create table t",
-		}, {
-			input: "show create trigger t",
-		}, {
-			input:  "show create user u",
-			output: "show create user",
-		}, {
-			input: "show create view v",
-		}, {
-			input:  "show databases",
-			output: "show databases",
-		}, {
-			input:  "show databases like '%'",
-			output: "show databases like '%'",
-		}, {
-			input:  "show schemas",
-			output: "show databases",
-		}, {
-			input:  "show schemas like '%'",
-			output: "show databases like '%'",
-		}, {
-			input:  "show engine INNODB",
-			output: "show engine",
-		}, {
-			input: "show engines",
-		}, {
-			input:  "show storage engines",
-			output: "show storage",
-		}, {
-			input: "show errors",
-		}, {
-			input: "show events",
-		}, {
-			input: "show function code func",
-		}, {
-			input: "show function status",
-		}, {
-			input:  "show grants for 'root@localhost'",
-			output: "show grants",
-		}, {
-			input:  "show index from t",
-			output: "show indexes from t",
-		}, {
-			input: "show indexes from t",
-		}, {
-			input:  "show keys from t",
-			output: "show indexes from t",
-		}, {
-			input:  "show master status",
-			output: "show master",
-		}, {
-			input: "show open tables",
-		}, {
-			input:  "show plugins",
-			output: "show plugins",
-		}, {
-			input:  "show privileges",
-			output: "show privileges",
-		}, {
-			input: "show procedure code p",
-		}, {
-			input: "show procedure status",
-		}, {
-			input:  "show processlist",
-			output: "show processlist",
-		}, {
-			input:  "show full processlist",
-			output: "show processlist",
-		}, {
-			input:  "show profile cpu for query 1",
-			output: "show profile",
-		}, {
-			input:  "show profiles",
-			output: "show profiles",
-		}, {
-			input:  "show relaylog events",
-			output: "show relaylog",
-		}, {
-			input:  "show slave hosts",
-			output: "show slave",
-		}, {
-			input:  "show slave status",
-			output: "show slave",
-		}, {
-			input:  "show status",
-			output: "show status",
-		}, {
-			input:  "show global status",
-			output: "show global status",
-		}, {
-			input:  "show session status",
-			output: "show status",
-		}, {
-			input: "show table status",
-		}, {
-			input: "show table status from dbname",
-		}, {
-			input:  "show table status in dbname",
-			output: "show table status from dbname",
-		}, {
-			input:  "show table status in dbname LIKE '%' ",
-			output: "show table status from dbname like '%'",
-		}, {
-			input:  "show table status from dbname Where col=42 ",
-			output: "show table status from dbname where col = 42",
-		}, {
-			input: "show tables",
-		}, {
-			input: "show tables like '%keyspace%'",
-		}, {
-			input: "show tables where 1 = 0",
-		}, {
-			input: "show tables from a",
-		}, {
-			input: "show tables from a where 1 = 0",
-		}, {
-			input: "show tables from a like '%keyspace%'",
-		}, {
-			input: "show full tables",
-		}, {
-			input: "show full tables from a",
-		}, {
-			input:  "show full tables in a",
-			output: "show full tables from a",
-		}, {
-			input: "show full tables from a like '%keyspace%'",
-		}, {
-			input: "show full tables from a where 1 = 0",
-		}, {
-			input: "show full tables like '%keyspace%'",
-		}, {
-			input: "show full tables where 1 = 0",
-		}, {
-			input:  "show full columns in a in b like '%'",
-			output: "show full columns from a from b like '%'",
-		}, {
-			input: "show full columns from messages from test_keyspace like '%'",
-		}, {
-			input:  "show full fields from a like '%'",
-			output: "show full columns from a like '%'",
-		}, {
-			input:  "show fields from a where 1 = 1",
-			output: "show columns from a where 1 = 1",
-		}, {
-			input:  "show triggers",
-			output: "show triggers",
-		}, {
-			input:  "show variables",
-			output: "show variables",
-		}, {
-			input:  "show global variables",
-			output: "show global variables",
-		}, {
-			input:  "show session variables",
-			output: "show variables",
-		}, {
-			input: "show global vgtid_executed",
-		}, {
-			input: "show global vgtid_executed from ks",
-		}, {
-			input: "show global gtid_executed",
-		}, {
-			input: "show global gtid_executed from ks",
-		}, {
-			input:  "show vitess_keyspaces",
-			output: "show keyspaces",
-		}, {
-			input:  "show vitess_keyspaces like '%'",
-			output: "show keyspaces like '%'",
-		}, {
-			input: "show vitess_metadata variables",
-		}, {
-			input: "show vitess_replication_status",
-		}, {
-			input: "show vitess_replication_status like '%'",
-		}, {
-			input: "show vitess_shards",
-		}, {
-			input: "show vitess_shards like '%'",
-		}, {
-			input: "show vitess_tablets",
-		}, {
-			input: "show vitess_tablets like '%'",
-		}, {
-			input: "show vitess_tablets where hostname = 'some-tablet'",
-		}, {
-			input: "show vitess_targets",
-		}, {
-			input: "show vschema tables",
-		}, {
-			input: "show vschema vindexes",
-		}, {
-			input: "show vschema vindexes from t",
-		}, {
-			input:  "show vschema vindexes on t",
-			output: "show vschema vindexes from t",
-		}, {
-			input: "show vitess_migrations",
-		}, {
-			input: "show vitess_migrations from ks",
-		}, {
-			input: "show vitess_migrations from ks where col = 42",
-		}, {
-			input: `show vitess_migrations from ks like '%pattern'`,
-		}, {
-			input: "show vitess_migrations like '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
-		}, {
-			input: "show vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' logs",
-		}, {
-			input: "revert vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
-		}, {
-			input: "revert /*vt+ uuid=123 */ vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' retry",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' cleanup",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch vitess_shards '-40'",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch vitess_shards '-40,40-80'",
-		}, {
-			input: "alter vitess_migration launch all",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' complete",
-		}, {
-			input: "alter vitess_migration complete all",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' cancel",
-		}, {
-			input: "alter vitess_migration cancel all",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle expire '1h'",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle ratio 0.7",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle expire '1h' ratio 0.7",
-		}, {
-			input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' unthrottle",
-		}, {
-			input: "alter vitess_migration throttle all",
-		}, {
-			input: "alter vitess_migration unthrottle all",
-		}, {
-			input: "alter vitess_migration throttle all expire '1h'",
-		}, {
-			input: "alter vitess_migration throttle all ratio 0.7",
-		}, {
-			input: "alter vitess_migration throttle all expire '1h' ratio 0.7",
-		}, {
-			input: "show vitess_throttled_apps",
-		}, {
-			input: "show vitess_throttler status",
-		}, {
-			input: "show warnings",
-		}, {
-			input:  "select warnings from t",
-			output: "select `warnings` from t",
-		}, {
-			input:  "show foobar",
-			output: "show foobar",
-		}, {
-			input:  "show foobar like select * from table where syntax is 'ignored'",
-			output: "show foobar",
-		}, {
-			input:  "use db",
-			output: "use db",
-		}, {
-			input:  "use duplicate",
-			output: "use `duplicate`",
-		}, {
-			input:  "use `ks:-80@master`",
-			output: "use `ks:-80@master`",
-		}, {
-			input:  "use `ks:-80@primary`",
-			output: "use `ks:-80@primary`",
-		}, {
-			input:  "use @replica",
-			output: "use `@replica`",
-		}, {
-			input:  "use ks@replica",
-			output: "use `ks@replica`",
-		}, {
-			input:  "describe select * from t",
-			output: "explain select * from t",
-		}, {
-			input:  "describe /*vt+ execute_dml_queries */ select * from t",
-			output: "explain /*vt+ execute_dml_queries */ select * from t",
-		}, {
-			input:  "desc select * from t",
-			output: "explain select * from t",
-		}, {
-			input:  "desc foobar",
-			output: "explain foobar",
-		}, {
-			input: "explain t1",
-		}, {
-			input: "explain t1 col",
-		}, {
-			input: "explain t1 '%col%'",
-		}, {
-			input: "explain select * from t",
-		}, {
-			input: "explain format = traditional select * from t",
-		}, {
-			input: "vexplain queries select * from t",
-		}, {
-			input: "vexplain all select * from t",
-		}, {
-			input: "vexplain plan select * from t",
-		}, {
-			input:  "vexplain select * from t",
-			output: "vexplain plan select * from t",
-		}, {
-			input: "explain analyze select * from t",
-		}, {
-			input: "explain format = tree select * from t",
-		}, {
-			input: "explain format = json select * from t",
-		}, {
-			input: "explain format = vtexplain select * from t",
-		}, {
-			input: "explain format = vitess select * from t",
-		}, {
-			input:  "describe format = vitess select * from t",
-			output: "explain format = vitess select * from t",
-		}, {
-			input:  "describe format = vtexplain select * from t",
-			output: "explain format = vtexplain select * from t",
-		}, {
-			input: "explain delete from t",
-		}, {
-			input: "explain insert into t(col1, col2) values (1, 2)",
-		}, {
-			input: "explain update t set col = 2",
-		}, {
-			input:  "truncate table foo",
-			output: "truncate table foo",
-		}, {
-			input:  "truncate foo",
-			output: "truncate table foo",
-		}, {
-			input:  "repair foo",
-			output: "otheradmin",
-		}, {
-			input:  "optimize foo",
-			output: "otheradmin",
-		}, {
-			input:  "lock tables foo read",
-			output: "lock tables foo read",
-		}, {
-			input:  "lock tables foo write",
-			output: "lock tables foo write",
-		}, {
-			input:  "lock tables foo read local",
-			output: "lock tables foo read local",
-		}, {
-			input:  "lock tables foo low_priority write",
-			output: "lock tables foo low_priority write",
-		}, {
-			input:  "unlock tables",
-			output: "unlock tables",
-		}, {
-			input: "select /* EQ true */ 1 from t where a = true",
-		}, {
-			input: "select /* EQ false */ 1 from t where a = false",
-		}, {
-			input: "select /* NE true */ 1 from t where a != true",
-		}, {
-			input: "select /* NE false */ 1 from t where a != false",
-		}, {
-			input: "select /* LT true */ 1 from t where a < true",
-		}, {
-			input: "select /* LT false */ 1 from t where a < false",
-		}, {
-			input: "select /* GT true */ 1 from t where a > true",
-		}, {
-			input: "select /* GT false */ 1 from t where a > false",
-		}, {
-			input: "select /* LE true */ 1 from t where a <= true",
-		}, {
-			input: "select /* LE false */ 1 from t where a <= false",
-		}, {
-			input: "select /* GE true */ 1 from t where a >= true",
-		}, {
-			input: "select /* GE false */ 1 from t where a >= false",
-		}, {
-			input:  "select * from t order by a collate utf8_general_ci",
-			output: "select * from t order by a collate utf8_general_ci asc",
-		}, {
-			input: "select k collate latin1_german2_ci as k1 from t1 order by k1 asc",
-		}, {
-			input: "select * from t group by a collate utf8_general_ci",
-		}, {
-			input:  "select MAX(k collate latin1_german2_ci) from t1",
-			output: "select max(k collate latin1_german2_ci) from t1",
-		}, {
-			input: "select distinct k collate latin1_german2_ci from t1",
-		}, {
-			input: "select * from t1 where 'Müller' collate latin1_german2_ci = k",
-		}, {
-			input: "select * from t1 where k like 'Müller' collate latin1_german2_ci",
-		}, {
-			input: "select k from t1 group by k having k = 'Müller' collate latin1_german2_ci",
-		}, {
-			input: "select k from t1 join t2 order by a collate latin1_german2_ci asc, b collate latin1_german2_ci asc",
-		}, {
-			input:  "select k collate 'latin1_german2_ci' as k1 from t1 order by k1 asc",
-			output: "select k collate latin1_german2_ci as k1 from t1 order by k1 asc",
-		}, {
-			input:  "select /* drop trailing semicolon */ 1 from dual;",
-			output: "select /* drop trailing semicolon */ 1 from dual",
-		}, {
-			input: "select /* cache directive */ sql_no_cache 'foo' from t",
-		}, {
-			input: "select distinct sql_no_cache 'foo' from t",
-		}, {
-			input:  "select sql_no_cache distinct 'foo' from t",
-			output: "select distinct sql_no_cache 'foo' from t",
-		}, {
-			input:  "select sql_no_cache straight_join distinct 'foo' from t",
-			output: "select distinct sql_no_cache straight_join 'foo' from t",
-		}, {
-			input:  "select straight_join distinct sql_no_cache 'foo' from t",
-			output: "select distinct sql_no_cache straight_join 'foo' from t",
-		}, {
-			input:  "select sql_calc_found_rows 'foo' from t",
-			output: "select sql_calc_found_rows 'foo' from t",
-		}, {
-			input:  "select binary 'a' = 'A' from t",
-			output: "select convert('a', binary) = 'A' from t",
-		}, {
-			input: "select 1 from t where foo = _binary 'bar'",
-		}, {
-			input: "select 1 from t where foo = _utf8 'bar' and bar = _latin1 'sjösjuk'",
-		}, {
-			input:  "select 1 from t where foo = _binary'bar'",
-			output: "select 1 from t where foo = _binary 'bar'",
-		}, {
-			input: "select 1 from t where foo = _utf8mb4 'bar'",
-		}, {
-			input:  "select 1 from t where foo = _utf8mb4'bar'",
-			output: "select 1 from t where foo = _utf8mb4 'bar'",
-		}, {
-			input:  "select 1 from t where foo = _utf8mb3 'bar'",
-			output: "select 1 from t where foo = _utf8 'bar'",
-		}, {
-			input:  "select 1 from t where foo = _utf8mb3'bar'",
-			output: "select 1 from t where foo = _utf8 'bar'",
-		}, {
-			input: "select match(a) against ('foo') from t",
-		}, {
-			input: "select match(a1, a2) against ('foo' in natural language mode with query expansion) from t",
-		}, {
-			input:  "select database()",
-			output: "select database() from dual",
-		}, {
-			input:  "select schema()",
-			output: "select schema() from dual",
-		}, {
-			input: "select title from video as v where match(v.title, v.tag) against ('DEMO' in boolean mode)",
-		}, {
-			input:  "SELECT id FROM blog_posts USE INDEX (PRIMARY) WHERE id = 10",
-			output: "select id from blog_posts use index (`PRIMARY`) where id = 10",
-		}, {
-			input:  "select name, group_concat(score) from t group by name",
-			output: "select `name`, group_concat(score) from t group by `name`",
-		}, {
-			input:  "select name, group_concat(distinct id, score order by id desc separator ':') from t group by name",
-			output: "select `name`, group_concat(distinct id, score order by id desc separator ':') from t group by `name`",
-		}, {
-			input:  "select name, group_concat(distinct id, score order by id desc separator ':' limit 1) from t group by name",
-			output: "select `name`, group_concat(distinct id, score order by id desc separator ':' limit 1) from t group by `name`",
-		}, {
-			input:  "select name, group_concat(distinct id, score order by id desc separator ':' limit 10, 2) from t group by name",
-			output: "select `name`, group_concat(distinct id, score order by id desc separator ':' limit 10, 2) from t group by `name`",
-		}, {
-			input: "select * from t partition (p0)",
-		}, {
-			input: "select * from t partition (p0, p1)",
-		}, {
-			input: "select e.id, s.city from employees as e join stores partition (p1) as s on e.store_id = s.id",
-		}, {
-			input: "select truncate(120.3333, 2) from dual",
-		}, {
-			input: "update t partition (p0) set a = 1",
-		}, {
-			input: "insert into t partition (p0) values (1, 'asdf')",
-		}, {
-			input: "insert into t1 select * from t2 partition (p0)",
-		}, {
-			input: "replace into t partition (p0) values (1, 'asdf')",
-		}, {
-			input: "delete from t partition (p0) where a = 1",
-		}, {
-			input: "stream * from t",
-		}, {
-			input: "stream /* comment */ * from t",
-		}, {
-			input: "vstream * from t",
-		}, {
-			input: "begin",
-		}, {
-			input:  "begin;",
-			output: "begin",
-		}, {
-			input:  "start transaction",
-			output: "begin",
-		}, {
-			input: "start transaction with consistent snapshot",
-		}, {
-			input: "start transaction read write",
-		}, {
-			input: "start transaction read only",
-		}, {
-			input: "start transaction read only, with consistent snapshot",
-		}, {
-			input: "commit",
-		}, {
-			input: "rollback",
-		}, {
-			input: "create database /* simple */ test_db",
-		}, {
-			input:  "create schema test_db",
-			output: "create database test_db",
-		}, {
-			input: "create database /* simple */ if not exists test_db",
-		}, {
-			input:  "create schema if not exists test_db",
-			output: "create database if not exists test_db",
-		}, {
-			input: "create database test_db default collate 'utf8mb4_general_ci' collate utf8mb4_general_ci",
-		}, {
-			input: "create database test_db character set geostd8",
-		}, {
-			input:      "alter table corder zzzz zzzz zzzz",
-			output:     "alter table corder",
-			partialDDL: true,
-		}, {
-			input:      "create database test_db character set * unparsable",
-			output:     "create database test_db",
-			partialDDL: true,
-		}, {
-			input:  "CREATE DATABASE IF NOT EXISTS `mysql` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ENCRYPTION='N';",
-			output: "create database if not exists mysql default character set utf8mb4 collate utf8mb4_0900_ai_ci encryption 'N'",
-		}, {
-			input: "drop /* simple */ database test_db",
-		}, {
-			input:  "drop schema test_db",
-			output: "drop database test_db",
-		}, {
-			input: "drop /* simple */ database if exists test_db",
-		}, {
-			input:  "delete a.*, b.* from tbl_a a, tbl_b b where a.id = b.id and b.name = 'test'",
-			output: "delete a, b from tbl_a as a, tbl_b as b where a.id = b.id and b.`name` = 'test'",
-		}, {
-			input:  "select distinctrow a.* from (select (1) from dual union all select 1 from dual) a",
-			output: "select distinct a.* from (select 1 from dual union all select 1 from dual) as a",
-		}, {
-			input: "select `weird function name`() from t",
-		}, {
-			input:  "select all* from t",
-			output: "select * from t",
-		}, {
-			input:  "select distinct* from t",
-			output: "select distinct * from t",
-		}, {
-			input: "select status() from t", // should not escape function names that are keywords
-		}, {
-			input: "select * from `weird table name`",
-		}, {
-			input:  "SHOW FULL TABLES FROM `jiradb` LIKE 'AO_E8B6CC_ISSUE_MAPPING'",
-			output: "show full tables from jiradb like 'AO_E8B6CC_ISSUE_MAPPING'",
-		}, {
-			input:  "SHOW FULL COLUMNS FROM AO_E8B6CC_ISSUE_MAPPING FROM jiradb LIKE '%'",
-			output: "show full columns from AO_E8B6CC_ISSUE_MAPPING from jiradb like '%'",
-		}, {
-			input:  "SHOW KEYS FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
-		}, {
-			input:  "SHOW CREATE TABLE `jiradb`.`AO_E8B6CC_ISSUE_MAPPING`",
-			output: "show create table jiradb.AO_E8B6CC_ISSUE_MAPPING",
-		}, {
-			input:  "SHOW INDEX FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
-		}, {
-			input:  "SHOW FULL TABLES FROM `jiradb` LIKE '%'",
-			output: "show full tables from jiradb like '%'",
-		}, {
-			input:  "SHOW EXTENDED INDEX FROM `AO_E8B6CC_PROJECT_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
-		}, {
-			input:  "SHOW EXTENDED KEYS FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
-		}, {
-			input:  "SHOW CREATE TABLE `jiradb`.`AO_E8B6CC_ISSUE_MAPPING`",
-			output: "show create table jiradb.AO_E8B6CC_ISSUE_MAPPING",
-		}, {
-			input: "create table t1 ( check (c1 <> c2), c1 int check (c1 > 10), c2 int constraint c2_positive check (c2 > 0), c3 int check (c3 < 100), constraint c1_nonzero check (c1 <> 0), check (c1 > c3))",
-			output: "create table t1 (\n" +
-				"\tc1 int,\n" +
-				"\tc2 int,\n" +
-				"\tc3 int,\n" +
-				"\tcheck (c1 != c2),\n" +
-				"\tcheck (c1 > 10),\n" +
-				"\tconstraint c2_positive check (c2 > 0),\n" +
-				"\tcheck (c3 < 100),\n" +
-				"\tconstraint c1_nonzero check (c1 != 0),\n" +
-				"\tcheck (c1 > c3)\n)",
-		}, {
-			input:  "SHOW INDEXES FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
-		}, {
-			input:  "SHOW FULL TABLES FROM `jiradb` LIKE '%'",
-			output: "show full tables from jiradb like '%'",
-		}, {
-			input:  "SHOW EXTENDED INDEXES FROM `AO_E8B6CC_PROJECT_MAPPING` FROM `jiradb`",
-			output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
-		}, {
-			input:  "SHOW EXTENDED INDEXES IN `AO_E8B6CC_PROJECT_MAPPING` IN `jiradb`",
-			output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
-		}, {
-			input:  "do 1",
-			output: "otheradmin",
-		}, {
-			input:  "do funcCall(), 2 = 1, 3 + 1",
-			output: "otheradmin",
-		}, {
-			input: "savepoint a",
-		}, {
-			input: "savepoint `@@@;a`",
-		}, {
-			input: "rollback to a",
-		}, {
-			input: "rollback to `@@@;a`",
-		}, {
-			input:  "rollback work to a",
-			output: "rollback to a",
-		}, {
-			input:  "rollback to savepoint a",
-			output: "rollback to a",
-		}, {
-			input:  "rollback work to savepoint a",
-			output: "rollback to a",
-		}, {
-			input: "release savepoint a",
-		}, {
-			input: "release savepoint `@@@;a`",
-		}, {
-			input: "call proc()",
-		}, {
-			input: "call qualified.proc()",
-		}, {
-			input: "call proc(1, 'foo')",
-		}, {
-			input: "call proc(@param)",
-		}, {
-			input:  "PREPARE stmt1 FROM 'SELECT SQRT(POW(?,2) + POW(?,2)) AS hypotenuse'",
-			output: "prepare stmt1 from 'SELECT SQRT(POW(?,2) + POW(?,2)) AS hypotenuse'",
-		}, {
-			input:  "PREPARE stmt2 FROM @s",
-			output: "prepare stmt2 from @s",
-		}, {
-			input:  "PREPARE /* comment */ stmt2 FROM @s",
-			output: "prepare /* comment */ stmt2 from @s",
-		}, {
-			input:  "EXECUTE stmt1",
-			output: "execute stmt1",
-		}, {
-			input:  "EXECUTE /* comment */ stmt1",
-			output: "execute /* comment */ stmt1",
-		}, {
-			input:  "EXECUTE stmt1 USING @a",
-			output: "execute stmt1 using @a",
-		}, {
-			input:  "EXECUTE stmt1 USING @a, @b",
-			output: "execute stmt1 using @a, @b",
-		}, {
-			input:  "DEALLOCATE PREPARE stmt1",
-			output: "deallocate prepare stmt1",
-		}, {
-			input:  "DROP PREPARE stmt1",
-			output: "drop prepare stmt1",
-		}, {
-			input:  "DROP /* comment */ PREPARE stmt1",
-			output: "drop /* comment */ prepare stmt1",
-		}, {
-			input:  `SELECT JSON_PRETTY('{"a":"10","b":"15","x":"25"}')`,
-			output: `select json_pretty('{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
-		}, {
-			input:  `SELECT JSON_PRETTY(N'{"a":"10","b":"15","x":"25"}')`,
-			output: `select json_pretty(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
-			/*We need to ignore this test because, after the normalizer, we change the produced NChar
-			string into an introducer expression, so the vttablet will never see a NChar string */
-			ignoreNormalizerTest: true,
-		}, {
-			input:  "SELECT jcol, JSON_PRETTY(jcol) from jtable",
-			output: "select jcol, json_pretty(jcol) from jtable",
-		}, {
-			input:  "SELECT JSON_PRETTY(@j)",
-			output: "select json_pretty(@j) from dual",
-		}, {
-			input:  "SELECT jcol, JSON_STORAGE_SIZE(jcol) AS Size FROM jtable",
-			output: "select jcol, json_storage_size(jcol) as Size from jtable",
-		}, {
-			input:  `SELECT jcol, JSON_STORAGE_SIZE(N'{"a":"10","b":"15","x":"25"}') AS Size FROM jtable`,
-			output: `select jcol, json_storage_size(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') as Size from jtable`,
-			/*We need to ignore this test because, after the normalizer, we change the produced NChar
-			string into an introducer expression, so the vttablet will never see a NChar string */
-			ignoreNormalizerTest: true,
-		}, {
-			input:  `SELECT JSON_STORAGE_SIZE('[100, "sakila", [1, 3, 5], 425.05]') AS A, JSON_STORAGE_SIZE('{"a": 1000, "b": "a", "c": "[1, 3, 5, 7]"}') AS B, JSON_STORAGE_SIZE('{"a": 1000, "b": "wxyz", "c": "[1, 3, 5, 7]"}') AS C,JSON_STORAGE_SIZE('[100, "json", [[10, 20, 30], 3, 5], 425.05]') AS D`,
-			output: `select json_storage_size('[100, \"sakila\", [1, 3, 5], 425.05]') as A, json_storage_size('{\"a\": 1000, \"b\": \"a\", \"c\": \"[1, 3, 5, 7]\"}') as B, json_storage_size('{\"a\": 1000, \"b\": \"wxyz\", \"c\": \"[1, 3, 5, 7]\"}') as C, json_storage_size('[100, \"json\", [[10, 20, 30], 3, 5], 425.05]') as D from dual`,
-		}, {
-			input:  "SELECT JSON_STORAGE_SIZE(@j)",
-			output: "select json_storage_size(@j) from dual",
-		}, {
-			input:  "SELECT JSON_STORAGE_FREE(jcol) FROM jtable",
-			output: "select json_storage_free(jcol) from jtable",
-		}, {
-			input:  `SELECT JSON_STORAGE_FREE('{"a":"10","b":"15","x":"25"}')`,
-			output: `select json_storage_free('{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
-		}, {
-			input:  `SELECT JSON_STORAGE_FREE(N'{"a":"10","b":"15","x":"25"}')`,
-			output: `select json_storage_free(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
-			/*We need to ignore this test because, after the normalizer, we change the produced NChar
-			string into an introducer expression, so the vttablet will never see a NChar string */
-			ignoreNormalizerTest: true,
-		}, {
-			input:  "SELECT JSON_STORAGE_FREE(@j)",
-			output: "select json_storage_free(@j) from dual",
-		}, {
-			input:  "SELECT LTRIM('abc')",
-			output: "select ltrim('abc') from dual",
-		}, {
-			input:  "SELECT RTRIM('abc')",
-			output: "select rtrim('abc') from dual",
-		}, {
-			input:  "SELECT TRIM('  abc  ')",
-			output: "select trim('  abc  ') from dual",
-		}, {
-			input:  "SELECT TRIM('aa' FROM 'aabccaaa')",
-			output: "select trim('aa' from 'aabccaaa') from dual",
-		}, {
-			input:  "SELECT TRIM(LEADING FROM 'aabccaaa')",
-			output: "select trim(leading from 'aabccaaa') from dual",
-		}, {
-			input:  "SELECT TRIM(TRAILING FROM 'abca')",
-			output: "select trim(trailing from 'abca') from dual",
-		}, {
-			input:  "SELECT TRIM(BOTH FROM 'abc')",
-			output: "select trim(both from 'abc') from dual",
-		}, {
-			input:  "SELECT TRIM(LEADING 'a' FROM 'abc')",
-			output: "select trim(leading 'a' from 'abc') from dual",
-		}, {
-			input:  "SELECT TRIM(TRAILING 'a' FROM 'abc')",
-			output: "select trim(trailing 'a' from 'abc') from dual",
-		}, {
-			input:  "SELECT TRIM(BOTH 'a' FROM 'abc')",
-			output: "select trim(both 'a' from 'abc') from dual",
-		}, {
-			input: `SELECT * FROM JSON_TABLE('[ {"c1": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt`,
-			output: `select * from json_table('[ {\"c1\": null} ]', '$[*]' columns(
+	}, {
+		input: "flush tables",
+	}, {
+		input: "flush tables with read lock",
+	}, {
+		input: "flush tables a, c.v, b",
+	}, {
+		input: "flush local tables a, c.v, b with read lock",
+	}, {
+		input: "flush tables a, c.v, b for export",
+	}, {
+		input: "flush local binary logs, engine logs, error logs, general logs, hosts, logs, privileges, optimizer_costs",
+	}, {
+		input:  "flush no_write_to_binlog slow logs, status, user_resources, relay logs, relay logs for channel s",
+		output: "flush local slow logs, status, user_resources, relay logs, relay logs for channel s",
+	}, {
+		input:  "show binary logs",
+		output: "show binary logs",
+	}, {
+		input:  "show binlog events",
+		output: "show binlog",
+	}, {
+		input:  "show character set",
+		output: "show charset",
+	}, {
+		input:  "show character set like '%foo'",
+		output: "show charset like '%foo'",
+	}, {
+		input:  "show charset",
+		output: "show charset",
+	}, {
+		input:  "show charset like '%foo'",
+		output: "show charset like '%foo'",
+	}, {
+		input:  "show charset where 'charset' = 'utf8'",
+		output: "show charset where 'charset' = 'utf8'",
+	}, {
+		input:  "show charset where 'charset' = '%foo'",
+		output: "show charset where 'charset' = '%foo'",
+	}, {
+		input:  "show collation",
+		output: "show collation",
+	}, {
+		input:  "show collation where `Charset` = 'utf8' and `Collation` = 'utf8_bin'",
+		output: "show collation where `Charset` = 'utf8' and `Collation` = 'utf8_bin'",
+	}, {
+		input: "show create database d",
+	}, {
+		input: "show create event e",
+	}, {
+		input: "show create function f",
+	}, {
+		input: "show create procedure p",
+	}, {
+		input: "show create table t",
+	}, {
+		input: "show create trigger t",
+	}, {
+		input:  "show create user u",
+		output: "show create user",
+	}, {
+		input: "show create view v",
+	}, {
+		input:  "show databases",
+		output: "show databases",
+	}, {
+		input:  "show databases like '%'",
+		output: "show databases like '%'",
+	}, {
+		input:  "show schemas",
+		output: "show databases",
+	}, {
+		input:  "show schemas like '%'",
+		output: "show databases like '%'",
+	}, {
+		input:  "show engine INNODB",
+		output: "show engine",
+	}, {
+		input: "show engines",
+	}, {
+		input:  "show storage engines",
+		output: "show storage",
+	}, {
+		input: "show errors",
+	}, {
+		input: "show events",
+	}, {
+		input: "show function code func",
+	}, {
+		input: "show function status",
+	}, {
+		input:  "show grants for 'root@localhost'",
+		output: "show grants",
+	}, {
+		input:  "show index from t",
+		output: "show indexes from t",
+	}, {
+		input: "show indexes from t",
+	}, {
+		input:  "show keys from t",
+		output: "show indexes from t",
+	}, {
+		input:  "show master status",
+		output: "show master",
+	}, {
+		input: "show open tables",
+	}, {
+		input:  "show plugins",
+		output: "show plugins",
+	}, {
+		input:  "show privileges",
+		output: "show privileges",
+	}, {
+		input: "show procedure code p",
+	}, {
+		input: "show procedure status",
+	}, {
+		input:  "show processlist",
+		output: "show processlist",
+	}, {
+		input:  "show full processlist",
+		output: "show processlist",
+	}, {
+		input:  "show profile cpu for query 1",
+		output: "show profile",
+	}, {
+		input:  "show profiles",
+		output: "show profiles",
+	}, {
+		input:  "show relaylog events",
+		output: "show relaylog",
+	}, {
+		input:  "show slave hosts",
+		output: "show slave",
+	}, {
+		input:  "show slave status",
+		output: "show slave",
+	}, {
+		input:  "show status",
+		output: "show status",
+	}, {
+		input:  "show global status",
+		output: "show global status",
+	}, {
+		input:  "show session status",
+		output: "show status",
+	}, {
+		input: "show table status",
+	}, {
+		input: "show table status from dbname",
+	}, {
+		input:  "show table status in dbname",
+		output: "show table status from dbname",
+	}, {
+		input:  "show table status in dbname LIKE '%' ",
+		output: "show table status from dbname like '%'",
+	}, {
+		input:  "show table status from dbname Where col=42 ",
+		output: "show table status from dbname where col = 42",
+	}, {
+		input: "show tables",
+	}, {
+		input: "show tables like '%keyspace%'",
+	}, {
+		input: "show tables where 1 = 0",
+	}, {
+		input: "show tables from a",
+	}, {
+		input: "show tables from a where 1 = 0",
+	}, {
+		input: "show tables from a like '%keyspace%'",
+	}, {
+		input: "show full tables",
+	}, {
+		input: "show full tables from a",
+	}, {
+		input:  "show full tables in a",
+		output: "show full tables from a",
+	}, {
+		input: "show full tables from a like '%keyspace%'",
+	}, {
+		input: "show full tables from a where 1 = 0",
+	}, {
+		input: "show full tables like '%keyspace%'",
+	}, {
+		input: "show full tables where 1 = 0",
+	}, {
+		input:  "show full columns in a in b like '%'",
+		output: "show full columns from a from b like '%'",
+	}, {
+		input: "show full columns from messages from test_keyspace like '%'",
+	}, {
+		input:  "show full fields from a like '%'",
+		output: "show full columns from a like '%'",
+	}, {
+		input:  "show fields from a where 1 = 1",
+		output: "show columns from a where 1 = 1",
+	}, {
+		input:  "show triggers",
+		output: "show triggers",
+	}, {
+		input:  "show variables",
+		output: "show variables",
+	}, {
+		input:  "show global variables",
+		output: "show global variables",
+	}, {
+		input:  "show session variables",
+		output: "show variables",
+	}, {
+		input: "show global vgtid_executed",
+	}, {
+		input: "show global vgtid_executed from ks",
+	}, {
+		input: "show global gtid_executed",
+	}, {
+		input: "show global gtid_executed from ks",
+	}, {
+		input:  "show vitess_keyspaces",
+		output: "show keyspaces",
+	}, {
+		input:  "show vitess_keyspaces like '%'",
+		output: "show keyspaces like '%'",
+	}, {
+		input: "show vitess_metadata variables",
+	}, {
+		input: "show vitess_replication_status",
+	}, {
+		input: "show vitess_replication_status like '%'",
+	}, {
+		input: "show vitess_shards",
+	}, {
+		input: "show vitess_shards like '%'",
+	}, {
+		input: "show vitess_tablets",
+	}, {
+		input: "show vitess_tablets like '%'",
+	}, {
+		input: "show vitess_tablets where hostname = 'some-tablet'",
+	}, {
+		input: "show vitess_targets",
+	}, {
+		input: "show vschema tables",
+	}, {
+		input: "show vschema vindexes",
+	}, {
+		input: "show vschema vindexes from t",
+	}, {
+		input:  "show vschema vindexes on t",
+		output: "show vschema vindexes from t",
+	}, {
+		input: "show vitess_migrations",
+	}, {
+		input: "show vitess_migrations from ks",
+	}, {
+		input: "show vitess_migrations from ks where col = 42",
+	}, {
+		input: `show vitess_migrations from ks like '%pattern'`,
+	}, {
+		input: "show vitess_migrations like '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
+	}, {
+		input: "show vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' logs",
+	}, {
+		input: "revert vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
+	}, {
+		input: "revert /*vt+ uuid=123 */ vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90'",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' retry",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' cleanup",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch vitess_shards '-40'",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' launch vitess_shards '-40,40-80'",
+	}, {
+		input: "alter vitess_migration launch all",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' complete",
+	}, {
+		input: "alter vitess_migration complete all",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' cancel",
+	}, {
+		input: "alter vitess_migration cancel all",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle expire '1h'",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle ratio 0.7",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' throttle expire '1h' ratio 0.7",
+	}, {
+		input: "alter vitess_migration '9748c3b7_7fdb_11eb_ac2c_f875a4d24e90' unthrottle",
+	}, {
+		input: "alter vitess_migration throttle all",
+	}, {
+		input: "alter vitess_migration unthrottle all",
+	}, {
+		input: "alter vitess_migration throttle all expire '1h'",
+	}, {
+		input: "alter vitess_migration throttle all ratio 0.7",
+	}, {
+		input: "alter vitess_migration throttle all expire '1h' ratio 0.7",
+	}, {
+		input: "show vitess_throttled_apps",
+	}, {
+		input: "show vitess_throttler status",
+	}, {
+		input: "show warnings",
+	}, {
+		input:  "select warnings from t",
+		output: "select `warnings` from t",
+	}, {
+		input:  "show foobar",
+		output: "show foobar",
+	}, {
+		input:  "show foobar like select * from table where syntax is 'ignored'",
+		output: "show foobar",
+	}, {
+		input:  "use db",
+		output: "use db",
+	}, {
+		input:  "use duplicate",
+		output: "use `duplicate`",
+	}, {
+		input:  "use `ks:-80@master`",
+		output: "use `ks:-80@master`",
+	}, {
+		input:  "use `ks:-80@primary`",
+		output: "use `ks:-80@primary`",
+	}, {
+		input:  "use @replica",
+		output: "use `@replica`",
+	}, {
+		input:  "use ks@replica",
+		output: "use `ks@replica`",
+	}, {
+		input:  "describe select * from t",
+		output: "explain select * from t",
+	}, {
+		input:  "describe /*vt+ execute_dml_queries */ select * from t",
+		output: "explain /*vt+ execute_dml_queries */ select * from t",
+	}, {
+		input:  "desc select * from t",
+		output: "explain select * from t",
+	}, {
+		input:  "desc foobar",
+		output: "explain foobar",
+	}, {
+		input: "explain t1",
+	}, {
+		input: "explain t1 col",
+	}, {
+		input: "explain t1 '%col%'",
+	}, {
+		input: "explain select * from t",
+	}, {
+		input: "explain format = traditional select * from t",
+	}, {
+		input: "vexplain queries select * from t",
+	}, {
+		input: "vexplain all select * from t",
+	}, {
+		input: "vexplain plan select * from t",
+	}, {
+		input:  "vexplain select * from t",
+		output: "vexplain plan select * from t",
+	}, {
+		input: "explain analyze select * from t",
+	}, {
+		input: "explain format = tree select * from t",
+	}, {
+		input: "explain format = json select * from t",
+	}, {
+		input: "explain format = vtexplain select * from t",
+	}, {
+		input: "explain format = vitess select * from t",
+	}, {
+		input:  "describe format = vitess select * from t",
+		output: "explain format = vitess select * from t",
+	}, {
+		input:  "describe format = vtexplain select * from t",
+		output: "explain format = vtexplain select * from t",
+	}, {
+		input: "explain delete from t",
+	}, {
+		input: "explain insert into t(col1, col2) values (1, 2)",
+	}, {
+		input: "explain update t set col = 2",
+	}, {
+		input:  "truncate table foo",
+		output: "truncate table foo",
+	}, {
+		input:  "truncate foo",
+		output: "truncate table foo",
+	}, {
+		input:  "repair foo",
+		output: "otheradmin",
+	}, {
+		input:  "optimize foo",
+		output: "otheradmin",
+	}, {
+		input:  "lock tables foo read",
+		output: "lock tables foo read",
+	}, {
+		input:  "lock tables foo write",
+		output: "lock tables foo write",
+	}, {
+		input:  "lock tables foo read local",
+		output: "lock tables foo read local",
+	}, {
+		input:  "lock tables foo low_priority write",
+		output: "lock tables foo low_priority write",
+	}, {
+		input:  "unlock tables",
+		output: "unlock tables",
+	}, {
+		input: "select /* EQ true */ 1 from t where a = true",
+	}, {
+		input: "select /* EQ false */ 1 from t where a = false",
+	}, {
+		input: "select /* NE true */ 1 from t where a != true",
+	}, {
+		input: "select /* NE false */ 1 from t where a != false",
+	}, {
+		input: "select /* LT true */ 1 from t where a < true",
+	}, {
+		input: "select /* LT false */ 1 from t where a < false",
+	}, {
+		input: "select /* GT true */ 1 from t where a > true",
+	}, {
+		input: "select /* GT false */ 1 from t where a > false",
+	}, {
+		input: "select /* LE true */ 1 from t where a <= true",
+	}, {
+		input: "select /* LE false */ 1 from t where a <= false",
+	}, {
+		input: "select /* GE true */ 1 from t where a >= true",
+	}, {
+		input: "select /* GE false */ 1 from t where a >= false",
+	}, {
+		input:  "select * from t order by a collate utf8_general_ci",
+		output: "select * from t order by a collate utf8_general_ci asc",
+	}, {
+		input: "select k collate latin1_german2_ci as k1 from t1 order by k1 asc",
+	}, {
+		input: "select * from t group by a collate utf8_general_ci",
+	}, {
+		input:  "select MAX(k collate latin1_german2_ci) from t1",
+		output: "select max(k collate latin1_german2_ci) from t1",
+	}, {
+		input: "select distinct k collate latin1_german2_ci from t1",
+	}, {
+		input: "select * from t1 where 'Müller' collate latin1_german2_ci = k",
+	}, {
+		input: "select * from t1 where k like 'Müller' collate latin1_german2_ci",
+	}, {
+		input: "select k from t1 group by k having k = 'Müller' collate latin1_german2_ci",
+	}, {
+		input: "select k from t1 join t2 order by a collate latin1_german2_ci asc, b collate latin1_german2_ci asc",
+	}, {
+		input:  "select k collate 'latin1_german2_ci' as k1 from t1 order by k1 asc",
+		output: "select k collate latin1_german2_ci as k1 from t1 order by k1 asc",
+	}, {
+		input:  "select /* drop trailing semicolon */ 1 from dual;",
+		output: "select /* drop trailing semicolon */ 1 from dual",
+	}, {
+		input: "select /* cache directive */ sql_no_cache 'foo' from t",
+	}, {
+		input: "select distinct sql_no_cache 'foo' from t",
+	}, {
+		input:  "select sql_no_cache distinct 'foo' from t",
+		output: "select distinct sql_no_cache 'foo' from t",
+	}, {
+		input:  "select sql_no_cache straight_join distinct 'foo' from t",
+		output: "select distinct sql_no_cache straight_join 'foo' from t",
+	}, {
+		input:  "select straight_join distinct sql_no_cache 'foo' from t",
+		output: "select distinct sql_no_cache straight_join 'foo' from t",
+	}, {
+		input:  "select sql_calc_found_rows 'foo' from t",
+		output: "select sql_calc_found_rows 'foo' from t",
+	}, {
+		input:  "select binary 'a' = 'A' from t",
+		output: "select convert('a', binary) = 'A' from t",
+	}, {
+		input: "select 1 from t where foo = _binary 'bar'",
+	}, {
+		input: "select 1 from t where foo = _utf8 'bar' and bar = _latin1 'sjösjuk'",
+	}, {
+		input:  "select 1 from t where foo = _binary'bar'",
+		output: "select 1 from t where foo = _binary 'bar'",
+	}, {
+		input: "select 1 from t where foo = _utf8mb4 'bar'",
+	}, {
+		input:  "select 1 from t where foo = _utf8mb4'bar'",
+		output: "select 1 from t where foo = _utf8mb4 'bar'",
+	}, {
+		input:  "select 1 from t where foo = _utf8mb3 'bar'",
+		output: "select 1 from t where foo = _utf8 'bar'",
+	}, {
+		input:  "select 1 from t where foo = _utf8mb3'bar'",
+		output: "select 1 from t where foo = _utf8 'bar'",
+	}, {
+		input: "select match(a) against ('foo') from t",
+	}, {
+		input: "select match(a1, a2) against ('foo' in natural language mode with query expansion) from t",
+	}, {
+		input:  "select database()",
+		output: "select database() from dual",
+	}, {
+		input:  "select schema()",
+		output: "select schema() from dual",
+	}, {
+		input: "select title from video as v where match(v.title, v.tag) against ('DEMO' in boolean mode)",
+	}, {
+		input:  "SELECT id FROM blog_posts USE INDEX (PRIMARY) WHERE id = 10",
+		output: "select id from blog_posts use index (`PRIMARY`) where id = 10",
+	}, {
+		input:  "select name, group_concat(score) from t group by name",
+		output: "select `name`, group_concat(score) from t group by `name`",
+	}, {
+		input:  "select name, group_concat(distinct id, score order by id desc separator ':') from t group by name",
+		output: "select `name`, group_concat(distinct id, score order by id desc separator ':') from t group by `name`",
+	}, {
+		input:  "select name, group_concat(distinct id, score order by id desc separator ':' limit 1) from t group by name",
+		output: "select `name`, group_concat(distinct id, score order by id desc separator ':' limit 1) from t group by `name`",
+	}, {
+		input:  "select name, group_concat(distinct id, score order by id desc separator ':' limit 10, 2) from t group by name",
+		output: "select `name`, group_concat(distinct id, score order by id desc separator ':' limit 10, 2) from t group by `name`",
+	}, {
+		input: "select * from t partition (p0)",
+	}, {
+		input: "select * from t partition (p0, p1)",
+	}, {
+		input: "select e.id, s.city from employees as e join stores partition (p1) as s on e.store_id = s.id",
+	}, {
+		input: "select truncate(120.3333, 2) from dual",
+	}, {
+		input: "update t partition (p0) set a = 1",
+	}, {
+		input: "insert into t partition (p0) values (1, 'asdf')",
+	}, {
+		input: "insert into t1 select * from t2 partition (p0)",
+	}, {
+		input: "replace into t partition (p0) values (1, 'asdf')",
+	}, {
+		input: "delete from t partition (p0) where a = 1",
+	}, {
+		input: "stream * from t",
+	}, {
+		input: "stream /* comment */ * from t",
+	}, {
+		input: "vstream * from t",
+	}, {
+		input: "begin",
+	}, {
+		input:  "begin;",
+		output: "begin",
+	}, {
+		input:  "start transaction",
+		output: "begin",
+	}, {
+		input: "start transaction with consistent snapshot",
+	}, {
+		input: "start transaction read write",
+	}, {
+		input: "start transaction read only",
+	}, {
+		input: "start transaction read only, with consistent snapshot",
+	}, {
+		input: "commit",
+	}, {
+		input: "rollback",
+	}, {
+		input: "create database /* simple */ test_db",
+	}, {
+		input:  "create schema test_db",
+		output: "create database test_db",
+	}, {
+		input: "create database /* simple */ if not exists test_db",
+	}, {
+		input:  "create schema if not exists test_db",
+		output: "create database if not exists test_db",
+	}, {
+		input: "create database test_db default collate 'utf8mb4_general_ci' collate utf8mb4_general_ci",
+	}, {
+		input: "create database test_db character set geostd8",
+	}, {
+		input:      "alter table corder zzzz zzzz zzzz",
+		output:     "alter table corder",
+		partialDDL: true,
+	}, {
+		input:      "create database test_db character set * unparsable",
+		output:     "create database test_db",
+		partialDDL: true,
+	}, {
+		input:  "CREATE DATABASE IF NOT EXISTS `mysql` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ENCRYPTION='N';",
+		output: "create database if not exists mysql default character set utf8mb4 collate utf8mb4_0900_ai_ci encryption 'N'",
+	}, {
+		input: "drop /* simple */ database test_db",
+	}, {
+		input:  "drop schema test_db",
+		output: "drop database test_db",
+	}, {
+		input: "drop /* simple */ database if exists test_db",
+	}, {
+		input:  "delete a.*, b.* from tbl_a a, tbl_b b where a.id = b.id and b.name = 'test'",
+		output: "delete a, b from tbl_a as a, tbl_b as b where a.id = b.id and b.`name` = 'test'",
+	}, {
+		input:  "select distinctrow a.* from (select (1) from dual union all select 1 from dual) a",
+		output: "select distinct a.* from (select 1 from dual union all select 1 from dual) as a",
+	}, {
+		input: "select `weird function name`() from t",
+	}, {
+		input:  "select all* from t",
+		output: "select * from t",
+	}, {
+		input:  "select distinct* from t",
+		output: "select distinct * from t",
+	}, {
+		input: "select status() from t", // should not escape function names that are keywords
+	}, {
+		input: "select * from `weird table name`",
+	}, {
+		input:  "SHOW FULL TABLES FROM `jiradb` LIKE 'AO_E8B6CC_ISSUE_MAPPING'",
+		output: "show full tables from jiradb like 'AO_E8B6CC_ISSUE_MAPPING'",
+	}, {
+		input:  "SHOW FULL COLUMNS FROM AO_E8B6CC_ISSUE_MAPPING FROM jiradb LIKE '%'",
+		output: "show full columns from AO_E8B6CC_ISSUE_MAPPING from jiradb like '%'",
+	}, {
+		input:  "SHOW KEYS FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
+	}, {
+		input:  "SHOW CREATE TABLE `jiradb`.`AO_E8B6CC_ISSUE_MAPPING`",
+		output: "show create table jiradb.AO_E8B6CC_ISSUE_MAPPING",
+	}, {
+		input:  "SHOW INDEX FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
+	}, {
+		input:  "SHOW FULL TABLES FROM `jiradb` LIKE '%'",
+		output: "show full tables from jiradb like '%'",
+	}, {
+		input:  "SHOW EXTENDED INDEX FROM `AO_E8B6CC_PROJECT_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
+	}, {
+		input:  "SHOW EXTENDED KEYS FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
+	}, {
+		input:  "SHOW CREATE TABLE `jiradb`.`AO_E8B6CC_ISSUE_MAPPING`",
+		output: "show create table jiradb.AO_E8B6CC_ISSUE_MAPPING",
+	}, {
+		input: "create table t1 ( check (c1 <> c2), c1 int check (c1 > 10), c2 int constraint c2_positive check (c2 > 0), c3 int check (c3 < 100), constraint c1_nonzero check (c1 <> 0), check (c1 > c3))",
+		output: "create table t1 (\n" +
+			"\tc1 int,\n" +
+			"\tc2 int,\n" +
+			"\tc3 int,\n" +
+			"\tcheck (c1 != c2),\n" +
+			"\tcheck (c1 > 10),\n" +
+			"\tconstraint c2_positive check (c2 > 0),\n" +
+			"\tcheck (c3 < 100),\n" +
+			"\tconstraint c1_nonzero check (c1 != 0),\n" +
+			"\tcheck (c1 > c3)\n)",
+	}, {
+		input:  "SHOW INDEXES FROM `AO_E8B6CC_ISSUE_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_ISSUE_MAPPING from jiradb",
+	}, {
+		input:  "SHOW FULL TABLES FROM `jiradb` LIKE '%'",
+		output: "show full tables from jiradb like '%'",
+	}, {
+		input:  "SHOW EXTENDED INDEXES FROM `AO_E8B6CC_PROJECT_MAPPING` FROM `jiradb`",
+		output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
+	}, {
+		input:  "SHOW EXTENDED INDEXES IN `AO_E8B6CC_PROJECT_MAPPING` IN `jiradb`",
+		output: "show indexes from AO_E8B6CC_PROJECT_MAPPING from jiradb",
+	}, {
+		input:  "do 1",
+		output: "otheradmin",
+	}, {
+		input:  "do funcCall(), 2 = 1, 3 + 1",
+		output: "otheradmin",
+	}, {
+		input: "savepoint a",
+	}, {
+		input: "savepoint `@@@;a`",
+	}, {
+		input: "rollback to a",
+	}, {
+		input: "rollback to `@@@;a`",
+	}, {
+		input:  "rollback work to a",
+		output: "rollback to a",
+	}, {
+		input:  "rollback to savepoint a",
+		output: "rollback to a",
+	}, {
+		input:  "rollback work to savepoint a",
+		output: "rollback to a",
+	}, {
+		input: "release savepoint a",
+	}, {
+		input: "release savepoint `@@@;a`",
+	}, {
+		input: "call proc()",
+	}, {
+		input: "call qualified.proc()",
+	}, {
+		input: "call proc(1, 'foo')",
+	}, {
+		input: "call proc(@param)",
+	}, {
+		input:  "PREPARE stmt1 FROM 'SELECT SQRT(POW(?,2) + POW(?,2)) AS hypotenuse'",
+		output: "prepare stmt1 from 'SELECT SQRT(POW(?,2) + POW(?,2)) AS hypotenuse'",
+	}, {
+		input:  "PREPARE stmt2 FROM @s",
+		output: "prepare stmt2 from @s",
+	}, {
+		input:  "PREPARE /* comment */ stmt2 FROM @s",
+		output: "prepare /* comment */ stmt2 from @s",
+	}, {
+		input:  "EXECUTE stmt1",
+		output: "execute stmt1",
+	}, {
+		input:  "EXECUTE /* comment */ stmt1",
+		output: "execute /* comment */ stmt1",
+	}, {
+		input:  "EXECUTE stmt1 USING @a",
+		output: "execute stmt1 using @a",
+	}, {
+		input:  "EXECUTE stmt1 USING @a, @b",
+		output: "execute stmt1 using @a, @b",
+	}, {
+		input:  "DEALLOCATE PREPARE stmt1",
+		output: "deallocate prepare stmt1",
+	}, {
+		input:  "DROP PREPARE stmt1",
+		output: "drop prepare stmt1",
+	}, {
+		input:  "DROP /* comment */ PREPARE stmt1",
+		output: "drop /* comment */ prepare stmt1",
+	}, {
+		input:  `SELECT JSON_PRETTY('{"a":"10","b":"15","x":"25"}')`,
+		output: `select json_pretty('{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
+	}, {
+		input:  `SELECT JSON_PRETTY(N'{"a":"10","b":"15","x":"25"}')`,
+		output: `select json_pretty(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
+		/*We need to ignore this test because, after the normalizer, we change the produced NChar
+		string into an introducer expression, so the vttablet will never see a NChar string */
+		ignoreNormalizerTest: true,
+	}, {
+		input:  "SELECT jcol, JSON_PRETTY(jcol) from jtable",
+		output: "select jcol, json_pretty(jcol) from jtable",
+	}, {
+		input:  "SELECT JSON_PRETTY(@j)",
+		output: "select json_pretty(@j) from dual",
+	}, {
+		input:  "SELECT jcol, JSON_STORAGE_SIZE(jcol) AS Size FROM jtable",
+		output: "select jcol, json_storage_size(jcol) as Size from jtable",
+	}, {
+		input:  `SELECT jcol, JSON_STORAGE_SIZE(N'{"a":"10","b":"15","x":"25"}') AS Size FROM jtable`,
+		output: `select jcol, json_storage_size(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') as Size from jtable`,
+		/*We need to ignore this test because, after the normalizer, we change the produced NChar
+		string into an introducer expression, so the vttablet will never see a NChar string */
+		ignoreNormalizerTest: true,
+	}, {
+		input:  `SELECT JSON_STORAGE_SIZE('[100, "sakila", [1, 3, 5], 425.05]') AS A, JSON_STORAGE_SIZE('{"a": 1000, "b": "a", "c": "[1, 3, 5, 7]"}') AS B, JSON_STORAGE_SIZE('{"a": 1000, "b": "wxyz", "c": "[1, 3, 5, 7]"}') AS C,JSON_STORAGE_SIZE('[100, "json", [[10, 20, 30], 3, 5], 425.05]') AS D`,
+		output: `select json_storage_size('[100, \"sakila\", [1, 3, 5], 425.05]') as A, json_storage_size('{\"a\": 1000, \"b\": \"a\", \"c\": \"[1, 3, 5, 7]\"}') as B, json_storage_size('{\"a\": 1000, \"b\": \"wxyz\", \"c\": \"[1, 3, 5, 7]\"}') as C, json_storage_size('[100, \"json\", [[10, 20, 30], 3, 5], 425.05]') as D from dual`,
+	}, {
+		input:  "SELECT JSON_STORAGE_SIZE(@j)",
+		output: "select json_storage_size(@j) from dual",
+	}, {
+		input:  "SELECT JSON_STORAGE_FREE(jcol) FROM jtable",
+		output: "select json_storage_free(jcol) from jtable",
+	}, {
+		input:  `SELECT JSON_STORAGE_FREE('{"a":"10","b":"15","x":"25"}')`,
+		output: `select json_storage_free('{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
+	}, {
+		input:  `SELECT JSON_STORAGE_FREE(N'{"a":"10","b":"15","x":"25"}')`,
+		output: `select json_storage_free(N'{\"a\":\"10\",\"b\":\"15\",\"x\":\"25\"}') from dual`,
+		/*We need to ignore this test because, after the normalizer, we change the produced NChar
+		string into an introducer expression, so the vttablet will never see a NChar string */
+		ignoreNormalizerTest: true,
+	}, {
+		input:  "SELECT JSON_STORAGE_FREE(@j)",
+		output: "select json_storage_free(@j) from dual",
+	}, {
+		input:  "SELECT LTRIM('abc')",
+		output: "select ltrim('abc') from dual",
+	}, {
+		input:  "SELECT RTRIM('abc')",
+		output: "select rtrim('abc') from dual",
+	}, {
+		input:  "SELECT TRIM('  abc  ')",
+		output: "select trim('  abc  ') from dual",
+	}, {
+		input:  "SELECT TRIM('aa' FROM 'aabccaaa')",
+		output: "select trim('aa' from 'aabccaaa') from dual",
+	}, {
+		input:  "SELECT TRIM(LEADING FROM 'aabccaaa')",
+		output: "select trim(leading from 'aabccaaa') from dual",
+	}, {
+		input:  "SELECT TRIM(TRAILING FROM 'abca')",
+		output: "select trim(trailing from 'abca') from dual",
+	}, {
+		input:  "SELECT TRIM(BOTH FROM 'abc')",
+		output: "select trim(both from 'abc') from dual",
+	}, {
+		input:  "SELECT TRIM(LEADING 'a' FROM 'abc')",
+		output: "select trim(leading 'a' from 'abc') from dual",
+	}, {
+		input:  "SELECT TRIM(TRAILING 'a' FROM 'abc')",
+		output: "select trim(trailing 'a' from 'abc') from dual",
+	}, {
+		input:  "SELECT TRIM(BOTH 'a' FROM 'abc')",
+		output: "select trim(both 'a' from 'abc') from dual",
+	}, {
+		input: `SELECT * FROM JSON_TABLE('[ {"c1": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt`,
+		output: `select * from json_table('[ {\"c1\": null} ]', '$[*]' columns(
 	c1 INT path '$.c1' error on error 
 	)
 ) as jt`,
-		}, {
-			input: `SELECT * FROM  JSON_TABLE(    '[{"a": 1, "b": [11,111]}, {"a": 2, "b": [22,222]}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b2 INT PATH '$'))) AS jt`,
-			output: `select * from json_table('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' columns(
+	}, {
+		input: `SELECT * FROM  JSON_TABLE(    '[{"a": 1, "b": [11,111]}, {"a": 2, "b": [22,222]}]', '$[*]' COLUMNS(a INT PATH '$.a', NESTED PATH '$.b[*]' COLUMNS (b1 INT PATH '$'), NESTED PATH '$.b[*]' COLUMNS (b2 INT PATH '$'))) AS jt`,
+		output: `select * from json_table('[{\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}]', '$[*]' columns(
 	a INT path '$.a' ,
 	nested path '$.b[*]' columns(
 	b1 INT path '$' 
@@ -2625,40 +2624,40 @@ var (
 )
 	)
 ) as jt`,
-		}, {
-			input: `SELECT * FROM JSON_TABLE('[ {"c1": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt`,
-			output: `select * from json_table('[ {\"c1\": null} ]', '$[*]' columns(
+	}, {
+		input: `SELECT * FROM JSON_TABLE('[ {"c1": null} ]','$[*]' COLUMNS( c1 INT PATH '$.c1' ERROR ON ERROR )) as jt`,
+		output: `select * from json_table('[ {\"c1\": null} ]', '$[*]' columns(
 	c1 INT path '$.c1' error on error 
 	)
 ) as jt`,
-		}, {
-			input: `SELECT * FROM JSON_TABLE('[{"a":"3"},{"a":2},{"b":1},{"a":0},{"a":[1,2]}]', "$[*]" COLUMNS(rowid FOR ORDINALITY, ac VARCHAR(100) PATH "$.a" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR,  aj JSON PATH "$.a" DEFAULT '{"x": 333}' ON EMPTY, bx INT EXISTS PATH "$.b" ) ) AS tt`,
-			output: `select * from json_table('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', '$[*]' columns(
+	}, {
+		input: `SELECT * FROM JSON_TABLE('[{"a":"3"},{"a":2},{"b":1},{"a":0},{"a":[1,2]}]', "$[*]" COLUMNS(rowid FOR ORDINALITY, ac VARCHAR(100) PATH "$.a" DEFAULT '111' ON EMPTY DEFAULT '999' ON ERROR,  aj JSON PATH "$.a" DEFAULT '{"x": 333}' ON EMPTY, bx INT EXISTS PATH "$.b" ) ) AS tt`,
+		output: `select * from json_table('[{\"a\":\"3\"},{\"a\":2},{\"b\":1},{\"a\":0},{\"a\":[1,2]}]', '$[*]' columns(
 	rowid for ordinality,
 	ac VARCHAR(100) path '$.a' default '111' on empty default '999' on error ,
 	aj JSON path '$.a' default '{\"x\": 333}' on empty ,
 	bx INT exists path '$.b' 
 	)
 ) as tt`,
-		}, {
-			input: `SELECT * FROM  JSON_TABLE(    '[ {"a": 1, "b": [11,111]}, {"a": 2, "b": [22,222]}, {"a":3}]',    '$[*]' COLUMNS(            a INT PATH '$.a',            NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$')           )   ) AS jt WHERE b IS NOT NULL`,
-			output: `select * from json_table('[ {\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}, {\"a\":3}]', '$[*]' columns(
+	}, {
+		input: `SELECT * FROM  JSON_TABLE(    '[ {"a": 1, "b": [11,111]}, {"a": 2, "b": [22,222]}, {"a":3}]',    '$[*]' COLUMNS(            a INT PATH '$.a',            NESTED PATH '$.b[*]' COLUMNS (b INT PATH '$')           )   ) AS jt WHERE b IS NOT NULL`,
+		output: `select * from json_table('[ {\"a\": 1, \"b\": [11,111]}, {\"a\": 2, \"b\": [22,222]}, {\"a\":3}]', '$[*]' columns(
 	a INT path '$.a' ,
 	nested path '$.b[*]' columns(
 	b INT path '$' 
 )
 	)
 ) as jt where b is not null`,
-		}, {
-			input: `SELECT * FROM  JSON_TABLE(    '[{"x":2,"y":"8"},{"x":"3","y":"7"},{"x":"4","y":6}]',    "$[1]" COLUMNS(      xval VARCHAR(100) PATH "$.x",      yval VARCHAR(100) PATH "$.y"    )  ) AS  jt1`,
-			output: `select * from json_table('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', '$[1]' columns(
+	}, {
+		input: `SELECT * FROM  JSON_TABLE(    '[{"x":2,"y":"8"},{"x":"3","y":"7"},{"x":"4","y":6}]',    "$[1]" COLUMNS(      xval VARCHAR(100) PATH "$.x",      yval VARCHAR(100) PATH "$.y"    )  ) AS  jt1`,
+		output: `select * from json_table('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', '$[1]' columns(
 	xval VARCHAR(100) path '$.x' ,
 	yval VARCHAR(100) path '$.y' 
 	)
 ) as jt1`,
-		}, {
-			input: `SELECT * FROM  JSON_TABLE(    '[{"a": "a_val","b": [{"c": "c_val", "l": [1,2]}]},{"a": "a_val", "b": [{"c": "c_val","l": [11]}, {"c": "c_val", "l": [22]}]}]',    '$[*]' COLUMNS(      top_ord FOR ORDINALITY,      apath VARCHAR(10) PATH '$.a',      NESTED PATH '$.b[*]' COLUMNS (        bpath VARCHAR(10) PATH '$.c',        ord FOR ORDINALITY,        NESTED PATH '$.l[*]' COLUMNS (lpath varchar(10) PATH '$')        )    )) as jt`,
-			output: `select * from json_table('[{\"a\": \"a_val\",\"b\": [{\"c\": \"c_val\", \"l\": [1,2]}]},{\"a\": \"a_val\", \"b\": [{\"c\": \"c_val\",\"l\": [11]}, {\"c\": \"c_val\", \"l\": [22]}]}]', '$[*]' columns(
+	}, {
+		input: `SELECT * FROM  JSON_TABLE(    '[{"a": "a_val","b": [{"c": "c_val", "l": [1,2]}]},{"a": "a_val", "b": [{"c": "c_val","l": [11]}, {"c": "c_val", "l": [22]}]}]',    '$[*]' COLUMNS(      top_ord FOR ORDINALITY,      apath VARCHAR(10) PATH '$.a',      NESTED PATH '$.b[*]' COLUMNS (        bpath VARCHAR(10) PATH '$.c',        ord FOR ORDINALITY,        NESTED PATH '$.l[*]' COLUMNS (lpath varchar(10) PATH '$')        )    )) as jt`,
+		output: `select * from json_table('[{\"a\": \"a_val\",\"b\": [{\"c\": \"c_val\", \"l\": [1,2]}]},{\"a\": \"a_val\", \"b\": [{\"c\": \"c_val\",\"l\": [11]}, {\"c\": \"c_val\", \"l\": [22]}]}]', '$[*]' columns(
 	top_ord for ordinality,
 	apath VARCHAR(10) path '$.a' ,
 	nested path '$.b[*]' columns(
@@ -2670,665 +2669,665 @@ var (
 )
 	)
 ) as jt`,
-		}, {
-			input: `SELECT * FROM JSON_TABLE('[{"x":2,"y":"8"},{"x":"3","y":"7"},{"x":"4","y":6}]', "$[1]" COLUMNS( xval VARCHAR(100) PATH "$.x", yval VARCHAR(100) PATH "$.y")) AS  jt1;`,
-			output: `select * from json_table('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', '$[1]' columns(
+	}, {
+		input: `SELECT * FROM JSON_TABLE('[{"x":2,"y":"8"},{"x":"3","y":"7"},{"x":"4","y":6}]', "$[1]" COLUMNS( xval VARCHAR(100) PATH "$.x", yval VARCHAR(100) PATH "$.y")) AS  jt1;`,
+		output: `select * from json_table('[{\"x\":2,\"y\":\"8\"},{\"x\":\"3\",\"y\":\"7\"},{\"x\":\"4\",\"y\":6}]', '$[1]' columns(
 	xval VARCHAR(100) path '$.x' ,
 	yval VARCHAR(100) path '$.y' 
 	)
 ) as jt1`,
-		}, {
-			input:  "SELECT JSON_ARRAY()",
-			output: "select json_array() from dual",
-		}, {
-			input:  "SELECT JSON_ARRAY(1)",
-			output: "select json_array(1) from dual",
-		}, {
-			input:  "SELECT JSON_ARRAY('abc')",
-			output: "select json_array('abc') from dual",
-		}, {
-			input:  "SELECT JSON_ARRAY(BIN(11))",
-			output: "select json_array(BIN(11)) from dual",
-		}, {
-			input:  `SELECT JSON_ARRAY(1, "abc", NULL, TRUE, CURTIME());`,
-			output: `select json_array(1, 'abc', null, true, CURTIME()) from dual`,
-		}, {
-			input:  "SELECT JSON_OBJECT(1,2)",
-			output: "select json_object(1, 2) from dual",
-		}, {
-			input:  "SELECT JSON_OBJECT(1,'abc')",
-			output: "select json_object(1, 'abc') from dual",
-		}, {
-			input:  "SELECT JSON_OBJECT('abc',1)",
-			output: "select json_object('abc', 1) from dual",
-		}, {
-			input:  "SELECT JSON_OBJECT(BIN(1),2)",
-			output: "select json_object(BIN(1), 2) from dual",
-		}, {
-			input:  "SELECT JSON_OBJECT(BIN(1),2,'abc',ASCII(4))",
-			output: "select json_object(BIN(1), 2, 'abc', ASCII(4)) from dual",
-		}, {
-			input:  "SELECT JSON_QUOTE(BIN(11))",
-			output: "select json_quote(BIN(11)) from dual",
-		}, {
-			input:  `SELECT JSON_QUOTE('null'), JSON_QUOTE('"null"')`,
-			output: `select json_quote('null'), json_quote('\"null\"') from dual`,
-		}, {
-			input:  "select t1.a, dt.a from t1, lateral (select t1.a+t2.a as a from t2) dt",
-			output: "select t1.a, dt.a from t1, lateral (select t1.a + t2.a as a from t2) as dt",
-		}, {
-			input:  "select b from v1 vq1, lateral (select count(*) from v1 vq2 having vq1.b = 3) dt",
-			output: "select b from v1 as vq1, lateral (select count(*) from v1 as vq2 having vq1.b = 3) as dt",
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALID('{"type":"string","pattern":"("}', '"abc"')`,
-			output: `select json_schema_valid('{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALID('{"type":"string","pattern":"("}', @a)`,
-			output: `select json_schema_valid('{\"type\":\"string\",\"pattern\":\"(\"}', @a) from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALID(@b, BIN(1))`,
-			output: `select json_schema_valid(@b, BIN(1)) from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALID(N'{"type":"string","pattern":"("}', '"abc"')`,
-			output: `select json_schema_valid(N'{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
-			/*We need to ignore this test because, after the normalizer, we change the produced NChar
-			string into an introducer expression, so the vttablet will never see a NChar string */
-			ignoreNormalizerTest: true,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT('{"type":"string","pattern":"("}', '"abc"')`,
-			output: `select json_schema_validation_report('{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT('{"type":"string","pattern":"("}', @a)`,
-			output: `select json_schema_validation_report('{\"type\":\"string\",\"pattern\":\"(\"}', @a) from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT(@b, BIN(1))`,
-			output: `select json_schema_validation_report(@b, BIN(1)) from dual`,
-		}, {
-			input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT(N'{"type":"string","pattern":"("}', '"abc"')`,
-			output: `select json_schema_validation_report(N'{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
-			/*We need to ignore this test because, after the normalizer, we change the produced NChar
-			string into an introducer expression, so the vttablet will never see a NChar string */
-			ignoreNormalizerTest: true,
-		}, {
-			input:  `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1')`,
-			output: `select json_contains('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '1') from dual`,
-		}, {
-			input:  "SELECT JSON_CONTAINS(@j, @j2)",
-			output: "select json_contains(@j, @j2) from dual",
-		}, {
-			input:  "SELECT JSON_CONTAINS(@j, @j2,'$.a', @j)",
-			output: "select json_contains(@j, @j2, '$.a', @j) from dual",
-		}, {
-			input:  "SELECT JSON_CONTAINS_PATH(@j, 'one', '$.a', '$.e')",
-			output: "select json_contains_path(@j, 'one', '$.a', '$.e') from dual",
-		}, {
-			input:  `SELECT JSON_CONTAINS_PATH('{"a": 1, "b": 2, "c": {"d": 4}}', 'one', '$.a', '$.e')`,
-			output: `select json_contains_path('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'one', '$.a', '$.e') from dual`,
-		}, {
-			input:  "SELECT JSON_CONTAINS_PATH(@j, TRIM('one'), '$.a', '$.e')",
-			output: "select json_contains_path(@j, trim('one'), '$.a', '$.e') from dual",
-		}, {
-			input:  "SELECT JSON_CONTAINS_PATH(@j, @k, '$.a', @i)",
-			output: "select json_contains_path(@j, @k, '$.a', @i) from dual",
-		}, {
-			input:  "SELECT JSON_EXTRACT(@j, '$.a')",
-			output: "select json_extract(@j, '$.a') from dual",
-		}, {
-			input:  `SELECT c, JSON_EXTRACT(c, "$.id"), g FROM jemp WHERE JSON_EXTRACT(c, "$.id") > 1 ORDER BY JSON_EXTRACT(c, "$.name")`,
-			output: "select c, json_extract(c, '$.id'), g from jemp where json_extract(c, '$.id') > 1 order by json_extract(c, '$.name') asc",
-		}, {
-			input:  `SELECT JSON_EXTRACT('{"a": 1, "b": 2, "c": {"d": 4}}', '$.a', @j)`,
-			output: `select json_extract('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a', @j) from dual`,
-		}, {
-			input:  "SELECT JSON_EXTRACT(@k, TRIM('abc'))",
-			output: `select json_extract(@k, trim('abc')) from dual`,
-		}, {
-			input:  `SELECT JSON_KEYS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
-			output: `select json_keys('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
-		}, {
-			input:  `SELECT JSON_KEYS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}')`,
-			output: `select json_keys('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}') from dual`,
-		}, {
-			input:  `SELECT JSON_OVERLAPS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
-			output: `select json_overlaps('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
-		}, {
-			input:  "SELECT JSON_OVERLAPS(@j, @k)",
-			output: "select json_overlaps(@j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_OVERLAPS(@j, BIN(1))",
-			output: "select json_overlaps(@j, BIN(1)) from dual",
-		}, {
-			input:  "SELECT JSON_SEARCH(@j, 'one', 'abc')",
-			output: "select json_search(@j, 'one', 'abc') from dual",
-		}, {
-			input:  `SELECT JSON_SEARCH('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', @j, BIN(2))`,
-			output: `select json_search('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', @j, BIN(2)) from dual`,
-		}, {
-			input:  `SELECT JSON_SEARCH('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'all', '10', NULL)`,
-			output: `select json_search('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'all', '10', null) from dual`,
-		}, {
-			input:  "SELECT JSON_SEARCH(@j, 'all', '%b%', '', '$[3]')",
-			output: "select json_search(@j, 'all', '%b%', '', '$[3]') from dual",
-		}, {
-			input:  "SELECT JSON_SEARCH(@j, 'all', '%b%', 'a', '$[3]')",
-			output: "select json_search(@j, 'all', '%b%', 'a', '$[3]') from dual",
-		}, {
-			input:  `SELECT JSON_VALUE('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
-			output: `select json_value('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
-		}, {
-			input:  `SELECT JSON_VALUE(@j, @k)`,
-			output: `select json_value(@j, @k) from dual`,
-		}, {
-			input:  `select json_value(@j, @k RETURNING FLOAT) from dual`,
-			output: `select json_value(@j, @k returning FLOAT) from dual`,
-		}, {
-			input:  `select json_value(@j, @k RETURNING DECIMAL(4,2)) from dual`,
-			output: `select json_value(@j, @k returning DECIMAL(4, 2)) from dual`,
-		}, {
-			input:  `SELECT JSON_VALUE('{"fname": "Joe", "lname": "Palmer"}', '$.fname' returning char(49) Charset utf8mb4 error on error)`,
-			output: `select json_value('{\"fname\": \"Joe\", \"lname\": \"Palmer\"}', '$.fname' returning char(49) character set utf8mb4 error on error) from dual`,
-		}, {
-			input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON EMPTY) `,
-			output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on empty) from dual`,
-		}, {
-			input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON ERROR) `,
-			output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on error) from dual`,
-		}, {
-			input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON EMPTY ERROR ON ERROR) `,
-			output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on empty error on error) from dual`,
-		}, {
-			input:  `select json_value(@j, @k RETURNING FLOAT NULL ON EMPTY ERROR ON ERROR) from dual`,
-			output: `select json_value(@j, @k returning FLOAT null on empty error on error) from dual`,
-		}, {
-			input:  `SELECT 17 MEMBER OF ('[23, "abc", 17, "ab", 10]')`,
-			output: `select 17 member of ('[23, \"abc\", 17, \"ab\", 10]') from dual`,
-		}, {
-			input:  "SELECT @j MEMBER OF (@k)",
-			output: "select @j member of (@k) from dual",
-		}, {
-			input:  `SELECT 17 MEMBER OF('[23, "abc", "17", "ab", 10]'), "17" MEMBER OF('[23, "abc", 17, "ab", 10]')`,
-			output: `select 17 member of ('[23, \"abc\", \"17\", \"ab\", 10]'), '17' member of ('[23, \"abc\", 17, \"ab\", 10]') from dual`,
-		}, {
-			input:  `SELECT JSON_DEPTH('{}'), JSON_DEPTH('[]'), JSON_DEPTH('true')`,
-			output: `select json_depth('{}'), json_depth('[]'), json_depth('true') from dual`,
-		}, {
-			input:  `SELECT JSON_LENGTH('{"a": 1, "b": {"c": 30}}')`,
-			output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}') from dual`,
-		}, {
-			input:  `SELECT JSON_LENGTH('{"a": 1, "b": {"c": 30}}', '$.b');`,
-			output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}', '$.b') from dual`,
-		}, {
-			input:  `SELECT JSON_LENGTH('{\"a\": 1, \"b\": {\"c\": 30}}', @j);`,
-			output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}', @j) from dual`,
-		}, {
-			input:  `SELECT jcol, JSON_LENGTH(jcol)`,
-			output: `select jcol, json_length(jcol) from dual`,
-		}, {
-			input:  "SELECT JSON_TYPE(@j)",
-			output: "select json_type(@j) from dual",
-		}, {
-			input:  `SELECT JSON_TYPE(JSON_EXTRACT(@j, '$.a[0]'))`,
-			output: `select json_type(json_extract(@j, '$.a[0]')) from dual`,
-		}, {
-			input:  `SELECT JSON_VALID('{\"a\": 1}')`,
-			output: `select json_valid('{\"a\": 1}') from dual`,
-		}, {
-			input:  "SELECT JSON_VALID(@j)",
-			output: "select json_valid(@j) from dual",
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', @j, 1)`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', @j, @k)`,
-			output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
-		}, {
-			input:  "SELECT JSON_ARRAY_APPEND(@i,@j,@k)",
-			output: `select json_array_append(@i, @j, @k) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', @j, 1)`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
-		}, {
-			input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', @j, @k)`,
-			output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
-		}, {
-			input:  "SELECT JSON_ARRAY_INSERT(@i,@j,@k)",
-			output: "select json_array_insert(@i, @j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_ARRAY_INSERT(@j, '$[0]', 'x', '$[2][1]', 'y')",
-			output: "select json_array_insert(@j, '$[0]', 'x', '$[2][1]', 'y') from dual",
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', @j, 1)`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
-		}, {
-			input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', @j, @k)`,
-			output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
-		}, {
-			input:  "SELECT JSON_INSERT(@i,@j,@k)",
-			output: "select json_insert(@i, @j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_INSERT(@j, '$.a', 10, '$.c', '[true, false]')",
-			output: "select json_insert(@j, '$.a', 10, '$.c', '[true, false]') from dual",
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', @j, 1)`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
-		}, {
-			input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', @j, @k)`,
-			output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
-		}, {
-			input:  "SELECT JSON_REPLACE(@i,@j,@k)",
-			output: "select json_replace(@i, @j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_REPLACE(@j, '$.a', 10, '$.c', '[true, false]')",
-			output: "select json_replace(@j, '$.a', 10, '$.c', '[true, false]') from dual",
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', @j, 1)`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
-		}, {
-			input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', @j, @k)`,
-			output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
-		}, {
-			input:  "SELECT JSON_SET(@i,@j,@k)",
-			output: "select json_set(@i, @j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_SET(@j, '$.a', 10, '$.c', '[true, false]')",
-			output: "select json_set(@j, '$.a', 10, '$.c', '[true, false]') from dual",
-		}, {
-			input:  "SELECT JSON_MERGE('[1, 2]', '[true, false]')",
-			output: "select json_merge('[1, 2]', '[true, false]') from dual",
-		}, {
-			input:  "SELECT JSON_MERGE('[1, 2]', '[true, false]', 'hello')",
-			output: "select json_merge('[1, 2]', '[true, false]', 'hello') from dual",
-		}, {
-			input:  "SELECT JSON_MERGE('[1, 2]', @i)",
-			output: "select json_merge('[1, 2]', @i) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE(@i, @j)",
-			output: "select json_merge(@i, @j) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE(@i, @j, @k)",
-			output: "select json_merge(@i, @j, @k) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE(@i, '[true, false]')",
-			output: "select json_merge(@i, '[true, false]') from dual",
-		}, {
-			input:  `SELECT JSON_MERGE_PATCH('{"name": "x"}', '{"id": 47}')`,
-			output: `select json_merge_patch('{\"name\": \"x\"}', '{\"id\": 47}') from dual`,
-		}, {
-			input:  `SELECT JSON_MERGE_PATCH('{ "a": 1, "b":2 }','{ "a": 3, "c":4 }','{ "a": 5, "d":6 }');`,
-			output: `select json_merge_patch('{ \"a\": 1, \"b\":2 }', '{ \"a\": 3, \"c\":4 }', '{ \"a\": 5, \"d\":6 }') from dual`,
-		}, {
-			input:  "SELECT JSON_MERGE_PATCH('[1, 2]', '[true, false]', 'hello')",
-			output: "select json_merge_patch('[1, 2]', '[true, false]', 'hello') from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PATCH('[1, 2]', @i)",
-			output: "select json_merge_patch('[1, 2]', @i) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PATCH(@i, @j)",
-			output: "select json_merge_patch(@i, @j) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PATCH(@i, '[true, false]')",
-			output: "select json_merge_patch(@i, '[true, false]') from dual",
-		}, {
-			input:  `SELECT JSON_MERGE_PRESERVE('{"name": "x"}', '{"id": 47}')`,
-			output: `select json_merge_preserve('{\"name\": \"x\"}', '{\"id\": 47}') from dual`,
-		}, {
-			input:  `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b":2 }','{ "a": 3, "c":4 }','{ "a": 5, "d":6 }');`,
-			output: `select json_merge_preserve('{ \"a\": 1, \"b\":2 }', '{ \"a\": 3, \"c\":4 }', '{ \"a\": 5, \"d\":6 }') from dual`,
-		}, {
-			input:  "SELECT JSON_MERGE_PRESERVE('[1, 2]', '[true, false]', 'hello')",
-			output: "select json_merge_preserve('[1, 2]', '[true, false]', 'hello') from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PRESERVE('[1, 2]', @i)",
-			output: "select json_merge_preserve('[1, 2]', @i) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PRESERVE(@i, @j)",
-			output: "select json_merge_preserve(@i, @j) from dual",
-		}, {
-			input:  "SELECT JSON_MERGE_PRESERVE(@i, '[true, false]')",
-			output: "select json_merge_preserve(@i, '[true, false]') from dual",
-		}, {
-			input:  "SELECT JSON_REMOVE(@i, '$[1]')",
-			output: "select json_remove(@i, '$[1]') from dual",
-		}, {
-			input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', '$[1]')`,
-			output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', '$[1]') from dual`,
-		}, {
-			input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', @i)`,
-			output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', @i) from dual`,
-		}, {
-			input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', @i, @j, '$[0]', '$[1]','$[2]')`,
-			output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', @i, @j, '$[0]', '$[1]', '$[2]') from dual`,
-		}, {
-			input:  "SELECT JSON_UNQUOTE('abc')",
-			output: "select json_unquote('abc') from dual",
-		}, {
-			input:  `SELECT JSON_UNQUOTE('\"\\\\t\\\\u0032\"')`,
-			output: `select json_unquote('\"\\\\t\\\\u0032\"') from dual`,
-		}, {
-			input:  "SELECT JSON_UNQUOTE(@j)",
-			output: "select json_unquote(@j) from dual",
-		}, {
-			input:  "CREATE TABLE ts (id INT, purchased DATE) PARTITION BY RANGE( YEAR(purchased) ) SUBPARTITION BY HASH( TO_DAYS(purchased) ) ( PARTITION p0 VALUES LESS THAN (1990) (SUBPARTITION s0,SUBPARTITION s1),PARTITION p1 VALUES LESS THAN (2000),PARTITION p2 VALUES LESS THAN MAXVALUE (SUBPARTITION s2,SUBPARTITION s3));",
-			output: "create table ts (\n\tid INT,\n\tpurchased DATE\n)\npartition by range (YEAR(purchased)) subpartition by hash (TO_DAYS(purchased))\n(partition p0 values less than (1990) (subpartition s0, subpartition s1),\n partition p1 values less than (2000),\n partition p2 values less than maxvalue (subpartition s2, subpartition `s3`))",
-		}, {
-			input:  "SELECT REGEXP_INSTR('dog cat dog', 'dog')",
-			output: "select regexp_instr('dog cat dog', 'dog') from dual",
-		}, {
-			input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1)",
-			output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1) from dual",
-		}, {
-			input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'))",
-			output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2')) from dual",
-		}, {
-			input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'),0)",
-			output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2'), 0) from dual",
-		}, {
-			input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'),0, 'c')",
-			output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2'), 0, 'c') from dual",
-		}, {
-			input:  "SELECT REGEXP_LIKE('dog cat dog', 'dog')",
-			output: "select regexp_like('dog cat dog', 'dog') from dual",
-		}, {
-			input:  "SELECT NOT REGEXP_LIKE('dog cat dog', 'dog')",
-			output: "select not regexp_like('dog cat dog', 'dog') from dual",
-		}, {
-			input:  "SELECT REGEXP_LIKE('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1)",
-			output: "select regexp_like('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1) from dual",
-		}, {
-			input:  "SELECT REGEXP_REPLACE('a b c', 'b', 'X');",
-			output: "select regexp_replace('a b c', 'b', 'X') from dual",
-		}, {
-			input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1);",
-			output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1) from dual",
-		}, {
-			input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1, 3);",
-			output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1, 3) from dual",
-		}, {
-			input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1, 3, 'c');",
-			output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1, 3, 'c') from dual",
-		}, {
-			input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+');",
-			output: "select regexp_substr('abc def ghi', '[a-z]+') from dual",
-		}, {
-			input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1);",
-			output: "select regexp_substr('abc def ghi', '[a-z]+', 1) from dual",
-		}, {
-			input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 3);",
-			output: "select regexp_substr('abc def ghi', '[a-z]+', 1, 3) from dual",
-		}, {
-			input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 3, TRIM(' n '));",
-			output: "select regexp_substr('abc def ghi', '[a-z]+', 1, 3, trim(' n ')) from dual",
-		}, {
-			input:  "SELECT 'Michael!' RLIKE '.*';",
-			output: "select 'Michael!' regexp '.*' from dual",
-		}, {
-			input:  "SELECT TRIM('Michael!') RLIKE @j",
-			output: "select trim('Michael!') regexp @j from dual",
-		}, {
-			input:  "SELECT INSERT('Quadratic', 3, 4, 'What')",
-			output: "select insert('Quadratic', 3, 4, 'What') from dual",
-		}, {
-			input:  "SELECT INTERVAL(1, 3, 4)",
-			output: "select interval(1, 3, 4) from dual",
-		}, {
-			input:  "SELECT POSITION('bar' IN 'foobarbar')",
-			output: "select locate('bar', 'foobarbar') from dual",
-		}, {
-			input:  "SELECT CHAR(77,121,83,81,'76' USING utf8mb4)",
-			output: "select char(77, 121, 83, 81, '76' using utf8mb4) from dual",
-		}, {
-			input:  "SELECT val, CUME_DIST() OVER w, ROW_NUMBER() OVER w, DENSE_RANK() OVER w, PERCENT_RANK() OVER w, RANK() OVER w AS 'cd' FROM numbers",
-			output: "select val, cume_dist() over w, row_number() over w, dense_rank() over w, percent_rank() over w, rank() over w as cd from numbers",
-		}, {
-			input:  "SELECT year, country, product, profit, CUME_DIST() OVER() AS total_profit FROM sales",
-			output: "select `year`, country, product, profit, cume_dist() over () as total_profit from sales",
-		}, {
-			input:  "SELECT val, CUME_DIST() OVER (ORDER BY val) AS 'cd' FROM numbers",
-			output: "select val, cume_dist() over ( order by val asc) as cd from numbers",
-		}, {
-			input:  "SELECT val, CUME_DIST() OVER (PARTITION BY z ORDER BY val, subject DESC ROWS CURRENT ROW) AS 'cd' FROM numbers",
-			output: "select val, cume_dist() over ( partition by z order by val asc, subject desc rows current row) as cd from numbers",
-		}, {
-			input:  "SELECT val, CUME_DIST() OVER (val PARTITION BY z, subject ORDER BY val, subject DESC ROWS CURRENT ROW) AS 'cd' FROM numbers",
-			output: "select val, cume_dist() over ( val partition by z, subject order by val asc, subject desc rows current row) as cd from numbers",
-		}, {
-			input:  "SELECT val, FIRST_VALUE(val) OVER w FROM numbers",
-			output: "select val, first_value(val) over w from numbers",
-		}, {
-			input:  "SELECT val, LAST_VALUE(val) IGNORE NULLS OVER w FROM numbers",
-			output: "select val, last_value(val) ignore nulls over w from numbers",
-		}, {
-			input:  "SELECT NTILE(1) OVER w, NTILE(0) OVER w  FROM numbers",
-			output: "select ntile(1) over w, ntile(0) over w from numbers",
-		}, {
-			input:  "SELECT NTILE(NULL) OVER w FROM numbers",
-			output: "select ntile(null) over w from numbers",
-		}, {
-			input:  "SELECT NTILE(@val) OVER w FROM numbers",
-			output: "select ntile(@val) over w from numbers",
-		}, {
-			input:  "SELECT NTH_VALUE(@z,1) OVER w, NTH_VALUE('val',0) OVER w FROM numbers",
-			output: "select nth_value(@z, 1) over w, nth_value('val', 0) over w from numbers",
-		}, {
-			input:  "SELECT NTH_VALUE(val,NULL) FROM FIRST OVER w FROM numbers",
-			output: "select nth_value(val, null) respect nulls over w from numbers",
-		}, {
-			input:  "SELECT NTH_VALUE(val,NULL) RESPECT NULLS OVER w FROM numbers",
-			output: "select nth_value(val, null) respect nulls over w from numbers",
-		}, {
-			input:  "SELECT LAG(val) OVER w, LEAD(TRIM('abc')) OVER w FROM numbers",
-			output: "select lag(val) over w, lead(trim('abc')) over w from numbers",
-		}, {
-			input:  "SELECT LAG(val, 10) OVER w, LEAD('val', null) OVER w, LEAD(val, 1, ASCII(1)) OVER w FROM numbers",
-			output: "select lag(val, 10) over w, lead('val', null) over w, lead(val, 1, ASCII(1)) over w from numbers",
-		}, {
-			input:  "SELECT val, ROW_NUMBER() OVER (ORDER BY val) AS 'row_number' FROM numbers WINDOW w AS (ORDER BY val);",
-			output: "select val, row_number() over ( order by val asc) as `row_number` from numbers window w AS ( order by val asc)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS UNBOUNDED PRECEDING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows unbounded preceding)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time RANGE 10 PRECEDING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range 10 preceding)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS INTERVAL 5 DAY PRECEDING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows interval 5 DAY preceding)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time RANGE 5 FOLLOWING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range 5 following)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS INTERVAL '2:30' MINUTE_SECOND FOLLOWING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows interval '2:30' MINUTE_SECOND following)",
-		}, {
-			input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ASC RANGE BETWEEN 10 PRECEDING AND 10 FOLLOWING);",
-			output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range between 10 preceding and 10 following)",
-		}, {
-			input:  "SELECT ExtractValue('<a><b/></a>', '/a/b')",
-			output: "select extractvalue('<a><b/></a>', '/a/b') from dual",
-		}, {
-			input:  "SELECT @i, ExtractValue(@xml, '//b[$@i]')",
-			output: "select @i, extractvalue(@xml, '//b[$@i]') from dual",
-		}, {
-			input:  "SELECT ExtractValue(TRIM('<a><c/></a>'), 'count(/a/b)')",
-			output: "select extractvalue(trim('<a><c/></a>'), 'count(/a/b)') from dual",
-		}, {
-			input:  "SELECT UpdateXML(@xml, '//b:c', '<g:h>555</g:h>')",
-			output: "select updatexml(@xml, '//b:c', '<g:h>555</g:h>') from dual",
-		}, {
-			input:  "SELECT UpdateXML('<a><d></d><b>ccc</b><d></d></a>', '/a/d', '<e>fff</e>') AS val5",
-			output: "select updatexml('<a><d></d><b>ccc</b><d></d></a>', '/a/d', '<e>fff</e>') as val5 from dual",
-		}, {
-			input: "select get_lock('a', 10), is_free_lock('b'), is_used_lock('c'), release_all_locks(), release_lock('d') from dual",
-		}, {
-			input: "select /* function with distinct */ count(a) from t",
-		}, {
-			input:  "select /* function with distinct */ count(a) 'total col' from t",
-			output: "select /* function with distinct */ count(a) as `total col` from t",
-		}, {
-			input: "select /* function with distinct */ count(distinct a) from t",
-		}, {
-			input:  "select /* function with distinct */ count(distinct(a)) from t",
-			output: "select /* function with distinct */ count(distinct a) from t",
-		}, {
-			input: "select /* function with distinct */ count(*) from t",
-		}, {
-			input: "select avg(a) from products",
-		}, {
-			input:  "select avg(distinct(a)) from products",
-			output: "select avg(distinct a) from products",
-		}, {
-			input:  "select avg(a) 'Avg Price' from products",
-			output: "select avg(a) as `Avg Price` from products",
-		}, {
-			input: "select format(avg(distinct a), 2) from products",
-		}, {
-			input: "select max(a) from products",
-		}, {
-			input: "select min(a) from products",
-		}, {
-			input: "select sum(a) from products",
-		}, {
-			input:  "select sum(distinct(a)) from products",
-			output: "select sum(distinct a) from products",
-		}, {
-			input: "select sum(distinct a) from products",
-		}, {
-			input:  "select sum(a) 'sum Price' from products",
-			output: "select sum(a) as `sum Price` from products",
-		}, {
-			input: "select sum(a * b) from products",
-		}, {
-			input: "select bit_and(a) from products",
-		}, {
-			input: "select bit_or(a) from products",
-		}, {
-			input: "select bit_xor(a) from products",
-		}, {
-			input: "select std(a) from products",
-		}, {
-			input: "select stddev(a) from products",
-		}, {
-			input: "select stddev_pop(a) from products",
-		}, {
-			input: "select stddev_samp(a) from products",
-		}, {
-			input: "select var_pop(a) from products",
-		}, {
-			input: "select var_samp(a) from products",
-		}, {
-			input: "select variance(a) from products",
-		}, {
-			input:  "SELECT FORMAT_BYTES(512), FORMAT_BYTES(18446644073709551615), FORMAT_BYTES(@j), FORMAT_BYTES('asd'), FORMAT_BYTES(TRIM('str'))",
-			output: "select format_bytes(512), format_bytes(18446644073709551615), format_bytes(@j), format_bytes('asd'), format_bytes(trim('str')) from dual",
-		}, {
-			input:  "SELECT FORMAT_PICO_TIME(512), FORMAT_PICO_TIME(18446644073709551615), FORMAT_PICO_TIME(@j), FORMAT_PICO_TIME('asd'), FORMAT_PICO_TIME(TRIM('str'))",
-			output: "select format_pico_time(512), format_pico_time(18446644073709551615), format_pico_time(@j), format_pico_time('asd'), format_pico_time(trim('str')) from dual",
-		}, {
-			input:  "SELECT PS_CURRENT_THREAD_ID()",
-			output: "select ps_current_thread_id() from dual",
-		}, {
-			input:  "SELECT PS_THREAD_ID(512), PS_THREAD_ID(18446644073709551615), PS_THREAD_ID(@j), PS_THREAD_ID('asd'), PS_THREAD_ID(TRIM('str'))",
-			output: "select ps_thread_id(512), ps_thread_id(18446644073709551615), ps_thread_id(@j), ps_thread_id('asd'), ps_thread_id(trim('str')) from dual",
-		}, {
-			input:  "SELECT GTID_SUBSET('3E11FA47-71CA-11E1-9E33-C80AA9429562:23','3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')",
-			output: "select gtid_subset('3E11FA47-71CA-11E1-9E33-C80AA9429562:23', '3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57') from dual",
-		}, {
-			input:  "SELECT GTID_SUBSET(@j,TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'))",
-			output: "select gtid_subset(@j, trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')) from dual",
-		}, {
-			input:  "SELECT GTID_SUBTRACT('3E11FA47-71CA-11E1-9E33-C80AA9429562:23','3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')",
-			output: "select gtid_subtract('3E11FA47-71CA-11E1-9E33-C80AA9429562:23', '3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57') from dual",
-		}, {
-			input:  "SELECT GTID_SUBTRACT(@j,TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'))",
-			output: "select gtid_subtract(@j, trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')) from dual",
-		}, {
-			input:  "SELECT WAIT_FOR_EXECUTED_GTID_SET('3E11FA47-71CA-11E1-9E33-C80AA9429562:23')",
-			output: "select wait_for_executed_gtid_set('3E11FA47-71CA-11E1-9E33-C80AA9429562:23') from dual",
-		}, {
-			input:  "SELECT WAIT_FOR_EXECUTED_GTID_SET(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j)",
-			output: "select wait_for_executed_gtid_set(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j) from dual",
-		}, {
-			input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('3E11FA47-71CA-11E1-9E33-C80AA9429562:23')",
-			output: "select wait_until_sql_thread_after_gtids('3E11FA47-71CA-11E1-9E33-C80AA9429562:23') from dual",
-		}, {
-			input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j)",
-			output: "select wait_until_sql_thread_after_gtids(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j) from dual",
-		}, {
-			input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), 10, @i)",
-			output: "select wait_until_sql_thread_after_gtids(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), 10, @i) from dual",
-		}, {
-			// Offset as part of expressions
-			input: "select a, b from c where :1 + :2 = :302 and sum(:34) < :24",
-		}, {
-			input:  "select * from (((select 1))) as tbl",
-			output: "select * from (select 1 from dual) as tbl",
-		}, {
-			input:  `select * from t1 where col1 like 'ks\%' and col2 = 'ks\%' and col1 like 'ks%' and col2 = 'ks%'`,
-			output: `select * from t1 where col1 like 'ks\%' and col2 = 'ks\%' and col1 like 'ks%' and col2 = 'ks%'`,
-		}, {
-			input:  `select * from t1 where col1 like 'ks\_' and col2 = 'ks\_' and col1 like 'ks_' and col2 = 'ks_'`,
-			output: `select * from t1 where col1 like 'ks\_' and col2 = 'ks\_' and col1 like 'ks_' and col2 = 'ks_'`,
-		}}
+	}, {
+		input:  "SELECT JSON_ARRAY()",
+		output: "select json_array() from dual",
+	}, {
+		input:  "SELECT JSON_ARRAY(1)",
+		output: "select json_array(1) from dual",
+	}, {
+		input:  "SELECT JSON_ARRAY('abc')",
+		output: "select json_array('abc') from dual",
+	}, {
+		input:  "SELECT JSON_ARRAY(BIN(11))",
+		output: "select json_array(BIN(11)) from dual",
+	}, {
+		input:  `SELECT JSON_ARRAY(1, "abc", NULL, TRUE, CURTIME());`,
+		output: `select json_array(1, 'abc', null, true, CURTIME()) from dual`,
+	}, {
+		input:  "SELECT JSON_OBJECT(1,2)",
+		output: "select json_object(1, 2) from dual",
+	}, {
+		input:  "SELECT JSON_OBJECT(1,'abc')",
+		output: "select json_object(1, 'abc') from dual",
+	}, {
+		input:  "SELECT JSON_OBJECT('abc',1)",
+		output: "select json_object('abc', 1) from dual",
+	}, {
+		input:  "SELECT JSON_OBJECT(BIN(1),2)",
+		output: "select json_object(BIN(1), 2) from dual",
+	}, {
+		input:  "SELECT JSON_OBJECT(BIN(1),2,'abc',ASCII(4))",
+		output: "select json_object(BIN(1), 2, 'abc', ASCII(4)) from dual",
+	}, {
+		input:  "SELECT JSON_QUOTE(BIN(11))",
+		output: "select json_quote(BIN(11)) from dual",
+	}, {
+		input:  `SELECT JSON_QUOTE('null'), JSON_QUOTE('"null"')`,
+		output: `select json_quote('null'), json_quote('\"null\"') from dual`,
+	}, {
+		input:  "select t1.a, dt.a from t1, lateral (select t1.a+t2.a as a from t2) dt",
+		output: "select t1.a, dt.a from t1, lateral (select t1.a + t2.a as a from t2) as dt",
+	}, {
+		input:  "select b from v1 vq1, lateral (select count(*) from v1 vq2 having vq1.b = 3) dt",
+		output: "select b from v1 as vq1, lateral (select count(*) from v1 as vq2 having vq1.b = 3) as dt",
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALID('{"type":"string","pattern":"("}', '"abc"')`,
+		output: `select json_schema_valid('{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALID('{"type":"string","pattern":"("}', @a)`,
+		output: `select json_schema_valid('{\"type\":\"string\",\"pattern\":\"(\"}', @a) from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALID(@b, BIN(1))`,
+		output: `select json_schema_valid(@b, BIN(1)) from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALID(N'{"type":"string","pattern":"("}', '"abc"')`,
+		output: `select json_schema_valid(N'{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
+		/*We need to ignore this test because, after the normalizer, we change the produced NChar
+		string into an introducer expression, so the vttablet will never see a NChar string */
+		ignoreNormalizerTest: true,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT('{"type":"string","pattern":"("}', '"abc"')`,
+		output: `select json_schema_validation_report('{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT('{"type":"string","pattern":"("}', @a)`,
+		output: `select json_schema_validation_report('{\"type\":\"string\",\"pattern\":\"(\"}', @a) from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT(@b, BIN(1))`,
+		output: `select json_schema_validation_report(@b, BIN(1)) from dual`,
+	}, {
+		input:  `SELECT JSON_SCHEMA_VALIDATION_REPORT(N'{"type":"string","pattern":"("}', '"abc"')`,
+		output: `select json_schema_validation_report(N'{\"type\":\"string\",\"pattern\":\"(\"}', '\"abc\"') from dual`,
+		/*We need to ignore this test because, after the normalizer, we change the produced NChar
+		string into an introducer expression, so the vttablet will never see a NChar string */
+		ignoreNormalizerTest: true,
+	}, {
+		input:  `SELECT JSON_CONTAINS('{"a": 1, "b": 2, "c": {"d": 4}}', '1')`,
+		output: `select json_contains('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '1') from dual`,
+	}, {
+		input:  "SELECT JSON_CONTAINS(@j, @j2)",
+		output: "select json_contains(@j, @j2) from dual",
+	}, {
+		input:  "SELECT JSON_CONTAINS(@j, @j2,'$.a', @j)",
+		output: "select json_contains(@j, @j2, '$.a', @j) from dual",
+	}, {
+		input:  "SELECT JSON_CONTAINS_PATH(@j, 'one', '$.a', '$.e')",
+		output: "select json_contains_path(@j, 'one', '$.a', '$.e') from dual",
+	}, {
+		input:  `SELECT JSON_CONTAINS_PATH('{"a": 1, "b": 2, "c": {"d": 4}}', 'one', '$.a', '$.e')`,
+		output: `select json_contains_path('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'one', '$.a', '$.e') from dual`,
+	}, {
+		input:  "SELECT JSON_CONTAINS_PATH(@j, TRIM('one'), '$.a', '$.e')",
+		output: "select json_contains_path(@j, trim('one'), '$.a', '$.e') from dual",
+	}, {
+		input:  "SELECT JSON_CONTAINS_PATH(@j, @k, '$.a', @i)",
+		output: "select json_contains_path(@j, @k, '$.a', @i) from dual",
+	}, {
+		input:  "SELECT JSON_EXTRACT(@j, '$.a')",
+		output: "select json_extract(@j, '$.a') from dual",
+	}, {
+		input:  `SELECT c, JSON_EXTRACT(c, "$.id"), g FROM jemp WHERE JSON_EXTRACT(c, "$.id") > 1 ORDER BY JSON_EXTRACT(c, "$.name")`,
+		output: "select c, json_extract(c, '$.id'), g from jemp where json_extract(c, '$.id') > 1 order by json_extract(c, '$.name') asc",
+	}, {
+		input:  `SELECT JSON_EXTRACT('{"a": 1, "b": 2, "c": {"d": 4}}', '$.a', @j)`,
+		output: `select json_extract('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a', @j) from dual`,
+	}, {
+		input:  "SELECT JSON_EXTRACT(@k, TRIM('abc'))",
+		output: `select json_extract(@k, trim('abc')) from dual`,
+	}, {
+		input:  `SELECT JSON_KEYS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
+		output: `select json_keys('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
+	}, {
+		input:  `SELECT JSON_KEYS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}')`,
+		output: `select json_keys('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}') from dual`,
+	}, {
+		input:  `SELECT JSON_OVERLAPS('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
+		output: `select json_overlaps('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
+	}, {
+		input:  "SELECT JSON_OVERLAPS(@j, @k)",
+		output: "select json_overlaps(@j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_OVERLAPS(@j, BIN(1))",
+		output: "select json_overlaps(@j, BIN(1)) from dual",
+	}, {
+		input:  "SELECT JSON_SEARCH(@j, 'one', 'abc')",
+		output: "select json_search(@j, 'one', 'abc') from dual",
+	}, {
+		input:  `SELECT JSON_SEARCH('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', @j, BIN(2))`,
+		output: `select json_search('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', @j, BIN(2)) from dual`,
+	}, {
+		input:  `SELECT JSON_SEARCH('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'all', '10', NULL)`,
+		output: `select json_search('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', 'all', '10', null) from dual`,
+	}, {
+		input:  "SELECT JSON_SEARCH(@j, 'all', '%b%', '', '$[3]')",
+		output: "select json_search(@j, 'all', '%b%', '', '$[3]') from dual",
+	}, {
+		input:  "SELECT JSON_SEARCH(@j, 'all', '%b%', 'a', '$[3]')",
+		output: "select json_search(@j, 'all', '%b%', 'a', '$[3]') from dual",
+	}, {
+		input:  `SELECT JSON_VALUE('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a')`,
+		output: `select json_value('{\"a\": 1, \"b\": 2, \"c\": {\"d\": 4}}', '$.a') from dual`,
+	}, {
+		input:  `SELECT JSON_VALUE(@j, @k)`,
+		output: `select json_value(@j, @k) from dual`,
+	}, {
+		input:  `select json_value(@j, @k RETURNING FLOAT) from dual`,
+		output: `select json_value(@j, @k returning FLOAT) from dual`,
+	}, {
+		input:  `select json_value(@j, @k RETURNING DECIMAL(4,2)) from dual`,
+		output: `select json_value(@j, @k returning DECIMAL(4, 2)) from dual`,
+	}, {
+		input:  `SELECT JSON_VALUE('{"fname": "Joe", "lname": "Palmer"}', '$.fname' returning char(49) Charset utf8mb4 error on error)`,
+		output: `select json_value('{\"fname\": \"Joe\", \"lname\": \"Palmer\"}', '$.fname' returning char(49) character set utf8mb4 error on error) from dual`,
+	}, {
+		input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON EMPTY) `,
+		output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on empty) from dual`,
+	}, {
+		input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON ERROR) `,
+		output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on error) from dual`,
+	}, {
+		input:  `SELECT JSON_VALUE('{"item": "shoes", "price": "49.95"}', '$.price' NULL ON EMPTY ERROR ON ERROR) `,
+		output: `select json_value('{\"item\": \"shoes\", \"price\": \"49.95\"}', '$.price' null on empty error on error) from dual`,
+	}, {
+		input:  `select json_value(@j, @k RETURNING FLOAT NULL ON EMPTY ERROR ON ERROR) from dual`,
+		output: `select json_value(@j, @k returning FLOAT null on empty error on error) from dual`,
+	}, {
+		input:  `SELECT 17 MEMBER OF ('[23, "abc", 17, "ab", 10]')`,
+		output: `select 17 member of ('[23, \"abc\", 17, \"ab\", 10]') from dual`,
+	}, {
+		input:  "SELECT @j MEMBER OF (@k)",
+		output: "select @j member of (@k) from dual",
+	}, {
+		input:  `SELECT 17 MEMBER OF('[23, "abc", "17", "ab", 10]'), "17" MEMBER OF('[23, "abc", 17, "ab", 10]')`,
+		output: `select 17 member of ('[23, \"abc\", \"17\", \"ab\", 10]'), '17' member of ('[23, \"abc\", 17, \"ab\", 10]') from dual`,
+	}, {
+		input:  `SELECT JSON_DEPTH('{}'), JSON_DEPTH('[]'), JSON_DEPTH('true')`,
+		output: `select json_depth('{}'), json_depth('[]'), json_depth('true') from dual`,
+	}, {
+		input:  `SELECT JSON_LENGTH('{"a": 1, "b": {"c": 30}}')`,
+		output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}') from dual`,
+	}, {
+		input:  `SELECT JSON_LENGTH('{"a": 1, "b": {"c": 30}}', '$.b');`,
+		output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}', '$.b') from dual`,
+	}, {
+		input:  `SELECT JSON_LENGTH('{\"a\": 1, \"b\": {\"c\": 30}}', @j);`,
+		output: `select json_length('{\"a\": 1, \"b\": {\"c\": 30}}', @j) from dual`,
+	}, {
+		input:  `SELECT jcol, JSON_LENGTH(jcol)`,
+		output: `select jcol, json_length(jcol) from dual`,
+	}, {
+		input:  "SELECT JSON_TYPE(@j)",
+		output: "select json_type(@j) from dual",
+	}, {
+		input:  `SELECT JSON_TYPE(JSON_EXTRACT(@j, '$.a[0]'))`,
+		output: `select json_type(json_extract(@j, '$.a[0]')) from dual`,
+	}, {
+		input:  `SELECT JSON_VALID('{\"a\": 1}')`,
+		output: `select json_valid('{\"a\": 1}') from dual`,
+	}, {
+		input:  "SELECT JSON_VALID(@j)",
+		output: "select json_valid(@j) from dual",
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', @j, 1)`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_APPEND('{ "a": 1, "b": [2, 3]}', @j, @k)`,
+		output: `select json_array_append('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
+	}, {
+		input:  "SELECT JSON_ARRAY_APPEND(@i,@j,@k)",
+		output: `select json_array_append(@i, @j, @k) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', @j, 1)`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
+	}, {
+		input:  `SELECT JSON_ARRAY_INSERT('{ "a": 1, "b": [2, 3]}', @j, @k)`,
+		output: `select json_array_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
+	}, {
+		input:  "SELECT JSON_ARRAY_INSERT(@i,@j,@k)",
+		output: "select json_array_insert(@i, @j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_ARRAY_INSERT(@j, '$[0]', 'x', '$[2][1]', 'y')",
+		output: "select json_array_insert(@j, '$[0]', 'x', '$[2][1]', 'y') from dual",
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', @j, 1)`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
+	}, {
+		input:  `SELECT JSON_INSERT('{ "a": 1, "b": [2, 3]}', @j, @k)`,
+		output: `select json_insert('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
+	}, {
+		input:  "SELECT JSON_INSERT(@i,@j,@k)",
+		output: "select json_insert(@i, @j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_INSERT(@j, '$.a', 10, '$.c', '[true, false]')",
+		output: "select json_insert(@j, '$.a', 10, '$.c', '[true, false]') from dual",
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', @j, 1)`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
+	}, {
+		input:  `SELECT JSON_REPLACE('{ "a": 1, "b": [2, 3]}', @j, @k)`,
+		output: `select json_replace('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
+	}, {
+		input:  "SELECT JSON_REPLACE(@i,@j,@k)",
+		output: "select json_replace(@i, @j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_REPLACE(@j, '$.a', 10, '$.c', '[true, false]')",
+		output: "select json_replace(@j, '$.a', 10, '$.c', '[true, false]') from dual",
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x')`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x') from dual`,
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x', '$[2]', 1)`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', '$[2]', 1) from dual`,
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}','$[1]', 'x', @i, @j)`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', 'x', @i, @j) from dual`,
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', @j, 1)`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', @j, 1) from dual`,
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', '$[1]', @j)`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', '$[1]', @j) from dual`,
+	}, {
+		input:  `SELECT JSON_SET('{ "a": 1, "b": [2, 3]}', @j, @k)`,
+		output: `select json_set('{ \"a\": 1, \"b\": [2, 3]}', @j, @k) from dual`,
+	}, {
+		input:  "SELECT JSON_SET(@i,@j,@k)",
+		output: "select json_set(@i, @j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_SET(@j, '$.a', 10, '$.c', '[true, false]')",
+		output: "select json_set(@j, '$.a', 10, '$.c', '[true, false]') from dual",
+	}, {
+		input:  "SELECT JSON_MERGE('[1, 2]', '[true, false]')",
+		output: "select json_merge('[1, 2]', '[true, false]') from dual",
+	}, {
+		input:  "SELECT JSON_MERGE('[1, 2]', '[true, false]', 'hello')",
+		output: "select json_merge('[1, 2]', '[true, false]', 'hello') from dual",
+	}, {
+		input:  "SELECT JSON_MERGE('[1, 2]', @i)",
+		output: "select json_merge('[1, 2]', @i) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE(@i, @j)",
+		output: "select json_merge(@i, @j) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE(@i, @j, @k)",
+		output: "select json_merge(@i, @j, @k) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE(@i, '[true, false]')",
+		output: "select json_merge(@i, '[true, false]') from dual",
+	}, {
+		input:  `SELECT JSON_MERGE_PATCH('{"name": "x"}', '{"id": 47}')`,
+		output: `select json_merge_patch('{\"name\": \"x\"}', '{\"id\": 47}') from dual`,
+	}, {
+		input:  `SELECT JSON_MERGE_PATCH('{ "a": 1, "b":2 }','{ "a": 3, "c":4 }','{ "a": 5, "d":6 }');`,
+		output: `select json_merge_patch('{ \"a\": 1, \"b\":2 }', '{ \"a\": 3, \"c\":4 }', '{ \"a\": 5, \"d\":6 }') from dual`,
+	}, {
+		input:  "SELECT JSON_MERGE_PATCH('[1, 2]', '[true, false]', 'hello')",
+		output: "select json_merge_patch('[1, 2]', '[true, false]', 'hello') from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PATCH('[1, 2]', @i)",
+		output: "select json_merge_patch('[1, 2]', @i) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PATCH(@i, @j)",
+		output: "select json_merge_patch(@i, @j) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PATCH(@i, '[true, false]')",
+		output: "select json_merge_patch(@i, '[true, false]') from dual",
+	}, {
+		input:  `SELECT JSON_MERGE_PRESERVE('{"name": "x"}', '{"id": 47}')`,
+		output: `select json_merge_preserve('{\"name\": \"x\"}', '{\"id\": 47}') from dual`,
+	}, {
+		input:  `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b":2 }','{ "a": 3, "c":4 }','{ "a": 5, "d":6 }');`,
+		output: `select json_merge_preserve('{ \"a\": 1, \"b\":2 }', '{ \"a\": 3, \"c\":4 }', '{ \"a\": 5, \"d\":6 }') from dual`,
+	}, {
+		input:  "SELECT JSON_MERGE_PRESERVE('[1, 2]', '[true, false]', 'hello')",
+		output: "select json_merge_preserve('[1, 2]', '[true, false]', 'hello') from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PRESERVE('[1, 2]', @i)",
+		output: "select json_merge_preserve('[1, 2]', @i) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PRESERVE(@i, @j)",
+		output: "select json_merge_preserve(@i, @j) from dual",
+	}, {
+		input:  "SELECT JSON_MERGE_PRESERVE(@i, '[true, false]')",
+		output: "select json_merge_preserve(@i, '[true, false]') from dual",
+	}, {
+		input:  "SELECT JSON_REMOVE(@i, '$[1]')",
+		output: "select json_remove(@i, '$[1]') from dual",
+	}, {
+		input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', '$[1]')`,
+		output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', '$[1]') from dual`,
+	}, {
+		input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', @i)`,
+		output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', @i) from dual`,
+	}, {
+		input:  `SELECT JSON_REMOVE('["a", ["b", "c"], "d"]', @i, @j, '$[0]', '$[1]','$[2]')`,
+		output: `select json_remove('[\"a\", [\"b\", \"c\"], \"d\"]', @i, @j, '$[0]', '$[1]', '$[2]') from dual`,
+	}, {
+		input:  "SELECT JSON_UNQUOTE('abc')",
+		output: "select json_unquote('abc') from dual",
+	}, {
+		input:  `SELECT JSON_UNQUOTE('\"\\\\t\\\\u0032\"')`,
+		output: `select json_unquote('\"\\\\t\\\\u0032\"') from dual`,
+	}, {
+		input:  "SELECT JSON_UNQUOTE(@j)",
+		output: "select json_unquote(@j) from dual",
+	}, {
+		input:  "CREATE TABLE ts (id INT, purchased DATE) PARTITION BY RANGE( YEAR(purchased) ) SUBPARTITION BY HASH( TO_DAYS(purchased) ) ( PARTITION p0 VALUES LESS THAN (1990) (SUBPARTITION s0,SUBPARTITION s1),PARTITION p1 VALUES LESS THAN (2000),PARTITION p2 VALUES LESS THAN MAXVALUE (SUBPARTITION s2,SUBPARTITION s3));",
+		output: "create table ts (\n\tid INT,\n\tpurchased DATE\n)\npartition by range (YEAR(purchased)) subpartition by hash (TO_DAYS(purchased))\n(partition p0 values less than (1990) (subpartition s0, subpartition s1),\n partition p1 values less than (2000),\n partition p2 values less than maxvalue (subpartition s2, subpartition `s3`))",
+	}, {
+		input:  "SELECT REGEXP_INSTR('dog cat dog', 'dog')",
+		output: "select regexp_instr('dog cat dog', 'dog') from dual",
+	}, {
+		input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1)",
+		output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1) from dual",
+	}, {
+		input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'))",
+		output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2')) from dual",
+	}, {
+		input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'),0)",
+		output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2'), 0) from dual",
+	}, {
+		input:  "SELECT REGEXP_INSTR('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1,TRIM('2'),0, 'c')",
+		output: "select regexp_instr('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1, trim('2'), 0, 'c') from dual",
+	}, {
+		input:  "SELECT REGEXP_LIKE('dog cat dog', 'dog')",
+		output: "select regexp_like('dog cat dog', 'dog') from dual",
+	}, {
+		input:  "SELECT NOT REGEXP_LIKE('dog cat dog', 'dog')",
+		output: "select not regexp_like('dog cat dog', 'dog') from dual",
+	}, {
+		input:  "SELECT REGEXP_LIKE('aa aaa aaaa aaaa aaaa aaaa', 'a{4}',1)",
+		output: "select regexp_like('aa aaa aaaa aaaa aaaa aaaa', 'a{4}', 1) from dual",
+	}, {
+		input:  "SELECT REGEXP_REPLACE('a b c', 'b', 'X');",
+		output: "select regexp_replace('a b c', 'b', 'X') from dual",
+	}, {
+		input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1);",
+		output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1) from dual",
+	}, {
+		input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1, 3);",
+		output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1, 3) from dual",
+	}, {
+		input:  "SELECT REGEXP_REPLACE('abc def ghi', '[a-z]+', 'X', 1, 3, 'c');",
+		output: "select regexp_replace('abc def ghi', '[a-z]+', 'X', 1, 3, 'c') from dual",
+	}, {
+		input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+');",
+		output: "select regexp_substr('abc def ghi', '[a-z]+') from dual",
+	}, {
+		input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1);",
+		output: "select regexp_substr('abc def ghi', '[a-z]+', 1) from dual",
+	}, {
+		input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 3);",
+		output: "select regexp_substr('abc def ghi', '[a-z]+', 1, 3) from dual",
+	}, {
+		input:  "SELECT REGEXP_SUBSTR('abc def ghi', '[a-z]+', 1, 3, TRIM(' n '));",
+		output: "select regexp_substr('abc def ghi', '[a-z]+', 1, 3, trim(' n ')) from dual",
+	}, {
+		input:  "SELECT 'Michael!' RLIKE '.*';",
+		output: "select 'Michael!' regexp '.*' from dual",
+	}, {
+		input:  "SELECT TRIM('Michael!') RLIKE @j",
+		output: "select trim('Michael!') regexp @j from dual",
+	}, {
+		input:  "SELECT INSERT('Quadratic', 3, 4, 'What')",
+		output: "select insert('Quadratic', 3, 4, 'What') from dual",
+	}, {
+		input:  "SELECT INTERVAL(1, 3, 4)",
+		output: "select interval(1, 3, 4) from dual",
+	}, {
+		input:  "SELECT POSITION('bar' IN 'foobarbar')",
+		output: "select locate('bar', 'foobarbar') from dual",
+	}, {
+		input:  "SELECT CHAR(77,121,83,81,'76' USING utf8mb4)",
+		output: "select char(77, 121, 83, 81, '76' using utf8mb4) from dual",
+	}, {
+		input:  "SELECT val, CUME_DIST() OVER w, ROW_NUMBER() OVER w, DENSE_RANK() OVER w, PERCENT_RANK() OVER w, RANK() OVER w AS 'cd' FROM numbers",
+		output: "select val, cume_dist() over w, row_number() over w, dense_rank() over w, percent_rank() over w, rank() over w as cd from numbers",
+	}, {
+		input:  "SELECT year, country, product, profit, CUME_DIST() OVER() AS total_profit FROM sales",
+		output: "select `year`, country, product, profit, cume_dist() over () as total_profit from sales",
+	}, {
+		input:  "SELECT val, CUME_DIST() OVER (ORDER BY val) AS 'cd' FROM numbers",
+		output: "select val, cume_dist() over ( order by val asc) as cd from numbers",
+	}, {
+		input:  "SELECT val, CUME_DIST() OVER (PARTITION BY z ORDER BY val, subject DESC ROWS CURRENT ROW) AS 'cd' FROM numbers",
+		output: "select val, cume_dist() over ( partition by z order by val asc, subject desc rows current row) as cd from numbers",
+	}, {
+		input:  "SELECT val, CUME_DIST() OVER (val PARTITION BY z, subject ORDER BY val, subject DESC ROWS CURRENT ROW) AS 'cd' FROM numbers",
+		output: "select val, cume_dist() over ( val partition by z, subject order by val asc, subject desc rows current row) as cd from numbers",
+	}, {
+		input:  "SELECT val, FIRST_VALUE(val) OVER w FROM numbers",
+		output: "select val, first_value(val) over w from numbers",
+	}, {
+		input:  "SELECT val, LAST_VALUE(val) IGNORE NULLS OVER w FROM numbers",
+		output: "select val, last_value(val) ignore nulls over w from numbers",
+	}, {
+		input:  "SELECT NTILE(1) OVER w, NTILE(0) OVER w  FROM numbers",
+		output: "select ntile(1) over w, ntile(0) over w from numbers",
+	}, {
+		input:  "SELECT NTILE(NULL) OVER w FROM numbers",
+		output: "select ntile(null) over w from numbers",
+	}, {
+		input:  "SELECT NTILE(@val) OVER w FROM numbers",
+		output: "select ntile(@val) over w from numbers",
+	}, {
+		input:  "SELECT NTH_VALUE(@z,1) OVER w, NTH_VALUE('val',0) OVER w FROM numbers",
+		output: "select nth_value(@z, 1) over w, nth_value('val', 0) over w from numbers",
+	}, {
+		input:  "SELECT NTH_VALUE(val,NULL) FROM FIRST OVER w FROM numbers",
+		output: "select nth_value(val, null) respect nulls over w from numbers",
+	}, {
+		input:  "SELECT NTH_VALUE(val,NULL) RESPECT NULLS OVER w FROM numbers",
+		output: "select nth_value(val, null) respect nulls over w from numbers",
+	}, {
+		input:  "SELECT LAG(val) OVER w, LEAD(TRIM('abc')) OVER w FROM numbers",
+		output: "select lag(val) over w, lead(trim('abc')) over w from numbers",
+	}, {
+		input:  "SELECT LAG(val, 10) OVER w, LEAD('val', null) OVER w, LEAD(val, 1, ASCII(1)) OVER w FROM numbers",
+		output: "select lag(val, 10) over w, lead('val', null) over w, lead(val, 1, ASCII(1)) over w from numbers",
+	}, {
+		input:  "SELECT val, ROW_NUMBER() OVER (ORDER BY val) AS 'row_number' FROM numbers WINDOW w AS (ORDER BY val);",
+		output: "select val, row_number() over ( order by val asc) as `row_number` from numbers window w AS ( order by val asc)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS UNBOUNDED PRECEDING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows unbounded preceding)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time RANGE 10 PRECEDING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range 10 preceding)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS INTERVAL 5 DAY PRECEDING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows interval 5 DAY preceding)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time RANGE 5 FOLLOWING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range 5 following)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ROWS INTERVAL '2:30' MINUTE_SECOND FOLLOWING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc rows interval '2:30' MINUTE_SECOND following)",
+	}, {
+		input:  "SELECT time, subject, val, FIRST_VALUE(val)  OVER w AS 'first', LAST_VALUE(val) OVER w AS 'last', NTH_VALUE(val, 2) OVER w AS 'second', NTH_VALUE(val, 4) OVER w AS 'fourth' FROM observations WINDOW w AS (PARTITION BY subject ORDER BY time ASC RANGE BETWEEN 10 PRECEDING AND 10 FOLLOWING);",
+		output: "select `time`, subject, val, first_value(val) over w as `first`, last_value(val) over w as `last`, nth_value(val, 2) over w as `second`, nth_value(val, 4) over w as fourth from observations window w AS ( partition by subject order by `time` asc range between 10 preceding and 10 following)",
+	}, {
+		input:  "SELECT ExtractValue('<a><b/></a>', '/a/b')",
+		output: "select extractvalue('<a><b/></a>', '/a/b') from dual",
+	}, {
+		input:  "SELECT @i, ExtractValue(@xml, '//b[$@i]')",
+		output: "select @i, extractvalue(@xml, '//b[$@i]') from dual",
+	}, {
+		input:  "SELECT ExtractValue(TRIM('<a><c/></a>'), 'count(/a/b)')",
+		output: "select extractvalue(trim('<a><c/></a>'), 'count(/a/b)') from dual",
+	}, {
+		input:  "SELECT UpdateXML(@xml, '//b:c', '<g:h>555</g:h>')",
+		output: "select updatexml(@xml, '//b:c', '<g:h>555</g:h>') from dual",
+	}, {
+		input:  "SELECT UpdateXML('<a><d></d><b>ccc</b><d></d></a>', '/a/d', '<e>fff</e>') AS val5",
+		output: "select updatexml('<a><d></d><b>ccc</b><d></d></a>', '/a/d', '<e>fff</e>') as val5 from dual",
+	}, {
+		input: "select get_lock('a', 10), is_free_lock('b'), is_used_lock('c'), release_all_locks(), release_lock('d') from dual",
+	}, {
+		input: "select /* function with distinct */ count(a) from t",
+	}, {
+		input:  "select /* function with distinct */ count(a) 'total col' from t",
+		output: "select /* function with distinct */ count(a) as `total col` from t",
+	}, {
+		input: "select /* function with distinct */ count(distinct a) from t",
+	}, {
+		input:  "select /* function with distinct */ count(distinct(a)) from t",
+		output: "select /* function with distinct */ count(distinct a) from t",
+	}, {
+		input: "select /* function with distinct */ count(*) from t",
+	}, {
+		input: "select avg(a) from products",
+	}, {
+		input:  "select avg(distinct(a)) from products",
+		output: "select avg(distinct a) from products",
+	}, {
+		input:  "select avg(a) 'Avg Price' from products",
+		output: "select avg(a) as `Avg Price` from products",
+	}, {
+		input: "select format(avg(distinct a), 2) from products",
+	}, {
+		input: "select max(a) from products",
+	}, {
+		input: "select min(a) from products",
+	}, {
+		input: "select sum(a) from products",
+	}, {
+		input:  "select sum(distinct(a)) from products",
+		output: "select sum(distinct a) from products",
+	}, {
+		input: "select sum(distinct a) from products",
+	}, {
+		input:  "select sum(a) 'sum Price' from products",
+		output: "select sum(a) as `sum Price` from products",
+	}, {
+		input: "select sum(a * b) from products",
+	}, {
+		input: "select bit_and(a) from products",
+	}, {
+		input: "select bit_or(a) from products",
+	}, {
+		input: "select bit_xor(a) from products",
+	}, {
+		input: "select std(a) from products",
+	}, {
+		input: "select stddev(a) from products",
+	}, {
+		input: "select stddev_pop(a) from products",
+	}, {
+		input: "select stddev_samp(a) from products",
+	}, {
+		input: "select var_pop(a) from products",
+	}, {
+		input: "select var_samp(a) from products",
+	}, {
+		input: "select variance(a) from products",
+	}, {
+		input:  "SELECT FORMAT_BYTES(512), FORMAT_BYTES(18446644073709551615), FORMAT_BYTES(@j), FORMAT_BYTES('asd'), FORMAT_BYTES(TRIM('str'))",
+		output: "select format_bytes(512), format_bytes(18446644073709551615), format_bytes(@j), format_bytes('asd'), format_bytes(trim('str')) from dual",
+	}, {
+		input:  "SELECT FORMAT_PICO_TIME(512), FORMAT_PICO_TIME(18446644073709551615), FORMAT_PICO_TIME(@j), FORMAT_PICO_TIME('asd'), FORMAT_PICO_TIME(TRIM('str'))",
+		output: "select format_pico_time(512), format_pico_time(18446644073709551615), format_pico_time(@j), format_pico_time('asd'), format_pico_time(trim('str')) from dual",
+	}, {
+		input:  "SELECT PS_CURRENT_THREAD_ID()",
+		output: "select ps_current_thread_id() from dual",
+	}, {
+		input:  "SELECT PS_THREAD_ID(512), PS_THREAD_ID(18446644073709551615), PS_THREAD_ID(@j), PS_THREAD_ID('asd'), PS_THREAD_ID(TRIM('str'))",
+		output: "select ps_thread_id(512), ps_thread_id(18446644073709551615), ps_thread_id(@j), ps_thread_id('asd'), ps_thread_id(trim('str')) from dual",
+	}, {
+		input:  "SELECT GTID_SUBSET('3E11FA47-71CA-11E1-9E33-C80AA9429562:23','3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')",
+		output: "select gtid_subset('3E11FA47-71CA-11E1-9E33-C80AA9429562:23', '3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57') from dual",
+	}, {
+		input:  "SELECT GTID_SUBSET(@j,TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'))",
+		output: "select gtid_subset(@j, trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')) from dual",
+	}, {
+		input:  "SELECT GTID_SUBTRACT('3E11FA47-71CA-11E1-9E33-C80AA9429562:23','3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')",
+		output: "select gtid_subtract('3E11FA47-71CA-11E1-9E33-C80AA9429562:23', '3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57') from dual",
+	}, {
+		input:  "SELECT GTID_SUBTRACT(@j,TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'))",
+		output: "select gtid_subtract(@j, trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57')) from dual",
+	}, {
+		input:  "SELECT WAIT_FOR_EXECUTED_GTID_SET('3E11FA47-71CA-11E1-9E33-C80AA9429562:23')",
+		output: "select wait_for_executed_gtid_set('3E11FA47-71CA-11E1-9E33-C80AA9429562:23') from dual",
+	}, {
+		input:  "SELECT WAIT_FOR_EXECUTED_GTID_SET(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j)",
+		output: "select wait_for_executed_gtid_set(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j) from dual",
+	}, {
+		input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS('3E11FA47-71CA-11E1-9E33-C80AA9429562:23')",
+		output: "select wait_until_sql_thread_after_gtids('3E11FA47-71CA-11E1-9E33-C80AA9429562:23') from dual",
+	}, {
+		input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j)",
+		output: "select wait_until_sql_thread_after_gtids(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), @j) from dual",
+	}, {
+		input:  "SELECT WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS(TRIM('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), 10, @i)",
+		output: "select wait_until_sql_thread_after_gtids(trim('3E11FA47-71CA-11E1-9E33-C80AA9429562:21-57'), 10, @i) from dual",
+	}, {
+		// Offset as part of expressions
+		input: "select a, b from c where :1 + :2 = :302 and sum(:34) < :24",
+	}, {
+		input:  "select * from (((select 1))) as tbl",
+		output: "select * from (select 1 from dual) as tbl",
+	}, {
+		input:  `select * from t1 where col1 like 'ks\%' and col2 = 'ks\%' and col1 like 'ks%' and col2 = 'ks%'`,
+		output: `select * from t1 where col1 like 'ks\%' and col2 = 'ks\%' and col1 like 'ks%' and col2 = 'ks%'`,
+	}, {
+		input:  `select * from t1 where col1 like 'ks\_' and col2 = 'ks\_' and col1 like 'ks_' and col2 = 'ks_'`,
+		output: `select * from t1 where col1 like 'ks\_' and col2 = 'ks\_' and col1 like 'ks_' and col2 = 'ks_'`,
+	}}
 )
 
 func TestValid(t *testing.T) {
