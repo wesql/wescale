@@ -693,7 +693,7 @@ func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 }
 
 func SetDefaultReadWriteSplittingRatio(value string) error {
-	//return error if strategy is empty
+	//return error if value is empty
 	if value == "" {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadWriteSplitting ratio: %s", value)
 	}
@@ -701,9 +701,9 @@ func SetDefaultReadWriteSplittingRatio(value string) error {
 	if err != nil {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadWriteSplitting ratio: %s", value)
 	}
-	//if _, err := schema.CheckReadWriteSplittingRate(ratio); err != nil {
-	//	return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", value)
-	//}
+	if err := schema.CheckReadWriteSplittingRateRange(int32(ratio)); err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", value)
+	}
 	defaultReadWriteSplittingRatio = ratio
 	return nil
 }

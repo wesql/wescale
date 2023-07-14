@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
 	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
@@ -81,13 +80,17 @@ func CheckReadWriteSplittingRate(ratio int32, strategy string) error {
 	case ReadWriteSplittingPolicyDisable:
 		return fmt.Errorf("read write splitting policy is not set")
 	case ReadWriteSplittingPolicyRandom:
-		if ratio < 0 || ratio > 100 {
-			return fmt.Errorf("read write splitting rate out of range")
-		}
-		return nil
+		return CheckReadWriteSplittingRateRange(ratio)
 	default:
 		return fmt.Errorf("current read write splitting policy do not support read write splitting rate")
 	}
+}
+
+func CheckReadWriteSplittingRateRange(ratio int32) error {
+	if ratio < 0 || ratio > 100 {
+		return fmt.Errorf("read write splitting rate out of range")
+	}
+	return nil
 }
 
 // ToString returns a simple string representation of this instance
