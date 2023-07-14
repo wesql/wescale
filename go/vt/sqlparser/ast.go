@@ -678,7 +678,7 @@ type (
 	// IntervalTypes is an enum to get types of intervals
 	IntervalTypes int8
 
-	// OtherRead represents a DESCRIBE, or EXPLAIN statement.
+	// OtherRead represents a DESCRIBE, CHECK, KILL, or EXPLAIN statement.
 	// It should be used only as an indicator. It does not contain
 	// the full AST for the statement.
 	OtherRead struct{}
