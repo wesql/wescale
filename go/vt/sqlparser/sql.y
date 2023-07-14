@@ -393,6 +393,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 // Lock type tokens
 %token <str> LOCAL LOW_PRIORITY
 
+// Thread type tokens
+%token <str> KILL
+
 // Flush tokens
 %token <str> NO_WRITE_TO_BINLOG LOGS ERROR GENERAL HOSTS OPTIMIZER_COSTS USER_RESOURCES SLOW CHANNEL RELAY EXPORT
 
@@ -431,6 +434,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <databaseOptions> create_options create_options_opt
 %type <boolean> default_optional first_opt linear_opt jt_exists_opt jt_path_opt partition_storage_opt
 %type <statement> analyze_statement check_statement show_statement use_statement other_statement
+%type <statement> kill_statement
 %type <statement> begin_statement commit_statement rollback_statement savepoint_statement release_statement load_statement
 %type <statement> lock_statement unlock_statement call_statement
 %type <statement> revert_statement
@@ -640,6 +644,7 @@ command:
 | truncate_statement
 | analyze_statement
 | check_statement
+| kill_statement
 | show_statement
 | use_statement
 | begin_statement
@@ -3964,6 +3969,21 @@ check_statement:
    {
      $$ = &OtherRead{}
    }
+
+kill_statement:
+  KILL INTEGRAL
+  {
+    $$ = &OtherRead{}
+  }
+| KILL QUERY INTEGRAL
+  {
+    $$ = &OtherRead{}
+ }
+| KILL CONNECTION INTEGRAL
+  {
+    $$ = &OtherRead{}
+ }
+
 
 
 
@@ -7558,6 +7578,7 @@ reserved_keyword:
 | WINDOW
 | WRITE
 | XOR
+| KILL
 
 /*
   These are non-reserved Vitess, because they don't cause conflicts in the grammar.

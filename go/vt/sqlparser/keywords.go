@@ -384,7 +384,7 @@ var keywords = []keyword{
 	{"keyspaces", KEYSPACES},
 	{"lastseengtid", LASTSEENGTID},
 	{"key_block_size", KEY_BLOCK_SIZE},
-	{"kill", UNUSED},
+	{"kill", KILL},
 	{"lag", LAG},
 	{"language", LANGUAGE},
 	{"last", LAST},
