@@ -6,13 +6,14 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package vtgate
 
 import (
+	"math/rand"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/semantics"
 )
 
-func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, sql string) (tabletType topodatapb.TabletType, err error) {
+func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, ratio int32, sql string) (tabletType topodatapb.TabletType, err error) {
 	suggestedTabletType := defaultTabletType
 	if schema.NewReadWriteSplittingPolicy(readWriteSplittingPolicy).IsDisable() {
 		return suggestedTabletType, nil
@@ -26,9 +27,25 @@ func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreate
 		return suggestedTabletType, err
 	}
 	if ro {
-		suggestedTabletType = topodatapb.TabletType_REPLICA
+		suggestedTabletType = pickTabletType(suggestedTabletType, readWriteSplittingPolicy, ratio)
 	}
 	return suggestedTabletType, nil
+}
+
+func pickTabletType(suggestedTabletType topodatapb.TabletType, policy string, rate int32) topodatapb.TabletType {
+	switch schema.NewReadWriteSplittingPolicy(policy) {
+	case schema.ReadWriteSplittingPolicyRandom:
+		return randomPickTabletType(suggestedTabletType, rate)
+	}
+	return topodatapb.TabletType_REPLICA
+}
+
+func randomPickTabletType(suggestedTabletType topodatapb.TabletType, rate int32) topodatapb.TabletType {
+	percentage := float32(rate) / 100
+	if rand.Float32() > percentage {
+		return defaultTabletType
+	}
+	return topodatapb.TabletType_REPLICA
 }
 
 // IsReadOnly : whether the query should be routed to a read-only vttablet

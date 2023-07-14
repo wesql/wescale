@@ -130,6 +130,8 @@ var (
 	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
 	defaultReadAfterWriteTimeout = float64(30.0)
 	enableDefaultUnShardedMode   = true
+
+	defaultReadWriteSplittingRatio = 100
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -168,6 +170,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&defaultReadAfterWriteConsistencyName, "read_after_write_consistency", defaultReadAfterWriteConsistencyName, "Enable read write splitting.")
 	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
 	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
+	fs.IntVar(&defaultReadWriteSplittingRatio, "read_write_splitting_ratio", defaultReadWriteSplittingRatio, "read write splitting ratio to replica")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -686,6 +689,22 @@ func SetDefaultReadWriteSplittingPolicy(strategy string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", strategy)
 	}
 	defaultReadWriteSplittingPolicy = strategy
+	return nil
+}
+
+func SetDefaultReadWriteSplittingRatio(value string) error {
+	//return error if strategy is empty
+	if value == "" {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadWriteSplitting ratio: %s", value)
+	}
+	ratio, err := strconv.Atoi(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid ReadWriteSplitting ratio: %s", value)
+	}
+	//if _, err := schema.CheckReadWriteSplittingRate(ratio); err != nil {
+	//	return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid Read Write Splitting strategy: %s", value)
+	//}
+	defaultReadWriteSplittingRatio = ratio
 	return nil
 }
 

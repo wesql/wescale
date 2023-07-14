@@ -172,6 +172,8 @@ message Session {
 
   // ReadWriteSplittingPolicy is the policy used for read write splitting
   string ReadWriteSplittingPolicy = 26;
+
+  int32 ReadWriteSplittingRatio = 27;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout
