@@ -286,7 +286,8 @@ type Session struct {
 	QueryTimeout int64 `protobuf:"varint,25,opt,name=query_timeout,json=queryTimeout,proto3" json:"query_timeout,omitempty"`
 	// ReadWriteSplittingPolicy is the policy used for read write splitting
 	ReadWriteSplittingPolicy string `protobuf:"bytes,26,opt,name=ReadWriteSplittingPolicy,proto3" json:"ReadWriteSplittingPolicy,omitempty"`
-	ReadWriteSplittingRatio  int32  `protobuf:"varint,27,opt,name=ReadWriteSplittingRatio,proto3" json:"ReadWriteSplittingRatio,omitempty"`
+	// ReadWriteSplittingRatio is the ratio that request is sent to replica when read write splitting
+	ReadWriteSplittingRatio int32 `protobuf:"varint,27,opt,name=ReadWriteSplittingRatio,proto3" json:"ReadWriteSplittingRatio,omitempty"`
 }
 
 func (x *Session) Reset() {

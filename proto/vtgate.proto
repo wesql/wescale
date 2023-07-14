@@ -173,6 +173,7 @@ message Session {
   // ReadWriteSplittingPolicy is the policy used for read write splitting
   string ReadWriteSplittingPolicy = 26;
 
+  // ReadWriteSplittingRatio is the ratio that request is sent to replica when read write splitting
   int32 ReadWriteSplittingRatio = 27;
 }
 

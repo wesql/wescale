@@ -27,21 +27,21 @@ func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreate
 		return suggestedTabletType, err
 	}
 	if ro {
-		suggestedTabletType = pickTabletType(suggestedTabletType, readWriteSplittingPolicy, ratio)
+		suggestedTabletType = pickTabletTypeFroReadWriteSplitting(readWriteSplittingPolicy, ratio)
 	}
 	return suggestedTabletType, nil
 }
 
-func pickTabletType(suggestedTabletType topodatapb.TabletType, policy string, rate int32) topodatapb.TabletType {
+func pickTabletTypeFroReadWriteSplitting(policy string, ratio int32) topodatapb.TabletType {
 	switch schema.NewReadWriteSplittingPolicy(policy) {
 	case schema.ReadWriteSplittingPolicyRandom:
-		return randomPickTabletType(suggestedTabletType, rate)
+		return randomPickTabletType(ratio)
 	}
 	return topodatapb.TabletType_REPLICA
 }
 
-func randomPickTabletType(suggestedTabletType topodatapb.TabletType, rate int32) topodatapb.TabletType {
-	percentage := float32(rate) / 100
+func randomPickTabletType(ratio int32) topodatapb.TabletType {
+	percentage := float32(ratio) / 100
 	if rand.Float32() > percentage {
 		return defaultTabletType
 	}
