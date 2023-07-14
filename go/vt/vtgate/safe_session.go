@@ -710,6 +710,18 @@ func (session *SafeSession) GetReadWriteSplittingPolicy() string {
 	return session.ReadWriteSplittingPolicy
 }
 
+func (session *SafeSession) SetReadWriteSplittingRatio(ratio int32) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.ReadWriteSplittingRatio = ratio
+}
+
+func (session *SafeSession) GetReadWriteSplittingRatio() int32 {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.ReadWriteSplittingRatio
+}
+
 // GetSessionUUID returns the SessionUUID value.
 func (session *SafeSession) GetSessionUUID() string {
 	session.mu.Lock()

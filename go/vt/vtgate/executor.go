@@ -451,6 +451,8 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[key] = sqltypes.StringBindVariable(session.DDLStrategy)
 		case sysvars.ReadWriteSplittingPolicy.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
+		case sysvars.ReadWriteSplittingRatio.Name:
+			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
 		case sysvars.SessionUUID.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.SessionUUID)
 		case sysvars.SessionEnableSystemSettings.Name:

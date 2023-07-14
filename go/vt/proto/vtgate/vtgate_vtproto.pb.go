@@ -127,6 +127,13 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ReadWriteSplittingRatio != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ReadWriteSplittingRatio))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xd8
+	}
 	if len(m.ReadWriteSplittingPolicy) > 0 {
 		i -= len(m.ReadWriteSplittingPolicy)
 		copy(dAtA[i:], m.ReadWriteSplittingPolicy)
@@ -1473,6 +1480,9 @@ func (m *Session) SizeVT() (n int) {
 	l = len(m.ReadWriteSplittingPolicy)
 	if l > 0 {
 		n += 2 + l + sov(uint64(l))
+	}
+	if m.ReadWriteSplittingRatio != 0 {
+		n += 2 + sov(uint64(m.ReadWriteSplittingRatio))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -2986,6 +2996,25 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			}
 			m.ReadWriteSplittingPolicy = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 27:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadWriteSplittingRatio", wireType)
+			}
+			m.ReadWriteSplittingRatio = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ReadWriteSplittingRatio |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

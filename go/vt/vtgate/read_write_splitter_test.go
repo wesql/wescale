@@ -7,9 +7,9 @@ package vtgate
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"math"
+	"testing"
 
 	"vitess.io/vitess/go/vt/proto/topodata"
 )
@@ -17,6 +17,7 @@ import (
 func Test_suggestTabletType_to_replica(t *testing.T) {
 	type args struct {
 		readWriteSplittingPolicy string
+		readWriteSplittingRatio  int32
 		inTransaction            bool
 		hasCreatedTempTables     bool
 		hasAdvisoryLock          bool
@@ -32,6 +33,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
 			args: args{
 				readWriteSplittingPolicy: "enable",
+				readWriteSplittingRatio:  int32(100),
 				inTransaction:            false,
 				hasCreatedTempTables:     false,
 				hasAdvisoryLock:          false,
@@ -55,7 +57,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -67,6 +69,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 func Test_suggestTabletType_to_primary(t *testing.T) {
 	type args struct {
 		readWriteSplittingPolicy string
+		readWriteSplittingRatio  int32
 		inTransaction            bool
 		hasCreatedTempTables     bool
 		hasAdvisoryLock          bool
@@ -82,6 +85,7 @@ func Test_suggestTabletType_to_primary(t *testing.T) {
 			name: "readWriteSplittingPolicy=disable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
 			args: args{
 				readWriteSplittingPolicy: "disable",
+				readWriteSplittingRatio:  int32(100),
 				inTransaction:            false,
 				hasCreatedTempTables:     false,
 				hasAdvisoryLock:          false,
@@ -141,7 +145,7 @@ func Test_suggestTabletType_to_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -153,6 +157,7 @@ func Test_suggestTabletType_to_primary(t *testing.T) {
 func Test_suggestTabletType_force_primary(t *testing.T) {
 	type args struct {
 		readWriteSplittingPolicy string
+		readWriteSplittingRatio  int32
 		inTransaction            bool
 		hasCreatedTempTables     bool
 		hasAdvisoryLock          bool
@@ -168,6 +173,7 @@ func Test_suggestTabletType_force_primary(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false",
 			args: args{
 				readWriteSplittingPolicy: "enable",
+				readWriteSplittingRatio:  int32(100),
 				inTransaction:            true,
 				hasCreatedTempTables:     false,
 				hasAdvisoryLock:          false,
@@ -347,11 +353,75 @@ func Test_suggestTabletType_force_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
 			assert.Equalf(t, tt.wantTabletType, gotTabletType, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
 		})
+	}
+}
+
+func Test_suggestTabletType_random(t *testing.T) {
+	type args struct {
+		readWriteSplittingPolicy string
+		readWriteSplittingRatio  int32
+		inTransaction            bool
+		hasCreatedTempTables     bool
+		hasAdvisoryLock          bool
+		sql                      string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantTabletType topodata.TabletType
+		wantRatio      float32
+		wantErr        assert.ErrorAssertionFunc
+	}{
+		{
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
+			args: args{
+				readWriteSplittingPolicy: "random",
+				readWriteSplittingRatio:  int32(70),
+				inTransaction:            false,
+				hasCreatedTempTables:     false,
+				hasAdvisoryLock:          false,
+				sql:                      "SELECT * FROM users;",
+			},
+			wantRatio: 0.7,
+			wantErr:   assert.NoError,
+		},
+		{
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
+			args: args{
+				readWriteSplittingPolicy: "disable",
+				readWriteSplittingRatio:  int32(70),
+				inTransaction:            false,
+				hasCreatedTempTables:     false,
+				hasAdvisoryLock:          false,
+				sql:                      "SELECT * FROM users;",
+			},
+			wantRatio: 0,
+			wantErr:   assert.NoError,
+		},
+	}
+
+	primaryTypeCount, replicaTypeCount := 0, 0
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for i := 0; i < 1000; i++ {
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
+				switch gotTabletType {
+				case topodata.TabletType_PRIMARY:
+					primaryTypeCount++
+				case topodata.TabletType_REPLICA:
+					replicaTypeCount++
+				}
+			}
+		})
+		assert.Equalf(t, primaryTypeCount+replicaTypeCount, 1000, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+		ratio := float32(replicaTypeCount) / float32(replicaTypeCount+primaryTypeCount)
+		assert.LessOrEqualf(t, math.Abs(float64(ratio-tt.wantRatio)), 0.1, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+		primaryTypeCount, replicaTypeCount = 0, 0
 	}
 }
