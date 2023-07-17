@@ -610,7 +610,7 @@ func (qre *QueryExecutor) checkPermissions() error {
 }
 
 func (qre *QueryExecutor) checkAccess(authorized []*tableacl.ACLResult, tableName string, callerID *querypb.VTGateCallerID) error {
-	statsKey := []string{tableName, "invalid group name", qre.plan.PlanID.String(), callerID.Username}
+	statsKey := []string{tableName, "EmptyGroupName", qre.plan.PlanID.String(), callerID.Username}
 	isPass := false
 	for _, acl := range authorized {
 		if acl.IsMember(callerID) {
