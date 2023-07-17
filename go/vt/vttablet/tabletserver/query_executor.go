@@ -610,9 +610,6 @@ func (qre *QueryExecutor) checkPermissions() error {
 }
 
 func (qre *QueryExecutor) checkAccess(authorized []*tableacl.ACLResult, tableName string, callerID *querypb.VTGateCallerID) error {
-	if len(authorized) == 0 {
-		return vterrors.Errorf(vtrpcpb.Code_PERMISSION_DENIED, "acl List is empty")
-	}
 	statsKey := []string{tableName, authorized[0].GroupName, qre.plan.PlanID.String(), callerID.Username}
 	isPass := false
 	for _, acl := range authorized {
