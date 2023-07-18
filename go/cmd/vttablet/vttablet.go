@@ -139,6 +139,9 @@ func main() {
 	if err := tm.Start(tablet, config.Healthcheck.IntervalSeconds.Get()); err != nil {
 		log.Exitf("failed to parse --tablet-path or initialize DB credentials: %v", err)
 	}
+	if tableACLMode == global.TableACLModeMysqlBased {
+		qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	}
 	servenv.OnClose(func() {
 		// Close the tm so that our topo entry gets pruned properly and any
 		// background goroutines that use the topo connection are stopped.
@@ -235,6 +238,8 @@ func createTabletServer(config *tabletenv.TabletConfig, ts *topo.Server, tabletA
 	})
 
 	servenv.OnClose(qsc.StopService)
-	qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	if tableACLMode != global.TableACLModeMysqlBased {
+		qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	}
 	return qsc
 }
