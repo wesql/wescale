@@ -69,7 +69,7 @@ var (
 func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&enforceTableACLConfig, "enforce-tableacl-config", enforceTableACLConfig, "if this flag is true, vttablet will fail to start if a valid tableacl config does not exist")
 	fs.StringVar(&tableACLConfig, "table-acl-config", tableACLConfig, "path to table access checker config file; send SIGHUP to reload this file")
-	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeSimple, "table acl config mode (simple or mysqlbased)")
+	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeMysqlBased, "table acl config mode (simple or mysqlbased)")
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", tableACLConfigReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
 	fs.StringVar(&tabletConfig, "tablet_config", tabletConfig, "YAML file config for tablet")
