@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,9 +74,10 @@ func NewDBConn(ctx context.Context, cp *Pool, appParams dbconfigs.Connector) (*D
 
 	c, err := dbconnpool.NewDBConnection(ctx, appParams)
 	if err != nil {
-		cp.env.Stats().MySQLTimings.Record("ConnectError", start)
-		cp.env.CheckMySQL()
 		return nil, err
+		//cp.env.Stats().MySQLTimings.Record("ConnectError", start)
+		//cp.env.CheckMySQL()
+		//return nil, err
 	}
 	return &DBConn{
 		conn:        c,
