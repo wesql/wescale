@@ -31,8 +31,11 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"vitess.io/vitess/go/mysql"
+	"vitess.io/vitess/go/vt/dbconnpool"
 
 	"vitess.io/vitess/go/internal/global"
 
@@ -84,7 +87,7 @@ var acls = make(map[string]acl.Factory)
 // defaultACL tells the default ACL implementation to use.
 var defaultACL string
 
-type tableACL struct {
+type TableACL struct {
 	// mutex protects entries, config, and callback
 	sync.RWMutex
 	entries aclEntries
@@ -92,6 +95,14 @@ type tableACL struct {
 
 	dbConfig dbconfigs.Connector
 	conns    *connpool.Pool
+
+	tableACLMode string
+
+	ticker                      *time.Ticker
+	sigChan                     chan os.Signal
+	reloadACLConfigFileInterval time.Duration
+
+	configFile string
 
 	// callback is executed on successful reload.
 	callback func()
@@ -105,7 +116,7 @@ type PrivEntry struct {
 }
 
 // currentTableACL stores current effective ACL information.
-var currentTableACL tableACL
+var currentTableACL TableACL
 
 // Init initiates table ACLs.
 //
@@ -122,21 +133,57 @@ var currentTableACL tableACL
 //	    }
 //	  ]
 //	}
-func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, aclCB func()) error {
-	return currentTableACL.init(env, dbConfig, tableACLMode, configFile, aclCB)
+func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, reloadACLConfigFileInterval time.Duration, aclCB func()) error {
+	return currentTableACL.init(env, dbConfig, tableACLMode, configFile, reloadACLConfigFileInterval, aclCB)
 }
 
-func (tacl *tableACL) InitMysqlBasedACL(env tabletenv.Env) error {
-	config := &tableaclpb.Config{}
-	pool := connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
-		Size:               3,
-		IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
-	})
-	tacl.conns = pool
-	tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
-	return tacl.LoadFromMysql(config)
+func (tacl *TableACL) Open() error {
+	log.Infof("tableACL : opening, aclMode: %v", tacl.tableACLMode)
+	if tacl.tableACLMode == global.TableACLModeMysqlBased {
+		tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
+		conn, err := dbconnpool.NewDBConnection(context.Background(), tacl.dbConfig)
+		conn.Close()
+		if err != nil {
+			return err
+		}
+		err = tacl.InitMysqlBasedACL()
+		if err != nil {
+			return err
+		}
+	} else if tacl.tableACLMode == global.TableACLModeSimple {
+		err := tacl.InitSimpleACL(tacl.configFile)
+		if err != nil {
+			return err
+		}
+	}
+	if tacl.reloadACLConfigFileInterval != 0 {
+		if tacl.ticker == nil {
+			tacl.ticker = time.NewTicker(tacl.reloadACLConfigFileInterval)
+			go func() {
+				for range tacl.ticker.C {
+					tacl.sigChan <- syscall.SIGHUP
+				}
+			}()
+		}
+		tacl.ticker.Reset(tacl.reloadACLConfigFileInterval)
+	}
+	return nil
 }
-func (tacl *tableACL) InitSimpleACL(configFile string) error {
+
+func (tacl *TableACL) Close() {
+	tacl.Lock()
+	defer tacl.Unlock()
+	if tacl.tableACLMode == global.TableACLModeMysqlBased {
+		log.Infof("tableACL - closing pool")
+		tacl.conns.Close()
+	}
+	tacl.ticker.Stop()
+}
+func (tacl *TableACL) InitMysqlBasedACL() error {
+	//tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
+	return tacl.LoadFromMysql(&tableaclpb.Config{})
+}
+func (tacl *TableACL) InitSimpleACL(configFile string) error {
 	config := &tableaclpb.Config{}
 	data, err := os.ReadFile(configFile)
 	if err != nil {
@@ -153,22 +200,42 @@ func (tacl *tableACL) InitSimpleACL(configFile string) error {
 	return tacl.Set(config)
 }
 
-func (tacl *tableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, aclCB func()) error {
+func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, reloadACLConfigFileInterval time.Duration, aclCB func()) error {
 	tacl.SetCallback(aclCB)
 	tacl.dbConfig = dbConfig
+	tacl.tableACLMode = tableACLMode
+	tacl.reloadACLConfigFileInterval = reloadACLConfigFileInterval
+	tacl.sigChan = make(chan os.Signal, 1)
 	if configFile == "" && tableACLMode == global.TableACLModeSimple {
 		return nil
 	}
 	if tableACLMode == global.TableACLModeMysqlBased {
-		return tacl.InitMysqlBasedACL(env)
-	} else if tableACLMode == global.TableACLModeSimple {
-		return tacl.InitSimpleACL(configFile)
-	} else {
-		return fmt.Errorf("unrecognized tableACLMode : %v", tableACLMode)
+		tacl.conns = connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
+			Size:               3,
+			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
+		})
 	}
+	go func() {
+		for range tacl.sigChan {
+			if tableACLMode == global.TableACLModeMysqlBased {
+				err := tacl.InitMysqlBasedACL()
+				if err != nil {
+					log.Errorf("InitMysqlBasedACL fail : %v", err)
+				}
+			} else if tableACLMode == global.TableACLModeSimple {
+				err := tacl.InitSimpleACL(configFile)
+				if err != nil {
+					log.Errorf("InitSimpleACL fail : %v", err)
+				}
+			} else {
+				log.Errorf("unrecognized tableACLMode : %v", tableACLMode)
+			}
+		}
+	}()
+	return nil
 }
 
-func (tacl *tableACL) SetCallback(callback func()) {
+func (tacl *TableACL) SetCallback(callback func()) {
 	tacl.Lock()
 	defer tacl.Unlock()
 	tacl.callback = callback
@@ -182,26 +249,26 @@ func InitFromProto(config *tableaclpb.Config) error {
 	return currentTableACL.Set(config)
 }
 
-// LoadFromMysqlBase method retrieves privilege information from mysql.user, mysql.db, mysql.table_priv,
+// loadFromMysqlBase method retrieves privilege information from mysql.user, mysql.db, mysql.table_priv,
 // and uses this information to create aclEntry instances.
 // For instance:
 // For global-level privileges, '*.*' is converted to '%'
 // For database-level privileges, 'database.*' is converted to 'database.%'
 // For table-level privileges, 'database.table' is used directly
-func (tacl *tableACL) LoadFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+func (tacl *TableACL) loadFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	entries := aclEntries{}
 	//
-	globalEntries, err := tacl.LoadGlobalFromMysqlBase(newACL)
+	globalEntries, err := tacl.loadGlobalFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
 	entries = append(entries, globalEntries...)
-	tableEntries, err := tacl.LoadTablePrivFromMysqlBase(newACL)
+	tableEntries, err := tacl.loadTablePrivFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
 	entries = append(entries, tableEntries...)
-	dbEntries, err := tacl.LoadDatabasePrivFromMysqlBase(newACL)
+	dbEntries, err := tacl.loadDatabasePrivFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +322,8 @@ func buildACLEntriesFromPrivMap(privMap map[string][]PrivEntry, newACL func([]st
 	return entries, nil
 }
 
-// LoadDatabasePrivFromMysqlBase implement database-level authority authentication
-func (tacl *tableACL) LoadDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// loadDatabasePrivFromMysqlBase implement database-level authority authentication
+func (tacl *TableACL) loadDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
 	if err != nil {
@@ -309,8 +376,8 @@ func (tacl *tableACL) LoadDatabasePrivFromMysqlBase(newACL func([]string) (acl.A
 	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
-// LoadTablePrivFromMysqlBase implement table-level authority authentication
-func (tacl *tableACL) LoadTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// loadTablePrivFromMysqlBase implement table-level authority authentication
+func (tacl *TableACL) loadTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
 	if err != nil {
@@ -373,8 +440,8 @@ func (tacl *tableACL) LoadTablePrivFromMysqlBase(newACL func([]string) (acl.ACL,
 	return buildACLEntriesFromPrivMap(privMap, newACL)
 }
 
-// LoadGlobalFromMysqlBase implement global-level authority authentication
-func (tacl *tableACL) LoadGlobalFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
+// loadGlobalFromMysqlBase implement global-level authority authentication
+func (tacl *TableACL) loadGlobalFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	entries := aclEntries{}
 	conn, err := tacl.conns.Get(ctx, nil)
@@ -474,7 +541,7 @@ func load(config *tableaclpb.Config, newACL func([]string) (acl.ACL, error)) (en
 	return entries, nil
 }
 
-func (tacl *tableACL) aclFactory() (acl.Factory, error) {
+func (tacl *TableACL) aclFactory() (acl.Factory, error) {
 	if tacl.factory == nil {
 		return GetCurrentACLFactory()
 	}
@@ -482,12 +549,12 @@ func (tacl *tableACL) aclFactory() (acl.Factory, error) {
 }
 
 // LoadFromMysql construct aclEntries and call callback function to clear plan cache.
-func (tacl *tableACL) LoadFromMysql(config *tableaclpb.Config) error {
+func (tacl *TableACL) LoadFromMysql(config *tableaclpb.Config) error {
 	factory, err := tacl.aclFactory()
 	if err != nil {
 		return err
 	}
-	entries, err := tacl.LoadFromMysqlBase(factory.New)
+	entries, err := tacl.loadFromMysqlBase(factory.New)
 	if err != nil {
 		return err
 	}
@@ -504,7 +571,7 @@ func (tacl *tableACL) LoadFromMysql(config *tableaclpb.Config) error {
 	}
 	return nil
 }
-func (tacl *tableACL) Set(config *tableaclpb.Config) error {
+func (tacl *TableACL) Set(config *tableaclpb.Config) error {
 	factory, err := tacl.aclFactory()
 	if err != nil {
 		return err
@@ -526,7 +593,7 @@ func (tacl *tableACL) Set(config *tableaclpb.Config) error {
 
 // Valid returns whether the tableACL is valid.
 // Currently it only checks that it has been initialized.
-func (tacl *tableACL) Valid() bool {
+func (tacl *TableACL) Valid() bool {
 	tacl.RLock()
 	defer tacl.RUnlock()
 	return tacl.entries != nil
@@ -572,7 +639,7 @@ func AuthorizedList(table string, role Role) []*ACLResult {
 	return currentTableACL.AuthorizedList(table, role)
 }
 
-func (tacl *tableACL) AuthorizedList(table string, role Role) []*ACLResult {
+func (tacl *TableACL) AuthorizedList(table string, role Role) []*ACLResult {
 	tacl.RLock()
 	defer tacl.RUnlock()
 	var entries []*ACLResult
@@ -591,7 +658,7 @@ func (tacl *tableACL) AuthorizedList(table string, role Role) []*ACLResult {
 	return entries
 }
 
-func (tacl *tableACL) Authorized(table string, role Role) *ACLResult {
+func (tacl *TableACL) Authorized(table string, role Role) *ACLResult {
 	tacl.RLock()
 	defer tacl.RUnlock()
 	start := 0
@@ -625,7 +692,11 @@ func GetCurrentConfig() *tableaclpb.Config {
 	return currentTableACL.Config()
 }
 
-func (tacl *tableACL) Config() *tableaclpb.Config {
+func GetCurrentACL() *TableACL {
+	return &currentTableACL
+}
+
+func (tacl *TableACL) Config() *tableaclpb.Config {
 	tacl.RLock()
 	defer tacl.RUnlock()
 	return proto.Clone(tacl.config).(*tableaclpb.Config)

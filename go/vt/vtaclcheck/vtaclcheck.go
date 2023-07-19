@@ -70,6 +70,7 @@ func Run() error {
 			dbconfigs.New(nil),
 			global.TableACLModeMysqlBased,
 			options.ACLFile,
+			0,
 			func() {},
 		)
 		if err != nil {
