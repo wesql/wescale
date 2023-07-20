@@ -96,7 +96,6 @@ type TableACL struct {
 	tableACLMode string
 
 	ticker                      *time.Ticker
-	sigChan                     chan os.Signal
 	reloadACLConfigFileInterval time.Duration
 
 	configFile string
@@ -150,7 +149,7 @@ func (tacl *TableACL) Open() error {
 	}
 	if tacl.reloadACLConfigFileInterval != 0 {
 		if tacl.ticker == nil {
-			tacl.ticker = time.NewTicker(time.Second * 2)
+			tacl.ticker = time.NewTicker(tacl.reloadACLConfigFileInterval)
 			go func() {
 				for range tacl.ticker.C {
 					if tacl.tableACLMode == global.TableACLModeMysqlBased {
@@ -188,8 +187,7 @@ func (tacl *TableACL) InitMysqlBasedACL() error {
 	//tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
 	return tacl.LoadFromMysql(&tableaclpb.Config{})
 }
-func (tacl *TableACL) InitSimpleACL(configFile string) error {
-	config := &tableaclpb.Config{}
+func (tacl *TableACL) checkSimpleACL(configFile string, config *tableaclpb.Config) error {
 	data, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Infof("unable to read tableACL config file: %v  Error: %v", configFile, err)
@@ -202,6 +200,14 @@ func (tacl *TableACL) InitSimpleACL(configFile string) error {
 			return fmt.Errorf("unable to unmarshal Table ACL data: %s", data)
 		}
 	}
+	return nil
+}
+func (tacl *TableACL) InitSimpleACL(configFile string) error {
+	config := &tableaclpb.Config{}
+	err := tacl.checkSimpleACL(configFile, config)
+	if err != nil {
+		return err
+	}
 	return tacl.Set(config)
 }
 
@@ -210,7 +216,6 @@ func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tabl
 	tacl.dbConfig = dbConfig
 	tacl.tableACLMode = tableACLMode
 	tacl.reloadACLConfigFileInterval = reloadACLConfigFileInterval
-	tacl.sigChan = make(chan os.Signal, 1)
 	if configFile == "" && tableACLMode == global.TableACLModeSimple {
 		return nil
 	}
@@ -219,6 +224,11 @@ func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tabl
 			Size:               3,
 			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 		})
+	} else if tableACLMode == global.TableACLModeSimple {
+		err := tacl.checkSimpleACL(configFile, &tableaclpb.Config{})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
