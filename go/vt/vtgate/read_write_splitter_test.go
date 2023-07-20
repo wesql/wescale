@@ -46,6 +46,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
 			args: args{
 				readWriteSplittingPolicy: "enable",
+				readWriteSplittingRatio:  int32(100),
 				inTransaction:            false,
 				hasCreatedTempTables:     false,
 				hasAdvisoryLock:          false,
