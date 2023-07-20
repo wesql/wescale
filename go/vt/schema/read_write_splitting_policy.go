@@ -76,19 +76,15 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 }
 
 func CheckReadWriteSplittingRate(ratio int32, strategy string) error {
-	switch NewReadWriteSplittingPolicy(strategy) {
-	case ReadWriteSplittingPolicyDisable:
+	if NewReadWriteSplittingPolicy(strategy) == ReadWriteSplittingPolicyDisable {
 		return fmt.Errorf("read write splitting policy is not set")
-	case ReadWriteSplittingPolicyRandom:
-		return CheckReadWriteSplittingRateRange(ratio)
-	default:
-		return fmt.Errorf("current read write splitting policy do not support read write splitting rate")
 	}
+	return CheckReadWriteSplittingRateRange(ratio)
 }
 
 func CheckReadWriteSplittingRateRange(ratio int32) error {
 	if ratio < 0 || ratio > 100 {
-		return fmt.Errorf("read write splitting rate out of range")
+		return fmt.Errorf("read write splitting ratio out of range")
 	}
 	return nil
 }

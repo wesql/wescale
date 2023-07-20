@@ -532,7 +532,7 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 		ratio := int32(intValue)
 		policy := vcursor.Session().GetReadWriteSplittingPolicy()
 		if err := schema.CheckReadWriteSplittingRate(ratio, vcursor.Session().GetReadWriteSplittingPolicy()); err != nil {
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid read write splitting rate: %v, current policy: %s, err: %v", ratio, policy, err)
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid read write splitting ratio: %v, current policy: %s, err: %v", ratio, policy, err)
 		}
 		vcursor.Session().SetReadWriteSplittingRatio(ratio)
 	case sysvars.QueryTimeout.Name:

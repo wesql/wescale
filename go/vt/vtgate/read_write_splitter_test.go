@@ -379,7 +379,7 @@ func Test_suggestTabletType_random(t *testing.T) {
 		wantErr        assert.ErrorAssertionFunc
 	}{
 		{
-			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy: "random",
 				readWriteSplittingRatio:  int32(70),
@@ -392,10 +392,36 @@ func Test_suggestTabletType_random(t *testing.T) {
 			wantErr:   assert.NoError,
 		},
 		{
-			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false",
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy: "disable",
 				readWriteSplittingRatio:  int32(70),
+				inTransaction:            false,
+				hasCreatedTempTables:     false,
+				hasAdvisoryLock:          false,
+				sql:                      "SELECT * FROM users;",
+			},
+			wantRatio: 0,
+			wantErr:   assert.NoError,
+		},
+		{
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=100",
+			args: args{
+				readWriteSplittingPolicy: "random",
+				readWriteSplittingRatio:  int32(100),
+				inTransaction:            false,
+				hasCreatedTempTables:     false,
+				hasAdvisoryLock:          false,
+				sql:                      "SELECT * FROM users;",
+			},
+			wantRatio: 1,
+			wantErr:   assert.NoError,
+		},
+		{
+			name: "readWriteSplittingPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
+			args: args{
+				readWriteSplittingPolicy: "random",
+				readWriteSplittingRatio:  int32(0),
 				inTransaction:            false,
 				hasCreatedTempTables:     false,
 				hasAdvisoryLock:          false,
