@@ -139,7 +139,7 @@ func newVCursorImpl(
 ) (*vcursorImpl, error) {
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), sql)
+		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql)
 	if err != nil {
 		return nil, err
 	}
@@ -888,6 +888,16 @@ func (vc *vcursorImpl) GetReadWriteSplittingPolicy() string {
 	return vc.safeSession.GetReadWriteSplittingPolicy()
 }
 
+// SetReadWriteSplittingRatio implements the SessionActions interface
+func (vc *vcursorImpl) SetReadWriteSplittingRatio(ratio int32) {
+	vc.safeSession.SetReadWriteSplittingRatio(ratio)
+}
+
+// GetReadWriteSplittingRatio implements the SessionActions interface
+func (vc *vcursorImpl) GetReadWriteSplittingRatio() int32 {
+	return vc.safeSession.GetReadWriteSplittingRatio()
+}
+
 // GetSessionUUID implements the SessionActions interface
 func (vc *vcursorImpl) GetSessionUUID() string {
 	return vc.safeSession.GetSessionUUID()
@@ -1102,6 +1112,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
+	case sysvars.ReadWriteSplittingRatio.Name:
+		return SetDefaultReadWriteSplittingRatio(value)
 	case sysvars.ReadAfterWriteConsistency.Name:
 		return SetDefaultReadAfterWriteConsistency(value)
 	case sysvars.ReadAfterWriteTimeOut.Name:

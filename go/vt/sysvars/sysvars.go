@@ -90,6 +90,7 @@ var (
 
 	// Read Write Splitting
 	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
+	ReadWriteSplittingRatio  = SystemVariable{Name: "read_write_splitting_ratio"}
 
 	VitessAware = []SystemVariable{
 		Autocommit,
@@ -111,6 +112,7 @@ var (
 		SessionTrackGTIDs,
 		QueryTimeout,
 		ReadWriteSplittingPolicy,
+		ReadWriteSplittingRatio,
 	}
 
 	ReadOnly = []SystemVariable{

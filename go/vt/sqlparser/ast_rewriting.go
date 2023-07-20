@@ -546,7 +546,8 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.VersionComment.Name,
 		sysvars.QueryTimeout.Name,
 		sysvars.Workload.Name,
-		sysvars.ReadWriteSplittingPolicy.Name:
+		sysvars.ReadWriteSplittingPolicy.Name,
+		sysvars.ReadWriteSplittingRatio.Name:
 		found = true
 	}
 
