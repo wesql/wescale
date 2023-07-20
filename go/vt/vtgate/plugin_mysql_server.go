@@ -393,6 +393,7 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 			SessionUUID:              u.String(),
 			EnableSystemSettings:     sysVarSetEnabled,
 			ReadWriteSplittingPolicy: defaultReadWriteSplittingPolicy,
+			ReadWriteSplittingRatio:  int32(defaultReadWriteSplittingRatio),
 			ReadAfterWrite: &vtgatepb.ReadAfterWrite{
 				ReadAfterWriteConsistency: ConvertReadAfterWriteConsistency(defaultReadAfterWriteConsistencyName),
 				ReadAfterWriteTimeout:     defaultReadAfterWriteTimeout,
