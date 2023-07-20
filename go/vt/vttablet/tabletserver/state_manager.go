@@ -128,6 +128,7 @@ type stateManager struct {
 	ddle        onlineDDLExecutor
 	throttler   lagThrottler
 	tableGC     tableGarbageCollector
+	tableACL    tableACLController
 
 	// hcticks starts on initialiazation and runs forever.
 	hcticks *timer.Timer
@@ -192,6 +193,10 @@ type (
 	}
 
 	tableGarbageCollector interface {
+		Open() error
+		Close()
+	}
+	tableACLController interface {
 		Open() error
 		Close()
 	}
@@ -462,6 +467,7 @@ func (sm *stateManager) servePrimary() error {
 	sm.throttler.Open()
 	sm.tableGC.Open()
 	sm.ddle.Open()
+	sm.tableACL.Open()
 	sm.setState(topodatapb.TabletType_PRIMARY, StateServing)
 	return nil
 }
@@ -500,6 +506,7 @@ func (sm *stateManager) serveNonPrimary(wantTabletType topodatapb.TabletType) er
 	sm.rt.MakeNonPrimary()
 	sm.watcher.Open()
 	sm.throttler.Open()
+	sm.tableACL.Open()
 	sm.setState(wantTabletType, StateServing)
 	return nil
 }
@@ -586,6 +593,7 @@ func (sm *stateManager) closeAll() {
 	sm.vstreamer.Close()
 	sm.rt.Close()
 	sm.se.Close()
+	sm.tableACL.Close()
 	sm.setState(topodatapb.TabletType_UNKNOWN, StateNotConnected)
 }
 

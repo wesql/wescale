@@ -27,10 +27,6 @@ type MockHealthCheck struct {
 	recorder *MockHealthCheckMockRecorder
 }
 
-func (m *MockHealthCheck) GetAllHealthyTabletStats() []*discovery.TabletHealth {
-	return nil
-}
-
 // MockHealthCheckMockRecorder is the mock recorder for MockHealthCheck.
 type MockHealthCheckMockRecorder struct {
 	mock *MockHealthCheck
