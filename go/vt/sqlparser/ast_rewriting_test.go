@@ -46,6 +46,7 @@ type myTestCase struct {
 	liid, db, foundRows, rowCount, rawGTID, scope, rawTimeout, sessTrackGTID        bool
 	ddlStrategy, sessionUUID, sessionEnableSystemSettings, readWriteSplittingPolicy bool
 	udv                                                                             int
+	readWriteSplittingRatio                                                         int32
 	autocommit, clientFoundRows, skipQueryPlanCache, socket, queryTimeout           bool
 	sqlSelectLimit, transactionMode, workload, version, versionComment              bool
 	txIsolation                                                                     bool
@@ -198,6 +199,10 @@ func TestRewrites(in *testing.T) {
 		in:                       `select * from user where col = @@read_write_splitting_policy`,
 		expected:                 "select * from user where col = :__vtread_write_splitting_policy",
 		readWriteSplittingPolicy: true,
+	}, {
+		in:                      `select * from user where col = @@read_write_splitting_ratio`,
+		expected:                "select * from user where col = :__vtread_write_splitting_ratio",
+		readWriteSplittingRatio: 100,
 	}, {
 		in:       `select * from user where col = @@read_after_write_gtid OR col = @@read_after_write_timeout OR col = @@session_track_gtids OR col = @@read_after_write_consistency`,
 		expected: "select * from user where col = :__vtread_after_write_gtid or col = :__vtread_after_write_timeout or col = :__vtsession_track_gtids or col = :__vtread_after_write_consistency",

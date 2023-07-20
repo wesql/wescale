@@ -160,6 +160,9 @@ type (
 		SetReadWriteSplittingPolicy(string)
 		GetReadWriteSplittingPolicy() string
 
+		SetReadWriteSplittingRatio(rate int32)
+		GetReadWriteSplittingRatio() int32
+
 		GetSessionUUID() string
 
 		SetSessionEnableSystemSettings(context.Context, bool) error
