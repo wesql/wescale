@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +27,9 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/vt/dbconfigs"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/vt/tableacl"
@@ -117,7 +125,7 @@ func initTableACL() error {
 	}
 	file.Close()
 	tableacl.Register("simpleacl", &simpleacl.Factory{})
-	tableacl.Init(file.Name(), func() { framework.Server.ClearQueryPlanCache() })
+	tableacl.Init(nil, dbconfigs.New(nil), global.TableACLModeSimple, file.Name(), 0, func() { framework.Server.ClearQueryPlanCache() })
 	return nil
 }
 

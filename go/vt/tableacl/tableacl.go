@@ -31,13 +31,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/dbconnpool"
-
 	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
@@ -141,12 +138,7 @@ func (tacl *TableACL) Open() error {
 	log.Infof("tableACL : opening, aclMode: %v", tacl.tableACLMode)
 	if tacl.tableACLMode == global.TableACLModeMysqlBased {
 		tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
-		conn, err := dbconnpool.NewDBConnection(context.Background(), tacl.dbConfig)
-		conn.Close()
-		if err != nil {
-			return err
-		}
-		err = tacl.InitMysqlBasedACL()
+		err := tacl.InitMysqlBasedACL()
 		if err != nil {
 			return err
 		}
@@ -158,14 +150,27 @@ func (tacl *TableACL) Open() error {
 	}
 	if tacl.reloadACLConfigFileInterval != 0 {
 		if tacl.ticker == nil {
-			tacl.ticker = time.NewTicker(tacl.reloadACLConfigFileInterval)
+			tacl.ticker = time.NewTicker(time.Second * 2)
 			go func() {
 				for range tacl.ticker.C {
-					tacl.sigChan <- syscall.SIGHUP
+					if tacl.tableACLMode == global.TableACLModeMysqlBased {
+						err := tacl.InitMysqlBasedACL()
+						if err != nil {
+							log.Errorf("InitMysqlBasedACL fail : %v", err)
+						}
+					} else if tacl.tableACLMode == global.TableACLModeSimple {
+						err := tacl.InitSimpleACL(tacl.configFile)
+						if err != nil {
+							log.Errorf("InitSimpleACL fail : %v", err)
+						}
+					} else {
+						log.Errorf("unrecognized tableACLMode : %v", tacl.tableACLMode)
+					}
 				}
 			}()
+		} else {
+			tacl.ticker.Reset(tacl.reloadACLConfigFileInterval)
 		}
-		tacl.ticker.Reset(tacl.reloadACLConfigFileInterval)
 	}
 	return nil
 }
@@ -215,23 +220,6 @@ func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tabl
 			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 		})
 	}
-	go func() {
-		for range tacl.sigChan {
-			if tableACLMode == global.TableACLModeMysqlBased {
-				err := tacl.InitMysqlBasedACL()
-				if err != nil {
-					log.Errorf("InitMysqlBasedACL fail : %v", err)
-				}
-			} else if tableACLMode == global.TableACLModeSimple {
-				err := tacl.InitSimpleACL(configFile)
-				if err != nil {
-					log.Errorf("InitSimpleACL fail : %v", err)
-				}
-			} else {
-				log.Errorf("unrecognized tableACLMode : %v", tableACLMode)
-			}
-		}
-	}()
 	return nil
 }
 
@@ -326,6 +314,7 @@ func buildACLEntriesFromPrivMap(privMap map[string][]PrivEntry, newACL func([]st
 func (tacl *TableACL) loadDatabasePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
+	defer conn.Recycle()
 	if err != nil {
 		return nil, err
 	}
@@ -380,6 +369,7 @@ func (tacl *TableACL) loadDatabasePrivFromMysqlBase(newACL func([]string) (acl.A
 func (tacl *TableACL) loadTablePrivFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	ctx := context.Background()
 	conn, err := tacl.conns.Get(ctx, nil)
+	defer conn.Recycle()
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +435,7 @@ func (tacl *TableACL) loadGlobalFromMysqlBase(newACL func([]string) (acl.ACL, er
 	ctx := context.Background()
 	entries := aclEntries{}
 	conn, err := tacl.conns.Get(ctx, nil)
+	defer conn.Recycle()
 	if err != nil {
 		return nil, err
 	}
