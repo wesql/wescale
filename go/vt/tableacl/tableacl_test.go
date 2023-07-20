@@ -50,8 +50,8 @@ func (factory *fakeACLFactory) New(entries []string) (acl.ACL, error) {
 }
 
 func TestInitWithInvalidFilePath(t *testing.T) {
-	tacl := tableACL{factory: &simpleacl.Factory{}}
-	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeSimple, "/invalid_file_path", func() {}); err == nil {
+	tacl := TableACL{factory: &simpleacl.Factory{}}
+	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeSimple, "/invalid_file_path", 0, func() {}); err == nil {
 		t.Fatalf("init should fail for an invalid config file path")
 	}
 }
@@ -68,7 +68,7 @@ var aclJSON = `{
 }`
 
 func TestInitWithValidConfig(t *testing.T) {
-	tacl := tableACL{factory: &simpleacl.Factory{}}
+	tacl := TableACL{factory: &simpleacl.Factory{}}
 	f, err := os.CreateTemp("", "tableacl")
 	if err != nil {
 		t.Fatal(err)
@@ -80,13 +80,13 @@ func TestInitWithValidConfig(t *testing.T) {
 	if err := f.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeSimple, f.Name(), func() {}); err != nil {
+	if err := tacl.init(nil, dbconfigs.New(nil), global.TableACLModeSimple, f.Name(), 0, func() {}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestInitFromProto(t *testing.T) {
-	tacl := tableACL{factory: &simpleacl.Factory{}}
+	tacl := TableACL{factory: &simpleacl.Factory{}}
 	readerACL := tacl.Authorized("my_test_table", READER)
 	want := &ACLResult{ACL: acl.DenyAllACL{}, GroupName: ""}
 	if !reflect.DeepEqual(readerACL, want) {
@@ -150,7 +150,7 @@ func TestTableACLValidateConfig(t *testing.T) {
 }
 
 func TestTableACLAuthorize(t *testing.T) {
-	tacl := tableACL{factory: &simpleacl.Factory{}}
+	tacl := TableACL{factory: &simpleacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{
@@ -197,7 +197,7 @@ func TestTableACLAuthorize(t *testing.T) {
 }
 
 func TestFailedToCreateACL(t *testing.T) {
-	tacl := tableACL{factory: &fakeACLFactory{}}
+	tacl := TableACL{factory: &fakeACLFactory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{{
 			Name:                 "group01",
@@ -267,7 +267,7 @@ func IsMemberInList(name string, acls []*ACLResult) bool {
 }
 
 func TestAuthorizedList(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{
@@ -307,7 +307,7 @@ func TestAuthorizedList(t *testing.T) {
 }
 
 func TestAuthorizedListNoMatch(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{
@@ -330,7 +330,7 @@ func TestAuthorizedListNoMatch(t *testing.T) {
 }
 
 func TestAuthorizedListPartialMatch(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{
@@ -358,7 +358,7 @@ func TestAuthorizedListPartialMatch(t *testing.T) {
 }
 
 func TestAuthorizedListEmptyACL(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 
 	readerACL := tacl.AuthorizedList("test_data_any", READER)
 	if len(readerACL) > 0 {
@@ -367,7 +367,7 @@ func TestAuthorizedListEmptyACL(t *testing.T) {
 }
 
 func TestAuthorizedListDatabaseWildcard(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{
@@ -391,7 +391,7 @@ func TestAuthorizedListDatabaseWildcard(t *testing.T) {
 }
 
 func TestAuthorizedListSpecificTable(t *testing.T) {
-	tacl := tableACL{factory: &mysqlbasedacl.Factory{}}
+	tacl := TableACL{factory: &mysqlbasedacl.Factory{}}
 	config := &tableaclpb.Config{
 		TableGroups: []*tableaclpb.TableGroupSpec{
 			{

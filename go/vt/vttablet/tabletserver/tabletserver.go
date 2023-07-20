@@ -27,13 +27,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -210,6 +207,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 		ddle:        tsv.onlineDDLExecutor,
 		throttler:   tsv.lagThrottler,
 		tableGC:     tsv.tableGC,
+		tableACL:    tableacl.GetCurrentACL(),
 	}
 
 	tsv.exporter.NewGaugeFunc("TabletState", "Tablet server state", func() int64 { return int64(tsv.sm.State()) })
@@ -327,13 +325,14 @@ func (tsv *TabletServer) SetQueryRules(ruleSource string, qrs *rules.Rules) erro
 	return nil
 }
 
-func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool) {
+func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
 	// tabletacl.Init loads ACL from file if *tableACLConfig is not empty
 	err := tableacl.Init(
 		env,
 		tsv.config.DB.DbaWithDB(),
 		tableACLMode,
 		tableACLConfigFile,
+		reloadACLConfigFileInterval,
 		func() {
 			tsv.ClearQueryPlanCache()
 		},
@@ -348,23 +347,8 @@ func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableAC
 
 // InitACL loads the table ACL and sets up a SIGHUP handler for reloading it.
 func (tsv *TabletServer) InitACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
-	tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP)
-	go func() {
-		for range sigChan {
-			tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig)
-		}
-	}()
+	tsv.initACL(env, tableACLMode, tableACLConfigFile, enforceTableACLConfig, reloadACLConfigFileInterval)
 
-	if reloadACLConfigFileInterval != 0 {
-		ticker := time.NewTicker(reloadACLConfigFileInterval)
-		go func() {
-			for range ticker.C {
-				sigChan <- syscall.SIGHUP
-			}
-		}()
-	}
 }
 
 // SetServingType changes the serving type of the tabletserver. It starts or

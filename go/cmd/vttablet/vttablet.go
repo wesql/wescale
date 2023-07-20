@@ -68,7 +68,7 @@ var (
 
 func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&enforceTableACLConfig, "enforce-tableacl-config", enforceTableACLConfig, "if this flag is true, vttablet will fail to start if a valid tableacl config does not exist")
-	fs.StringVar(&tableACLConfig, "table-acl-config", tableACLConfig, "path to table access checker config file; send SIGHUP to reload this file")
+	fs.StringVar(&tableACLConfig, "table-acl-config", tableACLConfig, "path to table access checker config file;")
 	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeSimple, "table acl config mode (simple or mysqlbased)")
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", tableACLConfigReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
@@ -138,6 +138,9 @@ func main() {
 	}
 	if err := tm.Start(tablet, config.Healthcheck.IntervalSeconds.Get()); err != nil {
 		log.Exitf("failed to parse --tablet-path or initialize DB credentials: %v", err)
+	}
+	if tableACLMode == global.TableACLModeMysqlBased {
+		qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
 	}
 	servenv.OnClose(func() {
 		// Close the tm so that our topo entry gets pruned properly and any
@@ -235,6 +238,8 @@ func createTabletServer(config *tabletenv.TabletConfig, ts *topo.Server, tabletA
 	})
 
 	servenv.OnClose(qsc.StopService)
-	qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	if tableACLMode != global.TableACLModeMysqlBased {
+		qsc.InitACL(qsc, tableACLMode, tableACLConfig, enforceTableACLConfig, tableACLConfigReloadInterval)
+	}
 	return qsc
 }
