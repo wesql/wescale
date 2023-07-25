@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,7 +114,7 @@ func (ms *memorySort) Primitive() engine.Primitive {
 }
 
 // SetLimit implements the logicalPlan interface
-func (ms *memorySort) SetLimit(limit *sqlparser.Limit) error {
+func (ms *memorySort) SetLimit(_ *sqlparser.Limit) error {
 	return vterrors.VT13001("memorySort.Limit: unreachable")
 }
 

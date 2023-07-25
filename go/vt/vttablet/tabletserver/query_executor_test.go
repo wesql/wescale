@@ -1438,7 +1438,7 @@ const (
 )
 
 // newTestQueryExecutor uses a package level variable testTabletServer defined in tabletserver_test.go
-func newTestTabletServer(ctx context.Context, flags executorFlags, db *fakesqldb.DB) *TabletServer {
+func newTestTabletServer(_ context.Context, flags executorFlags, db *fakesqldb.DB) *TabletServer {
 	config := tabletenv.NewDefaultConfig()
 	config.OltpReadPool.Size = 100
 	if flags&smallTxPool > 0 {

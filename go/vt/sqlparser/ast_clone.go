@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,6 +95,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfCharExpr(in)
 	case *CheckConstraintDefinition:
 		return CloneRefOfCheckConstraintDefinition(in)
+	case *CheckTable:
+		return CloneRefOfCheckTable(in)
 	case *ColName:
 		return CloneRefOfColName(in)
 	case *CollateExpr:
@@ -844,6 +852,16 @@ func CloneRefOfCheckConstraintDefinition(n *CheckConstraintDefinition) *CheckCon
 	}
 	out := *n
 	out.Expr = CloneExpr(n.Expr)
+	return &out
+}
+
+// CloneRefOfCheckTable creates a deep clone of the input.
+func CloneRefOfCheckTable(n *CheckTable) *CheckTable {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Table = CloneTableName(n.Table)
 	return &out
 }
 
@@ -3753,6 +3771,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfBegin(in)
 	case *CallProc:
 		return CloneRefOfCallProc(in)
+	case *CheckTable:
+		return CloneRefOfCheckTable(in)
 	case *CommentOnly:
 		return CloneRefOfCommentOnly(in)
 	case *Commit:

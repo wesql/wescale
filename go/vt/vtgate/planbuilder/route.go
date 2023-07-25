@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -292,7 +297,7 @@ func (rb *route) generateFieldQuery(sel sqlparser.SelectStatement, jt *jointab) 
 }
 
 // SupplyVar implements the logicalPlan interface
-func (rb *route) SupplyVar(from, to int, col *sqlparser.ColName, varname string) {
+func (rb *route) SupplyVar(_, _ int, _ *sqlparser.ColName, _ string) {
 	// route is an atomic primitive. So, SupplyVar cannot be
 	// called on it.
 	panic("BUG: route is an atomic node.")
@@ -779,7 +784,7 @@ func (rb *route) iterateCompositeIN(
 
 // compositePlanForCol builds a plan for a matched column in the LHS
 // of a composite IN clause.
-func (rb *route) compositePlanForCol(pb *primitiveBuilder, comparison *sqlparser.ComparisonExpr, coordinates []int) (opcode engine.Opcode, values sqlparser.Expr) {
+func (rb *route) compositePlanForCol(_ *primitiveBuilder, comparison *sqlparser.ComparisonExpr, coordinates []int) (opcode engine.Opcode, values sqlparser.Expr) {
 	rightTuple, ok := comparison.Right.(sqlparser.ValTuple)
 	if !ok {
 		return engine.Scatter, nil

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +29,7 @@ import (
 	"context"
 )
 
-func TestLiveQueryzHandlerJSON(t *testing.T) {
+func TestLiveQueryzHandlerJSON(_ *testing.T) {
 	resp := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/livequeryz/?format=json", nil)
 
@@ -35,7 +40,7 @@ func TestLiveQueryzHandlerJSON(t *testing.T) {
 	livequeryzHandler([]*QueryList{queryList}, resp, req)
 }
 
-func TestLiveQueryzHandlerHTTP(t *testing.T) {
+func TestLiveQueryzHandlerHTTP(_ *testing.T) {
 	resp := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/livequeryz/", nil)
 

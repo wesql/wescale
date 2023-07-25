@@ -14227,7 +14227,7 @@ yydefault:
 		var yyLOCAL Statement
 //line sql.y:3969
 		{
-			yyLOCAL = &OtherRead{}
+			yyLOCAL = &CheckTable{Table: yyDollar[3].tableName}
 		}
 		yyVAL.union = yyLOCAL
 	case 717:

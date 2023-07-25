@@ -1423,7 +1423,7 @@ func TestPurgeMessages(t *testing.T) {
 	require.EqualValues(t, 1, count)
 }
 
-func TestHandleExecUnknownError(t *testing.T) {
+func TestHandleExecUnknownError(_ *testing.T) {
 	logStats := tabletenv.NewLogStats(ctx, "TestHandleExecError")
 	config := tabletenv.NewDefaultConfig()
 	tsv := NewTabletServer("TabletServerTest", config, memorytopo.NewServer(""), &topodatapb.TabletAlias{})
@@ -2161,7 +2161,7 @@ func TestDatabaseNameReplaceByKeyspaceNameBeginExecuteMethod(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func setDBName(db *fakesqldb.DB, tsv *TabletServer, s string) {
+func setDBName(db *fakesqldb.DB, tsv *TabletServer, _ string) {
 	tsv.config.DB.DBName = "databaseInMysql"
 	db.SetName("databaseInMysql")
 }

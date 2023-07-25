@@ -2089,6 +2089,11 @@ func (node *LockTables) Format(buf *TrackedBuffer) {
 	}
 }
 
+// Format formats the CheckTable node.
+func (node *CheckTable) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "check table %v", node.Table.Name)
+}
+
 // Format formats the UnlockTables node.
 func (node *UnlockTables) Format(buf *TrackedBuffer) {
 	buf.literal("unlock tables")

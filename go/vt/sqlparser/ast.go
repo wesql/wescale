@@ -683,6 +683,11 @@ type (
 	// the full AST for the statement.
 	OtherRead struct{}
 
+	// CheckTable represents a CHECK statement
+	CheckTable struct {
+		Table TableName
+	}
+
 	// OtherAdmin represents a misc statement that relies on ADMIN privileges,
 	// such as REPAIR, OPTIMIZE, or TRUNCATE statement.
 	// It should be used only as an indicator. It does not contain
@@ -725,6 +730,7 @@ func (*CreateTable) iStatement()         {}
 func (*CreateView) iStatement()          {}
 func (*AlterView) iStatement()           {}
 func (*LockTables) iStatement()          {}
+func (*CheckTable) iStatement()          {}
 func (*UnlockTables) iStatement()        {}
 func (*AlterTable) iStatement()          {}
 func (*AlterVschema) iStatement()        {}

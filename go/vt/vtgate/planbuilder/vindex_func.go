@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -113,7 +118,7 @@ func (vf *vindexFunc) WireupGen4(*plancontext.PlanningContext) error {
 }
 
 // SupplyVar implements the logicalPlan interface
-func (vf *vindexFunc) SupplyVar(from, to int, col *sqlparser.ColName, varname string) {
+func (vf *vindexFunc) SupplyVar(_, _ int, _ *sqlparser.ColName, _ string) {
 	// vindexFunc is an atomic primitive. So, SupplyVar cannot be
 	// called on it.
 	panic("BUG: vindexFunc is an atomic node.")
@@ -181,7 +186,7 @@ func (err UnsupportedSupplyWeightString) Error() string {
 }
 
 // SupplyWeightString implements the logicalPlan interface
-func (vf *vindexFunc) SupplyWeightString(colNumber int, alsoAddToGroupBy bool) (weightcolNumber int, err error) {
+func (vf *vindexFunc) SupplyWeightString(_ int, _ bool) (weightcolNumber int, err error) {
 	return 0, UnsupportedSupplyWeightString{Type: "vindex function"}
 }
 

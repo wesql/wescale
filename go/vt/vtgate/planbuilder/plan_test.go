@@ -69,7 +69,7 @@ func (*hashIndex) NeedsVCursor() bool { return false }
 func (*hashIndex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*hashIndex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*hashIndex) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return nil, nil
 }
 
@@ -87,7 +87,7 @@ func (*lookupIndex) NeedsVCursor() bool { return false }
 func (*lookupIndex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*lookupIndex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*lookupIndex) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return nil, nil
 }
 func (*lookupIndex) Create(context.Context, vindexes.VCursor, [][]sqltypes.Value, [][]byte, bool) error {
@@ -119,7 +119,7 @@ func (*nameLkpIndex) GetCommitOrder() vtgatepb.CommitOrder { return vtgatepb.Com
 func (*nameLkpIndex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*nameLkpIndex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*nameLkpIndex) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return nil, nil
 }
 func (*nameLkpIndex) Create(context.Context, vindexes.VCursor, [][]sqltypes.Value, [][]byte, bool) error {
@@ -156,7 +156,7 @@ func (*costlyIndex) NeedsVCursor() bool { return false }
 func (*costlyIndex) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*costlyIndex) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*costlyIndex) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return nil, nil
 }
 func (*costlyIndex) Create(context.Context, vindexes.VCursor, [][]sqltypes.Value, [][]byte, bool) error {
@@ -195,11 +195,11 @@ func (m *multiColIndex) IsUnique() bool { return true }
 
 func (m *multiColIndex) NeedsVCursor() bool { return false }
 
-func (m *multiColIndex) Map(ctx context.Context, vcursor vindexes.VCursor, rowsColValues [][]sqltypes.Value) ([]key.Destination, error) {
+func (m *multiColIndex) Map(_ context.Context, _ vindexes.VCursor, _ [][]sqltypes.Value) ([]key.Destination, error) {
 	return nil, nil
 }
 
-func (m *multiColIndex) Verify(ctx context.Context, vcursor vindexes.VCursor, rowsColValues [][]sqltypes.Value, ksids [][]byte) ([]bool, error) {
+func (m *multiColIndex) Verify(_ context.Context, _ vindexes.VCursor, _ [][]sqltypes.Value, _ [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
 
@@ -746,7 +746,7 @@ func (vw *vschemaWrapper) currentDb() string {
 	return ksName
 }
 
-func (vw *vschemaWrapper) FindRoutedShard(keyspace, shard string) (string, error) {
+func (vw *vschemaWrapper) FindRoutedShard(_, _ string) (string, error) {
 	return "", nil
 }
 

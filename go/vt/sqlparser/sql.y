@@ -3967,7 +3967,7 @@ analyze_statement:
 check_statement:
    CHECK TABLE table_name
    {
-     $$ = &OtherRead{}
+     $$ = &CheckTable{Table: $3}
    }
 
 kill_statement:

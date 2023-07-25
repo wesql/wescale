@@ -2750,6 +2750,12 @@ func (node *LockTables) formatFast(buf *TrackedBuffer) {
 	}
 }
 
+// formatFast formats the CheckTable node.
+func (node *CheckTable) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("check table ")
+	node.Table.Name.formatFast(buf)
+}
+
 // formatFast formats the UnlockTables node.
 func (node *UnlockTables) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("unlock tables")

@@ -158,7 +158,7 @@ func (t *noopVCursor) GetReadWriteSplittingPolicy() string {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetReadWriteSplittingRatio(rate int32) {
+func (t *noopVCursor) SetReadWriteSplittingRatio(_ int32) {
 	panic("implement me")
 }
 

@@ -3,6 +3,7 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
+
 /*
 Copyright 2021 The Vitess Authors.
 
@@ -38,12 +39,15 @@ func (cached *TabletPlan) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.Original)))
 	// field Rules *vitess.io/vitess/go/vt/vttablet/tabletserver/rules.Rules
 	size += cached.Rules.CachedSize(true)
-	// field Authorized []*vitess.io/vitess/go/vt/tableacl.ACLResult
+	// field Authorized [][]*vitess.io/vitess/go/vt/tableacl.ACLResult
 	{
-		size += hack.RuntimeAllocSize(int64(cap(cached.Authorized)) * int64(8))
-		for _, elems := range cached.Authorized {
-			for _, elem := range elems {
-				size += elem.CachedSize(true)
+		size += hack.RuntimeAllocSize(int64(cap(cached.Authorized)) * int64(24))
+		for _, elem := range cached.Authorized {
+			{
+				size += hack.RuntimeAllocSize(int64(cap(elem)) * int64(8))
+				for _, elem := range elem {
+					size += elem.CachedSize(true)
+				}
 			}
 		}
 	}
