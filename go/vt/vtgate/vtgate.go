@@ -127,6 +127,9 @@ var (
 	// read write splitting flags
 	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyDisable)
 	defaultReadAfterWriteConsistencyName = vtgatepb.ReadAfterWriteConsistency_EVENTUAL.String()
+
+	defaultSkipUseStmtForConn = true
+
 	// defaultReadAfterWriteTimeout is the default timeout for read after write operations
 	defaultReadAfterWriteTimeout = float64(30.0)
 	enableDefaultUnShardedMode   = true
@@ -171,6 +174,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
 	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
 	fs.IntVar(&defaultReadWriteSplittingRatio, "read_write_splitting_ratio", defaultReadWriteSplittingRatio, "read write splitting ratio to replica")
+	fs.BoolVar(&defaultSkipUseStmtForConn, "skip_use_stmt_for_conns", defaultSkipUseStmtForConn, "Automatically add databases to the vschema when they are created")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -726,5 +730,14 @@ func SetDefaultReadAfterWriteTimeout(timeoutStr string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid read-after-write timeout: %s", timeoutStr)
 	}
 	defaultReadAfterWriteTimeout = timeout
+	return nil
+}
+
+func SetDefaultSkipUseStmtForConn(value string) error {
+	val, err := strconv.ParseBool(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid skip_use_stmt_for_conns value: %s", value)
+	}
+	defaultSkipUseStmtForConn = val
 	return nil
 }

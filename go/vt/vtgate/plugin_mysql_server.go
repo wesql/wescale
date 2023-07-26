@@ -398,6 +398,7 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 				ReadAfterWriteConsistency: ConvertReadAfterWriteConsistency(defaultReadAfterWriteConsistencyName),
 				ReadAfterWriteTimeout:     defaultReadAfterWriteTimeout,
 			},
+			SkipUseStmtForConn: defaultSkipUseStmtForConn,
 		}
 		if c.Capabilities&mysql.CapabilityClientFoundRows != 0 {
 			session.Options.ClientFoundRows = true

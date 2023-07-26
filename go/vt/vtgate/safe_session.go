@@ -724,6 +724,18 @@ func (session *SafeSession) GetReadWriteSplittingRatio() int32 {
 	return session.ReadWriteSplittingRatio
 }
 
+func (session *SafeSession) SetSkipUseStmtForConn(allow bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.SkipUseStmtForConn = allow
+}
+
+func (session *SafeSession) GetSkipUseStmtForConn() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.SkipUseStmtForConn
+}
+
 // GetSessionUUID returns the SessionUUID value.
 func (session *SafeSession) GetSessionUUID() string {
 	session.mu.Lock()

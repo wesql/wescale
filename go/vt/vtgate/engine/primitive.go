@@ -163,6 +163,9 @@ type (
 		SetReadWriteSplittingRatio(rate int32)
 		GetReadWriteSplittingRatio() int32
 
+		GetSkipUseStmtForConn() bool
+		SetSkipUseStmtForConn(bool)
+
 		GetSessionUUID() string
 
 		SetSessionEnableSystemSettings(context.Context, bool) error

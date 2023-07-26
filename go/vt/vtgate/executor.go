@@ -453,6 +453,8 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
+		case sysvars.SkipUseStmtForConn.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.SkipUseStmtForConn)
 		case sysvars.SessionUUID.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.SessionUUID)
 		case sysvars.SessionEnableSystemSettings.Name:
@@ -1036,10 +1038,13 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	}
 
 	//rewrite TableName
-	stmt, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
-	if err != nil {
-		return nil, nil, err
+	if vcursor.keyspace != "" && vcursor.Session().GetSkipUseStmtForConn() == true {
+		stmt, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
+
 	// Normalize if possible and retry.
 	if e.canNormalizeStatement(stmt, qo, setVarComment) {
 		parameterize := e.normalize // the public flag is called normalize
@@ -1069,6 +1074,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 }
 
 func (e *Executor) cacheAndBuildStatement(ctx context.Context, vcursor *vcursorImpl, query string, statement sqlparser.Statement, qo iQueryOption, logStats *logstats.LogStats, stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, bindVarNeeds *sqlparser.BindVarNeeds) (*engine.Plan, sqlparser.Statement, error) {
+	//Todo (kubejocker):cache key
 	planHash := sha256.New()
 	_, _ = planHash.Write([]byte(vcursor.planPrefixKey(ctx)))
 	_, _ = planHash.Write([]byte{':'})

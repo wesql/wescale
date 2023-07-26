@@ -39,9 +39,9 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		_ = SafeRewrite(node, er.rewriteDownSelect, er.rewriteUp)
 		er.inDerived = tmp
 		return false
-	case *OtherRead:
+	case *OtherRead, *OtherAdmin:
 		//still need to use the "use" statement until the Table information is completed.
-	case *Use, *OtherAdmin, *CallProc, *Begin, *Commit, *Rollback,
+	case *Use, *CallProc, *Begin, *Commit, *Rollback,
 		*Load, *Savepoint, *Release, *SRollback, *Set, *Show,
 		Explain:
 		return false

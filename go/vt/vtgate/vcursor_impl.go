@@ -898,6 +898,14 @@ func (vc *vcursorImpl) GetReadWriteSplittingRatio() int32 {
 	return vc.safeSession.GetReadWriteSplittingRatio()
 }
 
+func (vc *vcursorImpl) SetSkipUseStmtForConn(allow bool) {
+	vc.safeSession.SetSkipUseStmtForConn(allow)
+}
+
+func (vc *vcursorImpl) GetSkipUseStmtForConn() bool {
+	return vc.safeSession.GetSkipUseStmtForConn()
+}
+
 // GetSessionUUID implements the SessionActions interface
 func (vc *vcursorImpl) GetSessionUUID() string {
 	return vc.safeSession.GetSessionUUID()
@@ -1118,6 +1126,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultReadAfterWriteConsistency(value)
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		return SetDefaultReadAfterWriteTimeout(value)
+	case sysvars.SkipUseStmtForConn.Name:
+		return SetDefaultSkipUseStmtForConn(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

@@ -92,6 +92,8 @@ var (
 	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
 	ReadWriteSplittingRatio  = SystemVariable{Name: "read_write_splitting_ratio"}
 
+	SkipUseStmtForConn = SystemVariable{Name: "skip_use_stmt_for_conn", IsBoolean: true, Default: on}
+
 	VitessAware = []SystemVariable{
 		Autocommit,
 		ClientFoundRows,
@@ -113,6 +115,7 @@ var (
 		QueryTimeout,
 		ReadWriteSplittingPolicy,
 		ReadWriteSplittingRatio,
+		SkipUseStmtForConn,
 	}
 
 	ReadOnly = []SystemVariable{
