@@ -240,6 +240,8 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 		plan, err = &Plan{PlanID: PlanShowThrottlerStatus, FullStmt: stmt}, nil
 	case *sqlparser.Show:
 		plan, err = analyzeShow(stmt, dbName)
+	case *sqlparser.CheckTable:
+		plan, err = &Plan{PlanID: PlanOtherAdmin}, nil
 	case *sqlparser.OtherRead, sqlparser.Explain:
 		plan, err = &Plan{PlanID: PlanOtherRead}, nil
 	case *sqlparser.OtherAdmin:
