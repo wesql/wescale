@@ -1034,6 +1034,12 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	if err != nil {
 		return nil, nil, err
 	}
+
+	//rewrite TableName
+	stmt, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+	if err != nil {
+		return nil, nil, err
+	}
 	// Normalize if possible and retry.
 	if e.canNormalizeStatement(stmt, qo, setVarComment) {
 		parameterize := e.normalize // the public flag is called normalize

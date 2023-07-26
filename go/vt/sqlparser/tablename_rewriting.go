@@ -65,6 +65,8 @@ func (er *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
 		// Don't continue
 		er.inDerived = tmp
 		return false
+	case *ColName:
+		return false
 	case SelectExprs:
 		return !er.inDerived
 	}
