@@ -5,21 +5,23 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 )
 
-func RewriteTableName(in Statement, keyspace string) (Statement, error) {
+func RewriteTableName(in Statement, keyspace string) (Statement, bool, error) {
 	tr := newTableNameRewriter(keyspace)
 	result := SafeRewrite(in, tr.rewriteDown, tr.rewriteUp)
 
 	out, ok := result.(Statement)
 	if !ok {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "statement rewriting returned a non statement: %s", String(out))
+		return nil, false, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "statement rewriting returned a non statement: %s", String(out))
 	}
-	return out, nil
+	return out, tr.skipUse, nil
 }
 
 type tableRewriter struct {
 	err       error
 	inDerived bool
 	cur       *Cursor
+
+	skipUse bool
 
 	keyspace string
 }
@@ -31,6 +33,10 @@ func newTableNameRewriter(keyspace string) *tableRewriter {
 }
 
 func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
+	// do not rewrite tableName if there is a WITH node
+	if !er.skipUse {
+		return false
+	}
 	switch node := node.(type) {
 	case *Select:
 		_, isDerived := parent.(*DerivedTable)
@@ -40,7 +46,10 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		er.inDerived = tmp
 		return false
 	case *OtherRead, *OtherAdmin:
-		//still need to use the "use" statement until the Table information is completed.
+		er.skipUse = false
+		return false
+	case *With:
+		er.skipUse = true
 	case *Use, *CallProc, *Begin, *Commit, *Rollback,
 		*Load, *Savepoint, *Release, *SRollback, *Set, *Show,
 		Explain:
@@ -68,7 +77,7 @@ func (er *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
 	case *ColName:
 		return false
 	case SelectExprs:
-		return !er.inDerived
+		return false
 	}
 	return er.err == nil
 }

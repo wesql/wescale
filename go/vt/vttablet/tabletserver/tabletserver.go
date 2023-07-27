@@ -768,7 +768,12 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, "")
+			keyspaceName := target.Keyspace
+			isSkipuse := options.IsSkipUse
+			if isSkipuse {
+
+			}
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, keyspaceName)
 			if err != nil {
 				return err
 			}

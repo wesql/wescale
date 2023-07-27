@@ -1038,8 +1038,12 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	}
 
 	//rewrite TableName
-	if vcursor.keyspace != "" && vcursor.Session().GetSkipUseStmtForConn() == true {
-		stmt, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+	isSkipUse := vcursor.Session().GetSkipUseStmtForConn()
+	if vcursor.keyspace != "" && isSkipUse == true {
+		stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+		if isSkipUse {
+			vcursor.safeSession.GetOptions().IsSkipUse = isSkipUse
+		}
 		if err != nil {
 			return nil, nil, err
 		}

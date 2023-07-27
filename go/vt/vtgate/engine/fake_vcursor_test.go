@@ -166,6 +166,14 @@ func (t *noopVCursor) GetReadWriteSplittingRatio() int32 {
 	panic("implement me")
 }
 
+func (t *noopVCursor) GetSkipUseStmtForConn() bool {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetSkipUseStmtForConn(b bool) {
+	panic("implement me")
+}
+
 func (t *noopVCursor) GetSessionUUID() string {
 	panic("implement me")
 }
@@ -469,6 +477,14 @@ func (f *loggingVCursor) SetTarget(target string) error {
 
 func (f *loggingVCursor) GetKeyspace() string {
 	return ""
+}
+
+func (f *loggingVCursor) GetSkipUseStmtForConn() bool {
+	return false
+}
+
+func (f *loggingVCursor) SetSkipUseStmtForConn(b bool) {
+	return
 }
 
 func (f *loggingVCursor) RecordWarning(warning *querypb.QueryWarning) {

@@ -366,6 +366,7 @@ message ExecuteOptions {
   }
 
   LoadBalancePolicy load_balance_policy = 17;
+  bool isSkipUse = 18;
 }
 
 // Field describes a single column returned by a query

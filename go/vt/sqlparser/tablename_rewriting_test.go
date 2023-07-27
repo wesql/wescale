@@ -19,8 +19,24 @@ func TestRewriteTableName(t *testing.T) {
 			outstmt: `select * from (select 12 from dual) as t`,
 		},
 		{
-			in:      ``,
-			outstmt: ``,
+			in:      `select d1t1.*, d2t1.* from t1 as d1t1 join d2.t1 as d2t1;`,
+			outstmt: `select d1t1.*, d2t1.* from test.t1 as d1t1 join d2.t1 as d2t1`,
+		},
+		{
+			in:      `select d1.t1.*, d2.t1.* from d1.t1 join d2.t1;`,
+			outstmt: `select d1.t1.*, d2.t1.* from d1.t1 join d2.t1`,
+		},
+		{
+			in:      `select d1.t1.*, t1.* from d1.t1 join d2.t1;`,
+			outstmt: `select d1.t1.*, t1.* from d1.t1 join d2.t1`,
+		},
+		{
+			in:      `select t1.*, t1.* from d1.t1 join d2.t1;`,
+			outstmt: `select t1.*, t1.* from d1.t1 join d2.t1`,
+		},
+		{
+			in:      `with simple_query as (select * from t1) select * from simple_query;`,
+			outstmt: `select t1.*, t1.* from d1.t1 join d2.t1`,
 		},
 		{
 			in: `SELECT c.name, o.order_date, oi.product_name 
@@ -56,7 +72,7 @@ func TestRewriteTableName(t *testing.T) {
 		t.Run(tc.in, func(t *testing.T) {
 			stmt, err := Parse(tc.in)
 			require.NoError(t, err)
-			newStmt, err := RewriteTableName(stmt, "test")
+			newStmt, _, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.outstmt, String(newStmt))
 		})
