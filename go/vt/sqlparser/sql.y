@@ -3973,18 +3973,16 @@ check_statement:
 kill_statement:
   KILL INTEGRAL
   {
-    $$ = &OtherRead{}
+    $$ = &Kill{Type: KillConnection, ConnID: NewIntLiteral($2)}
   }
 | KILL QUERY INTEGRAL
   {
-    $$ = &OtherRead{}
- }
+    $$ = &Kill{Type: KillQuery, ConnID: NewIntLiteral($3)}
+  }
 | KILL CONNECTION INTEGRAL
   {
-    $$ = &OtherRead{}
- }
-
-
+    $$ = &Kill{Type: KillConnection, ConnID: NewIntLiteral($3)}
+  }
 
 
 show_statement:

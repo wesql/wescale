@@ -2316,6 +2316,18 @@ func (cached *KeyState) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
+func (cached *Kill) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field ConnID *vitess.io/vitess/go/vt/sqlparser.Literal
+	size += cached.ConnID.CachedSize(true)
+	return size
+}
 func (cached *LagLeadExpr) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)

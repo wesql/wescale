@@ -187,6 +187,9 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.CheckTable:
 		// todo
 		return buildOtherReadAndAdmin(query, vschema)
+	case *sqlparser.Kill:
+		// todo
+		return buildOtherReadAndAdmin(query, vschema)
 	case *sqlparser.UnlockTables:
 		// will not be executed, UnLock Tables statement is ignored
 		return buildUnlockPlan(stmt, reservedVars, vschema)

@@ -2756,6 +2756,14 @@ func (node *CheckTable) formatFast(buf *TrackedBuffer) {
 	node.Table.Name.formatFast(buf)
 }
 
+// formatFast formats the Kill node
+func (node *Kill) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("kill ")
+	buf.WriteString(node.Type.ToString())
+	buf.WriteByte(' ')
+	node.ConnID.formatFast(buf)
+}
+
 // formatFast formats the UnlockTables node.
 func (node *UnlockTables) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("unlock tables")

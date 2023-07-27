@@ -1794,6 +1794,18 @@ func (ty LockType) ToString() string {
 	}
 }
 
+// ToString returns the type as a string
+func (kt KillType) ToString() string {
+	switch kt {
+	case KillQuery:
+		return QueryStr
+	case KillConnection:
+		return ConnectionStr
+	default:
+		return "Unknown KillType"
+	}
+}
+
 // ToString returns ShowCommandType as a string
 func (ty ShowCommandType) ToString() string {
 	switch ty {

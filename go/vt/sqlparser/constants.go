@@ -266,6 +266,10 @@ const (
 	WriteStr            = "write"
 	LowPriorityWriteStr = "low_priority write"
 
+	// Kill Tyoes
+	QueryStr      = "query"
+	ConnectionStr = "connection"
+
 	// ShowCommand Types
 	CharsetStr                 = " charset"
 	CollationStr               = " collation"
@@ -766,6 +770,13 @@ const (
 	ReadLocal
 	Write
 	LowPriorityWrite
+)
+
+// KillType constants
+const (
+	UnknownKillType KillType = iota
+	KillQuery
+	KillConnection
 )
 
 // ShowCommandType constants

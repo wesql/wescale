@@ -270,6 +270,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfJtOnResponse(in, f)
 	case *KeyState:
 		return VisitRefOfKeyState(in, f)
+	case *Kill:
+		return VisitRefOfKill(in, f)
 	case *LagLeadExpr:
 		return VisitRefOfLagLeadExpr(in, f)
 	case *Limit:
@@ -2272,6 +2274,18 @@ func VisitRefOfKeyState(in *KeyState, f Visit) error {
 		return nil
 	}
 	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
+func VisitRefOfKill(in *Kill, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfLiteral(in.ConnID, f); err != nil {
 		return err
 	}
 	return nil
@@ -4666,6 +4680,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfFlush(in, f)
 	case *Insert:
 		return VisitRefOfInsert(in, f)
+	case *Kill:
+		return VisitRefOfKill(in, f)
 	case *Load:
 		return VisitRefOfLoad(in, f)
 	case *LockTables:
