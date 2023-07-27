@@ -22,38 +22,19 @@ limitations under the License.
 package planbuilder
 
 import (
-	"fmt"
-
 	"vitess.io/vitess/go/internal/global"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 	"vitess.io/vitess/go/vt/vtgate/semantics"
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
 )
 
-func gen4Planner(query string, plannerVersion querypb.ExecuteOptions_PlannerVersion) stmtPlanner {
-	return func(stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema) (*planResult, error) {
-		switch stmt := stmt.(type) {
-		case sqlparser.SelectStatement:
-			return gen4SelectStmtPlanner(query, plannerVersion, stmt, reservedVars, vschema)
-		case *sqlparser.Update:
-			return gen4UpdateStmtPlanner(plannerVersion, stmt, reservedVars, vschema)
-		case *sqlparser.Delete:
-			return gen4DeleteStmtPlanner(plannerVersion, stmt, reservedVars, vschema)
-		default:
-			return nil, vterrors.VT12001(fmt.Sprintf("%T", stmt))
-		}
-	}
-}
-
 func gen4SelectStmtPlanner(
 	query string,
-	plannerVersion querypb.ExecuteOptions_PlannerVersion,
 	stmt sqlparser.SelectStatement,
 	reservedVars *sqlparser.ReservedVars,
 	vschema plancontext.VSchema,
@@ -118,20 +99,6 @@ func planSelectGen4(reservedVars *sqlparser.ReservedVars, vschema plancontext.VS
 	return nil, plan, tablesUsed, nil
 }
 
-func gen4PredicateRewrite(stmt sqlparser.Statement, getPlan func(selStatement sqlparser.SelectStatement) (logicalPlan, *semantics.SemTable, []string, error)) (logicalPlan, *semantics.SemTable, []string) {
-	rewritten, isSel := sqlparser.RewritePredicate(stmt).(sqlparser.SelectStatement)
-	if !isSel {
-		// Fail-safe code, should never happen
-		return nil, nil, nil
-	}
-	plan2, st, op, err := getPlan(rewritten)
-	if err == nil && !shouldRetryAfterPredicateRewriting(plan2) {
-		// we only use this new plan if it's better than the old one we got
-		return plan2, st, op
-	}
-	return nil, nil, nil
-}
-
 func newBuildSelectPlan(
 	selStmt sqlparser.SelectStatement,
 	reservedVars *sqlparser.ReservedVars,
@@ -194,154 +161,6 @@ func GetUsingKs(node sqlparser.SQLNode, vschema plancontext.VSchema) (*vindexes.
 		return nil, err
 	}
 	return usingKs, nil
-}
-
-// optimizePlan removes unnecessary simpleProjections that have been created while planning
-func optimizePlan(plan logicalPlan) logicalPlan {
-	newPlan, _ := visit(plan, func(plan logicalPlan) (bool, logicalPlan, error) {
-		this, ok := plan.(*simpleProjection)
-		if !ok {
-			return true, plan, nil
-		}
-
-		input, ok := this.input.(*simpleProjection)
-		if !ok {
-			return true, plan, nil
-		}
-
-		for i, col := range this.eSimpleProj.Cols {
-			this.eSimpleProj.Cols[i] = input.eSimpleProj.Cols[col]
-		}
-		this.input = input.input
-		return true, this, nil
-	})
-	return newPlan
-}
-
-func gen4UpdateStmtPlanner(
-	version querypb.ExecuteOptions_PlannerVersion,
-	updStmt *sqlparser.Update,
-	reservedVars *sqlparser.ReservedVars,
-	vschema plancontext.VSchema,
-) (*planResult, error) {
-	if updStmt.With != nil {
-		return nil, vterrors.VT12001("WITH expression in UPDATE statement")
-	}
-
-	ksName := ""
-	usingKs, err := GetUsingKs(updStmt, vschema)
-	if err != nil {
-		return nil, vterrors.VT09005()
-	}
-	ksName = usingKs.Name
-	semTable, err := semantics.Analyze(updStmt, ksName, vschema)
-	if err != nil {
-		return nil, err
-	}
-	// record any warning as planner warning.
-	vschema.PlannerWarning(semTable.Warning)
-
-	err = rewriteRoutedTables(updStmt, vschema)
-	if err != nil {
-		return nil, err
-	}
-
-	tables := semTable.GetVindexTable()
-	edml := engine.NewDML()
-	edml.Keyspace = usingKs
-	edml.Table = tables
-	edml.Opcode = engine.Unsharded
-	edml.Query = generateQuery(updStmt)
-	upd := &engine.Update{DML: edml}
-	return newPlanResult(upd, operators.QualifiedTables(usingKs, tables)...), nil
-}
-
-func gen4DeleteStmtPlanner(
-	version querypb.ExecuteOptions_PlannerVersion,
-	deleteStmt *sqlparser.Delete,
-	reservedVars *sqlparser.ReservedVars,
-	vschema plancontext.VSchema,
-) (*planResult, error) {
-	if deleteStmt.With != nil {
-		return nil, vterrors.VT12001("WITH expression in DELETE statement")
-	}
-
-	var err error
-	if len(deleteStmt.TableExprs) == 1 && len(deleteStmt.Targets) == 1 {
-		deleteStmt, err = rewriteSingleTbl(deleteStmt)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	ksName := ""
-	usingKs, err := GetUsingKs(deleteStmt, vschema)
-	if err != nil {
-		return nil, vterrors.VT09005()
-	}
-	ksName = usingKs.Name
-	semTable, err := semantics.Analyze(deleteStmt, ksName, vschema)
-	if err != nil {
-		return nil, err
-	}
-
-	// record any warning as planner warning.
-	vschema.PlannerWarning(semTable.Warning)
-	err = rewriteRoutedTables(deleteStmt, vschema)
-	if err != nil {
-		return nil, err
-	}
-
-	tables := semTable.GetVindexTable()
-	edml := engine.NewDML()
-	edml.Keyspace = usingKs
-	edml.Table = tables
-	edml.Opcode = engine.Unsharded
-	edml.Query = generateQuery(deleteStmt)
-	del := &engine.Delete{DML: edml}
-	return newPlanResult(del, operators.QualifiedTables(usingKs, tables)...), nil
-}
-
-func rewriteRoutedTables(stmt sqlparser.Statement, vschema plancontext.VSchema) error {
-	// Rewrite routed tables
-	return sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-		aliasTbl, isAlias := node.(*sqlparser.AliasedTableExpr)
-		if !isAlias {
-			return true, nil
-		}
-		tableName, ok := aliasTbl.Expr.(sqlparser.TableName)
-		if !ok {
-			return true, nil
-		}
-		var vschemaTable *vindexes.Table
-		vschemaTable, _, _, _, _, err = vschema.FindTableOrVindex(tableName)
-		if err != nil {
-			return false, err
-		}
-
-		if vschemaTable.Name.String() != tableName.Name.String() {
-			name := tableName.Name
-			if aliasTbl.As.IsEmpty() {
-				// if the user hasn't specified an alias, we'll insert one here so the old table name still works
-				aliasTbl.As = sqlparser.NewIdentifierCS(name.String())
-			}
-			tableName.Name = sqlparser.NewIdentifierCS(vschemaTable.Name.String())
-			aliasTbl.Expr = tableName
-		}
-
-		return true, nil
-	}, stmt)
-}
-
-func setLockOnAllSelect(plan logicalPlan) {
-	_, _ = visit(plan, func(plan logicalPlan) (bool, logicalPlan, error) {
-		switch node := plan.(type) {
-		case *routeGen4:
-			node.Select.SetLock(sqlparser.ShareModeLock)
-			return true, node, nil
-		}
-		return true, plan, nil
-	})
 }
 
 func planLimit(limit *sqlparser.Limit, plan logicalPlan) (logicalPlan, error) {
@@ -446,41 +265,4 @@ func pushCommentDirectivesOnPlan(plan logicalPlan, stmt sqlparser.Statement) (lo
 	}
 
 	return plan, nil
-}
-
-// checkIfDeleteSupported checks if the delete query is supported or we must return an error.
-func checkIfDeleteSupported(del *sqlparser.Delete, semTable *semantics.SemTable) error {
-	if semTable.NotUnshardedErr != nil {
-		return semTable.NotUnshardedErr
-	}
-
-	// Delete is only supported for a single TableExpr which is supposed to be an aliased expression
-	multiShardErr := vterrors.VT12001("multi-shard or vindex write statement")
-	if len(del.TableExprs) != 1 {
-		return multiShardErr
-	}
-	_, isAliasedExpr := del.TableExprs[0].(*sqlparser.AliasedTableExpr)
-	if !isAliasedExpr {
-		return multiShardErr
-	}
-
-	if len(del.Targets) > 1 {
-		return vterrors.VT12001("multi-table DELETE statement in a sharded keyspace")
-	}
-
-	err := sqlparser.Walk(func(node sqlparser.SQLNode) (kontinue bool, err error) {
-		switch node.(type) {
-		case *sqlparser.Subquery, *sqlparser.DerivedTable:
-			// We have a subquery, so we must fail the planning.
-			// If this subquery and the table expression were all belonging to the same unsharded keyspace,
-			// we would have already created a plan for them before doing these checks.
-			return false, vterrors.VT12001("subqueries in DML")
-		}
-		return true, nil
-	}, del)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

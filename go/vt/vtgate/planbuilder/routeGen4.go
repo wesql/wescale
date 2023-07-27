@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +22,6 @@ limitations under the License.
 package planbuilder
 
 import (
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 	"vitess.io/vitess/go/vt/vtgate/semantics"
@@ -90,7 +94,7 @@ func (rb *routeGen4) WireupGen4(ctx *plancontext.PlanningContext) error {
 	}
 	reservedVars := sqlparser.NewReservedVars("vtg", reserved)
 
-	lookupPrimitive, err := gen4SelectStmtPlanner(query, querypb.ExecuteOptions_Gen4, stmt.(sqlparser.SelectStatement), reservedVars, ctx.VSchema)
+	lookupPrimitive, err := gen4SelectStmtPlanner(query, stmt.(sqlparser.SelectStatement), reservedVars, ctx.VSchema)
 	if err != nil {
 		return vterrors.Wrapf(err, "failed to plan the lookup query: [%s]", query)
 	}
