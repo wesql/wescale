@@ -29,6 +29,7 @@ type tableRewriter struct {
 func newTableNameRewriter(keyspace string) *tableRewriter {
 	return &tableRewriter{
 		keyspace: keyspace,
+		skipUse:  true,
 	}
 }
 
@@ -49,7 +50,7 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		er.skipUse = false
 		return false
 	case *With:
-		er.skipUse = true
+		er.skipUse = false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback,
 		*Load, *Savepoint, *Release, *SRollback, *Set, *Show,
 		Explain:
