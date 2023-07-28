@@ -39,7 +39,7 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	}
 	switch node := node.(type) {
 	case *Select:
-		if node.With.ctes != nil || len(node.With.ctes) > 0 {
+		if node.With != nil && len(node.With.ctes) > 0 {
 			er.skipUse = false
 			return false
 		}
