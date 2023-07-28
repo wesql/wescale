@@ -21,8 +21,7 @@ type tableRewriter struct {
 	inDerived bool
 	cur       *Cursor
 
-	skipUse bool
-
+	skipUse  bool
 	keyspace string
 }
 
@@ -40,19 +39,24 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	}
 	switch node := node.(type) {
 	case *Select:
+		if node.With.ctes != nil || len(node.With.ctes) > 0 {
+			er.skipUse = false
+			return false
+		}
+
 		_, isDerived := parent.(*DerivedTable)
 		var tmp bool
 		tmp, er.inDerived = er.inDerived, isDerived
 		_ = SafeRewrite(node, er.rewriteDownSelect, er.rewriteUp)
 		er.inDerived = tmp
 		return false
-	case *OtherRead, *OtherAdmin:
+	case *OtherRead, *OtherAdmin, *Show:
 		er.skipUse = false
 		return false
 	case *With:
-		er.skipUse = false
+		return false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback,
-		*Load, *Savepoint, *Release, *SRollback, *Set, *Show,
+		*Load, *Savepoint, *Release, *SRollback, *Set,
 		Explain:
 		return false
 	case *AlterMigration, *RevertMigration, *ShowMigrationLogs,
