@@ -174,7 +174,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.Float64Var(&defaultReadAfterWriteTimeout, "read_after_write_timeout", defaultReadAfterWriteTimeout, "The default timeout for read after write.")
 	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
 	fs.IntVar(&defaultReadWriteSplittingRatio, "read_write_splitting_ratio", defaultReadWriteSplittingRatio, "read write splitting ratio to replica")
-	fs.BoolVar(&defaultSkipUseStmtForConn, "skip_use_stmt_for_conns", defaultSkipUseStmtForConn, "Automatically add databases to the vschema when they are created")
+	fs.BoolVar(&defaultSkipUseStmtForConn, "skip_use_stmt_for_conn", defaultSkipUseStmtForConn, "Automatically add databases to the vschema when they are created")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
