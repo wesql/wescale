@@ -50,10 +50,8 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		_ = SafeRewrite(node, er.rewriteDownSelect, er.rewriteUp)
 		er.inDerived = tmp
 		return false
-	case *OtherRead, *OtherAdmin, *Show:
+	case *OtherRead, *OtherAdmin, *Show, *With:
 		er.skipUse = false
-		return false
-	case *With:
 		return false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback,
 		*Load, *Savepoint, *Release, *SRollback, *Set,
@@ -67,6 +65,10 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 }
 
 func (er *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
+	if er.skipUse {
+		return false
+	}
+
 	switch node := node.(type) {
 	case *Select:
 		_, isDerived := parent.(*DerivedTable)

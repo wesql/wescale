@@ -768,12 +768,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			keyspaceName := target.Keyspace
-			if options != nil && options.IsSkipUse {
-				keyspaceName = ""
-			}
-
-			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, keyspaceName)
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace, options)
 			if err != nil {
 				return err
 			}
@@ -815,7 +810,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 	return result, err
 }
 
-func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, settings []string, keyspaceName string) (*pools.Setting, error) {
+func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, settings []string, keyspaceName string, options *querypb.ExecuteOptions) (*pools.Setting, error) {
 	var connSetting *pools.Setting
 	var err error
 	if len(settings) > 0 {
@@ -829,7 +824,7 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 		connSetting = pools.NewSetting(false, "", "")
 		settingNotInCache = true
 	}
-	if keyspaceName == "" {
+	if keyspaceName == "" || (options != nil && options.IsSkipUse) {
 		connSetting.SetWithoutDBName(true)
 	} else {
 		connSetting.SetWithoutDBName(false)
@@ -905,7 +900,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, "")
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace, options)
 			if err != nil {
 				return err
 			}
