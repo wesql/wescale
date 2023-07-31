@@ -1048,6 +1048,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 		if err != nil {
 			return nil, nil, err
 		}
+		query = sqlparser.String(statement)
 	}
 
 	// Normalize if possible and retry.

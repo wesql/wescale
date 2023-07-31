@@ -65,7 +65,7 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 }
 
 func (er *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
-	if er.skipUse {
+	if !er.skipUse {
 		return false
 	}
 
