@@ -507,7 +507,7 @@ var defaultConfig = TabletConfig{
 		MaxWaiters:         5000,
 	},
 	OlapReadPool: ConnPoolConfig{
-		Size:               20,
+		Size:               50,
 		IdleTimeoutSeconds: 30 * 60,
 	},
 	TxPool: ConnPoolConfig{
