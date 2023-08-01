@@ -404,6 +404,9 @@ func MatchHost(remoteAddr net.Addr, entry *AuthServerMysqlBaseEntry) bool {
 			return true
 		}
 	case *net.TCPAddr:
+		if ExtractIPAddr(remoteAddr) == "::1" && entry.SourceHost == "localhost" {
+			return true
+		}
 		// localhost match 127.0.0.1
 		if ExtractIPAddr(remoteAddr) == "127.0.0.1" && entry.SourceHost == "localhost" {
 			return true
