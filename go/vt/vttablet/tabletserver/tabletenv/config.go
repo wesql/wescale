@@ -502,12 +502,12 @@ func (c *TabletConfig) verifyTransactionLimitConfig() error {
 // They actually get overwritten during Init.
 var defaultConfig = TabletConfig{
 	OltpReadPool: ConnPoolConfig{
-		Size:               50,
+		Size:               30,
 		IdleTimeoutSeconds: 30 * 60,
 		MaxWaiters:         5000,
 	},
 	OlapReadPool: ConnPoolConfig{
-		Size:               50,
+		Size:               30,
 		IdleTimeoutSeconds: 30 * 60,
 	},
 	TxPool: ConnPoolConfig{
