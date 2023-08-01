@@ -206,8 +206,20 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 
 	qe.conns = connpool.NewPool(env, "ConnPool", config.OltpReadPool)
 	qe.streamConns = connpool.NewPool(env, "StreamConnPool", config.OlapReadPool)
-	qe.withoutDBConns = connpool.NewPool(env, "ConnWithoutDBPool", config.OltpReadPool)
-	qe.streamWithoutDBConns = connpool.NewPool(env, "StreamWithoutDBConnPool", config.OlapReadPool)
+	qe.withoutDBConns = connpool.NewPool(env, "ConnWithoutDBPool", tabletenv.ConnPoolConfig{
+		Size:               2,
+		TimeoutSeconds:     config.OltpReadPool.TimeoutSeconds,
+		IdleTimeoutSeconds: config.OltpReadPool.IdleTimeoutSeconds,
+		MaxLifetimeSeconds: config.OltpReadPool.MaxLifetimeSeconds,
+		MaxWaiters:         config.OltpReadPool.MaxWaiters,
+	})
+	qe.streamWithoutDBConns = connpool.NewPool(env, "StreamWithoutDBConnPool", tabletenv.ConnPoolConfig{
+		Size:               2,
+		TimeoutSeconds:     config.OlapReadPool.TimeoutSeconds,
+		IdleTimeoutSeconds: config.OlapReadPool.IdleTimeoutSeconds,
+		MaxLifetimeSeconds: config.OlapReadPool.MaxLifetimeSeconds,
+		MaxWaiters:         config.OlapReadPool.MaxWaiters,
+	})
 	qe.consolidatorMode.Set(config.Consolidator)
 	qe.consolidator = sync2.NewConsolidator()
 	if config.ConsolidatorStreamTotalSize > 0 && config.ConsolidatorStreamQuerySize > 0 {

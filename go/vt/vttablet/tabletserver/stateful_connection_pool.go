@@ -73,13 +73,25 @@ func NewStatefulConnPool(env tabletenv.Env) *StatefulConnectionPool {
 	config := env.Config()
 
 	return &StatefulConnectionPool{
-		env:                    env,
-		conns:                  connpool.NewPool(env, "TransactionPool", config.TxPool),
-		foundRowsPool:          connpool.NewPool(env, "FoundRowsPool", config.TxPool),
-		connsWithoutDB:         connpool.NewPool(env, "TransactionWithoutDBPool", config.TxPool),
-		foundRowsWithoutDBPool: connpool.NewPool(env, "FoundRowsWithoutDBPool", config.TxPool),
-		active:                 pools.NewNumbered(),
-		lastID:                 sync2.NewAtomicInt64(time.Now().UnixNano()),
+		env:           env,
+		conns:         connpool.NewPool(env, "TransactionPool", config.TxPool),
+		foundRowsPool: connpool.NewPool(env, "FoundRowsPool", config.TxPool),
+		connsWithoutDB: connpool.NewPool(env, "TransactionWithoutDBPool", tabletenv.ConnPoolConfig{
+			Size:               2,
+			TimeoutSeconds:     config.TxPool.TimeoutSeconds,
+			IdleTimeoutSeconds: config.TxPool.IdleTimeoutSeconds,
+			MaxLifetimeSeconds: config.TxPool.MaxLifetimeSeconds,
+			MaxWaiters:         config.TxPool.MaxWaiters,
+		}),
+		foundRowsWithoutDBPool: connpool.NewPool(env, "FoundRowsWithoutDBPool", tabletenv.ConnPoolConfig{
+			Size:               2,
+			TimeoutSeconds:     config.TxPool.TimeoutSeconds,
+			IdleTimeoutSeconds: config.TxPool.IdleTimeoutSeconds,
+			MaxLifetimeSeconds: config.TxPool.MaxLifetimeSeconds,
+			MaxWaiters:         config.TxPool.MaxWaiters,
+		}),
+		active: pools.NewNumbered(),
+		lastID: sync2.NewAtomicInt64(time.Now().UnixNano()),
 	}
 }
 
