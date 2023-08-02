@@ -724,16 +724,16 @@ func (session *SafeSession) GetReadWriteSplittingRatio() int32 {
 	return session.ReadWriteSplittingRatio
 }
 
-func (session *SafeSession) SetSkipUseStmtForConn(allow bool) {
+func (session *SafeSession) SetRewriteTableNameWithDbNamePrefix(allow bool) {
 	session.mu.Lock()
 	defer session.mu.Unlock()
-	session.SkipUseStmtForConn = allow
+	session.RewriteTableNameWithDbNamePrefix = allow
 }
 
-func (session *SafeSession) GetSkipUseStmtForConn() bool {
+func (session *SafeSession) GetRewriteTableNameWithDbNamePrefix() bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
-	return session.SkipUseStmtForConn
+	return session.RewriteTableNameWithDbNamePrefix
 }
 
 // GetSessionUUID returns the SessionUUID value.

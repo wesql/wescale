@@ -271,7 +271,7 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplittingRatio.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
-	case sysvars.SkipUseStmtForConn.Name:
+	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	}
 	//handle set global to mysql
@@ -587,19 +587,8 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return err
 		}
 		vcursor.Session().SetReadAfterWriteTimeout(val)
-	case sysvars.SkipUseStmtForConn.Name:
-		str, err := svss.evalAsString(env)
-		if err != nil {
-			return err
-		}
-		switch strings.ToLower(str) {
-		case "off":
-			vcursor.Session().SetSkipUseStmtForConn(false)
-		case "own_gtid":
-			vcursor.Session().SetSkipUseStmtForConn(true)
-		default:
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "variable 'skip_use_stmt_for_conn' can't be set to the value of '%s'", str)
-		}
+	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetRewriteTableNameWithDbNamePrefix)
 	case sysvars.SessionTrackGTIDs.Name:
 		str, err := svss.evalAsString(env)
 		if err != nil {

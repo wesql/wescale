@@ -453,8 +453,8 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
-		case sysvars.SkipUseStmtForConn.Name:
-			bindVars[key] = sqltypes.BoolBindVariable(session.SkipUseStmtForConn)
+		case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.RewriteTableNameWithDbNamePrefix)
 		case sysvars.SessionUUID.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.SessionUUID)
 		case sysvars.SessionEnableSystemSettings.Name:
@@ -1039,7 +1039,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 
 	//rewrite TableName
 	vcursor.safeSession.GetOptions().IsSkipUse = false
-	isSkipUse := vcursor.Session().GetSkipUseStmtForConn()
+	isSkipUse := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
 	if vcursor.keyspace != "" && isSkipUse == true {
 		stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
 		if isSkipUse {

@@ -163,8 +163,8 @@ type (
 		SetReadWriteSplittingRatio(rate int32)
 		GetReadWriteSplittingRatio() int32
 
-		GetSkipUseStmtForConn() bool
-		SetSkipUseStmtForConn(bool)
+		GetRewriteTableNameWithDbNamePrefix() bool
+		SetRewriteTableNameWithDbNamePrefix(context.Context, bool) error
 
 		GetSessionUUID() string
 

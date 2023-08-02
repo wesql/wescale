@@ -166,11 +166,11 @@ func (t *noopVCursor) GetReadWriteSplittingRatio() int32 {
 	panic("implement me")
 }
 
-func (t *noopVCursor) GetSkipUseStmtForConn() bool {
+func (t *noopVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetSkipUseStmtForConn(b bool) {
+func (t *noopVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
 	panic("implement me")
 }
 
@@ -479,11 +479,11 @@ func (f *loggingVCursor) GetKeyspace() string {
 	return ""
 }
 
-func (f *loggingVCursor) GetSkipUseStmtForConn() bool {
+func (f *loggingVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
 	return false
 }
 
-func (f *loggingVCursor) SetSkipUseStmtForConn(b bool) {
+func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) {
 	return
 }
 

@@ -898,12 +898,13 @@ func (vc *vcursorImpl) GetReadWriteSplittingRatio() int32 {
 	return vc.safeSession.GetReadWriteSplittingRatio()
 }
 
-func (vc *vcursorImpl) SetSkipUseStmtForConn(allow bool) {
-	vc.safeSession.SetSkipUseStmtForConn(allow)
+func (vc *vcursorImpl) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, allow bool) error {
+	vc.safeSession.SetRewriteTableNameWithDbNamePrefix(allow)
+	return nil
 }
 
-func (vc *vcursorImpl) GetSkipUseStmtForConn() bool {
-	return vc.safeSession.GetSkipUseStmtForConn()
+func (vc *vcursorImpl) GetRewriteTableNameWithDbNamePrefix() bool {
+	return vc.safeSession.GetRewriteTableNameWithDbNamePrefix()
 }
 
 // GetSessionUUID implements the SessionActions interface
@@ -1126,8 +1127,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultReadAfterWriteConsistency(value)
 	case sysvars.ReadAfterWriteTimeOut.Name:
 		return SetDefaultReadAfterWriteTimeout(value)
-	case sysvars.SkipUseStmtForConn.Name:
-		return SetDefaultSkipUseStmtForConn(value)
+	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

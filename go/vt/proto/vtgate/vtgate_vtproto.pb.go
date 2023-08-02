@@ -127,9 +127,9 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.SkipUseStmtForConn {
+	if m.RewriteTableNameWithDbNamePrefix {
 		i--
-		if m.SkipUseStmtForConn {
+		if m.RewriteTableNameWithDbNamePrefix {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -1496,7 +1496,7 @@ func (m *Session) SizeVT() (n int) {
 	if m.ReadWriteSplittingRatio != 0 {
 		n += 2 + sov(uint64(m.ReadWriteSplittingRatio))
 	}
-	if m.SkipUseStmtForConn {
+	if m.RewriteTableNameWithDbNamePrefix {
 		n += 3
 	}
 	n += len(m.unknownFields)
@@ -3032,7 +3032,7 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			}
 		case 28:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SkipUseStmtForConn", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field RewriteTableNameWithDbNamePrefix", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -3049,7 +3049,7 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-			m.SkipUseStmtForConn = bool(v != 0)
+			m.RewriteTableNameWithDbNamePrefix = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

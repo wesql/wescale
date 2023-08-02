@@ -92,7 +92,7 @@ var (
 	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
 	ReadWriteSplittingRatio  = SystemVariable{Name: "read_write_splitting_ratio"}
 
-	SkipUseStmtForConn = SystemVariable{Name: "skip_use_stmt_for_conn", IsBoolean: true, Default: on}
+	RewriteTableNameWithDbNamePrefix = SystemVariable{Name: "rewrite_tablename_with_dbname_prefix", IsBoolean: true, Default: on}
 
 	VitessAware = []SystemVariable{
 		Autocommit,
@@ -115,7 +115,7 @@ var (
 		QueryTimeout,
 		ReadWriteSplittingPolicy,
 		ReadWriteSplittingRatio,
-		SkipUseStmtForConn,
+		RewriteTableNameWithDbNamePrefix,
 	}
 
 	ReadOnly = []SystemVariable{

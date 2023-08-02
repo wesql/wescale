@@ -176,8 +176,8 @@ message Session {
   // ReadWriteSplittingRatio is the ratio that request is sent to replica when read write splitting
   int32 ReadWriteSplittingRatio = 27;
 
-  // SkipUseStmtForConn is the flag to enable auto add database for the tableName
-  bool SkipUseStmtForConn = 28;
+  // RewriteTableNameWithDbNamePrefix is the flag to enable add database prefix for tableName
+  bool RewriteTableNameWithDbNamePrefix = 28;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout
