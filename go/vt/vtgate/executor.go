@@ -1038,17 +1038,19 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	}
 
 	//rewrite TableName
-	vcursor.safeSession.GetOptions().IsSkipUse = false
-	isSkipUse := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
-	if vcursor.keyspace != "" && isSkipUse == true {
-		stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
-		if isSkipUse {
-			vcursor.safeSession.GetOptions().IsSkipUse = isSkipUse
+	if vcursor.safeSession.GetOptions() != nil {
+		vcursor.safeSession.GetOptions().IsSkipUse = false
+		isSkipUse := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
+		if vcursor.keyspace != "" && isSkipUse == true {
+			stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+			if isSkipUse {
+				vcursor.safeSession.GetOptions().IsSkipUse = isSkipUse
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+			query = sqlparser.String(statement)
 		}
-		if err != nil {
-			return nil, nil, err
-		}
-		query = sqlparser.String(statement)
 	}
 
 	// Normalize if possible and retry.
