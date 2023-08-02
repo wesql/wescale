@@ -1787,16 +1787,49 @@ var (
 		output: "otherread",
 	}, {
 		input:  "check table a",
-		output: "otherread",
+		output: "check table a",
+	}, {
+		input:  "check table a FAST",
+		output: "check table a fast",
+	}, {
+		input:  "check table a FOR UPGRADE",
+		output: "check table a for upgrade",
+	}, {
+		input:  "check table a QUICK",
+		output: "check table a quick",
+	}, {
+		input:  "check table a MEDIUM",
+		output: "check table a medium",
+	}, {
+		input:  "check table a EXTENDED",
+		output: "check table a extended",
+	}, {
+		input:  "check table a CHANGED",
+		output: "check table a changed",
+	}, {
+		input:  "check table a,b extended",
+		output: "check table a, b extended",
+	}, {
+		input:  "check table a fast",
+		output: "check table a fast",
+	}, {
+		input:  "check table a,b quick",
+		output: "check table a, b quick",
+	}, {
+		input:  "check table a,b quick fast",
+		output: "check table a, b quick fast",
+	}, {
+		input:  "check table a,b,c QUICK FAST FOR UPGRADE",
+		output: "check table a, b, c quick fast for upgrade",
 	}, {
 		input:  "kill 9",
-		output: "otherread",
+		output: "kill connection 9",
 	}, {
 		input:  "kill query 9",
-		output: "otherread",
+		output: "kill query 9",
 	}, {
 		input:  "kill connection 9",
-		output: "otherread",
+		output: "kill connection 9",
 	},
 		{
 			input: "flush tables",

@@ -1907,7 +1907,8 @@ func (cmp *Comparator) RefOfCheckTable(a, b *CheckTable) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	return cmp.TableName(a.Table, b.Table)
+	return cmp.TableNames(a.Tables, b.Tables) &&
+		cmp.CheckOptions(a.Options, b.Options)
 }
 
 // RefOfColName does deep equals between the two objects.
@@ -6522,6 +6523,19 @@ func (cmp *Comparator) SliceOfRefOfWhen(a, b []*When) bool {
 	}
 	for i := 0; i < len(a); i++ {
 		if !cmp.RefOfWhen(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// CheckOptions does deep equals between the two objects.
+func (cmp *Comparator) CheckOptions(a, b CheckOptions) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
 			return false
 		}
 	}

@@ -2091,7 +2091,15 @@ func (node *LockTables) Format(buf *TrackedBuffer) {
 
 // Format formats the CheckTable node.
 func (node *CheckTable) Format(buf *TrackedBuffer) {
-	buf.astPrintf(node, "check table %v", node.Table.Name)
+	buf.astPrintf(node, "check table %v", node.Tables[0].Name)
+	for i := 1; i < len(node.Tables); i++ {
+		buf.astPrintf(node, ", %v", node.Tables[i].Name)
+	}
+	if node.Options != nil {
+		for i := 0; i < len(node.Options); i++ {
+			buf.astPrintf(node, " %s", node.Options[i].ToString())
+		}
+	}
 }
 
 // Format formats the Kill node

@@ -611,10 +611,19 @@ func (cached *CheckTable) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(32)
+		size += int64(48)
 	}
-	// field Table vitess.io/vitess/go/vt/sqlparser.TableName
-	size += cached.Table.CachedSize(false)
+	// field Tables vitess.io/vitess/go/vt/sqlparser.TableNames
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Tables)) * int64(32))
+		for _, elem := range cached.Tables {
+			size += elem.CachedSize(false)
+		}
+	}
+	// field Options vitess.io/vitess/go/vt/sqlparser.CheckOptions
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Options)))
+	}
 	return size
 }
 func (cached *ColName) CachedSize(alloc bool) int64 {

@@ -863,7 +863,8 @@ func CloneRefOfCheckTable(n *CheckTable) *CheckTable {
 		return nil
 	}
 	out := *n
-	out.Table = CloneTableName(n.Table)
+	out.Tables = CloneTableNames(n.Tables)
+	out.Options = CloneCheckOptions(n.Options)
 	return &out
 }
 
@@ -3968,6 +3969,18 @@ func CloneSliceOfRefOfWhen(n []*When) []*When {
 	res := make([]*When, len(n))
 	for i, x := range n {
 		res[i] = CloneRefOfWhen(x)
+	}
+	return res
+}
+
+// CloneCheckOptions creates a deep clone of the input.
+func CloneCheckOptions(n CheckOptions) CheckOptions {
+	if n == nil {
+		return nil
+	}
+	res := make(CheckOptions, len(n))
+	for i, x := range n {
+		res[i] = x
 	}
 	return res
 }

@@ -981,7 +981,7 @@ func VisitRefOfCheckTable(in *CheckTable, f Visit) error {
 	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
-	if err := VisitTableName(in.Table, f); err != nil {
+	if err := VisitTableNames(in.Tables, f); err != nil {
 		return err
 	}
 	return nil

@@ -678,14 +678,20 @@ type (
 	// IntervalTypes is an enum to get types of intervals
 	IntervalTypes int8
 
-	// OtherRead represents a DESCRIBE, CHECK, KILL, or EXPLAIN statement.
+	// OtherRead represents a DESCRIBE, or EXPLAIN statement.
 	// It should be used only as an indicator. It does not contain
 	// the full AST for the statement.
 	OtherRead struct{}
 
+	// CheckType is an enum for Check Types
+	CheckType int8
+
+	CheckOptions []CheckType
+
 	// CheckTable represents a CHECK statement
 	CheckTable struct {
-		Table TableName
+		Tables  TableNames
+		Options CheckOptions
 	}
 
 	// KillType is an enum for Kill Types

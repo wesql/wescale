@@ -1261,10 +1261,10 @@ func (c *cow) copyOnRewriteRefOfCheckTable(n *CheckTable, parent SQLNode) (out S
 	}
 	out = n
 	if c.pre == nil || c.pre(n, parent) {
-		_Table, changedTable := c.copyOnRewriteTableName(n.Table, n)
-		if changedTable {
+		_Tables, changedTables := c.copyOnRewriteTableNames(n.Tables, n)
+		if changedTables {
 			res := *n
-			res.Table, _ = _Table.(TableName)
+			res.Tables, _ = _Tables.(TableNames)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)

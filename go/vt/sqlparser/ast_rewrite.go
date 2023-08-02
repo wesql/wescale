@@ -1502,8 +1502,8 @@ func (a *application) rewriteRefOfCheckTable(parent SQLNode, node *CheckTable, r
 			return true
 		}
 	}
-	if !a.rewriteTableName(node, node.Table, func(newNode, parent SQLNode) {
-		parent.(*CheckTable).Table = newNode.(TableName)
+	if !a.rewriteTableNames(node, node.Tables, func(newNode, parent SQLNode) {
+		parent.(*CheckTable).Tables = newNode.(TableNames)
 	}) {
 		return false
 	}

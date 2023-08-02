@@ -196,6 +196,9 @@ func bindVariable(yylex yyLexer, bvar string) {
   referenceDefinition *ReferenceDefinition
   txAccessModes []TxAccessMode
   txAccessMode TxAccessMode
+  checkType    CheckType
+  tableNames TableNames
+  checkOptions CheckOptions
 
   columnStorage ColumnStorage
   columnFormat ColumnFormat
@@ -347,6 +350,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 
 // SET tokens
 %token <str> NAMES GLOBAL SESSION ISOLATION LEVEL READ WRITE ONLY REPEATABLE COMMITTED UNCOMMITTED SERIALIZABLE
+
+// CHECK tokens
+%token <str> FAST QUICK CHANGED MEDIUM
 
 // Functions
 %token <str> CURRENT_TIMESTAMP DATABASE CURRENT_DATE NOW
@@ -603,6 +609,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <literal> ratio_opt
 %type <txAccessModes> tx_chacteristics_opt tx_chars
 %type <txAccessMode> tx_char
+%type <checkType> check_table_opt
+%type <checkOptions> check_table_opts
+%type <tableNames> check_table_list
 %start any_command
 
 %%
@@ -3965,10 +3974,20 @@ analyze_statement:
   }
 
 check_statement:
-   CHECK TABLE table_name
+   CHECK TABLE check_table_list check_table_opts
    {
-     $$ = &CheckTable{Table: $3}
+     $$ = &CheckTable{Tables: $3, Options: $4}
    }
+
+check_table_list:
+  table_name
+  {
+    $$ = TableNames{$1}
+  }
+| check_table_list ',' table_name
+  {
+    $$ = append($$, $3)
+  }
 
 kill_statement:
   KILL INTEGRAL
@@ -6889,6 +6908,9 @@ algorithm_lock_opt:
   }
 
 
+
+
+
 lock_index:
   LOCK equal_opt DEFAULT
   {
@@ -6982,6 +7004,46 @@ cascade_or_local_opt:
   {
     $$ = string($1)
   }
+
+check_table_opts:
+  {
+    $$ = nil
+  }
+| check_table_opt
+  {
+    $$ = CheckOptions{$1}
+  }
+| check_table_opts check_table_opt
+ {
+   $$ = append($$, $2)
+ }
+
+check_table_opt:
+  FOR UPGRADE
+  {
+    $$ = Forupgrade
+  }
+| FAST
+  {
+    $$ = Fast
+  }
+| QUICK
+  {
+    $$ = Quick
+  }
+| MEDIUM
+  {
+    $$ = Medium
+  }
+| EXTENDED
+  {
+    $$ = Extended
+  }
+| CHANGED
+  {
+    $$ = CHanged
+  }
+
 
 definer_opt:
   {
@@ -7577,6 +7639,10 @@ reserved_keyword:
 | WRITE
 | XOR
 | KILL
+| FAST
+| QUICK
+| CHANGED
+| MEDIUM
 
 /*
   These are non-reserved Vitess, because they don't cause conflicts in the grammar.

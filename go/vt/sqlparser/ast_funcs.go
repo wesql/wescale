@@ -1806,6 +1806,28 @@ func (kt KillType) ToString() string {
 	}
 }
 
+// ToString returns the type as a string
+func (ct CheckType) ToString() string {
+	switch ct {
+	case Blankchecktype:
+		return ""
+	case Forupgrade:
+		return ForupgradeStr
+	case Quick:
+		return QuickStr
+	case Fast:
+		return FastStr
+	case Medium:
+		return MediumStr
+	case Extended:
+		return ExtendedStr
+	case CHanged:
+		return ChangedStr
+	default:
+		return "Unknown CheckType"
+	}
+}
+
 // ToString returns ShowCommandType as a string
 func (ty ShowCommandType) ToString() string {
 	switch ty {
