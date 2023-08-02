@@ -483,8 +483,8 @@ func (f *loggingVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
 	return false
 }
 
-func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) {
-	return
+func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
+	return nil
 }
 
 func (f *loggingVCursor) RecordWarning(warning *querypb.QueryWarning) {

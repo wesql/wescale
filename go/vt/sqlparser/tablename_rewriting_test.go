@@ -36,8 +36,17 @@ func TestRewriteTableName(t *testing.T) {
 		},
 		{
 			in:      `with simple_query as (select * from t1) select * from simple_query;`,
-			outstmt: `select t1.*, t1.* from d1.t1 join d2.t1`,
+			outstmt: `with simple_query as (select * from t1) select * from simple_query`,
 		},
+		{
+			in:      `update t1 inner join wesql2.t2 inner join wesql3.t3 set t1.c2 = 4, t2.c2 = 44, t3.c2 = 444`,
+			outstmt: `update test.t1 join wesql2.t2 join wesql3.t3 set t1.c2 = 4, t2.c2 = 44, t3.c2 = 444`,
+		},
+		{
+			in:      `DELETE t1, t2 FROM wesql.t1 as t1 INNER JOIN t2 as t2 WHERE t1.c2=t2.c2 or t1.c1=1`,
+			outstmt: `delete t1, t2 from wesql.t1 as t1 join test.t2 as t2 where t1.c2 = t2.c2 or t1.c1 = 1`,
+		},
+
 		{
 			in: `SELECT c.name, o.order_date, oi.product_name 
 				FROM (   SELECT id, name   FROM customers ) c 

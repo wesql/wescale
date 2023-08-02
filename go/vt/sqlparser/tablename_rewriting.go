@@ -50,10 +50,12 @@ func (er *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		_ = SafeRewrite(node, er.rewriteDownSelect, er.rewriteUp)
 		er.inDerived = tmp
 		return false
+	case *Delete:
+		return er.visitDelete(node)
 	case *OtherRead, *OtherAdmin, *Show, *With:
 		er.skipUse = false
 		return false
-	case *Use, *CallProc, *Begin, *Commit, *Rollback,
+	case *Use, *CallProc, *Begin, *Commit, *Rollback, *ColName,
 		*Load, *Savepoint, *Release, *SRollback, *Set,
 		Explain:
 		return false
@@ -109,4 +111,29 @@ func (er *tableRewriter) rewriteTableName(node TableName, cursor *Cursor) {
 		node.Qualifier = NewIdentifierCS(er.keyspace)
 	}
 	cursor.Replace(node)
+}
+
+func (er *tableRewriter) visitDelete(node *Delete) bool {
+	if node.With != nil && len(node.With.ctes) > 0 {
+		er.skipUse = false
+		return false
+	}
+	for _, expr := range node.TableExprs {
+		_ = SafeRewrite(expr, er.rewriteDownSelect, er.rewriteUp)
+	}
+	if node.Where != nil {
+		_ = SafeRewrite(node.Where, er.rewriteDownSelect, er.rewriteUp)
+	}
+	if node.Partitions != nil {
+		_ = SafeRewrite(node.Partitions, er.rewriteDownSelect, er.rewriteUp)
+	}
+	if node.OrderBy != nil {
+		_ = SafeRewrite(node.OrderBy, er.rewriteDownSelect, er.rewriteUp)
+	}
+	if node.Limit != nil {
+		if node.OrderBy != nil {
+			_ = SafeRewrite(node.Limit, er.rewriteDownSelect, er.rewriteUp)
+		}
+	}
+	return false
 }
