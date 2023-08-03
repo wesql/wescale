@@ -168,7 +168,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return buildExplainPlan(stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.VExplainStmt:
 		return buildVExplainPlan(stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
-	case *sqlparser.OtherRead, *sqlparser.OtherAdmin:
+	case *sqlparser.OtherRead, *sqlparser.OtherAdmin, *sqlparser.CheckTable, *sqlparser.Kill:
+		// will send directly to vtttablet
 		return buildOtherReadAndAdmin(query, vschema)
 	case *sqlparser.Set:
 		return buildSetPlan(stmt, vschema)
@@ -184,12 +185,6 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.LockTables:
 		// will not be executed, Lock Tables statement is ignored
 		return buildLockPlan(stmt, reservedVars, vschema)
-	case *sqlparser.CheckTable:
-		// todo
-		return buildOtherReadAndAdmin(query, vschema)
-	case *sqlparser.Kill:
-		// todo
-		return buildOtherReadAndAdmin(query, vschema)
 	case *sqlparser.UnlockTables:
 		// will not be executed, UnLock Tables statement is ignored
 		return buildUnlockPlan(stmt, reservedVars, vschema)
