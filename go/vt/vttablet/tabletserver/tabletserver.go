@@ -824,7 +824,7 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 		connSetting = pools.NewSetting(false, "", "")
 		settingNotInCache = true
 	}
-	if keyspaceName == "" || (options != nil && options.IsSkipUse) {
+	if keyspaceName == "" {
 		connSetting.SetWithoutDBName(true)
 	} else {
 		connSetting.SetWithoutDBName(false)
@@ -834,8 +834,10 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 			query = fmt.Sprintf("%s;%s", query, connSetting.GetQuery())
 			resetQuery = fmt.Sprintf("%s;%s", resetQuery, connSetting.GetResetQuery())
 		}
-		connSetting.SetQuery(query)
-		connSetting.SetResetQuery(resetQuery)
+		if options == nil || !options.IsSkipUse {
+			connSetting.SetQuery("")
+			connSetting.SetResetQuery("")
+		}
 	}
 	return connSetting, nil
 }

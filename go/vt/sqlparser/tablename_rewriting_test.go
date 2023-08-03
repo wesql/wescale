@@ -81,7 +81,7 @@ func TestRewriteTableName(t *testing.T) {
 		t.Run(tc.in, func(t *testing.T) {
 			stmt, err := Parse(tc.in)
 			require.NoError(t, err)
-			newStmt, _, err := RewriteTableName(stmt, "test")
+			newStmt, _, _, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.outstmt, String(newStmt))
 		})
