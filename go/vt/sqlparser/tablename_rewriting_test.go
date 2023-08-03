@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package sqlparser
 
 import (
@@ -5,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"testing"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
@@ -14,6 +20,18 @@ func TestRewriteTableName(t *testing.T) {
 		outstmt string
 		outbv   map[string]*querypb.BindVariable
 	}{
+		{
+			in:      `select 12 from dual`,
+			outstmt: `select 12 from dual`,
+		},
+		{
+			in:      "select 12 from test.dual",
+			outstmt: "select 12 from test.dual",
+		},
+		{
+			in:      "select * from `dual`",
+			outstmt: "select * from dual",
+		},
 		{
 			in:      `select * from (select 12) as t`,
 			outstmt: `select * from (select 12 from dual) as t`,
