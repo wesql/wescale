@@ -1452,66 +1452,64 @@ func TestPlayerTypes(t *testing.T) {
 		table  string
 		data   [][]string
 	}
-	testcases := []testcase{
-		//{
-		//	input:  "insert into vitess_ints values(-128, 255, -32768, 65535, -8388608, 16777215, -2147483648, 4294967295, -9223372036854775808, 18446744073709551615, 2012)",
-		//	output: "insert into vitess_ints(tiny,tinyu,small,smallu,medium,mediumu,normal,normalu,big,bigu,y) values (-128,255,-32768,65535,-8388608,16777215,-2147483648,4294967295,-9223372036854775808,18446744073709551615,2012)",
-		//	table:  "vitess_ints",
-		//	data: [][]string{
-		//		{"-128", "255", "-32768", "65535", "-8388608", "16777215", "-2147483648", "4294967295", "-9223372036854775808", "18446744073709551615", "2012"},
-		//	},
-		//},
-		{
-			input:  "insert into vitess_fracts values(1, 1.99, 2.99, 3.99, 4.99)",
-			output: "insert into vitess_fracts(id,deci,num,f,d) values (1,1.99,2.99,3.99E+00,4.99E+00)",
-			table:  "vitess_fracts",
-			data: [][]string{
-				{"1", "1.99", "2.99", "3.99", "4.99"},
-			},
-		}, {
-			input:  "insert into vitess_strings values('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'a,b')",
-			output: "insert into vitess_strings(vb,c,vc,b,tb,bl,ttx,tx,en,s) values ('a','b','c','d\\0\\0\\0\\0','e','f','g','h',1,'3')",
-			table:  "vitess_strings",
-			data: [][]string{
-				{"a", "b", "c", "d\000\000\000\000", "e", "f", "g", "h", "a", "a,b"},
-			},
-		}, {
-			input:  "insert into vitess_misc values(1, '\x01', '2012-01-01', '2012-01-01 15:45:45', '15:45:45', point(1, 2))",
-			output: "insert into vitess_misc(id,b,d,dt,t,g) values (1,b'00000001','2012-01-01','2012-01-01 15:45:45','15:45:45','\\0\\0\\0\\0\x01\x01\\0\\0\\0\\0\\0\\0\\0\\0\\0\xf0?\\0\\0\\0\\0\\0\\0\\0@')",
-			table:  "vitess_misc",
-			data: [][]string{
-				{"1", "\x01", "2012-01-01", "2012-01-01 15:45:45", "15:45:45", "\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0?\x00\x00\x00\x00\x00\x00\x00@"},
-			},
-		}, {
-			input:  "insert into vitess_null values(1, null)",
-			output: "insert into vitess_null(id,val) values (1,null)",
-			table:  "vitess_null",
-			data: [][]string{
-				{"1", ""},
-			},
-		}, {
-			input:  "insert into binary_pk values('a', 'aaa')",
-			output: "insert into binary_pk(b,val) values ('a\\0\\0\\0','aaa')",
-			table:  "binary_pk",
-			data: [][]string{
-				{"a\000\000\000", "aaa"},
-			},
-		}, {
-			input:  "insert into vitess_decimal values(1, 0, 1, null, 0, 1.1, 1)",
-			output: "insert into vitess_decimal(id,d1,d2,d3,d4,d5,d6) values (1,0,1,null,.0,1.1,1.0)",
-			table:  "vitess_decimal",
-			data: [][]string{
-				{"1", "0", "1", "", "0.0", "1.1", "1.0"},
-			},
-		}, {
-			// Binary pk is a special case: https://github.com/vitessio/vitess/issues/3984
-			input:  "update binary_pk set val='bbb' where b='a\\0\\0\\0'",
-			output: "update binary_pk set val='bbb' where b='a\\0\\0\\0'",
-			table:  "binary_pk",
-			data: [][]string{
-				{"a\000\000\000", "bbb"},
-			},
-		}}
+	testcases := []testcase{{
+		input:  "insert into vitess_ints values(-128, 255, -32768, 65535, -8388608, 16777215, -2147483648, 4294967295, -9223372036854775808, 18446744073709551615, 2012)",
+		output: "insert into vitess_ints(tiny,tinyu,small,smallu,medium,mediumu,normal,normalu,big,bigu,y) values (-128,255,-32768,65535,-8388608,16777215,-2147483648,4294967295,-9223372036854775808,18446744073709551615,2012)",
+		table:  "vitess_ints",
+		data: [][]string{
+			{"-128", "255", "-32768", "65535", "-8388608", "16777215", "-2147483648", "4294967295", "-9223372036854775808", "18446744073709551615", "2012"},
+		},
+	}, {
+		input:  "insert into vitess_fracts values(1, 1.99, 2.99, 3.99, 4.99)",
+		output: "insert into vitess_fracts(id,deci,num,f,d) values (1,1.99,2.99,3.99E+00,4.99E+00)",
+		table:  "vitess_fracts",
+		data: [][]string{
+			{"1", "1.99", "2.99", "3.99", "4.99"},
+		},
+	}, {
+		input:  "insert into vitess_strings values('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'a', 'a,b')",
+		output: "insert into vitess_strings(vb,c,vc,b,tb,bl,ttx,tx,en,s) values ('a','b','c','d\\0\\0\\0\\0','e','f','g','h',1,'3')",
+		table:  "vitess_strings",
+		data: [][]string{
+			{"a", "b", "c", "d\000\000\000\000", "e", "f", "g", "h", "a", "a,b"},
+		},
+	}, {
+		input:  "insert into vitess_misc values(1, '\x01', '2012-01-01', '2012-01-01 15:45:45', '15:45:45', point(1, 2))",
+		output: "insert into vitess_misc(id,b,d,dt,t,g) values (1,b'00000001','2012-01-01','2012-01-01 15:45:45','15:45:45','\\0\\0\\0\\0\x01\x01\\0\\0\\0\\0\\0\\0\\0\\0\\0\xf0?\\0\\0\\0\\0\\0\\0\\0@')",
+		table:  "vitess_misc",
+		data: [][]string{
+			{"1", "\x01", "2012-01-01", "2012-01-01 15:45:45", "15:45:45", "\x00\x00\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0?\x00\x00\x00\x00\x00\x00\x00@"},
+		},
+	}, {
+		input:  "insert into vitess_null values(1, null)",
+		output: "insert into vitess_null(id,val) values (1,null)",
+		table:  "vitess_null",
+		data: [][]string{
+			{"1", ""},
+		},
+	}, {
+		input:  "insert into binary_pk values('a', 'aaa')",
+		output: "insert into binary_pk(b,val) values ('a\\0\\0\\0','aaa')",
+		table:  "binary_pk",
+		data: [][]string{
+			{"a\000\000\000", "aaa"},
+		},
+	}, {
+		input:  "insert into vitess_decimal values(1, 0, 1, null, 0, 1.1, 1)",
+		output: "insert into vitess_decimal(id,d1,d2,d3,d4,d5,d6) values (1,0,1,null,.0,1.1,1.0)",
+		table:  "vitess_decimal",
+		data: [][]string{
+			{"1", "0", "1", "", "0.0", "1.1", "1.0"},
+		},
+	}, {
+		// Binary pk is a special case: https://github.com/vitessio/vitess/issues/3984
+		input:  "update binary_pk set val='bbb' where b='a\\0\\0\\0'",
+		output: "update binary_pk set val='bbb' where b='a\\0\\0\\0'",
+		table:  "binary_pk",
+		data: [][]string{
+			{"a\000\000\000", "bbb"},
+		},
+	}}
 	if enableJSONColumnTesting {
 		testcases = append(testcases, testcase{
 			input: "insert into vitess_json(val1,val2,val3,val4,val5) values (null,'{}','123','{\"a\":[42,100]}', '{\"foo\":\"bar\"}')",
