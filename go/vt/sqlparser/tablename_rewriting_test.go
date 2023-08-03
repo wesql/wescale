@@ -46,7 +46,14 @@ func TestRewriteTableName(t *testing.T) {
 			in:      `DELETE t1, t2 FROM wesql.t1 as t1 INNER JOIN t2 as t2 WHERE t1.c2=t2.c2 or t1.c1=1`,
 			outstmt: `delete t1, t2 from wesql.t1 as t1 join test.t2 as t2 where t1.c2 = t2.c2 or t1.c1 = 1`,
 		},
-
+		{
+			in:      `select (select d from t2 where d > a), t1.* from t1;`,
+			outstmt: `select (select d from test.t2 where d > a), t1.* from test.t1`,
+		},
+		{
+			in:      `delete t1 from t1, t1 as t2 where t1.b = t2.b and t1.a > t2.a;`,
+			outstmt: `delete t1 from t1, t1 as t2 where t1.b = t2.b and t1.a > t2.a`,
+		},
 		{
 			in: `SELECT c.name, o.order_date, oi.product_name 
 				FROM (   SELECT id, name   FROM customers ) c 
@@ -81,7 +88,7 @@ func TestRewriteTableName(t *testing.T) {
 		t.Run(tc.in, func(t *testing.T) {
 			stmt, err := Parse(tc.in)
 			require.NoError(t, err)
-			newStmt, _, _, err := RewriteTableName(stmt, "test")
+			newStmt, _, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.outstmt, String(newStmt))
 		})

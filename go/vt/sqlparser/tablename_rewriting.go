@@ -5,15 +5,15 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 )
 
-func RewriteTableName(in Statement, keyspace string) (Statement, bool, bool, error) {
+func RewriteTableName(in Statement, keyspace string) (Statement, bool, error) {
 	tr := newTableNameRewriter(keyspace)
 	result := SafeRewrite(in, tr.rewriteDown, tr.rewriteUp)
 
 	out, ok := result.(Statement)
 	if !ok {
-		return nil, false, false, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "statement rewriting returned a non statement: %s", String(out))
+		return nil, false, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "statement rewriting returned a non statement: %s", String(out))
 	}
-	return out, tr.skipUse, tr.rewriteSQL, nil
+	return out, tr.skipUse, nil
 }
 
 type tableRewriter struct {
@@ -21,16 +21,14 @@ type tableRewriter struct {
 	inDerived bool
 	cur       *Cursor
 
-	skipUse    bool
-	rewriteSQL bool
-	keyspace   string
+	skipUse  bool
+	keyspace string
 }
 
 func newTableNameRewriter(keyspace string) *tableRewriter {
 	return &tableRewriter{
-		keyspace:   keyspace,
-		skipUse:    true,
-		rewriteSQL: true,
+		keyspace: keyspace,
+		skipUse:  true,
 	}
 }
 
@@ -61,9 +59,8 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		return tr.visitDelete(node)
 	case *OtherRead, *OtherAdmin:
 		tr.skipUse = false
-		tr.rewriteSQL = false
 		return false
-	case *Show, *With:
+	case *Show, *With, *CreateTable:
 		tr.skipUse = false
 		return false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback, *ColName,
@@ -95,6 +92,14 @@ func (tr *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
 		return false
 	case *ColName:
 		return false
+	case SelectExprs:
+		for _, expr := range node {
+			switch expr := expr.(type) {
+			case *AliasedExpr:
+				_ = SafeRewrite(expr.Expr, tr.rewriteDownSelect, tr.rewriteUp)
+			}
+		}
+		return false
 	}
 	return tr.err == nil
 }
@@ -122,6 +127,10 @@ func (tr *tableRewriter) rewriteTableName(node TableName, cursor *Cursor) {
 }
 
 func (tr *tableRewriter) visitDelete(node *Delete) bool {
+	if len(node.Targets) > 0 {
+		tr.skipUse = false
+		return false
+	}
 	if node.With != nil && len(node.With.ctes) > 0 {
 		tr.skipUse = false
 		return false

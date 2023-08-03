@@ -834,9 +834,12 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 			query = fmt.Sprintf("%s;%s", query, connSetting.GetQuery())
 			resetQuery = fmt.Sprintf("%s;%s", resetQuery, connSetting.GetResetQuery())
 		}
-		if options == nil || !options.IsSkipUse {
+		if options != nil && options.IsSkipUse {
 			connSetting.SetQuery("")
 			connSetting.SetResetQuery("")
+		} else {
+			connSetting.SetQuery(query)
+			connSetting.SetResetQuery(resetQuery)
 		}
 	}
 	return connSetting, nil
