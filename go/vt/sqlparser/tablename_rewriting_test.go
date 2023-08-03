@@ -44,7 +44,7 @@ func TestRewriteTableName(t *testing.T) {
 		},
 		{
 			in:      `DELETE t1, t2 FROM wesql.t1 as t1 INNER JOIN t2 as t2 WHERE t1.c2=t2.c2 or t1.c1=1`,
-			outstmt: `delete t1, t2 from wesql.t1 as t1 join test.t2 as t2 where t1.c2 = t2.c2 or t1.c1 = 1`,
+			outstmt: `delete t1, t2 from wesql.t1 as t1 join t2 as t2 where t1.c2 = t2.c2 or t1.c1 = 1`,
 		},
 		{
 			in:      `select (select d from t2 where d > a), t1.* from t1;`,
