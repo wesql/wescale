@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package sqlparser
 
 import (
@@ -58,6 +63,7 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	case *Delete:
 		return tr.visitDelete(node)
 	case *OtherRead, *OtherAdmin:
+		// the table information is missing in the stmt.
 		tr.skipUse = false
 		return false
 	case *Show, *With, *CreateTable:
@@ -65,9 +71,11 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		return false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback, *ColName,
 		*Load, *Savepoint, *Release, *SRollback, *Set:
+		tr.skipUse = false
 		return false
 	case *AlterMigration, *RevertMigration, *ShowMigrationLogs,
 		*ShowThrottledApps, *ShowThrottlerStatus:
+		tr.skipUse = false
 		return false
 	}
 	return tr.err == nil
@@ -117,7 +125,11 @@ func (tr *tableRewriter) rewriteUp(cursor *Cursor) bool {
 }
 
 func (tr *tableRewriter) rewriteTableName(node TableName, cursor *Cursor) {
+	if tr.skipUse {
+		return
+	}
 	if node.Name.String() == "dual" {
+		tr.skipUse = false
 		return
 	}
 	if node.Qualifier.IsEmpty() {

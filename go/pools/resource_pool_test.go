@@ -37,6 +37,7 @@ var (
 	sFoo    = &Setting{query: "set foo=1"}
 	sBar    = &Setting{query: "set bar=1"}
 	sFooBar = &Setting{query: "set foo=1, bar=2"}
+	sEmpty  = &Setting{query: ""}
 )
 
 type TestResource struct {
