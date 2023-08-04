@@ -70,7 +70,7 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		tr.skipUse = false
 		return false
 	case *Use, *CallProc, *Begin, *Commit, *Rollback, *ColName,
-		*Load, *Savepoint, *Release, *SRollback, *Set:
+		*Load, *Savepoint, *Release, *SRollback:
 		tr.skipUse = false
 		return false
 	case *AlterMigration, *RevertMigration, *ShowMigrationLogs,
@@ -125,11 +125,7 @@ func (tr *tableRewriter) rewriteUp(cursor *Cursor) bool {
 }
 
 func (tr *tableRewriter) rewriteTableName(node TableName, cursor *Cursor) {
-	if tr.skipUse {
-		return
-	}
 	if node.Name.String() == "dual" {
-		tr.skipUse = false
 		return
 	}
 	if node.Qualifier.IsEmpty() {
