@@ -66,11 +66,10 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 		// the table information is missing in the stmt.
 		tr.skipUse = false
 		return false
-	case *Show, *With, *CreateTable:
-		tr.skipUse = false
+	case *ColName:
 		return false
-	case *Use, *CallProc, *Begin, *Commit, *Rollback, *ColName,
-		*Load, *Savepoint, *Release, *SRollback:
+	case *Use, *CallProc, *Begin, *Commit, *Rollback,
+		*Load, *Savepoint, *Release, *SRollback, *Show, *With, *CreateTable:
 		tr.skipUse = false
 		return false
 	case *AlterMigration, *RevertMigration, *ShowMigrationLogs,
