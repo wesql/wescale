@@ -219,6 +219,11 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 			}
+			if mysqlAuthServerImpl == "none" {
+				opts.AccountVerificationEnabled = false
+			} else {
+				opts.AccountVerificationEnabled = true
+			}
 
 			switch info.actionNeeded {
 			case nothing:

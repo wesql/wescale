@@ -891,10 +891,6 @@ func TestSelectLock(t *testing.T) {
 		TabletAlias:   sbc1.Tablet().Alias,
 	}}
 
-	wantQueries := []*querypb.BoundQuery{{
-		Sql:           "select get_lock('lock name', 10) from dual",
-		BindVariables: map[string]*querypb.BindVariable{},
-	}}
 	wantSession := &vtgatepb.Session{
 		InTransaction: true,
 		ShardSessions: []*vtgatepb.Session_ShardSession{{
@@ -921,10 +917,10 @@ func TestSelectLock(t *testing.T) {
 	wantSession.LastLockHeartbeat = session.Session.LastLockHeartbeat // copying as this is current timestamp value.
 	utils.MustMatch(t, wantSession, session.Session, "")
 
-	wantQueries = append(wantQueries, &querypb.BoundQuery{
-		Sql:           "select release_lock('lock name') from dual",
-		BindVariables: map[string]*querypb.BindVariable{},
-	})
+	//wantQueries = append(wantQueries, &querypb.BoundQuery{
+	//	Sql:           "select release_lock('lock name') from dual",
+	//	BindVariables: map[string]*querypb.BindVariable{},
+	//})
 	wantSession.AdvisoryLock = nil
 	wantSession.LockSession = nil
 

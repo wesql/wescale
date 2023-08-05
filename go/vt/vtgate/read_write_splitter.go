@@ -7,6 +7,7 @@ package vtgate
 
 import (
 	"math/rand"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"

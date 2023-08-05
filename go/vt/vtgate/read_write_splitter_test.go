@@ -7,9 +7,10 @@ package vtgate
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/vt/proto/topodata"
 )
