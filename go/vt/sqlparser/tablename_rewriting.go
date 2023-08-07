@@ -61,7 +61,15 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 			return false
 		}
 	case *Delete:
-		return tr.visitDelete(node)
+		if len(node.Targets) > 0 {
+			tr.skipUse = false
+			return false
+		}
+		if node.With != nil && len(node.With.ctes) > 0 {
+			tr.skipUse = false
+			return false
+		}
+		return true
 	case *OtherRead, *OtherAdmin:
 		// the table information is missing in the stmt.
 		tr.skipUse = false
@@ -116,48 +124,21 @@ func (tr *tableRewriter) rewriteUp(cursor *Cursor) bool {
 		return false
 	}
 
-	switch node := cursor.Node().(type) {
+	switch newnode := cursor.Node().(type) {
 	case TableName:
-		tr.rewriteTableName(node, cursor)
+		tr.rewriteTableName(newnode, cursor)
 	}
 	return true
 }
 
-func (tr *tableRewriter) rewriteTableName(node TableName, cursor *Cursor) {
-	if node.Name.String() == "dual" {
+func (tr *tableRewriter) rewriteTableName(newnode TableName, cursor *Cursor) {
+	if newnode.Name.String() == "dual" {
 		return
 	}
-	if node.Qualifier.IsEmpty() {
-		node.Qualifier = NewIdentifierCS(tr.keyspace)
+	if newnode.Qualifier.IsEmpty() {
+		newnode.Qualifier = NewIdentifierCS(tr.keyspace)
 	}
-	cursor.Replace(node)
-}
-
-func (tr *tableRewriter) visitDelete(node *Delete) bool {
-	if len(node.Targets) > 0 {
-		tr.skipUse = false
-		return false
-	}
-	if node.With != nil && len(node.With.ctes) > 0 {
-		tr.skipUse = false
-		return false
-	}
-	for _, expr := range node.TableExprs {
-		_ = SafeRewrite(expr, tr.rewriteDownSelect, tr.rewriteUp)
-	}
-	if node.Where != nil {
-		_ = SafeRewrite(node.Where, tr.rewriteDownSelect, tr.rewriteUp)
-	}
-	if node.Partitions != nil {
-		_ = SafeRewrite(node.Partitions, tr.rewriteDownSelect, tr.rewriteUp)
-	}
-	if node.OrderBy != nil {
-		_ = SafeRewrite(node.OrderBy, tr.rewriteDownSelect, tr.rewriteUp)
-	}
-	if node.Limit != nil {
-		if node.OrderBy != nil {
-			_ = SafeRewrite(node.Limit, tr.rewriteDownSelect, tr.rewriteUp)
-		}
-	}
-	return false
+	// till here, cursor holds the replacer handleFunc
+	// replace original node with a new one
+	cursor.Replace(newnode)
 }
