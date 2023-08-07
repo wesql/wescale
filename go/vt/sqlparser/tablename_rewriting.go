@@ -88,6 +88,7 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	return tr.err == nil
 }
 
+// rewriteDownSelect handle recursive select statement
 func (tr *tableRewriter) rewriteDownSelect(node SQLNode, parent SQLNode) bool {
 	if !tr.skipUse {
 		return false
