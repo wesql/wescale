@@ -538,7 +538,7 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 // (denied query, table ACL).
 func (qre *QueryExecutor) checkPermissions() error {
 	// Skip permissions check if the context is local.
-	if tabletenv.IsLocalContext(qre.ctx) || !qre.options.AccountVerificationEnabled {
+	if tabletenv.IsLocalContext(qre.ctx) || (qre.options != nil && !qre.options.AccountVerificationEnabled) {
 		return nil
 	}
 
