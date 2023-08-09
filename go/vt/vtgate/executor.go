@@ -453,6 +453,8 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
+		case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.RewriteTableNameWithDbNamePrefix)
 		case sysvars.SessionUUID.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.SessionUUID)
 		case sysvars.SessionEnableSystemSettings.Name:
@@ -1034,6 +1036,24 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	if err != nil {
 		return nil, nil, err
 	}
+
+	//rewrite TableName
+	if vcursor.safeSession.GetOptions() != nil {
+		vcursor.safeSession.GetOptions().IsSkipUse = false
+		isRewrite := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
+		if vcursor.keyspace != "" && isRewrite == true {
+			var isSkipUse bool
+			stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
+			if err != nil {
+				return nil, nil, err
+			}
+			if isSkipUse {
+				vcursor.safeSession.GetOptions().IsSkipUse = isSkipUse
+				query = sqlparser.String(statement)
+			}
+		}
+	}
+
 	// Normalize if possible and retry.
 	if e.canNormalizeStatement(stmt, qo, setVarComment) {
 		parameterize := e.normalize // the public flag is called normalize

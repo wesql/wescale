@@ -119,6 +119,6 @@ func IsSelectForUpdateStatement(stmt Statement) bool {
 }
 
 // IsKillStatement returns true if the query is a Kill statement.
-func IsKillStatement(stmt Statement) bool {
+func IsKillStatement(_ Statement) bool {
 	panic("implement me")
 }

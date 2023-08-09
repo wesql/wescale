@@ -175,6 +175,9 @@ message Session {
 
   // ReadWriteSplittingRatio is the ratio that request is sent to replica when read write splitting
   int32 ReadWriteSplittingRatio = 27;
+
+  // RewriteTableNameWithDbNamePrefix is the flag to enable add database prefix for tableName
+  bool RewriteTableNameWithDbNamePrefix = 28;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout

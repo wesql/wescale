@@ -336,8 +336,10 @@ func (dbc *DBConn) Close() {
 // ApplySetting implements the pools.Resource interface.
 func (dbc *DBConn) ApplySetting(ctx context.Context, setting *pools.Setting) error {
 	query := setting.GetQuery()
-	if _, err := dbc.execOnce(ctx, query, 1, false); err != nil {
-		return err
+	if query != "" {
+		if _, err := dbc.execOnce(ctx, query, 1, false); err != nil {
+			return err
+		}
 	}
 	dbc.setting = query
 	dbc.resetSetting = setting.GetResetQuery()
@@ -356,8 +358,10 @@ func (dbc *DBConn) IsSameSetting(setting string) bool {
 
 // ResetSetting implements the pools.Resource interface.
 func (dbc *DBConn) ResetSetting(ctx context.Context) error {
-	if _, err := dbc.execOnce(ctx, dbc.resetSetting, 1, false); err != nil {
-		return err
+	if dbc.resetSetting != "" {
+		if _, err := dbc.execOnce(ctx, dbc.resetSetting, 1, false); err != nil {
+			return err
+		}
 	}
 	dbc.setting = ""
 	dbc.resetSetting = ""

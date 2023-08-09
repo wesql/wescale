@@ -271,6 +271,8 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplittingRatio.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
+	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	}
 	//handle set global to mysql
 	checkSysVarQuery := fmt.Sprintf("select 1 from dual where @@%s = %s", svci.Name, svci.Expr)
@@ -585,6 +587,8 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return err
 		}
 		vcursor.Session().SetReadAfterWriteTimeout(val)
+	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetRewriteTableNameWithDbNamePrefix)
 	case sysvars.SessionTrackGTIDs.Name:
 		str, err := svss.evalAsString(env)
 		if err != nil {

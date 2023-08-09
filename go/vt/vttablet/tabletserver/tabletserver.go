@@ -768,7 +768,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace, options)
 			if err != nil {
 				return err
 			}
@@ -810,7 +810,7 @@ func (tsv *TabletServer) execute(ctx context.Context, target *querypb.Target, sq
 	return result, err
 }
 
-func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, settings []string, keyspaceName string) (*pools.Setting, error) {
+func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, settings []string, keyspaceName string, options *querypb.ExecuteOptions) (*pools.Setting, error) {
 	var connSetting *pools.Setting
 	var err error
 	if len(settings) > 0 {
@@ -834,8 +834,13 @@ func (tsv *TabletServer) buildConnSettingForUserKeyspace(ctx context.Context, se
 			query = fmt.Sprintf("%s;%s", query, connSetting.GetQuery())
 			resetQuery = fmt.Sprintf("%s;%s", resetQuery, connSetting.GetResetQuery())
 		}
-		connSetting.SetQuery(query)
-		connSetting.SetResetQuery(resetQuery)
+		if options != nil && options.IsSkipUse {
+			connSetting.SetQuery("")
+			connSetting.SetResetQuery("")
+		} else {
+			connSetting.SetQuery(query)
+			connSetting.SetResetQuery(resetQuery)
+		}
 	}
 	return connSetting, nil
 }
@@ -900,7 +905,7 @@ func (tsv *TabletServer) streamExecute(ctx context.Context, target *querypb.Targ
 			logStats.ReservedID = reservedID
 			logStats.TransactionID = transactionID
 
-			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace)
+			connSetting, err := tsv.buildConnSettingForUserKeyspace(ctx, settings, target.Keyspace, options)
 			if err != nil {
 				return err
 			}

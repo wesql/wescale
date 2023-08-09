@@ -724,6 +724,18 @@ func (session *SafeSession) GetReadWriteSplittingRatio() int32 {
 	return session.ReadWriteSplittingRatio
 }
 
+func (session *SafeSession) SetRewriteTableNameWithDbNamePrefix(allow bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.RewriteTableNameWithDbNamePrefix = allow
+}
+
+func (session *SafeSession) GetRewriteTableNameWithDbNamePrefix() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.RewriteTableNameWithDbNamePrefix
+}
+
 // GetSessionUUID returns the SessionUUID value.
 func (session *SafeSession) GetSessionUUID() string {
 	session.mu.Lock()

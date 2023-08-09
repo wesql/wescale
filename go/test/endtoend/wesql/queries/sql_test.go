@@ -41,6 +41,7 @@ func TestCRUD(t *testing.T) {
 
 func TestCrossDbCRUD(t *testing.T) {
 	execWithConn(t, DefaultKeyspaceName, func(conn *mysql.Conn) {
+
 		defer utils.Exec(t, conn, `drop table t1`)
 		utils.Exec(t, conn, "create table t1 (c1 int, c2 int, primary key(c1))")
 		utils.Exec(t, conn, "insert into t1(c1, c2) values (1, 1)")

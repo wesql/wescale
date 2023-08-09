@@ -166,6 +166,14 @@ func (t *noopVCursor) GetReadWriteSplittingRatio() int32 {
 	panic("implement me")
 }
 
+func (t *noopVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
+	panic("implement me")
+}
+
 func (t *noopVCursor) GetSessionUUID() string {
 	panic("implement me")
 }
@@ -469,6 +477,14 @@ func (f *loggingVCursor) SetTarget(target string) error {
 
 func (f *loggingVCursor) GetKeyspace() string {
 	return ""
+}
+
+func (f *loggingVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
+	return false
+}
+
+func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
+	return nil
 }
 
 func (f *loggingVCursor) RecordWarning(warning *querypb.QueryWarning) {

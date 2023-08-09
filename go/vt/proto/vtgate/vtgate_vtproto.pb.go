@@ -127,6 +127,18 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.RewriteTableNameWithDbNamePrefix {
+		i--
+		if m.RewriteTableNameWithDbNamePrefix {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xe0
+	}
 	if m.ReadWriteSplittingRatio != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.ReadWriteSplittingRatio))
 		i--
@@ -1483,6 +1495,9 @@ func (m *Session) SizeVT() (n int) {
 	}
 	if m.ReadWriteSplittingRatio != 0 {
 		n += 2 + sov(uint64(m.ReadWriteSplittingRatio))
+	}
+	if m.RewriteTableNameWithDbNamePrefix {
+		n += 3
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3015,6 +3030,26 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 28:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RewriteTableNameWithDbNamePrefix", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.RewriteTableNameWithDbNamePrefix = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
