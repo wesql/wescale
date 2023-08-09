@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/schema"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -218,7 +220,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 					}
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
-				opts.AccountVerificationEnabled = mysqlAuthServerImpl != "none"
+				opts.AccountVerificationEnabled = mysqlAuthServerImpl != global.AuthServerNone
 			}
 
 			switch info.actionNeeded {
