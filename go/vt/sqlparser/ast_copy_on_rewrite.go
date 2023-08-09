@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +94,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfCharExpr(n, parent)
 	case *CheckConstraintDefinition:
 		return c.copyOnRewriteRefOfCheckConstraintDefinition(n, parent)
+	case *CheckTable:
+		return c.copyOnRewriteRefOfCheckTable(n, parent)
 	case *ColName:
 		return c.copyOnRewriteRefOfColName(n, parent)
 	case *CollateExpr:
@@ -262,6 +270,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfJtOnResponse(n, parent)
 	case *KeyState:
 		return c.copyOnRewriteRefOfKeyState(n, parent)
+	case *Kill:
+		return c.copyOnRewriteRefOfKill(n, parent)
 	case *LagLeadExpr:
 		return c.copyOnRewriteRefOfLagLeadExpr(n, parent)
 	case *Limit:
@@ -1233,6 +1243,28 @@ func (c *cow) copyOnRewriteRefOfCheckConstraintDefinition(n *CheckConstraintDefi
 		if changedExpr {
 			res := *n
 			res.Expr, _ = _Expr.(Expr)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfCheckTable(n *CheckTable, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Tables, changedTables := c.copyOnRewriteTableNames(n.Tables, n)
+		if changedTables {
+			res := *n
+			res.Tables, _ = _Tables.(TableNames)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -3287,6 +3319,28 @@ func (c *cow) copyOnRewriteRefOfKeyState(n *KeyState, parent SQLNode) (out SQLNo
 	}
 	out = n
 	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfKill(n *Kill, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_ConnID, changedConnID := c.copyOnRewriteRefOfLiteral(n.ConnID, n)
+		if changedConnID {
+			res := *n
+			res.ConnID, _ = _ConnID.(*Literal)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -6649,6 +6703,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfBegin(n, parent)
 	case *CallProc:
 		return c.copyOnRewriteRefOfCallProc(n, parent)
+	case *CheckTable:
+		return c.copyOnRewriteRefOfCheckTable(n, parent)
 	case *CommentOnly:
 		return c.copyOnRewriteRefOfCommentOnly(n, parent)
 	case *Commit:
@@ -6679,6 +6735,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfFlush(n, parent)
 	case *Insert:
 		return c.copyOnRewriteRefOfInsert(n, parent)
+	case *Kill:
+		return c.copyOnRewriteRefOfKill(n, parent)
 	case *Load:
 		return c.copyOnRewriteRefOfLoad(n, parent)
 	case *LockTables:

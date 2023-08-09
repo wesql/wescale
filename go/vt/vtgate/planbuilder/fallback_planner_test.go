@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +44,7 @@ type testPlanner struct {
 
 var _ stmtPlanner = (*testPlanner)(nil).plan
 
-func (tp *testPlanner) plan(statement sqlparser.Statement, vars *sqlparser.ReservedVars, schema plancontext.VSchema) (*planResult, error) {
+func (tp *testPlanner) plan(statement sqlparser.Statement, _ *sqlparser.ReservedVars, _ plancontext.VSchema) (*planResult, error) {
 	tp.called = true
 	if tp.panic != nil {
 		panic(tp.panic)

@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -596,6 +602,27 @@ func (cached *CheckConstraintDefinition) CachedSize(alloc bool) int64 {
 	// field Expr vitess.io/vitess/go/vt/sqlparser.Expr
 	if cc, ok := cached.Expr.(cachedObject); ok {
 		size += cc.CachedSize(true)
+	}
+	return size
+}
+func (cached *CheckTable) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(48)
+	}
+	// field Tables vitess.io/vitess/go/vt/sqlparser.TableNames
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Tables)) * int64(32))
+		for _, elem := range cached.Tables {
+			size += elem.CachedSize(false)
+		}
+	}
+	// field Options vitess.io/vitess/go/vt/sqlparser.CheckOptions
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Options)))
 	}
 	return size
 }
@@ -2296,6 +2323,18 @@ func (cached *KeyState) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(8)
 	}
+	return size
+}
+func (cached *Kill) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field ConnID *vitess.io/vitess/go/vt/sqlparser.Literal
+	size += cached.ConnID.CachedSize(true)
 	return size
 }
 func (cached *LagLeadExpr) CachedSize(alloc bool) int64 {

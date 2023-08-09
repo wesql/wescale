@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,12 +50,12 @@ func (c *concatenateGen4) ResultColumns() []*resultColumn {
 }
 
 // Reorder implements the logicalPlan interface
-func (c *concatenateGen4) Reorder(order int) {
+func (c *concatenateGen4) Reorder(_ int) {
 	panic("implement me")
 }
 
 // Wireup implements the logicalPlan interface
-func (c *concatenateGen4) Wireup(plan logicalPlan, jt *jointab) error {
+func (c *concatenateGen4) Wireup(_ logicalPlan, _ *jointab) error {
 	panic("implement me")
 }
 
@@ -66,17 +71,17 @@ func (c *concatenateGen4) WireupGen4(ctx *plancontext.PlanningContext) error {
 }
 
 // SupplyVar implements the logicalPlan interface
-func (c *concatenateGen4) SupplyVar(from, to int, col *sqlparser.ColName, varname string) {
+func (c *concatenateGen4) SupplyVar(_, _ int, _ *sqlparser.ColName, _ string) {
 	panic("implement me")
 }
 
 // SupplyCol implements the logicalPlan interface
-func (c *concatenateGen4) SupplyCol(col *sqlparser.ColName) (rc *resultColumn, colNumber int) {
+func (c *concatenateGen4) SupplyCol(_ *sqlparser.ColName) (rc *resultColumn, colNumber int) {
 	panic("implement me")
 }
 
 // SupplyWeightString implements the logicalPlan interface
-func (c *concatenateGen4) SupplyWeightString(colNumber int, alsoAddToGroupBy bool) (weightcolNumber int, err error) {
+func (c *concatenateGen4) SupplyWeightString(_ int, _ bool) (weightcolNumber int, err error) {
 	panic("implement me")
 }
 

@@ -1743,7 +1743,7 @@ func (tsv *TabletServer) HandlePanic(err *error) {
 }
 
 // Close is a no-op.
-func (tsv *TabletServer) Close(ctx context.Context) error {
+func (tsv *TabletServer) Close(_ context.Context) error {
 	return nil
 }
 

@@ -450,7 +450,7 @@ func (qe *QueryEngine) IsMySQLReachable() error {
 	return nil
 }
 
-func (qe *QueryEngine) schemaChanged(tables map[string]*schema.Table, created, altered, dropped []string) {
+func (qe *QueryEngine) schemaChanged(tables map[string]*schema.Table, _, altered, dropped []string) {
 	qe.mu.Lock()
 	defer qe.mu.Unlock()
 	qe.tables = tables
@@ -504,7 +504,7 @@ func (qe *QueryEngine) QueryPlanCacheLen() int {
 }
 
 // AddStats adds the given stats for the planName.tableName
-func (qe *QueryEngine) AddStats(planType planbuilder.PlanType, tableName string, queryCount int64, duration, mysqlTime time.Duration, rowsAffected, rowsReturned, errorCount int64) {
+func (qe *QueryEngine) AddStats(planType planbuilder.PlanType, tableName string, queryCount int64, duration, _ time.Duration, rowsAffected, rowsReturned, errorCount int64) {
 	// table names can contain "." characters, replace them!
 	keys := []string{tableName, planType.String()}
 	qe.queryCounts.Add(keys, queryCount)

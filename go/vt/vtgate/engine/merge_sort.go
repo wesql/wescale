@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,12 +70,12 @@ func (ms *MergeSort) GetKeyspaceName() string { return "" }
 func (ms *MergeSort) GetTableName() string { return "" }
 
 // TryExecute is not supported.
-func (ms *MergeSort) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+func (ms *MergeSort) TryExecute(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable, _ bool) (*sqltypes.Result, error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] Execute is not reachable")
 }
 
 // GetFields is not supported.
-func (ms *MergeSort) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+func (ms *MergeSort) GetFields(_ context.Context, _ VCursor, _ map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] GetFields is not reachable")
 }
 
@@ -203,10 +208,7 @@ func (ms *MergeSort) getStreamingFields(handles []*streamHandle, callback func(*
 		return vterrors.Aggregate(errs)
 	}
 
-	if err := callback(&sqltypes.Result{Fields: fields}); err != nil {
-		return err
-	}
-	return nil
+	return callback(&sqltypes.Result{Fields: fields})
 }
 
 func (ms *MergeSort) description() PrimitiveDescription {

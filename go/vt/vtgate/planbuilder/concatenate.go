@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,15 +58,15 @@ func (c *concatenate) Wireup(plan logicalPlan, jt *jointab) error {
 	return c.rhs.Wireup(plan, jt)
 }
 
-func (c *concatenate) SupplyVar(from, to int, col *sqlparser.ColName, varname string) {
+func (c *concatenate) SupplyVar(_, _ int, _ *sqlparser.ColName, _ string) {
 	panic("implement me")
 }
 
-func (c *concatenate) SupplyCol(col *sqlparser.ColName) (rc *resultColumn, colNumber int) {
+func (c *concatenate) SupplyCol(_ *sqlparser.ColName) (rc *resultColumn, colNumber int) {
 	panic("implement me")
 }
 
-func (c *concatenate) SupplyWeightString(colNumber int, alsoAddToGroupBy bool) (weightcolNumber int, err error) {
+func (c *concatenate) SupplyWeightString(_ int, _ bool) (weightcolNumber int, err error) {
 	panic("implement me")
 }
 

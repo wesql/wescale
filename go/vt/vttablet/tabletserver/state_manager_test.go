@@ -398,7 +398,7 @@ func (k *killableConn) ID() int64 {
 	return k.id
 }
 
-func (k *killableConn) Kill(message string, elapsed time.Duration) error {
+func (k *killableConn) Kill(_ string, _ time.Duration) error {
 	k.killed.Set(true)
 	return nil
 }
@@ -778,7 +778,7 @@ type testSchemaEngine struct {
 	failMySQL bool
 }
 
-func (te *testSchemaEngine) EnsureConnectionAndDB(tabletType topodatapb.TabletType) error {
+func (te *testSchemaEngine) EnsureConnectionAndDB(_ topodatapb.TabletType) error {
 	if te.failMySQL {
 		te.failMySQL = false
 		return errors.New("intentional error")

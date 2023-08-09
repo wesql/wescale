@@ -2750,6 +2750,30 @@ func (node *LockTables) formatFast(buf *TrackedBuffer) {
 	}
 }
 
+// formatFast formats the CheckTable node.
+func (node *CheckTable) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("check table ")
+	node.Tables[0].Name.formatFast(buf)
+	for i := 1; i < len(node.Tables); i++ {
+		buf.WriteString(", ")
+		node.Tables[i].Name.formatFast(buf)
+	}
+	if node.Options != nil {
+		for i := 0; i < len(node.Options); i++ {
+			buf.WriteByte(' ')
+			buf.WriteString(node.Options[i].ToString())
+		}
+	}
+}
+
+// formatFast formats the Kill node
+func (node *Kill) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("kill ")
+	buf.WriteString(node.Type.ToString())
+	buf.WriteByte(' ')
+	node.ConnID.formatFast(buf)
+}
+
 // formatFast formats the UnlockTables node.
 func (node *UnlockTables) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("unlock tables")

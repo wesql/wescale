@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +94,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfCharExpr(parent, node, replacer)
 	case *CheckConstraintDefinition:
 		return a.rewriteRefOfCheckConstraintDefinition(parent, node, replacer)
+	case *CheckTable:
+		return a.rewriteRefOfCheckTable(parent, node, replacer)
 	case *ColName:
 		return a.rewriteRefOfColName(parent, node, replacer)
 	case *CollateExpr:
@@ -262,6 +270,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfJtOnResponse(parent, node, replacer)
 	case *KeyState:
 		return a.rewriteRefOfKeyState(parent, node, replacer)
+	case *Kill:
+		return a.rewriteRefOfKill(parent, node, replacer)
 	case *LagLeadExpr:
 		return a.rewriteRefOfLagLeadExpr(parent, node, replacer)
 	case *Limit:
@@ -1467,6 +1477,33 @@ func (a *application) rewriteRefOfCheckConstraintDefinition(parent SQLNode, node
 	}
 	if !a.rewriteExpr(node, node.Expr, func(newNode, parent SQLNode) {
 		parent.(*CheckConstraintDefinition).Expr = newNode.(Expr)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfCheckTable(parent SQLNode, node *CheckTable, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteTableNames(node, node.Tables, func(newNode, parent SQLNode) {
+		parent.(*CheckTable).Tables = newNode.(TableNames)
 	}) {
 		return false
 	}
@@ -4295,6 +4332,33 @@ func (a *application) rewriteRefOfKeyState(parent SQLNode, node *KeyState, repla
 			a.cur.parent = parent
 			a.cur.node = node
 		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfKill(parent SQLNode, node *Kill, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfLiteral(node, node.ConnID, func(newNode, parent SQLNode) {
+		parent.(*Kill).ConnID = newNode.(*Literal)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
 		if !a.post(&a.cur) {
 			return false
 		}
@@ -8831,6 +8895,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfBegin(parent, node, replacer)
 	case *CallProc:
 		return a.rewriteRefOfCallProc(parent, node, replacer)
+	case *CheckTable:
+		return a.rewriteRefOfCheckTable(parent, node, replacer)
 	case *CommentOnly:
 		return a.rewriteRefOfCommentOnly(parent, node, replacer)
 	case *Commit:
@@ -8861,6 +8927,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfFlush(parent, node, replacer)
 	case *Insert:
 		return a.rewriteRefOfInsert(parent, node, replacer)
+	case *Kill:
+		return a.rewriteRefOfKill(parent, node, replacer)
 	case *Load:
 		return a.rewriteRefOfLoad(parent, node, replacer)
 	case *LockTables:

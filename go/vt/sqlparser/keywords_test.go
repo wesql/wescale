@@ -29,6 +29,13 @@ var vitessReserved = map[string]bool{
 	"TIMESTAMPDIFF": true,
 }
 
+var mysql80Reserved = map[string]bool{
+	"CHANGED": true,
+	"FAST":    true,
+	"MEDIUM":  true,
+	"QUICK":   true,
+}
+
 func TestCompatibility(t *testing.T) {
 	file, err := os.Open(path.Join("testdata", "mysql_keywords.txt"))
 	require.NoError(t, err)
@@ -44,7 +51,7 @@ func TestCompatibility(t *testing.T) {
 
 		afterSplit := strings.SplitN(scanner.Text(), "\t", 2)
 		word, reserved := afterSplit[0], afterSplit[1] == "1"
-		if reserved || vitessReserved[word] {
+		if reserved || vitessReserved[word] || mysql80Reserved[word] {
 			word = "`" + word + "`"
 		}
 		sql := fmt.Sprintf("create table %s(c1 int)", word)

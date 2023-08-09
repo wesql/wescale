@@ -196,6 +196,9 @@ func bindVariable(yylex yyLexer, bvar string) {
   referenceDefinition *ReferenceDefinition
   txAccessModes []TxAccessMode
   txAccessMode TxAccessMode
+  checkType    CheckType
+  tableNames TableNames
+  checkOptions CheckOptions
 
   columnStorage ColumnStorage
   columnFormat ColumnFormat
@@ -348,6 +351,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 // SET tokens
 %token <str> NAMES GLOBAL SESSION ISOLATION LEVEL READ WRITE ONLY REPEATABLE COMMITTED UNCOMMITTED SERIALIZABLE
 
+// CHECK tokens
+%token <str> FAST QUICK CHANGED MEDIUM
+
 // Functions
 %token <str> CURRENT_TIMESTAMP DATABASE CURRENT_DATE NOW
 %token <str> CURRENT_TIME LOCALTIME LOCALTIMESTAMP CURRENT_USER
@@ -393,6 +399,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 // Lock type tokens
 %token <str> LOCAL LOW_PRIORITY
 
+// Thread type tokens
+%token <str> KILL
+
 // Flush tokens
 %token <str> NO_WRITE_TO_BINLOG LOGS ERROR GENERAL HOSTS OPTIMIZER_COSTS USER_RESOURCES SLOW CHANNEL RELAY EXPORT
 
@@ -430,7 +439,8 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <databaseOption> collate character_set encryption
 %type <databaseOptions> create_options create_options_opt
 %type <boolean> default_optional first_opt linear_opt jt_exists_opt jt_path_opt partition_storage_opt
-%type <statement> analyze_statement show_statement use_statement other_statement
+%type <statement> analyze_statement check_statement show_statement use_statement other_statement
+%type <statement> kill_statement
 %type <statement> begin_statement commit_statement rollback_statement savepoint_statement release_statement load_statement
 %type <statement> lock_statement unlock_statement call_statement
 %type <statement> revert_statement
@@ -599,6 +609,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <literal> ratio_opt
 %type <txAccessModes> tx_chacteristics_opt tx_chars
 %type <txAccessMode> tx_char
+%type <checkType> check_table_opt
+%type <checkOptions> check_table_opts
+%type <tableNames> check_table_list
 %start any_command
 
 %%
@@ -639,6 +652,8 @@ command:
 | drop_statement
 | truncate_statement
 | analyze_statement
+| check_statement
+| kill_statement
 | show_statement
 | use_statement
 | begin_statement
@@ -3958,6 +3973,37 @@ analyze_statement:
     $$ = &OtherRead{}
   }
 
+check_statement:
+   CHECK TABLE check_table_list check_table_opts
+   {
+     $$ = &CheckTable{Tables: $3, Options: $4}
+   }
+
+check_table_list:
+  table_name
+  {
+    $$ = TableNames{$1}
+  }
+| check_table_list ',' table_name
+  {
+    $$ = append($$, $3)
+  }
+
+kill_statement:
+  KILL INTEGRAL
+  {
+    $$ = &Kill{Type: KillConnection, ConnID: NewIntLiteral($2)}
+  }
+| KILL QUERY INTEGRAL
+  {
+    $$ = &Kill{Type: KillQuery, ConnID: NewIntLiteral($3)}
+  }
+| KILL CONNECTION INTEGRAL
+  {
+    $$ = &Kill{Type: KillConnection, ConnID: NewIntLiteral($3)}
+  }
+
+
 show_statement:
   SHOW charset_or_character_set like_or_where_opt
   {
@@ -6862,6 +6908,9 @@ algorithm_lock_opt:
   }
 
 
+
+
+
 lock_index:
   LOCK equal_opt DEFAULT
   {
@@ -6955,6 +7004,46 @@ cascade_or_local_opt:
   {
     $$ = string($1)
   }
+
+check_table_opts:
+  {
+    $$ = nil
+  }
+| check_table_opt
+  {
+    $$ = CheckOptions{$1}
+  }
+| check_table_opts check_table_opt
+ {
+   $$ = append($$, $2)
+ }
+
+check_table_opt:
+  FOR UPGRADE
+  {
+    $$ = Forupgrade
+  }
+| FAST
+  {
+    $$ = Fast
+  }
+| QUICK
+  {
+    $$ = Quick
+  }
+| MEDIUM
+  {
+    $$ = Medium
+  }
+| EXTENDED
+  {
+    $$ = Extended
+  }
+| CHANGED
+  {
+    $$ = CHanged
+  }
+
 
 definer_opt:
   {
@@ -7549,6 +7638,11 @@ reserved_keyword:
 | WINDOW
 | WRITE
 | XOR
+| KILL
+| FAST
+| QUICK
+| CHANGED
+| MEDIUM
 
 /*
   These are non-reserved Vitess, because they don't cause conflicts in the grammar.

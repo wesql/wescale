@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +94,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfCharExpr(in, f)
 	case *CheckConstraintDefinition:
 		return VisitRefOfCheckConstraintDefinition(in, f)
+	case *CheckTable:
+		return VisitRefOfCheckTable(in, f)
 	case *ColName:
 		return VisitRefOfColName(in, f)
 	case *CollateExpr:
@@ -262,6 +270,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfJtOnResponse(in, f)
 	case *KeyState:
 		return VisitRefOfKeyState(in, f)
+	case *Kill:
+		return VisitRefOfKill(in, f)
 	case *LagLeadExpr:
 		return VisitRefOfLagLeadExpr(in, f)
 	case *Limit:
@@ -960,6 +970,18 @@ func VisitRefOfCheckConstraintDefinition(in *CheckConstraintDefinition, f Visit)
 		return err
 	}
 	if err := VisitExpr(in.Expr, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfCheckTable(in *CheckTable, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitTableNames(in.Tables, f); err != nil {
 		return err
 	}
 	return nil
@@ -2252,6 +2274,18 @@ func VisitRefOfKeyState(in *KeyState, f Visit) error {
 		return nil
 	}
 	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
+func VisitRefOfKill(in *Kill, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfLiteral(in.ConnID, f); err != nil {
 		return err
 	}
 	return nil
@@ -4614,6 +4648,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfBegin(in, f)
 	case *CallProc:
 		return VisitRefOfCallProc(in, f)
+	case *CheckTable:
+		return VisitRefOfCheckTable(in, f)
 	case *CommentOnly:
 		return VisitRefOfCommentOnly(in, f)
 	case *Commit:
@@ -4644,6 +4680,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfFlush(in, f)
 	case *Insert:
 		return VisitRefOfInsert(in, f)
+	case *Kill:
+		return VisitRefOfKill(in, f)
 	case *Load:
 		return VisitRefOfLoad(in, f)
 	case *LockTables:

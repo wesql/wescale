@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,10 +141,7 @@ func (st *symtab) AddVSchemaTable(alias sqlparser.TableName, vschemaTable *vinde
 			}
 		}
 	}
-	if err := st.AddTable(t); err != nil {
-		return err
-	}
-	return nil
+	return st.AddTable(t)
 }
 
 // Merge merges the new symtab into the current one.

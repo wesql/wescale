@@ -683,6 +683,26 @@ type (
 	// the full AST for the statement.
 	OtherRead struct{}
 
+	// CheckType is an enum for Check Types
+	CheckType int8
+
+	CheckOptions []CheckType
+
+	// CheckTable represents a CHECK statement
+	CheckTable struct {
+		Tables  TableNames
+		Options CheckOptions
+	}
+
+	// KillType is an enum for Kill Types
+	KillType int8
+
+	// Kill represents a KILL statement
+	Kill struct {
+		Type   KillType
+		ConnID *Literal
+	}
+
 	// OtherAdmin represents a misc statement that relies on ADMIN privileges,
 	// such as REPAIR, OPTIMIZE, or TRUNCATE statement.
 	// It should be used only as an indicator. It does not contain
@@ -725,6 +745,8 @@ func (*CreateTable) iStatement()         {}
 func (*CreateView) iStatement()          {}
 func (*AlterView) iStatement()           {}
 func (*LockTables) iStatement()          {}
+func (*CheckTable) iStatement()          {}
+func (*Kill) iStatement()                {}
 func (*UnlockTables) iStatement()        {}
 func (*AlterTable) iStatement()          {}
 func (*AlterVschema) iStatement()        {}

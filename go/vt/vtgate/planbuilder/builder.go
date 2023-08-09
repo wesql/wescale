@@ -168,7 +168,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return buildExplainPlan(stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.VExplainStmt:
 		return buildVExplainPlan(stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
-	case *sqlparser.OtherRead, *sqlparser.OtherAdmin:
+	case *sqlparser.OtherRead, *sqlparser.OtherAdmin, *sqlparser.CheckTable, *sqlparser.Kill:
+		// will send directly to vtttablet
 		return buildOtherReadAndAdmin(query, vschema)
 	case *sqlparser.Set:
 		return buildSetPlan(stmt, vschema)

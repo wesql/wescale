@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +35,10 @@ func (cached *Permission) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(24)
+		size += int64(48)
 	}
+	// field Database string
+	size += hack.RuntimeAllocSize(int64(len(cached.Database)))
 	// field TableName string
 	size += hack.RuntimeAllocSize(int64(len(cached.TableName)))
 	return size
@@ -54,7 +62,7 @@ func (cached *Plan) CachedSize(alloc bool) int64 {
 	}
 	// field Permissions []vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder.Permission
 	{
-		size += hack.RuntimeAllocSize(int64(cap(cached.Permissions)) * int64(24))
+		size += hack.RuntimeAllocSize(int64(cap(cached.Permissions)) * int64(40))
 		for _, elem := range cached.Permissions {
 			size += elem.CachedSize(false)
 		}

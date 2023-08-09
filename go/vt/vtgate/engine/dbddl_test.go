@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package engine
 
 import (
@@ -16,7 +21,7 @@ type dbddlTestFake struct {
 	sleep                    int
 }
 
-func (d *dbddlTestFake) CreateDatabase(ctx context.Context, name string) error {
+func (d *dbddlTestFake) CreateDatabase(_ context.Context, _ string) error {
 	if d.sleep > 0 {
 		time.Sleep(time.Duration(d.sleep) * time.Second)
 	}
@@ -24,7 +29,7 @@ func (d *dbddlTestFake) CreateDatabase(ctx context.Context, name string) error {
 	return nil
 }
 
-func (d *dbddlTestFake) DropDatabase(ctx context.Context, name string) error {
+func (d *dbddlTestFake) DropDatabase(_ context.Context, _ string) error {
 	if d.sleep > 0 {
 		time.Sleep(time.Duration(d.sleep) * time.Second)
 	}
