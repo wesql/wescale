@@ -1,3 +1,9 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
 package sqlparser
 
 import (
@@ -27,6 +33,8 @@ var vitessReserved = map[string]bool{
 	"SQL_NO_CACHE":  true,
 	"TIMESTAMPADD":  true,
 	"TIMESTAMPDIFF": true,
+	"RELOAD":        true,
+	"USERS":         true,
 }
 
 var mysql80Reserved = map[string]bool{

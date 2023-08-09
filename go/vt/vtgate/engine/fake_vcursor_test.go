@@ -198,7 +198,7 @@ func (t *noopVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
+func (t *noopVCursor) SetRewriteTableNameWithDbNamePrefix(_ context.Context, _ bool) error {
 	panic("implement me")
 }
 
@@ -511,7 +511,7 @@ func (f *loggingVCursor) GetRewriteTableNameWithDbNamePrefix() bool {
 	return false
 }
 
-func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, b bool) error {
+func (f *loggingVCursor) SetRewriteTableNameWithDbNamePrefix(_ context.Context, _ bool) error {
 	return nil
 }
 
