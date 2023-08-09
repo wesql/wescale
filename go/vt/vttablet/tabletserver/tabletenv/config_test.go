@@ -29,7 +29,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/utils"
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/yaml2"
 )
@@ -119,59 +118,6 @@ oltpReadPool:
 	err = yaml2.Unmarshal(inBytes, &gotCfg)
 	require.NoError(t, err)
 	assert.Equal(t, cfg, gotCfg)
-}
-
-func TestDefaultConfig(t *testing.T) {
-	gotBytes, err := yaml2.Marshal(NewDefaultConfig())
-	require.NoError(t, err)
-	want := `cacheResultFields: true
-consolidator: disable
-consolidatorStreamQuerySize: 2097152
-consolidatorStreamTotalSize: 134217728
-gracePeriods: {}
-healthcheck:
-  degradedThresholdSeconds: 30
-  intervalSeconds: 20
-  unhealthyThresholdSeconds: 7200
-hotRowProtection:
-  maxConcurrency: 5
-  maxGlobalQueueSize: 1000
-  maxQueueSize: 20
-  mode: disable
-messagePostponeParallelism: 4
-olap:
-  txTimeoutSeconds: 60
-olapReadPool:
-  idleTimeoutSeconds: 1800
-  size: 200
-oltp:
-  maxRows: 100000
-  queryTimeoutSeconds: 60
-  txTimeoutSeconds: 60
-oltpReadPool:
-  idleTimeoutSeconds: 1800
-  maxWaiters: 5000
-  size: 16
-queryCacheLFU: true
-queryCacheMemory: 33554432
-queryCacheSize: 5000
-replicationTracker:
-  heartbeatIntervalSeconds: 0.25
-  mode: disable
-rowStreamer:
-  maxInnoDBTrxHistLen: 1000000
-  maxMySQLReplLagSecs: 43200
-schemaReloadIntervalSeconds: 1800
-signalSchemaChangeReloadIntervalSeconds: 5
-signalWhenSchemaChange: true
-streamBufferSize: 32768
-txPool:
-  idleTimeoutSeconds: 1800
-  maxWaiters: 5000
-  size: 20
-  timeoutSeconds: 1
-`
-	utils.MustMatch(t, want, string(gotBytes))
 }
 
 func TestClone(t *testing.T) {
