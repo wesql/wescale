@@ -3090,6 +3090,16 @@ func (cached *Release) CachedSize(alloc bool) int64 {
 	size += cached.Name.CachedSize(false)
 	return size
 }
+func (cached *Reload) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(8)
+	}
+	return size
+}
 func (cached *RenameColumn) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)

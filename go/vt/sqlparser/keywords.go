@@ -393,6 +393,7 @@ var keywords = []keyword{
 	{"schema_migration", SCHEMA_MIGRATION},
 	{"key_block_size", KEY_BLOCK_SIZE},
 	{"kill", KILL},
+	{"reload", RELOAD},
 	{"lag", LAG},
 	{"language", LANGUAGE},
 	{"last", LAST},

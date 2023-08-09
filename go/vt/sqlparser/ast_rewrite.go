@@ -368,6 +368,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfRegexpSubstrExpr(parent, node, replacer)
 	case *Release:
 		return a.rewriteRefOfRelease(parent, node, replacer)
+	case *Reload:
+		return a.rewriteRefOfReload(parent, node, replacer)
 	case *RenameColumn:
 		return a.rewriteRefOfRenameColumn(parent, node, replacer)
 	case *RenameIndex:
@@ -5939,6 +5941,30 @@ func (a *application) rewriteRefOfRelease(parent SQLNode, node *Release, replace
 	}
 	return true
 }
+func (a *application) rewriteRefOfReload(parent SQLNode, node *Reload, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfRenameColumn(parent SQLNode, node *RenameColumn, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -8940,6 +8966,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfPrepareStmt(parent, node, replacer)
 	case *Release:
 		return a.rewriteRefOfRelease(parent, node, replacer)
+	case *Reload:
+		return a.rewriteRefOfReload(parent, node, replacer)
 	case *RenameTable:
 		return a.rewriteRefOfRenameTable(parent, node, replacer)
 	case *RevertMigration:

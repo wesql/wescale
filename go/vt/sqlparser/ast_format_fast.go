@@ -2786,6 +2786,11 @@ func (node *Kill) formatFast(buf *TrackedBuffer) {
 	node.ConnID.formatFast(buf)
 }
 
+func (node *Reload) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("reload ")
+	buf.WriteString(node.Type.ToString())
+}
+
 // formatFast formats the UnlockTables node.
 func (node *UnlockTables) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("unlock tables")

@@ -311,7 +311,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <empty> JSON_EXTRACT_OP JSON_UNQUOTE_EXTRACT_OP
 
 // DDL Tokens
-%token <str> CREATE ALTER DROP RENAME ANALYZE ADD FLUSH CHANGE MODIFY DEALLOCATE
+%token <str> CREATE ALTER DROP RENAME ANALYZE ADD FLUSH CHANGE MODIFY DEALLOCATE RELOAD
 %token <str> REVERT QUERIES
 %token <str> SCHEMA TABLE INDEX VIEW TO IGNORE IF PRIMARY COLUMN SPATIAL FULLTEXT KEY_BLOCK_SIZE CHECK INDEXES
 %token <str> ACTION CASCADE CONSTRAINT FOREIGN NO REFERENCES RESTRICT
@@ -402,6 +402,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 // Thread type tokens
 %token <str> KILL
 
+// Reload type tokens
+%token <str> USERS
+
 // Flush tokens
 %token <str> NO_WRITE_TO_BINLOG LOGS ERROR GENERAL HOSTS OPTIMIZER_COSTS USER_RESOURCES SLOW CHANNEL RELAY EXPORT
 
@@ -440,7 +443,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <databaseOptions> create_options create_options_opt
 %type <boolean> default_optional first_opt linear_opt jt_exists_opt jt_path_opt partition_storage_opt
 %type <statement> analyze_statement check_statement show_statement use_statement other_statement
-%type <statement> kill_statement
+%type <statement> kill_statement reload_statement
 %type <statement> begin_statement commit_statement rollback_statement savepoint_statement release_statement load_statement
 %type <statement> lock_statement unlock_statement call_statement
 %type <statement> revert_statement
@@ -654,6 +657,7 @@ command:
 | analyze_statement
 | check_statement
 | kill_statement
+| reload_statement
 | show_statement
 | use_statement
 | begin_statement
@@ -4156,6 +4160,15 @@ kill_statement:
     $$ = &Kill{Type: KillConnection, ConnID: NewIntLiteral($3)}
   }
 
+reload_statement:
+  RELOAD USERS
+  {
+    $$ = &Reload{Type: ReloadUsers}
+  }
+| RELOAD PRIVILEGES
+  {
+    $$ = &Reload{Type: ReloadPrivileges}
+  }
 
 show_statement:
   SHOW charset_or_character_set like_or_where_opt
@@ -4833,6 +4846,10 @@ flush_option:
     $$ = string($1)
   }
 | PRIVILEGES
+  {
+    $$ = string($1)
+  }
+| USERS
   {
     $$ = string($1)
   }
@@ -7812,6 +7829,8 @@ reserved_keyword:
 | QUICK
 | CHANGED
 | MEDIUM
+| RELOAD
+
 
 /*
   These are non-reserved Vitess, because they don't cause conflicts in the grammar.
@@ -8169,6 +8188,7 @@ non_reserved_keyword:
 | UpdateXML %prec FUNCTION_CALL_NON_KEYWORD
 | UPGRADE
 | USER
+| USERS
 | USER_RESOURCES
 | VALIDATION
 | VAR_POP %prec FUNCTION_CALL_NON_KEYWORD
