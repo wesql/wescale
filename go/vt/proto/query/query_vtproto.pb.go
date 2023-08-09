@@ -384,6 +384,18 @@ func (m *ExecuteOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.AccountVerificationEnabled {
+		i--
+		if m.AccountVerificationEnabled {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x98
+	}
 	if m.IsSkipUse {
 		i--
 		if m.IsSkipUse {
@@ -4498,6 +4510,9 @@ func (m *ExecuteOptions) SizeVT() (n int) {
 	if m.IsSkipUse {
 		n += 3
 	}
+	if m.AccountVerificationEnabled {
+		n += 3
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -7208,6 +7223,26 @@ func (m *ExecuteOptions) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.IsSkipUse = bool(v != 0)
+		case 19:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AccountVerificationEnabled", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.AccountVerificationEnabled = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

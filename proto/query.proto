@@ -367,6 +367,11 @@ message ExecuteOptions {
 
   LoadBalancePolicy load_balance_policy = 17;
   bool isSkipUse = 18;
+
+  // Determines whether account verification is enabled or not.
+  // Set to false if mysql_auth_server_impl is set to "none".
+  // Set to true if mysql_auth_server_impl is not set to "none".
+  bool account_verification_enabled = 19;
 }
 
 // Field describes a single column returned by a query

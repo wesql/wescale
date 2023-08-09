@@ -39,6 +39,7 @@ const (
 const (
 	AuthServerMysqlBased = MysqlBased
 	AuthServerStatic     = "static"
+	AuthServerNone       = "none"
 )
 
 const (
