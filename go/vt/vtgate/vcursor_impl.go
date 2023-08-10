@@ -124,6 +124,22 @@ type vcursorImpl struct {
 	pv       plancontext.PlannerVersion
 }
 
+// ReloadExec load info from mysql into vtgate memory
+// 'reload users' : load user authentication information into vtgate
+// 'reload privileges' : load user authorized information into vttablet
+func (vc *vcursorImpl) ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error) {
+	switch command {
+	case sqlparser.ReloadUsers:
+		err := mysql.ReloadUsers()
+		if err != nil {
+			return nil, err
+		}
+	case sqlparser.ReloadPrivileges:
+		// TODO: geray using grpc send cmd to vttablet
+	}
+	return &sqltypes.Result{}, nil
+}
+
 // newVcursorImpl creates a vcursorImpl. Before creating this object, you have to separate out any marginComments that came with
 // the query and supply it here. Trailing comments are typically sent by the application for various reasons,
 // including as identifying markers. So, they have to be added back to all queries that are executed

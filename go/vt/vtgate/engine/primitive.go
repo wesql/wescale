@@ -122,6 +122,9 @@ type (
 
 		// ReleaseLock releases all the held advisory locks.
 		ReleaseLock(ctx context.Context) error
+
+		//ReloadExec reload users from mysql table and flush privileges
+		ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error)
 	}
 
 	// SessionActions gives primitives ability to interact with the session state

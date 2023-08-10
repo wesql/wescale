@@ -73,6 +73,10 @@ func GetAuthServerMysqlBase() *AuthServerMysqlBase {
 	return instance
 }
 
+func ReloadUsers() error {
+	return GetAuthServerMysqlBase().reLoadUser()
+}
+
 // AuthServerMysqlBaseEntry stores the values for a given user.
 type AuthServerMysqlBaseEntry struct {
 	MysqlCachingSha2Password string

@@ -8,16 +8,15 @@ package auth
 import (
 	"context"
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"vitess.io/vitess/go/mysql"
 )
 
 func TestMysqlNativePassword(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
 	ctx := context.Background()
 	username := "test_user1"
 	password := "password"
@@ -33,7 +32,7 @@ func TestMysqlNativePassword(t *testing.T) {
 		conn.ExecuteFetch("DROP USER 'test_user1'@'127.0.0.1';", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	conn.ExecuteFetch("SELECT user,host,plugin from mysql.user", 1000, false)
 	vtParams := mysql.ConnParams{
 		Host:  host,
@@ -51,6 +50,7 @@ func TestMysqlNativePassword(t *testing.T) {
 }
 func TestCachingPassword(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
 	ctx := context.Background()
 	username := "test_user1"
 	password := "password"
@@ -66,7 +66,8 @@ func TestCachingPassword(t *testing.T) {
 		conn.ExecuteFetch("DROP USER 'test_user1'@'localhost';", 1000, false)
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	_, err = vtgateConn.ExecuteFetch("reload users", 1000, false)
+	require.Nil(t, err)
 	conn.ExecuteFetch("SELECT user,host,plugin from mysql.user", 1000, false)
 	vtParams := mysql.ConnParams{
 		Host:       host,

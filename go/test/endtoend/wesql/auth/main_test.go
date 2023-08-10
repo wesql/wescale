@@ -174,6 +174,7 @@ func getVTGateMysqlConn() *mysql.Conn {
 	ctx := context.Background()
 
 	params := mysql.ConnParams{
+		Uname:  "root",
 		Host:   "localhost",
 		Port:   clusterInstance.VtgateMySQLPort,
 		DbName: KeyspaceName,
