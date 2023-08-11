@@ -2,7 +2,7 @@
 - Start Date: 2023-08-09
 - Authors: lyq10085
 - Issue: https://github.com/apecloud/wesql-scale/issues/220
-- PR: todo
+- PR: https://github.com/apecloud/wesql-scale/pull/230
 
 # Summary
 
