@@ -256,7 +256,7 @@ func (a *AuthServerMysqlBase) DefaultAuthMethodDescription() AuthMethodDescripti
 
 // UserEntryWithCacheHash implements password lookup based on a
 // caching_sha2_password fast authentication hash that is negotiated with the client.
-func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
+func (a *AuthServerMysqlBase) UserEntryWithCacheHash(_ *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
 	a.cacheLatch.Lock()
 	entries, ok := a.cacheEntries[user]
 	a.cacheLatch.Unlock()
@@ -275,7 +275,7 @@ func (a *AuthServerMysqlBase) UserEntryWithCacheHash(conn *Conn, salt []byte, us
 
 // UserEntryWithFullAuth implements password lookup based on a
 // caching_sha2_password full authentication hash that is negotiated with the client.
-func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerMysqlBase) UserEntryWithFullAuth(_ *Conn, _ []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()
@@ -303,7 +303,7 @@ func (a *AuthServerMysqlBase) UserEntryWithFullAuth(conn *Conn, salt []byte, use
 
 // UserEntryWithHash implements password lookup based on a
 // mysql_native_password hash that is negotiated with the client.
-func (a *AuthServerMysqlBase) UserEntryWithHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerMysqlBase) UserEntryWithHash(_ *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()

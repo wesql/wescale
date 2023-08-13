@@ -88,10 +88,30 @@ func (gw *TabletGateway) loadBalance(candidates []*discovery.TabletHealth, optio
 		gw.leastBehindPrimaryLoadBalancer(candidates)
 	case querypb.ExecuteOptions_RANDOM:
 		gw.randomLoadBalancer(candidates)
+	case querypb.ExecuteOptions_LEAST_GLOBAL_CONNECTIONS:
+		gw.leastGlobalConnections(candidates)
 	default:
 		gw.randomLoadBalancer(candidates)
 	}
 	return candidates[0]
+}
+
+func (gw *TabletGateway) leastGlobalConnections(candidates []*discovery.TabletHealth) {
+	if len(candidates) == 0 {
+		return
+	}
+	slices.SortFunc(candidates, func(a, b *discovery.TabletHealth) bool {
+		if a.Target.GetCell() == b.Target.GetCell() {
+			return a.Stats.MysqlThreadStats.Connected < b.Stats.MysqlThreadStats.Connected
+		}
+		if a.Target.GetCell() == gw.localCell {
+			return true
+		}
+		if b.Target.GetCell() == gw.localCell {
+			return false
+		}
+		return true
+	})
 }
 
 func (gw *TabletGateway) randomLoadBalancer(candidates []*discovery.TabletHealth) {

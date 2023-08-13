@@ -43,7 +43,7 @@ func (f fakeVSchemaOperator) GetCurrentSrvVschema() *vschema.SrvVSchema {
 	panic("implement me")
 }
 
-func (f fakeVSchemaOperator) UpdateVSchema(ctx context.Context, ksName string, vschema *vschema.SrvVSchema) error {
+func (f fakeVSchemaOperator) UpdateVSchema(_ context.Context, _ string, _ *vschema.SrvVSchema) error {
 	panic("implement me")
 }
 
@@ -57,12 +57,12 @@ func (f *fakeTopoServer) GetTopoServer() (*topo.Server, error) {
 
 // GetSrvKeyspaceNames returns the list of keyspaces served in
 // the provided cell.
-func (f *fakeTopoServer) GetSrvKeyspaceNames(ctx context.Context, cell string, staleOK bool) ([]string, error) {
+func (f *fakeTopoServer) GetSrvKeyspaceNames(_ context.Context, _ string, _ bool) ([]string, error) {
 	return []string{"ks1"}, nil
 }
 
 // GetSrvKeyspace returns the SrvKeyspace for a cell/keyspace.
-func (f *fakeTopoServer) GetSrvKeyspace(ctx context.Context, cell, keyspace string) (*topodatapb.SrvKeyspace, error) {
+func (f *fakeTopoServer) GetSrvKeyspace(_ context.Context, _, _ string) (*topodatapb.SrvKeyspace, error) {
 	zeroHexBytes, _ := hex.DecodeString("")
 	eightyHexBytes, _ := hex.DecodeString("80")
 	ks := &topodatapb.SrvKeyspace{
@@ -87,7 +87,7 @@ func (f *fakeTopoServer) WatchSrvKeyspace(ctx context.Context, cell, keyspace st
 // WatchSrvVSchema starts watching the SrvVSchema object for
 // the provided cell.  It will call the callback when
 // a new value or an error occurs.
-func (f *fakeTopoServer) WatchSrvVSchema(ctx context.Context, cell string, callback func(*vschemapb.SrvVSchema, error) bool) {
+func (f *fakeTopoServer) WatchSrvVSchema(_ context.Context, _ string, _ func(*vschemapb.SrvVSchema, error) bool) {
 
 }
 

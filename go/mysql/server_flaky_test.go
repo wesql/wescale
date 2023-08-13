@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -218,25 +223,25 @@ func (th *testHandler) ComQuery(c *Conn, query string, callback func(*sqltypes.R
 	return nil
 }
 
-func (th *testHandler) ComPrepare(c *Conn, query string, bindVars map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
+func (th *testHandler) ComPrepare(_ *Conn, _ string, _ map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
 	return nil, nil
 }
 
-func (th *testHandler) ComStmtExecute(c *Conn, prepare *PrepareData, callback func(*sqltypes.Result) error) error {
+func (th *testHandler) ComStmtExecute(_ *Conn, _ *PrepareData, _ func(*sqltypes.Result) error) error {
 	return nil
 }
 
-func (th *testHandler) ComRegisterReplica(c *Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+func (th *testHandler) ComRegisterReplica(_ *Conn, _ string, _ uint16, _ string, _ string) error {
 	return nil
 }
-func (th *testHandler) ComBinlogDump(c *Conn, logFile string, binlogPos uint32) error {
+func (th *testHandler) ComBinlogDump(_ *Conn, _ string, _ uint32) error {
 	return nil
 }
-func (th *testHandler) ComBinlogDumpGTID(c *Conn, logFile string, logPos uint64, gtidSet GTIDSet) error {
+func (th *testHandler) ComBinlogDumpGTID(_ *Conn, _ string, _ uint64, _ GTIDSet) error {
 	return nil
 }
 
-func (th *testHandler) WarningCount(c *Conn) uint16 {
+func (th *testHandler) WarningCount(_ *Conn) uint16 {
 	th.mu.Lock()
 	defer th.mu.Unlock()
 	return th.warnings
@@ -1066,7 +1071,7 @@ func TestCachingSha2PasswordAuthWithTLS(t *testing.T) {
 
 type alwaysFallbackAuth struct{}
 
-func (a *alwaysFallbackAuth) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
+func (a *alwaysFallbackAuth) UserEntryWithCacheHash(_ *Conn, _ []byte, _ string, _ []byte, _ net.Addr) (Getter, CacheState, error) {
 	return &StaticUserData{}, AuthNeedMoreData, nil
 }
 

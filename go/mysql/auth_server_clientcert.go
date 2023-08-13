@@ -92,12 +92,12 @@ func (asl *AuthServerClientCert) DefaultAuthMethodDescription() AuthMethodDescri
 
 // HandleUser is part of the UserValidator interface. We
 // handle any user here since we don't check up front.
-func (asl *AuthServerClientCert) HandleUser(user string, plugin string) bool {
+func (asl *AuthServerClientCert) HandleUser(_ string, _ string) bool {
 	return true
 }
 
 // UserEntryWithPassword is part of the PlaintextStorage interface
-func (asl *AuthServerClientCert) UserEntryWithPassword(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (asl *AuthServerClientCert) UserEntryWithPassword(conn *Conn, user string, _ string, _ net.Addr) (Getter, error) {
 	userCerts := conn.GetTLSClientCerts()
 	if len(userCerts) == 0 {
 		return nil, fmt.Errorf("no client certs for connection")

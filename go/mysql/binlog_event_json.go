@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -385,7 +390,7 @@ type literalPlugin struct {
 
 var _ jsonPlugin = (*literalPlugin)(nil)
 
-func (lh literalPlugin) getNode(typ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
+func (lh literalPlugin) getNode(_ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
 	val := jsonDataLiteral(data[pos])
 	switch val {
 	case jsonNullLiteral:
@@ -427,7 +432,7 @@ var _ jsonPlugin = (*opaquePlugin)(nil)
 
 // other types are stored as catch-all opaque types: documentation on these is scarce.
 // we currently know about (and support) date/time/datetime/decimal.
-func (oh opaquePlugin) getNode(typ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
+func (oh opaquePlugin) getNode(_ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
 	dataType := data[pos]
 	start := 3       // account for length of stored value
 	end := start + 8 // all currently supported opaque data types are 8 bytes in size
@@ -508,7 +513,7 @@ type stringPlugin struct {
 
 var _ jsonPlugin = (*stringPlugin)(nil)
 
-func (sh stringPlugin) getNode(typ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
+func (sh stringPlugin) getNode(_ jsonDataType, data []byte, pos int) (node *ajson.Node, err error) {
 	size, pos := readVariableLength(data, pos)
 	node = ajson.StringNode("", string(data[pos:pos+size]))
 

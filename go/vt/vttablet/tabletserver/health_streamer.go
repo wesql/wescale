@@ -123,7 +123,8 @@ func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *health
 			Target:      &querypb.Target{},
 			TabletAlias: alias,
 			RealtimeStats: &querypb.RealtimeStats{
-				HealthError: errUnintialized,
+				HealthError:      errUnintialized,
+				MysqlThreadStats: &querypb.MysqlThreadsStats{},
 			},
 		},
 
@@ -372,8 +373,30 @@ func (hs *healthStreamer) reload() error {
 		}
 	}
 
+	if global.MysqlThreadTracking {
+		err := hs.getMysqlThreads(ctx, conn, func(result *sqltypes.Result) {
+			for i := range result.Fields {
+				var num int64
+				num, _ = result.Rows[i][0].ToInt64()
+				switch result.Fields[i].Name {
+				case "Threads_cached":
+					hs.state.RealtimeStats.MysqlThreadStats.Cached = num
+				case "Threads_connected":
+					hs.state.RealtimeStats.MysqlThreadStats.Connected = num
+				case "Threads_created":
+					hs.state.RealtimeStats.MysqlThreadStats.Created = num
+				case "Threads_running":
+					hs.state.RealtimeStats.MysqlThreadStats.Running = num
+				}
+			}
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	// no change detected
-	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 {
+	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 && !global.MysqlThreadTracking {
 		return nil
 	}
 
@@ -385,7 +408,6 @@ func (hs *healthStreamer) reload() error {
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil
 	hs.state.RealtimeStats.DbList = nil
-
 	return nil
 }
 
@@ -499,6 +521,15 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 	hs.views = views
 
 	return changedViews, nil
+}
+
+func (hs *healthStreamer) getMysqlThreads(ctx context.Context, conn *connpool.DBConn, callback func(result *sqltypes.Result)) (err error) {
+	qr, err := conn.Exec(ctx, mysql.FetchThreads, 10, true)
+	if err != nil {
+		return err
+	}
+	callback(qr)
+	return err
 }
 
 func (hs *healthStreamer) getDbList(ctx context.Context, conn *connpool.DBConn) ([]string, error) {

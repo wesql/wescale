@@ -22,6 +22,7 @@ const DefaultFlavor = "MySQL56"
 const (
 	TableSchemaTracking = false
 	ViewSchemaTracking  = false
+	MysqlThreadTracking = false
 )
 
 const (

@@ -140,6 +140,8 @@ order by table_name, ordinal_position`
 	FetchTablePriv = `SELECT USER,HOST,DB,TABLE_NAME,TABLE_PRIV from mysql.tables_priv`
 
 	FetchDataBasePriv = `SELECT USER,HOST,DB,SELECT_PRIV,INSERT_PRIV,UPDATE_PRIV,DELETE_PRIV,CREATE_PRIV,REFERENCES_PRIV,INDEX_PRIV,ALTER_PRIV,Create_tmp_table_priv,LOCK_TABLES_PRIV,CREATE_VIEW_PRIV,SHOW_VIEW_PRIV,Create_routine_priv,Alter_routine_priv,Execute_priv,Event_priv,Trigger_priv from mysql.db`
+
+	FetchThreads = `SELECT status like '%Threads_%'`
 )
 
 // BaseShowTablesFields contains the fields returned by a BaseShowTables or a BaseShowTablesForTable command.

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +70,7 @@ func (flv *filePosFlavor) primaryGTIDSet(c *Conn) (GTIDSet, error) {
 }
 
 // purgedGTIDSet is part of the Flavor interface.
-func (flv *filePosFlavor) purgedGTIDSet(c *Conn) (GTIDSet, error) {
+func (flv *filePosFlavor) purgedGTIDSet(_ *Conn) (GTIDSet, error) {
 	return nil, nil
 }
 
@@ -119,7 +124,7 @@ func (flv *filePosFlavor) startSQLThreadCommand() string {
 }
 
 // sendBinlogDumpCommand is part of the Flavor interface.
-func (flv *filePosFlavor) sendBinlogDumpCommand(c *Conn, serverID uint32, binlogFilename string, startPos Position) error {
+func (flv *filePosFlavor) sendBinlogDumpCommand(c *Conn, serverID uint32, _ string, startPos Position) error {
 	rpos, ok := startPos.GTIDSet.(filePosGTID)
 	if !ok {
 		return fmt.Errorf("startPos.GTIDSet is wrong type - expected filePosGTID, got: %#v", startPos.GTIDSet)
@@ -209,21 +214,21 @@ func (flv *filePosFlavor) readBinlogEvent(c *Conn) (BinlogEvent, error) {
 }
 
 // resetReplicationCommands is part of the Flavor interface.
-func (flv *filePosFlavor) resetReplicationCommands(c *Conn) []string {
+func (flv *filePosFlavor) resetReplicationCommands(_ *Conn) []string {
 	return []string{
 		"unsupported",
 	}
 }
 
 // resetReplicationParametersCommands is part of the Flavor interface.
-func (flv *filePosFlavor) resetReplicationParametersCommands(c *Conn) []string {
+func (flv *filePosFlavor) resetReplicationParametersCommands(_ *Conn) []string {
 	return []string{
 		"unsupported",
 	}
 }
 
 // setReplicationPositionCommands is part of the Flavor interface.
-func (flv *filePosFlavor) setReplicationPositionCommands(pos Position) []string {
+func (flv *filePosFlavor) setReplicationPositionCommands(_ Position) []string {
 	return []string{
 		"unsupported",
 	}
@@ -308,11 +313,11 @@ func (flv *filePosFlavor) waitUntilPositionCommand(ctx context.Context, pos Posi
 	return fmt.Sprintf("SELECT MASTER_POS_WAIT('%s', %d)", filePosPos.file, filePosPos.pos), nil
 }
 
-func (*filePosFlavor) startReplicationUntilAfter(pos Position) string {
+func (*filePosFlavor) startReplicationUntilAfter(_ Position) string {
 	return "unsupported"
 }
 
-func (*filePosFlavor) startSQLThreadUntilAfter(pos Position) string {
+func (*filePosFlavor) startSQLThreadUntilAfter(_ Position) string {
 	return "unsupported"
 }
 
@@ -337,7 +342,7 @@ func (*filePosFlavor) baseShowTablesWithSizes() string {
 }
 
 // supportsCapability is part of the Flavor interface.
-func (*filePosFlavor) supportsCapability(serverVersion string, capability FlavorCapability) (bool, error) {
+func (*filePosFlavor) supportsCapability(_ string, capability FlavorCapability) (bool, error) {
 	switch capability {
 	default:
 		return false, nil

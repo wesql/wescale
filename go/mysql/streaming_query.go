@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,7 +83,7 @@ func (c *Conn) ExecuteStreamFetch(query string) (err error) {
 			return NewSQLError(CRServerLost, SSUnknownSQLState, "%v", err)
 		}
 		defer c.recycleReadPacket()
-		if c.isEOFPacket(data) {
+		if c.isEOFPacket(data) { // nolint:revive
 			// This is what we expect.
 			// Warnings and status flags are ignored.
 			// goto: end

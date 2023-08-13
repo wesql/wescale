@@ -808,7 +808,7 @@ func _TestExecutorDDL(t *testing.T) {
 			sbclookup.ExecCount.Set(0)
 			stmtType := "DDL"
 			_, err := executor.Execute(ctx, "TestExecute", NewSafeSession(&vtgatepb.Session{TargetString: tc.targetStr}), stmt, nil)
-			if tc.hasNoKeyspaceErr {
+			if tc.hasNoKeyspaceErr { // nolint:revive
 
 			} else {
 				require.NoError(t, err, "did not expect error for query: %q", stmt)

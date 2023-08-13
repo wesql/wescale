@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -156,7 +161,7 @@ func (mysqlFlavor) resetReplicationCommands(c *Conn) []string {
 }
 
 // resetReplicationParametersCommands is part of the Flavor interface.
-func (mysqlFlavor) resetReplicationParametersCommands(c *Conn) []string {
+func (mysqlFlavor) resetReplicationParametersCommands(_ *Conn) []string {
 	resetCommands := []string{
 		"RESET SLAVE ALL", // "ALL" makes it forget source host:port.
 	}
@@ -374,7 +379,7 @@ func (mysqlFlavor56) baseShowTablesWithSizes() string {
 }
 
 // supportsCapability is part of the Flavor interface.
-func (mysqlFlavor56) supportsCapability(serverVersion string, capability FlavorCapability) (bool, error) {
+func (mysqlFlavor56) supportsCapability(_ string, capability FlavorCapability) (bool, error) {
 	switch capability {
 	default:
 		return false, nil
@@ -387,7 +392,7 @@ func (mysqlFlavor57) baseShowTablesWithSizes() string {
 }
 
 // supportsCapability is part of the Flavor interface.
-func (mysqlFlavor57) supportsCapability(serverVersion string, capability FlavorCapability) (bool, error) {
+func (mysqlFlavor57) supportsCapability(_ string, capability FlavorCapability) (bool, error) {
 	switch capability {
 	case MySQLJSONFlavorCapability:
 		return true, nil

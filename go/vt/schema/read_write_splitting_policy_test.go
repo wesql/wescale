@@ -135,6 +135,13 @@ func TestToLoadBalancePolicy(t *testing.T) {
 			},
 			want: query.ExecuteOptions_LEAST_BEHIND_PRIMARY,
 		},
+		{
+			name: "LEAST_GLOBAL_CONNECTIONS",
+			args: args{
+				s: "LEAST_GLOBAL_CONNECTIONS",
+			},
+			want: query.ExecuteOptions_LEAST_GLOBAL_CONNECTIONS,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

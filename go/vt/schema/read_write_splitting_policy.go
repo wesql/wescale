@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
@@ -35,6 +36,8 @@ const (
 	ReadWriteSplittingPolicyLeastRT ReadWriteSplittingPolicy = "least_rt"
 	// ReadWriteSplittingPolicyLeastBehindPrimary enables read write splitting using least behind primary policy
 	ReadWriteSplittingPolicyLeastBehindPrimary ReadWriteSplittingPolicy = "least_behind_primary"
+	// ReadWriteSplittingPolicyLeastGlobalConnections enables read write splitting using least global(mysqld) connections policy
+	ReadWriteSplittingPolicyLeastGlobalConnections ReadWriteSplittingPolicy = "least_global_connections"
 )
 
 // IsRandom returns true if the strategy is random
@@ -67,7 +70,8 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 		ReadWriteSplittingPolicyLeastQPS,
 		ReadWriteSplittingPolicyLeastRT,
 		ReadWriteSplittingPolicyLeastBehindPrimary,
-		ReadWriteSplittingPolicyDisable:
+		ReadWriteSplittingPolicyDisable,
+		ReadWriteSplittingPolicyLeastGlobalConnections:
 		setting.Strategy = strategy
 	default:
 		return nil, fmt.Errorf("Unknown ReadWriteSplittingPolicy: '%v'", strategy)
@@ -107,6 +111,8 @@ func ToLoadBalancePolicy(s string) querypb.ExecuteOptions_LoadBalancePolicy {
 		return querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY
 	case ReadWriteSplittingPolicyRandom:
 		return querypb.ExecuteOptions_RANDOM
+	case ReadWriteSplittingPolicyLeastGlobalConnections:
+		return querypb.ExecuteOptions_LEAST_GLOBAL_CONNECTIONS
 	default:
 		return querypb.ExecuteOptions_RANDOM
 	}
