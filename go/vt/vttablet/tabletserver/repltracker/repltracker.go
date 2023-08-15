@@ -163,3 +163,8 @@ func (rt *ReplTracker) GtidExecuted() (mysql.Position, error) {
 func (rt *ReplTracker) EnableHeartbeat(enable bool) {
 	rt.hw.enableWrites(enable)
 }
+
+// ThreadsStatus querys the underlying mysqld for connections usage status
+func (rt *ReplTracker) ThreadsStatus() (*querypb.MysqlThreadsStats, error) {
+	return rt.poller.MysqlThreads()
+}

@@ -158,6 +158,7 @@ type (
 		Close()
 		Status() (time.Duration, error)
 		GtidExecuted() (mysql.Position, error)
+		ThreadsStatus() (*querypb.MysqlThreadsStats, error)
 	}
 
 	queryEngine interface {
@@ -677,8 +678,20 @@ func (sm *stateManager) Broadcast() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	lag, err := sm.refreshReplHealthLocked()
+	threads, err := sm.rt.ThreadsStatus()
+	lag, er := sm.refreshReplHealthLocked()
 	p, e := sm.rt.GtidExecuted()
+
+	if err != nil {
+		log.Errorf("Error getting ThreadsStatus: %v", er)
+	}
+
+	if er != nil {
+		if err != nil {
+			err = er
+		}
+	}
+
 	if e != nil {
 		log.Errorf("Error getting GTIDExecuted: %v", e)
 		if err == nil {
@@ -687,7 +700,7 @@ func (sm *stateManager) Broadcast() {
 	} else {
 		sm.hs.state.Position = mysql.EncodePosition(p)
 	}
-	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked())
+	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked(), threads)
 }
 
 // For wesql-server, the health status of the replica is not judged by the replication lag,

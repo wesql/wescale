@@ -232,7 +232,7 @@ func (hs *healthStreamer) unregister(ch chan *querypb.StreamHealthResponse) {
 	delete(hs.clients, ch)
 }
 
-func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool) {
+func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool, threads *querypb.MysqlThreadsStats) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 
@@ -247,6 +247,11 @@ func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimes
 	} else {
 		hs.state.RealtimeStats.HealthError = ""
 	}
+
+	if threads != nil {
+		hs.state.RealtimeStats.MysqlThreadStats = threads
+	}
+
 	hs.state.RealtimeStats.ReplicationLagSeconds = uint32(lag.Seconds())
 	hs.state.Serving = serving
 
@@ -373,30 +378,8 @@ func (hs *healthStreamer) reload() error {
 		}
 	}
 
-	if global.MysqlThreadTracking {
-		err := hs.getMysqlThreads(ctx, conn, func(result *sqltypes.Result) {
-			for i := range result.Fields {
-				var num int64
-				num, _ = result.Rows[i][0].ToInt64()
-				switch result.Fields[i].Name {
-				case "Threads_cached":
-					hs.state.RealtimeStats.MysqlThreadStats.Cached = num
-				case "Threads_connected":
-					hs.state.RealtimeStats.MysqlThreadStats.Connected = num
-				case "Threads_created":
-					hs.state.RealtimeStats.MysqlThreadStats.Created = num
-				case "Threads_running":
-					hs.state.RealtimeStats.MysqlThreadStats.Running = num
-				}
-			}
-		})
-		if err != nil {
-			return err
-		}
-	}
-
 	// no change detected
-	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 && !global.MysqlThreadTracking {
+	if len(tables) == 0 && len(views) == 0 && len(dbList) == 0 {
 		return nil
 	}
 

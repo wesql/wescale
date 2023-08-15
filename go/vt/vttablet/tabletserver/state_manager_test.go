@@ -831,6 +831,10 @@ func (te *testReplTracker) GtidExecuted() (mysql.Position, error) {
 	return mysql.Position{}, nil
 }
 
+func (te *testReplTracker) ThreadsStatus() (*querypb.MysqlThreadsStats, error) {
+	return &querypb.MysqlThreadsStats{}, nil
+}
+
 type testQueryEngine struct {
 	testOrderState
 

@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"context"
@@ -374,6 +373,35 @@ func (mysqld *Mysqld) PrimaryPosition() (mysql.Position, error) {
 	defer conn.Recycle()
 
 	return conn.PrimaryPosition()
+}
+
+func (mysqld *Mysqld) ThreadsStatus() (status map[string]int64, err error) {
+	conn, err := getPoolReconnect(context.TODO(), mysqld.dbaPool)
+	if err != nil {
+		return map[string]int64{}, err
+	}
+	defer conn.Recycle()
+	qr, err := conn.ExecuteFetch(mysql.FetchThreads, 10, true)
+	if err != nil {
+		return map[string]int64{}, err
+	}
+
+	for i := range qr.Fields {
+		var num int64
+		num, err = qr.Rows[i][0].ToInt64()
+		if err != nil {
+			continue
+		}
+		switch qr.Fields[i].Name {
+		case mysql.ThreadsCreated, mysql.ThreadsCached, mysql.ThreadsConnected, mysql.ThreadsRunning:
+			status[qr.Fields[i].Name] = num
+		}
+	}
+	if err != nil {
+		return map[string]int64{}, err
+	}
+
+	return status, nil
 }
 
 // SetReplicationPosition sets the replication position at which the replica will resume
