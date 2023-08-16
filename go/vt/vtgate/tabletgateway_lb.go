@@ -100,7 +100,6 @@ func (gw *TabletGateway) loadBalance(candidates []*discovery.TabletHealth, optio
 	return candidates[0]
 }
 
-// todo
 func (gw *TabletGateway) leastTabletInUseConnections(candidates []*discovery.TabletHealth) {
 	if len(candidates) == 0 {
 		return

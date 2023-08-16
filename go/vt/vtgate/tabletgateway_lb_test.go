@@ -290,12 +290,13 @@ func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
 }
 
 type tabletInfo struct {
-	uid              uint32
-	qps              float64
-	cell             string
-	position         string
-	threadsConnected int64
-	threadsRunning   int64
+	uid                uint32
+	qps                float64
+	cell               string
+	position           string
+	dbThreadsConnected int64
+	dbThreadsRunning   int64
+	tabletThreadsInUse int64
 }
 
 func genTablets(tabletInfoList []tabletInfo) []*discovery.TabletHealth {
@@ -312,8 +313,9 @@ func genTablets(tabletInfoList []tabletInfo) []*discovery.TabletHealth {
 				Cell: t.cell,
 			},
 			Stats: &querypb.RealtimeStats{
-				Qps:              t.qps,
-				MysqlThreadStats: &querypb.MysqlThreadsStats{Connected: t.threadsConnected, Running: t.threadsRunning},
+				Qps:                t.qps,
+				MysqlThreadStats:   &querypb.MysqlThreadsStats{Connected: t.dbThreadsConnected, Running: t.dbThreadsRunning},
+				TabletThreadsStats: t.tabletThreadsInUse,
 			},
 			Position: mysql.MustParsePosition(mysql.Mysql56FlavorID, t.position),
 		})
@@ -521,7 +523,6 @@ func TestTabletGateway_leastRTLoadBalancer(t *testing.T) {
 	}
 }
 
-// todo add more case
 func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -538,13 +539,13 @@ func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 			wantUid: 0,
 		},
 		{
-			name: "500 400 100 300 200",
+			name: "all tablets in local cell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsConnected: 9},
-				{uid: 4, cell: "test_cell", threadsConnected: 7},
-				{uid: 1, cell: "test_cell", threadsConnected: 3},
-				{uid: 3, cell: "test_cell", threadsConnected: 4},
-				{uid: 2, cell: "test_cell", threadsConnected: 5},
+				{uid: 5, cell: "test_cell", dbThreadsConnected: 9},
+				{uid: 4, cell: "test_cell", dbThreadsConnected: 7},
+				{uid: 1, cell: "test_cell", dbThreadsConnected: 3},
+				{uid: 3, cell: "test_cell", dbThreadsConnected: 4},
+				{uid: 2, cell: "test_cell", dbThreadsConnected: 5},
 			}),
 			gw: &TabletGateway{
 				statusAggregators: genAggr([]aggrInfo{
@@ -558,13 +559,13 @@ func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 			wantUid: 1,
 		},
 		{
-			name: "500 400 300 | 100 200",
+			name: "tablet with least connected connections not in local cell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsConnected: 5},
-				{uid: 4, cell: "test_cell", threadsConnected: 3},
-				{uid: 1, cell: "test_cell2", threadsConnected: 2},
-				{uid: 3, cell: "test_cell", threadsConnected: 4},
-				{uid: 2, cell: "test_cell2", threadsConnected: 3},
+				{uid: 5, cell: "test_cell", dbThreadsConnected: 5},
+				{uid: 4, cell: "test_cell", dbThreadsConnected: 3},
+				{uid: 1, cell: "test_cell2", dbThreadsConnected: 2},
+				{uid: 3, cell: "test_cell", dbThreadsConnected: 4},
+				{uid: 2, cell: "test_cell2", dbThreadsConnected: 3},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell",
@@ -579,13 +580,13 @@ func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 			wantUid: 4,
 		},
 		{
-			name: "500 400 300 | 100 200",
+			name: "tablets with least connected connections in localcell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsConnected: 1000},
-				{uid: 4, cell: "test_cell", threadsConnected: 10004},
-				{uid: 1, cell: "test_cell2", threadsConnected: 1413},
-				{uid: 3, cell: "test_cell", threadsConnected: 4441313},
-				{uid: 2, cell: "test_cell2", threadsConnected: 424},
+				{uid: 5, cell: "test_cell", dbThreadsConnected: 1000},
+				{uid: 4, cell: "test_cell", dbThreadsConnected: 10004},
+				{uid: 1, cell: "test_cell2", dbThreadsConnected: 1413},
+				{uid: 3, cell: "test_cell", dbThreadsConnected: 4441313},
+				{uid: 2, cell: "test_cell2", dbThreadsConnected: 424},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell2",
@@ -612,7 +613,6 @@ func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 	}
 }
 
-// todo
 func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -629,13 +629,13 @@ func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 			wantUid: 0,
 		},
 		{
-			name: "500 400 100 300 200",
+			name: "all tablets in localcell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsRunning: 9},
-				{uid: 4, cell: "test_cell", threadsRunning: 7},
-				{uid: 1, cell: "test_cell", threadsRunning: 3},
-				{uid: 3, cell: "test_cell", threadsRunning: 4},
-				{uid: 2, cell: "test_cell", threadsRunning: 5},
+				{uid: 5, cell: "test_cell", dbThreadsRunning: 9},
+				{uid: 4, cell: "test_cell", dbThreadsRunning: 7},
+				{uid: 1, cell: "test_cell", dbThreadsRunning: 3},
+				{uid: 3, cell: "test_cell", dbThreadsRunning: 4},
+				{uid: 2, cell: "test_cell", dbThreadsRunning: 5},
 			}),
 			gw: &TabletGateway{
 				statusAggregators: genAggr([]aggrInfo{
@@ -649,13 +649,13 @@ func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 			wantUid: 1,
 		},
 		{
-			name: "500 400 300 | 100 200",
+			name: "tablets with least running connections not in localcell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsRunning: 5},
-				{uid: 4, cell: "test_cell", threadsRunning: 3},
-				{uid: 1, cell: "test_cell2", threadsRunning: 2},
-				{uid: 3, cell: "test_cell", threadsRunning: 4},
-				{uid: 2, cell: "test_cell2", threadsRunning: 3},
+				{uid: 5, cell: "test_cell", dbThreadsRunning: 5},
+				{uid: 4, cell: "test_cell", dbThreadsRunning: 3},
+				{uid: 1, cell: "test_cell2", dbThreadsRunning: 2},
+				{uid: 3, cell: "test_cell", dbThreadsRunning: 4},
+				{uid: 2, cell: "test_cell2", dbThreadsRunning: 3},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell",
@@ -670,13 +670,13 @@ func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 			wantUid: 4,
 		},
 		{
-			name: "500 400 300 | 100 200",
+			name: "tablet with least running connections in localcell",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threadsRunning: 1000},
-				{uid: 4, cell: "test_cell", threadsRunning: 10004},
-				{uid: 1, cell: "test_cell2", threadsRunning: 1413},
-				{uid: 3, cell: "test_cell", threadsRunning: 4441313},
-				{uid: 2, cell: "test_cell2", threadsRunning: 424},
+				{uid: 5, cell: "test_cell", dbThreadsRunning: 1000},
+				{uid: 4, cell: "test_cell", dbThreadsRunning: 10004},
+				{uid: 1, cell: "test_cell2", dbThreadsRunning: 1413},
+				{uid: 3, cell: "test_cell", dbThreadsRunning: 4441313},
+				{uid: 2, cell: "test_cell2", dbThreadsRunning: 424},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell2",
@@ -689,6 +689,27 @@ func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 				}),
 			},
 			wantUid: 2,
+		},
+		{
+			name: "all tablets not in localcell",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", dbThreadsRunning: 9223372036854775807},
+				{uid: 4, cell: "test_cell", dbThreadsRunning: 922337203685477580},
+				{uid: 1, cell: "test_cell2", dbThreadsRunning: 922337203685477},
+				{uid: 3, cell: "test_cell", dbThreadsRunning: 92233720368547},
+				{uid: 2, cell: "test_cell2", dbThreadsRunning: 9223372036854775806},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell3",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 3,
 		},
 	}
 	for _, tt := range tests {
@@ -703,9 +724,139 @@ func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
 	}
 }
 
-// todo
 func TestTabletGateway_leastTabletInUseConnections(t *testing.T) {
-
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name:       "no candidates",
+			candidates: genTablets([]tabletInfo{}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{}),
+			},
+			wantUid: 0,
+		},
+		{
+			name: "candidates in the same cell",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", tabletThreadsInUse: 9},
+				{uid: 4, cell: "test_cell", tabletThreadsInUse: 7},
+				{uid: 1, cell: "test_cell", tabletThreadsInUse: 3},
+				{uid: 3, cell: "test_cell", tabletThreadsInUse: 4},
+				{uid: 2, cell: "test_cell", tabletThreadsInUse: 5},
+				{uid: 6, cell: "test_cell", tabletThreadsInUse: 4},
+				{uid: 7, cell: "test_cell", tabletThreadsInUse: 4},
+				{uid: 8, cell: "test_cell", tabletThreadsInUse: 5},
+			}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 1,
+		},
+		{
+			name: "tablet with the least connections not in local cell",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", tabletThreadsInUse: 5},
+				{uid: 4, cell: "test_cell", tabletThreadsInUse: 3},
+				{uid: 1, cell: "test_cell2", tabletThreadsInUse: 2},
+				{uid: 3, cell: "test_cell", tabletThreadsInUse: 4},
+				{uid: 2, cell: "test_cell2", tabletThreadsInUse: 3},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 4,
+		},
+		{
+			name: "tablets with the least connections in localcell",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", tabletThreadsInUse: 1000},
+				{uid: 4, cell: "test_cell", tabletThreadsInUse: 10004},
+				{uid: 1, cell: "test_cell2", tabletThreadsInUse: 1413},
+				{uid: 3, cell: "test_cell", tabletThreadsInUse: 4441313},
+				{uid: 2, cell: "test_cell2", tabletThreadsInUse: 424},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell2",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 2,
+		},
+		{
+			name: "extremely high number of connections",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", tabletThreadsInUse: 9223372036854775807},
+				{uid: 4, cell: "test_cell", tabletThreadsInUse: 922337203685477580},
+				{uid: 1, cell: "test_cell2", tabletThreadsInUse: 922337203685477},
+				{uid: 3, cell: "test_cell", tabletThreadsInUse: 9223372036854775807},
+				{uid: 2, cell: "test_cell2", tabletThreadsInUse: 9223372036854775806},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell2",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 1,
+		},
+		{
+			name: "all tablets not in localcell",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", tabletThreadsInUse: 9223372036854775807},
+				{uid: 4, cell: "test_cell", tabletThreadsInUse: 922337203685477580},
+				{uid: 1, cell: "test_cell2", tabletThreadsInUse: 922337203685477},
+				{uid: 3, cell: "test_cell", tabletThreadsInUse: 92233720368547},
+				{uid: 2, cell: "test_cell2", tabletThreadsInUse: 9223372036854775806},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell3",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 3,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_TABLET_INUSE_CONNECTIONS})
+			if chosen == nil {
+				assert.Equal(t, tt.wantUid, uint32(0))
+				return
+			}
+			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
+		})
+	}
 }
 
 func TestTabletGateway_leastBehindPrimaryLoadBalancer(t *testing.T) {
