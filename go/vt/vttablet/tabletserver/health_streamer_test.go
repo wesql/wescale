@@ -92,7 +92,8 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 		Target:      &querypb.Target{},
 		TabletAlias: alias,
 		RealtimeStats: &querypb.RealtimeStats{
-			HealthError: "tabletserver uninitialized",
+			HealthError:      "tabletserver uninitialized",
+			MysqlThreadStats: &querypb.MysqlThreadsStats{},
 		},
 	}
 	assert.Truef(t, proto.Equal(want, shr), "want: %v, got: %v", want, shr)
@@ -107,6 +108,7 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 		RealtimeStats: &querypb.RealtimeStats{
 			FilteredReplicationLagSeconds: 1,
 			BinlogPlayersCount:            2,
+			MysqlThreadStats:              &querypb.MysqlThreadsStats{},
 		},
 	}
 	assert.Truef(t, proto.Equal(want, shr), "want: %v, got: %v", want, shr)
@@ -125,6 +127,7 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 		RealtimeStats: &querypb.RealtimeStats{
 			FilteredReplicationLagSeconds: 1,
 			BinlogPlayersCount:            2,
+			MysqlThreadStats:              &querypb.MysqlThreadsStats{},
 		},
 	}
 	assert.Truef(t, proto.Equal(want, shr), "want: %v, got: %v", want, shr)
@@ -141,6 +144,7 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 			ReplicationLagSeconds:         1,
 			FilteredReplicationLagSeconds: 1,
 			BinlogPlayersCount:            2,
+			MysqlThreadStats:              &querypb.MysqlThreadsStats{},
 		},
 	}
 	assert.Truef(t, proto.Equal(want, shr), "want: %v, got: %v", want, shr)
@@ -157,6 +161,7 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 			HealthError:                   "repl err",
 			FilteredReplicationLagSeconds: 1,
 			BinlogPlayersCount:            2,
+			MysqlThreadStats:              &querypb.MysqlThreadsStats{},
 		},
 	}
 	assert.Truef(t, proto.Equal(want, shr), "want: %v, got: %v", want, shr)
