@@ -165,12 +165,14 @@ type (
 		Open() error
 		IsMySQLReachable() error
 		Close()
+		InUse() int64
 	}
 
 	txEngine interface {
 		AcceptReadWrite()
 		AcceptReadOnly()
 		Close()
+		InUse() int64
 	}
 
 	subComponent interface {
@@ -678,7 +680,8 @@ func (sm *stateManager) Broadcast() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	threads, err := sm.rt.ThreadsStatus()
+	tabletThreads := sm.qe.InUse() + sm.te.InUse()
+	dbThreads, err := sm.rt.ThreadsStatus()
 	lag, er := sm.refreshReplHealthLocked()
 	p, e := sm.rt.GtidExecuted()
 
@@ -700,7 +703,7 @@ func (sm *stateManager) Broadcast() {
 	} else {
 		sm.hs.state.Position = mysql.EncodePosition(p)
 	}
-	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked(), threads)
+	sm.hs.ChangeState(sm.target.TabletType, sm.terTimestamp, lag, err, sm.isServingLocked(), dbThreads, tabletThreads)
 }
 
 // For wesql-server, the health status of the replica is not judged by the replication lag,

@@ -924,6 +924,9 @@ message RealtimeStats {
 
   // mysql_threads_stats
   MysqlThreadsStats mysql_thread_stats = 10;
+
+  // tablet_threads_stats
+  int64 tablet_threads_stats = 11;
 }
 
 // AggregateStats contains information about the health of a group of

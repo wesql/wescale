@@ -93,6 +93,7 @@ func (gw *TabletGateway) loadBalance(candidates []*discovery.TabletHealth, optio
 	case querypb.ExecuteOptions_LEAST_MYSQL_RUNNING_CONNECTIONS:
 		gw.leastMysqlRunningConnections(candidates)
 	case querypb.ExecuteOptions_LEAST_TABLET_INUSE_CONNECTIONS:
+		gw.leastTabletInUseConnections(candidates)
 	default:
 		gw.randomLoadBalancer(candidates)
 	}
@@ -104,6 +105,19 @@ func (gw *TabletGateway) leastTabletInUseConnections(candidates []*discovery.Tab
 	if len(candidates) == 0 {
 		return
 	}
+	slices.SortFunc(candidates, func(a, b *discovery.TabletHealth) bool {
+		if a.Target.GetCell() == b.Target.GetCell() {
+			return a.Stats.TabletThreadsStats <= b.Stats.TabletThreadsStats
+		}
+		if a.Target.GetCell() == gw.localCell {
+			return true
+		}
+		if b.Target.GetCell() == gw.localCell {
+			return false
+		}
+		return true
+	})
+
 }
 
 func (gw *TabletGateway) leastMysqlRunningConnections(candidates []*discovery.TabletHealth) {
@@ -112,7 +126,7 @@ func (gw *TabletGateway) leastMysqlRunningConnections(candidates []*discovery.Ta
 	}
 	slices.SortFunc(candidates, func(a, b *discovery.TabletHealth) bool {
 		if a.Target.GetCell() == b.Target.GetCell() {
-			return a.Stats.MysqlThreadStats.Running < b.Stats.MysqlThreadStats.Running
+			return a.Stats.MysqlThreadStats.Running <= b.Stats.MysqlThreadStats.Running
 		}
 		if a.Target.GetCell() == gw.localCell {
 			return true

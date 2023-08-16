@@ -612,3 +612,8 @@ func (te *TxEngine) Release(connID int64) error {
 
 	return nil
 }
+
+// InUse returns the sum of in-use connections
+func (te *TxEngine) InUse() int64 {
+	return te.txPool.InUse()
+}

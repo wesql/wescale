@@ -232,7 +232,7 @@ func (hs *healthStreamer) unregister(ch chan *querypb.StreamHealthResponse) {
 	delete(hs.clients, ch)
 }
 
-func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool, threads *querypb.MysqlThreadsStats) {
+func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool, dbThreads *querypb.MysqlThreadsStats, tabletThreads int64) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 
@@ -248,9 +248,11 @@ func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimes
 		hs.state.RealtimeStats.HealthError = ""
 	}
 
-	if threads != nil {
-		hs.state.RealtimeStats.MysqlThreadStats = threads
+	if dbThreads != nil {
+		hs.state.RealtimeStats.MysqlThreadStats = dbThreads
 	}
+
+	hs.state.RealtimeStats.TabletThreadsStats = tabletThreads
 
 	hs.state.RealtimeStats.ReplicationLagSeconds = uint32(lag.Seconds())
 	hs.state.Serving = serving

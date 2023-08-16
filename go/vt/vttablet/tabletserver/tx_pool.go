@@ -472,3 +472,7 @@ func txKillerTimeoutInterval(config *tabletenv.TabletConfig) time.Duration {
 		config.TxTimeoutForWorkload(querypb.ExecuteOptions_OLTP),
 	) / 10
 }
+
+func (tp *TxPool) InUse() int64 {
+	return tp.scp.InUse()
+}
