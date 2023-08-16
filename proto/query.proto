@@ -363,7 +363,9 @@ message ExecuteOptions {
     LEAST_QPS = 2;
     LEAST_RT = 3;
     LEAST_BEHIND_PRIMARY = 4;
-    LEAST_GLOBAL_CONNECTIONS = 5;
+    LEAST_MYSQL_CONNECTED_CONNECTIONS = 5;
+    LEAST_MYSQL_RUNNING_CONNECTIONS = 6;
+    LEAST_TABLET_INUSE_CONNECTIONS = 7;
   }
 
   LoadBalancePolicy load_balance_policy = 17;

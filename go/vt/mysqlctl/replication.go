@@ -375,30 +375,38 @@ func (mysqld *Mysqld) PrimaryPosition() (mysql.Position, error) {
 	return conn.PrimaryPosition()
 }
 
-func (mysqld *Mysqld) ThreadsStatus() (status map[string]int64, err error) {
+func (mysqld *Mysqld) ThreadsStatus() (status map[string]int, err error) {
 	conn, err := getPoolReconnect(context.TODO(), mysqld.dbaPool)
 	if err != nil {
-		return map[string]int64{}, err
+		return nil, err
 	}
 	defer conn.Recycle()
 	qr, err := conn.ExecuteFetch(mysql.FetchThreads, 10, true)
 	if err != nil {
-		return map[string]int64{}, err
+		return nil, err
 	}
 
-	for i := range qr.Fields {
-		var num int64
-		num, err = qr.Rows[i][0].ToInt64()
+	status = make(map[string]int)
+
+	for i := range qr.Rows {
+		var num int
+		var threadType string
+		num, err = strconv.Atoi(qr.Rows[i][1].ToString())
 		if err != nil {
 			continue
 		}
-		switch qr.Fields[i].Name {
-		case mysql.ThreadsCreated, mysql.ThreadsCached, mysql.ThreadsConnected, mysql.ThreadsRunning:
-			status[qr.Fields[i].Name] = num
+		threadType = qr.Rows[i][0].String()
+		switch {
+		case strings.Contains(threadType, mysql.ThreadsCreated):
+			status[mysql.ThreadsCreated] = num
+		case strings.Contains(threadType, mysql.ThreadsCached):
+			status[mysql.ThreadsCached] = num
+		case strings.Contains(threadType, mysql.ThreadsConnected):
+			status[mysql.ThreadsConnected] = num
+		case strings.Contains(threadType, mysql.ThreadsRunning):
+			status[mysql.ThreadsRunning] = num
+		default:
 		}
-	}
-	if err != nil {
-		return map[string]int64{}, err
 	}
 
 	return status, nil

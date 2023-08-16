@@ -98,15 +98,16 @@ func (p *poller) MysqlThreads() (*query.MysqlThreadsStats, error) {
 	}
 	var Threads query.MysqlThreadsStats
 	for threadsType, quant := range status {
+		number := int64(quant)
 		switch threadsType {
 		case mysql.ThreadsConnected:
-			Threads.Connected = quant
+			Threads.Connected = number
 		case mysql.ThreadsCached:
-			Threads.Cached = quant
+			Threads.Cached = number
 		case mysql.ThreadsCreated:
-			Threads.Created = quant
+			Threads.Created = number
 		case mysql.ThreadsRunning:
-			Threads.Running = quant
+			Threads.Running = number
 		default:
 		}
 	}

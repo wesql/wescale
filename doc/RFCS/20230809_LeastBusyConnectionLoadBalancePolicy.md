@@ -6,7 +6,7 @@
 
 # Summary
 
-The proposal aims to add new policy (LEAST_BUSY_CONNECTIONS, LEAST_GLOBAL_BUSY_CONNECTIONS) to vtgate's existing load balancer. The new policy will enable vtgate to pick vttablet with the least busy connections to its managed mysqld instance or vttablet which manages the mysqld with the minimal busy connections.
+The proposal aims to add new policy (LEAST_MYSQL_CONNECTED_CONNECTIONS, LEAST_MYSQL_RUNNING_CONNECTIONS, LEAST_TABLET_INUSE_CONNECTIONS) to vtgate's existing load balancer. The new policy will enable vtgate to pick vttablet with the least busy connections to its managed mysqld instance or vttablet which manages the mysqld with the minimal busy connections.
 
 # Motivation
 
@@ -16,8 +16,9 @@ In practice, the number of connections in mysqld reflects the load on vttablet a
 
 ## Goals
 
-1. LEAST_BUSY_CONNECTIONS: vtgate routes queries based on cached vttablet connection pools' usage status.
-2. LEAST_GLOBAL_BUSY_CONNECTIONS: vtgate routes queries based on underlying mysqld connection status.
+1. LEAST_MYSQL_CONNECTED_CONNECTIONS: vtgate routes queries based on Mysql connected connections.
+2. LEAST_MYSQL_RUNNING_CONNECTIONS: vtgate routes queries based on Mysql Running connections.
+3. LEAST_TABLET_INUSE_CONNECTIONS: vtgate routes queries based on vttablet connection pool usage status.
 
 ## Design Details
 
@@ -27,15 +28,20 @@ In practice, the number of connections in mysqld reflects the load on vttablet a
 
 ## Road Map
 
-- [x] implement checkMysqlConnections and checkTabletPoolUsage method of tabletserver's healthstreamer.
+- [x] implement ThreadsStatus method of statemanager's replTracker.
 
-- [x] implement leastbusyconnections and leastglobalbusyconnections method of tabletgateway' load balancer.
+- [x] impelement queryEngine and TxEngine getConnPoolInUseStats method 
+
+- [x] add update heathstreamer's RealTimeStats logic to statemanager's broadcast method
+
+- [x] implement leastMysqlConnectedConnections, leastMysqlRunningConnections, leastTabletInUseConnections method of tabletgateway' load balancer.
 
 # Usage
 
 ```MySQL
-set session read_write_splitting_policy='least_busy_connections';
-set session read_write_splitting_policy='least_global_busy_connections';
+set @@read_write_splitting_policy='least_mysql_connected_connections';
+set @@read_write_splitting_policy='least_mysql_running_connections';
+set @@read_write_splitting_policy='least_tablet_inuse_connections';
 ```
 
 # Future Works

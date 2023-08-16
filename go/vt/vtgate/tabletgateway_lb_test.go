@@ -290,11 +290,12 @@ func TestTabletGateway_leastGlobalQpsLoadBalancer(t *testing.T) {
 }
 
 type tabletInfo struct {
-	uid      uint32
-	qps      float64
-	cell     string
-	position string
-	threads  int64
+	uid              uint32
+	qps              float64
+	cell             string
+	position         string
+	threadsConnected int64
+	threadsRunning   int64
 }
 
 func genTablets(tabletInfoList []tabletInfo) []*discovery.TabletHealth {
@@ -312,7 +313,7 @@ func genTablets(tabletInfoList []tabletInfo) []*discovery.TabletHealth {
 			},
 			Stats: &querypb.RealtimeStats{
 				Qps:              t.qps,
-				MysqlThreadStats: &querypb.MysqlThreadsStats{Connected: t.threads},
+				MysqlThreadStats: &querypb.MysqlThreadsStats{Connected: t.threadsConnected, Running: t.threadsRunning},
 			},
 			Position: mysql.MustParsePosition(mysql.Mysql56FlavorID, t.position),
 		})
@@ -520,7 +521,8 @@ func TestTabletGateway_leastRTLoadBalancer(t *testing.T) {
 	}
 }
 
-func TestTabletGateway_leastGlobalConnections(t *testing.T) {
+// todo add more case
+func TestTabletGateway_leastMysqlConnectedConnections(t *testing.T) {
 	tests := []struct {
 		name       string
 		candidates []*discovery.TabletHealth
@@ -538,11 +540,11 @@ func TestTabletGateway_leastGlobalConnections(t *testing.T) {
 		{
 			name: "500 400 100 300 200",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threads: 9},
-				{uid: 4, cell: "test_cell", threads: 7},
-				{uid: 1, cell: "test_cell", threads: 3},
-				{uid: 3, cell: "test_cell", threads: 4},
-				{uid: 2, cell: "test_cell", threads: 5},
+				{uid: 5, cell: "test_cell", threadsConnected: 9},
+				{uid: 4, cell: "test_cell", threadsConnected: 7},
+				{uid: 1, cell: "test_cell", threadsConnected: 3},
+				{uid: 3, cell: "test_cell", threadsConnected: 4},
+				{uid: 2, cell: "test_cell", threadsConnected: 5},
 			}),
 			gw: &TabletGateway{
 				statusAggregators: genAggr([]aggrInfo{
@@ -558,11 +560,11 @@ func TestTabletGateway_leastGlobalConnections(t *testing.T) {
 		{
 			name: "500 400 300 | 100 200",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threads: 5},
-				{uid: 4, cell: "test_cell", threads: 3},
-				{uid: 1, cell: "test_cell2", threads: 2},
-				{uid: 3, cell: "test_cell", threads: 4},
-				{uid: 2, cell: "test_cell2", threads: 3},
+				{uid: 5, cell: "test_cell", threadsConnected: 5},
+				{uid: 4, cell: "test_cell", threadsConnected: 3},
+				{uid: 1, cell: "test_cell2", threadsConnected: 2},
+				{uid: 3, cell: "test_cell", threadsConnected: 4},
+				{uid: 2, cell: "test_cell2", threadsConnected: 3},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell",
@@ -579,11 +581,11 @@ func TestTabletGateway_leastGlobalConnections(t *testing.T) {
 		{
 			name: "500 400 300 | 100 200",
 			candidates: genTablets([]tabletInfo{
-				{uid: 5, cell: "test_cell", threads: 1000},
-				{uid: 4, cell: "test_cell", threads: 10004},
-				{uid: 1, cell: "test_cell2", threads: 1413},
-				{uid: 3, cell: "test_cell", threads: 4441313},
-				{uid: 2, cell: "test_cell2", threads: 424},
+				{uid: 5, cell: "test_cell", threadsConnected: 1000},
+				{uid: 4, cell: "test_cell", threadsConnected: 10004},
+				{uid: 1, cell: "test_cell2", threadsConnected: 1413},
+				{uid: 3, cell: "test_cell", threadsConnected: 4441313},
+				{uid: 2, cell: "test_cell2", threadsConnected: 424},
 			}),
 			gw: &TabletGateway{
 				localCell: "test_cell2",
@@ -600,7 +602,7 @@ func TestTabletGateway_leastGlobalConnections(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_GLOBAL_CONNECTIONS})
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_MYSQL_CONNECTED_CONNECTIONS})
 			if chosen == nil {
 				assert.Equal(t, tt.wantUid, uint32(0))
 				return
@@ -608,6 +610,102 @@ func TestTabletGateway_leastGlobalConnections(t *testing.T) {
 			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
 		})
 	}
+}
+
+// todo
+func TestTabletGateway_leastMysqlRunningConnections(t *testing.T) {
+	tests := []struct {
+		name       string
+		candidates []*discovery.TabletHealth
+		gw         *TabletGateway
+		wantUid    uint32 // nolint:revive
+	}{
+		{
+			name:       "no candidates",
+			candidates: genTablets([]tabletInfo{}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{}),
+			},
+			wantUid: 0,
+		},
+		{
+			name: "500 400 100 300 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", threadsRunning: 9},
+				{uid: 4, cell: "test_cell", threadsRunning: 7},
+				{uid: 1, cell: "test_cell", threadsRunning: 3},
+				{uid: 3, cell: "test_cell", threadsRunning: 4},
+				{uid: 2, cell: "test_cell", threadsRunning: 5},
+			}),
+			gw: &TabletGateway{
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 1,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", threadsRunning: 5},
+				{uid: 4, cell: "test_cell", threadsRunning: 3},
+				{uid: 1, cell: "test_cell2", threadsRunning: 2},
+				{uid: 3, cell: "test_cell", threadsRunning: 4},
+				{uid: 2, cell: "test_cell2", threadsRunning: 3},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 4,
+		},
+		{
+			name: "500 400 300 | 100 200",
+			candidates: genTablets([]tabletInfo{
+				{uid: 5, cell: "test_cell", threadsRunning: 1000},
+				{uid: 4, cell: "test_cell", threadsRunning: 10004},
+				{uid: 1, cell: "test_cell2", threadsRunning: 1413},
+				{uid: 3, cell: "test_cell", threadsRunning: 4441313},
+				{uid: 2, cell: "test_cell2", threadsRunning: 424},
+			}),
+			gw: &TabletGateway{
+				localCell: "test_cell2",
+				statusAggregators: genAggr([]aggrInfo{
+					{tabletInfo: tabletInfo{uid: 5, cell: "test_cell"}, queryCountInMinute: 500 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 4, cell: "test_cell"}, queryCountInMinute: 400 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 1, cell: "test_cell2"}, queryCountInMinute: 100 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 3, cell: "test_cell"}, queryCountInMinute: 300 * 60, latencyInMinute: 100 * time.Second},
+					{tabletInfo: tabletInfo{uid: 2, cell: "test_cell2"}, queryCountInMinute: 200 * 60, latencyInMinute: 100 * time.Second},
+				}),
+			},
+			wantUid: 2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chosen := tt.gw.loadBalance(tt.candidates, &querypb.ExecuteOptions{LoadBalancePolicy: querypb.ExecuteOptions_LEAST_MYSQL_RUNNING_CONNECTIONS})
+			if chosen == nil {
+				assert.Equal(t, tt.wantUid, uint32(0))
+				return
+			}
+			assert.Equalf(t, tt.wantUid, chosen.Tablet.Alias.Uid, "leastQpsLoadBalancer(%v, %v)", tt.candidates, tt.wantUid)
+		})
+	}
+}
+
+// todo
+func TestTabletGateway_leastTabletInUseConnections(t *testing.T) {
+
 }
 
 func TestTabletGateway_leastBehindPrimaryLoadBalancer(t *testing.T) {
