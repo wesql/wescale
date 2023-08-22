@@ -26,6 +26,9 @@ uid=$TABLET_UID
 mysql_port=$[17000 + $uid]
 port=$[15000 + $uid]
 grpc_port=$[16000 + $uid]
+jaeger_args=${JAEGER_ARGS:-''}
+
+
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 tablet_hostname=''
@@ -57,6 +60,7 @@ vttablet \
  --pid_file $VTDATAROOT/$tablet_dir/vttablet.pid \
  --vtctld_addr http://$hostname:$vtctld_web_port/ \
  --disable_active_reparents \
+ $jaeger_args \
  > $VTDATAROOT/$tablet_dir/vttablet.out 2>&1 &
 
 # Block waiting for the tablet to be listening
