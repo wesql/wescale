@@ -1,6 +1,8 @@
-# 
+# Introduction
 
-The goal of this tutorial is to explain how to enable the Read-After-Write-Consistency feature in WeSQL-Scale, in order to ensure that after enabling read-write separation, stale data will not be read.
+When an application writes data to the primary node and subsequently reads it on a read-only node, WeSQL-Scale makes sure that the data that was just written to the primary node can be accessed and read from the read-only node.
+
+The goal of this tutorial is to explain how to enable the Read-After-Write-Consistency feature in WeSQL-Scale.
 
 # Setting through the set command.
 
@@ -26,10 +28,3 @@ Currently, WeSQL-Scale supports these consistency levels:
 # Setting via launch parameters
 
 If you need to set the default value of read_write_splitting_policy, you can pass it as a startup parameter for the vtgate process:
-```bash
-vtgate \
-    # enable read-write-splitting and load balancing
-    --read_after_write_consistency session
-    # other necessary command line options
-    ...
-```

@@ -1,6 +1,10 @@
-# 
+# Introduction
 
-The goal of this tutorial is to explain how to enable read-write-splitting and load balancing functionality for WeSQL-Scale. WeSQL-Scale will parse statements to send write queries to the master server and distribute read queries for load balancing across the slave servers.
+WeSQL-Scale simplifies application logic by automatically routing read queries to read-only nodes and write queries to the read-write node. This is achieved by parsing and analyzing SQL statements, which improves load balancing and ensures efficient use of available resources.
+
+WeSQL-Scale also helps manage read-only nodes by routing queries to the appropriate node using various load balancing policies. This ensures that the workload is evenly distributed across all available nodes, optimizing performance and resource utilization.
+
+The goal of this tutorial is to explain how to enable read-write-splitting and load balancing functionality for WeSQL-Scale.
 
 # Setting through the set command.
 
@@ -41,19 +45,19 @@ vtgate \
 # Read-Write-Splitting Forwarding Rules
 
 - Only sent to the primary instance
-    - INSERT, UPDATE, DELETE, SELECT FOR UPDATE.
-    - All DDL operations (creating/dropping tables/databases, altering table structures, permissions, etc.).
-    - All requests within a transaction.
-    - Requests that use temporary tables.
-    - Requests that use GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS/IS_FREE_LOCK.
-    - SELECT last_insert_id() statements.
-    - All SHOW commands (preferably specifying a specific node).
-    - information_schema, performance_schema, mysql, sys databases.
-    - LOAD DATA statements.
+  - INSERT, UPDATE, DELETE, SELECT FOR UPDATE.
+  - All DDL operations (creating/dropping tables/databases, altering table structures, permissions, etc.).
+  - All requests within a transaction.
+  - Requests that use temporary tables.
+  - Requests that use GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS/IS_FREE_LOCK.
+  - SELECT last_insert_id() statements.
+  - All SHOW commands (preferably specifying a specific node).
+  - information_schema, performance_schema, mysql, sys databases.
+  - LOAD DATA statements.
 - Sent to read-only or primary instances
-    - SELECT statements outside of a transaction.
-    - COM_STMT_EXECUTE commands.
+  - SELECT statements outside of a transaction.
+  - COM_STMT_EXECUTE commands.
 - Only sent to VTGate layer
-    - All queries and modifications to User Variables.
-    - USE command.
-    - COM_STMT_PREPARE command.
+  - All queries and modifications to User Variables.
+  - USE command.
+  - COM_STMT_PREPARE command.
