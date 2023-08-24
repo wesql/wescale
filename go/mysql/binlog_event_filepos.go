@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,7 +127,7 @@ func (ev filePosQueryEvent) Query(BinlogFormat) (Query, error) {
 	}, nil
 }
 
-func (ev filePosQueryEvent) StripChecksum(f BinlogFormat) (BinlogEvent, []byte, error) {
+func (ev filePosQueryEvent) StripChecksum(_ BinlogFormat) (BinlogEvent, []byte, error) {
 	return ev, nil, nil
 }
 
@@ -285,7 +290,7 @@ func (ev filePosGTIDEvent) IsGTID() bool {
 	return true
 }
 
-func (ev filePosGTIDEvent) StripChecksum(f BinlogFormat) (BinlogEvent, []byte, error) {
+func (ev filePosGTIDEvent) StripChecksum(_ BinlogFormat) (BinlogEvent, []byte, error) {
 	return ev, nil, nil
 }
 

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 
 Copyright 2019 The Vitess Authors.
 
@@ -54,17 +59,17 @@ func (mariadbFlavor) primaryGTIDSet(c *Conn) (GTIDSet, error) {
 }
 
 // purgedGTIDSet is part of the Flavor interface.
-func (mariadbFlavor) purgedGTIDSet(c *Conn) (GTIDSet, error) {
+func (mariadbFlavor) purgedGTIDSet(_ *Conn) (GTIDSet, error) {
 	return nil, nil
 }
 
 // serverUUID is part of the Flavor interface.
-func (mariadbFlavor) serverUUID(c *Conn) (string, error) {
+func (mariadbFlavor) serverUUID(_ *Conn) (string, error) {
 	return "", nil
 }
 
 // gtidMode is part of the Flavor interface.
-func (mariadbFlavor) gtidMode(c *Conn) (string, error) {
+func (mariadbFlavor) gtidMode(_ *Conn) (string, error) {
 	return "", nil
 }
 
@@ -105,7 +110,7 @@ func (mariadbFlavor) startSQLThreadCommand() string {
 }
 
 // sendBinlogDumpCommand is part of the Flavor interface.
-func (mariadbFlavor) sendBinlogDumpCommand(c *Conn, serverID uint32, binlogFilename string, startPos Position) error {
+func (mariadbFlavor) sendBinlogDumpCommand(c *Conn, serverID uint32, _ string, startPos Position) error {
 	// Tell the server that we understand GTIDs by setting
 	// mariadb_slave_capability to MARIA_SLAVE_CAPABILITY_GTID = 4 (MariaDB >= 10.0.1).
 	if _, err := c.ExecuteFetch("SET @mariadb_slave_capability=4", 0, false); err != nil {
@@ -146,7 +151,7 @@ func (mariadbFlavor) resetReplicationCommands(c *Conn) []string {
 }
 
 // resetReplicationParametersCommands is part of the Flavor interface.
-func (mariadbFlavor) resetReplicationParametersCommands(c *Conn) []string {
+func (mariadbFlavor) resetReplicationParametersCommands(_ *Conn) []string {
 	resetCommands := []string{
 		"RESET SLAVE ALL", // "ALL" makes it forget source host:port.
 	}
@@ -273,7 +278,7 @@ func (mariadbFlavor) readBinlogEvent(c *Conn) (BinlogEvent, error) {
 }
 
 // supportsCapability is part of the Flavor interface.
-func (mariadbFlavor) supportsCapability(serverVersion string, capability FlavorCapability) (bool, error) {
+func (mariadbFlavor) supportsCapability(_ string, capability FlavorCapability) (bool, error) {
 	switch capability {
 	default:
 		return false, nil

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1005,7 +1010,7 @@ func (t testConn) Read(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-func (t testConn) Write(b []byte) (n int, err error) {
+func (t testConn) Write(_ []byte) (n int, err error) {
 	t.pos = t.pos + 1
 	if t.writeToPass[t.pos] {
 		return 0, nil
@@ -1025,15 +1030,15 @@ func (t testConn) RemoteAddr() net.Addr {
 	return mockAddress{s: "a"}
 }
 
-func (t testConn) SetDeadline(t1 time.Time) error {
+func (t testConn) SetDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-func (t testConn) SetReadDeadline(t1 time.Time) error {
+func (t testConn) SetReadDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
-func (t testConn) SetWriteDeadline(t1 time.Time) error {
+func (t testConn) SetWriteDeadline(_ time.Time) error {
 	panic("implement me")
 }
 
@@ -1157,19 +1162,19 @@ type testRun struct {
 	expStmtID      int
 }
 
-func (t testRun) ComStmtExecute(c *Conn, prepare *PrepareData, callback func(*sqltypes.Result) error) error {
+func (t testRun) ComStmtExecute(_ *Conn, _ *PrepareData, _ func(*sqltypes.Result) error) error {
 	panic("implement me")
 }
 
-func (t testRun) ComRegisterReplica(c *Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+func (t testRun) ComRegisterReplica(_ *Conn, _ string, _ uint16, _ string, _ string) error {
 	panic("implement me")
 }
 
-func (t testRun) ComBinlogDump(c *Conn, logFile string, binlogPos uint32) error {
+func (t testRun) ComBinlogDump(_ *Conn, _ string, _ uint32) error {
 	panic("implement me")
 }
 
-func (t testRun) ComBinlogDumpGTID(c *Conn, logFile string, logPos uint64, gtidSet GTIDSet) error {
+func (t testRun) ComBinlogDumpGTID(_ *Conn, _ string, _ uint64, _ GTIDSet) error {
 	panic("implement me")
 }
 
@@ -1196,7 +1201,7 @@ func (t testRun) ComQuery(c *Conn, query string, callback func(*sqltypes.Result)
 	return nil
 }
 
-func (t testRun) ComPrepare(c *Conn, query string, bv map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
+func (t testRun) ComPrepare(c *Conn, query string, _ map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
 	assert.Equal(t.t, t.expQuery, query)
 	assert.EqualValues(t.t, t.expStmtID, c.StatementID)
 	assert.NotNil(t.t, c.PrepareData[c.StatementID])
@@ -1205,7 +1210,7 @@ func (t testRun) ComPrepare(c *Conn, query string, bv map[string]*querypb.BindVa
 	return nil, nil
 }
 
-func (t testRun) WarningCount(c *Conn) uint16 {
+func (t testRun) WarningCount(_ *Conn) uint16 {
 	return 0
 }
 

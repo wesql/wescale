@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,12 +62,12 @@ func (mysqlGRFlavor) restartReplicationCommands() []string {
 }
 
 // startReplicationUntilAfter is disabled in mysqlGRFlavor
-func (mysqlGRFlavor) startReplicationUntilAfter(pos Position) string {
+func (mysqlGRFlavor) startReplicationUntilAfter(_ Position) string {
 	return ""
 }
 
 // startSQLThreadUntilAfter is disabled in mysqlGRFlavor
-func (mysqlGRFlavor) startSQLThreadUntilAfter(pos Position) string {
+func (mysqlGRFlavor) startSQLThreadUntilAfter(_ Position) string {
 	return ""
 }
 
@@ -89,17 +94,17 @@ func (mysqlGRFlavor) startSQLThreadCommand() string {
 }
 
 // resetReplicationCommands is disabled in mysqlGRFlavor
-func (mysqlGRFlavor) resetReplicationCommands(c *Conn) []string {
+func (mysqlGRFlavor) resetReplicationCommands(_ *Conn) []string {
 	return []string{}
 }
 
 // resetReplicationParametersCommands is part of the Flavor interface.
-func (mysqlGRFlavor) resetReplicationParametersCommands(c *Conn) []string {
+func (mysqlGRFlavor) resetReplicationParametersCommands(_ *Conn) []string {
 	return []string{}
 }
 
 // setReplicationPositionCommands is disabled in mysqlGRFlavor
-func (mysqlGRFlavor) setReplicationPositionCommands(pos Position) []string {
+func (mysqlGRFlavor) setReplicationPositionCommands(_ Position) []string {
 	return []string{}
 }
 

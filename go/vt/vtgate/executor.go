@@ -834,7 +834,7 @@ func (e *Executor) showShards(ctx context.Context, filter *sqlparser.ShowFilter,
 	}, nil
 }
 
-func (e *Executor) showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+func (e *Executor) showLastSeenGTID(_ *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	lastSeenGTID := e.scatterConn.gateway.lastSeenGtid.String()
 	rows = append(rows, buildVarCharRow(lastSeenGTID))
@@ -917,7 +917,7 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}, nil
 }
 
-func (e *Executor) showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+func (e *Executor) showWorkload(_ *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	status := e.scatterConn.GetGatewayCacheStatus()
 	for _, s := range status {

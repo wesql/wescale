@@ -79,7 +79,7 @@ type AuthServerStatic struct {
 }
 
 // Note: AuthServerStatic does not support the full use of authMethod
-func (a *AuthServerStatic) UserEntryWithFullAuth(conn *Conn, salt []byte, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerStatic) UserEntryWithFullAuth(_ *Conn, _ []byte, _ string, _ string, _ net.Addr) (Getter, error) {
 	return nil, nil
 }
 
@@ -179,13 +179,13 @@ func NewAuthServerStaticWithAuthMethodDescription(file, jsonConfig string, reloa
 
 // HandleUser is part of the Validator interface. We
 // handle any user here since we don't check up front.
-func (a *AuthServerStatic) HandleUser(user string, plugin string) bool {
+func (a *AuthServerStatic) HandleUser(_ string, _ string) bool {
 	return true
 }
 
 // UserEntryWithPassword implements password lookup based on a plain
 // text password that is negotiated with the client.
-func (a *AuthServerStatic) UserEntryWithPassword(conn *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerStatic) UserEntryWithPassword(_ *Conn, user string, password string, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()
@@ -205,7 +205,7 @@ func (a *AuthServerStatic) UserEntryWithPassword(conn *Conn, user string, passwo
 
 // UserEntryWithHash implements password lookup based on a
 // mysql_native_password hash that is negotiated with the client.
-func (a *AuthServerStatic) UserEntryWithHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerStatic) UserEntryWithHash(_ *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()
@@ -238,7 +238,7 @@ func (a *AuthServerStatic) UserEntryWithHash(conn *Conn, salt []byte, user strin
 
 // UserEntryWithCacheHash implements password lookup based on a
 // caching_sha2_password hash that is negotiated with the client.
-func (a *AuthServerStatic) UserEntryWithCacheHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
+func (a *AuthServerStatic) UserEntryWithCacheHash(_ *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, CacheState, error) {
 	a.mu.Lock()
 	entries, ok := a.entries[user]
 	a.mu.Unlock()

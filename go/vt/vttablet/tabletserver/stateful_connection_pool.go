@@ -301,3 +301,8 @@ func (sf *StatefulConnectionPool) renewConn(sc *StatefulConnection) error {
 	sc.resetExpiryTime()
 	return sf.active.Register(sc.ConnID, sc)
 }
+
+// InUse returns the sum of in-use connections
+func (sf *StatefulConnectionPool) InUse() int64 {
+	return sf.conns.InUse() + sf.connsWithoutDB.InUse() + sf.foundRowsPool.InUse() + sf.foundRowsWithoutDBPool.InUse()
+}

@@ -135,6 +135,27 @@ func TestToLoadBalancePolicy(t *testing.T) {
 			},
 			want: query.ExecuteOptions_LEAST_BEHIND_PRIMARY,
 		},
+		{
+			name: "LEAST_MYSQL_CONNECTED_CONNECTIONS",
+			args: args{
+				s: "LEAST_MYSQL_CONNECTED_CONNECTIONS",
+			},
+			want: query.ExecuteOptions_LEAST_MYSQL_CONNECTED_CONNECTIONS,
+		},
+		{
+			name: "LEAST_MYSQL_RUNNING_CONNECTIONS",
+			args: args{
+				s: "LEAST_MYSQL_RUNNING_CONNECTIONS",
+			},
+			want: query.ExecuteOptions_LEAST_MYSQL_RUNNING_CONNECTIONS,
+		},
+		{
+			name: "LEAST_TABLET_INUSE_CONNECTIONS",
+			args: args{
+				s: "LEAST_TABLET_INUSE_CONNECTIONS",
+			},
+			want: query.ExecuteOptions_LEAST_TABLET_INUSE_CONNECTIONS,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
