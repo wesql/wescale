@@ -1,11 +1,6 @@
 #!/bin/bash
 # Copyright ApeCloud, Inc.
 # Licensed under the Apache v2(found in the LICENSE file in the root directory).
-
-
-
-
-
 source ../common/env.sh
 
 # start topo server
@@ -14,10 +9,20 @@ CELL=zone1 ../common/scripts/etcd-up.sh
 # start vtctld
 CELL=zone1 ../common/scripts/vtctld-up.sh
 
+# default jaeger args
+rate=${rate:-'0.8'}
+args=""
+# start tracing
+if [ "$tracing" == "on" ]; then
+  echo "start all-in-one jaeger backend."
+  ../common/scripts/jaeger-up.sh
+  args="--tracer opentracing-jaeger --jaeger-agent-host 127.0.0.1:6831 --tracing-sampling-rate ${rate}"
+fi
+
 # start vttablets for keyspace mysql
 for i in 100 101 102; do
 	CELL=zone1 TABLET_UID=$i ../common/scripts/mysqlctl-up.sh
-	CELL=zone1 TABLET_UID=$i ../common/scripts/vttablet-up.sh
+	JAEGER_ARGS=${args} CELL=zone1 TABLET_UID=$i ../common/scripts/vttablet-up.sh
 done
 
 # set the correct durability policy for the keyspace
@@ -31,7 +36,7 @@ vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-p
 wait_for_healthy_shard mysql 0 || exit 1
 
 # start vtgate
-CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
+JAEGER_ARGS=${args} CELL=zone1 CMD_FLAGS="--vschema_ddl_authorized_users % " ../common/scripts/vtgate-up.sh
 
 echo "
 
@@ -59,4 +64,11 @@ fi
 if [ "$vtadmin" == "on" ]; then
   echo "start vtadmin"
   ../common/scripts-apecloud/vtadmin-up.sh
+fi
+
+if [ "$tracing" == "on" ]; then
+  echo 'jaeger UI endpoint:
+http://127.0.0.1:16686/
+jaeger client default sampling rate is 0.8.
+if you want to modify it, add env var rate=0.${rate} to command and restart cluster.'
 fi

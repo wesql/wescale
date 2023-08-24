@@ -23,6 +23,8 @@ web_port=15001
 grpc_port=15991
 mysql_server_port=15306
 mysql_server_socket_path="/tmp/mysql.sock"
+jaeger_args=${JAEGER_ARGS:-''}
+
 
 # Start vtgate.
 # shellcheck disable=SC2086
@@ -40,6 +42,7 @@ vtgate \
   --service_map 'grpc-vtgateservice' \
   --pid_file $VTDATAROOT/tmp/vtgate.pid \
   --mysql_auth_server_impl none \
+  $jaeger_args \
   > $VTDATAROOT/tmp/vtgate.out 2>&1 &
 
 # Block waiting for vtgate to be listening
