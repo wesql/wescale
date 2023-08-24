@@ -4,6 +4,9 @@ name: Cluster (vtgate_general_heavy)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vtgate_general_heavy)')
   cancel-in-progress: true

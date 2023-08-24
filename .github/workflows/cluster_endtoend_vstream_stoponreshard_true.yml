@@ -4,6 +4,9 @@ name: Cluster (vstream_stoponreshard_true)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vstream_stoponreshard_true)')
   cancel-in-progress: true

@@ -2,7 +2,9 @@ name: {{.Name}}
 on:
 #  pull_request:
   workflow_dispatch:
-
+  push:
+    branches:
+      - main
 jobs:
   build:
     name: Run endtoend tests on {{.Name}}
