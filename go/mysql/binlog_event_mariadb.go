@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +78,7 @@ func (ev mariadbBinlogEvent) GTID(f BinlogFormat) (GTID, bool, error) {
 }
 
 // PreviousGTIDs implements BinlogEvent.PreviousGTIDs().
-func (ev mariadbBinlogEvent) PreviousGTIDs(f BinlogFormat) (Position, error) {
+func (ev mariadbBinlogEvent) PreviousGTIDs(_ BinlogFormat) (Position, error) {
 	return Position{}, vterrors.Errorf(vtrpc.Code_INTERNAL, "MariaDB should not provide PREVIOUS_GTIDS_EVENT events")
 }
 

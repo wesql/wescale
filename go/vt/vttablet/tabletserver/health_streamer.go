@@ -123,7 +123,8 @@ func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *health
 			Target:      &querypb.Target{},
 			TabletAlias: alias,
 			RealtimeStats: &querypb.RealtimeStats{
-				HealthError: errUnintialized,
+				HealthError:      errUnintialized,
+				MysqlThreadStats: &querypb.MysqlThreadsStats{},
 			},
 		},
 
@@ -231,7 +232,7 @@ func (hs *healthStreamer) unregister(ch chan *querypb.StreamHealthResponse) {
 	delete(hs.clients, ch)
 }
 
-func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool) {
+func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimestamp time.Time, lag time.Duration, err error, serving bool, dbThreads *querypb.MysqlThreadsStats, tabletThreads int64) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 
@@ -246,6 +247,13 @@ func (hs *healthStreamer) ChangeState(tabletType topodatapb.TabletType, terTimes
 	} else {
 		hs.state.RealtimeStats.HealthError = ""
 	}
+
+	if dbThreads != nil {
+		hs.state.RealtimeStats.MysqlThreadStats = dbThreads
+	}
+
+	hs.state.RealtimeStats.TabletThreadsStats = tabletThreads
+
 	hs.state.RealtimeStats.ReplicationLagSeconds = uint32(lag.Seconds())
 	hs.state.Serving = serving
 
@@ -385,7 +393,6 @@ func (hs *healthStreamer) reload() error {
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil
 	hs.state.RealtimeStats.DbList = nil
-
 	return nil
 }
 
@@ -499,6 +506,15 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 	hs.views = views
 
 	return changedViews, nil
+}
+
+func (hs *healthStreamer) getMysqlThreads(ctx context.Context, conn *connpool.DBConn, callback func(result *sqltypes.Result)) (err error) {
+	qr, err := conn.Exec(ctx, mysql.FetchThreads, 10, true)
+	if err != nil {
+		return err
+	}
+	callback(qr)
+	return err
 }
 
 func (hs *healthStreamer) getDbList(ctx context.Context, conn *connpool.DBConn) ([]string, error) {

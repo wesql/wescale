@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package vtgate
 
 import (
@@ -257,7 +262,7 @@ func (f *fakeSchema) Tables(string) map[string][]vindexes.Column {
 	return f.t
 }
 
-func (f *fakeSchema) Views(ks string) map[string]sqlparser.SelectStatement {
+func (f *fakeSchema) Views(_ string) map[string]sqlparser.SelectStatement {
 	return nil
 }
 

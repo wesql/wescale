@@ -49,13 +49,13 @@ func (a *AuthServerNone) DefaultAuthMethodDescription() AuthMethodDescription {
 }
 
 // HandleUser validates if this user can use this auth method
-func (a *AuthServerNone) HandleUser(user string, plugin string) bool {
+func (a *AuthServerNone) HandleUser(_ string, _ string) bool {
 	return true
 }
 
 // UserEntryWithHash validates the user if it exists and returns the information.
 // Always accepts any user.
-func (a *AuthServerNone) UserEntryWithHash(conn *Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (Getter, error) {
+func (a *AuthServerNone) UserEntryWithHash(_ *Conn, _ []byte, _ string, _ []byte, _ net.Addr) (Getter, error) {
 	return &NoneGetter{}, nil
 }
 

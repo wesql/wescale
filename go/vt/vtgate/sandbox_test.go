@@ -239,7 +239,7 @@ func (sct *sandboxTopo) GetTopoServer() (*topo.Server, error) {
 }
 
 // GetSrvKeyspaceNames is part of the srvtopo.Server interface.
-func (sct *sandboxTopo) GetSrvKeyspaceNames(ctx context.Context, cell string, staleOK bool) ([]string, error) {
+func (sct *sandboxTopo) GetSrvKeyspaceNames(_ context.Context, _ string, _ bool) ([]string, error) {
 	sandboxMu.Lock()
 	defer sandboxMu.Unlock()
 	keyspaces := make([]string, 0, 1)
@@ -250,7 +250,7 @@ func (sct *sandboxTopo) GetSrvKeyspaceNames(ctx context.Context, cell string, st
 }
 
 // GetSrvKeyspace is part of the srvtopo.Server interface.
-func (sct *sandboxTopo) GetSrvKeyspace(ctx context.Context, cell, keyspace string) (*topodatapb.SrvKeyspace, error) {
+func (sct *sandboxTopo) GetSrvKeyspace(_ context.Context, _, keyspace string) (*topodatapb.SrvKeyspace, error) {
 	sand := getSandbox(keyspace)
 	if sand == nil {
 		return nil, fmt.Errorf("topo error GetSrvKeyspace")
@@ -291,7 +291,7 @@ func (sct *sandboxTopo) GetSrvKeyspace(ctx context.Context, cell, keyspace strin
 	return createShardedSrvKeyspace(sand.ShardSpec, sand.KeyspaceServedFrom)
 }
 
-func (sct *sandboxTopo) WatchSrvKeyspace(ctx context.Context, cell, keyspace string, callback func(*topodatapb.SrvKeyspace, error) bool) {
+func (sct *sandboxTopo) WatchSrvKeyspace(_ context.Context, _, _ string, _ func(*topodatapb.SrvKeyspace, error) bool) {
 	// panic("not supported: WatchSrvKeyspace")
 }
 
@@ -323,7 +323,7 @@ func (sct *sandboxTopo) WatchSrvVSchema(ctx context.Context, cell string, callba
 	}()
 }
 
-func sandboxDialer(tablet *topodatapb.Tablet, failFast grpcclient.FailFast) (queryservice.QueryService, error) {
+func sandboxDialer(tablet *topodatapb.Tablet, _ grpcclient.FailFast) (queryservice.QueryService, error) {
 	sand := getSandbox(tablet.Keyspace)
 	sand.sandmu.Lock()
 	defer sand.sandmu.Unlock()

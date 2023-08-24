@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +38,7 @@ import (
 )
 
 // Utility function to write sql query as packets to test parseComPrepare
-func preparePacket(t *testing.T, query string) []byte {
+func preparePacket(_ *testing.T, query string) []byte {
 	data := make([]byte, len(query)+1+packetHeaderSize)
 	// Not sure if it makes a difference
 	pos := packetHeaderSize
@@ -42,7 +47,7 @@ func preparePacket(t *testing.T, query string) []byte {
 	return data
 }
 
-func MockPrepareData(t *testing.T) (*PrepareData, *sqltypes.Result) {
+func MockPrepareData(_ *testing.T) (*PrepareData, *sqltypes.Result) {
 	sql := "select * from test_table where id = ?"
 
 	result := &sqltypes.Result{

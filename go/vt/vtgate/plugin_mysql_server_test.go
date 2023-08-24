@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +51,7 @@ func (th *testHandler) NewConnection(c *mysql.Conn) {
 	th.lastConn = c
 }
 
-func (th *testHandler) ComQuery(c *mysql.Conn, q string, callback func(*sqltypes.Result) error) error {
+func (th *testHandler) ComQuery(_ *mysql.Conn, _ string, callback func(*sqltypes.Result) error) error {
 	// when creating a connection, we send a query to MySQL to set the connection's collation,
 	// this query usually returns us something. however, we use testHandler which is a fake
 	// implementation of MySQL that returns no results and no error for set queries, Vitess
@@ -55,27 +60,27 @@ func (th *testHandler) ComQuery(c *mysql.Conn, q string, callback func(*sqltypes
 	return callback(&sqltypes.Result{Fields: []*querypb.Field{}, Rows: [][]sqltypes.Value{}})
 }
 
-func (th *testHandler) ComPrepare(c *mysql.Conn, q string, b map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
+func (th *testHandler) ComPrepare(_ *mysql.Conn, _ string, _ map[string]*querypb.BindVariable) ([]*querypb.Field, error) {
 	return nil, nil
 }
 
-func (th *testHandler) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+func (th *testHandler) ComStmtExecute(_ *mysql.Conn, _ *mysql.PrepareData, _ func(*sqltypes.Result) error) error {
 	return nil
 }
 
-func (th *testHandler) ComRegisterReplica(c *mysql.Conn, replicaHost string, replicaPort uint16, replicaUser string, replicaPassword string) error {
+func (th *testHandler) ComRegisterReplica(_ *mysql.Conn, _ string, _ uint16, _ string, _ string) error {
 	return nil
 }
 
-func (th *testHandler) ComBinlogDump(c *mysql.Conn, logFile string, binlogPos uint32) error {
+func (th *testHandler) ComBinlogDump(_ *mysql.Conn, _ string, _ uint32) error {
 	return nil
 }
 
-func (th *testHandler) ComBinlogDumpGTID(c *mysql.Conn, logFile string, logPos uint64, gtidSet mysql.GTIDSet) error {
+func (th *testHandler) ComBinlogDumpGTID(_ *mysql.Conn, _ string, _ uint64, _ mysql.GTIDSet) error {
 	return nil
 }
 
-func (th *testHandler) WarningCount(c *mysql.Conn) uint16 {
+func (th *testHandler) WarningCount(_ *mysql.Conn) uint16 {
 	return 0
 }
 
@@ -183,7 +188,7 @@ func newFromStringFail(t *testing.T) func(ctx context.Context, parentSpan string
 	}
 }
 
-func newFromStringError(t *testing.T) func(ctx context.Context, parentSpan string, label string) (trace.Span, context.Context, error) {
+func newFromStringError(_ *testing.T) func(ctx context.Context, parentSpan string, label string) (trace.Span, context.Context, error) {
 	return func(ctx context.Context, parentSpan string, label string) (trace.Span, context.Context, error) {
 		return trace.NoopSpan{}, context.Background(), fmt.Errorf("")
 	}

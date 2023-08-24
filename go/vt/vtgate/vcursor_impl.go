@@ -1024,7 +1024,7 @@ func (vc *vcursorImpl) ForeignKeyMode() string {
 }
 
 // ParseDestinationTarget parses destination target string and sets default keyspace if possible.
-func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetString string, vschema *vindexes.VSchema) (string, topodatapb.TabletType, key.Destination, error) {
+func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetString string, _ *vindexes.VSchema) (string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, dest, err := topoprotopb.ParseDestination(targetString, suggestedTabletType)
 	if enableDefaultUnShardedMode && dest == nil {
 		dest = key.DestinationShard(global.DefaultShard)
@@ -1032,7 +1032,7 @@ func parseDestinationTarget(suggestedTabletType topodatapb.TabletType, targetStr
 	return destKeyspace, destTabletType, dest, err
 }
 
-func (vc *vcursorImpl) planPrefixKey(ctx context.Context) string {
+func (vc *vcursorImpl) planPrefixKey(_ context.Context) string {
 	if vc.destination != nil {
 		return fmt.Sprintf("%s%s%s", vc.keyspace, vindexes.TabletTypeSuffix[vc.tabletType], vc.destination.String())
 	}

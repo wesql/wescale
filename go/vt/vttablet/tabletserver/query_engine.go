@@ -660,3 +660,8 @@ func unicoded(in string) (out string) {
 	}
 	return in
 }
+
+// InUse returns the sum of InUse connections across managed various Pool
+func (qe *QueryEngine) InUse() int64 {
+	return qe.conns.InUse() + qe.streamConns.InUse() + qe.streamWithoutDBConns.InUse() + qe.withoutDBConns.InUse()
+}

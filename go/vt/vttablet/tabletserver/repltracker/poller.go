@@ -24,12 +24,13 @@ package repltracker
 import (
 	"sync"
 	"time"
+	"vitess.io/vitess/go/vt/proto/query"
 
 	"vitess.io/vitess/go/mysql"
 
 	"vitess.io/vitess/go/stats"
 
-	"vitess.io/vitess/go/vt/mysqlctl"
+	mysqlctl "vitess.io/vitess/go/vt/mysqlctl"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 )
@@ -84,4 +85,31 @@ func (p *poller) GtidExecuted() (mysql.Position, error) {
 		return mysql.Position{}, err
 	}
 	return position, nil
+}
+
+func (p *poller) MysqlThreads() (*query.MysqlThreadsStats, error) {
+	var mysqld, ok = p.mysqld.(*mysqlctl.Mysqld)
+	if !ok {
+		return nil, nil
+	}
+	status, err := mysqld.ThreadsStatus()
+	if err != nil {
+		return nil, err
+	}
+	var Threads query.MysqlThreadsStats
+	for threadsType, quant := range status {
+		number := int64(quant)
+		switch threadsType {
+		case mysql.ThreadsConnected:
+			Threads.Connected = number
+		case mysql.ThreadsCached:
+			Threads.Cached = number
+		case mysql.ThreadsCreated:
+			Threads.Created = number
+		case mysql.ThreadsRunning:
+			Threads.Running = number
+		default:
+		}
+	}
+	return &Threads, nil
 }
