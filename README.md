@@ -20,7 +20,7 @@ By managing connections, read-write-split, read-after-write-consistency, load ba
 a valuable tool for developers and database administrators.
 
 # Getting Started
-To [Get Started](https://github.com/apecloud/wesql-scale/blob/main/doc/dev_docs/00-Deploy%26Debug.md) with WeSQL-Scale, simply clone the repository and follow the installation instructions
+To [Get Started](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeSQL-Scale, simply clone the repository and follow the installation instructions
 provided in the documentation.
 
 # Blogs
