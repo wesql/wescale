@@ -6,10 +6,10 @@
 [![LICENSE](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://go.dev/)
 <br/>
-[![unit test](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml)
-[![unit test](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml)
-[![e2e test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml)
-[![MTR test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml)
+[![Unit Test (mysql57)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml)
+[![Unit Test (mysql80)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml)
+[![E2E Test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml)
+[![MTR Test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml)
 
 </div>
 
@@ -20,8 +20,22 @@ By managing connections, read-write-split, read-after-write-consistency, load ba
 a valuable tool for developers and database administrators.
 
 # Getting Started
-To get started with WeSQL-Scale, simply clone the repository and follow the [installation instructions](https://github.com/apecloud/wesql-scale/blob/main/doc/dev_docs/00-Deploy%26Debug.md)
+To [Get Started](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeSQL-Scale, simply clone the repository and follow the installation instructions
 provided in the documentation.
+
+# Blogs
+* [Introduction To WeSQL-Scale.md](doc%2Fblogs%2FIntroduction%20To%20WeSQL-Scale.md)
+* [Dive into Read-Write-Splitting of WeSQL-Scale.md](doc%2Fblogs%2FDive%20into%20Read-Write-Splitting%20of%20WeSQL-Scale.md)
+* [Performance Comparison WeSQL-Scale vs MySQL.md](doc%2Fblogs%2FPerformance%20Comparison%20WeSQL-Scale%20vs%20MySQL.md)
+
+# Documentation
+* [Deploy&Debug.md](doc%2Ftoturial%2F00-Deploy%26Debug.md)
+* [Architecture.md](doc%2Ftoturial%2F01-Architecture.md)
+* [LifeOfAQuery.md](doc%2Ftoturial%2F02-LifeOfAQuery.md)
+* [Read-Write-Split & LoadBalancer.md](doc%2Ftoturial%2F03-Read-Write-Split%20%26%20LoadBalancer.md)
+* [Read-After-Write-Consistency.md](doc%2Ftoturial%2F04-Read-After-Write-Consistency.md)
+* [Transparent Failover.md](doc%2Ftoturial%2F05-Transparent%20Failover.md)
+* [Authentication&Authorized.md](doc%2Ftoturial%2F06-Authentication%26Authorized.md)
 
 # Features
 
