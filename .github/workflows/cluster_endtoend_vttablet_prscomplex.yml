@@ -4,6 +4,9 @@ name: Cluster (vttablet_prscomplex)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vttablet_prscomplex)')
   cancel-in-progress: true
