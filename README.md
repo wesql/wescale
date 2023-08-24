@@ -6,10 +6,10 @@
 [![LICENSE](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://go.dev/)
 <br/>
-[![unit test](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml)
-[![unit test](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml)
-[![e2e test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml)
-[![MTR test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml)
+[![Unit Test (mysql57)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql57.yml)
+[![Unit Test (mysql80)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml)
+[![E2E Test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml)
+[![MTR Test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml/badge.svg?branch=main)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml)
 
 </div>
 
