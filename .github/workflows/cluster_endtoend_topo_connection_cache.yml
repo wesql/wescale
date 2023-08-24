@@ -4,6 +4,9 @@ name: Cluster (topo_connection_cache)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (topo_connection_cache)')
   cancel-in-progress: true

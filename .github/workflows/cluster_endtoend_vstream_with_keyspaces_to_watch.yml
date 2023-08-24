@@ -4,6 +4,9 @@ name: Cluster (vstream_with_keyspaces_to_watch)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vstream_with_keyspaces_to_watch)')
   cancel-in-progress: true

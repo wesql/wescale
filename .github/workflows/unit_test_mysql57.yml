@@ -4,6 +4,9 @@ name: Unit Test (mysql57)
 on:
   pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Unit Test (mysql57)')
   cancel-in-progress: true

@@ -4,6 +4,9 @@ name: Cluster (vtgate_schema_tracker)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vtgate_schema_tracker)')
   cancel-in-progress: true

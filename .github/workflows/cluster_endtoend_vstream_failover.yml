@@ -4,6 +4,9 @@ name: Cluster (vstream_failover)
 on:
 #  pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vstream_failover)')
   cancel-in-progress: true
