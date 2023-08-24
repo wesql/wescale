@@ -59,6 +59,24 @@ During the testing process, we found that MySQL couldn't handle too many sysbenc
 
 The above test proves a point: introducing WeSQL-Scale as a proxy can increase the scalability and resilience of the database. It will not compromise much of the performance, including QPS and Latency.
 
+
+
+| Threads | WeSQL-Scale CPU | WeSQL-Scale Memory | MySQL CPU | MySQL Memory |
+| --- | --- | --- | --- | --- |
+| 4 | 4916.74 | 30096.41 | 8036.75 | 30146.91 |
+| 8 | 10913.25 | 30124.00 | 9685.58 | 30154.8 |
+| 16 | 13206.75 | 30140.25 | 10240.5 | 30146.41 |
+| 25 | 13961.66 | 30126.58 | 9692 | 30161 |
+| 50 | 13820.16 | 30131.58 | 9895.25 | 30093.25 |
+| 75 | 14413.75 | 30116.08 | 10398.75 | 30132.91 |
+| 100 | 14553.08 | 30154.91 | 10446.41 | 30128.8 |
+| 125 | 14511.24 | 30139.00 | 10440.58 | 30142.68 |
+| 150 | 14942.08 | 30146.75 | 10859.91 | 30177.08 |
+| 175 | 15190.50 | 30134.91 | 10797.58 | 30037 |
+| 200 | 15280.75 | 30119.50 | 11137.25 | 30139.8 |
+
+![read_write_split_disable_cpu_memory.png](images%2Fread_write_split_disable_cpu_memory.png)
+
 ## MySQL vs WeSQL-Scale ( With Read Write Split Enable)
 
 | Threads | WeSQL-Scale QPS | WeSQL-Scale Latency | MySQL QPS | MySQL Latency |
@@ -85,7 +103,21 @@ Some Observations:
 
 The above test proves a point: by introducing WeSQL-Scale as a proxy, it can scale horizontally and make use of follower node resources, resulting in improved read and write performance of the cluster.
 
-## MySQL vs WeSQL-Scale (CPU and Memory)
+| Threads | WeSQL-Scale CPU | WeSQL-Scale Memory | MySQL CPU | MySQL Memory |
+| --- | --- | --- | --- | --- |
+| 4 | 9313.58 | 30147.91 | 8507.58 | 30215.75 |
+| 8 | 12382.00 | 30123.74 | 10054.8 | 30120.8 |
+| 16 | 14923.64 | 30136 | 10851.99 | 30120.75 |
+| 25 | 15933.00 | 30090.1 | 10491 | 30188.91 |
+| 50 | 16377.66 | 30119.25 | 9986.58 | 30179 |
+| 75 | 15982.91 | 30193.91 | 9882.91 | 30168.91 |
+| 100 | 16423.68 | 30179.58 | 10180 | 30198.58 |
+| 125 | 16628.91 | 30182 | 10516.58 | 30208.75 |
+| 150 | 16805.75 | 30184.68 | 10410.66 | 30199.41 |
+| 175 | 17098.58 | 30182.49 | 10584.91 | 30189.58 |
+| 200 | 17211.50 | 30202.25 | 10745.66 | 30185.91 |
+
+![read_write_split_enable_cpu_memory.png](images%2Fread_write_split_enable_cpu_memory.png)
 
 
 
