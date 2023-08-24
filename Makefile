@@ -245,8 +245,6 @@ e2e_test_cluster: build
 wesql_cluster_test: build
 	tools/wesql_cluster_test.sh
 
-e2e_test_vtconcensus: build
-	tools/wesql_vtconcensus_test.sh
 
 .ONESHELL:
 SHELL = /bin/bash
