@@ -1,7 +1,17 @@
+
+
+<div align="center">
+    <h1>WeSQL-Scale</h1>
+
 [![LICENSE](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://go.dev/)
+<br/>
+[![unit test](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/unit_test_mysql80.yml)
+[![e2e test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_wesql.yml)
+[![MTR test](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml/badge.svg)](https://github.com/apecloud/wesql-scale/actions/workflows/cluster_endtoend_mysqltester.yml)
 
-# WeSQL-Scale 
+</div>
+
 
 wesql-scale is designed to enhance the scalability, performance, security, and resilience of your applications. 
 By managing connections, read-write-split, read-after-write-consistency, load balancing, wesql-scale offers 
