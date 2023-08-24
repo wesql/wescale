@@ -4,9 +4,6 @@ name: Cluster (vreplication_migrate_vdiff2_convert_tz)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vreplication_migrate_vdiff2_convert_tz)')
   cancel-in-progress: true

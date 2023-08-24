@@ -4,9 +4,6 @@ name: Cluster (xb_backup)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (xb_backup)')
   cancel-in-progress: true

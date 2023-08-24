@@ -4,9 +4,6 @@ name: Cluster (onlineddl_vrepl_stress_suite) mysql57
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (onlineddl_vrepl_stress_suite) mysql57')
   cancel-in-progress: true

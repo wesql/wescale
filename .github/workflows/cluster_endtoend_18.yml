@@ -4,9 +4,6 @@ name: Cluster (18)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (18)')
   cancel-in-progress: true

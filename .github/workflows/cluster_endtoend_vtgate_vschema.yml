@@ -4,9 +4,6 @@ name: Cluster (vtgate_vschema)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vtgate_vschema)')
   cancel-in-progress: true

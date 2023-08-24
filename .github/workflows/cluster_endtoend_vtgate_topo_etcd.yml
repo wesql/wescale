@@ -4,9 +4,6 @@ name: Cluster (vtgate_topo_etcd)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vtgate_topo_etcd)')
   cancel-in-progress: true

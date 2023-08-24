@@ -4,9 +4,6 @@ name: Cluster (vreplication_across_db_versions)
 on:
 #  pull_request:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (vreplication_across_db_versions)')
   cancel-in-progress: true
