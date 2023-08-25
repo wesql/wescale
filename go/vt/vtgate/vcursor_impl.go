@@ -90,6 +90,7 @@ type iExecute interface {
 	showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
+	reloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error
 	VSchema() *vindexes.VSchema
 	SetFailPoint(command string, key string, value string) error
 }
@@ -135,6 +136,7 @@ func (vc *vcursorImpl) ReloadExec(ctx context.Context, command sqlparser.ReloadT
 			return nil, err
 		}
 	case sqlparser.ReloadPrivileges:
+		vc.executor.reloadExec(ctx, &command)
 		// TODO: geray using grpc send cmd to vttablet
 	}
 	return &sqltypes.Result{}, nil

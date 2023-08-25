@@ -23,6 +23,7 @@ package queryservice
 
 import (
 	"context"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -361,6 +362,11 @@ func (ws *wrappedService) Close(ctx context.Context) error {
 	return ws.wrapper(ctx, nil, ws.impl, "Close", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
 		// No point retrying Close.
 		return false, conn.Close(ctx)
+	})
+}
+func (ws *wrappedService) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+	return ws.wrapper(ctx, nil, ws.impl, "ReloadExec", false, nil, func(ctx context.Context, target *querypb.Target, service QueryService) (canRetry bool, err error) {
+		return false, service.Close(ctx)
 	})
 }
 func (ws *wrappedService) SetFailPoint(ctx context.Context, command string, key string, value string) error {

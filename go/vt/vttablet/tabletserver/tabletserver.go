@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -2093,6 +2094,15 @@ func (tsv *TabletServer) SetConsolidatorMode(mode string) {
 // ConsolidatorMode returns the consolidator mode.
 func (tsv *TabletServer) ConsolidatorMode() string {
 	return tsv.qe.consolidatorMode.Get()
+}
+
+func (tsv *TabletServer) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+	switch *reloadType {
+	case sqlparser.ReloadPrivileges:
+		return tableacl.ReloadACLFromMysql()
+	default:
+		return errors.New(fmt.Sprintf("no match reloadType : %v", reloadType))
+	}
 }
 
 // queryAsString returns a readable normalized version of the query and if sanitize

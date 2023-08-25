@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 
@@ -765,6 +766,9 @@ func (f *FakeQueryService) Release(ctx context.Context, target *querypb.Target, 
 
 // GetSchema implements the QueryService interface
 func (f *FakeQueryService) GetSchema(ctx context.Context, target *querypb.Target, tableType querypb.SchemaTableType, tableNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error {
+	panic("implement me")
+}
+func (f *FakeQueryService) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
 	panic("implement me")
 }
 

@@ -29,6 +29,7 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/callerid"
 	"vitess.io/vitess/go/vt/callinfo"
+	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 
@@ -509,6 +510,11 @@ func (q *query) GetSchema(request *querypb.GetSchemaRequest, stream queryservice
 	defer q.server.HandlePanic(&err)
 	err = q.server.GetSchema(stream.Context(), request.Target, request.TableType, request.TableNames, stream.Send)
 	return vterrors.ToGRPC(err)
+}
+
+func (q *query) ReloadExec(ctx context.Context, reloadType *querypb.ReloadExecRequest) (*querypb.ReloadExecResponse, error) {
+	rType := sqlparser.ReloadType(reloadType.ReloadType)
+	return nil, q.server.ReloadExec(ctx, &rType)
 }
 
 func (q *query) DropSchema(ctx context.Context, request *querypb.DropSchemaRequest) (resp *querypb.DropSchemaResponse, err error) {

@@ -1611,6 +1611,17 @@ func getTabletThrottlerStatus(tabletHostPort string) (string, error) {
 	status := fmt.Sprintf("{\"state\":\"%s\",\"load\":%.2f,\"message\":\"%s\"}", httpStatusStr, load, elements.Message)
 	return status, nil
 }
+func (e *Executor) reloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+	tabletHealths := e.txConn.tabletGateway.hc.GetAllHealthyTabletStats()
+
+	for _, tabletHealth := range tabletHealths {
+		err := tabletHealth.Conn.ReloadExec(ctx, reloadType)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // ReleaseLock implements the IExecutor interface
 func (e *Executor) ReleaseLock(ctx context.Context, session *SafeSession) error {

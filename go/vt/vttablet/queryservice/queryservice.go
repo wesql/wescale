@@ -25,6 +25,7 @@ package queryservice
 
 import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"context"
 
@@ -134,6 +135,8 @@ type QueryService interface {
 
 	// Close must be called for releasing resources.
 	Close(ctx context.Context) error
+
+	ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error
 }
 
 type TransactionState struct {

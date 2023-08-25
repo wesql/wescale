@@ -32,6 +32,8 @@ import "binlogdata.proto";
 
 // Query defines the tablet query service, implemented by vttablet.
 service Query {
+
+  rpc ReloadExec(query.ReloadExecRequest) returns (query.ReloadExecResponse) {};
   // Execute executes the specified SQL query in vtgate internal (might be in a
   // transaction context, if Query.transaction_id is set).
   rpc ExecuteInternal(query.ExecuteRequest) returns (query.ExecuteResponse) {};

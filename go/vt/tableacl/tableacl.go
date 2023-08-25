@@ -99,6 +99,7 @@ type TableACL struct {
 	reloadACLConfigFileInterval time.Duration
 
 	configFile string
+	isOpen     bool
 
 	// callback is executed on successful reload.
 	callback func()
@@ -131,6 +132,16 @@ var currentTableACL TableACL
 //	}
 func Init(env tabletenv.Env, dbConfig dbconfigs.Connector, tableACLMode string, configFile string, reloadACLConfigFileInterval time.Duration, aclCB func()) error {
 	return currentTableACL.init(env, dbConfig, tableACLMode, configFile, reloadACLConfigFileInterval, aclCB)
+}
+
+func ReloadACLFromMysql() error {
+	if currentTableACL.tableACLMode != global.TableACLModeMysqlBased {
+		return errors.New("TableACLModeMysqlBased is not mysqlbased")
+	}
+	if !currentTableACL.isOpen {
+		return errors.New("acl status is closed")
+	}
+	return currentTableACL.InitMysqlBasedACL()
 }
 
 func (tacl *TableACL) Open() error {
@@ -171,6 +182,7 @@ func (tacl *TableACL) Open() error {
 			tacl.ticker.Reset(tacl.reloadACLConfigFileInterval)
 		}
 	}
+	tacl.isOpen = true
 	return nil
 }
 
@@ -181,6 +193,7 @@ func (tacl *TableACL) Close() {
 		log.Infof("tableACL - closing pool")
 		tacl.conns.Close()
 	}
+	tacl.isOpen = false
 	if tacl.ticker != nil {
 		tacl.ticker.Stop()
 	}

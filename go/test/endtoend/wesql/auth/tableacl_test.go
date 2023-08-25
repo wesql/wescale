@@ -48,6 +48,8 @@ func DropDatabase(conn *mysql.Conn, dbName string) {
 
 func TestReaderPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
+
 	globalUser := "TestSelectPriv_Global"
 	DBUser := "TestSelectPriv_DB"
 	TableUser := "TestSelectPriv_Table"
@@ -68,7 +70,7 @@ func TestReaderPriv(t *testing.T) {
 		DropDatabase(conn, "test")
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
 	DbVtParams := CreateVtParam(globalUser, host, password)
 	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
@@ -90,7 +92,7 @@ func TestReaderPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT ON test.* TO '%s'@'%s'", DBUser, host), 1000, false)
 	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT ON test.t1 TO '%s'@'%s'", TableUser, host), 1000, false)
 
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	_, err = globalUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
 	require.NoError(t, err, "%v", err)
 	_, err = DBUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
@@ -102,7 +104,7 @@ func TestReaderPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("REVOKE SELECT ON test.* FROM '%s'@'%s'", DBUser, host), 1000, false)
 	conn.ExecuteFetch(fmt.Sprintf("REVOKE SELECT ON test.t1 FROM '%s'@'%s'", TableUser, host), 1000, false)
 
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	_, err = globalUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
 	require.Error(t, err, "%v", err)
 	_, err = DBUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
@@ -113,6 +115,8 @@ func TestReaderPriv(t *testing.T) {
 }
 func TestWriterPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
+
 	globalUser := "TestWriterPriv_Global"
 	DBUser := "TestWriterPriv_DB"
 	TableUser := "TestWriterPriv_Table"
@@ -133,7 +137,7 @@ func TestWriterPriv(t *testing.T) {
 		DropDatabase(conn, "test")
 	}()
 	// waiting vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
 	DbVtParams := CreateVtParam(globalUser, host, password)
 	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
@@ -161,7 +165,7 @@ func TestWriterPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT,INSERT,DELETE,UPDATE ON test.t1 TO '%s'@'%s'", TableUser, host), 1000, false)
 
 	//waiting tablet pull data into memory from mysql
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	validateDatabaseOperationsNil := func(conn *mysql.Conn) {
 		_, err = conn.ExecuteFetch("Insert into test.t1 values(null,100)", 1000, false)
 		require.NoError(t, err, "%v", err)
@@ -179,7 +183,7 @@ func TestWriterPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("REVOKE SELECT,INSERT,DELETE,UPDATE ON test.* FROM '%s'@'%s'", DBUser, host), 1000, false)
 	conn.ExecuteFetch(fmt.Sprintf("REVOKE SELECT,INSERT,DELETE,UPDATE ON test.t1 FROM '%s'@'%s'", TableUser, host), 1000, false)
 
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	validateDatabaseOperationsNotNil := func(conn *mysql.Conn) {
 		_, err = conn.ExecuteFetch("Insert into test.t1 values(null,100)", 1000, false)
 		require.Error(t, err, "%v", err)
@@ -194,6 +198,7 @@ func TestWriterPriv(t *testing.T) {
 }
 func TestAdminPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
 	globalUser := "TestAdminPriv_Global"
 	DBUser := "TestAdminPriv_DB"
 	TableUser := "TestAdminPriv_Table"
@@ -215,7 +220,7 @@ func TestAdminPriv(t *testing.T) {
 		DropDatabase(conn, "test")
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
 	DbVtParams := CreateVtParam(globalUser, host, password)
 	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
@@ -237,7 +242,7 @@ func TestAdminPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("GRANT ALL PRIVILEGES ON test.* TO '%s'@'%s'", DBUser, host), 1000, false)
 	conn.ExecuteFetch(fmt.Sprintf("GRANT ALL PRIVILEGES ON test.t1 TO '%s'@'%s'", TableUser, host), 1000, false)
 
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	_, err = globalUserConn.ExecuteFetch("ALTER TABLE test.t1 ADD COLUMN v3 INT;", 1000, false)
 	require.Nil(t, err, "%v", err)
 	_, err = DBUserConn.ExecuteFetch("ALTER TABLE test.t1 ADD COLUMN v4 INT;", 1000, false)
@@ -259,6 +264,8 @@ func TestAdminPriv(t *testing.T) {
 }
 func TestOnlyReaderPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
+
 	globalUser := "TestSelectPriv_Global"
 	DBUser := "TestSelectPriv_DB"
 	TableUser := "TestSelectPriv_Table"
@@ -279,7 +286,7 @@ func TestOnlyReaderPriv(t *testing.T) {
 		DropDatabase(conn, "test")
 	}()
 	// wait vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
 	DbVtParams := CreateVtParam(globalUser, host, password)
 	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
@@ -301,7 +308,7 @@ func TestOnlyReaderPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT ON test.* TO '%s'@'%s'", DBUser, host), 1000, false)
 	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT ON test.t1 TO '%s'@'%s'", TableUser, host), 1000, false)
 
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	validateOnlyReader := func(conn *mysql.Conn) {
 		_, err = conn.ExecuteFetch("SELECT * from test.t1", 1000, false)
 		require.NoError(t, err, "%v", err)
@@ -318,6 +325,7 @@ func TestOnlyReaderPriv(t *testing.T) {
 
 func TestOnlyWriterPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
 	globalUser := "TestWriterPriv_Global"
 	DBUser := "TestWriterPriv_DB"
 	TableUser := "TestWriterPriv_Table"
@@ -338,7 +346,7 @@ func TestOnlyWriterPriv(t *testing.T) {
 		DropDatabase(conn, "test")
 	}()
 	// waiting vtgate pull user from mysql.user
-	time.Sleep(4 * time.Second)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
 	DbVtParams := CreateVtParam(globalUser, host, password)
 	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
@@ -366,7 +374,7 @@ func TestOnlyWriterPriv(t *testing.T) {
 	conn.ExecuteFetch(fmt.Sprintf("GRANT INSERT,DELETE,UPDATE ON test.t1 TO '%s'@'%s'", TableUser, host), 1000, false)
 
 	//waiting tablet pull data into memory from mysql
-	time.Sleep(3 * time.Second)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
 	validateOnlyWriterPriv := func(conn *mysql.Conn) {
 		_, err = conn.ExecuteFetch("Insert into test.t1 values(null,100)", 1000, false)
 		require.NoError(t, err, "%v", err)

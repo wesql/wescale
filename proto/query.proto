@@ -1077,3 +1077,11 @@ message DropSchemaRequest {
 message DropSchemaResponse {
 
 }
+
+message ReloadExecRequest{
+  int32 reloadType = 1;
+}
+
+message ReloadExecResponse{
+
+}

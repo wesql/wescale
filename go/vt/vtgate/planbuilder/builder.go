@@ -435,12 +435,13 @@ func buildReloadPlan(stmt *sqlparser.Reload, vschema plancontext.VSchema) (*plan
 	case sqlparser.ReloadUsers:
 		return newPlanResult(&engine.ReloadExec{ReloadType: stmt.Type}), nil
 	case sqlparser.ReloadPrivileges:
-		send := &engine.Send{
-			TargetDestination: vschema.Destination(),
-			Query:             sqlparser.String(stmt),
-			SingleShardOnly:   false,
-		}
-		return newPlanResult(send), nil
+		//send := &engine.Send{
+		//	TargetDestination: vschema.Destination(),
+		//	Query:             sqlparser.String(stmt),
+		//	SingleShardOnly:   false,
+		//}
+		//return newPlanResult(send), nil
+		return newPlanResult(&engine.ReloadExec{ReloadType: stmt.Type}), nil
 	}
 	return nil, vterrors.VT13001(fmt.Sprintf("unexpected statement type: %T", stmt))
 }

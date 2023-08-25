@@ -25,6 +25,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
@@ -1148,4 +1149,21 @@ func (conn *gRPCQueryClient) Close(ctx context.Context) error {
 // Tablet returns the rpc end point.
 func (conn *gRPCQueryClient) Tablet() *topodatapb.Tablet {
 	return conn.tablet
+}
+
+func (conn *gRPCQueryClient) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return tabletconn.ConnClosed
+	}
+
+	req := &querypb.ReloadExecRequest{
+		ReloadType: int32(*reloadType),
+	}
+	_, err := conn.c.ReloadExec(ctx, req)
+	if err != nil {
+		return err
+	}
+	return nil
 }
