@@ -103,9 +103,13 @@ jobs:
           # build image
           DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
           
+          # failpoint
+          chmod +x ./test/failpoint/mysql-tester-failpoints.sh & ./test/failpoint/mysql-tester-failpoints.sh
+          echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
+          
           # run container
           PWD=$(pwd)
-          docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
+          docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306 -e GO_FAILPOINTS=$GO_FAILPOINTS  --name wesqlscale-build  apecloud/mysql-tester
           
       - name: Setup Cluster
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
