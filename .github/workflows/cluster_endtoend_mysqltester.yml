@@ -86,7 +86,9 @@ jobs:
         timeout-minutes: 30
         run: |
           
+          make failpoint-enable
           make build
+          make failpoint-disable
 
       - name: Setup docker
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
