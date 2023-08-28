@@ -90,11 +90,6 @@ jobs:
           make build
           make failpoint-disable
 
-      - name: Setup docker
-        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-        uses: docker-practice/actions-setup-docker@v1
-        timeout-minutes: 12
-
       - name: Build and Run container
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
