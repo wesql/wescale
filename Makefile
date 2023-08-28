@@ -293,3 +293,17 @@ endef
 
 push-images:
 	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release}
+
+tools/bin/failpoint-ctl:
+	GOBIN=$(shell pwd)/tools/bin go install github.com/pingcap/failpoint/failpoint-ctl@2eaa328
+
+FAILPOINT_ENABLE  := find $$PWD/ -type d | grep -vE "(\.git|tools)" | xargs tools/bin/failpoint-ctl enable
+FAILPOINT_DISABLE := find $$PWD/ -type d | grep -vE "(\.git|tools)" | xargs tools/bin/failpoint-ctl disable
+
+failpoint-enable: tools/bin/failpoint-ctl
+# Converting gofail failpoints...
+	@$(FAILPOINT_ENABLE)
+
+failpoint-disable: tools/bin/failpoint-ctl
+# Restoring gofail failpoints...
+	@$(FAILPOINT_DISABLE)

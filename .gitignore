@@ -86,3 +86,5 @@ venv
 users.json
 .scannerwork
 report
+
+tools/bin/

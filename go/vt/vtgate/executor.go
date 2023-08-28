@@ -1041,7 +1041,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	if vcursor.safeSession.GetOptions() != nil {
 		vcursor.safeSession.GetOptions().IsSkipUse = false
 		isRewrite := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
-		if vcursor.keyspace != "" && isRewrite == true {
+		if vcursor.keyspace != "" && isRewrite {
 			var isSkipUse bool
 			stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
 			if err != nil {
