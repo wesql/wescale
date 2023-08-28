@@ -146,7 +146,10 @@ jobs:
       timeout-minutes: 30
       run: |
         make failpoint-enable
+        chmod +x ./test/failpoint/failpoints.sh & ./test/failpoint/failpoints.sh
+
         eatmydata -- make unit_test | tee -a output.txt | go-junit-report -set-exit-code > report.xml
+
         make failpoint-disable
 
     - name: Print test output and Record test result

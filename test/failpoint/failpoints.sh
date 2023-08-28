@@ -6,7 +6,7 @@
 
 
 failpoints=(
-"vitess.io/vitess/go/vt/vtgate/testPanic=return(1)"
+"vitess.io/vitess/go/vt/vtgate/testPanic=return(2)"
 )
 
 # Create an empty string
