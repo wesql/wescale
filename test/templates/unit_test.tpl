@@ -145,12 +145,8 @@ jobs:
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.unit_tests == 'true'
       timeout-minutes: 30
       run: |
-        make failpoint-enable
-        chmod 755 ./test/failpoint/failpoints.sh && ./test/failpoint/failpoints.sh
 
         eatmydata -- make unit_test | tee -a output.txt | go-junit-report -set-exit-code > report.xml
-
-        make failpoint-disable
 
     - name: Print test output and Record test result
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.unit_tests == 'true' && always()
