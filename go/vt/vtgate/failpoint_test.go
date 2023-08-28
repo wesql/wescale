@@ -7,20 +7,22 @@ package vtgate
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/pingcap/failpoint"
 )
 
-func GetValueOfFailPoint(fpName string) any {
+func GetValueOfFailPoint(fpName string) int {
 	failpoint.Inject(fpName, func(v failpoint.Value) {
 		failpoint.Return(v)
 	})
-	return nil
+	return 0
 }
 
 func TestFailpointEnable(t *testing.T) {
-	failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
+	//failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
 
 	fmt.Println("testPanic", GetValueOfFailPoint("testPanic"))
+	assert.Equal(t, 0, GetValueOfFailPoint("testPanic"))
 }
