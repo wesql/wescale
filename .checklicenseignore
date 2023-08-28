@@ -31,3 +31,14 @@ support/*
 tools/*
 vitess-mixin/*
 web/*
+
+go/pools/cached_size.go
+go/vt/sqlparser/ast_clone.go
+go/vt/sqlparser/ast_copy_on_rewrite.go
+go/vt/sqlparser/ast_equals.go
+go/vt/sqlparser/ast_rewrite.go
+go/vt/sqlparser/ast_visit.go
+go/vt/sqlparser/cached_size.go
+go/vt/vtgate/engine/cached_size.go
+go/vt/vttablet/tabletserver/cached_size.go
+go/vt/vttablet/tabletserver/planbuilder/cached_size.go
