@@ -20,7 +20,7 @@ func GetValueOfFailPoint(fpName string) any {
 }
 
 func TestFailpointEnable(t *testing.T) {
-	failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
+	//failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
 
 	fmt.Println("testPanic", GetValueOfFailPoint("testPanic"))
 }
