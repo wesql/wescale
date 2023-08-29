@@ -6,7 +6,7 @@
 
 
 failpoints=(
-"vitess.io/vitess/go/vt/vtgate/testPanic=return(2)"
+"vitess.io/vitess/go/vt/vtgate/showTablets=return(2)"
 )
 
 # Create an empty string
@@ -23,4 +23,5 @@ result=${result%;}
 
 # Print the result
 echo "GO_FAILPOINTS=\"${result}\""
-export GO_FAILPOINTS="${result}"
+GO_FAILPOINTS="${result}"
+export GO_FAILPOINTS
