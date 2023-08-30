@@ -29,13 +29,13 @@ provided in the documentation.
 * [Performance Comparison WeSQL-Scale vs MySQL.md](doc%2Fblogs%2FPerformance%20Comparison%20WeSQL-Scale%20vs%20MySQL.md)
 
 # Documentation
-* [Deploy&Debug.md](doc%2Ftoturial%2F00-Deploy%26Debug.md)
+* [Deploy & Debug.md](doc%2Ftoturial%2F00-Deploy%26Debug.md)
 * [Architecture.md](doc%2Ftoturial%2F01-Architecture.md)
-* [LifeOfAQuery.md](doc%2Ftoturial%2F02-LifeOfAQuery.md)
+* [Life of A Query.md](doc%2Ftoturial%2F02-Life%20of%20A%20Query.md)
 * [Read-Write-Split & LoadBalancer.md](doc%2Ftoturial%2F03-Read-Write-Split%20%26%20LoadBalancer.md)
 * [Read-After-Write-Consistency.md](doc%2Ftoturial%2F04-Read-After-Write-Consistency.md)
 * [Transparent Failover.md](doc%2Ftoturial%2F05-Transparent%20Failover.md)
-* [Authentication&Authorized.md](doc%2Ftoturial%2F06-Authentication%26Authorized.md)
+* [Authentication & Authorization.md](doc%2Ftoturial%2F06-Authentication%26Authorization.md)
 
 # Features
 
