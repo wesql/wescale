@@ -8,6 +8,8 @@ package topotools
 import (
 	"fmt"
 
+	"github.com/pingcap/failpoint"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"golang.org/x/net/context"
@@ -56,6 +58,12 @@ func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error
 	if err != nil {
 		return fmt.Errorf("CreateKeyspace(%v:%v) failed: %v", keyspaceName, defaultShardName, err)
 	}
+
+	failpoint.Inject("createDatabaseInternalError", func(v failpoint.Value) {
+		if v.(bool) {
+			failpoint.Return("createDatabaseInternalError")
+		}
+	})
 
 	err = f()
 	if err != nil {
