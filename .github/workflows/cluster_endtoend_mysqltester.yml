@@ -99,7 +99,7 @@ jobs:
           DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
           
           # failpoint
-          chmod 755 ./test/failpoint/failpoints.sh && ./test/failpoint/failpoints.sh
+          chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
           echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
           
           # run container
