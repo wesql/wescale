@@ -61,7 +61,7 @@ func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error
 
 	failpoint.Inject("createDatabaseInternalError", func(v failpoint.Value) {
 		if v.(bool) {
-			failpoint.Return("createDatabaseInternalError")
+			failpoint.Return(fmt.Errorf("createDatabaseInternalError injected"))
 		}
 	})
 
