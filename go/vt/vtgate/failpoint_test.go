@@ -7,8 +7,9 @@ package vtgate
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/pingcap/failpoint"
 )
@@ -24,5 +25,5 @@ func TestFailpointEnable(t *testing.T) {
 	//failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
 
 	fmt.Println("testPanic", GetValueOfFailPoint("testPanic"))
-	assert.Equal(t, 0, GetValueOfFailPoint("testPanic"))
+	require.Equal(t, 0, GetValueOfFailPoint("testPanic"))
 }
