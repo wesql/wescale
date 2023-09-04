@@ -400,7 +400,7 @@ func (e *Executor) execute(ctx context.Context, safeSession *SafeSession, sql st
 }
 
 // addNeededBindVars adds bind vars that are needed by the plan
-func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindVars map[string]*querypb.BindVariable, session *SafeSession) error {
+func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparser.BindVarNeeds, bindVars map[string]*querypb.BindVariable, session *SafeSession) error {
 	for _, funcName := range bindVarNeeds.NeedFunctionResult {
 		switch funcName {
 		case sqlparser.DBVarName:
@@ -411,6 +411,11 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[sqlparser.FoundRowsName] = sqltypes.Int64BindVariable(int64(session.FoundRows))
 		case sqlparser.RowCountName:
 			bindVars[sqlparser.RowCountName] = sqltypes.Int64BindVariable(session.RowCount)
+		case sqlparser.CurrentUserName:
+			//bindVars[sqlparser.CurrentUserName] = sqltypes.Int64BindVariable(session.RowCount)
+			im := callerid.ImmediateCallerIDFromContext(ctx)
+			userAndHost := im.GetUsername() + "@" + im.GetHost()
+			bindVars[sqlparser.CurrentUserName] = sqltypes.StringBindVariable(userAndHost)
 		}
 	}
 
@@ -1329,7 +1334,7 @@ func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, 
 		return nil, err
 	}
 
-	err = e.addNeededBindVars(plan.BindVarNeeds, bindVars, safeSession)
+	err = e.addNeededBindVars(ctx, plan.BindVarNeeds, bindVars, safeSession)
 	if err != nil {
 		logStats.Error = err
 		return nil, err

@@ -312,6 +312,9 @@ const (
 
 	// UserDefinedVariableName is what we prepend bind var names for user defined variables
 	UserDefinedVariableName = "__vtudv"
+
+	// CurrentUserName is a reserved bind var name for current_user()
+	CurrentUserName = "__vtcun"
 )
 
 func (er *astRewriter) rewriteAliasedExpr(node *AliasedExpr) (*BindVarNeeds, error) {
@@ -570,6 +573,7 @@ var funcRewrites = map[string]string{
 	"schema":         DBVarName,
 	"found_rows":     FoundRowsName,
 	"row_count":      RowCountName,
+	"current_user":   CurrentUserName,
 }
 
 func (er *astRewriter) funcRewrite(cursor *Cursor, node *FuncExpr) {
