@@ -28,6 +28,10 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/log"
+
+	"vitess.io/vitess/go/vt/failpointutil"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -510,7 +514,27 @@ func (session *SafeSession) SetUserDefinedVariable(key string, value *querypb.Bi
 	if session.UserDefinedVariables == nil {
 		session.UserDefinedVariables = make(map[string]*querypb.BindVariable)
 	}
-	session.UserDefinedVariables[key] = value
+	if key == "put_failpoint" {
+		keyAndValue := strings.Split(value.String(), "=")
+		if len(keyAndValue) != 2 {
+			//TODO: geray return error
+			log.Error("set comman error")
+		}
+		fpName := keyAndValue[0]
+		retValue := keyAndValue[1]
+		err := failpointutil.FPTable.AddFailpoint(fpName, retValue)
+		if err != nil {
+			return
+		}
+	} else if key == "remove_failpoint" {
+		fpName := value.String()
+		err := failpointutil.FPTable.RemoveFailpoint(fpName)
+		if err != nil {
+			return
+		}
+	} else {
+		session.UserDefinedVariables[key] = value
+	}
 }
 
 // SetTargetString sets the target string in the session.
