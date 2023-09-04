@@ -92,7 +92,7 @@ func (e *Executor) newExecute(
 	}
 
 	// 3: Prepare for execution
-	err = e.addNeededBindVars(plan.BindVarNeeds, bindVars, safeSession)
+	err = e.addNeededBindVars(ctx, plan.BindVarNeeds, bindVars, safeSession)
 	if err != nil {
 		logStats.Error = err
 		return err
