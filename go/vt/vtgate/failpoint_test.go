@@ -14,7 +14,7 @@ import (
 	"github.com/pingcap/failpoint"
 )
 
-func GetValueOfFailPoint(fpName string) int {
+func GetValueOfFailPoint(fpName string) failpoint.Value {
 	failpoint.Inject(fpName, func(v failpoint.Value) {
 		failpoint.Return(v)
 	})
@@ -22,8 +22,6 @@ func GetValueOfFailPoint(fpName string) int {
 }
 
 func TestFailpointEnable(t *testing.T) {
-	//failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
-
-	fmt.Println("testPanic", GetValueOfFailPoint("testPanic"))
-	require.Equal(t, 0, GetValueOfFailPoint("testPanic"))
+	failpoint.Enable("vitess.io/vitess/go/vt/vtgate/testPanic", "return(1)")
+	require.Equal(t, 1, GetValueOfFailPoint("testPanic"))
 }

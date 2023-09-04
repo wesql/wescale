@@ -1,6 +1,5 @@
 <!--
-  Thank you for your contribution to the Vitess project.
-  How to contribute: https://vitess.io/docs/contributing/
+  Thank you for your contribution to the WeSQL-Scale project.
   Please first make sure there is an open Issue to discuss the feature/fix suggested in this PR.
   If this is a new feature, please mark the Issue as "RFC".
  -->
@@ -18,10 +17,5 @@
 
 ## Checklist
 
--   [ ] "Backport to:" labels have been added if this change should be back-ported
 -   [ ] Tests were added or are not required
 -   [ ] Documentation was added or is not required
-
-## Deployment Notes
-
-<!-- Notes regarding deployment of the contained body of work. These should note any db migrations, etc. -->
