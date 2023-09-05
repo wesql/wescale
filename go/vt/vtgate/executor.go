@@ -30,8 +30,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
 	"io"
 	"math/rand"
 	"net/http"
@@ -39,6 +37,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/config"
 
 	"github.com/spf13/pflag"
 
@@ -386,6 +387,7 @@ func NewJaegerSpanContext() string {
 	defer closer.Close()
 	span := tracer.StartSpan("fake-span")
 	defer span.Finish()
+	rand.Seed(time.Now().UnixNano())
 	// fake span id as random uint64
 	encodedSpanID := strconv.FormatUint(rand.Uint64(), 16)
 	ctx := span.Context().(jaeger.SpanContext)
@@ -395,10 +397,10 @@ func NewJaegerSpanContext() string {
 	encodedParentSpanID := strconv.FormatUint(0, 16)
 	// fake flags as 0x07
 	encodedFlags := strconv.FormatUint(7, 16)
-	traceIdValue := fmt.Sprintf("%v:%v:%v:%v", encodedUberTraceID, encodedSpanID, encodedParentSpanID, encodedFlags)
-	traceIdKey := "uber-trace-id"
+	traceIDValue := fmt.Sprintf("%v:%v:%v:%v", encodedUberTraceID, encodedSpanID, encodedParentSpanID, encodedFlags)
+	traceIDKey := "uber-trace-id"
 	header := make(map[string]string)
-	header[traceIdKey] = traceIdValue
+	header[traceIDKey] = traceIDValue
 	jsonData, err := json.Marshal(header)
 	if err != nil {
 		fmt.Println("JSON marshaling failed:", err)
