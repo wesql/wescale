@@ -281,3 +281,12 @@ func TestWithAs(t *testing.T) {
 		assert.Equal(t, `[[INT64(1) INT64(2)] [INT64(3) INT64(4)]]`, fmt.Sprintf("%v", qr.Rows))
 	})
 }
+
+func TestNewJaegerSpanContext(t *testing.T) {
+	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
+		qr := utils.Exec(t, conn, "select jaeger_span_context();")
+		assert.Equal(t, len(qr.Rows) == 1, true)
+		qr = utils.Exec(t, conn, fmt.Sprintf("/*VT_SPAN_CONTEXT=%s*/ select 1;", qr.Rows[0][0].RawStr()))
+		assert.Equal(t, qr.Rows[0][0].RawStr(), "1")
+	})
+}
