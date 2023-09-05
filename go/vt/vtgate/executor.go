@@ -25,15 +25,21 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/config"
 
 	"github.com/spf13/pflag"
 
@@ -363,6 +369,47 @@ func canReturnRows(stmtType sqlparser.StatementType) bool {
 	}
 }
 
+// NewJaegerSpanContext returns a new Jaeger span context(https://www.jaegertracing.io/docs/1.48/client-libraries/).
+func NewJaegerSpanContext() string {
+	// fake jaeger config
+	cfg := &config.Configuration{
+		ServiceName: "mock-upstream-service-name",
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+	}
+	tracer, closer, err := cfg.NewTracer()
+	if err != nil {
+		fmt.Printf("Failed to create tracer: %v", err)
+		return ""
+	}
+	defer closer.Close()
+	span := tracer.StartSpan("fake-span")
+	defer span.Finish()
+	rand.Seed(time.Now().UnixNano())
+	// fake span id as random uint64
+	encodedSpanID := strconv.FormatUint(rand.Uint64(), 16)
+	ctx := span.Context().(jaeger.SpanContext)
+	// fake tracer id as random 128 bits
+	encodedUberTraceID := fmt.Sprintf("%x", ctx.TraceID())
+	// fake parent span id as 0
+	encodedParentSpanID := strconv.FormatUint(0, 16)
+	// fake flags as 0x07
+	encodedFlags := strconv.FormatUint(7, 16)
+	traceIDValue := fmt.Sprintf("%v:%v:%v:%v", encodedUberTraceID, encodedSpanID, encodedParentSpanID, encodedFlags)
+	traceIDKey := "uber-trace-id"
+	header := make(map[string]string)
+	header[traceIDKey] = traceIDValue
+	jsonData, err := json.Marshal(header)
+	if err != nil {
+		fmt.Println("JSON marshaling failed:", err)
+		return ""
+	}
+	base64Data := base64.StdEncoding.EncodeToString(jsonData)
+	return base64Data
+}
+
 func saveSessionStats(safeSession *SafeSession, stmtType sqlparser.StatementType, rowsAffected, insertID uint64, rowsReturned int, err error) {
 	safeSession.RowCount = -1
 	if err != nil {
@@ -411,6 +458,8 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[sqlparser.FoundRowsName] = sqltypes.Int64BindVariable(int64(session.FoundRows))
 		case sqlparser.RowCountName:
 			bindVars[sqlparser.RowCountName] = sqltypes.Int64BindVariable(session.RowCount)
+		case sqlparser.JaegerSpanContextName:
+			bindVars[sqlparser.JaegerSpanContextName] = sqltypes.StringBindVariable(NewJaegerSpanContext())
 		case sqlparser.CurrentUserName:
 			//bindVars[sqlparser.CurrentUserName] = sqltypes.Int64BindVariable(session.RowCount)
 			im := callerid.ImmediateCallerIDFromContext(ctx)

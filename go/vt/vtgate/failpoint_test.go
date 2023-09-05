@@ -6,7 +6,6 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package vtgate
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"

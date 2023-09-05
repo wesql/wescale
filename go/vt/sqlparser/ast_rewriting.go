@@ -313,6 +313,9 @@ const (
 	// UserDefinedVariableName is what we prepend bind var names for user defined variables
 	UserDefinedVariableName = "__vtudv"
 
+	// JaegerSpanContextName is what we prepend bind var names for jaeger_span_context()
+	JaegerSpanContextName = "__jaeger_span_context"
+  
 	// CurrentUserName is a reserved bind var name for current_user()
 	CurrentUserName = "__vtcun"
 )
@@ -574,6 +577,7 @@ var funcRewrites = map[string]string{
 	"found_rows":     FoundRowsName,
 	"row_count":      RowCountName,
 	"current_user":   CurrentUserName,
+  "jaeger_span_context": JaegerSpanContextName,
 }
 
 func (er *astRewriter) funcRewrite(cursor *Cursor, node *FuncExpr) {
