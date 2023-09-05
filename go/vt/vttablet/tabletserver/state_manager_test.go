@@ -385,6 +385,10 @@ func (te *delayedTxEngine) Close() {
 	time.Sleep(50 * time.Millisecond)
 }
 
+func (te *delayedTxEngine) InUse() int64 {
+	return 0
+}
+
 type killableConn struct {
 	id     int64
 	killed sync2.AtomicBool
@@ -831,6 +835,10 @@ func (te *testReplTracker) GtidExecuted() (mysql.Position, error) {
 	return mysql.Position{}, nil
 }
 
+func (te *testReplTracker) ThreadsStatus() (*querypb.MysqlThreadsStats, error) {
+	return &querypb.MysqlThreadsStats{}, nil
+}
+
 type testQueryEngine struct {
 	testOrderState
 
@@ -856,6 +864,10 @@ func (te *testQueryEngine) Close() {
 	te.state = testStateClosed
 }
 
+func (te *testQueryEngine) InUse() int64 {
+	return 0
+}
+
 type testTxEngine struct {
 	testOrderState
 }
@@ -873,6 +885,10 @@ func (te *testTxEngine) AcceptReadOnly() {
 func (te *testTxEngine) Close() {
 	te.order = order.Add(1)
 	te.state = testStateClosed
+}
+
+func (te *testTxEngine) InUse() int64 {
+	return 0
 }
 
 type testSubcomponent struct {

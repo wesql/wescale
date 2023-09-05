@@ -449,7 +449,7 @@ const (
 
 type DestinationAnyShardPickerFirstShard struct{}
 
-func (dp DestinationAnyShardPickerFirstShard) PickShard(shardCount int) int {
+func (dp DestinationAnyShardPickerFirstShard) PickShard(_ int) int {
 	return 0
 }
 
@@ -464,7 +464,7 @@ func (*keyRangeLookuper) NeedsVCursor() bool { return false }
 func (*keyRangeLookuper) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*keyRangeLookuper) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*keyRangeLookuper) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return []key.Destination{
 		key.DestinationKeyRange{
 			KeyRange: &topodatapb.KeyRange{
@@ -474,7 +474,7 @@ func (*keyRangeLookuper) Map(ctx context.Context, vcursor vindexes.VCursor, ids 
 	}, nil
 }
 
-func newKeyRangeLookuper(name string, params map[string]string) (vindexes.Vindex, error) {
+func newKeyRangeLookuper(_ string, _ map[string]string) (vindexes.Vindex, error) {
 	return &keyRangeLookuper{}, nil
 }
 
@@ -489,7 +489,7 @@ func (*keyRangeLookuperUnique) NeedsVCursor() bool { return false }
 func (*keyRangeLookuperUnique) Verify(context.Context, vindexes.VCursor, []sqltypes.Value, [][]byte) ([]bool, error) {
 	return []bool{}, nil
 }
-func (*keyRangeLookuperUnique) Map(ctx context.Context, vcursor vindexes.VCursor, ids []sqltypes.Value) ([]key.Destination, error) {
+func (*keyRangeLookuperUnique) Map(_ context.Context, _ vindexes.VCursor, _ []sqltypes.Value) ([]key.Destination, error) {
 	return []key.Destination{
 		key.DestinationKeyRange{
 			KeyRange: &topodatapb.KeyRange{
@@ -499,7 +499,7 @@ func (*keyRangeLookuperUnique) Map(ctx context.Context, vcursor vindexes.VCursor
 	}, nil
 }
 
-func newKeyRangeLookuperUnique(name string, params map[string]string) (vindexes.Vindex, error) {
+func newKeyRangeLookuperUnique(_ string, _ map[string]string) (vindexes.Vindex, error) {
 	return &keyRangeLookuperUnique{}, nil
 }
 

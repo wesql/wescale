@@ -363,6 +363,9 @@ message ExecuteOptions {
     LEAST_QPS = 2;
     LEAST_RT = 3;
     LEAST_BEHIND_PRIMARY = 4;
+    LEAST_MYSQL_CONNECTED_CONNECTIONS = 5;
+    LEAST_MYSQL_RUNNING_CONNECTIONS = 6;
+    LEAST_TABLET_INUSE_CONNECTIONS = 7;
   }
 
   LoadBalancePolicy load_balance_policy = 17;
@@ -862,6 +865,18 @@ message ReleaseResponse {
 message StreamHealthRequest {
 }
 
+// MysqlThreadsStats is the result of 'show status like '%Thread%''
+message MysqlThreadsStats {
+  // Threads_cached
+  int64 cached = 1;
+  // Threads_created
+  int64 created = 2;
+  // Threads_connected
+  int64 connected = 3;
+  // Threads_running
+  int64 running = 4;
+}
+
 // RealtimeStats contains information about the tablet status.
 // It is only valid for a single tablet.
 message RealtimeStats {
@@ -906,6 +921,12 @@ message RealtimeStats {
 
   // db_list is to provide list of databases detected by the tablet.
   repeated string db_list = 9;
+
+  // mysql_threads_stats
+  MysqlThreadsStats mysql_thread_stats = 10;
+
+  // tablet_threads_stats
+  int64 tablet_threads_stats = 11;
 }
 
 // AggregateStats contains information about the health of a group of

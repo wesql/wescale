@@ -450,7 +450,7 @@ func (e *Executor) execute(ctx context.Context, safeSession *SafeSession, sql st
 }
 
 // addNeededBindVars adds bind vars that are needed by the plan
-func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindVars map[string]*querypb.BindVariable, session *SafeSession) error {
+func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparser.BindVarNeeds, bindVars map[string]*querypb.BindVariable, session *SafeSession) error {
 	for _, funcName := range bindVarNeeds.NeedFunctionResult {
 		switch funcName {
 		case sqlparser.DBVarName:
@@ -463,6 +463,11 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[sqlparser.RowCountName] = sqltypes.Int64BindVariable(session.RowCount)
 		case sqlparser.JaegerSpanContextName:
 			bindVars[sqlparser.JaegerSpanContextName] = sqltypes.StringBindVariable(NewJaegerSpanContext())
+		case sqlparser.CurrentUserName:
+			//bindVars[sqlparser.CurrentUserName] = sqltypes.Int64BindVariable(session.RowCount)
+			im := callerid.ImmediateCallerIDFromContext(ctx)
+			userAndHost := im.GetUsername() + "@" + im.GetHost()
+			bindVars[sqlparser.CurrentUserName] = sqltypes.StringBindVariable(userAndHost)
 		}
 	}
 
@@ -834,7 +839,7 @@ func (e *Executor) showShards(ctx context.Context, filter *sqlparser.ShowFilter,
 	}, nil
 }
 
-func (e *Executor) showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+func (e *Executor) showLastSeenGTID(_ *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	lastSeenGTID := e.scatterConn.gateway.lastSeenGtid.String()
 	rows = append(rows, buildVarCharRow(lastSeenGTID))
@@ -917,7 +922,7 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}, nil
 }
 
-func (e *Executor) showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+func (e *Executor) showWorkload(_ *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	status := e.scatterConn.GetGatewayCacheStatus()
 	for _, s := range status {
@@ -1093,7 +1098,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	if vcursor.safeSession.GetOptions() != nil {
 		vcursor.safeSession.GetOptions().IsSkipUse = false
 		isRewrite := vcursor.Session().GetRewriteTableNameWithDbNamePrefix()
-		if vcursor.keyspace != "" && isRewrite == true {
+		if vcursor.keyspace != "" && isRewrite {
 			var isSkipUse bool
 			stmt, isSkipUse, err = sqlparser.RewriteTableName(stmt, vcursor.keyspace)
 			if err != nil {
@@ -1381,7 +1386,7 @@ func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, 
 		return nil, err
 	}
 
-	err = e.addNeededBindVars(plan.BindVarNeeds, bindVars, safeSession)
+	err = e.addNeededBindVars(ctx, plan.BindVarNeeds, bindVars, safeSession)
 	if err != nil {
 		logStats.Error = err
 		return nil, err

@@ -315,6 +315,9 @@ const (
 
 	// JaegerSpanContextName is what we prepend bind var names for jaeger_span_context()
 	JaegerSpanContextName = "__jaeger_span_context"
+  
+	// CurrentUserName is a reserved bind var name for current_user()
+	CurrentUserName = "__vtcun"
 )
 
 func (er *astRewriter) rewriteAliasedExpr(node *AliasedExpr) (*BindVarNeeds, error) {
@@ -568,12 +571,13 @@ func (er *astRewriter) udvRewrite(cursor *Cursor, node *Variable) {
 }
 
 var funcRewrites = map[string]string{
-	"last_insert_id":      LastInsertIDName,
-	"database":            DBVarName,
-	"schema":              DBVarName,
-	"found_rows":          FoundRowsName,
-	"row_count":           RowCountName,
-	"jaeger_span_context": JaegerSpanContextName,
+	"last_insert_id": LastInsertIDName,
+	"database":       DBVarName,
+	"schema":         DBVarName,
+	"found_rows":     FoundRowsName,
+	"row_count":      RowCountName,
+	"current_user":   CurrentUserName,
+  "jaeger_span_context": JaegerSpanContextName,
 }
 
 func (er *astRewriter) funcRewrite(cursor *Cursor, node *FuncExpr) {

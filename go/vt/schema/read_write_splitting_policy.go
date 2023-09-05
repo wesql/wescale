@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 )
 
@@ -35,6 +36,12 @@ const (
 	ReadWriteSplittingPolicyLeastRT ReadWriteSplittingPolicy = "least_rt"
 	// ReadWriteSplittingPolicyLeastBehindPrimary enables read write splitting using least behind primary policy
 	ReadWriteSplittingPolicyLeastBehindPrimary ReadWriteSplittingPolicy = "least_behind_primary"
+	// ReadWriteSplittingPolicyLeastMysqlConnectedConnections enables read write splitting using the least connected connections to mysqld policy
+	ReadWriteSplittingPolicyLeastMysqlConnectedConnections ReadWriteSplittingPolicy = "least_mysql_connected_connections"
+	// ReadWriteSplittingPolicyLeastMysqlRunningConnections enables read write splitting using the least running connections to mysqld policy
+	ReadWriteSplittingPolicyLeastMysqlRunningConnections ReadWriteSplittingPolicy = "least_mysql_running_connections"
+	// ReadWriteSplittingPolicyLeastTabletInUseConnections enables read write splitting using the least in-use connections used by vttablet policy
+	ReadWriteSplittingPolicyLeastTabletInUseConnections ReadWriteSplittingPolicy = "least_tablet_inuse_connections"
 )
 
 // IsRandom returns true if the strategy is random
@@ -67,7 +74,10 @@ func ParseReadWriteSplittingPolicySetting(strategyVariable string) (*ReadWriteSp
 		ReadWriteSplittingPolicyLeastQPS,
 		ReadWriteSplittingPolicyLeastRT,
 		ReadWriteSplittingPolicyLeastBehindPrimary,
-		ReadWriteSplittingPolicyDisable:
+		ReadWriteSplittingPolicyDisable,
+		ReadWriteSplittingPolicyLeastMysqlConnectedConnections,
+		ReadWriteSplittingPolicyLeastMysqlRunningConnections,
+		ReadWriteSplittingPolicyLeastTabletInUseConnections:
 		setting.Strategy = strategy
 	default:
 		return nil, fmt.Errorf("Unknown ReadWriteSplittingPolicy: '%v'", strategy)
@@ -107,6 +117,12 @@ func ToLoadBalancePolicy(s string) querypb.ExecuteOptions_LoadBalancePolicy {
 		return querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY
 	case ReadWriteSplittingPolicyRandom:
 		return querypb.ExecuteOptions_RANDOM
+	case ReadWriteSplittingPolicyLeastMysqlConnectedConnections:
+		return querypb.ExecuteOptions_LEAST_MYSQL_CONNECTED_CONNECTIONS
+	case ReadWriteSplittingPolicyLeastMysqlRunningConnections:
+		return querypb.ExecuteOptions_LEAST_MYSQL_RUNNING_CONNECTIONS
+	case ReadWriteSplittingPolicyLeastTabletInUseConnections:
+		return querypb.ExecuteOptions_LEAST_TABLET_INUSE_CONNECTIONS
 	default:
 		return querypb.ExecuteOptions_RANDOM
 	}

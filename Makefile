@@ -65,7 +65,7 @@ export REWRITER=go/vt/sqlparser/rewriter.go
 # Since we are not using this Makefile for compilation, limiting parallelism will not increase build time.
 .NOTPARALLEL:
 
-.PHONY: all build install test clean unit_test unit_test_cover unit_test_race integration_test proto proto_banner site_test site_integration_test docker_bootstrap docker_test docker_unit_test java_test reshard_tests e2e_test e2e_test_race minimaltools tools generate_ci_workflows
+.PHONY: all build install clean unit_test integration_test proto proto_banner reshard_tests e2e_test minimaltools tools generate_ci_workflows
 
 all: build
 
@@ -165,16 +165,6 @@ install-local: build
 	mkdir -p "$${PREFIX}/bin"
 	cp "$${VTROOT}/bin/"{mysqlctl,mysqlctld,vtorc,vtadmin,vtctl,vtctld,vtctlclient,vtctldclient,vtgate,vttablet,vtbackup,vtconsensus} "$${PREFIX}/bin/"
 
-
-# install copies the files needed to run test Vitess using vtcombo into the given directory tree.
-# Usage: make install-testing PREFIX=/path/to/install/root
-install-testing: build
-	# binaries
-	mkdir -p "$${PREFIX}/bin"
-	cp "$${VTROOT}/bin/"{mysqlctld,mysqlctl,vtcombo,vttestserver} "$${PREFIX}/bin/"
-	# config files
-	cp -R config "$${PREFIX}/"
-
 vtctldclient: go/vt/proto/vtctlservice/vtctlservice.pb.go
 	make -C go/vt/vtctl/vtctldclient
 
@@ -198,14 +188,6 @@ sizegen:
 		--gen vitess.io/vitess/go/vt/vttablet/tabletserver.TabletPlan \
 		--gen vitess.io/vitess/go/sqltypes.Result
 
-# To pass extra flags, run test.go manually.
-# For example: go run test.go -docker=false -- --extra-flag
-# For more info see: go run test.go -help
-test:
-	go run test.go -docker=false
-
-site_test: unit_test site_integration_test
-
 clean:
 	go clean -i ./go/...
 	rm -rf third_party/acolyte
@@ -224,45 +206,12 @@ unit_test: build dependency_check
 	tools/unit_test_runner.sh
 
 e2e_test: build
-	echo $$(date): Running endtoend tests
-	go test $(VT_GO_PARALLEL) ./go/.../endtoend/...
-
-# Run the code coverage tools, compute aggregate.
-# If you want to improve in a directory, run:
-#   go test -coverprofile=coverage.out && go tool cover -html=coverage.out
-unit_test_cover: build
-	go test $(VT_GO_PARALLEL) -cover ./go/... | misc/parse_cover.py
-
-unit_test_race: build dependency_check
-	tools/unit_test_race.sh
-
-e2e_test_race: build
-	tools/e2e_test_race.sh
-
-e2e_test_cluster: build
-	tools/e2e_test_cluster.sh
-
-wesql_cluster_test: build
 	tools/wesql_cluster_test.sh
 
-e2e_test_vtconcensus: build
-	tools/wesql_vtconcensus_test.sh
 
 .ONESHELL:
 SHELL = /bin/bash
 .SHELLFLAGS = -ec
-
-# Run the following tests after making worker changes.
-worker_test:
-	go test ./go/vt/worker/
-	go run test.go -docker=false -tag=worker_test
-
-site_integration_test:
-	go run test.go -docker=false -tag=site_test
-
-java_test:
-	go install ./go/cmd/vtgateclienttest ./go/cmd/vtcombo
-	VTROOT=${PWD} mvn -f java/pom.xml -B clean verify
 
 install_protoc-gen-go:
 	GOBIN=$(VTROOTBIN) go install google.golang.org/protobuf/cmd/protoc-gen-go@$(shell go list -m -f '{{ .Version }}' google.golang.org/protobuf)
@@ -291,105 +240,6 @@ $(PROTO_GO_OUTS): minimaltools install_protoc-gen-go proto/*.proto
 	cp -Rf vitess.io/vitess/go/vt/proto/* go/vt/proto
 	rm -rf vitess.io/vitess/go/vt/proto/
 
-# Helper targets for building Docker images.
-# Please read docker/README.md to understand the different available images.
-
-# This rule builds the bootstrap images for all flavors.
-DOCKER_IMAGES_FOR_TEST = mysql57 mysql80 percona57 percona80
-DOCKER_IMAGES = common $(DOCKER_IMAGES_FOR_TEST)
-BOOTSTRAP_VERSION=14.1
-ensure_bootstrap_version:
-	find docker/ -type f -exec sed -i "s/^\(ARG bootstrap_version\)=.*/\1=${BOOTSTRAP_VERSION}/" {} \;
-	sed -i 's/\(^.*flag.String(\"bootstrap-version\",\) *\"[^\"]\+\"/\1 \"${BOOTSTRAP_VERSION}\"/' test.go
-
-docker_bootstrap:
-	for i in $(DOCKER_IMAGES); do echo "building bootstrap image: $$i"; docker/bootstrap/build.sh $$i ${BOOTSTRAP_VERSION} || exit 1; done
-
-docker_bootstrap_test:
-	flavors='$(DOCKER_IMAGES_FOR_TEST)' && ./test.go -pull=false -parallel=2 -bootstrap-version=${BOOTSTRAP_VERSION} -flavor=$${flavors// /,}
-
-docker_bootstrap_push:
-	for i in $(DOCKER_IMAGES); do echo "pushing bootstrap image: ${BOOTSTRAP_VERSION}-$$i"; docker push vitess/bootstrap:${BOOTSTRAP_VERSION}-$$i || exit 1; done
-
-# Use this target to update the local copy of your images with the one on Dockerhub.
-docker_bootstrap_pull:
-	for i in $(DOCKER_IMAGES); do echo "pulling bootstrap image: $$i"; docker pull vitess/bootstrap:${BOOTSTRAP_VERSION}-$$i || exit 1; done
-
-
-define build_docker_image
-	${info Building ${2}}
-	# Fix permissions before copying files, to avoid AUFS bug other must have read/access permissions
-	chmod -R o=rx *;
-
-	if grep -q arm64 <<< ${2}; then \
-		echo "Building docker using arm64 buildx"; \
-		docker buildx build --platform linux/arm64 -f ${1} -t ${2} --build-arg bootstrap_version=${BOOTSTRAP_VERSION} .; \
-	else \
-		echo "Building docker using straight docker build"; \
-		docker build -f ${1} -t ${2} --build-arg bootstrap_version=${BOOTSTRAP_VERSION} .; \
-	fi
-endef
-
-docker_base:
-	${call build_docker_image,docker/base/Dockerfile,vitess/base}
-
-DOCKER_BASE_SUFFIX = mysql80 percona57 percona80
-DOCKER_BASE_TARGETS = $(addprefix docker_base_, $(DOCKER_BASE_SUFFIX))
-$(DOCKER_BASE_TARGETS): docker_base_%:
-	${call build_docker_image,docker/base/Dockerfile.$*,vitess/base:$*}
-
-docker_base_all: docker_base $(DOCKER_BASE_TARGETS)
-
-docker_lite:
-	${call build_docker_image,docker/lite/Dockerfile,vitess/lite}
-
-DOCKER_LITE_SUFFIX = mysql57 ubi7.mysql57 mysql80 ubi7.mysql80 percona57 ubi7.percona57 percona80 ubi7.percona80 testing ubi8.mysql80 ubi8.arm64.mysql80
-DOCKER_LITE_TARGETS = $(addprefix docker_lite_,$(DOCKER_LITE_SUFFIX))
-$(DOCKER_LITE_TARGETS): docker_lite_%:
-	${call build_docker_image,docker/lite/Dockerfile.$*,vitess/lite:$*}
-
-docker_lite_all: docker_lite $(DOCKER_LITE_TARGETS)
-
-docker_local:
-	${call build_docker_image,docker/local/Dockerfile,vitess/local}
-
-docker_run_local:
-	./docker/local/run.sh
-
-docker_mini:
-	${call build_docker_image,docker/mini/Dockerfile,vitess/mini}
-
-DOCKER_VTTESTSERVER_SUFFIX = mysql57 mysql80
-DOCKER_VTTESTSERVER_TARGETS = $(addprefix docker_vttestserver_,$(DOCKER_VTTESTSERVER_SUFFIX))
-$(DOCKER_VTTESTSERVER_TARGETS): docker_vttestserver_%:
-	${call build_docker_image,docker/vttestserver/Dockerfile.$*,vitess/vttestserver:$*}
-
-docker_vttestserver: $(DOCKER_VTTESTSERVER_TARGETS)
-# This rule loads the working copy of the code into a bootstrap image,
-# and then runs the tests inside Docker.
-# Example: $ make docker_test flavor=mysql80
-docker_test:
-	go run test.go -flavor $(flavor)
-
-docker_unit_test:
-	go run test.go -flavor $(flavor) unit
-
-# Release a version.
-# This will generate a tar.gz file into the releases folder with the current source
-release: docker_base
-	@if [ -z "$VERSION" ]; then \
-		echo "Set the env var VERSION with the release version"; exit 1;\
-	fi
-	mkdir -p releases
-	docker build -f docker/Dockerfile.release -t vitess/release .
-	docker run -v ${PWD}/releases:/vt/releases --env VERSION=$(VERSION) vitess/release
-	git tag -m Version\ $(VERSION) v$(VERSION)
-	echo "A git tag was created, you can push it with:"
-	echo "git push origin v$(VERSION)"
-	echo "Also, don't forget the upload releases/v$(VERSION).tar.gz file to GitHub releases"
-
-create_release:
-	./tools/create_release.sh
 
 back_to_dev_mode:
 	./tools/back_to_dev_mode.sh
@@ -404,64 +254,6 @@ minimaltools:
 
 dependency_check:
 	./tools/dependency_check.sh
-
-install_k8s-code-generator: tools/tools.go go.mod
-	go install k8s.io/code-generator/cmd/deepcopy-gen
-	go install k8s.io/code-generator/cmd/client-gen
-	go install k8s.io/code-generator/cmd/lister-gen
-	go install k8s.io/code-generator/cmd/informer-gen
-
-DEEPCOPY_GEN=$(VTROOTBIN)/deepcopy-gen
-CLIENT_GEN=$(VTROOTBIN)/client-gen
-LISTER_GEN=$(VTROOTBIN)/lister-gen
-INFORMER_GEN=$(VTROOTBIN)/informer-gen
-
-GEN_BASE_DIR ?= vitess.io/vitess/go/vt/topo/k8stopo
-
-client_go_gen: install_k8s-code-generator
-	echo $$(date): Regenerating client-go code
-	# Delete and re-generate the deepcopy types
-	find $(VTROOT)/go/vt/topo/k8stopo/apis/topo/v1beta1 -name "zz_generated.deepcopy.go" -delete
-
-	# We output to ./ and then copy over the generated files to the appropriate path
-	# This is done so we don't have rely on the repository being cloned to `$GOPATH/src/vitess.io/vitess`
-
-	$(DEEPCOPY_GEN) -o ./ \
-	--input-dirs $(GEN_BASE_DIR)/apis/topo/v1beta1 \
-	-O zz_generated.deepcopy \
-	--bounding-dirs $(GEN_BASE_DIR)/apis \
-	--go-header-file ./go/vt/topo/k8stopo/boilerplate.go.txt
-
-	# Delete existing code
-	rm -rf go/vt/topo/k8stopo/client
-
-	# Generate clientset
-	$(CLIENT_GEN) -o ./ \
-	--clientset-name versioned \
-	--input-base $(GEN_BASE_DIR)/apis \
-	--input 'topo/v1beta1' \
-	--output-package $(GEN_BASE_DIR)/client/clientset \
-	--fake-clientset=true \
-	--go-header-file ./go/vt/topo/k8stopo/boilerplate.go.txt
-
-	# Generate listers
-	$(LISTER_GEN) -o ./ \
-	--input-dirs $(GEN_BASE_DIR)/apis/topo/v1beta1 \
-	--output-package $(GEN_BASE_DIR)/client/listers \
-	--go-header-file ./go/vt/topo/k8stopo/boilerplate.go.txt
-
-	# Generate informers
-	$(INFORMER_GEN) -o ./ \
-	--input-dirs $(GEN_BASE_DIR)/apis/topo/v1beta1 \
-	--output-package $(GEN_BASE_DIR)/client/informers \
-	--versioned-clientset-package $(GEN_BASE_DIR)/client/clientset/versioned \
-	--listers-package $(GEN_BASE_DIR)/client/listers \
-	--go-header-file ./go/vt/topo/k8stopo/boilerplate.go.txt
-
-	# Move and cleanup
-	mv vitess.io/vitess/go/vt/topo/k8stopo/client go/vt/topo/k8stopo/
-	mv vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1/zz_generated.deepcopy.go go/vt/topo/k8stopo/apis/topo/v1beta1/zz_generated.deepcopy.go
-	rm -rf vitess.io/vitess/go/vt/topo/k8stopo/
 
 vtadmin_web_install:
 	cd web/vtadmin && npm install
@@ -482,12 +274,6 @@ vtadmin_authz_testgen:
 generate_ci_workflows:
 	cd test && go run ci_workflow_gen.go && cd ..
 
-release-notes:
-	go run ./go/tools/release-notes --from "$(FROM)" --to "$(TO)" --version "$(VERSION)" --summary "$(SUMMARY)"
-
-install_kubectl_kind:
-	./tools/get_ksubectl_kind.sh
-
 .PHONY: check-license-header
 check-license-header: ## Run license header check.
 	@./misc/git/hooks/header-check
@@ -507,3 +293,17 @@ endef
 
 push-images:
 	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release}
+
+tools/bin/failpoint-ctl:
+	GOBIN=$(shell pwd)/tools/bin go install github.com/pingcap/failpoint/failpoint-ctl@2eaa328
+
+FAILPOINT_ENABLE  := find $$PWD/ -type d | grep -vE "(\.git|tools)" | xargs tools/bin/failpoint-ctl enable
+FAILPOINT_DISABLE := find $$PWD/ -type d | grep -vE "(\.git|tools)" | xargs tools/bin/failpoint-ctl disable
+
+failpoint-enable: tools/bin/failpoint-ctl
+# Converting gofail failpoints...
+	@$(FAILPOINT_ENABLE)
+
+failpoint-disable: tools/bin/failpoint-ctl
+# Restoring gofail failpoints...
+	@$(FAILPOINT_DISABLE)

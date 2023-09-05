@@ -638,7 +638,7 @@ func (n *mysqlNativePasswordAuthMethod) Name() AuthMethodDescription {
 	return MysqlNativePassword
 }
 
-func (n *mysqlNativePasswordAuthMethod) HandleUser(conn *Conn, user string) bool {
+func (n *mysqlNativePasswordAuthMethod) HandleUser(_ *Conn, user string) bool {
 	return n.validator.HandleUser(user, "mysql_native_password")
 }
 
@@ -672,7 +672,7 @@ func (n *mysqlClearAuthMethod) Name() AuthMethodDescription {
 	return MysqlClearPassword
 }
 
-func (n *mysqlClearAuthMethod) HandleUser(conn *Conn, user string) bool {
+func (n *mysqlClearAuthMethod) HandleUser(_ *Conn, user string) bool {
 	return n.validator.HandleUser(user, "mysql_clear_password")
 }
 
@@ -684,7 +684,7 @@ func (n *mysqlClearAuthMethod) AllowClearTextWithoutTLS() bool {
 	return false
 }
 
-func (n *mysqlClearAuthMethod) HandleAuthPluginData(conn *Conn, user string, serverAuthPluginData []byte, clientAuthPluginData []byte, remoteAddr net.Addr) (Getter, error) {
+func (n *mysqlClearAuthMethod) HandleAuthPluginData(conn *Conn, user string, _ []byte, clientAuthPluginData []byte, remoteAddr net.Addr) (Getter, error) {
 	return n.storage.UserEntryWithPassword(conn, user, string(clientAuthPluginData[:len(clientAuthPluginData)-1]), remoteAddr)
 }
 
@@ -698,7 +698,7 @@ func (n *mysqlDialogAuthMethod) Name() AuthMethodDescription {
 	return MysqlDialog
 }
 
-func (n *mysqlDialogAuthMethod) HandleUser(conn *Conn, user string) bool {
+func (n *mysqlDialogAuthMethod) HandleUser(_ *Conn, user string) bool {
 	return n.validator.HandleUser(user, "mysql_dialog_password")
 }
 
@@ -709,7 +709,7 @@ func (n *mysqlDialogAuthMethod) AuthPluginData() ([]byte, error) {
 	return result, nil
 }
 
-func (n *mysqlDialogAuthMethod) HandleAuthPluginData(conn *Conn, user string, serverAuthPluginData []byte, clientAuthPluginData []byte, remoteAddr net.Addr) (Getter, error) {
+func (n *mysqlDialogAuthMethod) HandleAuthPluginData(conn *Conn, user string, _ []byte, clientAuthPluginData []byte, remoteAddr net.Addr) (Getter, error) {
 	return n.storage.UserEntryWithPassword(conn, user, string(clientAuthPluginData[:len(clientAuthPluginData)-1]), remoteAddr)
 }
 

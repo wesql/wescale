@@ -334,7 +334,7 @@ func TestInsertPartialFail1(t *testing.T) {
 	require.Error(t, err)
 }
 
-func assertQueriesContain(t *testing.T, sql, sbcName string, sbc *sandboxconn.SandboxConn) {
+func assertQueriesContain(t *testing.T, sql, _ string, sbc *sandboxconn.SandboxConn) {
 	t.Helper()
 	expectedQuery := []*querypb.BoundQuery{{
 		Sql:           sql,

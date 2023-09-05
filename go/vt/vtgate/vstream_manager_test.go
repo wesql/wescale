@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1077,7 +1082,7 @@ func newTestVStreamManager(hc discovery.HealthCheck, serv srvtopo.Server, cell s
 	return newVStreamManager(srvResolver, serv, cell)
 }
 
-func startVStream(ctx context.Context, t *testing.T, vsm *vstreamManager, vgtid *binlogdatapb.VGtid, flags *vtgatepb.VStreamFlags) <-chan *binlogdatapb.VStreamResponse {
+func startVStream(ctx context.Context, _ *testing.T, vsm *vstreamManager, vgtid *binlogdatapb.VGtid, flags *vtgatepb.VStreamFlags) <-chan *binlogdatapb.VStreamResponse {
 	if flags == nil {
 		flags = &vtgatepb.VStreamFlags{}
 	}

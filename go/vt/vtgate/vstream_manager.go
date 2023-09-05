@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -699,7 +704,7 @@ func (vs *vstream) sendAll(ctx context.Context, sgtid *binlogdatapb.ShardGtid, e
 // isCopyFullyCompleted returns true if all stream has received a copy_completed event.
 // If true, it will also return a new copy_completed event that needs to be sent.
 // This new event represents the completion of all the copy operations.
-func (vs *vstream) isCopyFullyCompleted(ctx context.Context, sgtid *binlogdatapb.ShardGtid, event *binlogdatapb.VEvent) (bool, *binlogdatapb.VEvent) {
+func (vs *vstream) isCopyFullyCompleted(_ context.Context, _ *binlogdatapb.ShardGtid, event *binlogdatapb.VEvent) (bool, *binlogdatapb.VEvent) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
 

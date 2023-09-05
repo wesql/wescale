@@ -1,9 +1,12 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
-name: mysql-tester
+name: MTR Test
 on:
   pull_request:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 concurrency:
   group: format('{0}-{1}', ${{ github.ref }}, 'mysql-tester')
   cancel-in-progress: true
@@ -83,12 +86,9 @@ jobs:
         timeout-minutes: 30
         run: |
           
+          make failpoint-enable
           make build
-
-      - name: Setup docker
-        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
-        uses: docker-practice/actions-setup-docker@v1
-        timeout-minutes: 12
+          make failpoint-disable
 
       - name: Build and Run container
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
@@ -98,9 +98,13 @@ jobs:
           # build image
           DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
           
+          # failpoint
+          chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
+          echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
+          
           # run container
           PWD=$(pwd)
-          docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306  --name wesqlscale-build  apecloud/mysql-tester
+          docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306 -e GO_FAILPOINTS=$GO_FAILPOINTS  --name wesqlscale-build  apecloud/mysql-tester
           
       - name: Setup Cluster
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
