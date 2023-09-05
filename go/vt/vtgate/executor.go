@@ -35,6 +35,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -369,16 +370,13 @@ func canReturnRows(stmtType sqlparser.StatementType) bool {
 
 // NewJaegerSpanContext returns a new Jaeger span context(https://www.jaegertracing.io/docs/1.48/client-libraries/).
 func NewJaegerSpanContext() string {
+	// fake jaeger config
 	cfg := &config.Configuration{
 		ServiceName: "mock-upstream-service-name",
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
 			Param: 1,
 		},
-		//Reporter: &config.ReporterConfig{
-		//	LogSpans:           true,
-		//	LocalAgentHostPort: "localhost:6831",
-		//},
 	}
 	tracer, closer, err := cfg.NewTracer()
 	if err != nil {
@@ -388,23 +386,20 @@ func NewJaegerSpanContext() string {
 	defer closer.Close()
 	span := tracer.StartSpan("fake-span")
 	defer span.Finish()
-
-	value := uint64(rand.Int())
-	byteArray := make([]byte, 8)
-	for i := 0; i < 8; i++ {
-		byteArray[i] = byte(value >> ((7 - i) * 8))
-	}
-	encodedString := hex.EncodeToString(byteArray)
+	// fake span id as random uint64
+	encodedSpanID := strconv.FormatUint(rand.Uint64(), 16)
 	ctx := span.Context().(jaeger.SpanContext)
-	uberTraceID := fmt.Sprintf("%x", ctx.TraceID())
-	parentSpanID := fmt.Sprintf("%x", uint64(0))
-	flags := 7
-	flags_ := fmt.Sprintf("%x", flags)
-	traceIdValue := fmt.Sprintf("%v:%s:%v:%v", uberTraceID, encodedString, parentSpanID, flags_)
+	// fake tracer id as random 128 bits
+	encodedUberTraceID := fmt.Sprintf("%x", ctx.TraceID())
+	// fake parent span id as 0
+	encodedParentSpanID := strconv.FormatUint(0, 16)
+	// fake flags as 0x07
+	encodedFlags := strconv.FormatUint(7, 16)
+	traceIdValue := fmt.Sprintf("%v:%v:%v:%v", encodedUberTraceID, encodedSpanID, encodedParentSpanID, encodedFlags)
 	traceIdKey := "uber-trace-id"
-	kv := make(map[string]string)
-	kv[traceIdKey] = traceIdValue
-	jsonData, err := json.Marshal(kv)
+	header := make(map[string]string)
+	header[traceIdKey] = traceIdValue
+	jsonData, err := json.Marshal(header)
 	if err != nil {
 		fmt.Println("JSON marshaling failed:", err)
 		return ""
