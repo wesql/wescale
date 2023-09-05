@@ -25,11 +25,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/config"
 	"io"
+	"math/rand"
 	"net/http"
 	"strings"
 	"sync"
@@ -363,6 +367,52 @@ func canReturnRows(stmtType sqlparser.StatementType) bool {
 	}
 }
 
+// NewJaegerSpanContext returns a new Jaeger span context(https://www.jaegertracing.io/docs/1.48/client-libraries/).
+func NewJaegerSpanContext() string {
+	cfg := &config.Configuration{
+		ServiceName: "mock-upstream-service-name",
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		//Reporter: &config.ReporterConfig{
+		//	LogSpans:           true,
+		//	LocalAgentHostPort: "localhost:6831",
+		//},
+	}
+	tracer, closer, err := cfg.NewTracer()
+	if err != nil {
+		fmt.Printf("Failed to create tracer: %v", err)
+		return ""
+	}
+	defer closer.Close()
+	span := tracer.StartSpan("fake-span")
+	defer span.Finish()
+
+	value := uint64(rand.Int())
+	byteArray := make([]byte, 8)
+	for i := 0; i < 8; i++ {
+		byteArray[i] = byte(value >> ((7 - i) * 8))
+	}
+	encodedString := hex.EncodeToString(byteArray)
+	ctx := span.Context().(jaeger.SpanContext)
+	uberTraceID := fmt.Sprintf("%x", ctx.TraceID())
+	parentSpanID := fmt.Sprintf("%x", uint64(0))
+	flags := 7
+	flags_ := fmt.Sprintf("%x", flags)
+	traceIdValue := fmt.Sprintf("%v:%s:%v:%v", uberTraceID, encodedString, parentSpanID, flags_)
+	traceIdKey := "uber-trace-id"
+	kv := make(map[string]string)
+	kv[traceIdKey] = traceIdValue
+	jsonData, err := json.Marshal(kv)
+	if err != nil {
+		fmt.Println("JSON marshaling failed:", err)
+		return ""
+	}
+	base64Data := base64.StdEncoding.EncodeToString(jsonData)
+	return base64Data
+}
+
 func saveSessionStats(safeSession *SafeSession, stmtType sqlparser.StatementType, rowsAffected, insertID uint64, rowsReturned int, err error) {
 	safeSession.RowCount = -1
 	if err != nil {
@@ -411,6 +461,8 @@ func (e *Executor) addNeededBindVars(bindVarNeeds *sqlparser.BindVarNeeds, bindV
 			bindVars[sqlparser.FoundRowsName] = sqltypes.Int64BindVariable(int64(session.FoundRows))
 		case sqlparser.RowCountName:
 			bindVars[sqlparser.RowCountName] = sqltypes.Int64BindVariable(session.RowCount)
+		case sqlparser.JaegerSpanContextName:
+			bindVars[sqlparser.JaegerSpanContextName] = sqltypes.StringBindVariable(NewJaegerSpanContext())
 		}
 	}
 
