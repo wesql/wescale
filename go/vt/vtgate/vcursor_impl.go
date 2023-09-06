@@ -87,6 +87,7 @@ type iExecute interface {
 	setVitessMetadata(ctx context.Context, name, value string) error
 	showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
+	showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
 	VSchema() *vindexes.VSchema
@@ -702,9 +703,6 @@ func ignoreKeyspace(keyspace string) bool {
 }
 
 func (vc *vcursorImpl) SetUDV(key string, value any) error {
-	failpoint.Inject("setUDVFail", func(v failpoint.Value) {
-		failpoint.Return(v)
-	})
 	bindValue, err := sqltypes.BuildBindVariable(value)
 	if err != nil {
 		return err
@@ -1138,6 +1136,8 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 		return vc.executor.showWorkload(filter)
 	case sqlparser.LastSeenGTID:
 		return vc.executor.showLastSeenGTID(filter)
+	case sqlparser.FailPoint:
+		return vc.executor.showFailPoint(filter)
 	default:
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)
 	}

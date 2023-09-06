@@ -38,6 +38,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/failpoint"
+
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
