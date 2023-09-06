@@ -28,6 +28,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/pingcap/failpoint"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/vt/sysvars"
@@ -88,6 +90,7 @@ type iExecute interface {
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
 	VSchema() *vindexes.VSchema
+	SetFailPoint(command string, key string, value string) error
 }
 
 // VSchemaOperator is an interface to Vschema Operations
@@ -699,11 +702,42 @@ func ignoreKeyspace(keyspace string) bool {
 }
 
 func (vc *vcursorImpl) SetUDV(key string, value any) error {
+	failpoint.Inject("setUDVFail", func(v failpoint.Value) {
+		failpoint.Return(v)
+	})
 	bindValue, err := sqltypes.BuildBindVariable(value)
 	if err != nil {
 		return err
 	}
-	vc.safeSession.SetUserDefinedVariable(key, bindValue)
+	setValue := string(bindValue.GetValue())
+	if key == global.PutFailPoint {
+		keyAndValue := strings.Split(setValue, "=")
+		if len(keyAndValue) != 2 {
+			return fmt.Errorf("PutFailPoint error format key=value,but got %v", string(bindValue.GetValue()))
+		}
+		fpName := keyAndValue[0]
+		retValue := keyAndValue[1]
+		err = failpoint.Enable(fpName, retValue)
+		if err != nil {
+			return err
+		}
+		err = vc.executor.SetFailPoint(global.PutFailPoint, fpName, retValue)
+		if err != nil {
+			return err
+		}
+	} else if key == global.RemoveFailPoint {
+		fpName := string(bindValue.GetValue())
+		err = failpoint.Disable(fpName)
+		if err != nil {
+			return err
+		}
+		err = vc.executor.SetFailPoint(global.RemoveFailPoint, fpName, "")
+		if err != nil {
+			return err
+		}
+	} else {
+		vc.safeSession.SetUserDefinedVariable(key, bindValue)
+	}
 	return nil
 }
 

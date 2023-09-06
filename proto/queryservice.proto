@@ -120,4 +120,6 @@ service Query {
 
   // GetSchema returns the schema information.
   rpc GetSchema(query.GetSchemaRequest) returns (stream query.GetSchemaResponse) {};
+
+  rpc SetFailPoint(query.SetFailPointRequest) returns (query.SetFailPointResponse) {};
 }

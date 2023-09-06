@@ -86,6 +86,7 @@ type QueryClient interface {
 	VStreamResults(ctx context.Context, in *binlogdata.VStreamResultsRequest, opts ...grpc.CallOption) (Query_VStreamResultsClient, error)
 	// GetSchema returns the schema information.
 	GetSchema(ctx context.Context, in *query.GetSchemaRequest, opts ...grpc.CallOption) (Query_GetSchemaClient, error)
+	SetFailPoint(ctx context.Context, in *query.SetFailPointRequest, opts ...grpc.CallOption) (*query.SetFailPointResponse, error)
 }
 
 type queryClient struct {
@@ -578,6 +579,15 @@ func (x *queryGetSchemaClient) Recv() (*query.GetSchemaResponse, error) {
 	return m, nil
 }
 
+func (c *queryClient) SetFailPoint(ctx context.Context, in *query.SetFailPointRequest, opts ...grpc.CallOption) (*query.SetFailPointResponse, error) {
+	out := new(query.SetFailPointResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/SetFailPoint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
@@ -644,6 +654,7 @@ type QueryServer interface {
 	VStreamResults(*binlogdata.VStreamResultsRequest, Query_VStreamResultsServer) error
 	// GetSchema returns the schema information.
 	GetSchema(*query.GetSchemaRequest, Query_GetSchemaServer) error
+	SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -734,6 +745,9 @@ func (UnimplementedQueryServer) VStreamResults(*binlogdata.VStreamResultsRequest
 }
 func (UnimplementedQueryServer) GetSchema(*query.GetSchemaRequest, Query_GetSchemaServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetSchema not implemented")
+}
+func (UnimplementedQueryServer) SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetFailPoint not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -1282,6 +1296,24 @@ func (x *queryGetSchemaServer) Send(m *query.GetSchemaResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Query_SetFailPoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.SetFailPointRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).SetFailPoint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/queryservice.Query/SetFailPoint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).SetFailPoint(ctx, req.(*query.SetFailPointRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1360,6 +1392,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Release",
 			Handler:    _Query_Release_Handler,
+		},
+		{
+			MethodName: "SetFailPoint",
+			Handler:    _Query_SetFailPoint_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

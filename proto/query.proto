@@ -1049,3 +1049,13 @@ message GetSchemaResponse {
   // this is for the schema definition for the requested tables.
   map<string, string> table_definition = 2;
 }
+
+message SetFailPointRequest{
+  string command = 1;
+  string key = 2;
+  string value = 3;
+}
+
+message SetFailPointResponse{
+  vtrpc.RPCError error = 1;
+}

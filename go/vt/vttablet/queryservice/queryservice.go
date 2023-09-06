@@ -112,6 +112,8 @@ type QueryService interface {
 	// StreamHealth streams health status.
 	StreamHealth(ctx context.Context, callback func(*querypb.StreamHealthResponse) error) error
 
+	SetFailPoint(ctx context.Context, command string, key string, value string) error
+
 	// HandlePanic will be called if any of the functions panic.
 	HandlePanic(err *error)
 

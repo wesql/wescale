@@ -66,6 +66,10 @@ type FakeQueryService struct {
 	StreamHealthResponse *querypb.StreamHealthResponse
 }
 
+func (f *FakeQueryService) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+	return nil
+}
+
 var _ queryservice.QueryService = (*FakeQueryService)(nil)
 
 // Close is a no-op.

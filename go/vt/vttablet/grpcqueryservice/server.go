@@ -511,6 +511,10 @@ func (q *query) GetSchema(request *querypb.GetSchemaRequest, stream queryservice
 	return vterrors.ToGRPC(err)
 }
 
+func (q *query) SetFailPoint(ctx context.Context, request *querypb.SetFailPointRequest) (*querypb.SetFailPointResponse, error) {
+	return nil, q.server.SetFailPoint(ctx, request.Command, request.Key, request.Value)
+}
+
 // Register registers the implementation on the provide gRPC Server.
 func Register(s *grpc.Server, server queryservice.QueryService) {
 	queryservicepb.RegisterQueryServer(s, &query{server: server})

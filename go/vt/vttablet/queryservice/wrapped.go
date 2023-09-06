@@ -356,3 +356,8 @@ func (ws *wrappedService) Close(ctx context.Context) error {
 		return false, conn.Close(ctx)
 	})
 }
+func (ws *wrappedService) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+	return ws.wrapper(ctx, nil, ws.impl, "SetFailPoint", false, nil, func(ctx context.Context, target *querypb.Target, service QueryService) (canRetry bool, err error) {
+		return false, service.SetFailPoint(ctx, command, key, value)
+	})
+}

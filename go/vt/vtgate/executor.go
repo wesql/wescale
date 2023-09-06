@@ -43,6 +43,8 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/vt/discovery"
+
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/cache"
 	"vitess.io/vitess/go/hack"
@@ -1463,6 +1465,28 @@ func (e *Executor) startVStream(ctx context.Context, rss []*srvtopo.ResolvedShar
 		copyCompletedShard: make(map[string]struct{}),
 	}
 	_ = vs.stream(ctx)
+	return nil
+}
+
+func (e *Executor) SetFailPoint(command string, key string, value string) error {
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
+	errCh := make(chan error, len(healthyTablets))
+	for _, tablet := range healthyTablets {
+		wg.Add(1)
+		go func(th *discovery.TabletHealth) {
+			defer wg.Done()
+			if err := th.Conn.SetFailPoint(ctx, command, key, value); err != nil {
+				errCh <- err
+			}
+		}(tablet)
+	}
+	wg.Wait()
+	close(errCh)
+	if err := <-errCh; err != nil {
+		return err
+	}
 	return nil
 }
 

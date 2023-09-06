@@ -1094,6 +1094,23 @@ func (conn *gRPCQueryClient) GetSchema(ctx context.Context, target *querypb.Targ
 func (conn *gRPCQueryClient) GetUser(ctx context.Context, target *querypb.Target) (*sqltypes.Result, error) {
 	return nil, nil
 }
+func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return tabletconn.ConnClosed
+	}
+	req := querypb.SetFailPointRequest{
+		Command: command,
+		Key:     key,
+		Value:   value,
+	}
+	_, err := conn.c.SetFailPoint(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // Close closes underlying gRPC channel.
 func (conn *gRPCQueryClient) Close(ctx context.Context) error {

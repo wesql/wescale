@@ -29,6 +29,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/failpoint"
+
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/sqlparser"
 
@@ -605,6 +609,18 @@ func (sbc *SandboxConn) GetSchema(ctx context.Context, target *querypb.Target, t
 	return callback(&querypb.GetSchemaResponse{TableDefinition: resp})
 }
 
+// SetFailPoint dynamically inject fail-point
+func (sbc *SandboxConn) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+	var err error
+	switch command {
+	case global.PutFailPoint:
+		err = failpoint.Enable(key, value)
+	case global.RemoveFailPoint:
+		err = failpoint.Disable(key)
+	}
+	return err
+}
+
 // Close does not change ExecCount
 func (sbc *SandboxConn) Close(ctx context.Context) error {
 	return nil
@@ -752,7 +768,7 @@ func getArgumentResult(exprs sqlparser.SelectExprs) *sqltypes.Result {
 		if exprs[0].(*sqlparser.AliasedExpr).As.String() == "x" {
 			return TestLastInsertIDInSubQueryExpression()
 		}
-		return getLastInsertIdResult()
+		return getLastInsertIDResult()
 	case "__vtautocommit":
 		switch exprs[1].(*sqlparser.AliasedExpr).Expr.(sqlparser.Argument) {
 		case "__vtenable_system_settings":
@@ -882,12 +898,12 @@ func getColNameResult(exprs sqlparser.SelectExprs) *sqltypes.Result {
 	expr := exprs[0].(*sqlparser.AliasedExpr).Expr.(*sqlparser.ColName).CompliantName()
 	switch expr {
 	case "__lastInsertId":
-		return getLastInsertIdResult()
+		return getLastInsertIDResult()
 	}
 	return getSingleRowResult()
 }
 
-func getLastInsertIdResult() *sqltypes.Result {
+func getLastInsertIDResult() *sqltypes.Result {
 	return &sqltypes.Result{
 		Fields: []*querypb.Field{
 			{Name: "last_insert_id()", Type: sqltypes.Uint64},
