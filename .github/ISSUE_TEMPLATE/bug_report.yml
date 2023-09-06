@@ -1,6 +1,6 @@
 name: Bug Report
 description: You're experiencing an issue with WeSQL-Scale that is different than the documented behavior.
-title: "Bug Report: "
+title: "[Bug Report] "
 labels: ["Type: Bug", "Needs Triage"]
 body:
   - type: textarea
