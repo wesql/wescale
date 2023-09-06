@@ -1,7 +1,7 @@
 ---
 name: Feature Request
 about: If you have something you think WeSQL-Scale could improve or add support for.
-title: "[Feature Request]"
+title: "[Feature Request] "
 labels: 'enhancement'
 assignees: ''
 
