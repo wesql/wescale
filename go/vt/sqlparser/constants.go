@@ -320,7 +320,7 @@ const (
 	WarningsStr                = " warnings"
 	WorkloadStr                = " workload"
 	LastSeenGTIDStr            = " lastseengtid"
-	FailPointStr               = "failpoint"
+	FailPointStr               = "failpointutil"
 
 	// DropKeyType strings
 	PrimaryKeyTypeStr = "primary key"

@@ -38,6 +38,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/failpointutil"
+
 	"github.com/pingcap/failpoint"
 
 	"github.com/uber/jaeger-client-go"
@@ -846,6 +848,30 @@ func (e *Executor) showLastSeenGTID(_ *sqlparser.ShowFilter) (*sqltypes.Result, 
 	rows = append(rows, buildVarCharRow(lastSeenGTID))
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("LastSeenGTID"),
+		Rows:   rows,
+	}, nil
+}
+func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+	boolToString := func(b bool) string {
+		if b {
+			return "true"
+		}
+		return "false"
+	}
+	containString := func(s string, ss []string) bool {
+		for _, str := range ss {
+			if str == s {
+				return true
+			}
+		}
+		return false
+	}
+	rows := [][]sqltypes.Value{}
+	for _, value := range failpointutil.FailpointTable {
+		rows = append(rows, buildVarCharRow(value, boolToString(containString(value, failpoint.List()))))
+	}
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("failpoint keys", "status"),
 		Rows:   rows,
 	}, nil
 }
