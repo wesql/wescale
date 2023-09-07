@@ -843,7 +843,7 @@ const (
 	Keyspace
 	Workload
 	LastSeenGTID
-	FailPoint
+	FailPoints
 )
 
 // DropKeyType constants

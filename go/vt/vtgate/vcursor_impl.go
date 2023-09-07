@@ -1136,7 +1136,7 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 		return vc.executor.showWorkload(filter)
 	case sqlparser.LastSeenGTID:
 		return vc.executor.showLastSeenGTID(filter)
-	case sqlparser.FailPoint:
+	case sqlparser.FailPoints:
 		return vc.executor.showFailPoint(filter)
 	default:
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)

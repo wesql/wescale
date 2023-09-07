@@ -7,10 +7,11 @@ package queries
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/test/endtoend/utils"

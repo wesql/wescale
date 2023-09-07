@@ -871,7 +871,7 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		rows = append(rows, buildVarCharRow(value, boolToString(containString(value, failpoint.List()))))
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("failpoint keys", "status"),
+		Fields: buildVarCharFields("failpoint keys", "Enabled"),
 		Rows:   rows,
 	}, nil
 }
