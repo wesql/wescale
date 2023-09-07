@@ -867,8 +867,8 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		return false
 	}
 	rows := [][]sqltypes.Value{}
-	for _, value := range failpointkey.FailpointTable {
-		rows = append(rows, buildVarCharRow(value, boolToString(containString(value, failpoint.List()))))
+	for key := range failpointkey.FailpointTable {
+		rows = append(rows, buildVarCharRow(key, boolToString(containString(key, failpoint.List()))))
 	}
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("failpoint keys", "Enabled"),
