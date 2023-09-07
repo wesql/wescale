@@ -38,7 +38,7 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/failpointutil"
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"github.com/pingcap/failpoint"
 
@@ -867,7 +867,7 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		return false
 	}
 	rows := [][]sqltypes.Value{}
-	for _, value := range failpointutil.FailpointTable {
+	for _, value := range failpointkey.FailpointTable {
 		rows = append(rows, buildVarCharRow(value, boolToString(containString(value, failpoint.List()))))
 	}
 	return &sqltypes.Result{
