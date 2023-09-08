@@ -858,17 +858,26 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		}
 		return "false"
 	}
-	containString := func(s string, ss []string) bool {
-		for _, str := range ss {
-			if str == s {
-				return true
-			}
-		}
-		return false
-	}
 	rows := [][]sqltypes.Value{}
+	// first show failpoint in static map
 	for key := range failpointkey.FailpointTable {
-		rows = append(rows, buildVarCharRow(key, boolToString(containString(key, failpoint.List()))))
+		Enabled := false
+		_, err := failpoint.Status(key)
+		if err == nil {
+			Enabled = true
+		}
+		rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+	}
+	// then show failpoint not in static map but in failpoint.List()
+	for _, key := range failpoint.List() {
+		if _, isExist := failpointkey.FailpointTable[key]; !isExist {
+			Enabled := false
+			_, err := failpoint.Status(key)
+			if err == nil {
+				Enabled = true
+			}
+			rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+		}
 	}
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("failpoint keys", "Enabled"),
