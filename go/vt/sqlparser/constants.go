@@ -320,6 +320,7 @@ const (
 	WarningsStr                = " warnings"
 	WorkloadStr                = " workload"
 	LastSeenGTIDStr            = " lastseengtid"
+	FailPointStr               = "failpointutil"
 
 	// DropKeyType strings
 	PrimaryKeyTypeStr = "primary key"
@@ -842,6 +843,7 @@ const (
 	Keyspace
 	Workload
 	LastSeenGTID
+	FailPoints
 )
 
 // DropKeyType constants

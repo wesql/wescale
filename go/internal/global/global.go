@@ -46,3 +46,8 @@ const (
 	TableACLModeMysqlBased = MysqlBased
 	TableACLModeSimple     = "simple"
 )
+
+const (
+	PutFailPoint    = "put_failpoint"
+	RemoveFailPoint = "remove_failpoint"
+)

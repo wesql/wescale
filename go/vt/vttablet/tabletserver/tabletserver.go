@@ -33,7 +33,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/mysql"
@@ -1446,6 +1449,17 @@ func (tsv *TabletServer) GetSchema(ctx context.Context, target *querypb.Target, 
 		},
 	)
 	return
+}
+
+func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+	var err error
+	switch command {
+	case global.PutFailPoint:
+		err = failpoint.Enable(key, value)
+	case global.RemoveFailPoint:
+		err = failpoint.Disable(key)
+	}
+	return err
 }
 
 // execRequest performs verifications, sets up the necessary environments

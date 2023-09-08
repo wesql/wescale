@@ -153,7 +153,7 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 		return buildShowVMigrationsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
-	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload, sqlparser.LastSeenGTID:
+	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload, sqlparser.LastSeenGTID, sqlparser.FailPoints:
 		return &engine.ShowExec{
 			Command:    show.Command,
 			ShowFilter: show.Filter,

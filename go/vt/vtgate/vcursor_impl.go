@@ -28,6 +28,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/pingcap/failpoint"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/vt/sysvars"
@@ -85,9 +87,11 @@ type iExecute interface {
 	setVitessMetadata(ctx context.Context, name, value string) error
 	showWorkload(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	showLastSeenGTID(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
+	showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
 	VSchema() *vindexes.VSchema
+	SetFailPoint(command string, key string, value string) error
 }
 
 // VSchemaOperator is an interface to Vschema Operations
@@ -703,6 +707,36 @@ func (vc *vcursorImpl) SetUDV(key string, value any) error {
 	if err != nil {
 		return err
 	}
+	failpoint.Inject("OpenSetFailPoint", func(_ failpoint.Value) {
+		setValue := string(bindValue.GetValue())
+		if key == global.PutFailPoint {
+			keyAndValue := strings.Split(setValue, "=")
+			if len(keyAndValue) != 2 {
+				failpoint.Return(fmt.Errorf("PutFailPoint error format key=value,but got %v", string(bindValue.GetValue())))
+			}
+			fpName := keyAndValue[0]
+			retValue := keyAndValue[1]
+			err = failpoint.Enable(fpName, retValue)
+			if err != nil {
+				failpoint.Return(err)
+			}
+			err = vc.executor.SetFailPoint(global.PutFailPoint, fpName, retValue)
+			if err != nil {
+				failpoint.Return(err)
+			}
+		}
+		if key == global.RemoveFailPoint {
+			fpName := string(bindValue.GetValue())
+			err = failpoint.Disable(fpName)
+			if err != nil {
+				failpoint.Return(err)
+			}
+			err = vc.executor.SetFailPoint(global.RemoveFailPoint, fpName, "")
+			if err != nil {
+				failpoint.Return(err)
+			}
+		}
+	})
 	vc.safeSession.SetUserDefinedVariable(key, bindValue)
 	return nil
 }
@@ -1104,6 +1138,8 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 		return vc.executor.showWorkload(filter)
 	case sqlparser.LastSeenGTID:
 		return vc.executor.showLastSeenGTID(filter)
+	case sqlparser.FailPoints:
+		return vc.executor.showFailPoint(filter)
 	default:
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)
 	}

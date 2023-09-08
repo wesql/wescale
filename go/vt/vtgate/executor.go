@@ -38,10 +38,16 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/failpointkey"
+
+	"github.com/pingcap/failpoint"
+
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
 	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/vt/discovery"
 
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/cache"
@@ -845,6 +851,39 @@ func (e *Executor) showLastSeenGTID(_ *sqlparser.ShowFilter) (*sqltypes.Result, 
 		Rows:   rows,
 	}, nil
 }
+func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+	boolToString := func(b bool) string {
+		if b {
+			return "true"
+		}
+		return "false"
+	}
+	rows := [][]sqltypes.Value{}
+	// first show failpoint in static map
+	for key := range failpointkey.FailpointTable {
+		Enabled := false
+		_, err := failpoint.Status(key)
+		if err == nil {
+			Enabled = true
+		}
+		rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+	}
+	// then show failpoint not in static map but in failpoint.List()
+	for _, key := range failpoint.List() {
+		if _, isExist := failpointkey.FailpointTable[key]; !isExist {
+			Enabled := false
+			_, err := failpoint.Status(key)
+			if err == nil {
+				Enabled = true
+			}
+			rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+		}
+	}
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("failpoint keys", "Enabled"),
+		Rows:   rows,
+	}, nil
+}
 
 func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	getTabletFilters := func(filter *sqlparser.ShowFilter) []tabletFilter {
@@ -1463,6 +1502,28 @@ func (e *Executor) startVStream(ctx context.Context, rss []*srvtopo.ResolvedShar
 		copyCompletedShard: make(map[string]struct{}),
 	}
 	_ = vs.stream(ctx)
+	return nil
+}
+
+func (e *Executor) SetFailPoint(command string, key string, value string) error {
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
+	errCh := make(chan error, len(healthyTablets))
+	for _, tablet := range healthyTablets {
+		wg.Add(1)
+		go func(th *discovery.TabletHealth) {
+			defer wg.Done()
+			if err := th.Conn.SetFailPoint(ctx, command, key, value); err != nil {
+				errCh <- err
+			}
+		}(tablet)
+	}
+	wg.Wait()
+	close(errCh)
+	if err := <-errCh; err != nil {
+		return err
+	}
 	return nil
 }
 
