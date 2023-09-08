@@ -1,6 +1,6 @@
 ---
 name: Documentation Request
-about: If you have something you think WeSQL-Scale could improve or add support for.
+about: Documentation requests for WeSQL-Scale.
 title: "[Documentation Request] "
 labels: 'documentation'
 assignees: ''

@@ -1,8 +1,8 @@
 ---
-name: Feature Request
-about: Feature requests for functionality that does not exist.
-title: "[Feature Request] "
-labels: 'feature'
+name: Enhancement Request
+about: Enhancement requests for functionality that already exists.
+title: "[Enhancement Request] "
+labels: 'enhancement'
 assignees: ''
 
 ---
