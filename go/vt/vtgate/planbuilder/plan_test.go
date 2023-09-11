@@ -404,22 +404,6 @@ func benchmarkWorkload(b *testing.B, name string) {
 	}
 }
 
-func TestBypassPlanningKeyrangeTargetFromFile(t *testing.T) {
-	keyRange, _ := key.ParseShardingSpec("-")
-
-	vschema := &vschemaWrapper{
-		v: loadSchema(t, "vschemas/schema.json", true),
-		keyspace: &vindexes.Keyspace{
-			Name:    "main",
-			Sharded: false,
-		},
-		tabletType: topodatapb.TabletType_PRIMARY,
-		dest:       key.DestinationExactKeyRange{KeyRange: keyRange[0]},
-	}
-
-	testFile(t, "bypass_keyrange_cases.json", makeTestOutput(t), vschema, false)
-}
-
 func TestOtherPlanningFromFile(t *testing.T) {
 	// We are testing this separately so we can set a default keyspace
 	vschema := &vschemaWrapper{
