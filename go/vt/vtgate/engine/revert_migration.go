@@ -66,6 +66,9 @@ func (v *RevertMigration) RouteType() string {
 
 // GetKeyspaceName implements the Primitive interface
 func (v *RevertMigration) GetKeyspaceName() string {
+	if v.Keyspace == nil {
+		return ""
+	}
 	return v.Keyspace.Name
 }
 

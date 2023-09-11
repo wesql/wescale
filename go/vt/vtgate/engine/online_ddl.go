@@ -68,6 +68,9 @@ func (v *OnlineDDL) RouteType() string {
 
 // GetKeyspaceName implements the Primitive interface
 func (v *OnlineDDL) GetKeyspaceName() string {
+	if v.Keyspace == nil {
+		return ""
+	}
 	return v.Keyspace.Name
 }
 
@@ -87,7 +90,8 @@ func (v *OnlineDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars ma
 		},
 		Rows: [][]sqltypes.Value{},
 	}
-	onlineDDLs, err := schema.NewOnlineDDLs(v.GetKeyspaceName(), v.SQL, v.DDL,
+	keyspace := v.GetKeyspaceName()
+	onlineDDLs, err := schema.NewOnlineDDLs(keyspace, v.SQL, v.DDL,
 		v.DDLStrategySetting, fmt.Sprintf("vtgate:%s", vcursor.Session().GetSessionUUID()), "",
 	)
 	if err != nil {

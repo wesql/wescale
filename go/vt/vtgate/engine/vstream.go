@@ -57,6 +57,9 @@ func (v *VStream) RouteType() string {
 
 // GetKeyspaceName implements the Primitive interface
 func (v *VStream) GetKeyspaceName() string {
+	if v.Keyspace == nil {
+		return ""
+	}
 	return v.Keyspace.Name
 }
 

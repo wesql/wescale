@@ -221,6 +221,9 @@ func (ins *Insert) RouteType() string {
 
 // GetKeyspaceName specifies the Keyspace that this primitive routes to.
 func (ins *Insert) GetKeyspaceName() string {
+	if ins.Keyspace == nil {
+		return ""
+	}
 	return ins.Keyspace.Name
 }
 
