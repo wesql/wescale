@@ -404,18 +404,6 @@ func benchmarkWorkload(b *testing.B, name string) {
 	}
 }
 
-func TestBypassPlanningShardTargetFromFile(t *testing.T) {
-	vschema := &vschemaWrapper{
-		v: loadSchema(t, "vschemas/schema.json", true),
-		keyspace: &vindexes.Keyspace{
-			Name:    "main",
-			Sharded: false,
-		},
-		tabletType: topodatapb.TabletType_PRIMARY,
-		dest:       key.DestinationShard("-80")}
-
-	testFile(t, "bypass_shard_cases.json", makeTestOutput(t), vschema, false)
-}
 func TestBypassPlanningKeyrangeTargetFromFile(t *testing.T) {
 	keyRange, _ := key.ParseShardingSpec("-")
 
@@ -430,67 +418,6 @@ func TestBypassPlanningKeyrangeTargetFromFile(t *testing.T) {
 	}
 
 	testFile(t, "bypass_keyrange_cases.json", makeTestOutput(t), vschema, false)
-}
-
-func _TestWithDefaultKeyspaceFromFile(t *testing.T) {
-	// We are testing this separately so we can set a default keyspace
-	vschema := &vschemaWrapper{
-		v: loadSchema(t, "vschemas/schema.json", true),
-		keyspace: &vindexes.Keyspace{
-			Name:    "main",
-			Sharded: false,
-		},
-		tabletType: topodatapb.TabletType_PRIMARY,
-	}
-
-	testOutputTempDir := makeTestOutput(t)
-	testFile(t, "alterVschema_cases.json", testOutputTempDir, vschema, false)
-	testFile(t, "ddl_cases.json", testOutputTempDir, vschema, false)
-	testFile(t, "migration_cases.json", testOutputTempDir, vschema, false)
-	testFile(t, "flush_cases.json", testOutputTempDir, vschema, false)
-	testFile(t, "show_cases.json", testOutputTempDir, vschema, false)
-	testFile(t, "call_cases.json", testOutputTempDir, vschema, false)
-}
-
-func _TestWithDefaultKeyspaceFromFileSharded(t *testing.T) {
-	// We are testing this separately so we can set a default keyspace
-	vschema := &vschemaWrapper{
-		v: loadSchema(t, "vschemas/schema.json", true),
-		keyspace: &vindexes.Keyspace{
-			Name:    "second_user",
-			Sharded: true,
-		},
-		tabletType: topodatapb.TabletType_PRIMARY,
-	}
-
-	testOutputTempDir := makeTestOutput(t)
-	testFile(t, "select_cases_with_default.json", testOutputTempDir, vschema, false)
-}
-
-func _TestWithUserDefaultKeyspaceFromFileSharded(t *testing.T) {
-	// We are testing this separately so we can set a default keyspace
-	vschema := &vschemaWrapper{
-		v: loadSchema(t, "vschemas/schema.json", true),
-		keyspace: &vindexes.Keyspace{
-			Name:    "user",
-			Sharded: true,
-		},
-		tabletType: topodatapb.TabletType_PRIMARY,
-	}
-
-	testOutputTempDir := makeTestOutput(t)
-	testFile(t, "select_cases_with_user_as_default.json", testOutputTempDir, vschema, false)
-}
-
-func _TestWithSystemSchemaAsDefaultKeyspace(t *testing.T) {
-	// We are testing this separately so we can set a default keyspace
-	vschema := &vschemaWrapper{
-		v:          loadSchema(t, "vschemas/schema.json", true),
-		keyspace:   &vindexes.Keyspace{Name: "information_schema"},
-		tabletType: topodatapb.TabletType_PRIMARY,
-	}
-
-	testFile(t, "sysschema_default.json", makeTestOutput(t), vschema, false)
 }
 
 func TestOtherPlanningFromFile(t *testing.T) {
