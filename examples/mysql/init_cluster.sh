@@ -70,5 +70,11 @@ if [ "$tracing" == "on" ]; then
   echo 'jaeger UI endpoint:
 http://127.0.0.1:16686/
 jaeger client default sampling rate is 0.8.
-if you want to modify it, add env var rate=0.${rate} to command and restart cluster.'
+if you want to modify it, add env var rate=${rate}(0.0~1) to command and restart cluster.
+
+if you want to demand tracing yourself, you should do following things:
+step1. `mysql -c` to connect to vtgate. (the '-c' option makes hints in sql being saved)
+step2. `select jaeger_span_context();`.
+step3. exec sql like  `/*VT_SPAN_CONTEXT=<base64 value>*/ SELECT * from product;` (use base64 value generated in step2)
+step4. use TRACEID value generated in step2 to search trace record.'
 fi
