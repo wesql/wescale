@@ -83,12 +83,13 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 
 		CreateTempTable: ddlStatement.IsTemporary(),
 	}
-	tc := &tableCollector{}
+	affectedTables := make([]string, 0)
 	for _, tbl := range ddlStatement.AffectedTables() {
-		tc.addASTTable(normalDDLPlan.Keyspace.Name, tbl)
+		fullTableName := sqlparser.String(tbl)
+		affectedTables = append(affectedTables, fullTableName)
 	}
 
-	return newPlanResult(eddl, tc.getTables()...), nil
+	return newPlanResult(eddl, affectedTables...), nil
 }
 
 func buildByPassDDLPlan(sql string, vschema plancontext.VSchema) (*planResult, error) {
