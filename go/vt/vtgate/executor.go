@@ -459,16 +459,13 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[sqlparser.FoundRowsName] = sqltypes.Int64BindVariable(int64(session.FoundRows))
 		case sqlparser.RowCountName:
 			bindVars[sqlparser.RowCountName] = sqltypes.Int64BindVariable(session.RowCount)
-<<<<<<< HEAD
 		case sqlparser.JaegerSpanContextName:
 			bindVars[sqlparser.JaegerSpanContextName] = sqltypes.StringBindVariable(NewJaegerSpanContext())
-=======
 		case sqlparser.CurrentUserName:
 			//bindVars[sqlparser.CurrentUserName] = sqltypes.Int64BindVariable(session.RowCount)
 			im := callerid.ImmediateCallerIDFromContext(ctx)
 			userAndHost := im.GetUsername() + "@" + im.GetHost()
 			bindVars[sqlparser.CurrentUserName] = sqltypes.StringBindVariable(userAndHost)
->>>>>>> b323c69bad (fix: rewrite current_user() (#250))
 		}
 	}
 
