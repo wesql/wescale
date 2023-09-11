@@ -127,28 +127,13 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 		if err != nil {
 			return nil, nil, err
 		}
-		// For ALTER TABLE and TRUNCATE TABLE, the table must already exist
-		//
-		// For CREATE TABLE, the table may (in the case of --declarative)
-		// already exist.
-		//
-		// We should find the target of the query from this tables location.
-		//_, _, err = findTableDestinationAndKeyspace(vschema, ddlStatement)
 	case *sqlparser.CreateView:
-		//_, _, err = buildCreateView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.AlterView:
-		//_, _, err = buildAlterView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.DropView:
-		//_, _, err = buildDropView(vschema, ddlStatement)
 	case *sqlparser.DropTable:
-		//_, _, err = buildDropTable(vschema, ddlStatement)
 	case *sqlparser.RenameTable:
-		//_, _, err = buildRenameTable(vschema, ddl)
 	default:
 		return nil, nil, vterrors.VT13001(fmt.Sprintf("unexpected DDL statement type: %T", ddlStatement))
-	}
-	if err != nil {
-		return nil, nil, err
 	}
 
 	query := sql
