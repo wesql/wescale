@@ -75,6 +75,9 @@ func (ddl *DDL) RouteType() string {
 
 // GetKeyspaceName implements the Primitive interface
 func (ddl *DDL) GetKeyspaceName() string {
+	if ddl.Keyspace == nil {
+		return ""
+	}
 	return ddl.Keyspace.Name
 }
 

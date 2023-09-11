@@ -61,6 +61,9 @@ func (v *AlterVSchema) RouteType() string {
 
 // GetKeyspaceName implements the Primitive interface
 func (v *AlterVSchema) GetKeyspaceName() string {
+	if v.Keyspace == nil {
+		return ""
+	}
 	return v.Keyspace.Name
 }
 

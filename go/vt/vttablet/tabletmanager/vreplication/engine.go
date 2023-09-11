@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -819,6 +824,7 @@ func (vre *Engine) readAllRows(ctx context.Context) ([]map[string]string, error)
 		return nil, err
 	}
 	defer dbClient.Close()
+	//todo onlineDDL: move SQL to schema.go. Should not specify the db name here, because we want to support all databases.
 	qr, err := dbClient.ExecuteFetch(fmt.Sprintf("select * from mysql.vreplication where db_name=%v", encodeString(vre.dbName)), maxRows)
 	if err != nil {
 		return nil, err

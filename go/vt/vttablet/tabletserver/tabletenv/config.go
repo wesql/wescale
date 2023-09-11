@@ -569,7 +569,7 @@ var defaultConfig = TabletConfig{
 
 	TransactionLimitConfig: defaultTransactionLimitConfig(),
 
-	EnableOnlineDDL: false,
+	EnableOnlineDDL: true,
 	EnableTableGC:   false,
 
 	RowStreamer: RowStreamerConfig{

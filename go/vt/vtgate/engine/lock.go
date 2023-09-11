@@ -70,6 +70,9 @@ func (l *Lock) RouteType() string {
 
 // GetKeyspaceName is part of the Primitive interface
 func (l *Lock) GetKeyspaceName() string {
+	if l.Keyspace == nil {
+		return ""
+	}
 	return l.Keyspace.Name
 }
 

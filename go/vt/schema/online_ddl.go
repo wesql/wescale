@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -146,11 +151,16 @@ func onlineDDLStatementSanity(sql string, ddlStmt sqlparser.DDLStatement, ddlStr
 
 // NewOnlineDDLs takes a single DDL statement, normalizes it (potentially break down into multiple statements), and generates one or more OnlineDDL instances, one for each normalized statement
 func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, ddlStrategySetting *DDLStrategySetting, migrationContext string, providedUUID string) (onlineDDLs [](*OnlineDDL), err error) {
-	appendOnlineDDL := func(tableName string, ddlStmt sqlparser.DDLStatement) error {
+	appendOnlineDDL := func(ddlStmt sqlparser.DDLStatement) error {
 		if err := onlineDDLStatementSanity(sql, ddlStmt, ddlStrategySetting); err != nil {
 			return err
 		}
-		onlineDDL, err := NewOnlineDDL(keyspace, tableName, sqlparser.String(ddlStmt), ddlStrategySetting, migrationContext, providedUUID)
+		schemaName := keyspace
+		if ddlStmt.GetTable().Qualifier.String() != "" {
+			schemaName = ddlStmt.GetTable().Qualifier.String()
+		}
+		tableName := ddlStmt.GetTable().Name.String()
+		onlineDDL, err := NewOnlineDDL(schemaName, tableName, sqlparser.String(ddlStmt), ddlStrategySetting, migrationContext, providedUUID)
 		if err != nil {
 			return err
 		}
@@ -162,14 +172,14 @@ func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, 
 	}
 	switch ddlStmt := ddlStmt.(type) {
 	case *sqlparser.CreateTable, *sqlparser.AlterTable, *sqlparser.CreateView, *sqlparser.AlterView:
-		if err := appendOnlineDDL(ddlStmt.GetTable().Name.String(), ddlStmt); err != nil {
+		if err := appendOnlineDDL(ddlStmt); err != nil {
 			return nil, err
 		}
 	case *sqlparser.DropTable, *sqlparser.DropView:
 		tables := ddlStmt.GetFromTables()
 		for _, table := range tables {
 			ddlStmt.SetFromTables([]sqlparser.TableName{table})
-			if err := appendOnlineDDL(table.Name.String(), ddlStmt); err != nil {
+			if err := appendOnlineDDL(ddlStmt); err != nil {
 				return nil, err
 			}
 		}
