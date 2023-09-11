@@ -8,8 +8,6 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/schema"
-
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -60,12 +58,6 @@ func (fk *fkContraint) FkWalk(node sqlparser.SQLNode) (kontinue bool, err error)
 // This is why we return a compound primitive (DDL) which contains fully populated primitives (Send & OnlineDDL),
 // and which chooses which of the two to invoke at runtime.
 func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
-	if vschema.Destination() != nil {
-		if !enableDirectDDL {
-			return nil, schema.ErrDirectDDLDisabled
-		}
-		return buildByPassDDLPlan(sql, vschema)
-	}
 	normalDDLPlan, onlineDDLPlan, err := buildDDLPlans(sql, ddlStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	if err != nil {
 		return nil, err
@@ -100,24 +92,33 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 }
 
 func buildByPassDDLPlan(sql string, vschema plancontext.VSchema) (*planResult, error) {
+	destination := vschema.Destination()
 	keyspace, err := vschema.DefaultKeyspace()
-	// If no keyspace is specified in this SQL or Session, the SQL can be processed directly by vttablet,
-	// because vttablet can now handle SQL without any database specified.
 	if err != nil && err.Error() != vterrors.VT09005().Error() {
 		return nil, err
 	}
-	send := &engine.Send{
-		Keyspace:          keyspace,
-		TargetDestination: vschema.Destination(),
-		Query:             sql,
-	}
+	send := buildNormalDDLPlan(keyspace, destination, sql)
 	return newPlanResult(send), nil
 }
 
+func buildNormalDDLPlan(keyspace *vindexes.Keyspace, destination key.Destination, sql string) *engine.Send {
+	send := &engine.Send{
+		Keyspace:          keyspace,
+		TargetDestination: destination,
+		Query:             sql,
+	}
+	return send
+}
+
 func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*engine.Send, *engine.OnlineDDL, error) {
-	var destination key.Destination
-	var keyspace *vindexes.Keyspace
-	var err error
+	destination := vschema.Destination()
+	if destination == nil {
+		destination = key.DestinationAllShards{}
+	}
+	keyspace, err := vschema.DefaultKeyspace()
+	if err != nil && err.Error() != vterrors.VT09005().Error() {
+		return nil, nil, err
+	}
 
 	switch ddl := ddlStatement.(type) {
 	case *sqlparser.AlterTable, *sqlparser.CreateTable, *sqlparser.TruncateTable:
@@ -131,27 +132,22 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 		// already exist.
 		//
 		// We should find the target of the query from this tables location.
-		destination, keyspace, err = findTableDestinationAndKeyspace(vschema, ddlStatement)
+		_, _, err = findTableDestinationAndKeyspace(vschema, ddlStatement)
 	case *sqlparser.CreateView:
-		destination, keyspace, err = buildCreateView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
+		_, _, err = buildCreateView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.AlterView:
-		destination, keyspace, err = buildAlterView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
+		_, _, err = buildAlterView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.DropView:
-		destination, keyspace, err = buildDropView(vschema, ddlStatement)
+		_, _, err = buildDropView(vschema, ddlStatement)
 	case *sqlparser.DropTable:
-		destination, keyspace, err = buildDropTable(vschema, ddlStatement)
+		_, _, err = buildDropTable(vschema, ddlStatement)
 	case *sqlparser.RenameTable:
-		destination, keyspace, err = buildRenameTable(vschema, ddl)
+		_, _, err = buildRenameTable(vschema, ddl)
 	default:
 		return nil, nil, vterrors.VT13001(fmt.Sprintf("unexpected DDL statement type: %T", ddlStatement))
 	}
-
 	if err != nil {
 		return nil, nil, err
-	}
-
-	if destination == nil {
-		destination = key.DestinationAllShards{}
 	}
 
 	query := sql
@@ -160,16 +156,14 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 		query = sqlparser.String(ddlStatement)
 	}
 
-	return &engine.Send{
-			Keyspace:          keyspace,
-			TargetDestination: destination,
-			Query:             query,
-		}, &engine.OnlineDDL{
-			Keyspace:          keyspace,
-			TargetDestination: destination,
-			DDL:               ddlStatement,
-			SQL:               query,
-		}, nil
+	normalDDL := buildNormalDDLPlan(keyspace, destination, sql)
+	onlineDDL := &engine.OnlineDDL{
+		Keyspace:          keyspace,
+		TargetDestination: destination,
+		DDL:               ddlStatement,
+		SQL:               query,
+	}
+	return normalDDL, onlineDDL, nil
 }
 
 func checkFKError(vschema plancontext.VSchema, ddlStatement sqlparser.DDLStatement) error {
