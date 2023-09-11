@@ -120,7 +120,7 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 		return nil, nil, err
 	}
 
-	switch ddl := ddlStatement.(type) {
+	switch ddlStatement.(type) {
 	case *sqlparser.AlterTable, *sqlparser.CreateTable, *sqlparser.TruncateTable:
 		err = checkFKError(vschema, ddlStatement)
 		if err != nil {
@@ -132,17 +132,17 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 		// already exist.
 		//
 		// We should find the target of the query from this tables location.
-		_, _, err = findTableDestinationAndKeyspace(vschema, ddlStatement)
+		//_, _, err = findTableDestinationAndKeyspace(vschema, ddlStatement)
 	case *sqlparser.CreateView:
-		_, _, err = buildCreateView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
+		//_, _, err = buildCreateView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.AlterView:
-		_, _, err = buildAlterView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
+		//_, _, err = buildAlterView(vschema, ddl, reservedVars, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.DropView:
-		_, _, err = buildDropView(vschema, ddlStatement)
+		//_, _, err = buildDropView(vschema, ddlStatement)
 	case *sqlparser.DropTable:
-		_, _, err = buildDropTable(vschema, ddlStatement)
+		//_, _, err = buildDropTable(vschema, ddlStatement)
 	case *sqlparser.RenameTable:
-		_, _, err = buildRenameTable(vschema, ddl)
+		//_, _, err = buildRenameTable(vschema, ddl)
 	default:
 		return nil, nil, vterrors.VT13001(fmt.Sprintf("unexpected DDL statement type: %T", ddlStatement))
 	}
@@ -266,13 +266,7 @@ func buildCreateView(vschema plancontext.VSchema, ddl *sqlparser.CreateView, res
 		}
 		return destination, keyspace, nil
 	}
-	isRoutePlan, opCode := tryToGetRoutePlan(selectPlan.primitive)
-	if !isRoutePlan {
-		return nil, nil, vterrors.VT12001(ViewComplex)
-	}
-	if opCode != engine.Unsharded && opCode != engine.EqualUnique && opCode != engine.Scatter {
-		return nil, nil, vterrors.VT12001(ViewComplex)
-	}
+	fmt.Println(sqlparser.String(ddl))
 	_ = sqlparser.SafeRewrite(ddl.Select, nil, func(cursor *sqlparser.Cursor) bool {
 		switch tableName := cursor.Node().(type) {
 		case sqlparser.TableName:
@@ -282,6 +276,7 @@ func buildCreateView(vschema plancontext.VSchema, ddl *sqlparser.CreateView, res
 		}
 		return true
 	})
+	fmt.Println(sqlparser.String(ddl))
 	return destination, keyspace, nil
 }
 
