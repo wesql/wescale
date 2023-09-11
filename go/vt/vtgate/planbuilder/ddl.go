@@ -252,7 +252,6 @@ func buildCreateView(vschema plancontext.VSchema, ddl *sqlparser.CreateView, res
 		}
 		return destination, keyspace, nil
 	}
-	fmt.Println(sqlparser.String(ddl))
 	_ = sqlparser.SafeRewrite(ddl.Select, nil, func(cursor *sqlparser.Cursor) bool {
 		switch tableName := cursor.Node().(type) {
 		case sqlparser.TableName:
@@ -262,7 +261,6 @@ func buildCreateView(vschema plancontext.VSchema, ddl *sqlparser.CreateView, res
 		}
 		return true
 	})
-	fmt.Println(sqlparser.String(ddl))
 	return destination, keyspace, nil
 }
 
