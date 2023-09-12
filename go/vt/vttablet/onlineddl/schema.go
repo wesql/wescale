@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -404,16 +409,6 @@ const (
 			migration_status='ready'
 		ORDER BY id
 	`
-	sqlSelectPTOSCMigrationTriggers = `SELECT
-			TRIGGER_SCHEMA as trigger_schema,
-			TRIGGER_NAME as trigger_name
-		FROM INFORMATION_SCHEMA.TRIGGERS
-		WHERE
-			EVENT_OBJECT_SCHEMA=%a
-			AND EVENT_OBJECT_TABLE=%a
-			AND ACTION_TIMING='AFTER'
-			AND LEFT(TRIGGER_NAME, 7)='pt_osc_'
-		`
 	sqlSelectColumnTypes = `
 		select
 				*,

@@ -88,7 +88,6 @@ var (
 		"vstream_stoponreshard_true",
 		"vstream_stoponreshard_false",
 		"vstream_with_keyspaces_to_watch",
-		"onlineddl_ghost",
 		"onlineddl_vrepl",
 		"onlineddl_vrepl_stress",
 		"onlineddl_vrepl_stress_suite",
