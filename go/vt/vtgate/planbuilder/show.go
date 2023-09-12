@@ -59,6 +59,9 @@ func buildShowPlan(sql string, stmt *sqlparser.Show, _ *sqlparser.ReservedVars, 
 		switch show := stmt.Internal.(type) {
 		case *sqlparser.ShowBasic:
 			prim, err = buildShowVitessPlan(show, vschema)
+			if err != nil {
+				return nil, err
+			}
 			if prim == nil {
 				return buildByPassDDLPlan(sql, vschema)
 			}
