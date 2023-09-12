@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,13 +32,9 @@ func TestIsDirect(t *testing.T) {
 	assert.True(t, DDLStrategyDirect.IsDirect())
 	assert.False(t, DDLStrategyVitess.IsDirect())
 	assert.False(t, DDLStrategyOnline.IsDirect())
-	assert.False(t, DDLStrategyGhost.IsDirect())
-	assert.False(t, DDLStrategyPTOSC.IsDirect())
 	assert.True(t, DDLStrategy("").IsDirect())
 	assert.False(t, DDLStrategy("vitess").IsDirect())
 	assert.False(t, DDLStrategy("online").IsDirect())
-	assert.False(t, DDLStrategy("gh-ost").IsDirect())
-	assert.False(t, DDLStrategy("pt-osc").IsDirect())
 	assert.False(t, DDLStrategy("mysql").IsDirect())
 	assert.True(t, DDLStrategy("something").IsDirect())
 }
@@ -68,47 +69,11 @@ func TestParseDDLStrategy(t *testing.T) {
 			strategy:         DDLStrategyOnline,
 		},
 		{
-			strategyVariable: "gh-ost",
-			strategy:         DDLStrategyGhost,
-		},
-		{
-			strategyVariable: "pt-osc",
-			strategy:         DDLStrategyPTOSC,
-		},
-		{
 			strategyVariable: "mysql",
 			strategy:         DDLStrategyMySQL,
 		},
 		{
 			strategy: DDLStrategyDirect,
-		},
-		{
-			strategyVariable: "gh-ost --max-load=Threads_running=100 --allow-master",
-			strategy:         DDLStrategyGhost,
-			// These are gh-ost options. Nothing we can do until that changes upstream
-			options:        "--max-load=Threads_running=100 --allow-master",
-			runtimeOptions: "--max-load=Threads_running=100 --allow-master",
-		},
-		{
-			strategyVariable: "gh-ost --max-load=Threads_running=100 -declarative",
-			strategy:         DDLStrategyGhost,
-			options:          "--max-load=Threads_running=100 -declarative",
-			runtimeOptions:   "--max-load=Threads_running=100",
-			isDeclarative:    true,
-		},
-		{
-			strategyVariable: "gh-ost --declarative --max-load=Threads_running=100",
-			strategy:         DDLStrategyGhost,
-			options:          "--declarative --max-load=Threads_running=100",
-			runtimeOptions:   "--max-load=Threads_running=100",
-			isDeclarative:    true,
-		},
-		{
-			strategyVariable: "pt-osc -singleton",
-			strategy:         DDLStrategyPTOSC,
-			options:          "-singleton",
-			runtimeOptions:   "",
-			isSingleton:      true,
 		},
 		{
 			strategyVariable: "online -postpone-launch",

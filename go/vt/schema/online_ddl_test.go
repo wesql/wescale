@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -368,38 +373,6 @@ func TestNewOnlineDDLsForeignKeys(t *testing.T) {
 					}
 				})
 			}
-		})
-	}
-}
-
-func TestOnlineDDLFromCommentedStatement(t *testing.T) {
-	queries := []string{
-		`create table t (id int primary key)`,
-		`alter table t drop primary key`,
-		`drop table if exists t`,
-		`create view v as select * from t`,
-		`drop view v`,
-		`alter view v as select * from t`,
-		`revert vitess_migration '4e5dcf80_354b_11eb_82cd_f875a4d24e90'`,
-	}
-	strategySetting := NewDDLStrategySetting(DDLStrategyGhost, `-singleton -declarative --max-load="Threads_running=5"`)
-	migrationContext := "354b-11eb-82cd-f875a4d24e90"
-	for _, query := range queries {
-		t.Run(query, func(t *testing.T) {
-			o1, err := NewOnlineDDL("ks", "t", query, strategySetting, migrationContext, "")
-			require.NoError(t, err)
-
-			stmt, err := sqlparser.Parse(o1.SQL)
-			require.NoError(t, err)
-
-			o2, err := OnlineDDLFromCommentedStatement(stmt)
-			require.NoError(t, err)
-			assert.True(t, IsOnlineDDLUUID(o2.UUID))
-			assert.Equal(t, o1.UUID, o2.UUID)
-			assert.Equal(t, migrationContext, o2.MigrationContext)
-			assert.Equal(t, "t", o2.Table)
-			assert.Equal(t, strategySetting.Strategy, o2.Strategy)
-			assert.Equal(t, strategySetting.Options, o2.Options)
 		})
 	}
 }
