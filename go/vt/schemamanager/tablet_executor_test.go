@@ -256,16 +256,6 @@ func TestIsOnlineSchemaDDL(t *testing.T) {
 			ddlStrategy: "online",
 			isOnlineDDL: false,
 		},
-		{
-			query:       "TRUNCATE TABLE t",
-			ddlStrategy: "gh-ost",
-			isOnlineDDL: false,
-		},
-		{
-			query:       "RENAME TABLE t to t2",
-			ddlStrategy: "gh-ost",
-			isOnlineDDL: false,
-		},
 	}
 
 	for _, ts := range tt {
