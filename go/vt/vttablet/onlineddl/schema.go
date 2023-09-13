@@ -131,11 +131,6 @@ const (
 		WHERE
 			migration_uuid=%a
 	`
-	sqlUpdateMigrationLogPath = `UPDATE mysql.schema_migrations
-			SET log_path=%a, log_file=%a
-		WHERE
-			migration_uuid=%a
-	`
 	sqlUpdateArtifacts = `UPDATE mysql.schema_migrations
 			SET artifacts=concat(%a, ',', artifacts), cleanup_timestamp=NULL
 		WHERE

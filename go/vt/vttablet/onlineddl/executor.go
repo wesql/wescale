@@ -3359,21 +3359,6 @@ func (e *Executor) updateMigrationTimestamp(ctx context.Context, timestampColumn
 	return err
 }
 
-func (e *Executor) updateMigrationLogPath(ctx context.Context, uuid string, hostname, logPath string) error {
-	logFile := path.Join(logPath, migrationLogFileName)
-	hostLogPath := fmt.Sprintf("%s:%s", hostname, logPath)
-	query, err := sqlparser.ParseAndBind(sqlUpdateMigrationLogPath,
-		sqltypes.StringBindVariable(hostLogPath),
-		sqltypes.StringBindVariable(logFile),
-		sqltypes.StringBindVariable(uuid),
-	)
-	if err != nil {
-		return err
-	}
-	_, err = e.execQuery(ctx, query)
-	return err
-}
-
 func (e *Executor) updateArtifacts(ctx context.Context, uuid string, artifacts ...string) error {
 	bindArtifacts := strings.Join(artifacts, ",")
 	query, err := sqlparser.ParseAndBind(sqlUpdateArtifacts,
