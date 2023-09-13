@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,10 +62,13 @@ func TestNextTableToPurge(t *testing.T) {
 	}
 	for _, ts := range tt {
 		collector := &TableGC{
-			purgingTables: make(map[string]bool),
+			purgingTables: make(map[fullTableName]bool),
 		}
 		for _, table := range ts.tables {
-			collector.purgingTables[table] = true
+			t := fullTableName{
+				tableName: table,
+			}
+			collector.purgingTables[t] = true
 		}
 		next, ok := collector.nextTableToPurge()
 		assert.Equal(t, ts.ok, ok)

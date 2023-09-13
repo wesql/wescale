@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -282,7 +287,7 @@ func TestPopulateTable(t *testing.T) {
 
 func TestHold(t *testing.T) {
 	populateTable(t)
-	query, tableName, err := schema.GenerateRenameStatement("t1", schema.HoldTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
+	query, tableName, err := schema.GenerateRenameStatement(keyspaceName, "t1", schema.HoldTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
 	assert.NoError(t, err)
 
 	_, err = primaryTablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
@@ -311,7 +316,7 @@ func TestHold(t *testing.T) {
 
 func TestEvac(t *testing.T) {
 	populateTable(t)
-	query, tableName, err := schema.GenerateRenameStatement("t1", schema.EvacTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
+	query, tableName, err := schema.GenerateRenameStatement(keyspaceName, "t1", schema.EvacTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
 	assert.NoError(t, err)
 
 	_, err = primaryTablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
@@ -340,7 +345,7 @@ func TestEvac(t *testing.T) {
 
 func TestDrop(t *testing.T) {
 	populateTable(t)
-	query, tableName, err := schema.GenerateRenameStatement("t1", schema.DropTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
+	query, tableName, err := schema.GenerateRenameStatement(keyspaceName, "t1", schema.DropTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
 	assert.NoError(t, err)
 
 	_, err = primaryTablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
@@ -356,7 +361,7 @@ func TestDrop(t *testing.T) {
 
 func TestPurge(t *testing.T) {
 	populateTable(t)
-	query, tableName, err := schema.GenerateRenameStatement("t1", schema.PurgeTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
+	query, tableName, err := schema.GenerateRenameStatement(keyspaceName, "t1", schema.PurgeTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
 	require.NoError(t, err)
 
 	_, err = primaryTablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
@@ -378,7 +383,7 @@ func TestPurge(t *testing.T) {
 
 func TestPurgeView(t *testing.T) {
 	populateTable(t)
-	query, tableName, err := schema.GenerateRenameStatement("v1", schema.PurgeTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
+	query, tableName, err := schema.GenerateRenameStatement(keyspaceName, "v1", schema.PurgeTableGCState, time.Now().UTC().Add(tableTransitionExpiration))
 	require.NoError(t, err)
 
 	_, err = primaryTablet.VttabletProcess.QueryTablet(query, keyspaceName, true)

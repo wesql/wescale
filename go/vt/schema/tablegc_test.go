@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,7 +165,7 @@ func TestGenerateRenameStatementWithUUID(t *testing.T) {
 	countIterations := 5
 	toTableNames := map[string]bool{}
 	for i := 0; i < countIterations; i++ {
-		_, toTableName, err := GenerateRenameStatementWithUUID(tableName, PurgeTableGCState, OnlineDDLToGCUUID(uuid), time.Now().Add(time.Duration(i)*time.Second).UTC())
+		_, toTableName, err := GenerateRenameStatementWithUUID("test", tableName, PurgeTableGCState, OnlineDDLToGCUUID(uuid), time.Now().Add(time.Duration(i)*time.Second).UTC())
 		require.NoError(t, err)
 		toTableNames[toTableName] = true
 	}

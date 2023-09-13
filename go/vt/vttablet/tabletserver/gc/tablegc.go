@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,22 +73,35 @@ func registerGCFlags(fs *pflag.FlagSet) {
 }
 
 var (
-	sqlPurgeTable       = `delete from %a limit 50`
-	sqlShowVtTables     = `show full tables like '\_vt\_%'`
-	sqlDropTable        = "drop table if exists `%a`"
+	sqlPurgeTable       = "delete from `%a`.`%a` limit 50"
+	sqlSelectVtTables   = `select table_schema, table_name, table_type from information_schema.tables where table_name like '\_vt\_%'`
+	sqlDropTable        = "drop table if exists `%a`.`%a`"
 	purgeReentranceFlag int64
 )
 
 // transitionRequest encapsulates a request to transition a table to next state
 type transitionRequest struct {
-	fromTableName string
-	isBaseTable   bool
-	toGCState     schema.TableGCState
-	uuid          string
+	fromFullTableName fullTableName
+	isBaseTable       bool
+	toGCState         schema.TableGCState
+	uuid              string
 }
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+}
+
+type fullTableName struct {
+	tableSchema string
+	tableName   string
+}
+
+func (f fullTableName) String() string {
+	return fmt.Sprintf("%s.%s", f.tableSchema, f.tableName)
+}
+
+func (f fullTableName) IsEmpty() bool {
+	return f.tableSchema == "" && f.tableName == ""
 }
 
 // TableGC is the main entity in the table garbage collection mechanism.
@@ -95,10 +113,6 @@ func init() {
 // - finally, it issues a DROP TABLE
 // The sequence of steps is controlled by the command line variable --table_gc_lifecycle
 type TableGC struct {
-	keyspace string
-	shard    string
-	dbName   string
-
 	isOpen          int64
 	cancelOperation context.CancelFunc
 
@@ -111,7 +125,7 @@ type TableGC struct {
 	stateMutex sync.Mutex
 	purgeMutex sync.Mutex
 
-	purgingTables map[string]bool
+	purgingTables map[fullTableName]bool
 	// lifecycleStates indicates what states a GC table goes through. The user can set
 	// this with --table_gc_lifecycle, such that some states can be skipped.
 	lifecycleStates map[schema.TableGCState]bool
@@ -141,18 +155,10 @@ func NewTableGC(env tabletenv.Env, ts *topo.Server, lagThrottler *throttle.Throt
 			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 		}),
 
-		purgingTables: map[string]bool{},
+		purgingTables: map[fullTableName]bool{},
 	}
 
 	return collector
-}
-
-// InitDBConfig initializes keyspace and shard
-func (collector *TableGC) InitDBConfig(keyspace, shard, dbName string) {
-	log.Info("TableGC: init")
-	collector.keyspace = keyspace
-	collector.shard = shard
-	collector.dbName = dbName
 }
 
 // Open opens database pool and initializes the schema
@@ -173,10 +179,10 @@ func (collector *TableGC) Open() (err error) {
 	}
 
 	log.Info("TableGC: opening")
-	collector.pool.Open(collector.env.Config().DB.AllPrivsWithDB(), collector.env.Config().DB.DbaWithDB(), collector.env.Config().DB.AppDebugWithDB())
+	collector.pool.Open(collector.env.Config().DB.AllPrivsConnector(), collector.env.Config().DB.DbaConnector(), collector.env.Config().DB.AppDebugConnector())
 	atomic.StoreInt64(&collector.isOpen, 1)
 
-	conn, err := dbconnpool.NewDBConnection(context.Background(), collector.env.Config().DB.AllPrivsWithDB())
+	conn, err := dbconnpool.NewDBConnection(context.Background(), collector.env.Config().DB.AllPrivsConnector())
 	if err != nil {
 		return err
 	}
@@ -226,7 +232,7 @@ func (collector *TableGC) Close() {
 // operate is the main entry point for the table garbage collector operation and logic.
 func (collector *TableGC) operate(ctx context.Context) {
 
-	dropTablesChan := make(chan string)
+	dropTablesChan := make(chan fullTableName)
 	purgeRequestsChan := make(chan bool)
 	transitionRequestsChan := make(chan *transitionRequest)
 
@@ -265,12 +271,12 @@ func (collector *TableGC) operate(ctx context.Context) {
 			{
 				log.Info("TableGC: purgeRequestsChan")
 				go func() {
-					tableName, err := collector.purge(ctx)
+					fullTblName, err := collector.purge(ctx)
 					if err != nil {
-						log.Errorf("TableGC: error purging table %s: %+v", tableName, err)
+						log.Errorf("TableGC: error purging table %s: %+v", fullTblName.String(), err)
 						return
 					}
-					if tableName == "" {
+					if fullTblName.IsEmpty() {
 						// No table purged (or at least not to completion)
 						return
 					}
@@ -280,9 +286,9 @@ func (collector *TableGC) operate(ctx context.Context) {
 					// The table is now empty!
 					// we happen to know at this time that the table is in PURGE state,
 					// I mean, that's why we're here. We can hard code that.
-					_, _, uuid, _, _ := schema.AnalyzeGCTableName(tableName)
-					collector.submitTransitionRequest(ctx, transitionRequestsChan, schema.PurgeTableGCState, tableName, true, uuid)
-					collector.removePurgingTable(tableName)
+					_, _, uuid, _, _ := schema.AnalyzeGCTableName(fullTblName.tableName)
+					collector.submitTransitionRequest(ctx, transitionRequestsChan, schema.PurgeTableGCState, fullTblName, true, uuid)
+					collector.removePurgingTable(fullTblName)
 					// finished with this table. Maybe more tables are looking to be purged.
 					// Trigger another call to purge(), instead of waiting a full purgeReentranceInterval cycle
 
@@ -301,7 +307,7 @@ func (collector *TableGC) operate(ctx context.Context) {
 			{
 				log.Info("TableGC: transitionRequestsChan")
 				if err := collector.transitionTable(ctx, transition); err != nil {
-					log.Errorf("TableGC: error transitioning table %s to %+v: %+v", transition.fromTableName, transition.toGCState, err)
+					log.Errorf("TableGC: error transitioning table %s to %+v: %+v", transition.fromFullTableName.String(), transition.toGCState, err)
 				}
 			}
 		}
@@ -332,21 +338,21 @@ func (collector *TableGC) nextState(fromState schema.TableGCState) *schema.Table
 
 // generateTansition creates a transition request, based on current state and taking configured lifecycleStates
 // into consideration (we may skip some states)
-func (collector *TableGC) generateTansition(ctx context.Context, fromState schema.TableGCState, fromTableName string, isBaseTable bool, uuid string) *transitionRequest {
+func (collector *TableGC) generateTansition(ctx context.Context, fromState schema.TableGCState, fromFullTableName fullTableName, isBaseTable bool, uuid string) *transitionRequest {
 	nextState := collector.nextState(fromState)
 	if nextState == nil {
 		return nil
 	}
 	return &transitionRequest{
-		fromTableName: fromTableName,
-		isBaseTable:   isBaseTable,
-		toGCState:     *nextState,
-		uuid:          uuid,
+		fromFullTableName: fromFullTableName,
+		isBaseTable:       isBaseTable,
+		toGCState:         *nextState,
+		uuid:              uuid,
 	}
 }
 
 // submitTransitionRequest generates and queues a transition request for a given table
-func (collector *TableGC) submitTransitionRequest(ctx context.Context, transitionRequestsChan chan<- *transitionRequest, fromState schema.TableGCState, fromTableName string, isBaseTable bool, uuid string) {
+func (collector *TableGC) submitTransitionRequest(ctx context.Context, transitionRequestsChan chan<- *transitionRequest, fromState schema.TableGCState, fromTableName fullTableName, isBaseTable bool, uuid string) {
 	log.Infof("TableGC: submitting transition request for %s", fromTableName)
 	go func() {
 		transition := collector.generateTansition(ctx, fromState, fromTableName, isBaseTable, uuid)
@@ -381,7 +387,7 @@ func (collector *TableGC) shouldTransitionTable(tableName string) (shouldTransit
 // checkTables looks for potential GC tables in the MySQL server+schema.
 // It lists _vt_% tables, then filters through those which are due-date.
 // It then applies the necessary operation per table.
-func (collector *TableGC) checkTables(ctx context.Context, dropTablesChan chan<- string, transitionRequestsChan chan<- *transitionRequest) error {
+func (collector *TableGC) checkTables(ctx context.Context, dropTablesChan chan<- fullTableName, transitionRequestsChan chan<- *transitionRequest) error {
 	conn, err := collector.pool.Get(ctx, nil)
 	if err != nil {
 		return err
@@ -390,17 +396,20 @@ func (collector *TableGC) checkTables(ctx context.Context, dropTablesChan chan<-
 
 	log.Infof("TableGC: check tables")
 
-	res, err := conn.Exec(ctx, sqlShowVtTables, math.MaxInt32, true)
+	res, err := conn.Exec(ctx, sqlSelectVtTables, math.MaxInt32, true)
 	if err != nil {
 		return err
 	}
 
 	for _, row := range res.Rows {
-		tableName := row[0].ToString()
-		tableType := row[1].ToString()
+		fullTblName := fullTableName{
+			tableSchema: row[0].ToString(),
+			tableName:   row[1].ToString(),
+		}
+		tableType := row[2].ToString()
 		isBaseTable := (tableType == "BASE TABLE")
 
-		shouldTransition, state, uuid, err := collector.shouldTransitionTable(tableName)
+		shouldTransition, state, uuid, err := collector.shouldTransitionTable(fullTblName.tableName)
 
 		if err != nil {
 			log.Errorf("TableGC: error while checking tables: %+v", err)
@@ -411,28 +420,28 @@ func (collector *TableGC) checkTables(ctx context.Context, dropTablesChan chan<-
 			continue
 		}
 
-		log.Infof("TableGC: will operate on table %s", tableName)
+		log.Infof("TableGC: will operate on table %s", fullTblName.String())
 
 		if state == schema.HoldTableGCState {
 			// Hold period expired. Moving to next state
-			collector.submitTransitionRequest(ctx, transitionRequestsChan, state, tableName, isBaseTable, uuid)
+			collector.submitTransitionRequest(ctx, transitionRequestsChan, state, fullTblName, isBaseTable, uuid)
 		}
 		if state == schema.PurgeTableGCState {
 			if isBaseTable {
 				// This table needs to be purged. Make sure to enlist it (we may already have)
-				collector.addPurgingTable(tableName)
+				collector.addPurgingTable(fullTblName)
 			} else {
 				// This is a view. We don't need to delete rows from views. Just transition into next phase
-				collector.submitTransitionRequest(ctx, transitionRequestsChan, state, tableName, isBaseTable, uuid)
+				collector.submitTransitionRequest(ctx, transitionRequestsChan, state, fullTblName, isBaseTable, uuid)
 			}
 		}
 		if state == schema.EvacTableGCState {
 			// This table was in EVAC state for the required period. It will transition into DROP state
-			collector.submitTransitionRequest(ctx, transitionRequestsChan, state, tableName, isBaseTable, uuid)
+			collector.submitTransitionRequest(ctx, transitionRequestsChan, state, fullTblName, isBaseTable, uuid)
 		}
 		if state == schema.DropTableGCState {
 			// This table needs to be dropped immediately.
-			go func() { dropTablesChan <- tableName }()
+			go func() { dropTablesChan <- fullTblName }()
 		}
 	}
 
@@ -442,23 +451,23 @@ func (collector *TableGC) checkTables(ctx context.Context, dropTablesChan chan<-
 // purge continuously purges rows from a table.
 // This function is non-reentrant: there's only one instance of this function running at any given time.
 // A timer keeps calling this function, so if it bails out (e.g. on error) it will later resume work
-func (collector *TableGC) purge(ctx context.Context) (tableName string, err error) {
+func (collector *TableGC) purge(ctx context.Context) (fullTblName fullTableName, err error) {
 	if atomic.CompareAndSwapInt64(&purgeReentranceFlag, 0, 1) {
 		defer atomic.StoreInt64(&purgeReentranceFlag, 0)
 	} else {
 		// An instance of this function is already running
-		return "", nil
+		return fullTableName{}, nil
 	}
 
-	tableName, found := collector.nextTableToPurge()
+	fullTblName, found := collector.nextTableToPurge()
 	if !found {
 		// Nothing do do here...
-		return "", nil
+		return fullTableName{}, nil
 	}
 
-	conn, err := dbconnpool.NewDBConnection(ctx, collector.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, collector.env.Config().DB.DbaConnector())
 	if err != nil {
-		return tableName, err
+		return fullTblName, err
 	}
 	defer conn.Close()
 
@@ -490,7 +499,7 @@ func (collector *TableGC) purge(ctx context.Context) (tableName string, err erro
 	}
 	sqlLogBinDisabled, err := disableLogBin()
 	if err != nil {
-		return tableName, err
+		return fullTblName, err
 	}
 
 	defer func() {
@@ -502,11 +511,11 @@ func (collector *TableGC) purge(ctx context.Context) (tableName string, err erro
 		}
 	}()
 
-	log.Infof("TableGC: purge begin for %s", tableName)
+	log.Infof("TableGC: purge begin for %s", fullTblName)
 	for {
 		if ctx.Err() != nil {
 			// cancelled
-			return tableName, err
+			return fullTblName, err
 		}
 		if !collector.throttlerClient.ThrottleCheckOKOrWait(ctx) {
 			continue
@@ -514,35 +523,35 @@ func (collector *TableGC) purge(ctx context.Context) (tableName string, err erro
 		// OK, we're clear to go!
 
 		// Issue a DELETE
-		parsed := sqlparser.BuildParsedQuery(sqlPurgeTable, tableName)
+		parsed := sqlparser.BuildParsedQuery(sqlPurgeTable, fullTblName.tableSchema, fullTblName.tableName)
 		res, err := conn.ExecuteFetch(parsed.Query, 1, true)
 		if err != nil {
-			return tableName, err
+			return fullTblName, err
 		}
 		if res.RowsAffected == 0 {
-			log.Infof("TableGC: purge complete for %s", tableName)
-			return tableName, nil
+			log.Infof("TableGC: purge complete for %s", fullTblName)
+			return fullTblName, nil
 		}
 	}
 }
 
 // dropTable runs an actual DROP TABLE statement, and marks the end of the line for the
 // tables' GC lifecycle.
-func (collector *TableGC) dropTable(ctx context.Context, tableName string) error {
+func (collector *TableGC) dropTable(ctx context.Context, fullTblName fullTableName) error {
 	conn, err := collector.pool.Get(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer conn.Recycle()
 
-	parsed := sqlparser.BuildParsedQuery(sqlDropTable, tableName)
+	parsed := sqlparser.BuildParsedQuery(sqlDropTable, fullTblName.tableSchema, fullTblName.tableName)
 
-	log.Infof("TableGC: dropping table: %s", tableName)
+	log.Infof("TableGC: dropping table: %s", fullTblName.String())
 	_, err = conn.Exec(ctx, parsed.Query, 1, true)
 	if err != nil {
 		return err
 	}
-	log.Infof("TableGC: dropped table: %s", tableName)
+	log.Infof("TableGC: dropped table: %s", fullTblName.String())
 	return nil
 }
 
@@ -569,22 +578,23 @@ func (collector *TableGC) transitionTable(ctx context.Context, transition *trans
 		// Views don't need evac. t remains "now"
 	}
 
-	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(transition.fromTableName, transition.toGCState, transition.uuid, t)
+	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(
+		transition.fromFullTableName.tableSchema, transition.fromFullTableName.tableName, transition.toGCState, transition.uuid, t)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("TableGC: renaming table: %s to %s", transition.fromTableName, toTableName)
+	log.Infof("TableGC: renaming table: %s to %s", transition.fromFullTableName, toTableName)
 	_, err = conn.Exec(ctx, renameStatement, 1, true)
 	if err != nil {
 		return err
 	}
-	log.Infof("TableGC: renamed table: %s", transition.fromTableName)
+	log.Infof("TableGC: renamed table: %s", transition.fromFullTableName)
 	return nil
 }
 
 // addPurgingTable adds a table to the list of droppingpurging (or pending purging) tables
-func (collector *TableGC) addPurgingTable(tableName string) {
+func (collector *TableGC) addPurgingTable(tableName fullTableName) {
 	collector.purgeMutex.Lock()
 	defer collector.purgeMutex.Unlock()
 
@@ -593,7 +603,7 @@ func (collector *TableGC) addPurgingTable(tableName string) {
 
 // removePurgingTable removes a table from the purging list; likely this is called when
 // the table is fully purged and is renamed away to be dropped.
-func (collector *TableGC) removePurgingTable(tableName string) {
+func (collector *TableGC) removePurgingTable(tableName fullTableName) {
 	collector.purgeMutex.Lock()
 	defer collector.purgeMutex.Unlock()
 
@@ -602,20 +612,20 @@ func (collector *TableGC) removePurgingTable(tableName string) {
 
 // nextTableToPurge returns the name of the next table we should start purging.
 // We pick the table with the oldest timestamp.
-func (collector *TableGC) nextTableToPurge() (tableName string, ok bool) {
+func (collector *TableGC) nextTableToPurge() (tableName fullTableName, ok bool) {
 	collector.purgeMutex.Lock()
 	defer collector.purgeMutex.Unlock()
 
 	if len(collector.purgingTables) == 0 {
-		return "", false
+		return fullTableName{}, false
 	}
-	tableNames := []string{}
+	tableNames := []fullTableName{}
 	for tableName := range collector.purgingTables {
 		tableNames = append(tableNames, tableName)
 	}
 	sort.SliceStable(tableNames, func(i, j int) bool {
-		_, _, _, ti, _ := schema.AnalyzeGCTableName(tableNames[i])
-		_, _, _, tj, _ := schema.AnalyzeGCTableName(tableNames[j])
+		_, _, _, ti, _ := schema.AnalyzeGCTableName(tableNames[i].tableName)
+		_, _, _, tj, _ := schema.AnalyzeGCTableName(tableNames[j].tableName)
 
 		return ti.Before(tj)
 	})
@@ -628,13 +638,13 @@ func (collector *TableGC) Status() *Status {
 	defer collector.purgeMutex.Unlock()
 
 	status := &Status{
-		Keyspace: collector.keyspace,
-		Shard:    collector.shard,
+		Keyspace: "",
+		Shard:    "0",
 
 		IsOpen: (atomic.LoadInt64(&collector.isOpen) > 0),
 	}
-	for tableName := range collector.purgingTables {
-		status.purgingTables = append(status.purgingTables, tableName)
+	for table := range collector.purgingTables {
+		status.purgingTables = append(status.purgingTables, table.String())
 	}
 
 	return status
