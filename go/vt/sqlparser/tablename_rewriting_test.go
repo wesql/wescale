@@ -197,3 +197,59 @@ func TestRewriteTableName(t *testing.T) {
 		})
 	}
 }
+
+func TestRewriteTableNameForDDL(t *testing.T) {
+	testcases := []struct {
+		in        string
+		outstmt   string
+		isSkipUse bool
+	}{
+		{
+			in:        `drop table t1`,
+			outstmt:   `drop table test.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t1 (c1 int)`,
+			outstmt:   `create table test.t1 (c1 int)`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t2 select * from t1;`,
+			outstmt:   `create table test.t2 select * from test.t1;`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table d2.t2 select * from t1;`,
+			outstmt:   `create table d2.t2 select * from test.t1;`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t2 select * from d2.t1;`,
+			outstmt:   `create table test.t2 select * from d2.t1;`,
+			isSkipUse: true,
+		},
+		{
+			in:        `rename table t1 to d2.t2`,
+			outstmt:   `rename table test.t1 to d2.t2`,
+			isSkipUse: true,
+		},
+		{
+			in:        `truncate table t1`,
+			outstmt:   `truncate table test.t1`,
+			isSkipUse: true,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.in, func(t *testing.T) {
+			stmt, err := Parse(tc.in)
+			require.NoError(t, err)
+			newStmt, isSkipUse, err := RewriteTableName(stmt, "test")
+			require.NoError(t, err)
+			assert.Equal(t, tc.isSkipUse, isSkipUse)
+			if isSkipUse {
+				assert.Equal(t, tc.outstmt, String(newStmt))
+			}
+		})
+	}
+}
