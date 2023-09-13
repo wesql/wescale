@@ -309,8 +309,8 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	stmt.Format(buf)
 
 	onlineDDL = &OnlineDDL{
-		SQL:      buf.String(),
-		Keyspace: schemaName,
+		SQL:    buf.String(),
+		Schema: schemaName,
 	}
 	if onlineDDL.UUID, err = decodeDirective("uuid"); err != nil {
 		return nil, err
@@ -318,8 +318,8 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	if !IsOnlineDDLUUID(onlineDDL.UUID) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid UUID read from statement %s", sqlparser.String(stmt))
 	}
-	if schemaName, err = decodeDirective("schema"); err != nil && onlineDDL.Keyspace == "" {
-		onlineDDL.Keyspace = schemaName
+	if schemaName, err = decodeDirective("schema"); err != nil && onlineDDL.Schema == "" {
+		onlineDDL.Schema = schemaName
 	}
 	if onlineDDL.Table, err = decodeDirective("table"); err != nil {
 		return nil, err
