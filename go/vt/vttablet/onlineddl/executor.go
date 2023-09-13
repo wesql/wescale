@@ -557,6 +557,7 @@ func (e *Executor) showCreateTable(ctx context.Context, tableName string) (strin
 
 // executeDirectly runs a DDL query directly on the backend MySQL server
 func (e *Executor) executeDirectly(ctx context.Context, onlineDDL *schema.OnlineDDL, acceptableMySQLErrorCodes ...int) (acceptableErrorCodeFound bool, err error) {
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return false, err
@@ -653,6 +654,7 @@ func (e *Executor) validateTableForAlterAction(ctx context.Context, onlineDDL *s
 
 // primaryPosition returns the MySQL/MariaDB position (typically GTID pos) on the tablet
 func (e *Executor) primaryPosition(ctx context.Context) (pos mysql.Position, err error) {
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return pos, err
@@ -767,6 +769,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 	}
 
 	lockConn, err := e.pool.Get(ctx, nil)
+	//todo onlineddl: should specify schemaName for lockConn here
 	if err != nil {
 		return err
 	}
@@ -774,6 +777,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 	defer lockConn.Exec(ctx, sqlUnlockTables, 1, false)
 
 	renameConn, err := e.pool.Get(ctx, nil)
+	//todo onlineddl: should specify schemaName for renameConn here
 	if err != nil {
 		return err
 	}
@@ -1292,6 +1296,7 @@ func (e *Executor) ExecuteWithVReplication(ctx context.Context, onlineDDL *schem
 		return ErrExecutorNotWritableTablet
 	}
 
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return err
@@ -1754,6 +1759,7 @@ func (e *Executor) reviewImmediateOperations(ctx context.Context, capableOf mysq
 // - If this is a REVERT migration, what table is affected? What's the operation?
 // - Is this migration an "immediate operation"?
 func (e *Executor) reviewQueuedMigrations(ctx context.Context) error {
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return err
@@ -2045,6 +2051,7 @@ func (e *Executor) evaluateDeclarativeDiff(ctx context.Context, onlineDDL *schem
 		return nil, err
 	}
 
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return nil, err
@@ -2328,6 +2335,7 @@ func (e *Executor) executeAlterViewOnline(ctx context.Context, onlineDDL *schema
 	}
 	artifactViewCreateSQL := sqlparser.String(stmt)
 
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return err
@@ -2384,6 +2392,7 @@ func (e *Executor) addInstantAlgorithm(alterTable *sqlparser.AlterTable) {
 func (e *Executor) executeSpecialAlterDDLActionMigrationIfApplicable(ctx context.Context, onlineDDL *schema.OnlineDDL) (specialMigrationExecuted bool, err error) {
 	// Before we jump on to strategies... Some ALTERs can be optimized without having to run through
 	// a full online schema change process. Let's find out if this is the case!
+	//todo onlineddl: need schemaName here
 	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
 	if err != nil {
 		return false, err
