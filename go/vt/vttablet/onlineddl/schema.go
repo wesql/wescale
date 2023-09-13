@@ -338,6 +338,7 @@ const (
 		ORDER BY id
 	`
 	sqlSelectUncollectedArtifacts = `SELECT
+    		mysql_schema,
 			migration_uuid,
 			artifacts,
 			log_path
