@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -4709,9 +4714,9 @@ func (e *Executor) SubmitMigration(
 	_, allowConcurrentMigration := e.allowConcurrentMigration(onlineDDL)
 	submitQuery, err := sqlparser.ParseAndBind(sqlInsertMigration,
 		sqltypes.StringBindVariable(onlineDDL.UUID),
-		sqltypes.StringBindVariable(e.keyspace),
+		sqltypes.StringBindVariable(onlineDDL.Keyspace),
 		sqltypes.StringBindVariable(e.shard),
-		sqltypes.StringBindVariable(e.dbName),
+		sqltypes.StringBindVariable(onlineDDL.Keyspace),
 		sqltypes.StringBindVariable(onlineDDL.Table),
 		sqltypes.StringBindVariable(onlineDDL.SQL),
 		sqltypes.StringBindVariable(string(onlineDDL.Strategy)),
