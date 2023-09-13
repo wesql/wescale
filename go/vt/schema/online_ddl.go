@@ -214,9 +214,10 @@ func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting 
 			return strconv.Quote(hex.EncodeToString([]byte(directive)))
 		}
 		comments := sqlparser.Comments{
-			fmt.Sprintf(`/*vt+ uuid=%s context=%s table=%s strategy=%s options=%s */`,
+			fmt.Sprintf(`/*vt+ uuid=%s context=%s schema=%s table=%s strategy=%s options=%s */`,
 				encodeDirective(onlineDDLUUID),
 				encodeDirective(migrationContext),
+				encodeDirective(keyspace),
 				encodeDirective(table),
 				encodeDirective(string(ddlStrategySetting.Strategy)),
 				encodeDirective(ddlStrategySetting.Options),
@@ -276,8 +277,10 @@ func formatWithoutComments(buf *sqlparser.TrackedBuffer, node sqlparser.SQLNode)
 // to be commented as e.g. `CREATE /*vt+ uuid=... context=... table=... strategy=... options=... */ TABLE ...`
 func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *OnlineDDL, err error) {
 	var comments *sqlparser.ParsedComments
+	schemaName := ""
 	switch stmt := stmt.(type) {
 	case sqlparser.DDLStatement:
+		schemaName = stmt.GetTable().Qualifier.String()
 		comments = stmt.GetParsedComments()
 	case *sqlparser.RevertMigration:
 		comments = stmt.Comments
@@ -306,13 +309,17 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	stmt.Format(buf)
 
 	onlineDDL = &OnlineDDL{
-		SQL: buf.String(),
+		SQL:      buf.String(),
+		Keyspace: schemaName,
 	}
 	if onlineDDL.UUID, err = decodeDirective("uuid"); err != nil {
 		return nil, err
 	}
 	if !IsOnlineDDLUUID(onlineDDL.UUID) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid UUID read from statement %s", sqlparser.String(stmt))
+	}
+	if schemaName, err = decodeDirective("schema"); err != nil && onlineDDL.Keyspace == "" {
+		onlineDDL.Keyspace = schemaName
 	}
 	if onlineDDL.Table, err = decodeDirective("table"); err != nil {
 		return nil, err

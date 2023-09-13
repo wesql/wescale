@@ -4066,9 +4066,9 @@ func (e *Executor) SubmitMigration(
 	_, allowConcurrentMigration := e.allowConcurrentMigration(onlineDDL)
 	submitQuery, err := sqlparser.ParseAndBind(sqlInsertMigration,
 		sqltypes.StringBindVariable(onlineDDL.UUID),
-		sqltypes.StringBindVariable(e.keyspace),
+		sqltypes.StringBindVariable(onlineDDL.Keyspace),
 		sqltypes.StringBindVariable(e.shard),
-		sqltypes.StringBindVariable(e.dbName),
+		sqltypes.StringBindVariable(onlineDDL.Keyspace),
 		sqltypes.StringBindVariable(onlineDDL.Table),
 		sqltypes.StringBindVariable(onlineDDL.SQL),
 		sqltypes.StringBindVariable(string(onlineDDL.Strategy)),
