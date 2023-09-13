@@ -259,6 +259,7 @@ func NewExecutor(env tabletenv.Env, tabletAlias *topodatapb.TabletAlias, ts *top
 	}
 }
 
+// todo onlineddl: Maybe we should add a parameter 'schemaName', and force the caller to pass it in.
 func (e *Executor) execQuery(ctx context.Context, query string) (result *sqltypes.Result, err error) {
 	defer e.env.LogError()
 
@@ -529,6 +530,7 @@ func (e *Executor) dropOnlineDDLUser(ctx context.Context) error {
 func (e *Executor) tableExists(ctx context.Context, tableName string) (bool, error) {
 	tableName = strings.ReplaceAll(tableName, `_`, `\_`)
 	parsed := sqlparser.BuildParsedQuery(sqlShowTablesLike, tableName)
+	//todo onlineddl: need schemaName here
 	rs, err := e.execQuery(ctx, parsed.Query)
 	if err != nil {
 		return false, err
@@ -540,6 +542,7 @@ func (e *Executor) tableExists(ctx context.Context, tableName string) (bool, err
 // showCreateTable returns the SHOW CREATE statement for a table or a view
 func (e *Executor) showCreateTable(ctx context.Context, tableName string) (string, error) {
 	parsed := sqlparser.BuildParsedQuery(sqlShowCreateTable, tableName)
+	//todo onlineddl: need schemaName here
 	rs, err := e.execQuery(ctx, parsed.Query)
 	if err != nil {
 		return "", err
