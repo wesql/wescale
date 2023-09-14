@@ -163,4 +163,4 @@ func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error
 }
 ```
 
-By following this guide, you can effectively use failpoints in your Wesql-Scala environment, ensuring precise and controlled error handling during testing and development.
+By following this guide, you can effectively use failpoints in your WeScale environment, ensuring precise and controlled error handling during testing and development.
