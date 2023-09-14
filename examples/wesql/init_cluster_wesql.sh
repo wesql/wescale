@@ -75,14 +75,14 @@ echo "VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 "
 
-#echo "Staring add new follower node and tablet for wesql-scale cluster ... "
+#echo "Staring add new follower node and tablet for WeScale cluster ... "
 #TABLETS_UID=(11)
 #for i in ${TABLETS_UID[@]}; do
 #	CELL=zone1 TABLET_UID=$i NODE_ROLE=follower ../common/scripts-apecloud/apecloudmysql-add-node.sh
 #	CELL=zone1 TABLET_UID=$i TABLET_TYPE=replica ../common/scripts-apecloud/vttablet-up.sh
 #done
 #echo ""
-#echo "Staring add new learner node and tablet for wesql-scale cluster ..."
+#echo "Staring add new learner node and tablet for WeScale cluster ..."
 ## create ont wesql-server learner node.
 #TABLETS_UID=(12 13)
 #for i in ${TABLETS_UID[@]}; do
@@ -91,7 +91,7 @@ mysql -h127.0.0.1 -P15306
 #done
 #
 #echo ""
-#echo "wesql-scale initial cluster setup done"
+#echo "WeScale initial cluster setup done"
 
 # if env var debug=on, kill the vtgate process and vttablet processes
 if [ "$debug" == "on" ]; then

@@ -173,13 +173,13 @@ local row = grafana.row;
 
   vitessQueryPool::
     row.new(
-      title='WeSQL-Scale - Query pool',
+      title='WeScale - Query pool',
       collapse=true,
     ),
 
   vitessTransactionPool::
     row.new(
-      title='WeSQL-Scale - Transaction pool',
+      title='WeScale - Transaction pool',
       collapse=true,
     ),
 

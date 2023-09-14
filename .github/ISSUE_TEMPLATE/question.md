@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Questions about WeSQL-Scale.
+about: Questions about WeScale.
 title: "[Question] "
 labels: 'question'
 assignees: ''

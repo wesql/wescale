@@ -1,5 +1,5 @@
 <!--
-  Thank you for your contribution to the WeSQL-Scale project.
+  Thank you for your contribution to the WeScale project.
   Please first make sure there is an open Issue to discuss the feature/fix suggested in this PR.
   If this is a new feature, please mark the Issue as "RFC".
  -->

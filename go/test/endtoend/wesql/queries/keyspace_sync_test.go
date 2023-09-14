@@ -46,7 +46,7 @@ func TestKeyspaceMetaSyncedAfterCreatingDropingDatabaseInMySQL(t *testing.T) {
 	utils.Exec(t, backendPrimaryMysqlConn, "create database "+dbName)
 	utils.AssertDatabaseExists(t, backendPrimaryMysqlConn, dbName)
 
-	// make sure the keyspace meta is created in WeSQL-Scale
+	// make sure the keyspace meta is created in WeScale
 	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
 		timeout := time.After(20 * time.Second)
 		// loop forever: exec 'show database like dbName' util the database is created in MySQL, or timeout
@@ -69,7 +69,7 @@ func TestKeyspaceMetaSyncedAfterCreatingDropingDatabaseInMySQL(t *testing.T) {
 	utils.Exec(t, backendPrimaryMysqlConn, "drop database "+dbName)
 	utils.AssertDatabaseNotExists(t, backendPrimaryMysqlConn, dbName)
 
-	// make sure the keyspace meta is dropped in WeSQL-Scale
+	// make sure the keyspace meta is dropped in WeScale
 	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
 		timeout := time.After(20 * time.Second)
 		for {
