@@ -1,4 +1,4 @@
-Injecting FailPoints in Wesql-Scala for Enhanced Error Testing
+Injecting FailPoints in WeScale for Enhanced Error Testing
 =====================
 In prior tests, simulating extreme scenarios proved challenging. 
 To facilitate error testing and subsequent onlineDDL development, 
