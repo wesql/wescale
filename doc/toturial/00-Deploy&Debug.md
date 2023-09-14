@@ -1,11 +1,11 @@
 Start to deploy & debug a local cluster
 =====================
 
-This document explains how to start a WeSQL-Scale cluster on your local machine and begin debugging. We have made every effort to make this document intuitive and helpful for a successful deployment, but inevitably, you may encounter some corner cases that lead to failure. If you have any issues, please feel free to open an issue. We also welcome your help in improving the document if you are willing to do so.
+This document explains how to start a WeSQL WeScale cluster on your local machine and begin debugging. We have made every effort to make this document intuitive and helpful for a successful deployment, but inevitably, you may encounter some corner cases that lead to failure. If you have any issues, please feel free to open an issue. We also welcome your help in improving the document if you are willing to do so.
 
 # **Install Dependencies**
 
-Start a Wesql-scale cluster locally, which relies on the following software: mysqld, mysql, go, etcd. You can use the following command to determine whether they have been installed.
+Start a WeSQL WeScale cluster locally, which relies on the following software: mysqld, mysql, go, etcd. You can use the following command to determine whether they have been installed.
 
 ```Bash
 mysqld --version
@@ -22,7 +22,7 @@ If you are using macOS, you can use Homebrew to install dependencies.
 brew install automake go mysql mysql-client etcd
 ```
 
-When MySQL and etcd installs with brew it will start up automatically, you will want to shut this process down, as Wesql-Scale will be managing the startup and shutdown of MySQL and etcd:
+When MySQL and etcd installs with brew it will start up automatically, you will want to shut this process down, as WeSQL WeScale will be managing the startup and shutdown of MySQL and etcd:
 
 ```Shell
 brew services stop mysql
@@ -45,8 +45,8 @@ sudo apt install -y mysql-server etcd
 ## **Pull Source Code**
 
 ```Shell
-git clone https://github.com/apecloud/wesql-scale.git
-cd wesql-scale
+git clone https://github.com/apecloud/WeSQL WeScale.git
+cd WeSQL WeScale
 ```
 
 ## **Build**
@@ -59,16 +59,16 @@ make build
 
 ## Install
 
-It will take some time for wesql-scale to build. Once it completes, you should see a bin folder which will hold the  wesql-scale binaries. You will need to add this folder to your `PATH` variable, so that the command line can directly call the newly generated binary file.
+It will take some time for WeSQL WeScale to build. Once it completes, you should see a bin folder which will hold the  WeSQL WeScale binaries. You will need to add this folder to your `PATH` variable, so that the command line can directly call the newly generated binary file.
 
 ```Shell
 ls bin
-export PATH={wesql-scale-project-root-path}/bin:$PATH
+export PATH={WeSQL WeScale-project-root-path}/bin:$PATH
 ```
 
 # **Deploy** **&** **Debug**
 
-You can deploy a wesql-scale cluster locally by using the scripts in `wesql-scale/examples/mysql` folder
+You can deploy a WeSQL WeScale cluster locally by using the scripts in `WeSQL WeScale/examples/mysql` folder
 
 ## **Deploy**
 
@@ -77,7 +77,7 @@ cd examples/mysql
 ./init_cluster.sh
 ```
 
-Once the Wesql-Scale cluster is successfully launched, you should see these messages:
+Once the WeSQL WeScale cluster is successfully launched, you should see these messages:
 
 ```SQL
 MySQL endpoint:
@@ -89,7 +89,7 @@ VTGate endpoint:
 mysql -h127.0.0.1 -P15306
 ```
 
-You can use the following command to connect to Wesql-Scale
+You can use the following command to connect to WeSQL WeScale
 
 ```Shell
 mysql -h127.0.0.1 -P15306

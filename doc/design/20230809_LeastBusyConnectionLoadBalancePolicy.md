@@ -1,8 +1,8 @@
 - Feature Name:
 - Start Date: 2023-08-09
 - Authors: lyq10085
-- Issue: https://github.com/apecloud/wesql-scale/issues/220
-- PR: https://github.com/apecloud/wesql-scale/pull/230
+- Issue: https://github.com/apecloud/WeSQL WeScale/issues/220
+- PR: https://github.com/apecloud/WeSQL WeScale/pull/230
 
 # Summary
 
@@ -10,7 +10,7 @@ The proposal aims to add new policy (LEAST_MYSQL_CONNECTED_CONNECTIONS, LEAST_MY
 
 # Motivation
 
-In practice, the number of connections in mysqld reflects the load on vttablet and mysqld processes. The load balancing strategy of routing requests based on mysql connection count will improve qps of the wesql-scale cluster.
+In practice, the number of connections in mysqld reflects the load on vttablet and mysqld processes. The load balancing strategy of routing requests based on mysql connection count will improve qps of the WeSQL WeScale cluster.
 
 # Technical design
 
@@ -50,4 +50,4 @@ Enable vtgate to actively check vttablet connection pools' usage status.
 
 # References
 
-[wesql-scale load balancer](https://github.com/apecloud/wesql-scale/issues/64)
+[WeSQL WeScale load balancer](https://github.com/apecloud/WeSQL WeScale/issues/64)

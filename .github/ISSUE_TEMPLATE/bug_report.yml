@@ -1,5 +1,5 @@
 name: Bug Report
-description: You're experiencing an issue with WeSQL-Scale that is different than the documented behavior.
+description: You're experiencing an issue with WeScale that is different than the documented behavior.
 title: "[Bug Report] "
 labels: ["Type: Bug", "Needs Triage"]
 body:
@@ -35,7 +35,7 @@ body:
     attributes:
       label: Binary Version
       description: |
-        Tell us which version of WeSQL-Scale you're using.
+        Tell us which version of WeScale you're using.
         Example:
         ```sh
         vtgate --version

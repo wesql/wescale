@@ -49,5 +49,5 @@ for i in ${TABLETS_UID[@]}; do
 done
 
 echo ""
-echo "WeSQL-Scale cluster change done"
+echo "WeScale cluster change done"
 

@@ -2,9 +2,9 @@
 
 Failover is a feature designed to ensure that if the original database instance becomes unavailable, it is replaced with another instance and remains highly available. Various factors can trigger a failover event, including issues with the database instance or scheduled maintenance procedures like database upgrades.
 
-Without WeSQL-Scale, a failover requires a short period of downtime. Existing connections to the database are disconnected and need to be reopened by your application. WeSQL-Scale is capable of automatically detecting failovers and buffering application SQL in its memory while keeping application connections intact, thus enhancing application resilience in the event of database failures.
+Without WeSQL WeScale, a failover requires a short period of downtime. Existing connections to the database are disconnected and need to be reopened by your application. WeSQL WeScale is capable of automatically detecting failovers and buffering application SQL in its memory while keeping application connections intact, thus enhancing application resilience in the event of database failures.
 
-The goal of this tutorial is to explain how to enable the Transparent Failover feature of WeSQL-Scale.
+The goal of this tutorial is to explain how to enable the Transparent Failover feature of WeSQL WeScale.
 
 # Setting via launch parameters
 

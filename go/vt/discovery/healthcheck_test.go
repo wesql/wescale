@@ -649,7 +649,7 @@ func TestWaitForAllServingTablets(t *testing.T) {
 	}
 
 	err = hc.WaitForAllServingTablets(ctx, targets)
-	// wesql-scale are unsharded, so we should not get an error
+	// WeScale are unsharded, so we should not get an error
 	assert.Nil(t, err, "error should be nil. Targets are found")
 
 	targets = []*querypb.Target{
