@@ -4,16 +4,16 @@
 - Status: in-progress
 - Start Date: 2023-06-09
 - Authors: @gerayking
-- RFC PR: https://github.com/apecloud/wesql-scale/pull/103
-- WeSQL-Scale Issue: https://github.com/apecloud/wesql-scale/issues/37
+- RFC PR: https://github.com/apecloud/WeSQL WeScale/pull/103
+- WeSQL WeScale Issue: https://github.com/apecloud/WeSQL WeScale/issues/37
 
 # BackGround
 
-For further related information, please refer to [20230414_ReadAfterWrite](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
+For further related information, please refer to [20230414_ReadAfterWrite](https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
 
 ## Why is gtidSets disconnected?
 
-In the context of wesql-scale, there are two levels of Read After Write (RAW), namely instance and session levels. Currently, the session-level gtid is stored as the latest gtid, while the instance-level solution involves maintaining a gtidSets in the memory of vtgate and incorporating it into the SQL to be executed, such as `select`. This article focuses only on the instance-level solution. When multiple vtgates are in play, for instance, vtgate1 and vtgate2, and SQL is cross-accessing these vtgates, numerous internal fragmentations will occur in the gtidSet maintained by vtgate1 and vtgate2. The following images depict a scenario involving 2 vtgates.
+In the context of WeSQL WeScale, there are two levels of Read After Write (RAW), namely instance and session levels. Currently, the session-level gtid is stored as the latest gtid, while the instance-level solution involves maintaining a gtidSets in the memory of vtgate and incorporating it into the SQL to be executed, such as `select`. This article focuses only on the instance-level solution. When multiple vtgates are in play, for instance, vtgate1 and vtgate2, and SQL is cross-accessing these vtgates, numerous internal fragmentations will occur in the gtidSet maintained by vtgate1 and vtgate2. The following images depict a scenario involving 2 vtgates.
 
 ![multivtgate](images/multivtgate.jpg)
 vtgate1:
@@ -24,7 +24,7 @@ vtgate2:
 
 ## Why need Compress GtidSets?
 
-For the relevant issue, please refer to [#37](https://github.com/apecloud/wesql-scale/issues/37)
+For the relevant issue, please refer to [#37](https://github.com/apecloud/WeSQL WeScale/issues/37)
 
 ## Summary
 
@@ -79,4 +79,4 @@ Given that the current mechanism still depends on the return of the heartbeat pa
 
 # Reference
 
-- 20230414_ReadAfterWrite: [https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md](https://github.com/apecloud/wesql-scale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
+- 20230414_ReadAfterWrite: [https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md](https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)

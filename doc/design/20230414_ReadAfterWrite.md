@@ -3,12 +3,12 @@
 - Feature: ReadAfterWrite
 - Start Date: 2023-04-14
 - Authors: @earayu
-- RFC PR: https://github.com/apecloud/wesql-scale/pull/23
-- WeSQL-Scale Issue: https://github.com/apecloud/wesql-scale/issues/20
+- RFC PR: https://github.com/apecloud/WeSQL WeScale/pull/23
+- WeSQL WeScale Issue: https://github.com/apecloud/WeSQL WeScale/issues/20
 
 # Summary
 
-The proposed change is to add the ReadAfterWrite feature to WeSQL-Scale.
+The proposed change is to add the ReadAfterWrite feature to WeSQL WeScale.
 
 The ReadAfterWrite feature will ensure read operations to retrieve the data that was just written. This will result in a better user experience for clients and improved efficiency for developers.
 
@@ -28,11 +28,11 @@ The Picture below shows why the read request is not able to get the latest data.
 ## Goals
 
 1. Session Level ReadAfterWrite: Ensure read requests get latest write in the same client connection.
-2. Instance Level ReadAfterWrite: Ensure read requests get latest write in the WeSQL-Scale Instance.
+2. Instance Level ReadAfterWrite: Ensure read requests get latest write in the WeSQL WeScale Instance.
 
 ## Non-Goals
 
-1. Cross-WeSQL-Scale Instance ReadAfterWrite is not supported as we would need to store the Global Transactions Identifiers (GTIDs) in a linearizably consistent storage, which is slow.
+1. Cross-WeSQL WeScale Instance ReadAfterWrite is not supported as we would need to store the Global Transactions Identifiers (GTIDs) in a linearizably consistent storage, which is slow.
     1. One alternative is for users to manually pass GTIDs between client connections.
 2. ReadAfterWrite does not mean 'casual read’ or ‘monitonic read’. Its guarantee is that when a read request is made, it will always return what has been written rather than what has been previously read.
     1. Monotonic read might be supported in a later version.
@@ -54,17 +54,17 @@ To enable the feature:
 - Client needs to set Capability flag `CLIENT_SESSION_TRACK` when connecting to MySQL via mysql protocol. This will enable MySQL to send the tracking information back to the client.
 - Client also needs to issue `SET @@SESSION_TRACK_GTIDS = 'OWN_GTID'` to indicate MySQL to return GTID in the OK packet. This system variable tracks the last DML and DDL commit GTID.
 
-### Step 2: Store the GTID in WeSQL-Scale sessions
+### Step 2: Store the GTID in WeSQL WeScale sessions
 
-After parsing the response packet and get the GTIDs, WeSQL-Scale will store them in the memory.
+After parsing the response packet and get the GTIDs, WeSQL WeScale will store them in the memory.
 
 Depends on the consistency level, the GTIDs may be stored in the client’s Session or a global memory data structure.
 
-Later read operations will utilize GTIDs stored in WeSQL-Scale’s memory, to ensure retrieval of data that was previously written. See belowing steps for more details.
+Later read operations will utilize GTIDs stored in WeSQL WeScale’s memory, to ensure retrieval of data that was previously written. See belowing steps for more details.
 
 ### Step 3: Select a MySQL follower for reading
 
-A `CLUSTER_GTID_EXEUTED` memory data structure is matained in WeSQL-Scale’s memory, it contains’s all the `@@global.gtid_executed`  values from the cluster. The `CLUSTER_GTID_EXEUTED` is updated by the health-check module periodically, and obviously it will be lagging.
+A `CLUSTER_GTID_EXEUTED` memory data structure is matained in WeSQL WeScale’s memory, it contains’s all the `@@global.gtid_executed`  values from the cluster. The `CLUSTER_GTID_EXEUTED` is updated by the health-check module periodically, and obviously it will be lagging.
 
 Therefore, GTIDs from step1 will update `CLUSTER_GTID_EXEUTED` constantly.
 
@@ -126,7 +126,7 @@ set @@read_after_write_timeout = 0; -- won't timeout wait forever
 
 # Future Works
 
-Monotonic read may be supported in the future. Monotonic read means a user will get more and more updated data. Suppose a user connects to WeSQL-Scale and runs 2 read operations which are identical. If the ReadWriteSplitting feature is enabled, the second read operation may be executed on a MySQL node that has applied lesser GTIDs compared to the first one. As a consequence, the second read returns stale data in comparison to the first one.
+Monotonic read may be supported in the future. Monotonic read means a user will get more and more updated data. Suppose a user connects to WeSQL WeScale and runs 2 read operations which are identical. If the ReadWriteSplitting feature is enabled, the second read operation may be executed on a MySQL node that has applied lesser GTIDs compared to the first one. As a consequence, the second read returns stale data in comparison to the first one.
 
 # References
 

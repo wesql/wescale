@@ -1,10 +1,10 @@
 # Introduction
 
-WeSQL-Scale simplifies application logic by automatically routing read queries to read-only nodes and write queries to the read-write node. This is achieved by parsing and analyzing SQL statements, which improves load balancing and ensures efficient use of available resources.
+WeSQL WeScale simplifies application logic by automatically routing read queries to read-only nodes and write queries to the read-write node. This is achieved by parsing and analyzing SQL statements, which improves load balancing and ensures efficient use of available resources.
 
-WeSQL-Scale also helps manage read-only nodes by routing queries to the appropriate node using various load balancing policies. This ensures that the workload is evenly distributed across all available nodes, optimizing performance and resource utilization.
+WeSQL WeScale also helps manage read-only nodes by routing queries to the appropriate node using various load balancing policies. This ensures that the workload is evenly distributed across all available nodes, optimizing performance and resource utilization.
 
-The goal of this tutorial is to explain how to enable read-write-splitting and load balancing functionality for WeSQL-Scale.
+The goal of this tutorial is to explain how to enable read-write-splitting and load balancing functionality for WeSQL WeScale.
 
 # Setting through the set command.
 
@@ -19,15 +19,15 @@ set global read_write_splitting_policy='random';
 
 ```
 
-Currently, WeSQL-Scale supports these load balancing policies:
+Currently, WeSQL WeScale supports these load balancing policies:
 
 | disable | Do not enable read/write separation |
 | --- | --- |
 | random | Randomly allocate read traffic |
-| least_qps | WeSQL-Scale will record the QPS sent to backend MySQL in its own memory and redirect requests to the MySQL with the lowest QPS. |
-| least_global_qps | WeSQL-Scale will periodically pull the QPS of all MySQLs and redirect requests to the MySQL with the lowest QPS. The difference with least_qps is that least_global_qps obtains QPS from the backend MySQL instead of tracking it themselves. |
-| least_rt | WeSQL-Scale will record the execution time of all SQL queries and redirect requests to the MySQL with the lowest response time (RT). |
-| least_behind_primar | WeSQL-Scale will periodically pull the GTIDs of all MySQLs and redirect requests to the MySQL with the most up-to-date GTID. |
+| least_qps | WeSQL WeScale will record the QPS sent to backend MySQL in its own memory and redirect requests to the MySQL with the lowest QPS. |
+| least_global_qps | WeSQL WeScale will periodically pull the QPS of all MySQLs and redirect requests to the MySQL with the lowest QPS. The difference with least_qps is that least_global_qps obtains QPS from the backend MySQL instead of tracking it themselves. |
+| least_rt | WeSQL WeScale will record the execution time of all SQL queries and redirect requests to the MySQL with the lowest response time (RT). |
+| least_behind_primar | WeSQL WeScale will periodically pull the GTIDs of all MySQLs and redirect requests to the MySQL with the most up-to-date GTID. |
 
 # Setting via launch parameters
 
