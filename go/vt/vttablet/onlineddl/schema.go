@@ -499,7 +499,7 @@ const (
 	sqlDropTable        = "DROP TABLE `%a`"
 	sqlShowColumnsFrom  = "SHOW COLUMNS FROM `%a`"
 	sqlShowTableStatus  = "SHOW TABLE STATUS LIKE '%a'"
-	sqlShowCreateTable  = "SHOW CREATE TABLE `%a`"
+	sqlShowCreateTable  = "SHOW CREATE TABLE `%a`.`%a`"
 	sqlGetAutoIncrement = `
 		SELECT
 			AUTO_INCREMENT
@@ -540,7 +540,7 @@ const (
 		WHERE vrepl_id=%a
 		`
 	sqlSwapTables         = "RENAME TABLE `%a` TO `%a`, `%a` TO `%a`, `%a` TO `%a`"
-	sqlRenameTable        = "RENAME TABLE `%a` TO `%a`"
+	sqlRenameTable        = "RENAME TABLE `%a`.`%a` TO `%a`.`%a`"
 	sqlLockTwoTablesWrite = "LOCK TABLES `%a` WRITE, `%a` WRITE"
 	sqlUnlockTables       = "UNLOCK TABLES"
 	sqlCreateSentryTable  = "CREATE TABLE IF NOT EXISTS `%a` (id INT PRIMARY KEY)"

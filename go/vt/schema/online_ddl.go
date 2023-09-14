@@ -214,7 +214,7 @@ func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting 
 			return strconv.Quote(hex.EncodeToString([]byte(directive)))
 		}
 		comments := sqlparser.Comments{
-			fmt.Sprintf(`/*vt+ uuid=%s context=%s schema=%s table=%s strategy=%s options=%s */`,
+			fmt.Sprintf(`/*vt+ uuid=%s context=%s tableSchema=%s table=%s strategy=%s options=%s */`,
 				encodeDirective(onlineDDLUUID),
 				encodeDirective(migrationContext),
 				encodeDirective(keyspace),
@@ -277,10 +277,10 @@ func formatWithoutComments(buf *sqlparser.TrackedBuffer, node sqlparser.SQLNode)
 // to be commented as e.g. `CREATE /*vt+ uuid=... context=... table=... strategy=... options=... */ TABLE ...`
 func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *OnlineDDL, err error) {
 	var comments *sqlparser.ParsedComments
-	schemaName := ""
+	tableSchema := ""
 	switch stmt := stmt.(type) {
 	case sqlparser.DDLStatement:
-		schemaName = stmt.GetTable().Qualifier.String()
+		tableSchema = stmt.GetTable().Qualifier.String()
 		comments = stmt.GetParsedComments()
 	case *sqlparser.RevertMigration:
 		comments = stmt.Comments
@@ -310,7 +310,7 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 
 	onlineDDL = &OnlineDDL{
 		SQL:    buf.String(),
-		Schema: schemaName,
+		Schema: tableSchema,
 	}
 	if onlineDDL.UUID, err = decodeDirective("uuid"); err != nil {
 		return nil, err
@@ -318,8 +318,8 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	if !IsOnlineDDLUUID(onlineDDL.UUID) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid UUID read from statement %s", sqlparser.String(stmt))
 	}
-	if schemaName, err = decodeDirective("schema"); err != nil && onlineDDL.Schema == "" {
-		onlineDDL.Schema = schemaName
+	if tableSchema, err = decodeDirective("tableSchema"); err == nil && onlineDDL.Schema == "" {
+		onlineDDL.Schema = tableSchema
 	}
 	if onlineDDL.Table, err = decodeDirective("table"); err != nil {
 		return nil, err
