@@ -7,7 +7,7 @@ This article discusses two issues: User Authentication and Authorization Managem
 
 # User Authentication
 
-wesql-scala offers three types of user management mechanisms: `none`, `static`, and `mysqlbased`.
+WeSQL WeScale offers three types of user management mechanisms: `none`, `static`, and `mysqlbased`.
 
 ## none
 Bypasses user authentication, so users don’t need to provide usernames or passwords to log into VTGate. This is beneficial for performance when deployed in a secure environment, as it avoids the overhead of authentication.
@@ -71,7 +71,7 @@ VTGate startup parameters :
 + `--mysql_server_ssl_cert`: Configure the SSL cert. If using caching_sha2_passwod, set this parameter.
 
 # Authorization Management
-Currently, wesql-scala categorizes users internally into three types:
+Currently, WeSQL WeScale categorizes users internally into three types:
 
 `Reader`: Pertains to read DML, e.g., SELECT.
 
@@ -79,7 +79,7 @@ Currently, wesql-scala categorizes users internally into three types:
 
 `Admin`: Pertains to DDL, e.g., ALTER TABLE.
 
-wesql-scala's authorization is carried out at the vt tablet level and supports both simple and mysqlbased methods.
+WeSQL WeScale's authorization is carried out at the vt tablet level and supports both simple and mysqlbased methods.
 
 ## simple
 Recommended for use with the “static” authentication method. This is a native feature of vitess.
