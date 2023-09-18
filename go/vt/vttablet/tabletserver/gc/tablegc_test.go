@@ -73,7 +73,7 @@ func TestNextTableToPurge(t *testing.T) {
 		next, ok := collector.nextTableToPurge()
 		assert.Equal(t, ts.ok, ok)
 		if ok {
-			assert.Equal(t, ts.next, next)
+			assert.Equal(t, ts.next, next.tableName)
 		}
 	}
 }
