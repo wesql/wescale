@@ -3223,8 +3223,7 @@ func (e *Executor) gcArtifactTable(ctx context.Context, tableSchema, artifactTab
 	}
 	// We've already concluded in gcArtifacts() that this table was held for long enough.
 	// We therefore move it into PURGE state.
-	//todo onlineddl: need TableSchema here
-	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID( /*todo onlineddl*/ "", artifactTable, schema.PurgeTableGCState, schema.OnlineDDLToGCUUID(uuid), t)
+	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(tableSchema, artifactTable, schema.PurgeTableGCState, schema.OnlineDDLToGCUUID(uuid), t)
 	if err != nil {
 		return toTableName, err
 	}

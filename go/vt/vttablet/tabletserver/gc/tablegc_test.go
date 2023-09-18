@@ -62,18 +62,16 @@ func TestNextTableToPurge(t *testing.T) {
 	}
 	for _, ts := range tt {
 		collector := &TableGC{
-			purgingTables: make(map[fullTableName]bool),
+			purgingTables: make(map[schema.TableSchemaAndName]bool),
 		}
 		for _, table := range ts.tables {
-			t := fullTableName{
-				tableName: table,
-			}
+			t := schema.NewTableSchemaAndName("", "", table)
 			collector.purgingTables[t] = true
 		}
 		next, ok := collector.nextTableToPurge()
 		assert.Equal(t, ts.ok, ok)
 		if ok {
-			assert.Equal(t, ts.next, next.tableName)
+			assert.Equal(t, ts.next, next.GetTableName())
 		}
 	}
 }

@@ -151,16 +151,11 @@ func onlineDDLStatementSanity(sql string, ddlStmt sqlparser.DDLStatement, ddlStr
 
 // NewOnlineDDLs takes a single DDL statement, normalizes it (potentially break down into multiple statements), and generates one or more OnlineDDL instances, one for each normalized statement
 func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, ddlStrategySetting *DDLStrategySetting, migrationContext string, providedUUID string) (onlineDDLs [](*OnlineDDL), err error) {
-	appendOnlineDDL := func(ddlStmt sqlparser.DDLStatement) error {
+	appendOnlineDDL := func(fullTableName TableSchemaAndName, ddlStmt sqlparser.DDLStatement) error {
 		if err := onlineDDLStatementSanity(sql, ddlStmt, ddlStrategySetting); err != nil {
 			return err
 		}
-		schemaName := keyspace
-		if ddlStmt.GetTable().Qualifier.String() != "" {
-			schemaName = ddlStmt.GetTable().Qualifier.String()
-		}
-		tableName := ddlStmt.GetTable().Name.String()
-		onlineDDL, err := NewOnlineDDL(schemaName, tableName, sqlparser.String(ddlStmt), ddlStrategySetting, migrationContext, providedUUID)
+		onlineDDL, err := NewOnlineDDL(fullTableName.GetTableSchema(), fullTableName.GetTableName(), sqlparser.String(ddlStmt), ddlStrategySetting, migrationContext, providedUUID)
 		if err != nil {
 			return err
 		}
@@ -172,14 +167,15 @@ func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, 
 	}
 	switch ddlStmt := ddlStmt.(type) {
 	case *sqlparser.CreateTable, *sqlparser.AlterTable, *sqlparser.CreateView, *sqlparser.AlterView:
-		if err := appendOnlineDDL(ddlStmt); err != nil {
+		fullTableName := NewTableSchemaAndName(keyspace, ddlStmt.GetTable().Qualifier.String(), ddlStmt.GetTable().Name.String())
+		if err := appendOnlineDDL(fullTableName, ddlStmt); err != nil {
 			return nil, err
 		}
 	case *sqlparser.DropTable, *sqlparser.DropView:
 		tables := ddlStmt.GetFromTables()
 		for _, table := range tables {
-			ddlStmt.SetFromTables([]sqlparser.TableName{table})
-			if err := appendOnlineDDL(ddlStmt); err != nil {
+			fullTableName := NewTableSchemaAndName(keyspace, table.Qualifier.String(), table.Name.String())
+			if err := appendOnlineDDL(fullTableName, ddlStmt); err != nil {
 				return nil, err
 			}
 		}
