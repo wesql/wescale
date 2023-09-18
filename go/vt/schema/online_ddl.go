@@ -214,7 +214,7 @@ func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting 
 			return strconv.Quote(hex.EncodeToString([]byte(directive)))
 		}
 		comments := sqlparser.Comments{
-			fmt.Sprintf(`/*vt+ uuid=%s context=%s tableSchema=%s table=%s strategy=%s options=%s */`,
+			fmt.Sprintf(`/*vt+ uuid=%s context=%s schemaOfSession=%s table=%s strategy=%s options=%s */`,
 				encodeDirective(onlineDDLUUID),
 				encodeDirective(migrationContext),
 				encodeDirective(keyspace),
@@ -318,7 +318,7 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	if !IsOnlineDDLUUID(onlineDDL.UUID) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid UUID read from statement %s", sqlparser.String(stmt))
 	}
-	if tableSchema, err = decodeDirective("tableSchema"); err == nil && onlineDDL.Schema == "" {
+	if tableSchema, err = decodeDirective("schemaOfSession"); err == nil && onlineDDL.Schema == "" {
 		onlineDDL.Schema = tableSchema
 	}
 	if onlineDDL.Table, err = decodeDirective("table"); err != nil {

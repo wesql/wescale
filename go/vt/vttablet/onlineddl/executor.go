@@ -40,6 +40,9 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/pools"
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/protobuf/encoding/prototext"
@@ -194,9 +197,7 @@ type Executor struct {
 	toggleBufferTableFunc func(cancelCtx context.Context, tableName string, bufferQueries bool)
 	tabletAlias           *topodatapb.TabletAlias
 
-	//keyspace string
 	shard string
-	//dbName   string
 
 	initMutex      sync.Mutex
 	migrationMutex sync.Mutex
@@ -262,19 +263,16 @@ func NewExecutor(env tabletenv.Env, tabletAlias *topodatapb.TabletAlias, ts *top
 // execQuery execute sql by using connect poll,so if targetString is not empty, it will add prefix `use database` first then execute sql.
 func (e *Executor) execQuery(ctx context.Context, targetString, query string) (result *sqltypes.Result, err error) {
 	defer e.env.LogError()
-
-	conn, err := e.pool.Get(ctx, nil)
+	var setting pools.Setting
+	if targetString != "" {
+		setting.SetWithoutDBName(false)
+		setting.SetQuery(fmt.Sprintf("use %s", targetString))
+	}
+	conn, err := e.pool.Get(ctx, &setting)
 	if err != nil {
 		return result, err
 	}
 	defer conn.Recycle()
-	if targetString != "" {
-		targetSQL := fmt.Sprintf("use %s", targetString)
-		_, err = conn.Exec(ctx, targetSQL, 1, false)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return conn.Exec(ctx, query, math.MaxInt32, true)
 }
 
@@ -1439,7 +1437,7 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 
 // readPendingMigrationsUUIDs returns UUIDs for migrations in pending state (queued/ready/running)
 func (e *Executor) readPendingMigrationsUUIDs(ctx context.Context) (uuids []string, err error) {
-	r, err := e.execQuery(ctx, "", sqlSelectPendingMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
 	if err != nil {
 		return uuids, err
 	}
@@ -1639,7 +1637,7 @@ func (e *Executor) scheduleNextMigration(ctx context.Context) error {
 
 	var onlyScheduleOneMigration sync.Once
 
-	r, err := e.execQuery(ctx, "", sqlSelectQueuedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedMigrations)
 	if err != nil {
 		return err
 	}
@@ -1778,7 +1776,7 @@ func (e *Executor) reviewQueuedMigrations(ctx context.Context) error {
 	e.migrationMutex.Lock()
 	defer e.migrationMutex.Unlock()
 
-	r, err := e.execQuery(ctx, "", sqlSelectQueuedUnreviewedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedUnreviewedMigrations)
 	if err != nil {
 		return err
 	}
@@ -1862,7 +1860,7 @@ func (e *Executor) validateMigrationRevertible(ctx context.Context, revertMigrat
 	}
 	{
 		// Validation: see if there's a pending migration on this table:
-		r, err := e.execQuery(ctx, "", sqlSelectPendingMigrations)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
 		if err != nil {
 			return err
 		}
@@ -1890,7 +1888,7 @@ func (e *Executor) validateMigrationRevertible(ctx context.Context, revertMigrat
 			if err != nil {
 				return err
 			}
-			r, err := e.execQuery(ctx, "", query)
+			r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 			if err != nil {
 				return err
 			}
@@ -2727,7 +2725,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 		if err != nil {
 			return nil, err
 		}
-		r, err := e.execQuery(ctx, "", sqlSelectReadyMigrations)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectReadyMigrations)
 		if err != nil {
 			return nil, err
 		}
@@ -2787,7 +2785,7 @@ func (e *Executor) readVReplStream(ctx context.Context, uuid string, okIfMissing
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.execQuery(ctx, "", query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -2861,7 +2859,7 @@ func (e *Executor) isVReplMigrationReadyToCutOver(ctx context.Context, s *VReplS
 		if err != nil {
 			return false, err
 		}
-		r, err := e.execQuery(ctx, "", query)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 		if err != nil {
 			return false, err
 		}
@@ -2922,7 +2920,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 	}
 
 	var throttlerOnce sync.Once
-	r, err := e.execQuery(ctx, "", sqlSelectRunningMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectRunningMigrations)
 	if err != nil {
 		return countRunnning, cancellable, err
 	}
@@ -3119,7 +3117,7 @@ func (e *Executor) reviewStaleMigrations(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r, err := e.execQuery(ctx, "", query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return err
 	}
@@ -3238,7 +3236,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 	e.migrationMutex.Lock()
 	defer e.migrationMutex.Unlock()
 
-	if _, err := e.execQuery(ctx, "", sqlFixCompletedTimestamp); err != nil {
+	if _, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlFixCompletedTimestamp); err != nil {
 		// This query fixes a bug where stale migrations were marked as 'failed' without updating 'completed_timestamp'
 		// see https://github.com/vitessio/vitess/issues/8499
 		// Running this query retroactively sets completed_timestamp
@@ -3251,7 +3249,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r, err := e.execQuery(ctx, "", query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return err
 	}
@@ -3361,7 +3359,7 @@ func (e *Executor) updateMigrationStartedTimestamp(ctx context.Context, uuid str
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStartedTimestamp: uuid=%s, error=%v", uuid, err)
 	}
@@ -3379,7 +3377,7 @@ func (e *Executor) updateMigrationTimestamp(ctx context.Context, timestampColumn
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStartedTimestamp: uuid=%s, timestampColumn=%v, error=%v", uuid, timestampColumn, err)
 	}
@@ -3397,7 +3395,7 @@ func (e *Executor) updateMigrationLogPath(ctx context.Context, uuid string, host
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3410,7 +3408,7 @@ func (e *Executor) updateArtifacts(ctx context.Context, uuid string, artifacts .
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3421,7 +3419,7 @@ func (e *Executor) clearArtifacts(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3433,7 +3431,7 @@ func (e *Executor) updateMigrationSpecialPlan(ctx context.Context, uuid string, 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3447,7 +3445,7 @@ func (e *Executor) updateMigrationStage(ctx context.Context, uuid string, stage 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3458,7 +3456,7 @@ func (e *Executor) incrementCutoverAttempts(ctx context.Context, uuid string) er
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3471,7 +3469,7 @@ func (e *Executor) updateMigrationTablet(ctx context.Context, uuid string) error
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3487,7 +3485,7 @@ func (e *Executor) updateTabletFailure(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	return err
 }
 
@@ -3499,7 +3497,7 @@ func (e *Executor) updateMigrationStatusFailedOrCancelled(ctx context.Context, u
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3512,7 +3510,7 @@ func (e *Executor) updateMigrationStatus(ctx context.Context, uuid string, statu
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStatus: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
@@ -3527,7 +3525,7 @@ func (e *Executor) updateDDLAction(ctx context.Context, uuid string, actionStr s
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3547,7 +3545,7 @@ func (e *Executor) updateMigrationMessage(ctx context.Context, uuid string, mess
 		if err != nil {
 			return err
 		}
-		_, err = e.execQuery(ctx, "", query)
+		_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 		return err
 	}
 	err := update(message)
@@ -3574,7 +3572,7 @@ func (e *Executor) updateSchemaAnalysis(ctx context.Context, uuid string,
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3586,7 +3584,7 @@ func (e *Executor) updateMySQLTable(ctx context.Context, uuid string, tableName 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3598,7 +3596,7 @@ func (e *Executor) updateMigrationETASeconds(ctx context.Context, uuid string, e
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3616,7 +3614,7 @@ func (e *Executor) updateMigrationProgress(ctx context.Context, uuid string, pro
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3628,7 +3626,7 @@ func (e *Executor) updateMigrationProgressByRowsCopied(ctx context.Context, uuid
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3639,7 +3637,7 @@ func (e *Executor) updateMigrationETASecondsByProgress(ctx context.Context, uuid
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3652,7 +3650,7 @@ func (e *Executor) updateMigrationLastThrottled(ctx context.Context, uuid string
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3664,7 +3662,7 @@ func (e *Executor) updateMigrationTableRows(ctx context.Context, uuid string, ta
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3681,7 +3679,7 @@ func (e *Executor) updateRowsCopied(ctx context.Context, uuid string, rowsCopied
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3693,7 +3691,7 @@ func (e *Executor) updateVitessLivenessIndicator(ctx context.Context, uuid strin
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3705,7 +3703,7 @@ func (e *Executor) updateMigrationIsView(ctx context.Context, uuid string, isVie
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3716,7 +3714,7 @@ func (e *Executor) updateMigrationSetImmediateOperation(ctx context.Context, uui
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3728,7 +3726,7 @@ func (e *Executor) updateMigrationReadyToComplete(ctx context.Context, uuid stri
 	if err != nil {
 		return err
 	}
-	if _, err := e.execQuery(ctx, "", query); err != nil {
+	if _, err := e.execQuery(ctx, sidecardb.SidecarDBName, query); err != nil {
 		return err
 	}
 	if val, ok := e.ownedRunningMigrations.Load(uuid); ok {
@@ -3751,7 +3749,7 @@ func (e *Executor) updateMigrationStowawayTable(ctx context.Context, uuid string
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3763,7 +3761,7 @@ func (e *Executor) updateMigrationUserThrottleRatio(ctx context.Context, uuid st
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, "", query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3779,7 +3777,7 @@ func (e *Executor) retryMigrationWhere(ctx context.Context, whereExpr string) (r
 	if err != nil {
 		return nil, err
 	}
-	result, err = e.execQuery(ctx, "", bound)
+	result, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	return result, err
 }
 
@@ -3802,7 +3800,7 @@ func (e *Executor) RetryMigration(ctx context.Context, uuid string) (result *sql
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	return e.execQuery(ctx, "", query)
+	return e.execQuery(ctx, sidecardb.SidecarDBName, query)
 }
 
 // CleanupMigration sets migration is ready for artifact cleanup. Artifacts are not immediately deleted:
@@ -3825,7 +3823,7 @@ func (e *Executor) CleanupMigration(ctx context.Context, uuid string) (result *s
 	if err != nil {
 		return nil, err
 	}
-	rs, err := e.execQuery(ctx, "", query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3853,7 +3851,7 @@ func (e *Executor) CompleteMigration(ctx context.Context, uuid string) (result *
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	rs, err := e.execQuery(ctx, "", query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3911,7 +3909,7 @@ func (e *Executor) LaunchMigration(ctx context.Context, uuid string, shardsArg s
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	rs, err := e.execQuery(ctx, "", query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3929,7 +3927,7 @@ func (e *Executor) LaunchMigrations(ctx context.Context) (result *sqltypes.Resul
 	if err != nil {
 		return result, err
 	}
-	r, err := e.execQuery(ctx, "", sqlSelectQueuedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedMigrations)
 	if err != nil {
 		return result, err
 	}
@@ -4116,7 +4114,7 @@ func (e *Executor) SubmitMigration(
 	}
 	result, err := e.submitCallbackIfNonConflicting(
 		ctx, onlineDDL,
-		func() (*sqltypes.Result, error) { return e.execQuery(ctx, "", submitQuery) },
+		func() (*sqltypes.Result, error) { return e.execQuery(ctx, sidecardb.SidecarDBName, submitQuery) },
 	)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "submitting migration %v", onlineDDL.UUID)
@@ -4257,7 +4255,7 @@ func (e *Executor) VExec(ctx context.Context, vx *vexec.TabletVExec) (qr *queryp
 		return nil, fmt.Errorf("DELETE statements not supported for this table. query=%s", vx.Query)
 	case *sqlparser.Select:
 		// todo onlineDDL: should understant vx
-		return response(e.execQuery(ctx, "", vx.Query))
+		return response(e.execQuery(ctx, sidecardb.SidecarDBName, vx.Query))
 	case *sqlparser.Insert:
 		match, err := sqlparser.QueryMatchesTemplates(vx.Query, vexecInsertTemplates)
 		if err != nil {
