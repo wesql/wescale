@@ -40,6 +40,9 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/pools"
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/protobuf/encoding/prototext"
@@ -194,9 +197,7 @@ type Executor struct {
 	toggleBufferTableFunc func(cancelCtx context.Context, tableName string, bufferQueries bool)
 	tabletAlias           *topodatapb.TabletAlias
 
-	keyspace string
-	shard    string
-	dbName   string
+	shard string
 
 	initMutex      sync.Mutex
 	migrationMutex sync.Mutex
@@ -259,10 +260,15 @@ func NewExecutor(env tabletenv.Env, tabletAlias *topodatapb.TabletAlias, ts *top
 	}
 }
 
-func (e *Executor) execQuery(ctx context.Context, query string) (result *sqltypes.Result, err error) {
+// execQuery execute sql by using connect poll,so if targetString is not empty, it will add prefix `use database` first then execute sql.
+func (e *Executor) execQuery(ctx context.Context, targetString, query string) (result *sqltypes.Result, err error) {
 	defer e.env.LogError()
-
-	conn, err := e.pool.Get(ctx, nil)
+	var setting pools.Setting
+	if targetString != "" {
+		setting.SetWithoutDBName(false)
+		setting.SetQuery(fmt.Sprintf("use %s", targetString))
+	}
+	conn, err := e.pool.Get(ctx, &setting)
 	if err != nil {
 		return result, err
 	}
@@ -277,9 +283,9 @@ func (e *Executor) TabletAliasString() string {
 
 // InitDBConfig initializes keysapce
 func (e *Executor) InitDBConfig(keyspace, shard, dbName string) {
-	e.keyspace = keyspace
+	//e.keyspace = keyspace
 	e.shard = shard
-	e.dbName = dbName
+	//e.dbName = dbName
 }
 
 // Open opens database pool and initializes the schema
@@ -298,7 +304,7 @@ func (e *Executor) Open() error {
 	})
 	e.vreplicationLastError = make(map[string]*vterrors.LastError)
 
-	e.pool.Open(e.env.Config().DB.AppWithDB(), e.env.Config().DB.DbaWithDB(), e.env.Config().DB.AppDebugWithDB())
+	e.pool.Open(e.env.Config().DB.AppConnector(), e.env.Config().DB.DbaConnector(), e.env.Config().DB.AppDebugConnector())
 	e.ticks.Start(e.onMigrationCheckTick)
 	e.triggerNextCheckInterval()
 
@@ -526,10 +532,10 @@ func (e *Executor) dropOnlineDDLUser(ctx context.Context) error {
 }
 
 // tableExists checks if a given table exists.
-func (e *Executor) tableExists(ctx context.Context, tableName string) (bool, error) {
+func (e *Executor) tableExists(ctx context.Context, tableSchema, tableName string) (bool, error) {
 	tableName = strings.ReplaceAll(tableName, `_`, `\_`)
 	parsed := sqlparser.BuildParsedQuery(sqlShowTablesLike, tableName)
-	rs, err := e.execQuery(ctx, parsed.Query)
+	rs, err := e.execQuery(ctx, tableSchema, parsed.Query)
 	if err != nil {
 		return false, err
 	}
@@ -538,9 +544,9 @@ func (e *Executor) tableExists(ctx context.Context, tableName string) (bool, err
 }
 
 // showCreateTable returns the SHOW CREATE statement for a table or a view
-func (e *Executor) showCreateTable(ctx context.Context, tableName string) (string, error) {
-	parsed := sqlparser.BuildParsedQuery(sqlShowCreateTable, tableName)
-	rs, err := e.execQuery(ctx, parsed.Query)
+func (e *Executor) showCreateTable(ctx context.Context, tableSchema, tableName string) (string, error) {
+	parsed := sqlparser.BuildParsedQuery(sqlShowCreateTable, tableSchema, tableName)
+	rs, err := e.execQuery(ctx, "", parsed.Query)
 	if err != nil {
 		return "", err
 	}
@@ -566,6 +572,12 @@ func (e *Executor) executeDirectly(ctx context.Context, onlineDDL *schema.Online
 	}
 
 	_ = e.onSchemaMigrationStatus(ctx, onlineDDL.UUID, schema.OnlineDDLStatusRunning, false, progressPctStarted, etaSecondsUnknown, rowsCopiedUnknown, emptyHint)
+	if onlineDDL.Schema != "" {
+		_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", onlineDDL.Schema), 0, false)
+		if err != nil {
+			return false, err
+		}
+	}
 	_, err = conn.ExecuteFetch(onlineDDL.SQL, 0, false)
 
 	if err != nil {
@@ -599,7 +611,7 @@ func (e *Executor) doesConnectionInfoMatch(ctx context.Context, connID int64, su
 	if err != nil {
 		return false, err
 	}
-	rs, err := e.execQuery(ctx, findProcessQuery)
+	rs, err := e.execQuery(ctx, "information_schema", findProcessQuery)
 	if err != nil {
 		return false, err
 	}
@@ -616,7 +628,7 @@ func (e *Executor) tableParticipatesInForeignKeyRelationship(ctx context.Context
 		if err != nil {
 			return false, err
 		}
-		r, err := e.execQuery(ctx, query)
+		r, err := e.execQuery(ctx, schema, query)
 		if err != nil {
 			return false, err
 		}
@@ -660,7 +672,7 @@ func (e *Executor) primaryPosition(ctx context.Context) (pos mysql.Position, err
 }
 
 // terminateVReplMigration stops vreplication, then removes the mysql.vreplication entry for the given migration
-func (e *Executor) terminateVReplMigration(ctx context.Context, uuid string) error {
+func (e *Executor) terminateVReplMigration(ctx context.Context, tableSchma string, uuid string) error {
 	tmClient := e.tabletManagerClient()
 	defer tmClient.Close()
 
@@ -669,7 +681,7 @@ func (e *Executor) terminateVReplMigration(ctx context.Context, uuid string) err
 		return err
 	}
 	query, err := sqlparser.ParseAndBind(sqlStopVReplStream,
-		sqltypes.StringBindVariable(e.dbName),
+		sqltypes.StringBindVariable(tableSchma),
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -680,7 +692,7 @@ func (e *Executor) terminateVReplMigration(ctx context.Context, uuid string) err
 		log.Errorf("FAIL vreplicationExec: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
 
-	if err := e.deleteVReplicationEntry(ctx, uuid); err != nil {
+	if err := e.deleteVReplicationEntry(ctx, tableSchma, uuid); err != nil {
 		return err
 	}
 	return nil
@@ -746,7 +758,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 			return err
 		}
 		parsed := sqlparser.BuildParsedQuery(sqlCreateSentryTable, sentryTableName)
-		if _, err := e.execQuery(ctx, parsed.Query); err != nil {
+		if _, err := e.execQuery(ctx, onlineDDL.Schema, parsed.Query); err != nil {
 			return err
 		}
 		e.updateMigrationStage(ctx, onlineDDL.UUID, "sentry table created: %s", sentryTableName)
@@ -851,7 +863,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 		// the original table. We will actually make the table disappear, creating a void.
 		testSuiteBeforeTableName := fmt.Sprintf("%s_before", onlineDDL.Table)
 		parsed := sqlparser.BuildParsedQuery(sqlRenameTable, onlineDDL.Table, testSuiteBeforeTableName)
-		if _, err := e.execQuery(ctx, parsed.Query); err != nil {
+		if _, err := e.execQuery(ctx, onlineDDL.Schema, parsed.Query); err != nil {
 			return err
 		}
 		e.updateMigrationStage(ctx, onlineDDL.UUID, "test suite 'before' table renamed")
@@ -916,7 +928,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 			// this is used in Vitess endtoend testing suite
 			testSuiteAfterTableName := fmt.Sprintf("%s_after", onlineDDL.Table)
 			parsed := sqlparser.BuildParsedQuery(sqlRenameTable, vreplTable, testSuiteAfterTableName)
-			if _, err := e.execQuery(ctx, parsed.Query); err != nil {
+			if _, err := e.execQuery(ctx, onlineDDL.Schema, parsed.Query); err != nil {
 				return err
 			}
 			e.updateMigrationStage(ctx, onlineDDL.UUID, "test suite 'after' table renamed")
@@ -1144,7 +1156,7 @@ func (e *Executor) validateAndEditAlterTableStatement(ctx context.Context, onlin
 // This function emulates MySQL's `CREATE TABLE LIKE ...` statement. The difference is that this function takes control over the generated CONSTRAINT names,
 // if any, such that they are detrministic across shards, as well as preserve original names where possible.
 func (e *Executor) createTableLike(ctx context.Context, newTableName string, onlineDDL *schema.OnlineDDL, conn *dbconnpool.DBConnection) (constraintMap map[string]string, err error) {
-	existingShowCreateTable, err := e.showCreateTable(ctx, onlineDDL.Table)
+	existingShowCreateTable, err := e.showCreateTable(ctx, onlineDDL.Schema, onlineDDL.Table)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "in createTableLike(), newTableName=%s", newTableName)
 	}
@@ -1216,7 +1228,7 @@ func (e *Executor) initVreplicationOriginalMigration(ctx context.Context, online
 			}
 		}
 	}
-	v = NewVRepl(onlineDDL.UUID, e.keyspace, e.shard, e.dbName, onlineDDL.Table, vreplTableName, onlineDDL.SQL)
+	v = NewVRepl(onlineDDL.UUID, onlineDDL.Keyspace, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, onlineDDL.SQL)
 	return v, nil
 }
 
@@ -1270,7 +1282,7 @@ func (e *Executor) initVreplicationRevertMigration(ctx context.Context, onlineDD
 	if err := e.updateArtifacts(ctx, onlineDDL.UUID, vreplTableName); err != nil {
 		return v, err
 	}
-	v = NewVRepl(onlineDDL.UUID, e.keyspace, e.shard, e.dbName, onlineDDL.Table, vreplTableName, "")
+	v = NewVRepl(onlineDDL.UUID, onlineDDL.Keyspace, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, "")
 	v.pos = revertStream.pos
 	return v, nil
 }
@@ -1278,7 +1290,7 @@ func (e *Executor) initVreplicationRevertMigration(ctx context.Context, onlineDD
 // ExecuteWithVReplication sets up the grounds for a vreplication schema migration
 func (e *Executor) ExecuteWithVReplication(ctx context.Context, onlineDDL *schema.OnlineDDL, revertMigration *schema.OnlineDDL) error {
 	// make sure there's no vreplication workflow running under same name
-	_ = e.terminateVReplMigration(ctx, onlineDDL.UUID)
+	_ = e.terminateVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID)
 
 	if conflictFound, conflictingMigration := e.isAnyConflictingMigrationRunning(onlineDDL); conflictFound {
 		return vterrors.Wrapf(ErrExecutorMigrationAlreadyRunning, "conflicting migration: %v over table: %v", conflictingMigration.UUID, conflictingMigration.Table)
@@ -1288,7 +1300,11 @@ func (e *Executor) ExecuteWithVReplication(ctx context.Context, onlineDDL *schem
 		return ErrExecutorNotWritableTablet
 	}
 
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", onlineDDL.Schema), 1000, false)
 	if err != nil {
 		return err
 	}
@@ -1393,7 +1409,7 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 	if err != nil {
 		return onlineDDL, nil, err
 	}
-	r, err := e.execQuery(ctx, bound)
+	r, err := e.execQuery(ctx, "mysql", bound)
 	if err != nil {
 		return onlineDDL, nil, err
 	}
@@ -1421,7 +1437,7 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 
 // readPendingMigrationsUUIDs returns UUIDs for migrations in pending state (queued/ready/running)
 func (e *Executor) readPendingMigrationsUUIDs(ctx context.Context) (uuids []string, err error) {
-	r, err := e.execQuery(ctx, sqlSelectPendingMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
 	if err != nil {
 		return uuids, err
 	}
@@ -1445,7 +1461,7 @@ func (e *Executor) terminateMigration(ctx context.Context, onlineDDL *schema.Onl
 		// migration could have started by a different tablet. We need to actively verify if it is running
 		s, _ := e.readVReplStream(ctx, onlineDDL.UUID, true)
 		foundRunning = (s != nil && s.isRunning())
-		if err := e.terminateVReplMigration(ctx, onlineDDL.UUID); err != nil {
+		if err := e.terminateVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
 			return foundRunning, fmt.Errorf("Error terminating migration, vreplication exec error: %+v", err)
 		}
 	}
@@ -1621,7 +1637,7 @@ func (e *Executor) scheduleNextMigration(ctx context.Context) error {
 
 	var onlyScheduleOneMigration sync.Once
 
-	r, err := e.execQuery(ctx, sqlSelectQueuedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedMigrations)
 	if err != nil {
 		return err
 	}
@@ -1760,7 +1776,7 @@ func (e *Executor) reviewQueuedMigrations(ctx context.Context) error {
 	e.migrationMutex.Lock()
 	defer e.migrationMutex.Unlock()
 
-	r, err := e.execQuery(ctx, sqlSelectQueuedUnreviewedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedUnreviewedMigrations)
 	if err != nil {
 		return err
 	}
@@ -1844,7 +1860,7 @@ func (e *Executor) validateMigrationRevertible(ctx context.Context, revertMigrat
 	}
 	{
 		// Validation: see if there's a pending migration on this table:
-		r, err := e.execQuery(ctx, sqlSelectPendingMigrations)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
 		if err != nil {
 			return err
 		}
@@ -1855,24 +1871,24 @@ func (e *Executor) validateMigrationRevertible(ctx context.Context, revertMigrat
 				// that's fine; the migration we're looking at is the very one that's trying to issue this revert
 				continue
 			}
-			keyspace := row["keyspace"].ToString()
+			keyspace := row["mysql_schema"].ToString()
 			table := row["mysql_table"].ToString()
 			status := schema.OnlineDDLStatus(row["migration_status"].ToString())
 
-			if keyspace == e.keyspace && table == revertMigration.Table {
+			if keyspace == revertMigration.Schema && table == revertMigration.Table {
 				return fmt.Errorf("can not revert migration %s on table %s because migration %s is in %s status. May only revert if all migrations on this table are completed or failed", revertMigration.UUID, revertMigration.Table, pendingUUID, status)
 			}
 		}
 		{
 			// Validation: see that we're reverting the last successful migration on this table:
 			query, err := sqlparser.ParseAndBind(sqlSelectCompleteMigrationsOnTable,
-				sqltypes.StringBindVariable(e.keyspace),
+				sqltypes.StringBindVariable(revertMigration.Schema),
 				sqltypes.StringBindVariable(revertMigration.Table),
 			)
 			if err != nil {
 				return err
 			}
-			r, err := e.execQuery(ctx, query)
+			r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 			if err != nil {
 				return err
 			}
@@ -2041,7 +2057,11 @@ func (e *Executor) evaluateDeclarativeDiff(ctx context.Context, onlineDDL *schem
 		return nil, err
 	}
 
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
+	if err != nil {
+		return nil, err
+	}
+	_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", onlineDDL.Schema), 1000, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2071,14 +2091,14 @@ func (e *Executor) evaluateDeclarativeDiff(ctx context.Context, onlineDDL *schem
 		}()
 	}
 
-	existingShowCreateTable, err := e.showCreateTable(ctx, onlineDDL.Table)
+	existingShowCreateTable, err := e.showCreateTable(ctx, onlineDDL.Schema, onlineDDL.Table)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "in evaluateDeclarativeDiff(), for onlineDDL.Table")
 	}
 	if existingShowCreateTable == "" {
 		return nil, vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "unexpected: cannot find table or view %v", onlineDDL.Table)
 	}
-	newShowCreateTable, err := e.showCreateTable(ctx, comparisonTableName)
+	newShowCreateTable, err := e.showCreateTable(ctx, onlineDDL.Schema, comparisonTableName)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "in evaluateDeclarativeDiff(), for comparisonTableName")
 	}
@@ -2108,14 +2128,14 @@ func (e *Executor) getCompletedMigrationByContextAndSQL(ctx context.Context, onl
 		return "", nil
 	}
 	query, err := sqlparser.ParseAndBind(sqlSelectCompleteMigrationsByContextAndSQL,
-		sqltypes.StringBindVariable(e.keyspace),
+		sqltypes.StringBindVariable(onlineDDL.Keyspace),
 		sqltypes.StringBindVariable(onlineDDL.MigrationContext),
 		sqltypes.StringBindVariable(onlineDDL.SQL),
 	)
 	if err != nil {
 		return "", err
 	}
-	r, err := e.execQuery(ctx, query)
+	r, err := e.execQuery(ctx, onlineDDL.Schema, query)
 	if err != nil {
 		return "", err
 	}
@@ -2202,7 +2222,7 @@ func (e *Executor) executeCreateDDLActionMigration(ctx context.Context, onlineDD
 	if _, isCreateView := ddlStmt.(*sqlparser.CreateView); isCreateView {
 		if ddlStmt.GetIsReplace() {
 			// This is a CREATE OR REPLACE VIEW
-			exists, err := e.tableExists(ctx, onlineDDL.Table)
+			exists, err := e.tableExists(ctx, onlineDDL.Schema, onlineDDL.Table)
 			if err != nil {
 				return failMigration(err)
 			}
@@ -2232,7 +2252,7 @@ func (e *Executor) executeCreateDDLActionMigration(ctx context.Context, onlineDD
 		// This is a CREATE TABLE IF NOT EXISTS
 		// We want to know if the table actually exists before running this migration.
 		// If so, then the operation is noop, and when we revert the migration, we also do a noop.
-		exists, err := e.tableExists(ctx, onlineDDL.Table)
+		exists, err := e.tableExists(ctx, onlineDDL.Schema, onlineDDL.Table)
 		if err != nil {
 			return failMigration(err)
 		}
@@ -2267,11 +2287,11 @@ func (e *Executor) generateSwapTablesStatement(ctx context.Context, tableName1, 
 }
 
 // renameTableIfApplicable renames a table, assuming it exists and that the target does not exist.
-func (e *Executor) renameTableIfApplicable(ctx context.Context, fromTableName, toTableName string) (attemptMade bool, err error) {
+func (e *Executor) renameTableIfApplicable(ctx context.Context, fromDBName string, fromTableName, toDBName string, toTableName string) (attemptMade bool, err error) {
 	if fromTableName == "" {
 		return false, nil
 	}
-	exists, err := e.tableExists(ctx, fromTableName)
+	exists, err := e.tableExists(ctx, fromDBName, fromTableName)
 	if err != nil {
 		return false, err
 	}
@@ -2279,7 +2299,7 @@ func (e *Executor) renameTableIfApplicable(ctx context.Context, fromTableName, t
 		// can't rename from table when it does not exist
 		return false, nil
 	}
-	exists, err = e.tableExists(ctx, toTableName)
+	exists, err = e.tableExists(ctx, toDBName, toTableName)
 	if err != nil {
 		return false, err
 	}
@@ -2287,8 +2307,8 @@ func (e *Executor) renameTableIfApplicable(ctx context.Context, fromTableName, t
 		// target table exists, abort.
 		return false, nil
 	}
-	parsed := sqlparser.BuildParsedQuery(sqlRenameTable, fromTableName, toTableName)
-	_, err = e.execQuery(ctx, parsed.Query)
+	parsed := sqlparser.BuildParsedQuery(sqlRenameTable, fromDBName, fromTableName, toDBName, toTableName)
+	_, err = e.execQuery(ctx, "", parsed.Query)
 	return true, err
 }
 
@@ -2324,7 +2344,11 @@ func (e *Executor) executeAlterViewOnline(ctx context.Context, onlineDDL *schema
 	}
 	artifactViewCreateSQL := sqlparser.String(stmt)
 
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
+	if err != nil {
+		return err
+	}
+	_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", onlineDDL.Schema), 1000, false)
 	if err != nil {
 		return err
 	}
@@ -2380,7 +2404,11 @@ func (e *Executor) addInstantAlgorithm(alterTable *sqlparser.AlterTable) {
 func (e *Executor) executeSpecialAlterDDLActionMigrationIfApplicable(ctx context.Context, onlineDDL *schema.OnlineDDL) (specialMigrationExecuted bool, err error) {
 	// Before we jump on to strategies... Some ALTERs can be optimized without having to run through
 	// a full online schema change process. Let's find out if this is the case!
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
+	if err != nil {
+		return false, err
+	}
+	_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", onlineDDL.Schema), 1000, false)
 	if err != nil {
 		return false, err
 	}
@@ -2462,7 +2490,7 @@ func (e *Executor) executeAlterDDLActionMigration(ctx context.Context, onlineDDL
 	}
 	if _, isAlterView := ddlStmt.(*sqlparser.AlterView); isAlterView {
 		// Same treatment for all online strategies
-		exists, err := e.tableExists(ctx, onlineDDL.Table)
+		exists, err := e.tableExists(ctx, onlineDDL.Schema, onlineDDL.Table)
 		if err != nil {
 			return failMigration(err)
 		}
@@ -2573,7 +2601,7 @@ func (e *Executor) executeMigration(ctx context.Context, onlineDDL *schema.Onlin
 					return failMigration(vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "strategy is declarative. IF EXISTS does not work in declarative mode for migration %v", onlineDDL.UUID))
 				}
 			}
-			exists, err := e.tableExists(ctx, onlineDDL.Table)
+			exists, err := e.tableExists(ctx, onlineDDL.Schema, onlineDDL.Table)
 			if err != nil {
 				return failMigration(err)
 			}
@@ -2603,7 +2631,7 @@ func (e *Executor) executeMigration(ctx context.Context, onlineDDL *schema.Onlin
 				return failMigration(vterrors.Errorf(vtrpcpb.Code_UNIMPLEMENTED, "strategy is declarative. OR REPLACE does not work in declarative mode for migration %v", onlineDDL.UUID))
 			}
 
-			exists, err := e.tableExists(ctx, onlineDDL.Table)
+			exists, err := e.tableExists(ctx, onlineDDL.Schema, onlineDDL.Table)
 			if err != nil {
 				return failMigration(err)
 			}
@@ -2697,7 +2725,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 		if err != nil {
 			return nil, err
 		}
-		r, err := e.execQuery(ctx, sqlSelectReadyMigrations)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectReadyMigrations)
 		if err != nil {
 			return nil, err
 		}
@@ -2757,7 +2785,7 @@ func (e *Executor) readVReplStream(ctx context.Context, uuid string, okIfMissing
 	if err != nil {
 		return nil, err
 	}
-	r, err := e.execQuery(ctx, query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -2831,7 +2859,7 @@ func (e *Executor) isVReplMigrationReadyToCutOver(ctx context.Context, s *VReplS
 		if err != nil {
 			return false, err
 		}
-		r, err := e.execQuery(ctx, query)
+		r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 		if err != nil {
 			return false, err
 		}
@@ -2892,7 +2920,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 	}
 
 	var throttlerOnce sync.Once
-	r, err := e.execQuery(ctx, sqlSelectRunningMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectRunningMigrations)
 	if err != nil {
 		return countRunnning, cancellable, err
 	}
@@ -2917,7 +2945,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 			// If it exists, that means a tablet crashed while running a cut-over, and left the database in a bad state, where the migrated table does not exist.
 			// thankfully, we have tracked this situation and just realized what happened. Now, first thing to do is to restore the original table.
 			log.Infof("found stowaway table %s journal in migration %s for table %s", stowawayTable, uuid, onlineDDL.Table)
-			attemptMade, err := e.renameTableIfApplicable(ctx, stowawayTable, onlineDDL.Table)
+			attemptMade, err := e.renameTableIfApplicable(ctx, onlineDDL.Schema, stowawayTable, onlineDDL.Schema, onlineDDL.Table)
 			if err != nil {
 				// unable to restore table; we bail out, and we will try again next round.
 				return countRunnning, cancellable, err
@@ -3089,7 +3117,7 @@ func (e *Executor) reviewStaleMigrations(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r, err := e.execQuery(ctx, query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return err
 	}
@@ -3165,9 +3193,9 @@ func (e *Executor) reloadSchema(ctx context.Context) error {
 
 // deleteVReplicationEntry cleans up a mysql.vreplication entry; this function is called as part of
 // migration termination and as part of artifact cleanup
-func (e *Executor) deleteVReplicationEntry(ctx context.Context, uuid string) error {
+func (e *Executor) deleteVReplicationEntry(ctx context.Context, tableSchema string, uuid string) error {
 	query, err := sqlparser.ParseAndBind(sqlDeleteVReplStream,
-		sqltypes.StringBindVariable(e.dbName),
+		sqltypes.StringBindVariable(tableSchema),
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -3185,8 +3213,8 @@ func (e *Executor) deleteVReplicationEntry(ctx context.Context, uuid string) err
 }
 
 // gcArtifactTable garbage-collects a single table
-func (e *Executor) gcArtifactTable(ctx context.Context, artifactTable, uuid string, t time.Time) (string, error) {
-	tableExists, err := e.tableExists(ctx, artifactTable)
+func (e *Executor) gcArtifactTable(ctx context.Context, tableSchema, artifactTable, uuid string, t time.Time) (string, error) {
+	tableExists, err := e.tableExists(ctx, tableSchema, artifactTable)
 	if err != nil {
 		return "", err
 	}
@@ -3199,7 +3227,7 @@ func (e *Executor) gcArtifactTable(ctx context.Context, artifactTable, uuid stri
 	if err != nil {
 		return toTableName, err
 	}
-	_, err = e.execQuery(ctx, renameStatement)
+	_, err = e.execQuery(ctx, tableSchema, renameStatement)
 	return toTableName, err
 }
 
@@ -3208,7 +3236,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 	e.migrationMutex.Lock()
 	defer e.migrationMutex.Unlock()
 
-	if _, err := e.execQuery(ctx, sqlFixCompletedTimestamp); err != nil {
+	if _, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlFixCompletedTimestamp); err != nil {
 		// This query fixes a bug where stale migrations were marked as 'failed' without updating 'completed_timestamp'
 		// see https://github.com/vitessio/vitess/issues/8499
 		// Running this query retroactively sets completed_timestamp
@@ -3221,7 +3249,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	r, err := e.execQuery(ctx, query)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return err
 	}
@@ -3229,6 +3257,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 		uuid := row["migration_uuid"].ToString()
 		artifacts := row["artifacts"].ToString()
 		logPath := row["log_path"].ToString()
+		tableSchema := row["mysql_schema"].ToString()
 
 		log.Infof("Executor.gcArtifacts: will GC artifacts for migration %s", uuid)
 		// Remove tables:
@@ -3241,7 +3270,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 			// is shared for all artifacts in this loop, we differentiate via timestamp
 			log.Infof("Executor.gcArtifacts: will GC artifact %s for migration %s", artifactTable, uuid)
 			t := timeNow.Add(time.Duration(i) * time.Second).UTC()
-			toTableName, err := e.gcArtifactTable(ctx, artifactTable, uuid, t)
+			toTableName, err := e.gcArtifactTable(ctx, tableSchema, artifactTable, uuid, t)
 			if err != nil {
 				return vterrors.Wrapf(err, "in gcArtifacts() for %s", artifactTable)
 			}
@@ -3260,7 +3289,7 @@ func (e *Executor) gcArtifacts(ctx context.Context) error {
 
 		// while the next function only applies to 'online' strategy ALTER and REVERT, there is no
 		// harm in invoking it for other migrations.
-		if err := e.deleteVReplicationEntry(ctx, uuid); err != nil {
+		if err := e.deleteVReplicationEntry(ctx, tableSchema, uuid); err != nil {
 			return err
 		}
 
@@ -3290,10 +3319,6 @@ func (e *Executor) onMigrationCheckTick() {
 	}
 
 	if e.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
-		return
-	}
-	if e.keyspace == "" {
-		log.Errorf("Executor.onMigrationCheckTick(): empty keyspace")
 		return
 	}
 
@@ -3334,7 +3359,7 @@ func (e *Executor) updateMigrationStartedTimestamp(ctx context.Context, uuid str
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStartedTimestamp: uuid=%s, error=%v", uuid, err)
 	}
@@ -3352,7 +3377,7 @@ func (e *Executor) updateMigrationTimestamp(ctx context.Context, timestampColumn
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStartedTimestamp: uuid=%s, timestampColumn=%v, error=%v", uuid, timestampColumn, err)
 	}
@@ -3370,7 +3395,7 @@ func (e *Executor) updateMigrationLogPath(ctx context.Context, uuid string, host
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3383,7 +3408,7 @@ func (e *Executor) updateArtifacts(ctx context.Context, uuid string, artifacts .
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3394,7 +3419,7 @@ func (e *Executor) clearArtifacts(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3406,7 +3431,7 @@ func (e *Executor) updateMigrationSpecialPlan(ctx context.Context, uuid string, 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3420,7 +3445,7 @@ func (e *Executor) updateMigrationStage(ctx context.Context, uuid string, stage 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3431,7 +3456,7 @@ func (e *Executor) incrementCutoverAttempts(ctx context.Context, uuid string) er
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3444,7 +3469,7 @@ func (e *Executor) updateMigrationTablet(ctx context.Context, uuid string) error
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3460,7 +3485,7 @@ func (e *Executor) updateTabletFailure(ctx context.Context, uuid string) error {
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, bound)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	return err
 }
 
@@ -3472,7 +3497,7 @@ func (e *Executor) updateMigrationStatusFailedOrCancelled(ctx context.Context, u
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3485,7 +3510,7 @@ func (e *Executor) updateMigrationStatus(ctx context.Context, uuid string, statu
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		log.Errorf("FAIL updateMigrationStatus: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
@@ -3500,7 +3525,7 @@ func (e *Executor) updateDDLAction(ctx context.Context, uuid string, actionStr s
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3520,7 +3545,7 @@ func (e *Executor) updateMigrationMessage(ctx context.Context, uuid string, mess
 		if err != nil {
 			return err
 		}
-		_, err = e.execQuery(ctx, query)
+		_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 		return err
 	}
 	err := update(message)
@@ -3547,7 +3572,7 @@ func (e *Executor) updateSchemaAnalysis(ctx context.Context, uuid string,
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3559,7 +3584,7 @@ func (e *Executor) updateMySQLTable(ctx context.Context, uuid string, tableName 
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3571,7 +3596,7 @@ func (e *Executor) updateMigrationETASeconds(ctx context.Context, uuid string, e
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3589,7 +3614,7 @@ func (e *Executor) updateMigrationProgress(ctx context.Context, uuid string, pro
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3601,7 +3626,7 @@ func (e *Executor) updateMigrationProgressByRowsCopied(ctx context.Context, uuid
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3612,7 +3637,7 @@ func (e *Executor) updateMigrationETASecondsByProgress(ctx context.Context, uuid
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3625,7 +3650,7 @@ func (e *Executor) updateMigrationLastThrottled(ctx context.Context, uuid string
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3637,7 +3662,7 @@ func (e *Executor) updateMigrationTableRows(ctx context.Context, uuid string, ta
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3654,7 +3679,7 @@ func (e *Executor) updateRowsCopied(ctx context.Context, uuid string, rowsCopied
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3666,7 +3691,7 @@ func (e *Executor) updateVitessLivenessIndicator(ctx context.Context, uuid strin
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3678,7 +3703,7 @@ func (e *Executor) updateMigrationIsView(ctx context.Context, uuid string, isVie
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3689,7 +3714,7 @@ func (e *Executor) updateMigrationSetImmediateOperation(ctx context.Context, uui
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3701,7 +3726,7 @@ func (e *Executor) updateMigrationReadyToComplete(ctx context.Context, uuid stri
 	if err != nil {
 		return err
 	}
-	if _, err := e.execQuery(ctx, query); err != nil {
+	if _, err := e.execQuery(ctx, sidecardb.SidecarDBName, query); err != nil {
 		return err
 	}
 	if val, ok := e.ownedRunningMigrations.Load(uuid); ok {
@@ -3724,7 +3749,7 @@ func (e *Executor) updateMigrationStowawayTable(ctx context.Context, uuid string
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3736,7 +3761,7 @@ func (e *Executor) updateMigrationUserThrottleRatio(ctx context.Context, uuid st
 	if err != nil {
 		return err
 	}
-	_, err = e.execQuery(ctx, query)
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	return err
 }
 
@@ -3752,7 +3777,7 @@ func (e *Executor) retryMigrationWhere(ctx context.Context, whereExpr string) (r
 	if err != nil {
 		return nil, err
 	}
-	result, err = e.execQuery(ctx, bound)
+	result, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	return result, err
 }
 
@@ -3775,7 +3800,7 @@ func (e *Executor) RetryMigration(ctx context.Context, uuid string) (result *sql
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	return e.execQuery(ctx, query)
+	return e.execQuery(ctx, sidecardb.SidecarDBName, query)
 }
 
 // CleanupMigration sets migration is ready for artifact cleanup. Artifacts are not immediately deleted:
@@ -3798,7 +3823,7 @@ func (e *Executor) CleanupMigration(ctx context.Context, uuid string) (result *s
 	if err != nil {
 		return nil, err
 	}
-	rs, err := e.execQuery(ctx, query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3826,7 +3851,7 @@ func (e *Executor) CompleteMigration(ctx context.Context, uuid string) (result *
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	rs, err := e.execQuery(ctx, query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3884,7 +3909,7 @@ func (e *Executor) LaunchMigration(ctx context.Context, uuid string, shardsArg s
 		return nil, err
 	}
 	defer e.triggerNextCheckInterval()
-	rs, err := e.execQuery(ctx, query)
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
 	if err != nil {
 		return nil, err
 	}
@@ -3902,7 +3927,7 @@ func (e *Executor) LaunchMigrations(ctx context.Context) (result *sqltypes.Resul
 	if err != nil {
 		return result, err
 	}
-	r, err := e.execQuery(ctx, sqlSelectQueuedMigrations)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectQueuedMigrations)
 	if err != nil {
 		return result, err
 	}
@@ -4066,9 +4091,9 @@ func (e *Executor) SubmitMigration(
 	_, allowConcurrentMigration := e.allowConcurrentMigration(onlineDDL)
 	submitQuery, err := sqlparser.ParseAndBind(sqlInsertMigration,
 		sqltypes.StringBindVariable(onlineDDL.UUID),
-		sqltypes.StringBindVariable(e.keyspace),
+		sqltypes.StringBindVariable(onlineDDL.Schema),
 		sqltypes.StringBindVariable(e.shard),
-		sqltypes.StringBindVariable(e.dbName),
+		sqltypes.StringBindVariable(onlineDDL.Schema),
 		sqltypes.StringBindVariable(onlineDDL.Table),
 		sqltypes.StringBindVariable(onlineDDL.SQL),
 		sqltypes.StringBindVariable(string(onlineDDL.Strategy)),
@@ -4089,7 +4114,7 @@ func (e *Executor) SubmitMigration(
 	}
 	result, err := e.submitCallbackIfNonConflicting(
 		ctx, onlineDDL,
-		func() (*sqltypes.Result, error) { return e.execQuery(ctx, submitQuery) },
+		func() (*sqltypes.Result, error) { return e.execQuery(ctx, sidecardb.SidecarDBName, submitQuery) },
 	)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "submitting migration %v", onlineDDL.UUID)
@@ -4229,7 +4254,8 @@ func (e *Executor) VExec(ctx context.Context, vx *vexec.TabletVExec) (qr *queryp
 	case *sqlparser.Delete:
 		return nil, fmt.Errorf("DELETE statements not supported for this table. query=%s", vx.Query)
 	case *sqlparser.Select:
-		return response(e.execQuery(ctx, vx.Query))
+		// todo onlineDDL: should understant vx
+		return response(e.execQuery(ctx, sidecardb.SidecarDBName, vx.Query))
 	case *sqlparser.Insert:
 		match, err := sqlparser.QueryMatchesTemplates(vx.Query, vexecInsertTemplates)
 		if err != nil {
@@ -4241,10 +4267,14 @@ func (e *Executor) VExec(ctx context.Context, vx *vexec.TabletVExec) (qr *queryp
 		// Vexec naturally runs outside shard/schema context. It does not supply values for those columns.
 		// We can fill them in.
 		vx.ReplaceInsertColumnVal("shard", vx.ToStringVal(e.shard))
-		vx.ReplaceInsertColumnVal("mysql_schema", vx.ToStringVal(e.dbName))
+		tableSchema := stmt.Table.Qualifier.String()
+		if tableSchema == "" {
+			tableSchema = vx.Keyspace
+		}
+		vx.ReplaceInsertColumnVal("mysql_schema", vx.ToStringVal(tableSchema))
 		vx.AddOrReplaceInsertColumnVal("tablet", vx.ToStringVal(e.TabletAliasString()))
 		e.triggerNextCheckInterval()
-		return response(e.execQuery(ctx, vx.Query))
+		return response(e.execQuery(ctx, tableSchema, vx.Query))
 	case *sqlparser.Update:
 		match, err := sqlparser.QueryMatchesTemplates(vx.Query, vexecUpdateTemplates)
 		if err != nil {

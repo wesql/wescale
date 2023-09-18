@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,8 +75,8 @@ func (p *SpecialAlterPlan) String() string {
 }
 
 // getCreateTableStatement gets a formal AlterTable representation of the given table
-func (e *Executor) getCreateTableStatement(ctx context.Context, tableName string) (*sqlparser.CreateTable, error) {
-	showCreateTable, err := e.showCreateTable(ctx, tableName)
+func (e *Executor) getCreateTableStatement(ctx context.Context, tableSchema, tableName string) (*sqlparser.CreateTable, error) {
+	showCreateTable, err := e.showCreateTable(ctx, tableSchema, tableName)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "in Executor.getCreateTableStatement()")
 	}
@@ -358,7 +363,7 @@ func (e *Executor) analyzeSpecialAlterPlan(ctx context.Context, onlineDDL *schem
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "expected ALTER TABLE. Got %v", sqlparser.CanonicalString(ddlStmt))
 	}
 
-	createTable, err := e.getCreateTableStatement(ctx, onlineDDL.Table)
+	createTable, err := e.getCreateTableStatement(ctx, onlineDDL.Schema, onlineDDL.Table)
 	if err != nil {
 		return nil, vterrors.Wrapf(err, "in Executor.analyzeSpecialAlterPlan(), uuid=%v, table=%v", onlineDDL.UUID, onlineDDL.Table)
 	}
