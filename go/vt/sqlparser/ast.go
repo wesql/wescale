@@ -517,6 +517,7 @@ type (
 		OptLike     *OptLike
 		Comments    *ParsedComments
 		FullyParsed bool
+		Select      SelectStatement
 	}
 
 	// CreateView represents a CREATE VIEW query

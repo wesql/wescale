@@ -24,7 +24,6 @@ package sqlparser
 
 import (
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2699,6 +2698,10 @@ func (node *CreateTable) formatFast(buf *TrackedBuffer) {
 	if node.TableSpec != nil {
 		buf.WriteByte(' ')
 		node.TableSpec.formatFast(buf)
+	}
+	if node.Select != nil {
+		buf.WriteByte(' ')
+		node.Select.formatFast(buf)
 	}
 }
 

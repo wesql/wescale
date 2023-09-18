@@ -146,8 +146,8 @@ func TestRewriteTableName(t *testing.T) {
 		{
 			// do not rewrite tableName in create table
 			in:        `create table t1 (a int not null auto_increment primary key, b char(32));`,
-			outstmt:   "create table t1 (\n\ta int not null auto_increment primary key,\n\tb char(32)\n)",
-			isSkipUse: false,
+			outstmt:   "create table test.t1 (\n\ta int not null auto_increment primary key,\n\tb char(32)\n)",
+			isSkipUse: true,
 		},
 		{
 			in:        `drop table t1,t2,t3;`,
@@ -181,6 +181,7 @@ func TestRewriteTableName(t *testing.T) {
 		},
 		{
 			in:        `analyze table t1;`,
+			outstmt:   "otherread",
 			isSkipUse: false,
 		},
 	}
@@ -191,9 +192,7 @@ func TestRewriteTableName(t *testing.T) {
 			newStmt, isSkipUse, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.isSkipUse, isSkipUse)
-			if isSkipUse {
-				assert.Equal(t, tc.outstmt, String(newStmt))
-			}
+			assert.Equal(t, tc.outstmt, String(newStmt))
 		})
 	}
 }
@@ -211,22 +210,22 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 		},
 		{
 			in:        `create table t1 (c1 int)`,
-			outstmt:   `create table test.t1 (c1 int)`,
+			outstmt:   "create table test.t1 (\n\tc1 int\n)",
 			isSkipUse: true,
 		},
 		{
 			in:        `create table t2 select * from t1;`,
-			outstmt:   `create table test.t2 select * from test.t1;`,
+			outstmt:   `create table test.t2 select * from test.t1`,
 			isSkipUse: true,
 		},
 		{
 			in:        `create table d2.t2 select * from t1;`,
-			outstmt:   `create table d2.t2 select * from test.t1;`,
+			outstmt:   `create table d2.t2 select * from test.t1`,
 			isSkipUse: true,
 		},
 		{
 			in:        `create table t2 select * from d2.t1;`,
-			outstmt:   `create table test.t2 select * from d2.t1;`,
+			outstmt:   `create table test.t2 select * from d2.t1`,
 			isSkipUse: true,
 		},
 		{

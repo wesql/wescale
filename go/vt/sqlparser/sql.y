@@ -1157,6 +1157,11 @@ create_statement:
     $1.FullyParsed = true
     $$ = $1
   }
+| create_table_prefix query_primary
+  {
+    $1.Select = $2
+    $$ = $1
+  }
 | create_index_prefix '(' index_column_list ')' index_option_list_opt algorithm_lock_opt
   {
     indexDef := $1.AlterOptions[0].(*AddIndexDefinition).IndexDefinition

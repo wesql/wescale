@@ -1626,12 +1626,14 @@ func (c *cow) copyOnRewriteRefOfCreateTable(n *CreateTable, parent SQLNode) (out
 		_TableSpec, changedTableSpec := c.copyOnRewriteRefOfTableSpec(n.TableSpec, n)
 		_OptLike, changedOptLike := c.copyOnRewriteRefOfOptLike(n.OptLike, n)
 		_Comments, changedComments := c.copyOnRewriteRefOfParsedComments(n.Comments, n)
-		if changedTable || changedTableSpec || changedOptLike || changedComments {
+		_Select, changedSelect := c.copyOnRewriteSelectStatement(n.Select, n)
+		if changedTable || changedTableSpec || changedOptLike || changedComments || changedSelect {
 			res := *n
 			res.Table, _ = _Table.(TableName)
 			res.TableSpec, _ = _TableSpec.(*TableSpec)
 			res.OptLike, _ = _OptLike.(*OptLike)
 			res.Comments, _ = _Comments.(*ParsedComments)
+			res.Select, _ = _Select.(SelectStatement)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
