@@ -153,7 +153,7 @@ You can follow the settings in the picture, but remember to replace the file pat
 
 ![img](images/debug_goland.png)
 
-However, when using the `ps aux` command to obtain information about the program arguments of `vttablet`, there is no argument value following the `hostname` flag, which will lead an error in GoLand. You can obtain the hostname by running `hostname` in the terminal and then use it as the value of `hostname` flag.
+However, when using the `ps aux` command to obtain information about the program arguments of `vttablet`, there is no argument value following the `--tablet_hostname` flag, which will lead an error in GoLand. You can obtain the hostname by running `hostname` in the terminal and then use it as the value of `hostname` flag.
 
 ## Shut down
 
