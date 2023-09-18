@@ -175,6 +175,7 @@ func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, 
 		tables := ddlStmt.GetFromTables()
 		for _, table := range tables {
 			fullTableName := NewTableSchemaAndName(keyspace, table.Qualifier.String(), table.Name.String())
+			ddlStmt.SetFromTables([]sqlparser.TableName{table})
 			if err := appendOnlineDDL(fullTableName, ddlStmt); err != nil {
 				return nil, err
 			}
