@@ -40,6 +40,35 @@ sudo apt-get update
 sudo apt install -y mysql-server etcd 
 ```
 
+## **Windows WSL**
+
+Setting up the debugging environment on WSL needs extra operations, as some scripts may not run as a superuser. By default, WSL runs as a superuser, so we need to create an additional regular user. Here are the specific steps:
+
+1. First, use the following commands to create a regular user:
+```shell
+useradd -m username   # Use -m to create a home directory for the user.
+passwd username       # Change the password for the regular user.
+usermod -aG sudo username  # Allow the user to use sudo.
+```
+
+2. Since the debugging environment is based on GoLand, and GoLand connects to the WSL terminal using the default WSL user, we need to change the default WSL user to the newly created regular user:
+```shell
+vim /etc/wsl.conf
+# Add the following content:
+[user]
+default = username
+```
+
+Then, open PowerShell and shut down WSL:
+```shell
+wsl --list --running   # List running WSL instances.
+wsl --shutdown name    # Replace 'name' with the name of the instance to shut down.
+```
+
+After this, when you enter WSL again, you will log in as the regular user. You will also notice that GoLand's terminal connects as the regular user.
+
+3. Clone the source code again as the regular user, as the source code cloned by the superuser may have permission problems. Before cloning the source code, do not forget to generate an SSH public key for the regular user using `ssh-keygen` and configure it on GitHub.
+
 # **Build & Install**
 
 ## **Pull Source Code**
@@ -119,6 +148,8 @@ You can follow the settings in the picture, but remember to replace the file pat
 
 ![img](images/debug_goland.png)
 
+However, when using the `ps aux` command to obtain information about the program arguments of `vttablet`, there is no argument value following the `--tablet_hostname` flag, which will lead an error in GoLand. You can obtain the hostname by running `hostname` in the terminal and then use it as the value of `hostname` flag.
+
 ## Shut down
 
 Shutdown the cluster. If some of the processes fail to shutdown, you can kill all the processes manually and delete the `vtdataroot` directory.
@@ -126,3 +157,4 @@ Shutdown the cluster. If some of the processes fail to shutdown, you can kill al
 ```Shell
 ./shutdow_cluster.sh
 ```
+
