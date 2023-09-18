@@ -76,16 +76,16 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.7
 	go.etcd.io/etcd/client/pkg/v3 v3.5.7
 	go.etcd.io/etcd/client/v3 v3.5.7
-	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/crypto v0.13.0 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
-	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.7.0
+	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/net v0.15.0
 	golang.org/x/oauth2 v0.4.0
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0
-	golang.org/x/text v0.10.0
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/term v0.12.0
+	golang.org/x/text v0.13.0
 	golang.org/x/time v0.3.0
-	golang.org/x/tools v0.6.0
+	golang.org/x/tools v0.13.0
 	google.golang.org/api v0.109.0
 	google.golang.org/genproto v0.0.0-20230131230820-1c016267d619 // indirect
 	google.golang.org/grpc v1.52.3
