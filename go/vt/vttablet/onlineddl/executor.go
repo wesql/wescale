@@ -2182,7 +2182,7 @@ func (e *Executor) executeDropDDLActionMigration(ctx context.Context, onlineDDL 
 	}
 
 	var toTableName string
-	onlineDDL.SQL, toTableName, err = schema.GenerateRenameStatementWithUUID(onlineDDL.Table, schema.HoldTableGCState, onlineDDL.GetGCUUID(), newGCTableRetainTime())
+	onlineDDL.SQL, toTableName, err = schema.GenerateRenameStatementWithUUID(onlineDDL.Schema, onlineDDL.Table, schema.HoldTableGCState, onlineDDL.GetGCUUID(), newGCTableRetainTime())
 	if err != nil {
 		return failMigration(err)
 	}
@@ -3223,7 +3223,7 @@ func (e *Executor) gcArtifactTable(ctx context.Context, tableSchema, artifactTab
 	}
 	// We've already concluded in gcArtifacts() that this table was held for long enough.
 	// We therefore move it into PURGE state.
-	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(artifactTable, schema.PurgeTableGCState, schema.OnlineDDLToGCUUID(uuid), t)
+	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(tableSchema, artifactTable, schema.PurgeTableGCState, schema.OnlineDDLToGCUUID(uuid), t)
 	if err != nil {
 		return toTableName, err
 	}

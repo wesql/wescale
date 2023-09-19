@@ -180,6 +180,7 @@ func registerTabletEnvFlags(fs *pflag.FlagSet) {
 
 	fs.BoolVar(&enableReplicationReporter, "enable_replication_reporter", false, "Use polling to track replication lag.")
 	fs.BoolVar(&currentConfig.EnableOnlineDDL, "queryserver_enable_online_ddl", defaultConfig.EnableOnlineDDL, "Enable online DDL.")
+	fs.BoolVar(&currentConfig.EnableTableGC, "queryserver_enable_tablegc", defaultConfig.EnableTableGC, "Enable TableGC.")
 	fs.BoolVar(&currentConfig.SanitizeLogMessages, "sanitize_log_messages", false, "Remove potentially sensitive information in tablet INFO, WARNING, and ERROR log messages such as query parameters.")
 	fs.BoolVar(&currentConfig.EnableSettingsPool, "queryserver-enable-settings-pool", false, "Enable pooling of connections with modified system settings")
 
@@ -570,7 +571,7 @@ var defaultConfig = TabletConfig{
 	TransactionLimitConfig: defaultTransactionLimitConfig(),
 
 	EnableOnlineDDL: true,
-	EnableTableGC:   false,
+	EnableTableGC:   true,
 
 	RowStreamer: RowStreamerConfig{
 		MaxInnoDBTrxHistLen: 1000000,

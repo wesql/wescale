@@ -273,7 +273,6 @@ func (tsv *TabletServer) InitDBConfig(target *querypb.Target, dbcfgs *dbconfigs.
 	tsv.hs.InitDBConfig(target, tsv.config.DB.DbaWithDB())
 	tsv.onlineDDLExecutor.InitDBConfig(target.Keyspace, target.Shard, dbcfgs.DBName)
 	tsv.lagThrottler.InitDBConfig(target.Keyspace, target.Shard)
-	tsv.tableGC.InitDBConfig(target.Keyspace, target.Shard, dbcfgs.DBName)
 	return nil
 }
 

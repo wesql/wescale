@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -104,17 +109,17 @@ func IsGCTableName(tableName string) bool {
 }
 
 // GenerateRenameStatementWithUUID generates a "RENAME TABLE" statement, where a table is renamed to a GC table, with preset UUID
-func GenerateRenameStatementWithUUID(fromTableName string, state TableGCState, uuid string, t time.Time) (statement string, toTableName string, err error) {
+func GenerateRenameStatementWithUUID(fromTableSchema string, fromTableName string, state TableGCState, uuid string, t time.Time) (statement string, toTableName string, err error) {
 	toTableName, err = generateGCTableName(state, uuid, t)
 	if err != nil {
 		return "", "", err
 	}
-	return fmt.Sprintf("RENAME TABLE `%s` TO %s", fromTableName, toTableName), toTableName, nil
+	return fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`", fromTableSchema, fromTableName, fromTableSchema, toTableName), toTableName, nil
 }
 
 // GenerateRenameStatement generates a "RENAME TABLE" statement, where a table is renamed to a GC table.
-func GenerateRenameStatement(fromTableName string, state TableGCState, t time.Time) (statement string, toTableName string, err error) {
-	return GenerateRenameStatementWithUUID(fromTableName, state, "", t)
+func GenerateRenameStatement(fromTableSchema string, fromTableName string, state TableGCState, t time.Time) (statement string, toTableName string, err error) {
+	return GenerateRenameStatementWithUUID(fromTableSchema, fromTableName, state, "", t)
 }
 
 // ParseGCLifecycle parses a comma separated list of gc states and returns a map of indicated states
