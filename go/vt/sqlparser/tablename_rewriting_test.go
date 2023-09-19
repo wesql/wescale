@@ -239,13 +239,13 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 			isSkipUse: true,
 		},
 		{
-			in:        "CREATE TABLE t1 (pk INT PRIMARY KEY, ) ",
+			in:        "CREATE TABLE t1 (pk INT PRIMARY KEY) ",
 			outstmt:   "create table test.t1 (\n\tpk INT primary key\n)",
 			isSkipUse: true,
 		},
 		{
 			in:        "CREATE TABLE t1 (id INT NOT NULL PRIMARY KEY, PRIMARY KEY(pk)) ",
-			outstmt:   "create table test.t1 (\n\tpk INT primary key\n)",
+			outstmt:   "create table test.t1 (\n\tid INT not null primary key,\n\tPRIMARY KEY (pk)\n)",
 			isSkipUse: true,
 		},
 		{
