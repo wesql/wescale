@@ -559,7 +559,7 @@ func (e *Executor) showCreateTable(ctx context.Context, tableSchema, tableName s
 
 // executeDirectly runs a DDL query directly on the backend MySQL server
 func (e *Executor) executeDirectly(ctx context.Context, onlineDDL *schema.OnlineDDL, acceptableMySQLErrorCodes ...int) (acceptableErrorCodeFound bool, err error) {
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
 	if err != nil {
 		return false, err
 	}
@@ -661,7 +661,7 @@ func (e *Executor) validateTableForAlterAction(ctx context.Context, onlineDDL *s
 
 // primaryPosition returns the MySQL/MariaDB position (typically GTID pos) on the tablet
 func (e *Executor) primaryPosition(ctx context.Context) (pos mysql.Position, err error) {
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
 	if err != nil {
 		return pos, err
 	}
@@ -1766,7 +1766,7 @@ func (e *Executor) reviewImmediateOperations(ctx context.Context, capableOf mysq
 // - If this is a REVERT migration, what table is affected? What's the operation?
 // - Is this migration an "immediate operation"?
 func (e *Executor) reviewQueuedMigrations(ctx context.Context) error {
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaWithDB())
+	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
 	if err != nil {
 		return err
 	}
