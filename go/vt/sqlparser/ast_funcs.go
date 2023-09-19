@@ -2263,3 +2263,19 @@ func AndExpressions(exprs ...Expr) Expr {
 
 // Equals is the default Comparator for AST expressions.
 var Equals = &Comparator{}
+
+func ConvertPrimaryColumnDef(columnDef *ColumnDefinition) *ColumnDefinition {
+	if columnDef.Type == nil {
+		columnDef.Type = &ColumnType{Type: "INT", Options: &ColumnTypeOptions{KeyOpt: ColKeyPrimary}}
+		return columnDef
+	}
+	if columnDef.Type.Type == "" {
+		columnDef.Type.Type = "INT"
+	}
+	if columnDef.Type.Options == nil {
+		columnDef.Type.Options = &ColumnTypeOptions{KeyOpt: ColKeyPrimary}
+	} else {
+		columnDef.Type.Options.KeyOpt = ColKeyPrimary
+	}
+	return columnDef
+}

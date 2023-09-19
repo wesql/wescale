@@ -1162,6 +1162,11 @@ create_statement:
     $1.Select = $2
     $$ = $1
   }
+| create_table_prefix AS query_primary
+  {
+    $1.Select = $3
+    $$ = $1
+  }
 | create_index_prefix '(' index_column_list ')' index_option_list_opt algorithm_lock_opt
   {
     indexDef := $1.AlterOptions[0].(*AddIndexDefinition).IndexDefinition
@@ -1470,6 +1475,10 @@ column_definition:
     $2.Options.Reference = $10
     $2.Options.Collate = $3
     $$ = &ColumnDefinition{Name: $1, Type: $2}
+  }
+| PRIMARY KEY '(' column_definition ')'
+  {
+    $$ = ConvertPrimaryColumnDef($4)
   }
 
 generated_always_opt:

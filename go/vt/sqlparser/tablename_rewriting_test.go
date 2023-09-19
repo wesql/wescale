@@ -238,6 +238,31 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 			outstmt:   `truncate table test.t1`,
 			isSkipUse: true,
 		},
+		{
+			in:        "CREATE TABLE t1 (pk INT PRIMARY KEY) ",
+			outstmt:   "create table test.t1 (\n\tpk INT primary key\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (id INT NOT NULL PRIMARY KEY, name VARCHAR(16) NOT NULL, year YEAR ) PARTITION BY HASH(id) PARTITIONS 2;",
+			outstmt:   "create table test.t1 (\n\tid INT not null primary key,\n\t`name` VARCHAR(16) not null,\n\t`year` YEAR\n)\npartition by hash (id) partitions 2",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (b int unsigned not null);",
+			outstmt:   "create table test.t1 (\n\tb int unsigned not null\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (c1 INT, c2 CHAR(32) GENERATED ALWAYS AS (RANDOM_BYTES(32))) PARTITION BY HASH(c1);",
+			outstmt:   "create table test.t1 (\n\tc1 INT,\n\tc2 CHAR(32) as (RANDOM_BYTES(32)) virtual\n)\npartition by hash (c1)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t (c1 INT, c2 INT) PARTITION BY RANGE(c1) (PARTITION p1 VALUES LESS THAN(100))",
+			outstmt:   "create table test.t (\n\tc1 INT,\n\tc2 INT\n)\npartition by range (c1)\n(partition p1 values less than (100))",
+			isSkipUse: true,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -246,9 +271,8 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 			newStmt, isSkipUse, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.isSkipUse, isSkipUse)
-			if isSkipUse {
-				assert.Equal(t, tc.outstmt, String(newStmt))
-			}
+			assert.Equal(t, tc.outstmt, String(newStmt))
+
 		})
 	}
 }

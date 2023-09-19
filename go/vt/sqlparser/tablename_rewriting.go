@@ -49,7 +49,12 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 			tr.skipUse = false
 			return false
 		}
+
+		_, isDerived := parent.(*DerivedTable)
+		var tmp bool
+		tmp, tr.inDerived = tr.inDerived, isDerived
 		_ = SafeRewrite(node, tr.rewriteDownSelect, tr.rewriteUp)
+		tr.inDerived = tmp
 		return false
 	case *Union:
 		if node.With != nil && len(node.With.ctes) > 0 {
@@ -77,14 +82,18 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	// DBDDLStatement：
 	case *CreateDatabase, *DropDatabase, *AlterDatabase:
 		return tr.err == nil
-	// Others that contains tableName
+	// nodes that contains tableName
 	case *Insert, *Flush, *CallProc, *VStream, *Stream, *AlterVschema, *ExplainTab, *CheckTable:
 		return tr.err == nil
-	// struct with missing information
+	// nodes with missing information
 	case *OtherRead, *OtherAdmin:
 		tr.skipUse = false
 		return false
-	// Empty struct
+	// nodes that do not contain tableName, but need use statement
+	case *Show:
+		tr.skipUse = false
+		return false
+	// nodes that have empty struct
 	case *Commit, *Rollback, *Load:
 		return tr.err == nil
 	// Others that do not contain tableName
