@@ -413,7 +413,8 @@ func NewJaegerSpanContext() string {
 		return ""
 	}
 	base64Data := base64.StdEncoding.EncodeToString(jsonData)
-	return base64Data
+	traceInfo := fmt.Sprintf("/*TRACEID=%s*/ /*VT_SPAN_CONTEXT=%s*/", encodedUberTraceID, base64Data)
+	return traceInfo
 }
 
 func saveSessionStats(safeSession *SafeSession, stmtType sqlparser.StatementType, rowsAffected, insertID uint64, rowsReturned int, err error) {

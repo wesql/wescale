@@ -7,6 +7,7 @@ package queries
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"vitess.io/vitess/go/mysql"
@@ -286,7 +287,10 @@ func TestNewJaegerSpanContext(t *testing.T) {
 	execWithConnWithoutDB(t, func(conn *mysql.Conn) {
 		qr := utils.Exec(t, conn, "select jaeger_span_context();")
 		assert.Equal(t, len(qr.Rows) == 1, true)
-		qr = utils.Exec(t, conn, fmt.Sprintf("/*VT_SPAN_CONTEXT=%s*/ select 1;", qr.Rows[0][0].RawStr()))
+		r := regexp.MustCompile(`/\*VT_SPAN_CONTEXT=(.*)\*/`)
+		match := r.FindStringSubmatch(qr.Rows[0][0].RawStr())
+		assert.Equal(t, match != nil, true)
+		qr = utils.Exec(t, conn, fmt.Sprintf("%s select 1;", match[0]))
 		assert.Equal(t, qr.Rows[0][0].RawStr(), "1")
 	})
 }
