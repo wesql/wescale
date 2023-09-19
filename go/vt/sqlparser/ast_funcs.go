@@ -184,6 +184,19 @@ func (ts *TableSpec) AddColumn(cd *ColumnDefinition) {
 	ts.Columns = append(ts.Columns, cd)
 }
 
+func (ts *TableSpec) AddPrimaryColumn(in IdentifierCI) {
+	isOccur := false
+	for _, c := range ts.Columns {
+		if c.Name.Equal(in) {
+			c.Type.Options.KeyOpt = ColKeyPrimary
+			isOccur = true
+		}
+	}
+	if !isOccur {
+		ts.Columns = append(ts.Columns, NewPrimaryColumnDef(in))
+	}
+}
+
 // AddIndex appends the given index to the list in the spec
 func (ts *TableSpec) AddIndex(id *IndexDefinition) {
 	ts.Indexes = append(ts.Indexes, id)
@@ -2264,18 +2277,14 @@ func AndExpressions(exprs ...Expr) Expr {
 // Equals is the default Comparator for AST expressions.
 var Equals = &Comparator{}
 
-func ConvertPrimaryColumnDef(columnDef *ColumnDefinition) *ColumnDefinition {
-	if columnDef.Type == nil {
-		columnDef.Type = &ColumnType{Type: "INT", Options: &ColumnTypeOptions{KeyOpt: ColKeyPrimary}}
-		return columnDef
+func NewPrimaryColumnDef(name IdentifierCI) *ColumnDefinition {
+	return &ColumnDefinition{
+		Name: name,
+		Type: &ColumnType{
+			Type: "INT",
+			Options: &ColumnTypeOptions{
+				KeyOpt: ColKeyPrimary,
+			},
+		},
 	}
-	if columnDef.Type.Type == "" {
-		columnDef.Type.Type = "INT"
-	}
-	if columnDef.Type.Options == nil {
-		columnDef.Type.Options = &ColumnTypeOptions{KeyOpt: ColKeyPrimary}
-	} else {
-		columnDef.Type.Options.KeyOpt = ColKeyPrimary
-	}
-	return columnDef
 }

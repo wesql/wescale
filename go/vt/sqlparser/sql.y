@@ -1452,7 +1452,10 @@ table_column_list:
   {
     $$.AddConstraint($3)
   }
-
+| table_column_list ',' PRIMARY KEY '(' sql_id ')'
+  {
+    $$.AddPrimaryColumn($6)
+  }
 // collate_opt has to be in the first rule so that we don't have a shift reduce conflict when seeing a COLLATE
 // with column_attribute_list_opt. Always shifting there would have meant that we would have always ended up using the
 // second rule in the grammar whenever COLLATE was specified.
@@ -1475,10 +1478,6 @@ column_definition:
     $2.Options.Reference = $10
     $2.Options.Collate = $3
     $$ = &ColumnDefinition{Name: $1, Type: $2}
-  }
-| PRIMARY KEY '(' column_definition ')'
-  {
-    $$ = ConvertPrimaryColumnDef($4)
   }
 
 generated_always_opt:
