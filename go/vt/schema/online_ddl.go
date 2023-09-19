@@ -188,7 +188,8 @@ func NewOnlineDDLs(keyspace string, sql string, ddlStmt sqlparser.DDLStatement, 
 }
 
 // NewOnlineDDL creates a schema change request with self generated UUID and RequestTime
-func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting *DDLStrategySetting, migrationContext string, providedUUID string) (onlineDDL *OnlineDDL, err error) {
+// tableSchema and table are the schema and table names of the table being altered
+func NewOnlineDDL(tableSchema string, table string, sql string, ddlStrategySetting *DDLStrategySetting, migrationContext string, providedUUID string) (onlineDDL *OnlineDDL, err error) {
 	if ddlStrategySetting == nil {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "NewOnlineDDL: found nil DDLStrategySetting")
 	}
@@ -211,10 +212,10 @@ func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting 
 			return strconv.Quote(hex.EncodeToString([]byte(directive)))
 		}
 		comments := sqlparser.Comments{
-			fmt.Sprintf(`/*vt+ uuid=%s context=%s schemaOfSession=%s table=%s strategy=%s options=%s */`,
+			fmt.Sprintf(`/*vt+ uuid=%s context=%s tableSchema=%s table=%s strategy=%s options=%s */`,
 				encodeDirective(onlineDDLUUID),
 				encodeDirective(migrationContext),
-				encodeDirective(keyspace),
+				encodeDirective(tableSchema),
 				encodeDirective(table),
 				encodeDirective(string(ddlStrategySetting.Strategy)),
 				encodeDirective(ddlStrategySetting.Options),
@@ -251,7 +252,7 @@ func NewOnlineDDL(keyspace string, table string, sql string, ddlStrategySetting 
 	}
 
 	return &OnlineDDL{
-		Keyspace:         keyspace,
+		Keyspace:         tableSchema,
 		Table:            table,
 		SQL:              sql,
 		UUID:             onlineDDLUUID,
@@ -274,10 +275,8 @@ func formatWithoutComments(buf *sqlparser.TrackedBuffer, node sqlparser.SQLNode)
 // to be commented as e.g. `CREATE /*vt+ uuid=... context=... table=... strategy=... options=... */ TABLE ...`
 func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *OnlineDDL, err error) {
 	var comments *sqlparser.ParsedComments
-	tableSchema := ""
 	switch stmt := stmt.(type) {
 	case sqlparser.DDLStatement:
-		tableSchema = stmt.GetTable().Qualifier.String()
 		comments = stmt.GetParsedComments()
 	case *sqlparser.RevertMigration:
 		comments = stmt.Comments
@@ -306,8 +305,7 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	stmt.Format(buf)
 
 	onlineDDL = &OnlineDDL{
-		SQL:    buf.String(),
-		Schema: tableSchema,
+		SQL: buf.String(),
 	}
 	if onlineDDL.UUID, err = decodeDirective("uuid"); err != nil {
 		return nil, err
@@ -315,8 +313,8 @@ func OnlineDDLFromCommentedStatement(stmt sqlparser.Statement) (onlineDDL *Onlin
 	if !IsOnlineDDLUUID(onlineDDL.UUID) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid UUID read from statement %s", sqlparser.String(stmt))
 	}
-	if tableSchema, err = decodeDirective("schemaOfSession"); err == nil && onlineDDL.Schema == "" {
-		onlineDDL.Schema = tableSchema
+	if onlineDDL.Schema, err = decodeDirective("tableSchema"); err != nil {
+		return nil, err
 	}
 	if onlineDDL.Table, err = decodeDirective("table"); err != nil {
 		return nil, err
