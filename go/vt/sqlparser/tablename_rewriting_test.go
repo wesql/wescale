@@ -186,8 +186,8 @@ func TestRewriteTableName(t *testing.T) {
 		},
 		{
 			in:        "describe t1;",
-			outstmt:   "describe test.t1",
-			isSkipUse: true,
+			outstmt:   "explain t1",
+			isSkipUse: false,
 		},
 	}
 	for _, tc := range testcases {
