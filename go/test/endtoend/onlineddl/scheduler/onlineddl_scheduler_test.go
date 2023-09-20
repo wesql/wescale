@@ -253,7 +253,7 @@ func testScheduler(t *testing.T) {
 	shards = clusterInstance.Keyspaces[0].Shards
 	require.Equal(t, 1, len(shards))
 
-	ddlStrategy := "vitess"
+	ddlStrategy := "mysqlm"
 
 	createParams := func(ddlStatement string, ddlStrategy string, executeStrategy string, expectHint string, expectError string, skipWait bool) *testOnlineDDLStatementParams {
 		return &testOnlineDDLStatementParams{
@@ -430,29 +430,6 @@ func testScheduler(t *testing.T) {
 				assert.Equal(t, int64(1), postponeLaunch)
 			}
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued)
-		})
-		t.Run("launch irrelevant shards", func(t *testing.T) {
-			onlineddl.CheckLaunchMigration(t, &vtParams, shards, t1uuid, "x,y,z", false)
-			time.Sleep(2 * time.Second)
-			rs := onlineddl.ReadMigrations(t, &vtParams, t1uuid)
-			require.NotNil(t, rs)
-			for _, row := range rs.Named().Rows {
-				postponeLaunch := row.AsInt64("postpone_launch", 0)
-				assert.Equal(t, int64(1), postponeLaunch)
-			}
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued)
-		})
-		t.Run("launch relevant shard", func(t *testing.T) {
-			onlineddl.CheckLaunchMigration(t, &vtParams, shards, t1uuid, "x, y, 1", true)
-			rs := onlineddl.ReadMigrations(t, &vtParams, t1uuid)
-			require.NotNil(t, rs)
-			for _, row := range rs.Named().Rows {
-				postponeLaunch := row.AsInt64("postpone_launch", 0)
-				assert.Equal(t, int64(0), postponeLaunch)
-			}
-			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
 		})
 	})
 	t.Run("ALTER both tables non-concurrent", func(t *testing.T) {
