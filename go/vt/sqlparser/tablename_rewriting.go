@@ -83,8 +83,12 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	case *CreateDatabase, *DropDatabase, *AlterDatabase:
 		return tr.err == nil
 	// nodes that contains tableName
-	case *Insert, *Flush, *CallProc, *VStream, *Stream, *AlterVschema, *ExplainTab, *CheckTable:
+	case *Insert, *Flush, *CallProc, *VStream, *Stream, *AlterVschema, *CheckTable:
 		return tr.err == nil
+	// describe will be parsed as ExplainTab, and after being parsed to sql, it will become Explain
+	case *ExplainTab:
+		tr.skipUse = false
+		return false
 	// nodes with missing information
 	case *OtherRead, *OtherAdmin:
 		tr.skipUse = false

@@ -184,6 +184,11 @@ func TestRewriteTableName(t *testing.T) {
 			outstmt:   "otherread",
 			isSkipUse: false,
 		},
+		{
+			in:        "describe t1;",
+			outstmt:   "describe test.t1",
+			isSkipUse: true,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -268,6 +273,55 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 			outstmt:   "create table test.t (\n\tc1 INT,\n\tc2 INT\n)\npartition by range (c1)\n(partition p1 values less than (100))",
 			isSkipUse: true,
 		},
+		{
+			in:        "create table t1  select if(1, 9223372036854775808, 1) i, case when 1 then 9223372036854775808 else 1 end c, coalesce(9223372036854775808, 1) co;",
+			outstmt:   "create table test.t1 select if(1, 9223372036854775808, 1) as i, case when 1 then 9223372036854775808 else 1 end as c, coalesce(9223372036854775808, 1) as co from dual",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 ( a int not null, b int not null, c int not null, primary key(a,b)) partition by key (a) partitions 3 ;",
+			outstmt:   "create table test.t1 (\n\ta int not null,\n\tb int not null,\n\tc int not null,\n\tprimary key (a, b)\n)\npartition by key (a) partitions 3",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1( a CHAR(20) CHARACTER SET ascii, b VARCHAR(20) CHARACTER SET ascii, c TEXT CHARACTER SET ascii );",
+			outstmt:   "create table test.t1 (\n\ta CHAR(20) character set ascii,\n\tb VARCHAR(20) character set ascii,\n\tc TEXT character set ascii\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1( a INTEGER, b BLOB, c BLOB, PRIMARY KEY(a,b(1)),  UNIQUE KEY (a,c(1)));",
+			outstmt:   "create table test.t1 (\n\ta INTEGER,\n\tb BLOB,\n\tc BLOB,\n\tPRIMARY KEY (a, b(1)),\n\tUNIQUE KEY (a, c(1))\n)",
+			isSkipUse: true,
+		},
+		{
+			in: "CREATE TABLE t1 ( id int(11) NOT NULL auto_increment, token varchar(100) DEFAULT '' NOT NULL, count int(11) DEFAULT '0' NOT NULL, " +
+				"qty int(11), phone char(1) DEFAULT '' NOT NULL, timestamp datetime DEFAULT '0000-00-00 00:00:00' NOT NULL, PRIMARY KEY (id), " +
+				"KEY token (token(15)), UNIQUE token_2 (token(75),count,phone));",
+			outstmt: "create table test.t1 (\n\tid int(11) not null auto_increment,\n\ttoken varchar(100) not null default '',\n\t`count` int(11) not null default '0'," +
+				"\n\tqty int(11),\n\tphone char(1) not null default '',\n\t`timestamp` datetime not null default '0000-00-00 00:00:00',\n\tPRIMARY KEY (id),\n\tKEY token (token(15))," +
+				"\n\tUNIQUE key token_2 (token(75), `count`, phone)\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (c1 INT, c2 INT, PRIMARY KEY (c1,c2))",
+			outstmt:   "create table test.t1 (\n\tc1 INT,\n\tc2 INT,\n\tPRIMARY KEY (c1, c2)\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t2(a CHAR(20) CHARACTER SET ascii COLLATE ascii_general_ci, b VARCHAR(20) CHARACTER SET ascii COLLATE ascii_general_ci, c TEXT CHARACTER SET ascii COLLATE ascii_general_ci );",
+			outstmt:   "create table test.t2 (\n\ta CHAR(20) character set ascii collate ascii_general_ci,\n\tb VARCHAR(20) character set ascii collate ascii_general_ci,\n\tc TEXT character set ascii collate ascii_general_ci\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (a int) PARTITION BY RANGE (b) ( PARTITION p1 VALUES LESS THAN (10), PARTITION p2 VALUES LESS THAN (20))",
+			outstmt:   "create table test.t1 (\n\ta int\n)\npartition by range (b)\n(partition p1 values less than (10),\n partition p2 values less than (20))",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (a int) PARTITION BY RANGE (b) ( PARTITION p1 VALUES LESS THAN (10), PARTITION p2 VALUES LESS THAN (20)) ;",
+			outstmt:   "create table test.t1 (\n\ta int\n)\npartition by range (b)\n(partition p1 values less than (10),\n partition p2 values less than (20))",
+			isSkipUse: true,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.in, func(t *testing.T) {
@@ -276,8 +330,9 @@ func TestRewriteTableNameForDDL(t *testing.T) {
 			newStmt, isSkipUse, err := RewriteTableName(stmt, "test")
 			require.NoError(t, err)
 			assert.Equal(t, tc.isSkipUse, isSkipUse)
-			assert.Equal(t, tc.outstmt, String(newStmt))
-
+			if isSkipUse {
+				assert.Equal(t, tc.outstmt, String(newStmt))
+			}
 		})
 	}
 }
