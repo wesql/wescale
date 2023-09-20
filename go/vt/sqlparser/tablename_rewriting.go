@@ -42,6 +42,7 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 	if !tr.skipUse {
 		return false
 	}
+
 	switch node := node.(type) {
 	case *Select:
 		if node.With != nil && len(node.With.ctes) > 0 {
@@ -70,20 +71,38 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 			return false
 		}
 		return true
-	case *OtherRead, *OtherAdmin:
 		// the table information is missing in the stmt.
 		tr.skipUse = false
 		return false
 	case *ColName:
 		return false
-	case *Use, *CallProc, *Begin, *Commit, *Rollback,
-		*Load, *Savepoint, *Release, *SRollback, *Show, *With, *CreateTable:
+	// DDLStatement
+	case *AlterTable, *AlterView, *CreateTable, *CreateView, *DropTable, *DropView, *RenameTable, *TruncateTable:
+		return tr.err == nil
+	// DBDDLStatement：
+	case *CreateDatabase, *DropDatabase, *AlterDatabase:
+		return tr.err == nil
+	// nodes that contains tableName
+	case *Insert, *Flush, *CallProc, *VStream, *Stream, *AlterVschema, *CheckTable:
+		return tr.err == nil
+	// describe will be parsed as ExplainTab, and after being parsed to sql, it will become Explain
+	case *ExplainTab:
 		tr.skipUse = false
 		return false
-	case *AlterMigration, *RevertMigration, *ShowMigrationLogs,
-		*ShowThrottledApps, *ShowThrottlerStatus:
+	// nodes with missing information
+	case *OtherRead, *OtherAdmin:
 		tr.skipUse = false
 		return false
+	// nodes that do not contain tableName, but need use statement
+	case *Show:
+		tr.skipUse = false
+		return false
+	// nodes that have empty struct
+	case *Commit, *Rollback, *Load:
+		return tr.err == nil
+	// Others that do not contain tableName
+	default:
+		return tr.err == nil
 	}
 	return tr.err == nil
 }
@@ -126,6 +145,8 @@ func (tr *tableRewriter) rewriteUp(cursor *Cursor) bool {
 	}
 
 	switch newnode := cursor.Node().(type) {
+	case *RenameTable:
+		tr.rewriteTablePair(newnode, cursor)
 	case TableName:
 		tr.rewriteTableName(newnode, cursor)
 	}
@@ -142,4 +163,15 @@ func (tr *tableRewriter) rewriteTableName(newnode TableName, cursor *Cursor) {
 	// till here, cursor holds the replacer handleFunc
 	// replace original node with a new one
 	cursor.Replace(newnode)
+}
+
+func (tr *tableRewriter) rewriteTablePair(newnode *RenameTable, cursor *Cursor) {
+	for _, pair := range newnode.TablePairs {
+		if pair.ToTable.Qualifier.IsEmpty() {
+			pair.ToTable.Qualifier = NewIdentifierCS(tr.keyspace)
+		}
+		if pair.FromTable.Qualifier.IsEmpty() {
+			pair.FromTable.Qualifier = NewIdentifierCS(tr.keyspace)
+		}
+	}
 }

@@ -2031,6 +2031,11 @@ func (a *application) rewriteRefOfCreateTable(parent SQLNode, node *CreateTable,
 	}) {
 		return false
 	}
+	if !a.rewriteSelectStatement(node, node.Select, func(newNode, parent SQLNode) {
+		parent.(*CreateTable).Select = newNode.(SelectStatement)
+	}) {
+		return false
+	}
 	if a.post != nil {
 		a.cur.replacer = replacer
 		a.cur.parent = parent

@@ -1157,6 +1157,16 @@ create_statement:
     $1.FullyParsed = true
     $$ = $1
   }
+| create_table_prefix query_primary
+  {
+    $1.Select = $2
+    $$ = $1
+  }
+| create_table_prefix AS query_primary
+  {
+    $1.Select = $3
+    $$ = $1
+  }
 | create_index_prefix '(' index_column_list ')' index_option_list_opt algorithm_lock_opt
   {
     indexDef := $1.AlterOptions[0].(*AddIndexDefinition).IndexDefinition
@@ -1442,7 +1452,6 @@ table_column_list:
   {
     $$.AddConstraint($3)
   }
-
 // collate_opt has to be in the first rule so that we don't have a shift reduce conflict when seeing a COLLATE
 // with column_attribute_list_opt. Always shifting there would have meant that we would have always ended up using the
 // second rule in the grammar whenever COLLATE was specified.

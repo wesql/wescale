@@ -146,8 +146,8 @@ func TestRewriteTableName(t *testing.T) {
 		{
 			// do not rewrite tableName in create table
 			in:        `create table t1 (a int not null auto_increment primary key, b char(32));`,
-			outstmt:   "create table t1 (\n\ta int not null auto_increment primary key,\n\tb char(32)\n)",
-			isSkipUse: false,
+			outstmt:   "create table test.t1 (\n\ta int not null auto_increment primary key,\n\tb char(32)\n)",
+			isSkipUse: true,
 		},
 		{
 			in:        `drop table t1,t2,t3;`,
@@ -181,7 +181,146 @@ func TestRewriteTableName(t *testing.T) {
 		},
 		{
 			in:        `analyze table t1;`,
+			outstmt:   "otherread",
 			isSkipUse: false,
+		},
+		{
+			in:        "describe t1;",
+			outstmt:   "explain t1",
+			isSkipUse: false,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.in, func(t *testing.T) {
+			stmt, err := Parse(tc.in)
+			require.NoError(t, err)
+			newStmt, isSkipUse, err := RewriteTableName(stmt, "test")
+			require.NoError(t, err)
+			assert.Equal(t, tc.isSkipUse, isSkipUse)
+			assert.Equal(t, tc.outstmt, String(newStmt))
+		})
+	}
+}
+
+func TestRewriteTableNameForDDL(t *testing.T) {
+	testcases := []struct {
+		in        string
+		outstmt   string
+		isSkipUse bool
+	}{
+		{
+			in:        `drop table t1`,
+			outstmt:   `drop table test.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t1 (c1 int)`,
+			outstmt:   "create table test.t1 (\n\tc1 int\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t2 select * from t1;`,
+			outstmt:   `create table test.t2 select * from test.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table d2.t2 select * from t1;`,
+			outstmt:   `create table d2.t2 select * from test.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        `create table t2 select * from d2.t1;`,
+			outstmt:   `create table test.t2 select * from d2.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        `rename table t1 to d2.t2`,
+			outstmt:   `rename table test.t1 to d2.t2`,
+			isSkipUse: true,
+		},
+		{
+			in:        `truncate table t1`,
+			outstmt:   `truncate table test.t1`,
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (pk INT PRIMARY KEY) ",
+			outstmt:   "create table test.t1 (\n\tpk INT primary key\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (id INT NOT NULL PRIMARY KEY, PRIMARY KEY(pk)) ",
+			outstmt:   "create table test.t1 (\n\tid INT not null primary key,\n\tPRIMARY KEY (pk)\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (id INT NOT NULL PRIMARY KEY, name VARCHAR(16) NOT NULL, year YEAR ) PARTITION BY HASH(id) PARTITIONS 2;",
+			outstmt:   "create table test.t1 (\n\tid INT not null primary key,\n\t`name` VARCHAR(16) not null,\n\t`year` YEAR\n)\npartition by hash (id) partitions 2",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (b int unsigned not null);",
+			outstmt:   "create table test.t1 (\n\tb int unsigned not null\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (c1 INT, c2 CHAR(32) GENERATED ALWAYS AS (RANDOM_BYTES(32))) PARTITION BY HASH(c1);",
+			outstmt:   "create table test.t1 (\n\tc1 INT,\n\tc2 CHAR(32) as (RANDOM_BYTES(32)) virtual\n)\npartition by hash (c1)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t (c1 INT, c2 INT) PARTITION BY RANGE(c1) (PARTITION p1 VALUES LESS THAN(100))",
+			outstmt:   "create table test.t (\n\tc1 INT,\n\tc2 INT\n)\npartition by range (c1)\n(partition p1 values less than (100))",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1  select if(1, 9223372036854775808, 1) i, case when 1 then 9223372036854775808 else 1 end c, coalesce(9223372036854775808, 1) co;",
+			outstmt:   "create table test.t1 select if(1, 9223372036854775808, 1) as i, case when 1 then 9223372036854775808 else 1 end as c, coalesce(9223372036854775808, 1) as co from dual",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 ( a int not null, b int not null, c int not null, primary key(a,b)) partition by key (a) partitions 3 ;",
+			outstmt:   "create table test.t1 (\n\ta int not null,\n\tb int not null,\n\tc int not null,\n\tprimary key (a, b)\n)\npartition by key (a) partitions 3",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1( a CHAR(20) CHARACTER SET ascii, b VARCHAR(20) CHARACTER SET ascii, c TEXT CHARACTER SET ascii );",
+			outstmt:   "create table test.t1 (\n\ta CHAR(20) character set ascii,\n\tb VARCHAR(20) character set ascii,\n\tc TEXT character set ascii\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1( a INTEGER, b BLOB, c BLOB, PRIMARY KEY(a,b(1)),  UNIQUE KEY (a,c(1)));",
+			outstmt:   "create table test.t1 (\n\ta INTEGER,\n\tb BLOB,\n\tc BLOB,\n\tPRIMARY KEY (a, b(1)),\n\tUNIQUE KEY (a, c(1))\n)",
+			isSkipUse: true,
+		},
+		{
+			in: "CREATE TABLE t1 ( id int(11) NOT NULL auto_increment, token varchar(100) DEFAULT '' NOT NULL, count int(11) DEFAULT '0' NOT NULL, " +
+				"qty int(11), phone char(1) DEFAULT '' NOT NULL, timestamp datetime DEFAULT '0000-00-00 00:00:00' NOT NULL, PRIMARY KEY (id), " +
+				"KEY token (token(15)), UNIQUE token_2 (token(75),count,phone));",
+			outstmt: "create table test.t1 (\n\tid int(11) not null auto_increment,\n\ttoken varchar(100) not null default '',\n\t`count` int(11) not null default '0'," +
+				"\n\tqty int(11),\n\tphone char(1) not null default '',\n\t`timestamp` datetime not null default '0000-00-00 00:00:00',\n\tPRIMARY KEY (id),\n\tKEY token (token(15))," +
+				"\n\tUNIQUE key token_2 (token(75), `count`, phone)\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t1 (c1 INT, c2 INT, PRIMARY KEY (c1,c2))",
+			outstmt:   "create table test.t1 (\n\tc1 INT,\n\tc2 INT,\n\tPRIMARY KEY (c1, c2)\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "CREATE TABLE t2(a CHAR(20) CHARACTER SET ascii COLLATE ascii_general_ci, b VARCHAR(20) CHARACTER SET ascii COLLATE ascii_general_ci, c TEXT CHARACTER SET ascii COLLATE ascii_general_ci );",
+			outstmt:   "create table test.t2 (\n\ta CHAR(20) character set ascii collate ascii_general_ci,\n\tb VARCHAR(20) character set ascii collate ascii_general_ci,\n\tc TEXT character set ascii collate ascii_general_ci\n)",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (a int) PARTITION BY RANGE (b) ( PARTITION p1 VALUES LESS THAN (10), PARTITION p2 VALUES LESS THAN (20))",
+			outstmt:   "create table test.t1 (\n\ta int\n)\npartition by range (b)\n(partition p1 values less than (10),\n partition p2 values less than (20))",
+			isSkipUse: true,
+		},
+		{
+			in:        "create table t1 (a int) PARTITION BY RANGE (b) ( PARTITION p1 VALUES LESS THAN (10), PARTITION p2 VALUES LESS THAN (20)) ;",
+			outstmt:   "create table test.t1 (\n\ta int\n)\npartition by range (b)\n(partition p1 values less than (10),\n partition p2 values less than (20))",
+			isSkipUse: true,
 		},
 	}
 	for _, tc := range testcases {
