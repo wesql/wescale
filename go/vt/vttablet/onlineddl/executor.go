@@ -486,51 +486,6 @@ func (e *Executor) readMySQLVariables(ctx context.Context) (variables *mysqlVari
 	return variables, nil
 }
 
-// createOnlineDDLUser creates a gh-ost or pt-osc user account with all
-// neccessary privileges and with a random password
-func (e *Executor) createOnlineDDLUser(ctx context.Context) (password string, err error) {
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
-	if err != nil {
-		return password, err
-	}
-	defer conn.Close()
-
-	password = RandomHash()[0:maxPasswordLength]
-
-	for _, query := range sqlCreateOnlineDDLUser {
-		parsed := sqlparser.BuildParsedQuery(query, onlineDDLGrant, password)
-		if _, err := conn.ExecuteFetch(parsed.Query, 0, false); err != nil {
-			return password, err
-		}
-	}
-	for _, query := range sqlGrantOnlineDDLSuper {
-		parsed := sqlparser.BuildParsedQuery(query, onlineDDLGrant)
-		conn.ExecuteFetch(parsed.Query, 0, false)
-		// We ignore failure, since we might not be able to grant
-		// SUPER privs (e.g. Aurora)
-	}
-	for _, query := range sqlGrantOnlineDDLUser {
-		parsed := sqlparser.BuildParsedQuery(query, onlineDDLGrant)
-		if _, err := conn.ExecuteFetch(parsed.Query, 0, false); err != nil {
-			return password, err
-		}
-	}
-	return password, err
-}
-
-// dropOnlineDDLUser drops the given ddl user account at the end of migration
-func (e *Executor) dropOnlineDDLUser(ctx context.Context) error {
-	conn, err := dbconnpool.NewDBConnection(ctx, e.env.Config().DB.DbaConnector())
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	parsed := sqlparser.BuildParsedQuery(sqlDropOnlineDDLUser, onlineDDLGrant)
-	_, err = conn.ExecuteFetch(parsed.Query, 0, false)
-	return err
-}
-
 // tableExists checks if a given table exists.
 func (e *Executor) tableExists(ctx context.Context, tableSchema, tableName string) (bool, error) {
 	tableName = strings.ReplaceAll(tableName, `_`, `\_`)
