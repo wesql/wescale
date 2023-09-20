@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,7 +81,7 @@ var (
 	ensureStateNotChangedTime = 5 * time.Second
 
 	hostname              = "localhost"
-	keyspaceName          = "ks"
+	keyspaceName          = "mysql"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
 	overrideVtctlParams   *cluster.VtctlClientParams
@@ -205,7 +210,7 @@ func TestMain(m *testing.M) {
 		}
 
 		// No need for replicas in this stress test
-		if err := clusterInstance.StartKeyspace(*keyspace, []string{"1"}, 0, false); err != nil {
+		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0"}, 0, false); err != nil {
 			return 1, err
 		}
 
@@ -217,8 +222,9 @@ func TestMain(m *testing.M) {
 		// ensure it is torn down during cluster TearDown
 		clusterInstance.VtgateProcess = *vtgateInstance
 		vtParams = mysql.ConnParams{
-			Host: clusterInstance.Hostname,
-			Port: clusterInstance.VtgateMySQLPort,
+			Host:   clusterInstance.Hostname,
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: "mysql",
 		}
 
 		return m.Run(), nil
