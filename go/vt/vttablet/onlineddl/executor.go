@@ -546,7 +546,7 @@ func (e *Executor) tableExists(ctx context.Context, tableSchema, tableName strin
 // showCreateTable returns the SHOW CREATE statement for a table or a view
 func (e *Executor) showCreateTable(ctx context.Context, tableSchema, tableName string) (string, error) {
 	parsed := sqlparser.BuildParsedQuery(sqlShowCreateTable, tableSchema, tableName)
-	rs, err := e.execQuery(ctx, "", parsed.Query)
+	rs, err := e.execQuery(ctx, tableSchema, parsed.Query)
 	if err != nil {
 		return "", err
 	}
@@ -1409,7 +1409,7 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 	if err != nil {
 		return onlineDDL, nil, err
 	}
-	r, err := e.execQuery(ctx, "mysql", bound)
+	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, bound)
 	if err != nil {
 		return onlineDDL, nil, err
 	}
@@ -2287,11 +2287,11 @@ func (e *Executor) generateSwapTablesStatement(ctx context.Context, tableName1, 
 }
 
 // renameTableIfApplicable renames a table, assuming it exists and that the target does not exist.
-func (e *Executor) renameTableIfApplicable(ctx context.Context, fromDBName string, fromTableName, toDBName string, toTableName string) (attemptMade bool, err error) {
+func (e *Executor) renameTableIfApplicable(ctx context.Context, tableSchema, fromTableName, toTableName string) (attemptMade bool, err error) {
 	if fromTableName == "" {
 		return false, nil
 	}
-	exists, err := e.tableExists(ctx, fromDBName, fromTableName)
+	exists, err := e.tableExists(ctx, tableSchema, fromTableName)
 	if err != nil {
 		return false, err
 	}
@@ -2299,7 +2299,7 @@ func (e *Executor) renameTableIfApplicable(ctx context.Context, fromDBName strin
 		// can't rename from table when it does not exist
 		return false, nil
 	}
-	exists, err = e.tableExists(ctx, toDBName, toTableName)
+	exists, err = e.tableExists(ctx, tableSchema, toTableName)
 	if err != nil {
 		return false, err
 	}
@@ -2307,8 +2307,8 @@ func (e *Executor) renameTableIfApplicable(ctx context.Context, fromDBName strin
 		// target table exists, abort.
 		return false, nil
 	}
-	parsed := sqlparser.BuildParsedQuery(sqlRenameTable, fromDBName, fromTableName, toDBName, toTableName)
-	_, err = e.execQuery(ctx, "", parsed.Query)
+	parsed := sqlparser.BuildParsedQuery(sqlRenameTable, fromTableName, toTableName)
+	_, err = e.execQuery(ctx, tableSchema, parsed.Query)
 	return true, err
 }
 
@@ -2945,7 +2945,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 			// If it exists, that means a tablet crashed while running a cut-over, and left the database in a bad state, where the migrated table does not exist.
 			// thankfully, we have tracked this situation and just realized what happened. Now, first thing to do is to restore the original table.
 			log.Infof("found stowaway table %s journal in migration %s for table %s", stowawayTable, uuid, onlineDDL.Table)
-			attemptMade, err := e.renameTableIfApplicable(ctx, onlineDDL.Schema, stowawayTable, onlineDDL.Schema, onlineDDL.Table)
+			attemptMade, err := e.renameTableIfApplicable(ctx, onlineDDL.Schema, stowawayTable, onlineDDL.Table)
 			if err != nil {
 				// unable to restore table; we bail out, and we will try again next round.
 				return countRunnning, cancellable, err
