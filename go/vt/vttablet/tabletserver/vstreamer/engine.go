@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -489,6 +495,7 @@ func (vse *Engine) getMySQLReplicationLag(ctx context.Context, db dbconfigs.Conn
 	}
 	defer conn.Close()
 
+	//todo onlineDDL: consider wesql-server to get the lag
 	res, err := conn.ExecuteFetch(replicaLagQuery, 1, true)
 	if err != nil || len(res.Rows) != 1 || res.Rows[0] == nil {
 		return lagSecs

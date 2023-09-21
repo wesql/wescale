@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +71,8 @@ type rowStreamer struct {
 	ctx    context.Context
 	cancel func()
 
-	cp      dbconfigs.Connector
+	cp dbconfigs.Connector
+	//todo onlineDDL: need to fix or replace *schema.Engine
 	se      *schema.Engine
 	query   string
 	lastpk  []sqltypes.Value
@@ -291,6 +298,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 	}
 
 	log.Infof("Streaming query: %v\n", rs.sendQuery)
+	// Take a snapshot of the table. Will try best not to lock the table.
 	gtid, rotatedLog, err := conn.streamWithSnapshot(rs.ctx, rs.plan.Table.Name, rs.sendQuery)
 	if rotatedLog {
 		rs.vse.vstreamerFlushedBinlogs.Add(1)

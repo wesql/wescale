@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,6 +105,7 @@ func newUVStreamer(ctx context.Context, vse *Engine, cp dbconfigs.Connector, se 
 	send2 := func(evs []*binlogdatapb.VEvent) error {
 		vse.vstreamerEventsStreamed.Add(int64(len(evs)))
 		for _, ev := range evs {
+			//todo onlineDDL: remove keyspace?
 			ev.Keyspace = vse.keyspace
 			ev.Shard = vse.shard
 		}
