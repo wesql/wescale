@@ -27,6 +27,7 @@ provided in the documentation.
 * [Introduction To WeScale.md](doc%2Fblogs%2FIntroduction%20To%20WeScale.md)
 * [Dive into Read-Write-Splitting of WeScale.md](doc%2Fblogs%2FDive%20into%20Read-Write-Splitting%20of%20WeScale.md)
 * [Performance Comparison WeScale vs MySQL.md](doc%2Fblogs%2FPerformance%20Comparison%20WeScale%20vs%20MySQL.md)
+* [Execution Process of DROP TABLE in OnlineDDL Mode.md](doc%2Fblogs%2FExecution%20Process%20of%20DROP%20TABLE%20in%20OnlineDDL%20Mode.md)
 
 # Documentation
 * [Deploy & Debug.md](doc%2Ftoturial%2F00-Deploy%26Debug.md)
