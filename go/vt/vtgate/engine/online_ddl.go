@@ -25,6 +25,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/key"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -91,8 +93,9 @@ func (v *OnlineDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars ma
 		Rows: [][]sqltypes.Value{},
 	}
 	keyspace := v.GetKeyspaceName()
+	u, _ := uuid.NewUUID()
 	onlineDDLs, err := schema.NewOnlineDDLs(keyspace, v.SQL, v.DDL,
-		v.DDLStrategySetting, fmt.Sprintf("vtgate:%s", vcursor.Session().GetSessionUUID()), "",
+		v.DDLStrategySetting, fmt.Sprintf("vtgate:%s,online_ddl:%s", vcursor.Session().GetSessionUUID(), u.String()), "",
 	)
 	if err != nil {
 		return result, err
