@@ -607,6 +607,12 @@ func (e *Executor) handleBegin(ctx context.Context, safeSession *SafeSession, lo
 
 	begin := stmt.(*sqlparser.Begin)
 	err := e.txConn.Begin(ctx, safeSession, begin.TxAccessModes)
+
+	// verify read only tx
+	if len(begin.TxAccessModes) == 1 && begin.TxAccessModes[0] == sqlparser.ReadOnly {
+		safeSession.Session.TransactionAccessMode = vtgatepb.TransactionAccessMode_READ_ONLY
+	}
+
 	logStats.ExecuteTime = time.Since(execStart)
 
 	e.updateQueryCounts("Begin", "", "", 0)

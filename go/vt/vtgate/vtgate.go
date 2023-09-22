@@ -126,6 +126,7 @@ var (
 
 	// read write splitting flags
 	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyDisable)
+	defaultReadOnlyTransactionPolicy     = string(schema.ReadOnlyTransactionPolicyEnable)
 	defaultReadAfterWriteConsistencyName = vtgatepb.ReadAfterWriteConsistency_EVENTUAL.String()
 
 	defaultRewriteTableNameWithDbNamePrefix = true

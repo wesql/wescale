@@ -140,6 +140,7 @@ func NewSafeSession(sessn *vtgatepb.Session) *SafeSession {
 func NewAutocommitSession(sessn *vtgatepb.Session) *SafeSession {
 	newSession := proto.Clone(sessn).(*vtgatepb.Session)
 	newSession.InTransaction = false
+	newSession.TransactionAccessMode = vtgatepb.TransactionAccessMode_INVALID
 	newSession.ShardSessions = nil
 	newSession.PreSessions = nil
 	newSession.PostSessions = nil
@@ -187,6 +188,7 @@ func (session *SafeSession) resetCommonLocked() {
 	session.mustRollback = false
 	session.autocommitState = notAutocommittable
 	session.Session.InTransaction = false
+	session.Session.TransactionAccessMode = vtgatepb.TransactionAccessMode_INVALID
 	session.commitOrder = vtgatepb.CommitOrder_NORMAL
 	session.Savepoints = nil
 	if session.Options != nil {
