@@ -143,7 +143,7 @@ func newVCursorImpl(
 ) (*vcursorImpl, error) {
 	// current sql is in read only transaction or not, if is a sql begins a read-only tx, the isReadOnlyTx will be false,
 	// but the isReadOnly function in function suggestTabletType will handle this situation
-	isReadOnlyTx := safeSession.Session.InTransaction == true && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
+	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.GetReadOnlyTransactionPolicy(), safeSession.InTransaction(),
 		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, isReadOnlyTx)

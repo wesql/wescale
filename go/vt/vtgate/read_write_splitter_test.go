@@ -59,7 +59,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -147,7 +147,7 @@ func Test_suggestTabletType_to_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -355,7 +355,7 @@ func Test_suggestTabletType_force_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -438,7 +438,132 @@ func Test_suggestTabletType_random(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1000; i++ {
-				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql)
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
+				switch gotTabletType {
+				case topodata.TabletType_PRIMARY:
+					primaryTypeCount++
+				case topodata.TabletType_REPLICA:
+					replicaTypeCount++
+				}
+			}
+		})
+		assert.Equalf(t, primaryTypeCount+replicaTypeCount, 1000, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+		ratio := float32(replicaTypeCount) / float32(replicaTypeCount+primaryTypeCount)
+		assert.LessOrEqualf(t, math.Abs(float64(ratio-tt.wantRatio)), 0.1, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
+		primaryTypeCount, replicaTypeCount = 0, 0
+	}
+}
+
+func Test_suggestTabletType_read_only_transaction(t *testing.T) {
+	type args struct {
+		readWriteSplittingPolicy  string
+		readOnlyTransactionPolicy string
+		readWriteSplittingRatio   int32
+		inTransaction             bool
+		hasCreatedTempTables      bool
+		hasAdvisoryLock           bool
+		sql                       string
+		isInReadOnlyTx            bool
+	}
+	tests := []struct {
+		name           string
+		args           args
+		wantTabletType topodata.TabletType
+		wantRatio      float32
+		wantErr        assert.ErrorAssertionFunc
+	}{
+		// the value of inTransaction in the following test excepts the last one will be true
+		// when readWriteSplitting is disabled and read only transaction is disabled, tablet type should be primary
+		{
+			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
+			args: args{
+				readWriteSplittingPolicy:  "disable",
+				readOnlyTransactionPolicy: "disable",
+				readWriteSplittingRatio:   int32(70),
+				inTransaction:             true,
+				hasCreatedTempTables:      false,
+				hasAdvisoryLock:           false,
+				sql:                       "SELECT * FROM users;",
+				isInReadOnlyTx:            true,
+			},
+			wantTabletType: topodata.TabletType_PRIMARY,
+			wantRatio:      0,
+			wantErr:        assert.NoError,
+		},
+		// when readWriteSplitting is disabled and read only transaction is enabled, tablet type should be primary
+		{
+			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
+			args: args{
+				readWriteSplittingPolicy:  "disable",
+				readOnlyTransactionPolicy: "enable",
+				readWriteSplittingRatio:   int32(70),
+				inTransaction:             true,
+				hasCreatedTempTables:      false,
+				hasAdvisoryLock:           false,
+				sql:                       "SELECT * FROM users;",
+				isInReadOnlyTx:            true,
+			},
+			wantTabletType: topodata.TabletType_PRIMARY,
+			wantRatio:      0,
+			wantErr:        assert.NoError,
+		},
+		// when readWriteSplitting is random and read only transaction is disabled, the result ratio should be close to ratio wanted
+		{
+			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=70",
+			args: args{
+				readWriteSplittingPolicy:  "random",
+				readOnlyTransactionPolicy: "disable",
+				readWriteSplittingRatio:   int32(70),
+				inTransaction:             true,
+				hasCreatedTempTables:      false,
+				hasAdvisoryLock:           false,
+				sql:                       "SELECT * FROM users;",
+				isInReadOnlyTx:            true,
+			},
+			wantRatio: 0, // the sql is about read, but it is in a tx, and read only tx is disabled, so will route to
+			wantErr:   assert.NoError,
+		},
+		// when readWriteSplitting is random and read only transaction is enabled, all sql should be routed to REPLICATE
+		{
+			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
+			args: args{
+				readWriteSplittingPolicy:  "random",
+				readOnlyTransactionPolicy: "enable",
+				readWriteSplittingRatio:   int32(0),
+				inTransaction:             true,
+				hasCreatedTempTables:      false,
+				hasAdvisoryLock:           false,
+				sql:                       "SELECT * FROM users;",
+				isInReadOnlyTx:            true,
+			},
+			wantTabletType: topodata.TabletType_REPLICA,
+			wantRatio:      1, // read only tx is enabled, so all read only tx will be routed to read only tablet
+			wantErr:        assert.NoError,
+		},
+		// when readWriteSplitting is random and read only transaction is enabled, the sql "start transaction read only" should be routed to REPLICATE
+		{
+			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
+			args: args{
+				readWriteSplittingPolicy:  "random",
+				readOnlyTransactionPolicy: "enable",
+				readWriteSplittingRatio:   int32(0),
+				inTransaction:             false,
+				hasCreatedTempTables:      false,
+				hasAdvisoryLock:           false,
+				sql:                       "START TRANSACTION READ ONLY;",
+				isInReadOnlyTx:            false,
+			},
+			wantTabletType: topodata.TabletType_REPLICA,
+			wantRatio:      1, // read only tx begin sql should be routed to read only node
+			wantErr:        assert.NoError,
+		},
+	}
+
+	primaryTypeCount, replicaTypeCount := 0, 0
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for i := 0; i < 1000; i++ {
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.readOnlyTransactionPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, tt.args.isInReadOnlyTx)
 				switch gotTabletType {
 				case topodata.TabletType_PRIMARY:
 					primaryTypeCount++
