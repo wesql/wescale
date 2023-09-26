@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 /*
 Copyright 2020 The Vitess Authors.
 
@@ -355,6 +354,7 @@ func (uvs *uvstreamer) setStreamStartPosition() error {
 	if err != nil {
 		return vterrors.Wrap(err, "could not obtain current position")
 	}
+	// startPos is 'current'
 	if uvs.startPos == "current" {
 		uvs.pos = curPos
 		if err := uvs.sendEventsForCurrentPos(); err != nil {
@@ -362,6 +362,7 @@ func (uvs *uvstreamer) setStreamStartPosition() error {
 		}
 		return nil
 	}
+	// startPos is a gtid
 	pos, err := mysql.DecodePosition(uvs.startPos)
 	if err != nil {
 		return vterrors.Wrap(err, "could not decode position")

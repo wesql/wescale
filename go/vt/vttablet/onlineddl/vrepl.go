@@ -511,6 +511,7 @@ func (v *VRepl) generateFilterQuery(ctx context.Context) error {
 		sb.WriteString(escapeName(targetName))
 	}
 	sb.WriteString(" from ")
+	//todo onlineDDL: need tableSchema here
 	sb.WriteString(escapeName(v.sourceTable))
 
 	v.filterQuery = sb.String()

@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 /*
 Copyright 2019 The Vitess Authors.
 
@@ -365,6 +364,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 			continue
 		}
 
+		// read data from mysql into 'mysqlrow'
 		if mysqlrow != nil {
 			mysqlrow = mysqlrow[:0]
 		}
