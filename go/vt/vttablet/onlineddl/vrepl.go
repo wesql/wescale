@@ -169,6 +169,7 @@ func (v *VRepl) readAutoIncrement(ctx context.Context, conn *dbconnpool.DBConnec
 
 // readTableColumns reads column list from given table
 func (v *VRepl) readTableColumns(ctx context.Context, conn *dbconnpool.DBConnection, tableName string) (columns *vrepl.ColumnList, virtualColumns *vrepl.ColumnList, pkColumns *vrepl.ColumnList, err error) {
+	//todo onlineDDL: need tableSchema here
 	parsed := sqlparser.BuildParsedQuery(sqlShowColumnsFrom, tableName)
 	rs, err := conn.ExecuteFetch(parsed.Query, math.MaxInt64, true)
 	if err != nil {
@@ -227,6 +228,7 @@ func (v *VRepl) readTableUniqueKeys(ctx context.Context, conn *dbconnpool.DBConn
 
 // readTableStatus reads table status information
 func (v *VRepl) readTableStatus(ctx context.Context, conn *dbconnpool.DBConnection, tableName string) (tableRows int64, err error) {
+	//todo onlineDDL: need tableSchema here
 	parsed := sqlparser.BuildParsedQuery(sqlShowTableStatus, tableName)
 	rs, err := conn.ExecuteFetch(parsed.Query, math.MaxInt64, true)
 	if err != nil {
@@ -334,6 +336,7 @@ func (v *VRepl) analyzeAlter(ctx context.Context) error {
 }
 
 func (v *VRepl) analyzeTables(ctx context.Context, conn *dbconnpool.DBConnection) (err error) {
+	// Get row count of table
 	v.tableRows, err = v.readTableStatus(ctx, conn, v.sourceTable)
 	if err != nil {
 		return err
@@ -530,6 +533,7 @@ func (v *VRepl) analyzeBinlogSource(ctx context.Context) {
 		return textutil.EscapeJoin(columns.Names(), ",")
 	}
 	rule := &binlogdatapb.Rule{
+		//todo onlineDDL: does 'Match' need tableSchema?
 		Match:                        v.targetTable,
 		Filter:                       v.filterQuery,
 		SourceUniqueKeyColumns:       encodeColumns(&v.chosenSourceUniqueKey.Columns),

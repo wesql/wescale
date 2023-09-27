@@ -196,6 +196,7 @@ func buildTablePlan(tableName string, rule *binlogdatapb.Rule, colInfos []*Colum
 	filter := rule.Filter
 	query := filter
 	// generate equivalent select statement if filter is empty or a keyrange.
+	//todo onlineDDL: need tableSchema here？
 	switch {
 	case filter == "":
 		buf := sqlparser.NewTrackedBuffer(nil)
