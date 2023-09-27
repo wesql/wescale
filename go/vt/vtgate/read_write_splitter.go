@@ -14,7 +14,7 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/semantics"
 )
 
-func suggestTabletType(readWriteSplittingPolicy, readOnlyTransactionPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, ratio int32, sql string, isReadOnlyTx bool) (tabletType topodatapb.TabletType, err error) {
+func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, ratio int32, sql string, enableReadOnlyTransaction, isReadOnlyTx bool) (tabletType topodatapb.TabletType, err error) {
 	suggestedTabletType := defaultTabletType
 	if schema.NewReadWriteSplittingPolicy(readWriteSplittingPolicy).IsDisable() {
 		return suggestedTabletType, nil
@@ -24,24 +24,13 @@ func suggestTabletType(readWriteSplittingPolicy, readOnlyTransactionPolicy strin
 		return suggestedTabletType, nil
 	}
 
-	if inTransaction {
-		// if the sql is in transaction and its transaction access mode is read-only, then suggest type should be read-only tablet
-		if isReadOnlyTx && schema.NewReadOnlyTransactionPolicy(readOnlyTransactionPolicy).IsEnable() {
-			return topodatapb.TabletType_REPLICA, nil
-		}
-		// in transaction but not read-only transaction
-		return suggestedTabletType, nil
-	}
-	// if not in transaction, and the query is read-only, use REPLICA
-	ro, err := isReadOnly(sql)
+	// isReadOnly determines whether the sql route to read-only node
+	ro, err := isReadOnly(inTransaction, isReadOnlyTx, enableReadOnlyTransaction, sql, ratio)
 	if err != nil {
 		return suggestedTabletType, err
 	}
-	if ro == 1 { // if in read-only tx
+	if ro { // if in read-only tx
 		suggestedTabletType = topodatapb.TabletType_REPLICA
-	}
-	if ro == 2 { // if read-only and not in read-only tx
-		suggestedTabletType = pickTabletTypeForReadWriteSplitting(ratio)
 	}
 	return suggestedTabletType, nil
 }
@@ -62,33 +51,49 @@ func randomPickTabletType(ratio int32) topodatapb.TabletType {
 }
 
 // IsReadOnly : whether the query should be routed to a read-only vttablet
-// return : -1 means error occurs; 0 means is not read-only; 1 means read-only tx; 2 means read-only but not in a read-only tx;
-func isReadOnly(query string) (int, error) {
+func isReadOnly(inTransaction, isReadOnlyTx, enableReadOnlyTransaction bool, query string, ratio int32) (bool, error) {
+	if inTransaction {
+		// if the sql is in transaction and its transaction access mode is read-only, then suggest type should be read-only tablet
+		if isReadOnlyTx && enableReadOnlyTransaction {
+			return true, nil
+		} else {
+			// in transaction but not read-only transaction
+			return false, nil
+		}
+	}
+
 	s, _, err := sqlparser.Parse2(query)
 	if err != nil {
-		return -1, err
+		return false, err
 	}
+	// if the sql is like "start transaction read only"
 	if beginStmt, ok := s.(*sqlparser.Begin); ok {
-		if len(beginStmt.TxAccessModes) == 1 && beginStmt.TxAccessModes[0] == sqlparser.ReadOnly {
-			return 1, nil
+		if (len(beginStmt.TxAccessModes) == 1 && beginStmt.TxAccessModes[0] == sqlparser.ReadOnly) ||
+			(len(beginStmt.TxAccessModes) == 2 && beginStmt.TxAccessModes[0] == sqlparser.ReadOnly && beginStmt.TxAccessModes[1] == sqlparser.WithConsistentSnapshot) ||
+			(len(beginStmt.TxAccessModes) == 2 && beginStmt.TxAccessModes[1] == sqlparser.ReadOnly && beginStmt.TxAccessModes[0] == sqlparser.WithConsistentSnapshot) {
+			return true, nil
 		}
 	}
 	// select last_insert_id() is a special case, it's not a read-only query
 	if sqlparser.ContainsLastInsertIDStatement(s) {
-		return 0, nil
+		return false, nil
 	}
 	// GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS is a special case, it's not a read-only query
 	if sqlparser.ContainsLockStatement(s) {
-		return 0, nil
+		return false, nil
 	}
 	// if hasSystemTable
 	if hasSystemTable(s, "") {
-		return 0, nil
+		return false, nil
 	}
 	if sqlparser.IsPureSelectStatement(s) {
-		return 2, nil
+		if pickTabletTypeForReadWriteSplitting(ratio) == topodatapb.TabletType_PRIMARY {
+			return false, nil
+		} else {
+			return true, nil
+		}
 	}
-	return 0, nil
+	return false, nil
 }
 
 func hasSystemTable(sel sqlparser.Statement, ksName string) bool {

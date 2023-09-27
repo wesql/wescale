@@ -134,14 +134,17 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0xf0
 	}
-	if len(m.ReadOnlyTransactionPolicy) > 0 {
-		i -= len(m.ReadOnlyTransactionPolicy)
-		copy(dAtA[i:], m.ReadOnlyTransactionPolicy)
-		i = encodeVarint(dAtA, i, uint64(len(m.ReadOnlyTransactionPolicy)))
+	if m.EnableReadOnlyTransaction {
+		i--
+		if m.EnableReadOnlyTransaction {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
 		i--
 		dAtA[i] = 0x1
 		i--
-		dAtA[i] = 0xea
+		dAtA[i] = 0xe8
 	}
 	if m.RewriteTableNameWithDbNamePrefix {
 		i--
@@ -1515,9 +1518,8 @@ func (m *Session) SizeVT() (n int) {
 	if m.RewriteTableNameWithDbNamePrefix {
 		n += 3
 	}
-	l = len(m.ReadOnlyTransactionPolicy)
-	if l > 0 {
-		n += 2 + l + sov(uint64(l))
+	if m.EnableReadOnlyTransaction {
+		n += 3
 	}
 	if m.TransactionAccessMode != 0 {
 		n += 2 + sov(uint64(m.TransactionAccessMode))
@@ -3074,10 +3076,10 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			}
 			m.RewriteTableNameWithDbNamePrefix = bool(v != 0)
 		case 29:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReadOnlyTransactionPolicy", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EnableReadOnlyTransaction", wireType)
 			}
-			var stringLen uint64
+			var v int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -3087,24 +3089,12 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				v |= int(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ReadOnlyTransactionPolicy = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
+			m.EnableReadOnlyTransaction = bool(v != 0)
 		case 30:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)

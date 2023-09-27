@@ -399,7 +399,7 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 				ReadAfterWriteTimeout:     defaultReadAfterWriteTimeout,
 			},
 			RewriteTableNameWithDbNamePrefix: defaultRewriteTableNameWithDbNamePrefix,
-			ReadOnlyTransactionPolicy:        defaultReadOnlyTransactionPolicy,
+			EnableReadOnlyTransaction:        defaultEnableReadOnlyTransaction,
 		}
 		if c.Capabilities&mysql.CapabilityClientFoundRows != 0 {
 			session.Options.ClientFoundRows = true

@@ -187,7 +187,7 @@ message Session {
   bool RewriteTableNameWithDbNamePrefix = 28;
 
   // read_only_transaction_policy is the policy used for read only transaction, such as enable and disable
-  string read_only_transaction_policy = 29;
+  bool EnableReadOnlyTransaction = 29;
 
   // TxAccessMode
   TransactionAccessMode transaction_access_mode = 30;

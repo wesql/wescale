@@ -136,15 +136,3 @@ const (
 	// ReadOnlyTransactionPolicyEnable enables read only transaction
 	ReadOnlyTransactionPolicyEnable ReadOnlyTransactionPolicy = "enable"
 )
-
-func NewReadOnlyTransactionPolicy(s string) ReadOnlyTransactionPolicy {
-	return ReadOnlyTransactionPolicy(strings.ToLower(s))
-}
-
-func (s ReadOnlyTransactionPolicy) IsDisable() bool {
-	return s == ReadOnlyTransactionPolicyDisable || s == ""
-}
-
-func (s ReadOnlyTransactionPolicy) IsEnable() bool {
-	return s == ReadOnlyTransactionPolicyEnable
-}
