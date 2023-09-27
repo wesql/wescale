@@ -270,6 +270,7 @@ func (uvs *uvstreamer) shouldSendEventForTable(tableName string, ev *binlogdatap
 }
 
 // Do not send internal heartbeat events. Filter out events for tables whose copy has not been started.
+// todo onlineDDL: need tableSchema here
 func (uvs *uvstreamer) filterEvents(evs []*binlogdatapb.VEvent) []*binlogdatapb.VEvent {
 	if len(uvs.plans) == 0 {
 		return evs
