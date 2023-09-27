@@ -19,11 +19,17 @@ func suggestTabletType(readWriteSplittingPolicy, readOnlyTransactionPolicy strin
 	if schema.NewReadWriteSplittingPolicy(readWriteSplittingPolicy).IsDisable() {
 		return suggestedTabletType, nil
 	}
-	// if the sql is in transaction and its transaction access mode is read-only, then suggest type should be read-only tablet
-	if isReadOnlyTx && schema.NewReadOnlyTransactionPolicy(readOnlyTransactionPolicy).IsEnable() {
-		return topodatapb.TabletType_REPLICA, nil
+
+	if hasCreatedTempTables || hasAdvisoryLock {
+		return suggestedTabletType, nil
 	}
-	if inTransaction || hasCreatedTempTables || hasAdvisoryLock {
+
+	if inTransaction {
+		// if the sql is in transaction and its transaction access mode is read-only, then suggest type should be read-only tablet
+		if isReadOnlyTx && schema.NewReadOnlyTransactionPolicy(readOnlyTransactionPolicy).IsEnable() {
+			return topodatapb.TabletType_REPLICA, nil
+		}
+		// in transaction but not read-only transaction
 		return suggestedTabletType, nil
 	}
 	// if not in transaction, and the query is read-only, use REPLICA
