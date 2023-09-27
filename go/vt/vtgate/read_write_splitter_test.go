@@ -59,7 +59,7 @@ func Test_suggestTabletType_to_replica(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -147,7 +147,7 @@ func Test_suggestTabletType_to_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -355,7 +355,7 @@ func Test_suggestTabletType_force_primary(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
+			gotTabletType, err := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false, false)
 			if !tt.wantErr(t, err, fmt.Sprintf("suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)) {
 				return
 			}
@@ -438,7 +438,7 @@ func Test_suggestTabletType_random(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1000; i++ {
-				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, "disable", tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false)
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, false, false)
 				switch gotTabletType {
 				case topodata.TabletType_PRIMARY:
 					primaryTypeCount++
@@ -457,7 +457,7 @@ func Test_suggestTabletType_random(t *testing.T) {
 func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 	type args struct {
 		readWriteSplittingPolicy  string
-		readOnlyTransactionPolicy string
+		enableReadOnlyTransaction bool
 		readWriteSplittingRatio   int32
 		inTransaction             bool
 		hasCreatedTempTables      bool
@@ -478,7 +478,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy:  "disable",
-				readOnlyTransactionPolicy: "disable",
+				enableReadOnlyTransaction: false,
 				readWriteSplittingRatio:   int32(70),
 				inTransaction:             true,
 				hasCreatedTempTables:      false,
@@ -495,7 +495,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy:  "disable",
-				readOnlyTransactionPolicy: "enable",
+				enableReadOnlyTransaction: false,
 				readWriteSplittingRatio:   int32(70),
 				inTransaction:             true,
 				hasCreatedTempTables:      false,
@@ -512,7 +512,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=70",
 			args: args{
 				readWriteSplittingPolicy:  "random",
-				readOnlyTransactionPolicy: "disable",
+				enableReadOnlyTransaction: false,
 				readWriteSplittingRatio:   int32(70),
 				inTransaction:             true,
 				hasCreatedTempTables:      false,
@@ -528,7 +528,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
 				readWriteSplittingPolicy:  "random",
-				readOnlyTransactionPolicy: "enable",
+				enableReadOnlyTransaction: true,
 				readWriteSplittingRatio:   int32(0),
 				inTransaction:             true,
 				hasCreatedTempTables:      false,
@@ -545,7 +545,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
 				readWriteSplittingPolicy:  "random",
-				readOnlyTransactionPolicy: "enable",
+				enableReadOnlyTransaction: true,
 				readWriteSplittingRatio:   int32(0),
 				inTransaction:             false,
 				hasCreatedTempTables:      false,
@@ -563,7 +563,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1000; i++ {
-				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.readOnlyTransactionPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, tt.args.isInReadOnlyTx)
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, tt.args.enableReadOnlyTransaction, tt.args.isInReadOnlyTx)
 				switch gotTabletType {
 				case topodata.TabletType_PRIMARY:
 					primaryTypeCount++

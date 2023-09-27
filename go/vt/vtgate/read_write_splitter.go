@@ -56,10 +56,10 @@ func isReadOnly(inTransaction, isReadOnlyTx, enableReadOnlyTransaction bool, que
 		// if the sql is in transaction and its transaction access mode is read-only, then suggest type should be read-only tablet
 		if isReadOnlyTx && enableReadOnlyTransaction {
 			return true, nil
-		} else {
-			// in transaction but not read-only transaction
-			return false, nil
 		}
+		// in transaction but not read-only transaction
+		return false, nil
+
 	}
 
 	s, _, err := sqlparser.Parse2(query)
@@ -89,9 +89,9 @@ func isReadOnly(inTransaction, isReadOnlyTx, enableReadOnlyTransaction bool, que
 	if sqlparser.IsPureSelectStatement(s) {
 		if pickTabletTypeForReadWriteSplitting(ratio) == topodatapb.TabletType_PRIMARY {
 			return false, nil
-		} else {
-			return true, nil
 		}
+		return true, nil
+
 	}
 	return false, nil
 }
