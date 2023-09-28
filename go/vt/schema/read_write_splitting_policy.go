@@ -127,12 +127,3 @@ func ToLoadBalancePolicy(s string) querypb.ExecuteOptions_LoadBalancePolicy {
 		return querypb.ExecuteOptions_RANDOM
 	}
 }
-
-type ReadOnlyTransactionPolicy string
-
-const (
-	// ReadOnlyTransactionPolicyDisable disables read only transaction
-	ReadOnlyTransactionPolicyDisable ReadOnlyTransactionPolicy = "disable"
-	// ReadOnlyTransactionPolicyEnable enables read only transaction
-	ReadOnlyTransactionPolicyEnable ReadOnlyTransactionPolicy = "enable"
-)
