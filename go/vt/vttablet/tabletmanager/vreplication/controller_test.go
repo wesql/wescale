@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,7 +93,7 @@ func TestControllerKeyRange(t *testing.T) {
 	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "replica", nil, nil)
@@ -124,7 +129,7 @@ func TestControllerTables(t *testing.T) {
 	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{
 		MysqlPort: sync2.NewAtomicInt32(3306),
 		Schema: &tabletmanagerdatapb.SchemaDefinition{
@@ -217,7 +222,7 @@ func TestControllerOverrides(t *testing.T) {
 	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
 
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "rdonly", nil, nil)
@@ -285,7 +290,7 @@ func TestControllerRetry(t *testing.T) {
 	dbClient.ExpectRequest("insert into t values(1)", testDMLResponse, nil)
 	dbClient.ExpectRequestRE("update mysql.vreplication set pos='MariaDB/0-1-1235', time_updated=.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("commit", nil, nil)
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "rdonly", nil, nil)
@@ -345,7 +350,7 @@ func TestControllerStopPosition(t *testing.T) {
 	dbClient.ExpectRequest("commit", nil, nil)
 	dbClient.ExpectRequest("update mysql.vreplication set state='Stopped', message='Reached stopping position, done playing logs' where id=1", testDMLResponse, nil)
 
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "replica", nil, nil)

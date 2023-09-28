@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"google.golang.org/protobuf/encoding/prototext"
 
@@ -52,11 +59,12 @@ const (
 // either read-only or self-synchronized.
 type controller struct {
 	vre             *Engine
-	dbClientFactory func() binlogplayer.DBClient
+	dbClientFactory func(dbName string) binlogplayer.DBClient
 	mysqld          mysqlctl.MysqlDaemon
 	blpStats        *binlogplayer.Stats
 
 	id           uint32
+	dbName       string
 	workflow     string
 	source       *binlogdatapb.BinlogSource
 	stopPos      string
@@ -73,7 +81,7 @@ type controller struct {
 
 // newController creates a new controller. Unless a stream is explicitly 'Stopped',
 // this function launches a goroutine to perform continuous vreplication.
-func newController(ctx context.Context, params map[string]string, dbClientFactory func() binlogplayer.DBClient, mysqld mysqlctl.MysqlDaemon, ts *topo.Server, cell, tabletTypesStr string, blpStats *binlogplayer.Stats, vre *Engine) (*controller, error) {
+func newController(ctx context.Context, params map[string]string, dbClientFactory func(dbName string) binlogplayer.DBClient, mysqld mysqlctl.MysqlDaemon, ts *topo.Server, cell, tabletTypesStr string, blpStats *binlogplayer.Stats, vre *Engine) (*controller, error) {
 	if blpStats == nil {
 		blpStats = binlogplayer.NewStats()
 	}
@@ -84,6 +92,7 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 		mysqld:          mysqld,
 		blpStats:        blpStats,
 		done:            make(chan struct{}),
+		dbName:          params["db_name"],
 		source:          &binlogdatapb.BinlogSource{},
 	}
 	log.Infof("creating controller with cell: %v, tabletTypes: %v, and params: %v", cell, tabletTypesStr, params)
@@ -130,7 +139,7 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 				return nil, err
 			}
 		}
-		tp, err := discovery.NewTabletPicker(sourceTopo, cells, ct.source.Keyspace, ct.source.Shard, tabletTypesStr)
+		tp, err := discovery.NewTabletPicker(sourceTopo, cells, sidecardb.SidecarDBName, ct.source.Shard, tabletTypesStr)
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +208,7 @@ func (ct *controller) runBlp(ctx context.Context) (err error) {
 		return err
 	}
 
-	dbClient := ct.dbClientFactory()
+	dbClient := ct.dbClientFactory(ct.dbName)
 	if err := dbClient.Connect(); err != nil {
 		return vterrors.Wrap(err, "can't connect to database")
 	}

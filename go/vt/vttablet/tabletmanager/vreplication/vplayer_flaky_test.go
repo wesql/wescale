@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +31,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"github.com/spyzhov/ajson"
 	"github.com/stretchr/testify/require"
@@ -111,7 +118,7 @@ func TestHeartbeatFrequencyFlag(t *testing.T) {
 	}()
 
 	stats := binlogplayer.NewStats()
-	vp := &vplayer{vr: &vreplicator{dbClient: newVDBClient(realDBClientFactory(), stats), stats: stats}}
+	vp := &vplayer{vr: &vreplicator{dbClient: newVDBClient(realDBClientFactory(sidecardb.SidecarDBName), stats), stats: stats}}
 
 	type testcount struct {
 		count      int
@@ -2672,7 +2679,7 @@ func TestPlayerJSONTwoColumns(t *testing.T) {
 
 func TestVReplicationLogs(t *testing.T) {
 	defer deleteTablet(addTablet(100))
-	dbClient := playerEngine.dbClientFactoryDba()
+	dbClient := playerEngine.dbClientFactoryDba(sidecardb.SidecarDBName)
 	err := dbClient.Connect()
 	require.NoError(t, err)
 	defer dbClient.Close()
