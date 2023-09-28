@@ -456,14 +456,14 @@ func Test_suggestTabletType_random(t *testing.T) {
 
 func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 	type args struct {
-		readWriteSplittingPolicy  string
-		enableReadOnlyTransaction bool
-		readWriteSplittingRatio   int32
-		inTransaction             bool
-		hasCreatedTempTables      bool
-		hasAdvisoryLock           bool
-		sql                       string
-		isInReadOnlyTx            bool
+		readWriteSplittingPolicy           string
+		EnableReadWriteSplitForReadOnlyTxn bool
+		readWriteSplittingRatio            int32
+		inTransaction                      bool
+		hasCreatedTempTables               bool
+		hasAdvisoryLock                    bool
+		sql                                string
+		isInReadOnlyTx                     bool
 	}
 	tests := []struct {
 		name           string
@@ -477,14 +477,14 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		{
 			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
-				readWriteSplittingPolicy:  "disable",
-				enableReadOnlyTransaction: false,
-				readWriteSplittingRatio:   int32(70),
-				inTransaction:             true,
-				hasCreatedTempTables:      false,
-				hasAdvisoryLock:           false,
-				sql:                       "SELECT * FROM users;",
-				isInReadOnlyTx:            true,
+				readWriteSplittingPolicy:           "disable",
+				EnableReadWriteSplitForReadOnlyTxn: false,
+				readWriteSplittingRatio:            int32(70),
+				inTransaction:                      true,
+				hasCreatedTempTables:               false,
+				hasAdvisoryLock:                    false,
+				sql:                                "SELECT * FROM users;",
+				isInReadOnlyTx:                     true,
 			},
 			wantTabletType: topodata.TabletType_PRIMARY,
 			wantRatio:      0,
@@ -494,14 +494,14 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		{
 			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
-				readWriteSplittingPolicy:  "disable",
-				enableReadOnlyTransaction: false,
-				readWriteSplittingRatio:   int32(70),
-				inTransaction:             true,
-				hasCreatedTempTables:      false,
-				hasAdvisoryLock:           false,
-				sql:                       "SELECT * FROM users;",
-				isInReadOnlyTx:            true,
+				readWriteSplittingPolicy:           "disable",
+				EnableReadWriteSplitForReadOnlyTxn: false,
+				readWriteSplittingRatio:            int32(70),
+				inTransaction:                      true,
+				hasCreatedTempTables:               false,
+				hasAdvisoryLock:                    false,
+				sql:                                "SELECT * FROM users;",
+				isInReadOnlyTx:                     true,
 			},
 			wantTabletType: topodata.TabletType_PRIMARY,
 			wantRatio:      0,
@@ -511,14 +511,14 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		{
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=70",
 			args: args{
-				readWriteSplittingPolicy:  "random",
-				enableReadOnlyTransaction: false,
-				readWriteSplittingRatio:   int32(70),
-				inTransaction:             true,
-				hasCreatedTempTables:      false,
-				hasAdvisoryLock:           false,
-				sql:                       "SELECT * FROM users;",
-				isInReadOnlyTx:            true,
+				readWriteSplittingPolicy:           "random",
+				EnableReadWriteSplitForReadOnlyTxn: false,
+				readWriteSplittingRatio:            int32(70),
+				inTransaction:                      true,
+				hasCreatedTempTables:               false,
+				hasAdvisoryLock:                    false,
+				sql:                                "SELECT * FROM users;",
+				isInReadOnlyTx:                     true,
 			},
 			wantRatio: 0, // the sql is about read, but it is in a tx, and read only tx is disabled, so will route to
 			wantErr:   assert.NoError,
@@ -527,14 +527,14 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		{
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
-				readWriteSplittingPolicy:  "random",
-				enableReadOnlyTransaction: true,
-				readWriteSplittingRatio:   int32(0),
-				inTransaction:             true,
-				hasCreatedTempTables:      false,
-				hasAdvisoryLock:           false,
-				sql:                       "SELECT * FROM users;",
-				isInReadOnlyTx:            true,
+				readWriteSplittingPolicy:           "random",
+				EnableReadWriteSplitForReadOnlyTxn: true,
+				readWriteSplittingRatio:            int32(0),
+				inTransaction:                      true,
+				hasCreatedTempTables:               false,
+				hasAdvisoryLock:                    false,
+				sql:                                "SELECT * FROM users;",
+				isInReadOnlyTx:                     true,
 			},
 			wantTabletType: topodata.TabletType_REPLICA,
 			wantRatio:      1, // read only tx is enabled, so all read only tx will be routed to read only tablet
@@ -544,14 +544,14 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		{
 			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
-				readWriteSplittingPolicy:  "random",
-				enableReadOnlyTransaction: true,
-				readWriteSplittingRatio:   int32(0),
-				inTransaction:             false,
-				hasCreatedTempTables:      false,
-				hasAdvisoryLock:           false,
-				sql:                       "START TRANSACTION READ ONLY;",
-				isInReadOnlyTx:            false,
+				readWriteSplittingPolicy:           "random",
+				EnableReadWriteSplitForReadOnlyTxn: true,
+				readWriteSplittingRatio:            int32(0),
+				inTransaction:                      false,
+				hasCreatedTempTables:               false,
+				hasAdvisoryLock:                    false,
+				sql:                                "START TRANSACTION READ ONLY;",
+				isInReadOnlyTx:                     false,
 			},
 			wantTabletType: topodata.TabletType_REPLICA,
 			wantRatio:      1, // read only tx begin sql should be routed to read only node
@@ -563,7 +563,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for i := 0; i < 1000; i++ {
-				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, tt.args.enableReadOnlyTransaction, tt.args.isInReadOnlyTx)
+				gotTabletType, _ := suggestTabletType(tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.readWriteSplittingRatio, tt.args.sql, tt.args.EnableReadWriteSplitForReadOnlyTxn, tt.args.isInReadOnlyTx)
 				switch gotTabletType {
 				case topodata.TabletType_PRIMARY:
 					primaryTypeCount++

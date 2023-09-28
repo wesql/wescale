@@ -134,9 +134,9 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0xf0
 	}
-	if m.EnableReadOnlyTransaction {
+	if m.EnableReadWriteSplitForReadOnlyTxn {
 		i--
-		if m.EnableReadOnlyTransaction {
+		if m.EnableReadWriteSplitForReadOnlyTxn {
 			dAtA[i] = 1
 		} else {
 			dAtA[i] = 0
@@ -1518,7 +1518,7 @@ func (m *Session) SizeVT() (n int) {
 	if m.RewriteTableNameWithDbNamePrefix {
 		n += 3
 	}
-	if m.EnableReadOnlyTransaction {
+	if m.EnableReadWriteSplitForReadOnlyTxn {
 		n += 3
 	}
 	if m.TransactionAccessMode != 0 {
@@ -3077,7 +3077,7 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			m.RewriteTableNameWithDbNamePrefix = bool(v != 0)
 		case 29:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EnableReadOnlyTransaction", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field EnableReadWriteSplitForReadOnlyTxn", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
@@ -3094,7 +3094,7 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-			m.EnableReadOnlyTransaction = bool(v != 0)
+			m.EnableReadWriteSplitForReadOnlyTxn = bool(v != 0)
 		case 30:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)
