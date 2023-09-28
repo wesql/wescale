@@ -125,8 +125,8 @@ var (
 	messageStreamGracePeriod = 30 * time.Second
 
 	// read write splitting flags
-	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyRandom)
-	EnableReadWriteSplitForReadOnlyTxn   = true
+	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyDisable)
+	EnableReadWriteSplitForReadOnlyTxn   = false
 	defaultReadAfterWriteConsistencyName = vtgatepb.ReadAfterWriteConsistency_EVENTUAL.String()
 
 	defaultRewriteTableNameWithDbNamePrefix = true
