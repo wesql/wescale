@@ -475,7 +475,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		// the value of inTransaction in the following test excepts the last one will be true
 		// when readWriteSplitting is disabled and read only transaction is disabled, tablet type should be primary
 		{
-			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
+			name: "readWriteSplittingPolicy=disable, EnableReadWriteSplitForReadOnlyTxn=false, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy:           "disable",
 				EnableReadWriteSplitForReadOnlyTxn: false,
@@ -492,10 +492,10 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		},
 		// when readWriteSplitting is disabled and read only transaction is enabled, tablet type should be primary
 		{
-			name: "readWriteSplittingPolicy=disable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
+			name: "readWriteSplittingPolicy=disable, EnableReadWriteSplitForReadOnlyTxn=true, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false, ratio=70",
 			args: args{
 				readWriteSplittingPolicy:           "disable",
-				EnableReadWriteSplitForReadOnlyTxn: false,
+				EnableReadWriteSplitForReadOnlyTxn: true,
 				readWriteSplittingRatio:            int32(70),
 				inTransaction:                      true,
 				hasCreatedTempTables:               false,
@@ -509,7 +509,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		},
 		// when readWriteSplitting is random and read only transaction is disabled, the result ratio should be close to ratio wanted
 		{
-			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=disable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=70",
+			name: "readWriteSplittingPolicy=enable, EnableReadWriteSplitForReadOnlyTxn=false, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=70",
 			args: args{
 				readWriteSplittingPolicy:           "random",
 				EnableReadWriteSplitForReadOnlyTxn: false,
@@ -525,7 +525,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		},
 		// when readWriteSplitting is random and read only transaction is enabled, all sql should be routed to REPLICATE
 		{
-			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
+			name: "readWriteSplittingPolicy=enable, EnableReadWriteSplitForReadOnlyTxn=true, inTransaction=true, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
 				readWriteSplittingPolicy:           "random",
 				EnableReadWriteSplitForReadOnlyTxn: true,
@@ -542,11 +542,11 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		},
 		// when readWriteSplitting is random and read only transaction is enabled, the sql "start transaction read only" should be routed to REPLICATE
 		{
-			name: "readWriteSplittingPolicy=enable, readOnlyTransactionPolicy=enable, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
+			name: "readWriteSplittingPolicy=enable, EnableReadWriteSplitForReadOnlyTxn=true, inTransaction=false, hasCreatedTempTables=false, hasAdvisoryLock=false. ratio=0",
 			args: args{
 				readWriteSplittingPolicy:           "random",
 				EnableReadWriteSplitForReadOnlyTxn: true,
-				readWriteSplittingRatio:            int32(0),
+				readWriteSplittingRatio:            int32(70),
 				inTransaction:                      false,
 				hasCreatedTempTables:               false,
 				hasAdvisoryLock:                    false,
@@ -554,7 +554,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 				isInReadOnlyTx:                     false,
 			},
 			wantTabletType: topodata.TabletType_REPLICA,
-			wantRatio:      1, // read only tx begin sql should be routed to read only node
+			wantRatio:      0, // read only tx begin sql will not route to mysql to execute actually, and is not a pure select sql, so the ratio is 0
 			wantErr:        assert.NoError,
 		},
 	}
@@ -574,6 +574,7 @@ func Test_suggestTabletType_read_only_transaction(t *testing.T) {
 		})
 		assert.Equalf(t, primaryTypeCount+replicaTypeCount, 1000, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
 		ratio := float32(replicaTypeCount) / float32(replicaTypeCount+primaryTypeCount)
+		fmt.Printf("ratio is %f", ratio)
 		assert.LessOrEqualf(t, math.Abs(float64(ratio-tt.wantRatio)), 0.1, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
 		primaryTypeCount, replicaTypeCount = 0, 0
 	}
