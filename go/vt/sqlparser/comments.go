@@ -26,9 +26,10 @@ import (
 	"strings"
 	"unicode"
 
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/topo/topoproto"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
 )
 
 const (
@@ -57,6 +58,8 @@ const (
 	DirectiveConsolidator = "CONSOLIDATOR"
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
+	// DirectiveTabletAlias specifies the tablet alias to which the query is routed.
+	DirectiveTabletAlias = "TABLET_ALIAS"
 )
 
 func isNonSpace(r rune) bool {
@@ -430,4 +433,27 @@ func GetNodeType(stmt Statement) tabletpb.TabletType {
 		return tabletpb.TabletType(i32v)
 	}
 	return tabletpb.TabletType_UNKNOWN
+}
+
+func GetTabletAlias(stmt Statement) (*tabletpb.TabletAlias, error) {
+	var comments *ParsedComments
+	switch stmt := stmt.(type) {
+	case *Select:
+		comments = stmt.Comments
+	case *Insert:
+		comments = stmt.Comments
+	case *Update:
+		comments = stmt.Comments
+	case *Delete:
+		comments = stmt.Comments
+	}
+	if comments == nil {
+		return nil, nil
+	}
+	directives := comments.Directives()
+	strv, isSet := directives.GetString(DirectiveTabletAlias, "")
+	if !isSet {
+		return nil, nil
+	}
+	return topoproto.ParseTabletAlias(strv)
 }

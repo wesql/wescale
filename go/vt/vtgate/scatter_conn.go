@@ -819,8 +819,17 @@ func requireNewQS(err error, target *querypb.Target) bool {
 
 // actionInfo looks at the current session, and returns information about what needs to be done for this tablet
 func actionInfo(ctx context.Context, target *querypb.Target, session *SafeSession, autocommit bool, txMode vtgatepb.TransactionMode) (*shardActionInfo, error) {
+	var tabletAlias *topodatapb.TabletAlias
+	if !(target.Cell == "" && target.Uid == 0) {
+		tabletAlias = &topodatapb.TabletAlias{
+			Cell: target.Cell,
+			Uid:  target.Uid,
+		}
+	}
 	if !(session.InTransaction() || session.InReservedConn()) {
-		return &shardActionInfo{}, nil
+		return &shardActionInfo{
+			alias: tabletAlias,
+		}, nil
 	}
 	ignoreSession := ctx.Value(engine.IgnoreReserveTxn)
 	if ignoreSession != nil {
@@ -848,6 +857,9 @@ func actionInfo(ctx context.Context, target *querypb.Target, session *SafeSessio
 		act = begin
 	}
 
+	if alias == nil {
+		alias = tabletAlias
+	}
 	return &shardActionInfo{
 		actionNeeded:  act,
 		transactionID: transactionID,

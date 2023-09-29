@@ -1125,6 +1125,11 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 			return nil, nil, err
 		}
 	}
+	if tabletAliasFromHint, err := sqlparser.GetTabletAlias(statement); err != nil {
+		return nil, nil, err
+	} else if err := vcursor.SetTabletAliasFromHint(tabletAliasFromHint); err != nil {
+		return nil, nil, err
+	}
 
 	setVarComment, err := prepareSetVarComment(vcursor, stmt)
 	if err != nil {
