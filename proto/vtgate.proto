@@ -47,6 +47,13 @@ enum TransactionMode {
   TWOPC = 3;
 }
 
+enum TransactionAccessMode {
+  INVALID = 0; // default value
+  WITH_CONSISTENT_SNAPSHOT = 1;
+  READ_WRITE = 2;
+  READ_ONLY = 3;
+}
+
 
 // CommitOrder is used to designate which of the ShardSessions
 // get used for transactions.
@@ -178,6 +185,12 @@ message Session {
 
   // RewriteTableNameWithDbNamePrefix is the flag to enable add database prefix for tableName
   bool RewriteTableNameWithDbNamePrefix = 28;
+
+  // read_only_transaction_policy is the policy used for read only transaction, such as enable and disable
+  bool EnableReadWriteSplitForReadOnlyTxn = 29;
+
+  // TxAccessMode
+  TransactionAccessMode transaction_access_mode = 30;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout

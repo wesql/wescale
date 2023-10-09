@@ -607,6 +607,15 @@ func (e *Executor) handleBegin(ctx context.Context, safeSession *SafeSession, lo
 
 	begin := stmt.(*sqlparser.Begin)
 	err := e.txConn.Begin(ctx, safeSession, begin.TxAccessModes)
+
+	// verify read only tx
+	// when start transaction with READ_ONLY and WithConsistentSnapshot at the same time, the database should ensure that the consistent snapshopt can work correctly between primary and replicate nodes
+	if (len(begin.TxAccessModes) == 1 && begin.TxAccessModes[0] == sqlparser.ReadOnly) ||
+		(len(begin.TxAccessModes) == 2 && begin.TxAccessModes[0] == sqlparser.ReadOnly && begin.TxAccessModes[1] == sqlparser.WithConsistentSnapshot) ||
+		(len(begin.TxAccessModes) == 2 && begin.TxAccessModes[1] == sqlparser.ReadOnly && begin.TxAccessModes[0] == sqlparser.WithConsistentSnapshot) {
+		safeSession.Session.TransactionAccessMode = vtgatepb.TransactionAccessMode_READ_ONLY
+	}
+
 	logStats.ExecuteTime = time.Since(execStart)
 
 	e.updateQueryCounts("Begin", "", "", 0)

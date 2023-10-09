@@ -141,9 +141,12 @@ func newVCursorImpl(
 	warnShardedOnly bool,
 	pv plancontext.PlannerVersion,
 ) (*vcursorImpl, error) {
+	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
+	// but the sql will not send to tablet to execute
+	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql)
+		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
 	if err != nil {
 		return nil, err
 	}

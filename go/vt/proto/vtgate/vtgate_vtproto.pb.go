@@ -127,6 +127,25 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.TransactionAccessMode != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.TransactionAccessMode))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xf0
+	}
+	if m.EnableReadWriteSplitForReadOnlyTxn {
+		i--
+		if m.EnableReadWriteSplitForReadOnlyTxn {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xe8
+	}
 	if m.RewriteTableNameWithDbNamePrefix {
 		i--
 		if m.RewriteTableNameWithDbNamePrefix {
@@ -1498,6 +1517,12 @@ func (m *Session) SizeVT() (n int) {
 	}
 	if m.RewriteTableNameWithDbNamePrefix {
 		n += 3
+	}
+	if m.EnableReadWriteSplitForReadOnlyTxn {
+		n += 3
+	}
+	if m.TransactionAccessMode != 0 {
+		n += 2 + sov(uint64(m.TransactionAccessMode))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3050,6 +3075,45 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.RewriteTableNameWithDbNamePrefix = bool(v != 0)
+		case 29:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EnableReadWriteSplitForReadOnlyTxn", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.EnableReadWriteSplitForReadOnlyTxn = bool(v != 0)
+		case 30:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)
+			}
+			m.TransactionAccessMode = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.TransactionAccessMode |= TransactionAccessMode(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
