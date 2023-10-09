@@ -435,7 +435,7 @@ func (onlineDDL *OnlineDDL) GetRevertUUID() (uuid string, err error) {
 
 // ToString returns a simple string representation of this instance
 func (onlineDDL *OnlineDDL) ToString() string {
-	return fmt.Sprintf("OnlineDDL: keyspace=%s, table=%s, sql=%s", onlineDDL.Keyspace, onlineDDL.Table, onlineDDL.SQL)
+	return fmt.Sprintf("OnlineDDL: keyspace=%s, table=%s, sql=%s", onlineDDL.Schema, onlineDDL.Table, onlineDDL.SQL)
 }
 
 // GetGCUUID gets this OnlineDDL UUID in GC UUID format

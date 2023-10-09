@@ -131,13 +131,15 @@ func (uvs *uvstreamer) sendEventsForRows(ctx context.Context, tableName string, 
 	var evs []*binlogdatapb.VEvent
 	for _, row := range rows.Rows {
 		ev := &binlogdatapb.VEvent{
-			Type:     binlogdatapb.VEventType_ROW,
+			Type: binlogdatapb.VEventType_ROW,
+			//todo onlineDDL: keyspace & shard
 			Keyspace: uvs.vse.keyspace,
 			Shard:    uvs.vse.shard,
 			RowEvent: &binlogdatapb.RowEvent{
 				TableName: tableName,
-				Keyspace:  uvs.vse.keyspace,
-				Shard:     uvs.vse.shard,
+				//todo onlineDDL: keyspace & shard
+				Keyspace: uvs.vse.keyspace,
+				Shard:    uvs.vse.shard,
 				RowChanges: []*binlogdatapb.RowChange{{
 					Before: nil,
 					After:  row,

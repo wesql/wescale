@@ -27,6 +27,7 @@ import (
 )
 
 // DBClient is a high level interface to the database.
+// todo onlineDDL: need to support tableSchema
 type DBClient interface {
 	DBName() string
 	Connect() error

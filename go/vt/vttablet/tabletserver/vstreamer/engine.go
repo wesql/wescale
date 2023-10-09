@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,11 +60,13 @@ const (
 
 // Engine is the engine for handling vreplication streaming requests.
 type Engine struct {
-	env  tabletenv.Env
-	ts   srvtopo.Server
+	env tabletenv.Env
+	ts  srvtopo.Server
+	//todo onlineDDL
 	se   *schema.Engine
 	cell string
 
+	//todo onlineDDL: remove this
 	// keyspace is initialized by InitDBConfig
 	keyspace string
 	shard    string
@@ -80,7 +87,8 @@ type Engine struct {
 	// no stream will start until vschema is initialized by
 	// the first call through watcherOnce.
 	watcherOnce sync.Once
-	lvschema    *localVSchema
+	//todo onlineDDL
+	lvschema *localVSchema
 
 	// stats variables
 	vschemaErrors  *stats.Counter
@@ -489,6 +497,7 @@ func (vse *Engine) getMySQLReplicationLag(ctx context.Context, db dbconfigs.Conn
 	}
 	defer conn.Close()
 
+	//todo onlineDDL: consider wesql-server to get the lag
 	res, err := conn.ExecuteFetch(replicaLagQuery, 1, true)
 	if err != nil || len(res.Rows) != 1 || res.Rows[0] == nil {
 		return lagSecs

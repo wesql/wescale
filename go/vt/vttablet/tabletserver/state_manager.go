@@ -432,6 +432,7 @@ func (sm *stateManager) VerifyTarget(ctx context.Context, target *querypb.Target
 func (sm *stateManager) verifyTargetLocked(ctx context.Context, target *querypb.Target) error {
 	if target != nil {
 		switch {
+		//todo onlineDDL: need to accept all keyspace and shard here
 		case target.Keyspace != sm.target.Keyspace:
 			//no ops
 		case target.Shard != sm.target.Shard:

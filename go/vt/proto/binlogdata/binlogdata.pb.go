@@ -2423,6 +2423,7 @@ type TableLastPK struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	//todo onlineDDL: need tableSchema here
 	TableName string             `protobuf:"bytes,1,opt,name=table_name,json=tableName,proto3" json:"table_name,omitempty"`
 	Lastpk    *query.QueryResult `protobuf:"bytes,3,opt,name=lastpk,proto3" json:"lastpk,omitempty"`
 }

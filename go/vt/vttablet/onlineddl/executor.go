@@ -1183,7 +1183,7 @@ func (e *Executor) initVreplicationOriginalMigration(ctx context.Context, online
 			}
 		}
 	}
-	v = NewVRepl(onlineDDL.UUID, onlineDDL.Keyspace, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, onlineDDL.SQL)
+	v = NewVRepl(onlineDDL.UUID, onlineDDL.Schema, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, onlineDDL.SQL)
 	return v, nil
 }
 
@@ -1237,7 +1237,7 @@ func (e *Executor) initVreplicationRevertMigration(ctx context.Context, onlineDD
 	if err := e.updateArtifacts(ctx, onlineDDL.UUID, vreplTableName); err != nil {
 		return v, err
 	}
-	v = NewVRepl(onlineDDL.UUID, onlineDDL.Keyspace, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, "")
+	v = NewVRepl(onlineDDL.UUID, onlineDDL.Schema, e.shard, onlineDDL.Schema, onlineDDL.Table, vreplTableName, "")
 	v.pos = revertStream.pos
 	return v, nil
 }
@@ -2083,7 +2083,7 @@ func (e *Executor) getCompletedMigrationByContextAndSQL(ctx context.Context, onl
 		return "", nil
 	}
 	query, err := sqlparser.ParseAndBind(sqlSelectCompleteMigrationsByContextAndSQL,
-		sqltypes.StringBindVariable(onlineDDL.Keyspace),
+		sqltypes.StringBindVariable(onlineDDL.Schema),
 		sqltypes.StringBindVariable(onlineDDL.MigrationContext),
 		sqltypes.StringBindVariable(onlineDDL.SQL),
 	)

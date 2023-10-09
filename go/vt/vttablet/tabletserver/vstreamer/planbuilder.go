@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,6 +124,7 @@ type ColExpr struct {
 
 // Table contains the metadata for a table.
 type Table struct {
+	//todo onlineDDL: maybe we need tableSchema in this structure
 	Name   string
 	Fields []*querypb.Field
 }
@@ -438,6 +445,7 @@ func buildTablePlan(ti *Table, vschema *localVSchema, query string) (*Plan, erro
 	return plan, nil
 }
 
+// todo onlineDDL: need to return tableSchema here
 func analyzeSelect(query string) (sel *sqlparser.Select, fromTable sqlparser.IdentifierCS, err error) {
 	statement, err := sqlparser.Parse(query)
 	if err != nil {
@@ -717,6 +725,7 @@ func (plan *Plan) analyzeExpr(vschema *localVSchema, selExpr sqlparser.SelectExp
 // analyzeInKeyRange allows the following constructs: "in_keyrange('-80')",
 // "in_keyrange(col, 'hash', '-80')", "in_keyrange(col, 'local_vindex', '-80')", or
 // "in_keyrange(col, 'ks.external_vindex', '-80')".
+// todo onlineDDL: maybe we should delete this function, since keyRange is not supported anymore
 func (plan *Plan) analyzeInKeyRange(vschema *localVSchema, exprs sqlparser.SelectExprs) error {
 	var colnames []sqlparser.IdentifierCI
 	var krExpr sqlparser.SelectExpr

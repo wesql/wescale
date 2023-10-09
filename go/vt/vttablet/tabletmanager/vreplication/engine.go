@@ -99,12 +99,15 @@ type Engine struct {
 	// cancel will cancel the root context, thereby all controllers.
 	cancel context.CancelFunc
 
-	ts                      *topo.Server
-	cell                    string
-	mysqld                  mysqlctl.MysqlDaemon
+	ts     *topo.Server
+	cell   string
+	mysqld mysqlctl.MysqlDaemon
+	//todo onlineDDL: add a param 'tableSchema' to dbClientFactoryFiltered
 	dbClientFactoryFiltered func() binlogplayer.DBClient
-	dbClientFactoryDba      func() binlogplayer.DBClient
-	dbName                  string
+	//todo onlineDDL: add a param 'tableSchema' to dbClientFactoryDba
+	dbClientFactoryDba func() binlogplayer.DBClient
+	//todo onlineDDL: need to remove default DbName
+	dbName string
 
 	journaler map[string]*journalEvent
 	ec        *externalConnector
@@ -152,12 +155,15 @@ func (vre *Engine) InitDBConfig(dbcfgs *dbconfigs.DBConfigs) {
 	if vre.dbClientFactoryFiltered != nil && vre.dbClientFactoryDba != nil {
 		return
 	}
+	//todo onlineDDL: remove default DbName
 	vre.dbClientFactoryFiltered = func() binlogplayer.DBClient {
 		return binlogplayer.NewDBClient(dbcfgs.FilteredWithDB())
 	}
+	//todo onlineDDL: remove default DbName
 	vre.dbClientFactoryDba = func() binlogplayer.DBClient {
 		return binlogplayer.NewDBClient(dbcfgs.DbaWithDB())
 	}
+	//todo onlineDDL: remove default DbName
 	vre.dbName = dbcfgs.DBName
 }
 

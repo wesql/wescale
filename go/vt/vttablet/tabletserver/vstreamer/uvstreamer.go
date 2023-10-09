@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,6 +104,7 @@ func newUVStreamer(ctx context.Context, vse *Engine, cp dbconfigs.Connector, se 
 	send2 := func(evs []*binlogdatapb.VEvent) error {
 		vse.vstreamerEventsStreamed.Add(int64(len(evs)))
 		for _, ev := range evs {
+			//todo onlineDDL: remove keyspace?
 			ev.Keyspace = vse.keyspace
 			ev.Shard = vse.shard
 		}
@@ -264,6 +270,7 @@ func (uvs *uvstreamer) shouldSendEventForTable(tableName string, ev *binlogdatap
 }
 
 // Do not send internal heartbeat events. Filter out events for tables whose copy has not been started.
+// todo onlineDDL: need tableSchema here
 func (uvs *uvstreamer) filterEvents(evs []*binlogdatapb.VEvent) []*binlogdatapb.VEvent {
 	if len(uvs.plans) == 0 {
 		return evs
@@ -348,6 +355,7 @@ func (uvs *uvstreamer) setStreamStartPosition() error {
 	if err != nil {
 		return vterrors.Wrap(err, "could not obtain current position")
 	}
+	// startPos is 'current'
 	if uvs.startPos == "current" {
 		uvs.pos = curPos
 		if err := uvs.sendEventsForCurrentPos(); err != nil {
@@ -355,6 +363,7 @@ func (uvs *uvstreamer) setStreamStartPosition() error {
 		}
 		return nil
 	}
+	// startPos is a gtid
 	pos, err := mysql.DecodePosition(uvs.startPos)
 	if err != nil {
 		return vterrors.Wrap(err, "could not decode position")

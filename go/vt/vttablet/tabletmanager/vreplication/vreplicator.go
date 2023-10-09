@@ -105,7 +105,8 @@ const (
 
 // vreplicator provides the core logic to start vreplication streams
 type vreplicator struct {
-	vre      *Engine
+	vre *Engine
+	// id is the copy_state.vrepl_id, which is also the vreplication.id.
 	id       uint32
 	dbClient *vdbClient
 	// source
@@ -114,7 +115,8 @@ type vreplicator struct {
 	state           string
 	stats           *binlogplayer.Stats
 	// mysqld is used to fetch the local schema.
-	mysqld     mysqlctl.MysqlDaemon
+	mysqld mysqlctl.MysqlDaemon
+	// used in 'buildReplicatorPlan()'
 	colInfoMap map[string][]*ColumnInfo
 
 	originalFKCheckSetting int64
@@ -290,6 +292,7 @@ type ColumnInfo struct {
 
 func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*ColumnInfo, error) {
 	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{"/.*/"}, ExcludeTables: []string{"/" + schema.GCTableNameExpression + "/"}}
+	//todo onlineDDL: fix tableSchema here
 	schema, err := vr.mysqld.GetSchema(ctx, vr.dbClient.DBName(), req)
 	if err != nil {
 		return nil, err
@@ -297,6 +300,7 @@ func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*Colum
 	queryTemplate := "select character_set_name, collation_name, column_name, data_type, column_type, extra from information_schema.columns where table_schema=%s and table_name=%s;"
 	colInfoMap := make(map[string][]*ColumnInfo)
 	for _, td := range schema.TableDefinitions {
+		//todo onlineDDL: fix tableSchema here
 		query := fmt.Sprintf(queryTemplate, encodeString(vr.dbClient.DBName()), encodeString(td.Name))
 		qr, err := vr.mysqld.FetchSuperQuery(ctx, query)
 		if err != nil {
@@ -312,6 +316,7 @@ func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*Colum
 			pks = td.PrimaryKeyColumns
 		} else {
 			// Use a PK equivalent if one exists
+			//todo onlineDDL: fix tableSchema here
 			if pks, err = vr.mysqld.GetPrimaryKeyEquivalentColumns(ctx, vr.dbClient.DBName(), td.Name); err != nil {
 				return nil, err
 			}
