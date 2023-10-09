@@ -105,7 +105,8 @@ const (
 
 // vreplicator provides the core logic to start vreplication streams
 type vreplicator struct {
-	vre      *Engine
+	vre *Engine
+	// id is the copy_state.vrepl_id, which is also the vreplication.id.
 	id       uint32
 	dbClient *vdbClient
 	// source
