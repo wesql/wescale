@@ -332,11 +332,11 @@ func (vre *Engine) Close() {
 	log.Infof("VReplication Engine: closed")
 }
 
-func (vre *Engine) getDBClient(isAdmin bool) binlogplayer.DBClient {
+func (vre *Engine) getDBClient(dbName string, isAdmin bool) binlogplayer.DBClient {
 	if isAdmin {
-		return vre.dbClientFactoryDba(sidecardb.SidecarDBName)
+		return vre.dbClientFactoryDba(dbName)
 	}
-	return vre.dbClientFactoryFiltered(sidecardb.SidecarDBName)
+	return vre.dbClientFactoryFiltered(dbName)
 }
 
 // ExecWithDBA runs the specified query as the DBA user
@@ -376,7 +376,7 @@ func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error)
 		return nil, err
 	}
 
-	dbClient := vre.getDBClient(runAsAdmin)
+	dbClient := vre.getDBClient(sidecardb.SidecarDBName, runAsAdmin)
 	if err := dbClient.Connect(); err != nil {
 		return nil, err
 	}

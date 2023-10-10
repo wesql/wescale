@@ -30,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -482,9 +484,9 @@ func TestGetDBClient(t *testing.T) {
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactoryFiltered, dbClientFactoryDba, dbClientDba.DBName(), nil)
 
-	shouldBeDbaClient := vre.getDBClient(true /*runAsAdmin*/)
+	shouldBeDbaClient := vre.getDBClient(sidecardb.SidecarDBName, true /*runAsAdmin*/)
 	assert.Equal(t, shouldBeDbaClient, dbClientDba)
 
-	shouldBeFilteredClient := vre.getDBClient(false /*runAsAdmin*/)
+	shouldBeFilteredClient := vre.getDBClient(sidecardb.SidecarDBName, false /*runAsAdmin*/)
 	assert.Equal(t, shouldBeFilteredClient, dbClientFiltered)
 }
