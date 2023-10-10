@@ -75,11 +75,12 @@ type vstreamer struct {
 	ctx    context.Context
 	cancel func()
 
-	cp       dbconfigs.Connector
-	se       *schema.Engine
-	startPos string
-	filter   *binlogdatapb.Filter
-	send     func([]*binlogdatapb.VEvent) error
+	tableSchema string
+	cp          dbconfigs.Connector
+	se          *schema.Engine
+	startPos    string
+	filter      *binlogdatapb.Filter
+	send        func([]*binlogdatapb.VEvent) error
 
 	vevents        chan *localVSchema
 	vschema        *localVSchema
@@ -126,22 +127,23 @@ type streamerPlan struct {
 //
 // vschema: the current vschema. This value can later be changed through the SetVSchema method.
 // send: callback function to send events.
-func newVStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, startPos string, stopPos string, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error, phase string, vse *Engine) *vstreamer {
+func newVStreamer(ctx context.Context, tableSchema string, cp dbconfigs.Connector, se *schema.Engine, startPos string, stopPos string, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error, phase string, vse *Engine) *vstreamer {
 	ctx, cancel := context.WithCancel(ctx)
 	return &vstreamer{
-		ctx:      ctx,
-		cancel:   cancel,
-		cp:       cp,
-		se:       se,
-		startPos: startPos,
-		stopPos:  stopPos,
-		filter:   filter,
-		send:     send,
-		vevents:  make(chan *localVSchema, 1),
-		vschema:  vschema,
-		plans:    make(map[uint64]*streamerPlan),
-		phase:    phase,
-		vse:      vse,
+		ctx:         ctx,
+		cancel:      cancel,
+		tableSchema: tableSchema,
+		cp:          cp,
+		se:          se,
+		startPos:    startPos,
+		stopPos:     stopPos,
+		filter:      filter,
+		send:        send,
+		vevents:     make(chan *localVSchema, 1),
+		vschema:     vschema,
+		plans:       make(map[uint64]*streamerPlan),
+		phase:       phase,
+		vse:         vse,
 	}
 }
 
@@ -231,8 +233,7 @@ func (vs *vstreamer) parseEvents(ctx context.Context, events <-chan mysql.Binlog
 	// all existing rows are sent without the new row.
 	// If a single row exceeds the packet size, it will be in its own packet.
 	bufferAndTransmit := func(vevent *binlogdatapb.VEvent) error {
-		//todo onlineDDL: process keyspace here
-		vevent.Keyspace = vs.vse.keyspace
+		vevent.Keyspace = vs.tableSchema
 		vevent.Shard = vs.vse.shard
 
 		switch vevent.Type {
@@ -476,7 +477,6 @@ func (vs *vstreamer) parseEvent(ev mysql.BinlogEvent) ([]*binlogdatapb.VEvent, e
 		// Insert/Delete/Update are supported only to be used in the context of external mysql streams where source databases
 		// could be using SBR. Vitess itself will never run into cases where it needs to consume non rbr statements.
 
-		//todo onlineDDL: handle dbName here
 		switch cat := sqlparser.Preview(q.SQL); cat {
 		case sqlparser.StmtInsert:
 			mustSend := mustSendStmt(q, vs.cp.DBName())
@@ -750,7 +750,7 @@ func (vs *vstreamer) buildTablePlan(id uint64, tm *mysql.TableMap) (*binlogdatap
 		FieldEvent: &binlogdatapb.FieldEvent{
 			TableName: plan.Table.Name,
 			Fields:    plan.fields(),
-			Keyspace:  vs.vse.keyspace,
+			Keyspace:  vs.tableSchema,
 			Shard:     vs.vse.shard,
 		},
 	}, nil
@@ -917,7 +917,7 @@ func (vs *vstreamer) processRowEvent(vevents []*binlogdatapb.VEvent, plan *strea
 			RowEvent: &binlogdatapb.RowEvent{
 				TableName:  plan.Table.Name,
 				RowChanges: rowChanges,
-				Keyspace:   vs.vse.keyspace,
+				Keyspace:   vs.tableSchema,
 				Shard:      vs.vse.shard,
 			},
 		})

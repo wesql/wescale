@@ -39,7 +39,6 @@ import (
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 )
 
@@ -51,11 +50,6 @@ var (
 type RowStreamer interface {
 	Stream() error
 	Cancel()
-}
-
-// NewRowStreamer returns a RowStreamer
-func NewRowStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, query string, lastpk []sqltypes.Value, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) RowStreamer {
-	return newRowStreamer(ctx, cp, se, query, lastpk, &localVSchema{vschema: &vindexes.VSchema{}}, send, vse)
 }
 
 // rowStreamer is used for copying the existing rows of a table
@@ -70,7 +64,8 @@ type rowStreamer struct {
 	ctx    context.Context
 	cancel func()
 
-	cp dbconfigs.Connector
+	tableSchema string
+	cp          dbconfigs.Connector
 	//todo onlineDDL: need to fix or replace *schema.Engine
 	se      *schema.Engine
 	query   string
@@ -88,19 +83,23 @@ type rowStreamer struct {
 	throttleResponseRateLimiter *timer.RateLimiter
 }
 
-func newRowStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, query string, lastpk []sqltypes.Value, vschema *localVSchema, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) *rowStreamer {
+func newRowStreamer(ctx context.Context, tableSchema string, se *schema.Engine, query string, lastpk []sqltypes.Value, vschema *localVSchema, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) *rowStreamer {
 	ctx, cancel := context.WithCancel(ctx)
+
+	cp := vse.env.Config().DB.Clone()
+	cp.DBName = tableSchema
 	return &rowStreamer{
-		ctx:     ctx,
-		cancel:  cancel,
-		cp:      cp,
-		se:      se,
-		query:   query,
-		lastpk:  lastpk,
-		send:    send,
-		vschema: vschema,
-		vse:     vse,
-		pktsize: DefaultPacketSizer(),
+		ctx:         ctx,
+		cancel:      cancel,
+		tableSchema: tableSchema,
+		cp:          cp.FilteredWithDB(),
+		se:          se,
+		query:       query,
+		lastpk:      lastpk,
+		send:        send,
+		vschema:     vschema,
+		vse:         vse,
+		pktsize:     DefaultPacketSizer(),
 
 		throttleResponseRateLimiter: timer.NewRateLimiter(rowStreamertHeartbeatInterval),
 	}

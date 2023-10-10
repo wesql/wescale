@@ -33,6 +33,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/mysqlctl"
 	"vitess.io/vitess/go/vt/servenv"
@@ -66,10 +68,7 @@ type Engine struct {
 	se   *schema.Engine
 	cell string
 
-	//todo onlineDDL: remove this
-	// keyspace is initialized by InitDBConfig
-	keyspace string
-	shard    string
+	shard string
 
 	// wg is incremented for every Stream, and decremented on end.
 	// Close waits for all current streams to end by waiting on wg.
@@ -155,8 +154,8 @@ func NewEngine(env tabletenv.Env, ts srvtopo.Server, se *schema.Engine, lagThrot
 }
 
 // InitDBConfig initializes the target parameters for the Engine.
-func (vse *Engine) InitDBConfig(keyspace, shard string) {
-	vse.keyspace = keyspace
+func (vse *Engine) InitDBConfig(shard string) {
+	// the shard is default to be "0"
 	vse.shard = shard
 }
 
@@ -207,7 +206,7 @@ func (vse *Engine) vschema() *vindexes.VSchema {
 
 // Stream starts a new stream.
 // This streams events from the binary logs
-func (vse *Engine) Stream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
+func (vse *Engine) Stream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
 	// Ensure vschema is initialized and the watcher is started.
 	// Starting of the watcher has to be delayed till the first call to Stream
 	// because this overhead should be incurred only if someone uses this feature.
@@ -220,7 +219,7 @@ func (vse *Engine) Stream(ctx context.Context, startPos string, tablePKs []*binl
 		}
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
-		streamer := newUVStreamer(ctx, vse, vse.env.Config().DB.FilteredWithDB(), vse.se, startPos, tablePKs, filter, vse.lvschema, send)
+		streamer := newUVStreamer(ctx, tableSchema, vse, vse.se, startPos, tablePKs, filter, vse.lvschema, send)
 		idx := vse.streamIdx
 		vse.streamers[idx] = streamer
 		vse.streamIdx++
@@ -247,7 +246,7 @@ func (vse *Engine) Stream(ctx context.Context, startPos string, tablePKs []*binl
 
 // StreamRows streams rows.
 // This streams the table data rows (so we can copy the table data snapshot)
-func (vse *Engine) StreamRows(ctx context.Context, query string, lastpk []sqltypes.Value, send func(*binlogdatapb.VStreamRowsResponse) error) error {
+func (vse *Engine) StreamRows(ctx context.Context, tableSchema string, query string, lastpk []sqltypes.Value, send func(*binlogdatapb.VStreamRowsResponse) error) error {
 	// Ensure vschema is initialized and the watcher is started.
 	// Starting of the watcher has to be delayed till the first call to Stream
 	// because this overhead should be incurred only if someone uses this feature.
@@ -262,7 +261,7 @@ func (vse *Engine) StreamRows(ctx context.Context, query string, lastpk []sqltyp
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
 
-		rowStreamer := newRowStreamer(ctx, vse.env.Config().DB.FilteredWithDB(), vse.se, query, lastpk, vse.lvschema, send, vse)
+		rowStreamer := newRowStreamer(ctx, tableSchema, vse.se, query, lastpk, vse.lvschema, send, vse)
 		idx := vse.streamIdx
 		vse.rowStreamers[idx] = rowStreamer
 		vse.streamIdx++
@@ -346,7 +345,7 @@ func (vse *Engine) setWatch() {
 	// If there's no toposerver, create an empty vschema.
 	if vse.ts == nil {
 		vse.lvschema = &localVSchema{
-			keyspace: vse.keyspace,
+			keyspace: sidecardb.SidecarDBName,
 			vschema:  &vindexes.VSchema{},
 		}
 		return
@@ -380,7 +379,7 @@ func (vse *Engine) setWatch() {
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
 		vse.lvschema = &localVSchema{
-			keyspace: vse.keyspace,
+			keyspace: sidecardb.SidecarDBName,
 			vschema:  vschema,
 		}
 		b, _ := json.MarshalIndent(vschema, "", "  ")

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/schema"
@@ -41,7 +48,7 @@ import (
 // VStreamer defines  the functions of VStreamer
 // that the replicationWatcher needs.
 type VStreamer interface {
-	Stream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
+	Stream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
 }
 
 // Tracker watches the replication and saves the latest schema into mysql.schema_version when a DDL is encountered.
@@ -130,7 +137,7 @@ func (tr *Tracker) process(ctx context.Context) {
 
 	var gtid string
 	for {
-		err := tr.vs.Stream(ctx, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
+		err := tr.vs.Stream(ctx, sidecardb.SidecarDBName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
 			for _, event := range events {
 				if event.Type == binlogdatapb.VEventType_GTID {
 					gtid = event.Gtid

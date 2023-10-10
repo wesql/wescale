@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 /*
 Copyright 2020 The Vitess Authors.
 
@@ -105,7 +104,6 @@ func (conn *snapshotConn) streamWithSnapshot(ctx context.Context, table, query s
 	return gtid, rotatedLog, nil
 }
 
-// todo onlineDDL: need tableSchema here
 // snapshot performs the snapshotting.
 func (conn *snapshotConn) startSnapshot(ctx context.Context, table string) (gtid string, err error) {
 	lockConn, err := mysqlConnect(ctx, conn.cp)

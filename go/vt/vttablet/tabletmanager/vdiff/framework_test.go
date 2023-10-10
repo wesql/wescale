@@ -240,7 +240,7 @@ func (ftc *fakeTabletConn) VStream(ctx context.Context, request *binlogdatapb.VS
 	if vstreamHook != nil {
 		vstreamHook(ctx)
 	}
-	return vdiffenv.vse.Stream(ctx, request.Position, request.TableLastPKs, request.Filter, send)
+	return vdiffenv.vse.Stream(ctx, request.Target.Keyspace, request.Position, request.TableLastPKs, request.Filter, send)
 }
 
 // vstreamRowsHook allows you to do work just before calling VStreamRows.
@@ -262,7 +262,7 @@ func (ftc *fakeTabletConn) VStreamRows(ctx context.Context, request *binlogdatap
 		}
 		row = r.Rows[0]
 	}
-	return vdiffenv.vse.StreamRows(ctx, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	return vdiffenv.vse.StreamRows(ctx, request.TableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		if vstreamRowsSendHook != nil {
 			vstreamRowsSendHook(ctx)
 		}
@@ -499,7 +499,7 @@ func newTestVDiffEnv(t *testing.T) *testVDiffEnv {
 	tstenv.KeyspaceName = vdiffDBName
 
 	vdiffenv.vse = vstreamer.NewEngine(tstenv.TabletEnv, tstenv.SrvTopo, vdiffenv.se, nil, tstenv.Cells[0])
-	vdiffenv.vse.InitDBConfig(tstenv.KeyspaceName, tstenv.ShardName)
+	vdiffenv.vse.InitDBConfig(tstenv.ShardName)
 	vdiffenv.vse.Open()
 
 	once.Do(func() {

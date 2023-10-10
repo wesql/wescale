@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +58,7 @@ func TestMain(m *testing.M) {
 		// engine cannot be initialized in testenv because it introduces
 		// circular dependencies
 		engine = NewEngine(env.TabletEnv, env.SrvTopo, env.SchemaEngine, nil, env.Cells[0])
-		engine.InitDBConfig(env.KeyspaceName, env.ShardName)
+		engine.InitDBConfig(env.ShardName)
 		engine.Open()
 		defer engine.Close()
 
@@ -70,7 +75,7 @@ func customEngine(t *testing.T, modifier func(mysql.ConnParams) mysql.ConnParams
 	config.DB = dbconfigs.NewTestDBConfigs(modified, modified, modified.DbName)
 
 	engine := NewEngine(tabletenv.NewEnv(config, "VStreamerTest"), env.SrvTopo, env.SchemaEngine, nil, env.Cells[0])
-	engine.InitDBConfig(env.KeyspaceName, env.ShardName)
+	engine.InitDBConfig(env.ShardName)
 	engine.Open()
 	return engine
 }

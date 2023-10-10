@@ -117,10 +117,11 @@ type vreplicator struct {
 	id       uint32
 	dbClient *vdbClient
 	// source
-	source          *binlogdatapb.BinlogSource
-	sourceVStreamer VStreamerClient
-	state           string
-	stats           *binlogplayer.Stats
+	sourceTableSchema string
+	source            *binlogdatapb.BinlogSource
+	sourceVStreamer   VStreamerClient
+	state             string
+	stats             *binlogplayer.Stats
 	// mysqld is used to fetch the local schema.
 	mysqld mysqlctl.MysqlDaemon
 	// used in 'buildReplicatorPlan()'
@@ -157,19 +158,20 @@ type vreplicator struct {
 //	alias like "a+b as targetcol" must be used.
 //	More advanced constructs can be used. Please see the table plan builder
 //	documentation for more info.
-func newVReplicator(id uint32, source *binlogdatapb.BinlogSource, sourceVStreamer VStreamerClient, stats *binlogplayer.Stats, dbClient binlogplayer.DBClient, mysqld mysqlctl.MysqlDaemon, vre *Engine) *vreplicator {
+func newVReplicator(id uint32, sourceTableSchema string, source *binlogdatapb.BinlogSource, sourceVStreamer VStreamerClient, stats *binlogplayer.Stats, dbClient binlogplayer.DBClient, mysqld mysqlctl.MysqlDaemon, vre *Engine) *vreplicator {
 	if vreplicationHeartbeatUpdateInterval > vreplicationMinimumHeartbeatUpdateInterval {
 		log.Warningf("The supplied value for vreplication_heartbeat_update_interval:%d seconds is larger than the maximum allowed:%d seconds, vreplication will fallback to %d",
 			vreplicationHeartbeatUpdateInterval, vreplicationMinimumHeartbeatUpdateInterval, vreplicationMinimumHeartbeatUpdateInterval)
 	}
 	return &vreplicator{
-		vre:             vre,
-		id:              id,
-		source:          source,
-		sourceVStreamer: sourceVStreamer,
-		stats:           stats,
-		dbClient:        newVDBClient(dbClient, stats),
-		mysqld:          mysqld,
+		vre:               vre,
+		id:                id,
+		sourceTableSchema: sourceTableSchema,
+		source:            source,
+		sourceVStreamer:   sourceVStreamer,
+		stats:             stats,
+		dbClient:          newVDBClient(dbClient, stats),
+		mysqld:            mysqld,
 
 		throttleUpdatesRateLimiter: timer.NewRateLimiter(time.Second),
 	}

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -214,7 +219,7 @@ func TestStreamRowsUnicode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = engine.StreamRows(context.Background(), "select * from t1", nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	err = engine.StreamRows(context.Background(), env.KeyspaceName, "select * from t1", nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		// Skip fields.
 		if len(rows.Rows) == 0 {
 			return nil
@@ -376,7 +381,7 @@ func TestStreamRowsCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := engine.StreamRows(ctx, "select * from t1", nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	err := engine.StreamRows(ctx, env.KeyspaceName, "select * from t1", nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		cancel()
 		return nil
 	})
@@ -395,7 +400,7 @@ func checkStream(t *testing.T, query string, lastpk []sqltypes.Value, wantQuery 
 	go func() {
 		first := true
 		defer close(ch)
-		err := engine.StreamRows(context.Background(), query, lastpk, func(rows *binlogdatapb.VStreamRowsResponse) error {
+		err := engine.StreamRows(context.Background(), env.KeyspaceName, query, lastpk, func(rows *binlogdatapb.VStreamRowsResponse) error {
 			if first {
 				if rows.Gtid == "" {
 					ch <- fmt.Errorf("stream gtid is empty")
@@ -435,7 +440,7 @@ func expectStreamError(t *testing.T, query string, want string) {
 	ch := make(chan error)
 	go func() {
 		defer close(ch)
-		err := engine.StreamRows(context.Background(), query, nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
+		err := engine.StreamRows(context.Background(), env.KeyspaceName, query, nil, func(rows *binlogdatapb.VStreamRowsResponse) error {
 			return nil
 		})
 		require.EqualError(t, err, want, "Got incorrect error")
