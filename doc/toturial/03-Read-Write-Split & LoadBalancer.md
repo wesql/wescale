@@ -61,3 +61,34 @@ vtgate \
   - All queries and modifications to User Variables.
   - USE command.
   - COM_STMT_PREPARE command.
+ 
+ # Route Read Only Transaction to Read-Only Nodes
+  When read-write splitting is enabled, you can use the "set" command `set @EnableReadWriteSplitForReadOnlyTxn=true;` on the client side to enable read only transaction routing. 
+  
+  After enabling this feature, the SQL statements in the read only transaction will be routed to the read only nodes for execution, which can reduce the load on the primary node. 
+  
+  By default, the read only transaction routing feature is disabled, which means that read only transactions will be routed to the primary node like all other transactions. After enabling this feature, you can use the "set" command `set @EnableReadWriteSplitForReadOnlyTxn=false;` to disable it. 
+  
+  Note that you can also execute the "set" command to turn this feature on or off during a read only transaction, but the switch will not take effect immediately. It will take effect only after the current read only transaction ends. 
+  
+  Users can use the following method to start a read-only transaction:
+  ```
+start transaction read only;
+start transaction read only, with consistent snapshot;
+  ```
+Also note that after enabling read only transaction, if users use the following SQL:
+```
+// select last_insert_id() is a special case, it's not a read-only query
+if sqlparser.ContainsLastInsertIDStatement(s) {
+    return false, nil
+}
+// GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS is a special case, it's not a read-only query
+if sqlparser.ContainsLockStatement(s) {
+    return false, nil
+}
+// if hasSystemTable
+if hasSystemTable(s, "") {
+    return false, nil
+}
+```
+These SQL should be routed to the primary node by logic, but wescale will not report an error, instead it will force them to be routed to the read-only node for execution, which may result in undefined results.
