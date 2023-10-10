@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/mysqlctl"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -130,6 +132,25 @@ func (rs *rowStreamer) Stream() error {
 	return rs.streamQuery(conn, rs.send)
 }
 
+func (rs *rowStreamer) getTableInfo(fromTable string) (*Table, error) {
+	conn, err := rs.cp.Connect(rs.ctx)
+	if err != nil {
+		return nil, err
+	}
+	exec := func(query string, maxRows int, wantFields bool) (*sqltypes.Result, error) {
+		return conn.ExecuteFetch(query, maxRows, wantFields)
+	}
+	fields, _, err := mysqlctl.GetColumns(rs.tableSchema, fromTable, exec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Table{
+		Name:   fromTable,
+		Fields: fields,
+	}, nil
+}
+
 func (rs *rowStreamer) buildPlan() error {
 	// This pre-parsing is required to extract the table name
 	// and create its metadata.
@@ -139,6 +160,7 @@ func (rs *rowStreamer) buildPlan() error {
 	}
 
 	st, err := rs.se.GetTableForPos(fromTable, "")
+
 	if err != nil {
 		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
 		// with vitess migrations, based on vreplication.
@@ -161,6 +183,11 @@ func (rs *rowStreamer) buildPlan() error {
 		Name:   st.Name,
 		Fields: st.Fields,
 	}
+	ti1, err := rs.getTableInfo(fromTable.String())
+	if err != nil {
+		return err
+	}
+	ti1.Name = ti.Name
 	// The plan we build is identical to the one for vstreamer.
 	// This is because the row format of a read is identical
 	// to the row format of a binlog event. So, the same
