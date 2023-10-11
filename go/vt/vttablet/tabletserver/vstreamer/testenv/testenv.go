@@ -72,17 +72,18 @@ type Env struct {
 // Init initializes an Env.
 func Init() (*Env, error) {
 	te := &Env{
-		KeyspaceName: "vttest",
+		//KeyspaceName: "vttest",
+		KeyspaceName: sidecardb.SidecarDBName,
 		ShardName:    "0",
 		Cells:        []string{"cell1"},
 	}
 
 	ctx := context.Background()
 	te.TopoServ = memorytopo.NewServer(te.Cells...)
-	if err := te.TopoServ.CreateKeyspace(ctx, sidecardb.SidecarDBName, &topodatapb.Keyspace{}); err != nil {
+	if err := te.TopoServ.CreateKeyspace(ctx, te.KeyspaceName, &topodatapb.Keyspace{}); err != nil {
 		return nil, err
 	}
-	if err := te.TopoServ.CreateShard(ctx, sidecardb.SidecarDBName, te.ShardName); err != nil {
+	if err := te.TopoServ.CreateShard(ctx, te.KeyspaceName, te.ShardName); err != nil {
 		panic(err)
 	}
 	te.SrvTopo = srvtopo.NewResilientServer(te.TopoServ, "TestTopo")
@@ -91,11 +92,11 @@ func Init() (*Env, error) {
 		Topology: &vttestpb.VTTestTopology{
 			Keyspaces: []*vttestpb.Keyspace{
 				{
-					Name: sidecardb.SidecarDBName,
+					Name: te.KeyspaceName,
 					Shards: []*vttestpb.Shard{
 						{
 							Name:           "0",
-							DbNameOverride: sidecardb.SidecarDBName,
+							DbNameOverride: te.KeyspaceName,
 						},
 					},
 				},
