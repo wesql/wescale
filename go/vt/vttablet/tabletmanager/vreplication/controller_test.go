@@ -79,9 +79,10 @@ func TestControllerKeyRange(t *testing.T) {
 	wantTablet := addTablet(100)
 	defer deleteTablet(wantTablet)
 	params := map[string]string{
-		"id":     "1",
-		"state":  binlogplayer.BlpRunning,
-		"source": fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
+		"db_name": "vttest",
+		"id":      "1",
+		"state":   binlogplayer.BlpRunning,
+		"source":  fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
 	}
 
 	dbClient := binlogplayer.NewMockDBClient(t)
@@ -115,9 +116,10 @@ func TestControllerTables(t *testing.T) {
 	resetBinlogClient()
 
 	params := map[string]string{
-		"id":     "1",
-		"state":  binlogplayer.BlpRunning,
-		"source": fmt.Sprintf(`keyspace:"%s" shard:"0" tables:"table1" tables:"/funtables_/" `, env.KeyspaceName),
+		"db_name": "vttest",
+		"id":      "1",
+		"state":   binlogplayer.BlpRunning,
+		"source":  fmt.Sprintf(`keyspace:"%s" shard:"0" tables:"table1" tables:"/funtables_/" `, env.KeyspaceName),
 	}
 
 	dbClient := binlogplayer.NewMockDBClient(t)
@@ -172,7 +174,8 @@ func TestControllerTables(t *testing.T) {
 
 func TestControllerBadID(t *testing.T) {
 	params := map[string]string{
-		"id": "bad",
+		"db_name": "vttest",
+		"id":      "bad",
 	}
 	_, err := newController(context.Background(), params, nil, nil, nil, "", "", nil, nil)
 	want := `strconv.Atoi: parsing "bad": invalid syntax`
@@ -183,8 +186,9 @@ func TestControllerBadID(t *testing.T) {
 
 func TestControllerStopped(t *testing.T) {
 	params := map[string]string{
-		"id":    "1",
-		"state": binlogplayer.BlpStopped,
+		"db_name": "vttest",
+		"id":      "1",
+		"state":   binlogplayer.BlpStopped,
 	}
 
 	ct, err := newController(context.Background(), params, nil, nil, nil, "", "", nil, nil)
@@ -206,6 +210,7 @@ func TestControllerOverrides(t *testing.T) {
 	defer deleteTablet(wantTablet)
 
 	params := map[string]string{
+		"db_name":      "vttest",
 		"id":           "1",
 		"state":        binlogplayer.BlpRunning,
 		"source":       fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
@@ -242,9 +247,10 @@ func TestControllerCanceledContext(t *testing.T) {
 	defer deleteTablet(addTablet(100))
 
 	params := map[string]string{
-		"id":     "1",
-		"state":  binlogplayer.BlpRunning,
-		"source": fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
+		"db_name": "vttest",
+		"id":      "1",
+		"state":   binlogplayer.BlpRunning,
+		"source":  fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -271,6 +277,7 @@ func TestControllerRetry(t *testing.T) {
 	defer deleteTablet(addTablet(100))
 
 	params := map[string]string{
+		"db_name":      "vttest",
 		"id":           "1",
 		"state":        binlogplayer.BlpRunning,
 		"source":       fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
@@ -308,9 +315,10 @@ func TestControllerStopPosition(t *testing.T) {
 	defer deleteTablet(wantTablet)
 
 	params := map[string]string{
-		"id":     "1",
-		"state":  binlogplayer.BlpRunning,
-		"source": fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
+		"db_name": "vttest",
+		"id":      "1",
+		"state":   binlogplayer.BlpRunning,
+		"source":  fmt.Sprintf(`keyspace:"%s" shard:"0" key_range:{end:"\x80"}`, env.KeyspaceName),
 	}
 
 	dbClient := binlogplayer.NewMockDBClient(t)
