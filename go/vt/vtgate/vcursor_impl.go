@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -144,6 +145,15 @@ func newVCursorImpl(
 	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
 	// but the sql will not send to tablet to execute
 	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
+	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
+	if val, ok := safeSession.Session.UserDefinedVariables["enablereadwritesplitforreadonlytxn"]; ok {
+		if !isReadOnlyTx {
+			if boolVal, err := strconv.ParseBool(string(val.GetValue())); err == nil {
+				safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = boolVal
+				delete(safeSession.Session.UserDefinedVariables, "enablereadwritesplitforreadonlytxn")
+			}
+		}
+	}
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
 		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
