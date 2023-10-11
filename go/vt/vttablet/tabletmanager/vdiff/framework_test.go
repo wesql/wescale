@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -333,7 +338,7 @@ func (bts *btStream) Recv() (*binlogdatapb.BinlogTransaction, error) {
 //--------------------------------------
 // DBCLient wrapper
 
-func realDBClientFactory() binlogplayer.DBClient {
+func realDBClientFactory(dbName string) binlogplayer.DBClient {
 	return &realDBClient{}
 }
 

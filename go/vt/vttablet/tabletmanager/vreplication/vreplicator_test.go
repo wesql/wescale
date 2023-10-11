@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +32,8 @@ import (
 	"testing"
 	"time"
 	"unicode"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"github.com/buger/jsonparser"
 	"github.com/stretchr/testify/assert"
@@ -207,7 +214,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 	id := uint32(1)
 	vsclient := newTabletConnector(tablet)
 	stats := binlogplayer.NewStats()
-	dbClient := playerEngine.dbClientFactoryFiltered()
+	dbClient := playerEngine.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	err := dbClient.Connect()
 	require.NoError(t, err)
 	defer dbClient.Close()
@@ -538,11 +545,11 @@ func TestCancelledDeferSecondaryKeys(t *testing.T) {
 	id := uint32(1)
 	vsclient := newTabletConnector(tablet)
 	stats := binlogplayer.NewStats()
-	dbaconn := playerEngine.dbClientFactoryDba()
+	dbaconn := playerEngine.dbClientFactoryDba(sidecardb.SidecarDBName)
 	err = dbaconn.Connect()
 	require.NoError(t, err)
 	defer dbaconn.Close()
-	dbClient := playerEngine.dbClientFactoryFiltered()
+	dbClient := playerEngine.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	err = dbClient.Connect()
 	require.NoError(t, err)
 	defer dbClient.Close()

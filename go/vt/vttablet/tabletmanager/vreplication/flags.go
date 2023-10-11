@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +30,7 @@ import (
 )
 
 var (
-	retryDelay          = 5 * time.Second
+	retryDelay          = 1 * time.Second
 	maxTimeToRetryError time.Duration // default behavior is to keep retrying, for backward compatibility
 
 	tabletTypesStr = "in_order:REPLICA,PRIMARY"

@@ -30,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/mysql"
@@ -99,15 +101,12 @@ type Engine struct {
 	// cancel will cancel the root context, thereby all controllers.
 	cancel context.CancelFunc
 
-	ts     *topo.Server
-	cell   string
-	mysqld mysqlctl.MysqlDaemon
-	//todo onlineDDL: add a param 'tableSchema' to dbClientFactoryFiltered
-	dbClientFactoryFiltered func() binlogplayer.DBClient
-	//todo onlineDDL: add a param 'tableSchema' to dbClientFactoryDba
-	dbClientFactoryDba func() binlogplayer.DBClient
-	//todo onlineDDL: need to remove default DbName
-	dbName string
+	ts                      *topo.Server
+	cell                    string
+	mysqld                  mysqlctl.MysqlDaemon
+	dbClientFactoryFiltered func(dbName string) binlogplayer.DBClient
+	dbClientFactoryDba      func(dbName string) binlogplayer.DBClient
+	dbName                  string
 
 	journaler map[string]*journalEvent
 	ec        *externalConnector
@@ -149,18 +148,19 @@ func NewEngine(config *tabletenv.TabletConfig, ts *topo.Server, cell string, mys
 	return vre
 }
 
+// todo OnlineDDL: remove Dbname from vre.Engine
 // InitDBConfig should be invoked after the db name is computed.
 func (vre *Engine) InitDBConfig(dbcfgs *dbconfigs.DBConfigs) {
 	// If we're already initilized, it's a test engine. Ignore the call.
 	if vre.dbClientFactoryFiltered != nil && vre.dbClientFactoryDba != nil {
 		return
 	}
-	//todo onlineDDL: remove default DbName
-	vre.dbClientFactoryFiltered = func() binlogplayer.DBClient {
-		return binlogplayer.NewDBClient(dbcfgs.FilteredWithDB())
+	vre.dbClientFactoryFiltered = func(dbName string) binlogplayer.DBClient {
+		dbcfgs.DBName = dbName
+		return binlogplayer.NewDBClient(dbcfgs.DbaWithDB())
 	}
-	//todo onlineDDL: remove default DbName
-	vre.dbClientFactoryDba = func() binlogplayer.DBClient {
+	vre.dbClientFactoryDba = func(dbName string) binlogplayer.DBClient {
+		dbcfgs.DBName = dbName
 		return binlogplayer.NewDBClient(dbcfgs.DbaWithDB())
 	}
 	//todo onlineDDL: remove default DbName
@@ -168,7 +168,7 @@ func (vre *Engine) InitDBConfig(dbcfgs *dbconfigs.DBConfigs) {
 }
 
 // NewTestEngine creates a new Engine for testing.
-func NewTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, dbClientFactoryFiltered func() binlogplayer.DBClient, dbClientFactoryDba func() binlogplayer.DBClient, dbname string, externalConfig map[string]*dbconfigs.DBConfigs) *Engine {
+func NewTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, dbClientFactoryFiltered func(dbName string) binlogplayer.DBClient, dbClientFactoryDba func(dbName string) binlogplayer.DBClient, dbname string, externalConfig map[string]*dbconfigs.DBConfigs) *Engine {
 	vre := &Engine{
 		controllers:             make(map[int]*controller),
 		ts:                      ts,
@@ -185,7 +185,7 @@ func NewTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, db
 
 // NewSimpleTestEngine creates a new Engine for testing that can
 // also short curcuit functions as needed.
-func NewSimpleTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, dbClientFactoryFiltered func() binlogplayer.DBClient, dbClientFactoryDba func() binlogplayer.DBClient, dbname string, externalConfig map[string]*dbconfigs.DBConfigs) *Engine {
+func NewSimpleTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, dbClientFactoryFiltered func(dbName string) binlogplayer.DBClient, dbClientFactoryDba func(dbName string) binlogplayer.DBClient, dbname string, externalConfig map[string]*dbconfigs.DBConfigs) *Engine {
 	vre := &Engine{
 		controllers:             make(map[int]*controller),
 		ts:                      ts,
@@ -332,11 +332,11 @@ func (vre *Engine) Close() {
 	log.Infof("VReplication Engine: closed")
 }
 
-func (vre *Engine) getDBClient(isAdmin bool) binlogplayer.DBClient {
+func (vre *Engine) getDBClient(dbName string, isAdmin bool) binlogplayer.DBClient {
 	if isAdmin {
-		return vre.dbClientFactoryDba()
+		return vre.dbClientFactoryDba(dbName)
 	}
-	return vre.dbClientFactoryFiltered()
+	return vre.dbClientFactoryFiltered(dbName)
 }
 
 // ExecWithDBA runs the specified query as the DBA user
@@ -376,7 +376,7 @@ func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error)
 		return nil, err
 	}
 
-	dbClient := vre.getDBClient(runAsAdmin)
+	dbClient := vre.getDBClient(vre.dbName, runAsAdmin)
 	if err := dbClient.Connect(); err != nil {
 		return nil, err
 	}
@@ -647,7 +647,7 @@ func (vre *Engine) transitionJournal(je *journalEvent) {
 		vre.controllers[refid].Stop()
 	}
 
-	dbClient := vre.dbClientFactoryFiltered()
+	dbClient := vre.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	if err := dbClient.Connect(); err != nil {
 		log.Errorf("transitionJournal: unable to connect to the database: %v", err)
 		return
@@ -747,7 +747,7 @@ func (vre *Engine) WaitForPos(ctx context.Context, id int, pos string) error {
 		return nil
 	}
 
-	dbClient := vre.dbClientFactoryFiltered()
+	dbClient := vre.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	if err := dbClient.Connect(); err != nil {
 		return err
 	}
@@ -825,7 +825,7 @@ func (vre *Engine) updateStats() {
 }
 
 func (vre *Engine) readAllRows(ctx context.Context) ([]map[string]string, error) {
-	dbClient := vre.dbClientFactoryFiltered()
+	dbClient := vre.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	if err := dbClient.Connect(); err != nil {
 		return nil, err
 	}

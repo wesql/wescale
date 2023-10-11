@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +30,8 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -40,7 +47,7 @@ func TestEngineOpen(t *testing.T) {
 	defer deleteTablet(addTablet(100))
 	resetBinlogClient()
 	dbClient := binlogplayer.NewMockDBClient(t)
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
@@ -80,7 +87,7 @@ func TestEngineOpenRetry(t *testing.T) {
 	defer deleteTablet(addTablet(100))
 	resetBinlogClient()
 	dbClient := binlogplayer.NewMockDBClient(t)
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
@@ -141,7 +148,7 @@ func TestEngineExec(t *testing.T) {
 	defer deleteTablet(addTablet(100))
 	resetBinlogClient()
 	dbClient := binlogplayer.NewMockDBClient(t)
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	// Test Insert
@@ -305,7 +312,7 @@ func TestEngineBadInsert(t *testing.T) {
 	resetBinlogClient()
 
 	dbClient := binlogplayer.NewMockDBClient(t)
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
@@ -333,7 +340,7 @@ func TestEngineSelect(t *testing.T) {
 	resetBinlogClient()
 	dbClient := binlogplayer.NewMockDBClient(t)
 
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
@@ -368,7 +375,7 @@ func TestWaitForPos(t *testing.T) {
 
 	dbClient := binlogplayer.NewMockDBClient(t)
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
@@ -396,7 +403,7 @@ func TestWaitForPos(t *testing.T) {
 func TestWaitForPosError(t *testing.T) {
 	dbClient := binlogplayer.NewMockDBClient(t)
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	err := vre.WaitForPos(context.Background(), 1, "MariaDB/0-1-1084")
@@ -432,7 +439,7 @@ func TestWaitForPosError(t *testing.T) {
 func TestWaitForPosCancel(t *testing.T) {
 	dbClient := binlogplayer.NewMockDBClient(t)
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
-	dbClientFactory := func() binlogplayer.DBClient { return dbClient }
+	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
@@ -471,15 +478,15 @@ func TestWaitForPosCancel(t *testing.T) {
 func TestGetDBClient(t *testing.T) {
 	dbClientDba := binlogplayer.NewMockDbaClient(t)
 	dbClientFiltered := binlogplayer.NewMockDBClient(t)
-	dbClientFactoryDba := func() binlogplayer.DBClient { return dbClientDba }
-	dbClientFactoryFiltered := func() binlogplayer.DBClient { return dbClientFiltered }
+	dbClientFactoryDba := func(dbName string) binlogplayer.DBClient { return dbClientDba }
+	dbClientFactoryFiltered := func(dbName string) binlogplayer.DBClient { return dbClientFiltered }
 
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactoryFiltered, dbClientFactoryDba, dbClientDba.DBName(), nil)
 
-	shouldBeDbaClient := vre.getDBClient(true /*runAsAdmin*/)
+	shouldBeDbaClient := vre.getDBClient(sidecardb.SidecarDBName, true /*runAsAdmin*/)
 	assert.Equal(t, shouldBeDbaClient, dbClientDba)
 
-	shouldBeFilteredClient := vre.getDBClient(false /*runAsAdmin*/)
+	shouldBeFilteredClient := vre.getDBClient(sidecardb.SidecarDBName, false /*runAsAdmin*/)
 	assert.Equal(t, shouldBeFilteredClient, dbClientFiltered)
 }

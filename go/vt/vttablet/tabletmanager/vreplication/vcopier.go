@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -442,7 +449,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 				go func() {
 					gcQuery := fmt.Sprintf("delete from mysql.copy_state where vrepl_id = %d and table_name = %s and id < (select maxid from (select max(id) as maxid from mysql.copy_state where vrepl_id = %d and table_name = %s) as depsel)",
 						vc.vr.id, encodeString(tableName), vc.vr.id, encodeString(tableName))
-					dbClient := vc.vr.vre.getDBClient(false)
+					dbClient := vc.vr.vre.getDBClient(sidecardb.SidecarDBName, false)
 					if err := dbClient.Connect(); err != nil {
 						log.Errorf("Error while garbage collecting older copy_state rows, could not connect to database: %v", err)
 						return

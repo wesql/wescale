@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +29,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/timer"
 	"vitess.io/vitess/go/vt/schema"
@@ -793,7 +800,7 @@ func (vr *vreplicator) execPostCopyActions(ctx context.Context, tableName string
 			if connID < 1 {
 				return fmt.Errorf("invalid connection ID found (%d) when attempting to kill %q", connID, ak.Task)
 			}
-			killdbc := vr.vre.dbClientFactoryDba()
+			killdbc := vr.vre.dbClientFactoryDba(sidecardb.SidecarDBName)
 			if err := killdbc.Connect(); err != nil {
 				return fmt.Errorf("unable to connect to the database when attempting to kill %q: %v", ak.Task, err)
 			}
@@ -983,7 +990,7 @@ func (vr *vreplicator) supportsDeferredSecondaryKeys() bool {
 }
 
 func (vr *vreplicator) newClientConnection(ctx context.Context) (*vdbClient, error) {
-	dbc := vr.vre.dbClientFactoryFiltered()
+	dbc := vr.vre.dbClientFactoryFiltered(sidecardb.SidecarDBName)
 	if err := dbc.Connect(); err != nil {
 		return nil, vterrors.Wrap(err, "can't connect to database")
 	}

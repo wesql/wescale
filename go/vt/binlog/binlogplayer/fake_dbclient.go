@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +33,7 @@ type fakeDBClient struct {
 
 // NewFakeDBClient returns a fake DBClient. Its functions return
 // preset responses to requests.
-func NewFakeDBClient() DBClient {
+func NewFakeDBClient(dbName string) DBClient {
 	return &fakeDBClient{}
 }
 
