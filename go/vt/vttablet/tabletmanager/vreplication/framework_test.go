@@ -64,7 +64,7 @@ var (
 	streamerEngine        *vstreamer.Engine
 	env                   *testenv.Env
 	globalFBC             = &fakeBinlogClient{}
-	vrepldb               = "vrepl"
+	vrepldb               = "mysql"
 	globalDBQueries       = make(chan string, 1000)
 	testForeignKeyQueries = false
 	doNotLogDBQueries     = false
@@ -136,7 +136,7 @@ func TestMain(m *testing.M) {
 		streamerEngine.Open()
 		defer streamerEngine.Close()
 
-		if err := env.Mysqld.ExecuteSuperQuery(context.Background(), fmt.Sprintf("create database %s", vrepldb)); err != nil {
+		if err := env.Mysqld.ExecuteSuperQuery(context.Background(), fmt.Sprintf("create database if not exists %s", vrepldb)); err != nil {
 			fmt.Fprintf(os.Stderr, "%v", err)
 			return 1
 		}
