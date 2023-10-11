@@ -2,6 +2,11 @@
 // +build gofuzz
 
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,7 +104,7 @@ func FuzzEngine(data []byte) int {
 	vre := NewTestEngine(topoServer, "cell1", mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	// Fuzzer fails if this expectation is not made first:
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	err = makeExpectations(dbClient, f)
 	if err != nil {
 		return 0
