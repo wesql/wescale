@@ -376,7 +376,7 @@ func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error)
 		return nil, err
 	}
 
-	dbClient := vre.getDBClient(vre.dbName, runAsAdmin)
+	dbClient := vre.getDBClient(sidecardb.SidecarDBName, runAsAdmin)
 	if err := dbClient.Connect(); err != nil {
 		return nil, err
 	}
@@ -385,7 +385,7 @@ func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error)
 	// Change the database to ensure that these events don't get
 	// replicated by another vreplication. This can happen when
 	// we reverse replication.
-	if _, err := dbClient.ExecuteFetch("use mysql", 1); err != nil {
+	if _, err := dbClient.ExecuteFetch(fmt.Sprintf("use %s", sidecardb.SidecarDBName), 1); err != nil {
 		return nil, err
 	}
 

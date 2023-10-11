@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +29,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/vt/dbconfigs"
@@ -72,10 +79,10 @@ func Init() (*Env, error) {
 
 	ctx := context.Background()
 	te.TopoServ = memorytopo.NewServer(te.Cells...)
-	if err := te.TopoServ.CreateKeyspace(ctx, te.KeyspaceName, &topodatapb.Keyspace{}); err != nil {
+	if err := te.TopoServ.CreateKeyspace(ctx, sidecardb.SidecarDBName, &topodatapb.Keyspace{}); err != nil {
 		return nil, err
 	}
-	if err := te.TopoServ.CreateShard(ctx, te.KeyspaceName, te.ShardName); err != nil {
+	if err := te.TopoServ.CreateShard(ctx, sidecardb.SidecarDBName, te.ShardName); err != nil {
 		panic(err)
 	}
 	te.SrvTopo = srvtopo.NewResilientServer(te.TopoServ, "TestTopo")
@@ -84,11 +91,11 @@ func Init() (*Env, error) {
 		Topology: &vttestpb.VTTestTopology{
 			Keyspaces: []*vttestpb.Keyspace{
 				{
-					Name: te.KeyspaceName,
+					Name: sidecardb.SidecarDBName,
 					Shards: []*vttestpb.Shard{
 						{
 							Name:           "0",
-							DbNameOverride: "vttest",
+							DbNameOverride: sidecardb.SidecarDBName,
 						},
 					},
 				},

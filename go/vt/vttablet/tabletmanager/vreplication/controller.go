@@ -27,6 +27,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"vitess.io/vitess/go/vt/discovery"
@@ -117,9 +119,6 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 	if err := prototext.Unmarshal([]byte(params["source"]), ct.source); err != nil {
 		return nil, err
 	}
-	if ct.source.Keyspace != "" {
-		ct.dbName = ct.source.Keyspace
-	}
 	ct.stopPos = params["stop_pos"]
 
 	if ct.source.GetExternalMysql() == "" {
@@ -140,7 +139,7 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 				return nil, err
 			}
 		}
-		tp, err := discovery.NewTabletPicker(sourceTopo, cells, ct.dbName, ct.source.Shard, tabletTypesStr)
+		tp, err := discovery.NewTabletPicker(sourceTopo, cells, sidecardb.SidecarDBName, ct.source.Shard, tabletTypesStr)
 		if err != nil {
 			return nil, err
 		}
