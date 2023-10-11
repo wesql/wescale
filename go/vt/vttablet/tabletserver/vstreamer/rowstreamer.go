@@ -159,7 +159,7 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 
-	st, err := rs.se.GetTableForPos(fromTable, "")
+	st, err := rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
 
 	if err != nil {
 		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
@@ -174,7 +174,7 @@ func (rs *rowStreamer) buildPlan() error {
 		// For this reason we give vstreamer a "second chance" to review the up-to-date state of the schema.
 		// In the future, we will reduce this operation to reading a single table rather than the entire schema.
 		rs.se.ReloadAt(context.Background(), mysql.Position{})
-		st, err = rs.se.GetTableForPos(fromTable, "")
+		st, err = rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
 	}
 	if err != nil {
 		return err
@@ -183,11 +183,6 @@ func (rs *rowStreamer) buildPlan() error {
 		Name:   st.Name,
 		Fields: st.Fields,
 	}
-	ti1, err := rs.getTableInfo(fromTable.String())
-	if err != nil {
-		return err
-	}
-	ti1.Name = ti.Name
 	// The plan we build is identical to the one for vstreamer.
 	// This is because the row format of a read is identical
 	// to the row format of a binlog event. So, the same
