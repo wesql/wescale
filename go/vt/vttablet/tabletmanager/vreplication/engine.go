@@ -376,7 +376,7 @@ func (vre *Engine) exec(query string, runAsAdmin bool) (*sqltypes.Result, error)
 		return nil, err
 	}
 
-	dbClient := vre.getDBClient(sidecardb.SidecarDBName, runAsAdmin)
+	dbClient := vre.getDBClient(vre.dbName, runAsAdmin)
 	if err := dbClient.Connect(); err != nil {
 		return nil, err
 	}
