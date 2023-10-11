@@ -81,8 +81,8 @@ func newFakeDBClient(name string) *fakeDBClient {
 		queries:   make(map[string]*dbResults),
 		queriesRE: make(map[string]*dbResults),
 		invariants: map[string]*sqltypes.Result{
-			"use mysql": {},
-			"select * from mysql.vreplication where db_name='db'":         {},
+			"use mysql":                        {},
+			"select * from mysql.vreplication": {},
 			"select id, type, state, message from mysql.vreplication_log": {},
 			"insert into mysql.vreplication_log":                          {},
 			"SELECT db_name FROM mysql.vreplication LIMIT 0":              {},
