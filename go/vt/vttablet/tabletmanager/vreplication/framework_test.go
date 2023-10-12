@@ -32,8 +32,6 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/discovery"
-
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -70,12 +68,6 @@ var (
 	globalDBQueries       = make(chan string, 1000)
 	testForeignKeyQueries = false
 	doNotLogDBQueries     = false
-)
-
-var (
-	MockTabletPickerFactory = func(ts *topo.Server, cells []string, keyspace, shard, tabletTypesStr string) (*discovery.TabletPicker, error) {
-		return discovery.NewTabletPicker(ts, cells, keyspace, shard, tabletTypesStr)
-	}
 )
 
 type LogExpectation struct {
@@ -229,7 +221,6 @@ func addOtherTablet(id int, keyspace, shard string) *topodatapb.Tablet {
 	if err := env.TopoServ.CreateTablet(context.Background(), tablet); err != nil {
 		panic(err)
 	}
-	env.TabletMap[tablet.Alias.String()] = tablet
 	env.SchemaEngine.Reload(context.Background())
 	return tablet
 }

@@ -65,7 +65,6 @@ type Env struct {
 	DBMajorVersion int
 	DBMinorVersion int
 	DBPatchVersion int
-	TabletMap      map[string]*topodatapb.Tablet
 }
 
 // Init initializes an Env.
@@ -114,7 +113,6 @@ func Init() (*Env, error) {
 	config := tabletenv.NewDefaultConfig()
 	config.DB = te.Dbcfgs
 	te.TabletEnv = tabletenv.NewEnv(config, "VStreamerTest")
-	te.TabletMap = make(map[string]*topodatapb.Tablet)
 	te.Mysqld = mysqlctl.NewMysqld(te.Dbcfgs)
 	pos, _ := te.Mysqld.PrimaryPosition()
 	te.Flavor = pos.GTIDSet.Flavor()

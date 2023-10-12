@@ -97,7 +97,7 @@ func TestControllerKeyRange(t *testing.T) {
 	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	mysqld := &fakemysqldaemon.FakeMysqlDaemon{MysqlPort: sync2.NewAtomicInt32(3306)}
 
-	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "replica", nil, nil)
+	ct, err := newController(context.Background(), params, dbClientFactory, mysqld, env.TopoServ, env.Cells[0], "replica", nil, playerEngine)
 	if err != nil {
 		t.Fatal(err)
 	}
