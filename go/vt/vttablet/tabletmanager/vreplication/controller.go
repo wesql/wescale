@@ -63,6 +63,7 @@ type controller struct {
 
 	id           uint32
 	dbName       string
+	sourceDbName string
 	workflow     string
 	source       *binlogdatapb.BinlogSource
 	stopPos      string
@@ -118,8 +119,9 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 		return nil, err
 	}
 	ct.stopPos = params["stop_pos"]
+	ct.sourceDbName = ct.dbName
 	if ct.source.Keyspace != "" {
-		ct.dbName = ct.source.Keyspace
+		ct.sourceDbName = ct.source.Keyspace
 	}
 
 	if ct.source.GetExternalMysql() == "" {
@@ -140,7 +142,7 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 				return nil, err
 			}
 		}
-		tp, err := discovery.NewTabletPicker(sourceTopo, cells, ct.dbName, ct.source.Shard, tabletTypesStr)
+		tp, err := discovery.NewTabletPicker(sourceTopo, cells, ct.sourceDbName, ct.source.Shard, tabletTypesStr)
 		if err != nil {
 			return nil, err
 		}
@@ -279,7 +281,7 @@ func (ct *controller) runBlp(ctx context.Context) (err error) {
 		}
 		defer vsClient.Close(ctx)
 
-		vr := newVReplicator(ct.id, ct.dbName, ct.source, vsClient, ct.blpStats, dbClient, ct.mysqld, ct.vre)
+		vr := newVReplicator(ct.id, ct.sourceDbName, ct.dbName, ct.source, vsClient, ct.blpStats, dbClient, ct.mysqld, ct.vre)
 		err = vr.Replicate(ctx)
 		ct.lastWorkflowError.Record(err)
 		// If this is a mysql error that we know needs manual intervention OR

@@ -227,7 +227,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from mysql.vreplication where id = %d", id), 1)
 		require.NoError(t, err)
 	}()
-	vr := newVReplicator(id, env.KeyspaceName, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
+	vr := newVReplicator(id, env.KeyspaceName, vrepldb, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
 	getActionsSQLf := "select action from mysql.post_copy_action where table_name='%s'"
 	getCurrentDDL := func(tableName string) string {
 		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{tableName}}
@@ -332,7 +332,7 @@ func TestDeferSecondaryKeys(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				myvr := newVReplicator(myid, env.KeyspaceName, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
+				myvr := newVReplicator(myid, env.KeyspaceName, vrepldb, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
 				myvr.WorkflowType = int32(binlogdatapb.VReplicationWorkflowType_Reshard)
 				// Insert second post copy action record to simulate a shard merge where you
 				// have N controllers/replicators running for the same table on the tablet.
@@ -562,7 +562,7 @@ func TestCancelledDeferSecondaryKeys(t *testing.T) {
 		_, err = dbClient.ExecuteFetch(fmt.Sprintf("delete from mysql.vreplication where id = %d", id), 1)
 		require.NoError(t, err)
 	}()
-	vr := newVReplicator(id, env.KeyspaceName, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
+	vr := newVReplicator(id, env.KeyspaceName, vrepldb, bls, vsclient, stats, dbClient, env.Mysqld, playerEngine)
 	vr.WorkflowType = int32(binlogdatapb.VReplicationWorkflowType_MoveTables)
 	getCurrentDDL := func(tableName string) string {
 		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{tableName}}
