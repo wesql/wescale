@@ -31,8 +31,6 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/sidecardb"
-
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/log"
@@ -301,7 +299,7 @@ func TestVersion(t *testing.T) {
 			`commit`}},
 	}}
 	runCases(t, nil, testcases, "", nil)
-	mt, err := env.SchemaEngine.GetTableForPos(sidecardb.SidecarDBName, sqlparser.NewIdentifierCS("t1"), gtid)
+	mt, err := env.SchemaEngine.GetTableForPos(env.KeyspaceName, sqlparser.NewIdentifierCS("t1"), gtid)
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(mt, dbSchema.Tables[0]))
 }
@@ -547,7 +545,7 @@ func TestVStreamCopyWithDifferentFilters(t *testing.T) {
 	var errGoroutine error
 	go func() {
 		defer wg.Done()
-		engine.Stream(ctx2, sidecardb.SidecarDBName, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
+		engine.Stream(ctx2, env.KeyspaceName, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
 			for _, ev := range evs {
 				if ev.Type == binlogdatapb.VEventType_HEARTBEAT {
 					continue
@@ -2243,7 +2241,7 @@ func vstream(ctx context.Context, t *testing.T, pos string, tablePKs []*binlogda
 			}},
 		}
 	}
-	return engine.Stream(ctx, sidecardb.SidecarDBName, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
+	return engine.Stream(ctx, env.KeyspaceName, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
 		timer := time.NewTimer(2 * time.Second)
 		defer timer.Stop()
 
