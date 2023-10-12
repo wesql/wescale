@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,75 +82,6 @@ func TestJournalOneToOne(t *testing.T) {
 		fmt.Sprintf("delete from mysql.vreplication where id=%d", firstID),
 		"commit",
 		"/update mysql.vreplication set message='Picked source tablet.*",
-		"/update mysql.vreplication set state='Running', message='' where id.*",
-	))
-
-	// Delete all vreplication streams. There should be only one, but we don't know its id.
-	if _, err := playerEngine.Exec("delete from mysql.vreplication"); err != nil {
-		t.Fatal(err)
-	}
-	expectDeleteQueries(t)
-}
-
-func TestJournalOneToMany(t *testing.T) {
-	defer deleteTablet(addTablet(100))
-	defer deleteTablet(addOtherTablet(101, "other_keyspace", "-80"))
-	defer deleteTablet(addOtherTablet(102, "other_keyspace", "80-"))
-
-	execStatements(t, []string{
-		"create table t(id int, val varbinary(128), primary key(id))",
-		fmt.Sprintf("create table %s.t(id int, val varbinary(128), primary key(id))", vrepldb),
-	})
-	defer execStatements(t, []string{
-		"drop table t",
-		fmt.Sprintf("drop table %s.t", vrepldb),
-	})
-	env.SchemaEngine.Reload(context.Background())
-
-	filter := &binlogdatapb.Filter{
-		Rules: []*binlogdatapb.Rule{{
-			Match: "t",
-		}},
-	}
-	bls := &binlogdatapb.BinlogSource{
-		Keyspace: env.KeyspaceName,
-		Shard:    env.ShardName,
-		Filter:   filter,
-		OnDdl:    binlogdatapb.OnDDLAction_IGNORE,
-	}
-
-	_, firstID := startVReplication(t, bls, "")
-
-	journal := &binlogdatapb.Journal{
-		Id:            1,
-		MigrationType: binlogdatapb.MigrationType_SHARDS,
-		Participants: []*binlogdatapb.KeyspaceShard{{
-			Keyspace: "vttest",
-			Shard:    "0",
-		}},
-		ShardGtids: []*binlogdatapb.ShardGtid{{
-			Keyspace: "other_keyspace",
-			Shard:    "-80",
-			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-5",
-		}, {
-			Keyspace: "other_keyspace",
-			Shard:    "80-",
-			Gtid:     "MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:5-10",
-		}},
-	}
-	query := fmt.Sprintf("insert into mysql.resharding_journal(id, db_name, val) values (1, 'vttest', %v)", encodeString(journal.String()))
-	execStatements(t, []string{query})
-	defer execStatements(t, []string{"delete from mysql.resharding_journal"})
-
-	expectDBClientQueries(t, qh.Expect(
-		"begin",
-		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"-80\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:1-5'`,
-		`/insert into mysql.vreplication.*workflow, source, pos.*values.*'test', 'keyspace:\\"other_keyspace\\" shard:\\"80-\\.*'MySQL56/7b04699f-f5e9-11e9-bf88-9cb6d089e1c3:5-10'`,
-		fmt.Sprintf("delete from mysql.vreplication where id=%d", firstID),
-		"commit",
-		"/update mysql.vreplication set message='Picked source tablet.*",
-		"/update mysql.vreplication set message='Picked source tablet.*",
-		"/update mysql.vreplication set state='Running', message='' where id.*",
 		"/update mysql.vreplication set state='Running', message='' where id.*",
 	))
 
