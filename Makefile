@@ -205,6 +205,10 @@ unit_test: build dependency_check
 	echo $$(date): Running unit tests
 	tools/unit_test_runner.sh
 
+vreplication_unit_test: build dependency_check
+	echo $$(date): Running vreplication unit tests
+	tools/unit_test_vreplication.sh
+
 e2e_test: build
 	tools/wesql_cluster_test.sh
 
