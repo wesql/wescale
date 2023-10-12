@@ -260,7 +260,7 @@ func TestStreamRowsKeyRange(t *testing.T) {
 
 	// Only the first row should be returned, but lastpk should be 6.
 	wantStream := []string{
-		`fields:{name:"id1" type:INT32 table:"t1" org_table:"t1" database:"vttest" org_name:"id1" column_length:11 charset:63} fields:{name:"val" type:VARBINARY table:"t1" org_table:"t1" database:"vttest" org_name:"val" column_length:128 charset:63} pkfields:{name:"id1" type:INT32}`,
+		`fields:{name:"id1" type:INT32 table:"t1" org_table:"t1" database:"mysql" org_name:"id1" column_length:11 charset:63} fields:{name:"val" type:VARBINARY table:"t1" org_table:"t1" database:"mysql" org_name:"val" column_length:128 charset:63} pkfields:{name:"id1" type:INT32}`,
 		`rows:{lengths:1 lengths:3 values:"1aaa"} lastpk:{lengths:1 values:"6"}`,
 	}
 	wantQuery := "select id1, val from t1 order by id1"

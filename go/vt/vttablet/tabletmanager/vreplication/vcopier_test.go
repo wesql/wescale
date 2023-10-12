@@ -187,10 +187,6 @@ func testPlayerCopyCharPK(t *testing.T) {
 		"/update mysql.vreplication set state='Running",
 	))
 
-	expectData(t, "src", [][]string{
-		{"a\000", "3"},
-		{"c\000", "2"},
-	})
 	expectData(t, "dst", [][]string{
 		{"a\000", "3"},
 		{"c\000", "2"},

@@ -63,7 +63,7 @@ var (
 	streamerEngine        *vstreamer.Engine
 	env                   *testenv.Env
 	globalFBC             = &fakeBinlogClient{}
-	vrepldb               = "mysql"
+	vrepldb               = "vrepl"
 	globalDBQueries       = make(chan string, 1000)
 	testForeignKeyQueries = false
 	doNotLogDBQueries     = false
@@ -286,7 +286,7 @@ func (ftc *fakeTabletConn) VStreamRows(ctx context.Context, request *binlogdatap
 		}
 		row = r.Rows[0]
 	}
-	return streamerEngine.StreamRows(ctx, request.TableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	return streamerEngine.StreamRows(ctx, request.Target.Keyspace, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		if vstreamRowsSendHook != nil {
 			vstreamRowsSendHook(ctx)
 		}
@@ -587,7 +587,7 @@ func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 
 			result := validator.AcceptQuery(got)
 
-			t.Logf("\ngot: %s", got)
+			//t.Logf("\ngot: %s", got)
 			require.True(t, result.Accepted, fmt.Sprintf(
 				"query:%q\nmessage:%s\nexpectation:%s\nmatched:%t\nerror:%v\nhistory:%s",
 				got, result.Message, result.Expectation, result.Matched, result.Error, validator.History(),
