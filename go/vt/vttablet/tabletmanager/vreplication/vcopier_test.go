@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,6 +187,10 @@ func testPlayerCopyCharPK(t *testing.T) {
 		"/update mysql.vreplication set state='Running",
 	))
 
+	expectData(t, "src", [][]string{
+		{"a\000", "3"},
+		{"c\000", "2"},
+	})
 	expectData(t, "dst", [][]string{
 		{"a\000", "3"},
 		{"c\000", "2"},

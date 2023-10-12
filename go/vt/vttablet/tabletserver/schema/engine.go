@@ -591,6 +591,7 @@ func (se *Engine) GetTableForPos(tableSchema string, tableName sqlparser.Identif
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Recycle()
 	st, err := LoadTable(conn, tableSchema, tableNameStr, "")
 	if err != nil {
 		if schema.IsInternalOperationTableName(tableNameStr) {
