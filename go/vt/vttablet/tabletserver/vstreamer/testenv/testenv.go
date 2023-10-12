@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +65,7 @@ type Env struct {
 	DBMajorVersion int
 	DBMinorVersion int
 	DBPatchVersion int
+	TabletMap      map[string]*topodatapb.Tablet
 }
 
 // Init initializes an Env.
@@ -108,6 +114,7 @@ func Init() (*Env, error) {
 	config := tabletenv.NewDefaultConfig()
 	config.DB = te.Dbcfgs
 	te.TabletEnv = tabletenv.NewEnv(config, "VStreamerTest")
+	te.TabletMap = make(map[string]*topodatapb.Tablet)
 	te.Mysqld = mysqlctl.NewMysqld(te.Dbcfgs)
 	pos, _ := te.Mysqld.PrimaryPosition()
 	te.Flavor = pos.GTIDSet.Flavor()
