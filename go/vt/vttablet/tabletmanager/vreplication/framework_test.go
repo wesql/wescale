@@ -188,8 +188,10 @@ func addTablet(id int) *topodatapb.Tablet {
 			Cell: env.Cells[0],
 			Uid:  uint32(id),
 		},
-		Keyspace: env.KeyspaceName,
-		Shard:    env.ShardName,
+		//Keyspace: env.KeyspaceName,
+		//Shard:    env.ShardName,
+		Keyspace: sidecardb.SidecarDBName,
+		Shard:    "0",
 		KeyRange: &topodatapb.KeyRange{},
 		Type:     topodatapb.TabletType_REPLICA,
 		PortMap: map[string]int32{
@@ -264,7 +266,8 @@ func (ftc *fakeTabletConn) VStream(ctx context.Context, request *binlogdatapb.VS
 	if vstreamHook != nil {
 		vstreamHook(ctx)
 	}
-	return streamerEngine.Stream(ctx, request.Target.Keyspace, request.Position, request.TableLastPKs, request.Filter, send)
+	sourceTableSchema := env.KeyspaceName
+	return streamerEngine.Stream(ctx, sourceTableSchema, request.Position, request.TableLastPKs, request.Filter, send)
 }
 
 // vstreamRowsHook allows you to do work just before calling VStreamRows.
@@ -286,7 +289,8 @@ func (ftc *fakeTabletConn) VStreamRows(ctx context.Context, request *binlogdatap
 		}
 		row = r.Rows[0]
 	}
-	return streamerEngine.StreamRows(ctx, request.Target.Keyspace, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	sourceTableSchema := env.KeyspaceName
+	return streamerEngine.StreamRows(ctx, sourceTableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		if vstreamRowsSendHook != nil {
 			vstreamRowsSendHook(ctx)
 		}

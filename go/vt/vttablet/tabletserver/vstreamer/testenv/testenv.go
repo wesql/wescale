@@ -30,8 +30,6 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/vt/sidecardb"
-
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/mysqlctl"
@@ -72,10 +70,10 @@ type Env struct {
 // Init initializes an Env.
 func Init() (*Env, error) {
 	te := &Env{
-		//KeyspaceName: "vttest",
-		KeyspaceName: sidecardb.SidecarDBName,
-		ShardName:    "0",
-		Cells:        []string{"cell1"},
+		KeyspaceName: "vttest",
+		//KeyspaceName: sidecardb.SidecarDBName,
+		ShardName: "0",
+		Cells:     []string{"cell1"},
 	}
 
 	ctx := context.Background()

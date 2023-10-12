@@ -598,7 +598,7 @@ func (se *Engine) GetTableForPos(tableSchema string, tableName sqlparser.Identif
 			log.Infof("internal table %v found in vttablet schema: skipping for GTID search", tableNameStr)
 		} else {
 			log.Infof("table %v not found in vttablet schema, current tables: %v", tableNameStr, se.tables)
-			return nil, fmt.Errorf("table %v not found in vttablet schema", tableNameStr)
+			return nil, fmt.Errorf("table %v not found in schema: %s", tableNameStr, tableSchema)
 		}
 	}
 	return newMinimalTable(st), nil
