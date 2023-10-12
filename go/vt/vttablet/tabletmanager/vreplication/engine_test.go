@@ -53,12 +53,12 @@ func TestEngineOpen(t *testing.T) {
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 	require.False(t, vre.IsOpen())
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("select * from mysql.vreplication", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
-			"id|state|source|tablet_types",
-			"int64|varchar|varchar|varbinary",
+			"id|state|source|tablet_types|db_name",
+			"int64|varchar|varchar|varbinary|varchar",
 		),
-		fmt.Sprintf(`1|Running|keyspace:"%s" shard:"0" key_range:{end:"\x80"}|PRIMARY,REPLICA`, env.KeyspaceName),
+		fmt.Sprintf(`1|Running|keyspace:"%s" shard:"0" key_range:{end:"\x80"}|PRIMARY,REPLICA|%s`, env.KeyspaceName, env.KeyspaceName),
 	), nil)
 	dbClient.ExpectRequestRE("update mysql.vreplication set message='Picked source tablet.*", testDMLResponse, nil)
 	dbClient.ExpectRequest("update mysql.vreplication set state='Running', message='' where id=1", testDMLResponse, nil)
@@ -93,9 +93,9 @@ func TestEngineOpenRetry(t *testing.T) {
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
 	// Fail twice to ensure the retry retries at least once.
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", sqltypes.MakeTestResult(
+	dbClient.ExpectRequest("select * from mysql.vreplication", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication", sqltypes.MakeTestResult(
 		sqltypes.MakeTestFields(
 			"id|state|source",
 			"int64|varchar|varchar",
@@ -128,11 +128,11 @@ func TestEngineOpenRetry(t *testing.T) {
 	vre.Close()
 	assert.False(t, vre.IsOpen())
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication", nil, errors.New("err"))
 	vre.Open(context.Background())
 
 	// A second Open should cancel the existing retry and start a new one.
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", nil, errors.New("err"))
+	dbClient.ExpectRequest("select * from mysql.vreplication", nil, errors.New("err"))
 	vre.Open(context.Background())
 
 	start := time.Now()
@@ -345,7 +345,7 @@ func TestEngineSelect(t *testing.T) {
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
 
@@ -378,7 +378,7 @@ func TestWaitForPos(t *testing.T) {
 	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
 	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
@@ -412,7 +412,7 @@ func TestWaitForPosError(t *testing.T) {
 		t.Errorf("WaitForPos: %v, want %v", err, want)
 	}
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
 	err = vre.WaitForPos(context.Background(), 1, "BadFlavor/0-1-1084")
@@ -442,7 +442,7 @@ func TestWaitForPosCancel(t *testing.T) {
 	dbClientFactory := func(dbName string) binlogplayer.DBClient { return dbClient }
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 
 	dbClient.ExpectRequest("select pos, state, message from mysql.vreplication where id=1", &sqltypes.Result{Rows: [][]sqltypes.Value{{
