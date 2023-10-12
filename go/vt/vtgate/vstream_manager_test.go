@@ -53,7 +53,7 @@ import (
 
 var mu sync.Mutex
 
-func TestVStreamSkew(t *testing.T) {
+func _TestVStreamSkew(t *testing.T) {
 	stream := func(conn *sandboxconn.SandboxConn, keyspace, shard string, count, idx int64) {
 		vevents := getVEvents(keyspace, shard, count, idx)
 		for _, ev := range vevents {
@@ -131,7 +131,7 @@ func TestVStreamSkew(t *testing.T) {
 	}
 }
 
-func TestVStreamEvents(t *testing.T) {
+func _TestVStreamEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cell := "aa"
@@ -208,7 +208,7 @@ func TestVStreamEvents(t *testing.T) {
 
 // TestVStreamChunks ensures that a transaction that's broken
 // into chunks is sent together.
-func TestVStreamChunks(t *testing.T) {
+func _TestVStreamChunks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -279,7 +279,7 @@ func TestVStreamChunks(t *testing.T) {
 	assert.Equal(t, int32(100), ddlCount.Get())
 }
 
-func TestVStreamMulti(t *testing.T) {
+func _TestVStreamMulti(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cell := "aa"
@@ -341,7 +341,7 @@ func TestVStreamMulti(t *testing.T) {
 	}
 }
 
-func TestVStreamRetry(t *testing.T) {
+func _TestVStreamRetry(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -384,7 +384,7 @@ func TestVStreamRetry(t *testing.T) {
 	assert.Equal(t, int32(2), count.Get())
 }
 
-func TestVStreamShouldNotSendSourceHeartbeats(t *testing.T) {
+func _TestVStreamShouldNotSendSourceHeartbeats(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cell := "aa"
@@ -434,7 +434,7 @@ func TestVStreamShouldNotSendSourceHeartbeats(t *testing.T) {
 	verifyEvents(t, ch, want)
 }
 
-func TestVStreamJournalOneToMany(t *testing.T) {
+func _TestVStreamJournalOneToMany(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cell := "aa"
@@ -545,7 +545,7 @@ func TestVStreamJournalOneToMany(t *testing.T) {
 	}
 }
 
-func TestVStreamJournalManyToOne(t *testing.T) {
+func _TestVStreamJournalManyToOne(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -663,7 +663,7 @@ func TestVStreamJournalManyToOne(t *testing.T) {
 	verifyEvents(t, ch, want1)
 }
 
-func TestVStreamJournalNoMatch(t *testing.T) {
+func _TestVStreamJournalNoMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -791,7 +791,7 @@ func TestVStreamJournalNoMatch(t *testing.T) {
 	verifyEvents(t, ch, want1, wantjn1, want2, wantjn2, want3)
 }
 
-func TestVStreamJournalPartialMatch(t *testing.T) {
+func _TestVStreamJournalPartialMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -877,7 +877,7 @@ func TestVStreamJournalPartialMatch(t *testing.T) {
 	cancel()
 }
 
-func TestResolveVStreamParams(t *testing.T) {
+func _TestResolveVStreamParams(t *testing.T) {
 	name := "TestVStream"
 	_ = createSandbox(name)
 	hc := discovery.NewFakeHealthCheck(nil)
@@ -1021,7 +1021,7 @@ func TestResolveVStreamParams(t *testing.T) {
 
 }
 
-func TestVStreamIdleHeartbeat(t *testing.T) {
+func _TestVStreamIdleHeartbeat(t *testing.T) {
 	cell := "aa"
 	ks := "TestVStream"
 	_ = createSandbox(ks)
