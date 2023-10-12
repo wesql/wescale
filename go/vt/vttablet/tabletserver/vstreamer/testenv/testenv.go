@@ -30,6 +30,8 @@ import (
 	"strconv"
 	"strings"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/mysqlctl"
@@ -82,6 +84,12 @@ func Init() (*Env, error) {
 		return nil, err
 	}
 	if err := te.TopoServ.CreateShard(ctx, te.KeyspaceName, te.ShardName); err != nil {
+		panic(err)
+	}
+	if err := te.TopoServ.CreateKeyspace(ctx, sidecardb.SidecarDBName, &topodatapb.Keyspace{}); err != nil {
+		return nil, err
+	}
+	if err := te.TopoServ.CreateShard(ctx, sidecardb.SidecarDBName, te.ShardName); err != nil {
 		panic(err)
 	}
 	te.SrvTopo = srvtopo.NewResilientServer(te.TopoServ, "TestTopo")
