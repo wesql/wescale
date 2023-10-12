@@ -29,6 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"vitess.io/vitess/go/stats"
 
 	"vitess.io/vitess/go/vt/topo/topoproto"
@@ -100,8 +102,8 @@ func NewTabletPicker(ts *topo.Server, cells []string, keyspace, shard, tabletTyp
 	return &TabletPicker{
 		ts:          ts,
 		cells:       cells,
-		keyspace:    keyspace,
-		shard:       "0",
+		keyspace:    global.DefaultKeyspace,
+		shard:       global.DefaultShard,
 		tabletTypes: tabletTypes,
 		inOrder:     inOrder,
 	}, nil

@@ -589,7 +589,6 @@ func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 				goto retry
 			}
 
-			t.Logf("got : %v", got)
 			result := validator.AcceptQuery(got)
 
 			//t.Logf("\ngot: %s", got)
