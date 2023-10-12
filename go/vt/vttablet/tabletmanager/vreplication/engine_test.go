@@ -317,7 +317,7 @@ func TestEngineBadInsert(t *testing.T) {
 
 	vre := NewTestEngine(env.TopoServ, env.Cells[0], mysqld, dbClientFactory, dbClientFactory, dbClient.DBName(), nil)
 
-	dbClient.ExpectRequest("select * from mysql.vreplication where db_name='db'", &sqltypes.Result{}, nil)
+	dbClient.ExpectRequest("select * from mysql.vreplication", &sqltypes.Result{}, nil)
 	vre.Open(context.Background())
 	defer vre.Close()
 
