@@ -1152,7 +1152,12 @@ func (tsv *TabletServer) VStream(ctx context.Context, request *binlogdatapb.VStr
 	if err := tsv.sm.VerifyTarget(ctx, request.Target); err != nil {
 		return err
 	}
-	return tsv.vstreamer.Stream(ctx, request.Position, request.TableLastPKs, request.Filter, send)
+	if request.TableSchema == "" {
+		//todo onlineDDL: remove this once all the clients are updated to send the table schema
+		//if the table schema is not provided, an error should be returned
+		request.TableSchema = request.Target.Keyspace
+	}
+	return tsv.vstreamer.Stream(ctx, request.TableSchema, request.Position, request.TableLastPKs, request.Filter, send)
 }
 
 // VStreamRows streams rows from the specified starting point.
@@ -1168,7 +1173,12 @@ func (tsv *TabletServer) VStreamRows(ctx context.Context, request *binlogdatapb.
 		}
 		row = r.Rows[0]
 	}
-	return tsv.vstreamer.StreamRows(ctx, request.Query, row, send)
+	if request.TableSchema == "" {
+		//todo onlineDDL: remove this once all the clients are updated to send the table schema
+		//if the table schema is not provided, an error should be returned
+		request.TableSchema = request.Target.Keyspace
+	}
+	return tsv.vstreamer.StreamRows(ctx, request.TableSchema, request.Query, row, send)
 }
 
 // VStreamResults streams rows from the specified starting point.

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,8 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"github.com/spf13/pflag"
 
@@ -391,7 +398,7 @@ func (tm *TabletManager) getGTIDFromTimestamp(ctx context.Context, pos mysql.Pos
 	gtidsChan := make(chan []string, 1)
 
 	go func() {
-		err := vsClient.VStream(ctx, mysql.EncodePosition(pos), filter, func(events []*binlogdatapb.VEvent) error {
+		err := vsClient.VStream(ctx, sidecardb.SidecarDBName, mysql.EncodePosition(pos), filter, func(events []*binlogdatapb.VEvent) error {
 			for _, event := range events {
 				if event.Gtid != "" {
 					// check if we reached the lastPos then return

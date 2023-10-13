@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -540,7 +545,7 @@ func TestVStreamCopyWithDifferentFilters(t *testing.T) {
 	var errGoroutine error
 	go func() {
 		defer wg.Done()
-		engine.Stream(ctx2, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
+		engine.Stream(ctx2, env.KeyspaceName, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
 			for _, ev := range evs {
 				if ev.Type == binlogdatapb.VEventType_HEARTBEAT {
 					continue
@@ -2236,7 +2241,7 @@ func vstream(ctx context.Context, t *testing.T, pos string, tablePKs []*binlogda
 			}},
 		}
 	}
-	return engine.Stream(ctx, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
+	return engine.Stream(ctx, env.KeyspaceName, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
 		timer := time.NewTimer(2 * time.Second)
 		defer timer.Stop()
 

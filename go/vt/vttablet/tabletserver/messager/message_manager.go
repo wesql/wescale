@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -677,7 +682,8 @@ func (mm *messageManager) runOneVStream(ctx context.Context) error {
 	var curPos string
 	var fields []*querypb.Field
 
-	err := mm.vs.Stream(ctx, "current", nil, mm.vsFilter, func(events []*binlogdatapb.VEvent) error {
+	schemaName := mm.tsv.Config().DB.DBName
+	err := mm.vs.Stream(ctx, schemaName, "current", nil, mm.vsFilter, func(events []*binlogdatapb.VEvent) error {
 		// We need to get the flow control lock
 		mm.cacheManagementMu.Lock()
 		defer mm.cacheManagementMu.Unlock()

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -439,7 +444,7 @@ func getEventCallback(event *binlogdatapb.VEvent) func() {
 func startVStreamCopy(ctx context.Context, t *testing.T, filter *binlogdatapb.Filter, tablePKs []*binlogdatapb.TableLastPK) {
 	pos := ""
 	go func() {
-		err := engine.Stream(ctx, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
+		err := engine.Stream(ctx, env.KeyspaceName, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
 			//t.Logf("Received events: %v", evs)
 			muAllEvents.Lock()
 			defer muAllEvents.Unlock()

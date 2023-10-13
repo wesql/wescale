@@ -428,7 +428,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 	// Use this for task sequencing.
 	var prevCh <-chan *vcopierCopyTaskResult
 
-	serr := vc.vr.sourceVStreamer.VStreamRows(ctx, initialPlan.SendRule.Filter, lastpkpb, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	serr := vc.vr.sourceVStreamer.VStreamRows(ctx, vc.vr.sourceTableSchema, initialPlan.SendRule.Filter, lastpkpb, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		for {
 			select {
 			case <-rowsCopiedTicker.C:

@@ -75,11 +75,12 @@ type vstreamer struct {
 	ctx    context.Context
 	cancel func()
 
-	cp       dbconfigs.Connector
-	se       *schema.Engine
-	startPos string
-	filter   *binlogdatapb.Filter
-	send     func([]*binlogdatapb.VEvent) error
+	tableSchema string
+	cp          dbconfigs.Connector
+	se          *schema.Engine
+	startPos    string
+	filter      *binlogdatapb.Filter
+	send        func([]*binlogdatapb.VEvent) error
 
 	vevents        chan *localVSchema
 	vschema        *localVSchema
@@ -126,22 +127,23 @@ type streamerPlan struct {
 //
 // vschema: the current vschema. This value can later be changed through the SetVSchema method.
 // send: callback function to send events.
-func newVStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, startPos string, stopPos string, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error, phase string, vse *Engine) *vstreamer {
+func newVStreamer(ctx context.Context, tableSchema string, cp dbconfigs.Connector, se *schema.Engine, startPos string, stopPos string, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error, phase string, vse *Engine) *vstreamer {
 	ctx, cancel := context.WithCancel(ctx)
 	return &vstreamer{
-		ctx:      ctx,
-		cancel:   cancel,
-		cp:       cp,
-		se:       se,
-		startPos: startPos,
-		stopPos:  stopPos,
-		filter:   filter,
-		send:     send,
-		vevents:  make(chan *localVSchema, 1),
-		vschema:  vschema,
-		plans:    make(map[uint64]*streamerPlan),
-		phase:    phase,
-		vse:      vse,
+		ctx:         ctx,
+		cancel:      cancel,
+		tableSchema: tableSchema,
+		cp:          cp,
+		se:          se,
+		startPos:    startPos,
+		stopPos:     stopPos,
+		filter:      filter,
+		send:        send,
+		vevents:     make(chan *localVSchema, 1),
+		vschema:     vschema,
+		plans:       make(map[uint64]*streamerPlan),
+		phase:       phase,
+		vse:         vse,
 	}
 }
 
@@ -476,7 +478,6 @@ func (vs *vstreamer) parseEvent(ev mysql.BinlogEvent) ([]*binlogdatapb.VEvent, e
 		// Insert/Delete/Update are supported only to be used in the context of external mysql streams where source databases
 		// could be using SBR. Vitess itself will never run into cases where it needs to consume non rbr statements.
 
-		//todo onlineDDL: handle dbName here
 		switch cat := sqlparser.Preview(q.SQL); cat {
 		case sqlparser.StmtInsert:
 			mustSend := mustSendStmt(q, vs.cp.DBName())

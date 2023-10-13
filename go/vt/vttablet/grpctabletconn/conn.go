@@ -696,6 +696,7 @@ func (conn *gRPCQueryClient) VStream(ctx context.Context, request *binlogdatapb.
 			Position:          request.Position,
 			Filter:            request.Filter,
 			TableLastPKs:      request.TableLastPKs,
+			TableSchema:       request.TableSchema,
 		}
 		stream, err := conn.c.VStream(ctx, req)
 		if err != nil {
@@ -740,6 +741,7 @@ func (conn *gRPCQueryClient) VStreamRows(ctx context.Context, request *binlogdat
 			ImmediateCallerId: callerid.ImmediateCallerIDFromContext(ctx),
 			Query:             request.Query,
 			Lastpk:            request.Lastpk,
+			TableSchema:       request.TableSchema,
 		}
 		stream, err := conn.c.VStreamRows(ctx, req)
 		if err != nil {

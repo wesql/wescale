@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -448,6 +454,7 @@ message VStreamRequest {
   string position = 4;
   Filter filter = 5;
   repeated TableLastPK table_last_p_ks = 6;
+  string table_schema = 7;
 }
 
 // VStreamResponse is the response from VStreamer
@@ -463,6 +470,7 @@ message VStreamRowsRequest {
 
   string query = 4;
   query.QueryResult lastpk = 5;
+  string table_schema = 6;
 }
 
 // VStreamRowsResponse is the response from VStreamRows
