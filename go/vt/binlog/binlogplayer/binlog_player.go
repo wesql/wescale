@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -489,7 +494,7 @@ func (blp *BinlogPlayer) writeRecoveryPosition(tx *binlogdatapb.BinlogTransactio
 	}
 
 	now := time.Now().Unix()
-	updateRecovery := GenerateUpdatePos(blp.uid, position, now, tx.EventToken.Timestamp, blp.blplStats.CopyRowCount.Get(), false)
+	updateRecovery := GenerateUpdatePos(false, blp.uid, position, now, tx.EventToken.Timestamp, blp.blplStats.CopyRowCount.Get(), false)
 
 	qr, err := blp.exec(updateRecovery)
 	if err != nil {
@@ -616,17 +621,21 @@ func CreateVReplicationState(workflow string, source *binlogdatapb.BinlogSource,
 }
 
 // GenerateUpdatePos returns a statement to record the latest processed gtid in the mysql.vreplication table.
-func GenerateUpdatePos(uid uint32, pos mysql.Position, timeUpdated int64, txTimestamp int64, rowsCopied int64, compress bool) string {
+func GenerateUpdatePos(commentPrefix bool, uid uint32, pos mysql.Position, timeUpdated int64, txTimestamp int64, rowsCopied int64, compress bool) string {
 	strGTID := encodeString(mysql.EncodePosition(pos))
 	if compress {
 		strGTID = fmt.Sprintf("compress(%s)", strGTID)
 	}
+	prefix := ""
+	if commentPrefix {
+		prefix = "/**/"
+	}
 	if txTimestamp != 0 {
-		return fmt.Sprintf(
+		return prefix + fmt.Sprintf(
 			"update mysql.vreplication set pos=%v, time_updated=%v, transaction_timestamp=%v, rows_copied=%v, message='' where id=%v",
 			strGTID, timeUpdated, txTimestamp, rowsCopied, uid)
 	}
-	return fmt.Sprintf(
+	return prefix + fmt.Sprintf(
 		"update mysql.vreplication set pos=%v, time_updated=%v, rows_copied=%v, message='' where id=%v", strGTID, timeUpdated, rowsCopied, uid)
 }
 

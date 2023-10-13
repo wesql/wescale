@@ -38,6 +38,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pingcap/failpoint"
+
+	"vitess.io/vitess/go/vt/failpointkey"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/pools"
@@ -729,14 +733,18 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 		e.updateMigrationStage(ctx, onlineDDL.UUID, "post-sentry pos reached")
 	}
 
-	lockConn, err := e.pool.Get(ctx, nil)
+	var setting pools.Setting
+	setting.SetWithoutDBName(false)
+	setting.SetQuery(fmt.Sprintf("use %s", onlineDDL.Schema))
+
+	lockConn, err := e.pool.Get(ctx, &setting)
 	if err != nil {
 		return err
 	}
 	defer lockConn.Recycle()
 	defer lockConn.Exec(ctx, sqlUnlockTables, 1, false)
 
-	renameConn, err := e.pool.Get(ctx, nil)
+	renameConn, err := e.pool.Get(ctx, &setting)
 	if err != nil {
 		return err
 	}
@@ -2775,6 +2783,9 @@ func (e *Executor) readVReplStream(ctx context.Context, uuid string, okIfMissing
 // isVReplMigrationReadyToCutOver sees if the vreplication migration has completed the row copy
 // and is up to date with the binlogs.
 func (e *Executor) isVReplMigrationReadyToCutOver(ctx context.Context, s *VReplStream) (isReady bool, err error) {
+	failpoint.Inject(failpointkey.IsVReplMigrationReadyToCutOver.Name, func(val failpoint.Value) {
+		failpoint.Return(val.(bool), nil)
+	})
 	// Check all the cases where migration is still running:
 	{
 		// when ready to cut-over, pos must have some value

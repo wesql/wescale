@@ -23,6 +23,10 @@ var (
 		FullName: "vitess.io/vitess/go/vt/topotools/create-database-error-on-dbname",
 		Name:     "create-database-error-on-dbname",
 	}
+	IsVReplMigrationReadyToCutOver = FailpointKey{
+		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/IsVReplMigrationReadyToCutOver",
+		Name:     "IsVReplMigrationReadyToCutOver",
+	}
 )
 
 func init() {
@@ -33,4 +37,5 @@ func init() {
 	FailpointTable = make(map[string]string)
 	FailpointTable[CreateDatabaseErrorOnDbname.FullName] = CreateDatabaseErrorOnDbname.Name
 	FailpointTable[TestFailPointError.FullName] = TestFailPointError.Name
+	FailpointTable[IsVReplMigrationReadyToCutOver.FullName] = IsVReplMigrationReadyToCutOver.Name
 }
