@@ -283,8 +283,8 @@ commit;"
 
 	select {
 	case <-time.After(5 * time.Second):
-		//printAllEvents("Timed out")
-		//t.Fatal("Timed out waiting for events")
+		printAllEvents("Timed out")
+		t.Fatal("Timed out waiting for events")
 	case <-ctx.Done():
 		log.Infof("Received context.Done, ending test")
 	}
