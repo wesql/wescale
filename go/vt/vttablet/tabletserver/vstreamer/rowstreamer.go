@@ -138,7 +138,8 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 
-	st, err := rs.se.GetTableForPos(fromTable, "")
+	st, err := rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
+
 	if err != nil {
 		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
 		// with vitess migrations, based on vreplication.
@@ -152,7 +153,7 @@ func (rs *rowStreamer) buildPlan() error {
 		// For this reason we give vstreamer a "second chance" to review the up-to-date state of the schema.
 		// In the future, we will reduce this operation to reading a single table rather than the entire schema.
 		rs.se.ReloadAt(context.Background(), mysql.Position{})
-		st, err = rs.se.GetTableForPos(fromTable, "")
+		st, err = rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
 	}
 	if err != nil {
 		return err
