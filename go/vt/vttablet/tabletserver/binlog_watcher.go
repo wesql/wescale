@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +36,7 @@ import (
 // VStreamer defines  the functions of VStreamer
 // that the BinlogWatcher needs.
 type VStreamer interface {
-	Stream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
+	Stream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
 }
 
 // BinlogWatcher is a tabletserver service that watches the
@@ -90,8 +95,9 @@ func (blw *BinlogWatcher) process(ctx context.Context) {
 	}
 
 	for {
+		schemaName := blw.env.Config().DB.DBName
 		// VStreamer will reload the schema when it encounters a DDL.
-		err := blw.vs.Stream(ctx, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
+		err := blw.vs.Stream(ctx, schemaName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
 			return nil
 		})
 		log.Infof("ReplicationWatcher VStream ended: %v, retrying in 5 seconds", err)

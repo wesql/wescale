@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,12 +88,12 @@ func (c *ReplicaConnector) Close(ctx context.Context) error {
 	return nil
 }
 
-func (c *ReplicaConnector) VStream(ctx context.Context, startPos string, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
-	return c.vstreamer.Stream(ctx, startPos, nil, filter, send)
+func (c *ReplicaConnector) VStream(ctx context.Context, tableSchema string, startPos string, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
+	return c.vstreamer.Stream(ctx, tableSchema, startPos, nil, filter, send)
 }
 
 // VStreamRows streams rows from query result
-func (c *ReplicaConnector) VStreamRows(ctx context.Context, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
+func (c *ReplicaConnector) VStreamRows(ctx context.Context, tableSchema string, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
 	var row []sqltypes.Value
 	if lastpk != nil {
 		r := sqltypes.Proto3ToResult(lastpk)
@@ -97,5 +102,5 @@ func (c *ReplicaConnector) VStreamRows(ctx context.Context, query string, lastpk
 		}
 		row = r.Rows[0]
 	}
-	return c.vstreamer.StreamRows(ctx, query, row, send)
+	return c.vstreamer.StreamRows(ctx, tableSchema, query, row, send)
 }

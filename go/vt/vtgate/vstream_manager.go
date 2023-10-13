@@ -511,6 +511,7 @@ func (vs *vstream) streamFromTablet(ctx context.Context, sgtid *binlogdatapb.Sha
 			Position:     sgtid.Gtid,
 			Filter:       vs.filter,
 			TableLastPKs: sgtid.TablePKs,
+			TableSchema:  sgtid.Keyspace,
 		}
 		err = tabletConn.VStream(ctx, req, func(events []*binlogdatapb.VEvent) error {
 			// We received a valid event. Reset error count.

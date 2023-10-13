@@ -216,7 +216,7 @@ func (uvs *uvstreamer) copyTable(ctx context.Context, tableName string) error {
 	log.Infof("Starting copyTable for %s, PK %v", tableName, lastPK)
 	uvs.sendTestEvent(fmt.Sprintf("Copy Start %s", tableName))
 
-	err := uvs.vse.StreamRows(ctx, filter, lastPK, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	err := uvs.vse.StreamRows(ctx, uvs.tableSchema, filter, lastPK, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		select {
 		case <-ctx.Done():
 			log.Infof("Returning io.EOF in StreamRows")
