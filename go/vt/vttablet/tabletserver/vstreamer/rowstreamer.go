@@ -87,6 +87,7 @@ func newRowStreamer(ctx context.Context, tableSchema string, se *schema.Engine, 
 	ctx, cancel := context.WithCancel(ctx)
 
 	cp := vse.env.Config().DB.Clone()
+	cp.DBName = tableSchema
 	return &rowStreamer{
 		ctx:         ctx,
 		cancel:      cancel,

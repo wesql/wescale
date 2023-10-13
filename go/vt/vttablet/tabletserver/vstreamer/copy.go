@@ -131,15 +131,13 @@ func (uvs *uvstreamer) sendEventsForRows(ctx context.Context, tableName string, 
 	var evs []*binlogdatapb.VEvent
 	for _, row := range rows.Rows {
 		ev := &binlogdatapb.VEvent{
-			Type: binlogdatapb.VEventType_ROW,
-			//todo onlineDDL: keyspace & shard
-			Keyspace: uvs.vse.keyspace,
+			Type:     binlogdatapb.VEventType_ROW,
+			Keyspace: uvs.tableSchema,
 			Shard:    uvs.vse.shard,
 			RowEvent: &binlogdatapb.RowEvent{
 				TableName: tableName,
-				//todo onlineDDL: keyspace & shard
-				Keyspace: uvs.vse.keyspace,
-				Shard:    uvs.vse.shard,
+				Keyspace:  uvs.tableSchema,
+				Shard:     uvs.vse.shard,
 				RowChanges: []*binlogdatapb.RowChange{{
 					Before: nil,
 					After:  row,
@@ -158,14 +156,14 @@ func (uvs *uvstreamer) sendEventsForRows(ctx context.Context, tableName string, 
 
 	ev := &binlogdatapb.VEvent{
 		Type:        binlogdatapb.VEventType_LASTPK,
-		Keyspace:    uvs.vse.keyspace,
+		Keyspace:    uvs.tableSchema,
 		Shard:       uvs.vse.shard,
 		LastPKEvent: lastPKEvent,
 	}
 	evs = append(evs, ev)
 	evs = append(evs, &binlogdatapb.VEvent{
 		Type:     binlogdatapb.VEventType_COMMIT,
-		Keyspace: uvs.vse.keyspace,
+		Keyspace: uvs.tableSchema,
 		Shard:    uvs.vse.shard,
 	})
 
@@ -248,7 +246,7 @@ func (uvs *uvstreamer) copyTable(ctx context.Context, tableName string) error {
 			fieldEvent := &binlogdatapb.FieldEvent{
 				TableName: tableName,
 				Fields:    rows.Fields,
-				Keyspace:  uvs.vse.keyspace,
+				Keyspace:  uvs.tableSchema,
 				Shard:     uvs.vse.shard,
 			}
 			uvs.fields = rows.Fields
