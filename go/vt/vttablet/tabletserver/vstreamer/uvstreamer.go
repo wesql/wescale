@@ -56,13 +56,14 @@ type uvstreamer struct {
 	cancel func()
 
 	// input parameters
-	vse        *Engine
-	send       func([]*binlogdatapb.VEvent) error
-	cp         dbconfigs.Connector
-	se         *schema.Engine
-	startPos   string
-	filter     *binlogdatapb.Filter
-	inTablePKs []*binlogdatapb.TableLastPK
+	tableSchema string
+	vse         *Engine
+	send        func([]*binlogdatapb.VEvent) error
+	cp          dbconfigs.Connector
+	se          *schema.Engine
+	startPos    string
+	filter      *binlogdatapb.Filter
+	inTablePKs  []*binlogdatapb.TableLastPK
 
 	vschema *localVSchema
 
@@ -95,7 +96,7 @@ type uvstreamerConfig struct {
 	CatchupRetryTime  time.Duration
 }
 
-func newUVStreamer(ctx context.Context, vse *Engine, cp dbconfigs.Connector, se *schema.Engine, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error) *uvstreamer {
+func newUVStreamer(ctx context.Context, tableSchema string, vse *Engine, se *schema.Engine, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, vschema *localVSchema, send func([]*binlogdatapb.VEvent) error) *uvstreamer {
 	ctx, cancel := context.WithCancel(ctx)
 	config := &uvstreamerConfig{
 		MaxReplicationLag: 1 * time.Nanosecond,
@@ -110,18 +111,20 @@ func newUVStreamer(ctx context.Context, vse *Engine, cp dbconfigs.Connector, se 
 		}
 		return send(evs)
 	}
+	cp := vse.env.Config().DB.Clone()
 	uvs := &uvstreamer{
-		ctx:        ctx,
-		cancel:     cancel,
-		vse:        vse,
-		send:       send2,
-		cp:         cp,
-		se:         se,
-		startPos:   startPos,
-		filter:     filter,
-		vschema:    vschema,
-		config:     config,
-		inTablePKs: tablePKs,
+		ctx:         ctx,
+		cancel:      cancel,
+		tableSchema: tableSchema,
+		vse:         vse,
+		send:        send2,
+		cp:          cp.FilteredWithDB(),
+		se:          se,
+		startPos:    startPos,
+		filter:      filter,
+		vschema:     vschema,
+		config:      config,
+		inTablePKs:  tablePKs,
 	}
 
 	return uvs
@@ -270,7 +273,6 @@ func (uvs *uvstreamer) shouldSendEventForTable(tableName string, ev *binlogdatap
 }
 
 // Do not send internal heartbeat events. Filter out events for tables whose copy has not been started.
-// todo onlineDDL: need tableSchema here
 func (uvs *uvstreamer) filterEvents(evs []*binlogdatapb.VEvent) []*binlogdatapb.VEvent {
 	if len(uvs.plans) == 0 {
 		return evs
@@ -426,7 +428,7 @@ func (uvs *uvstreamer) Stream() error {
 			return err
 		}
 	}
-	vs := newVStreamer(uvs.ctx, uvs.cp, uvs.se, mysql.EncodePosition(uvs.pos), mysql.EncodePosition(uvs.stopPos),
+	vs := newVStreamer(uvs.ctx, uvs.tableSchema, uvs.cp, uvs.se, mysql.EncodePosition(uvs.pos), mysql.EncodePosition(uvs.stopPos),
 		uvs.filter, uvs.getVSchema(), uvs.send, "replicate", uvs.vse)
 
 	uvs.setVs(vs)
