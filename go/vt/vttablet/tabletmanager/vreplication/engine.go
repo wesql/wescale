@@ -30,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/discovery"
+
 	"vitess.io/vitess/go/vt/sidecardb"
 
 	"google.golang.org/protobuf/proto"
@@ -113,6 +115,8 @@ type Engine struct {
 
 	throttlerClient *throttle.Client
 
+	tabletPickerFactory discovery.TabletPickerFactory
+
 	// This should only be set in Test Engines in order to short
 	// curcuit functions as needed in unit tests. It's automatically
 	// enabled in NewSimpleTestEngine. This should NOT be used in
@@ -136,13 +140,14 @@ type PostCopyAction struct {
 // A nil ts means that the Engine is disabled.
 func NewEngine(config *tabletenv.TabletConfig, ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, lagThrottler *throttle.Throttler) *Engine {
 	vre := &Engine{
-		controllers:     make(map[int]*controller),
-		ts:              ts,
-		cell:            cell,
-		mysqld:          mysqld,
-		journaler:       make(map[string]*journalEvent),
-		ec:              newExternalConnector(config.ExternalConnections),
-		throttlerClient: throttle.NewBackgroundClient(lagThrottler, throttlerVReplicationAppName, throttle.ThrottleCheckPrimaryWrite),
+		controllers:         make(map[int]*controller),
+		ts:                  ts,
+		cell:                cell,
+		mysqld:              mysqld,
+		journaler:           make(map[string]*journalEvent),
+		ec:                  newExternalConnector(config.ExternalConnections),
+		throttlerClient:     throttle.NewBackgroundClient(lagThrottler, throttlerVReplicationAppName, throttle.ThrottleCheckPrimaryWrite),
+		tabletPickerFactory: discovery.NewDefaultTabletPicker,
 	}
 
 	return vre
@@ -179,6 +184,7 @@ func NewTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaemon, db
 		dbName:                  dbname,
 		journaler:               make(map[string]*journalEvent),
 		ec:                      newExternalConnector(externalConfig),
+		tabletPickerFactory:     discovery.NewTabletPicker,
 	}
 	return vre
 }
@@ -197,6 +203,7 @@ func NewSimpleTestEngine(ts *topo.Server, cell string, mysqld mysqlctl.MysqlDaem
 		journaler:               make(map[string]*journalEvent),
 		ec:                      newExternalConnector(externalConfig),
 		shortcircuit:            true,
+		tabletPickerFactory:     discovery.NewTabletPicker,
 	}
 	return vre
 }
