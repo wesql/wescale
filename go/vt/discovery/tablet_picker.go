@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +28,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/stats"
 
@@ -70,6 +78,38 @@ type TabletPicker struct {
 	shard       string
 	tabletTypes []topodatapb.TabletType
 	inOrder     bool
+}
+
+type TabletPickerFactory func(ts *topo.Server, cells []string, keyspace, shard, tabletTypesStr string) (*TabletPicker, error)
+
+// NewDefaultTabletPicker returns a TabletPicker.
+func NewDefaultTabletPicker(ts *topo.Server, cells []string, keyspace, shard, tabletTypesStr string) (*TabletPicker, error) {
+	tabletTypes, inOrder, err := ParseTabletTypesAndOrder(tabletTypesStr)
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "failed to parse list of tablet types: %v", tabletTypesStr)
+	}
+	var missingFields []string
+	if keyspace == "" {
+		missingFields = append(missingFields, "Keyspace")
+	}
+	if shard == "" {
+		missingFields = append(missingFields, "Shard")
+	}
+	if len(cells) == 0 {
+		missingFields = append(missingFields, "Cells")
+	}
+	if len(missingFields) > 0 {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION,
+			fmt.Sprintf("Missing required field(s) for tablet picker: %s", strings.Join(missingFields, ", ")))
+	}
+	return &TabletPicker{
+		ts:          ts,
+		cells:       cells,
+		keyspace:    sidecardb.SidecarDBName,
+		shard:       global.DefaultShard,
+		tabletTypes: tabletTypes,
+		inOrder:     inOrder,
+	}, nil
 }
 
 // NewTabletPicker returns a TabletPicker.
