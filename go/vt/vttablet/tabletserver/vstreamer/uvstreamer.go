@@ -111,7 +111,7 @@ func newUVStreamer(ctx context.Context, tableSchema string, vse *Engine, se *sch
 		return send(evs)
 	}
 	cp := vse.env.Config().DB.Clone()
-	cp.DBName = tableSchema
+	//cp.DBName = tableSchema
 	uvs := &uvstreamer{
 		ctx:         ctx,
 		cancel:      cancel,
