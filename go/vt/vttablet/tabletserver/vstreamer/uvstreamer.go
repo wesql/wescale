@@ -105,13 +105,13 @@ func newUVStreamer(ctx context.Context, tableSchema string, vse *Engine, se *sch
 	send2 := func(evs []*binlogdatapb.VEvent) error {
 		vse.vstreamerEventsStreamed.Add(int64(len(evs)))
 		for _, ev := range evs {
-			//todo onlineDDL: remove keyspace?
-			ev.Keyspace = vse.keyspace
+			ev.Keyspace = tableSchema
 			ev.Shard = vse.shard
 		}
 		return send(evs)
 	}
 	cp := vse.env.Config().DB.Clone()
+	//cp.DBName = tableSchema
 	uvs := &uvstreamer{
 		ctx:         ctx,
 		cancel:      cancel,
@@ -533,7 +533,7 @@ func (uvs *uvstreamer) setPosition(gtid string, isInTx bool) error {
 	gtidEvent := &binlogdatapb.VEvent{
 		Type:     binlogdatapb.VEventType_GTID,
 		Gtid:     gtid,
-		Keyspace: uvs.vse.keyspace,
+		Keyspace: uvs.tableSchema,
 		Shard:    uvs.vse.shard,
 	}
 
@@ -541,7 +541,7 @@ func (uvs *uvstreamer) setPosition(gtid string, isInTx bool) error {
 	if !isInTx {
 		evs = append(evs, &binlogdatapb.VEvent{
 			Type:     binlogdatapb.VEventType_BEGIN,
-			Keyspace: uvs.vse.keyspace,
+			Keyspace: uvs.tableSchema,
 			Shard:    uvs.vse.shard,
 		})
 	}
@@ -549,7 +549,7 @@ func (uvs *uvstreamer) setPosition(gtid string, isInTx bool) error {
 	if !isInTx {
 		evs = append(evs, &binlogdatapb.VEvent{
 			Type:     binlogdatapb.VEventType_COMMIT,
-			Keyspace: uvs.vse.keyspace,
+			Keyspace: uvs.tableSchema,
 			Shard:    uvs.vse.shard,
 		})
 	}

@@ -233,8 +233,7 @@ func (vs *vstreamer) parseEvents(ctx context.Context, events <-chan mysql.Binlog
 	// all existing rows are sent without the new row.
 	// If a single row exceeds the packet size, it will be in its own packet.
 	bufferAndTransmit := func(vevent *binlogdatapb.VEvent) error {
-		//todo onlineDDL: process keyspace here
-		vevent.Keyspace = vs.vse.keyspace
+		vevent.Keyspace = vs.tableSchema
 		vevent.Shard = vs.vse.shard
 
 		switch vevent.Type {
@@ -751,7 +750,7 @@ func (vs *vstreamer) buildTablePlan(id uint64, tm *mysql.TableMap) (*binlogdatap
 		FieldEvent: &binlogdatapb.FieldEvent{
 			TableName: plan.Table.Name,
 			Fields:    plan.fields(),
-			Keyspace:  vs.vse.keyspace,
+			Keyspace:  vs.tableSchema,
 			Shard:     vs.vse.shard,
 		},
 	}, nil
@@ -918,7 +917,7 @@ func (vs *vstreamer) processRowEvent(vevents []*binlogdatapb.VEvent, plan *strea
 			RowEvent: &binlogdatapb.RowEvent{
 				TableName:  plan.Table.Name,
 				RowChanges: rowChanges,
-				Keyspace:   vs.vse.keyspace,
+				Keyspace:   vs.tableSchema,
 				Shard:      vs.vse.shard,
 			},
 		})
