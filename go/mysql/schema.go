@@ -37,6 +37,12 @@ const (
 		FROM information_schema.STATISTICS
 		WHERE TABLE_SCHEMA = DATABASE() AND LOWER(INDEX_NAME) = 'primary'
 		ORDER BY table_name, SEQ_IN_INDEX`
+	// BaseShowPrimaryOfTable is the base query for fetching primary key info.
+	BaseShowPrimaryOfTable = `
+		SELECT COLUMN_NAME as column_name
+		FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = '%s' AND LOWER(INDEX_NAME) = 'primary' AND TABLE_NAME = '%s'
+		ORDER BY SEQ_IN_INDEX`
 	// ShowRowsRead is the query used to find the number of rows read.
 	ShowRowsRead = "show status like 'Innodb_rows_read'"
 

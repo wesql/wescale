@@ -30,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/pools"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sidecardb"
 
@@ -573,8 +575,41 @@ func (se *Engine) RegisterVersionEvent() error {
 	return se.historian.RegisterVersionEvent()
 }
 
+// GetTableFromSchema
+func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*binlogdatapb.MinimalTable, error) {
+	ctx := context.Background()
+	var setting pools.Setting
+	setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+	setting.SetResetQuery(fmt.Sprintf("use %s", se.cp.DBName()))
+
+	conn, err := se.conns.Get(ctx, &setting)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Recycle()
+	table, err := LoadTable(conn, tableSchema, tableName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	pkData, err := conn.Exec(ctx, fmt.Sprintf(mysql.BaseShowPrimaryOfTable, tableSchema, tableName), maxTableCount, false)
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_UNKNOWN, "could not get table primary key info: %v", err)
+	}
+	for _, row := range pkData.Rows {
+		colName := row[0].ToString()
+		index := table.FindColumn(sqlparser.NewIdentifierCI(colName))
+		if index < 0 {
+			return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "column %v is listed as primary key, but not present in table %v", colName, tableName)
+		}
+		table.PKColumns = append(table.PKColumns, index)
+	}
+
+	return newMinimalTable(table), nil
+}
+
 // GetTableForPos returns a best-effort schema for a specific gtid
-func (se *Engine) GetTableForPos(tableSchema string, tableName sqlparser.IdentifierCS, gtid string) (*binlogdatapb.MinimalTable, error) {
+func (se *Engine) GetTableForPos(tableName sqlparser.IdentifierCS, gtid string) (*binlogdatapb.MinimalTable, error) {
 	mt, err := se.historian.GetTableForPos(tableName, gtid)
 	if err != nil {
 		log.Infof("GetTableForPos returned error: %s", err.Error())
@@ -586,19 +621,13 @@ func (se *Engine) GetTableForPos(tableSchema string, tableName sqlparser.Identif
 	se.mu.Lock()
 	defer se.mu.Unlock()
 	tableNameStr := tableName.String()
-	ctx := context.Background()
-	conn, err := se.conns.Get(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Recycle()
-	st, err := LoadTable(conn, tableSchema, tableNameStr, "")
-	if err != nil {
+	st, ok := se.tables[tableNameStr]
+	if !ok {
 		if schema.IsInternalOperationTableName(tableNameStr) {
 			log.Infof("internal table %v found in vttablet schema: skipping for GTID search", tableNameStr)
 		} else {
 			log.Infof("table %v not found in vttablet schema, current tables: %v", tableNameStr, se.tables)
-			return nil, fmt.Errorf("table %v not found in schema: %s", tableNameStr, tableSchema)
+			return nil, fmt.Errorf("table %v not found in vttablet schema", tableNameStr)
 		}
 	}
 	return newMinimalTable(st), nil

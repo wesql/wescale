@@ -27,7 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/textutil"
@@ -138,23 +137,9 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 
-	st, err := rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
+	st, err := rs.se.GetTableFromSchema(rs.tableSchema, fromTable.String())
+	st, err = rs.se.GetTableForPos(fromTable, "")
 
-	if err != nil {
-		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
-		// with vitess migrations, based on vreplication.
-		// Vitess migrations use an elaborate cut-over flow where tables are swapped away while traffic is
-		// being blocked. The RENAME flow is such that at some point the table is renamed away, leaving a
-		// "puncture"; this is an event the is captured by vstreamer. The completion of the flow fixes the
-		// puncture, and places a new table under the original table's name, but the way it is done does not
-		// cause vstreamer to refresh schema state.
-		// there is therefore a reproducable valid sequence of events where vstreamer thinks a table does not exist,
-		// where it in fact does exist.
-		// For this reason we give vstreamer a "second chance" to review the up-to-date state of the schema.
-		// In the future, we will reduce this operation to reading a single table rather than the entire schema.
-		rs.se.ReloadAt(context.Background(), mysql.Position{})
-		st, err = rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
-	}
 	if err != nil {
 		return err
 	}
