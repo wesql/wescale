@@ -27,6 +27,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/mysqlctl"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -39,7 +41,6 @@ import (
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 )
 
@@ -51,11 +52,6 @@ var (
 type RowStreamer interface {
 	Stream() error
 	Cancel()
-}
-
-// NewRowStreamer returns a RowStreamer
-func NewRowStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, query string, lastpk []sqltypes.Value, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) RowStreamer {
-	return newRowStreamer(ctx, cp, se, query, lastpk, &localVSchema{vschema: &vindexes.VSchema{}}, send, vse)
 }
 
 // rowStreamer is used for copying the existing rows of a table
@@ -70,7 +66,8 @@ type rowStreamer struct {
 	ctx    context.Context
 	cancel func()
 
-	cp dbconfigs.Connector
+	tableSchema string
+	cp          dbconfigs.Connector
 	//todo onlineDDL: need to fix or replace *schema.Engine
 	se      *schema.Engine
 	query   string
@@ -88,19 +85,23 @@ type rowStreamer struct {
 	throttleResponseRateLimiter *timer.RateLimiter
 }
 
-func newRowStreamer(ctx context.Context, cp dbconfigs.Connector, se *schema.Engine, query string, lastpk []sqltypes.Value, vschema *localVSchema, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) *rowStreamer {
+func newRowStreamer(ctx context.Context, tableSchema string, se *schema.Engine, query string, lastpk []sqltypes.Value, vschema *localVSchema, send func(*binlogdatapb.VStreamRowsResponse) error, vse *Engine) *rowStreamer {
 	ctx, cancel := context.WithCancel(ctx)
+
+	cp := vse.env.Config().DB.Clone()
+	cp.DBName = tableSchema
 	return &rowStreamer{
-		ctx:     ctx,
-		cancel:  cancel,
-		cp:      cp,
-		se:      se,
-		query:   query,
-		lastpk:  lastpk,
-		send:    send,
-		vschema: vschema,
-		vse:     vse,
-		pktsize: DefaultPacketSizer(),
+		ctx:         ctx,
+		cancel:      cancel,
+		tableSchema: tableSchema,
+		cp:          cp.FilteredWithDB(),
+		se:          se,
+		query:       query,
+		lastpk:      lastpk,
+		send:        send,
+		vschema:     vschema,
+		vse:         vse,
+		pktsize:     DefaultPacketSizer(),
 
 		throttleResponseRateLimiter: timer.NewRateLimiter(rowStreamertHeartbeatInterval),
 	}
@@ -131,6 +132,25 @@ func (rs *rowStreamer) Stream() error {
 	return rs.streamQuery(conn, rs.send)
 }
 
+func (rs *rowStreamer) getTableInfo(fromTable string) (*Table, error) {
+	conn, err := rs.cp.Connect(rs.ctx)
+	if err != nil {
+		return nil, err
+	}
+	exec := func(query string, maxRows int, wantFields bool) (*sqltypes.Result, error) {
+		return conn.ExecuteFetch(query, maxRows, wantFields)
+	}
+	fields, _, err := mysqlctl.GetColumns(rs.tableSchema, fromTable, exec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Table{
+		Name:   fromTable,
+		Fields: fields,
+	}, nil
+}
+
 func (rs *rowStreamer) buildPlan() error {
 	// This pre-parsing is required to extract the table name
 	// and create its metadata.
@@ -139,7 +159,8 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 
-	st, err := rs.se.GetTableForPos(fromTable, "")
+	st, err := rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
+
 	if err != nil {
 		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
 		// with vitess migrations, based on vreplication.
@@ -153,7 +174,7 @@ func (rs *rowStreamer) buildPlan() error {
 		// For this reason we give vstreamer a "second chance" to review the up-to-date state of the schema.
 		// In the future, we will reduce this operation to reading a single table rather than the entire schema.
 		rs.se.ReloadAt(context.Background(), mysql.Position{})
-		st, err = rs.se.GetTableForPos(fromTable, "")
+		st, err = rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
 	}
 	if err != nil {
 		return err

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +29,8 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+
+	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqltypes"
@@ -677,7 +684,7 @@ func (mm *messageManager) runOneVStream(ctx context.Context) error {
 	var curPos string
 	var fields []*querypb.Field
 
-	err := mm.vs.Stream(ctx, "current", nil, mm.vsFilter, func(events []*binlogdatapb.VEvent) error {
+	err := mm.vs.Stream(ctx, sidecardb.SidecarDBName, "current", nil, mm.vsFilter, func(events []*binlogdatapb.VEvent) error {
 		// We need to get the flow control lock
 		mm.cacheManagementMu.Lock()
 		defer mm.cacheManagementMu.Unlock()

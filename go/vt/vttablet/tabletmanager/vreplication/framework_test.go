@@ -132,7 +132,7 @@ func TestMain(m *testing.M) {
 		// engines cannot be initialized in testenv because it introduces
 		// circular dependencies.
 		streamerEngine = vstreamer.NewEngine(env.TabletEnv, env.SrvTopo, env.SchemaEngine, nil, env.Cells[0])
-		streamerEngine.InitDBConfig(env.KeyspaceName, env.ShardName)
+		streamerEngine.InitDBConfig(env.ShardName)
 		streamerEngine.Open()
 		defer streamerEngine.Close()
 
@@ -265,7 +265,7 @@ func (ftc *fakeTabletConn) VStream(ctx context.Context, request *binlogdatapb.VS
 	if vstreamHook != nil {
 		vstreamHook(ctx)
 	}
-	return streamerEngine.Stream(ctx, request.Position, request.TableLastPKs, request.Filter, send)
+	return streamerEngine.Stream(ctx, request.TableSchema, request.Position, request.TableLastPKs, request.Filter, send)
 }
 
 // vstreamRowsHook allows you to do work just before calling VStreamRows.
@@ -287,7 +287,7 @@ func (ftc *fakeTabletConn) VStreamRows(ctx context.Context, request *binlogdatap
 		}
 		row = r.Rows[0]
 	}
-	return streamerEngine.StreamRows(ctx, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	return streamerEngine.StreamRows(ctx, request.TableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		if vstreamRowsSendHook != nil {
 			vstreamRowsSendHook(ctx)
 		}

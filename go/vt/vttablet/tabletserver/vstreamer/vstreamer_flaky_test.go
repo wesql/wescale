@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -263,7 +268,7 @@ func TestVersion(t *testing.T) {
 	defer env.SchemaEngine.EnableHistorian(false)
 
 	engine = NewEngine(engine.env, env.SrvTopo, env.SchemaEngine, nil, env.Cells[0])
-	engine.InitDBConfig(env.KeyspaceName, env.ShardName)
+	engine.InitDBConfig(env.ShardName)
 	engine.Open()
 	defer engine.Close()
 
@@ -294,7 +299,7 @@ func TestVersion(t *testing.T) {
 			`commit`}},
 	}}
 	runCases(t, nil, testcases, "", nil)
-	mt, err := env.SchemaEngine.GetTableForPos(sqlparser.NewIdentifierCS("t1"), gtid)
+	mt, err := env.SchemaEngine.GetTableForPos(env.KeyspaceName, sqlparser.NewIdentifierCS("t1"), gtid)
 	require.NoError(t, err)
 	assert.True(t, proto.Equal(mt, dbSchema.Tables[0]))
 }
@@ -540,7 +545,7 @@ func TestVStreamCopyWithDifferentFilters(t *testing.T) {
 	var errGoroutine error
 	go func() {
 		defer wg.Done()
-		engine.Stream(ctx2, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
+		engine.Stream(ctx2, env.KeyspaceName, "", nil, filter, func(evs []*binlogdatapb.VEvent) error {
 			for _, ev := range evs {
 				if ev.Type == binlogdatapb.VEventType_HEARTBEAT {
 					continue
@@ -2236,7 +2241,7 @@ func vstream(ctx context.Context, t *testing.T, pos string, tablePKs []*binlogda
 			}},
 		}
 	}
-	return engine.Stream(ctx, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
+	return engine.Stream(ctx, env.KeyspaceName, pos, tablePKs, filter, func(evs []*binlogdatapb.VEvent) error {
 		timer := time.NewTimer(2 * time.Second)
 		defer timer.Stop()
 

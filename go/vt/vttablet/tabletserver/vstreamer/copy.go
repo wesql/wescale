@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +78,7 @@ func (uvs *uvstreamer) catchup(ctx context.Context) error {
 	errch := make(chan error, 1)
 	go func() {
 		startPos := mysql.EncodePosition(uvs.pos)
-		vs := newVStreamer(ctx, uvs.cp, uvs.se, startPos, "", uvs.filter, uvs.getVSchema(), uvs.send2, "catchup", uvs.vse)
+		vs := newVStreamer(ctx, uvs.tableSchema, uvs.cp, uvs.se, startPos, "", uvs.filter, uvs.getVSchema(), uvs.send2, "catchup", uvs.vse)
 		uvs.setVs(vs)
 		errch <- vs.Stream()
 		uvs.setVs(nil)
@@ -131,15 +136,13 @@ func (uvs *uvstreamer) sendEventsForRows(ctx context.Context, tableName string, 
 	var evs []*binlogdatapb.VEvent
 	for _, row := range rows.Rows {
 		ev := &binlogdatapb.VEvent{
-			Type: binlogdatapb.VEventType_ROW,
-			//todo onlineDDL: keyspace & shard
-			Keyspace: uvs.vse.keyspace,
+			Type:     binlogdatapb.VEventType_ROW,
+			Keyspace: uvs.tableSchema,
 			Shard:    uvs.vse.shard,
 			RowEvent: &binlogdatapb.RowEvent{
 				TableName: tableName,
-				//todo onlineDDL: keyspace & shard
-				Keyspace: uvs.vse.keyspace,
-				Shard:    uvs.vse.shard,
+				Keyspace:  uvs.tableSchema,
+				Shard:     uvs.vse.shard,
 				RowChanges: []*binlogdatapb.RowChange{{
 					Before: nil,
 					After:  row,
@@ -158,14 +161,14 @@ func (uvs *uvstreamer) sendEventsForRows(ctx context.Context, tableName string, 
 
 	ev := &binlogdatapb.VEvent{
 		Type:        binlogdatapb.VEventType_LASTPK,
-		Keyspace:    uvs.vse.keyspace,
+		Keyspace:    uvs.tableSchema,
 		Shard:       uvs.vse.shard,
 		LastPKEvent: lastPKEvent,
 	}
 	evs = append(evs, ev)
 	evs = append(evs, &binlogdatapb.VEvent{
 		Type:     binlogdatapb.VEventType_COMMIT,
-		Keyspace: uvs.vse.keyspace,
+		Keyspace: uvs.tableSchema,
 		Shard:    uvs.vse.shard,
 	})
 
@@ -216,7 +219,7 @@ func (uvs *uvstreamer) copyTable(ctx context.Context, tableName string) error {
 	log.Infof("Starting copyTable for %s, PK %v", tableName, lastPK)
 	uvs.sendTestEvent(fmt.Sprintf("Copy Start %s", tableName))
 
-	err := uvs.vse.StreamRows(ctx, filter, lastPK, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	err := uvs.vse.StreamRows(ctx, uvs.tableSchema, filter, lastPK, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		select {
 		case <-ctx.Done():
 			log.Infof("Returning io.EOF in StreamRows")
@@ -248,7 +251,7 @@ func (uvs *uvstreamer) copyTable(ctx context.Context, tableName string) error {
 			fieldEvent := &binlogdatapb.FieldEvent{
 				TableName: tableName,
 				Fields:    rows.Fields,
-				Keyspace:  uvs.vse.keyspace,
+				Keyspace:  uvs.tableSchema,
 				Shard:     uvs.vse.shard,
 			}
 			uvs.fields = rows.Fields
@@ -304,7 +307,7 @@ func (uvs *uvstreamer) fastForward(stopPos string) error {
 	}()
 	log.Infof("starting fastForward from %s upto pos %s", mysql.EncodePosition(uvs.pos), stopPos)
 	uvs.stopPos, _ = mysql.DecodePosition(stopPos)
-	vs := newVStreamer(uvs.ctx, uvs.cp, uvs.se, mysql.EncodePosition(uvs.pos), "", uvs.filter, uvs.getVSchema(), uvs.send2, "fastforward", uvs.vse)
+	vs := newVStreamer(uvs.ctx, uvs.tableSchema, uvs.cp, uvs.se, mysql.EncodePosition(uvs.pos), "", uvs.filter, uvs.getVSchema(), uvs.send2, "fastforward", uvs.vse)
 	uvs.setVs(vs)
 	return vs.Stream()
 }

@@ -432,11 +432,10 @@ func (sm *stateManager) VerifyTarget(ctx context.Context, target *querypb.Target
 func (sm *stateManager) verifyTargetLocked(ctx context.Context, target *querypb.Target) error {
 	if target != nil {
 		switch {
-		//todo onlineDDL: need to accept all keyspace and shard here
 		case target.Keyspace != sm.target.Keyspace:
 			//no ops
 		case target.Shard != sm.target.Shard:
-			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid shard %v does not match expected %v", target.Shard, sm.target.Shard)
+			//no ops
 		case target.TabletType != sm.target.TabletType:
 			for _, otherType := range sm.alsoAllow {
 				if target.TabletType == otherType {

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,10 +52,10 @@ type VStreamerClient interface {
 	Close(context.Context) error
 
 	// VStream streams VReplication events based on the specified filter.
-	VStream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
+	VStream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error
 
 	// VStreamRows streams rows of a table from the specified starting point.
-	VStreamRows(ctx context.Context, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error
+	VStreamRows(ctx context.Context, tableSchema string, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error
 }
 
 type externalConnector struct {
@@ -90,7 +95,7 @@ func (ec *externalConnector) Get(name string) (*mysqlConnector, error) {
 	c.env = tabletenv.NewEnv(config, name)
 	c.se = schema.NewEngine(c.env)
 	c.vstreamer = vstreamer.NewEngine(c.env, nil, c.se, nil, "")
-	c.vstreamer.InitDBConfig("", "")
+	c.vstreamer.InitDBConfig("")
 	c.se.InitDBConfig(c.env.Config().DB.AllPrivsWithDB())
 
 	// Open
@@ -125,11 +130,11 @@ func (c *mysqlConnector) Close(ctx context.Context) error {
 	return nil
 }
 
-func (c *mysqlConnector) VStream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
-	return c.vstreamer.Stream(ctx, startPos, tablePKs, filter, send)
+func (c *mysqlConnector) VStream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
+	return c.vstreamer.Stream(ctx, tableSchema, startPos, tablePKs, filter, send)
 }
 
-func (c *mysqlConnector) VStreamRows(ctx context.Context, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
+func (c *mysqlConnector) VStreamRows(ctx context.Context, tableSchema string, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
 	var row []sqltypes.Value
 	if lastpk != nil {
 		r := sqltypes.Proto3ToResult(lastpk)
@@ -138,7 +143,7 @@ func (c *mysqlConnector) VStreamRows(ctx context.Context, query string, lastpk *
 		}
 		row = r.Rows[0]
 	}
-	return c.vstreamer.StreamRows(ctx, query, row, send)
+	return c.vstreamer.StreamRows(ctx, tableSchema, query, row, send)
 }
 
 //-----------------------------------------------------------
@@ -170,12 +175,12 @@ func (tc *tabletConnector) Close(ctx context.Context) error {
 	return tc.qs.Close(ctx)
 }
 
-func (tc *tabletConnector) VStream(ctx context.Context, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
-	req := &binlogdatapb.VStreamRequest{Target: tc.target, Position: startPos, TableLastPKs: tablePKs, Filter: filter}
+func (tc *tabletConnector) VStream(ctx context.Context, tableSchema string, startPos string, tablePKs []*binlogdatapb.TableLastPK, filter *binlogdatapb.Filter, send func([]*binlogdatapb.VEvent) error) error {
+	req := &binlogdatapb.VStreamRequest{Target: tc.target, Position: startPos, TableLastPKs: tablePKs, Filter: filter, TableSchema: tableSchema}
 	return tc.qs.VStream(ctx, req, send)
 }
 
-func (tc *tabletConnector) VStreamRows(ctx context.Context, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
-	req := &binlogdatapb.VStreamRowsRequest{Target: tc.target, Query: query, Lastpk: lastpk}
+func (tc *tabletConnector) VStreamRows(ctx context.Context, tableSchema string, query string, lastpk *querypb.QueryResult, send func(*binlogdatapb.VStreamRowsResponse) error) error {
+	req := &binlogdatapb.VStreamRowsRequest{Target: tc.target, Query: query, Lastpk: lastpk, TableSchema: tableSchema}
 	return tc.qs.VStreamRows(ctx, req, send)
 }
