@@ -219,7 +219,13 @@ func (vse *Engine) Stream(ctx context.Context, tableSchema string, startPos stri
 		}
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
-		streamer := newUVStreamer(ctx, tableSchema, vse, vse.se, startPos, tablePKs, filter, vse.lvschema, send)
+		//vse.ts.WatchSrvVSchema()
+		uvLocalSchema := &localVSchema{
+			keyspace: tableSchema,
+			vschema:  vse.lvschema.vschema,
+		}
+		//vse.setWatch()
+		streamer := newUVStreamer(ctx, tableSchema, vse, vse.se, startPos, tablePKs, filter, uvLocalSchema, send)
 		idx := vse.streamIdx
 		vse.streamers[idx] = streamer
 		vse.streamIdx++
