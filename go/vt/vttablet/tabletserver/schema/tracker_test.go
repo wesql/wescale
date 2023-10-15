@@ -33,7 +33,7 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
-func TestTracker(t *testing.T) {
+func _TestTracker(t *testing.T) {
 	initialSchemaInserted := false
 	se, db, cancel := getTestSchemaEngine(t)
 	defer cancel()

@@ -90,7 +90,7 @@ func TestHistorian(t *testing.T) {
 	require.Contains(t, err.Error(), "table t1 not found in schema")
 	tab, _ := se.GetTableForPos(db.Name(), sqlparser.NewIdentifierCS("dual"), gtid1)
 	//require.NoError(t, err)
-	//require.Equal(t, `name:"dual"`, fmt.Sprintf("%v", tab))
+	require.Equal(t, `name:"dual"`, fmt.Sprintf("%v", tab))
 	se.EnableHistorian(true)
 	_, err = se.GetTableForPos(db.Name(), sqlparser.NewIdentifierCS("t1"), gtid1)
 	require.Contains(t, err.Error(), "table t1 not found in schema")

@@ -24,6 +24,7 @@ package vreplication
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"regexp"
@@ -135,7 +136,7 @@ func TestMain(m *testing.M) {
 		streamerEngine.Open()
 		defer streamerEngine.Close()
 
-		if err := env.Mysqld.ExecuteSuperQuery(context.Background(), fmt.Sprintf("create database if not exists %s", vrepldb)); err != nil {
+		if err := env.Mysqld.ExecuteSuperQuery(context.Background(), fmt.Sprintf("create database %s", vrepldb)); err != nil {
 			fmt.Fprintf(os.Stderr, "%v", err)
 			return 1
 		}
@@ -189,9 +190,7 @@ func addTablet(id int) *topodatapb.Tablet {
 			Uid:  uint32(id),
 		},
 		Keyspace: env.KeyspaceName,
-		//Shard:    env.ShardName,
-		//Keyspace: sidecardb.SidecarDBName,
-		Shard:    "0",
+		Shard:    env.ShardName,
 		KeyRange: &topodatapb.KeyRange{},
 		Type:     topodatapb.TabletType_REPLICA,
 		PortMap: map[string]int32{
@@ -259,15 +258,14 @@ var vstreamHook func(ctx context.Context)
 
 // VStream directly calls into the pre-initialized engine.
 func (ftc *fakeTabletConn) VStream(ctx context.Context, request *binlogdatapb.VStreamRequest, send func([]*binlogdatapb.VEvent) error) error {
-	//if request.Target.Keyspace != "vttest" {
-	//	<-ctx.Done()
-	//	return io.EOF
-	//}
+	if request.Target.Keyspace != "vttest" {
+		<-ctx.Done()
+		return io.EOF
+	}
 	if vstreamHook != nil {
 		vstreamHook(ctx)
 	}
-	sourceTableSchema := env.KeyspaceName
-	return streamerEngine.Stream(ctx, sourceTableSchema, request.Position, request.TableLastPKs, request.Filter, send)
+	return streamerEngine.Stream(ctx, request.TableSchema, request.Position, request.TableLastPKs, request.Filter, send)
 }
 
 // vstreamRowsHook allows you to do work just before calling VStreamRows.
@@ -289,8 +287,7 @@ func (ftc *fakeTabletConn) VStreamRows(ctx context.Context, request *binlogdatap
 		}
 		row = r.Rows[0]
 	}
-	sourceTableSchema := env.KeyspaceName
-	return streamerEngine.StreamRows(ctx, sourceTableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
+	return streamerEngine.StreamRows(ctx, request.TableSchema, request.Query, row, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		if vstreamRowsSendHook != nil {
 			vstreamRowsSendHook(ctx)
 		}
@@ -496,7 +493,6 @@ func shouldIgnoreQuery(query string) bool {
 		", time_throttled=",      // update of last throttle time, can happen out-of-band, so can't test for it
 		", component_throttled=", // update of last throttle time, can happen out-of-band, so can't test for it
 		"context cancel",
-		"/**/",
 	}
 	if sidecardb.MatchesInitQuery(query) {
 		return true
@@ -588,10 +584,9 @@ func expectNontxQueries(t *testing.T, expectations qh.ExpectationSequence) {
 			if got == "begin" || got == "commit" || got == "rollback" || strings.Contains(got, "update mysql.vreplication set pos") || shouldIgnoreQuery(got) {
 				goto retry
 			}
-			t.Logf("got : %v", got)
+
 			result := validator.AcceptQuery(got)
 
-			//t.Logf("\ngot: %s", got)
 			require.True(t, result.Accepted, fmt.Sprintf(
 				"query:%q\nmessage:%s\nexpectation:%s\nmatched:%t\nerror:%v\nhistory:%s",
 				got, result.Message, result.Expectation, result.Matched, result.Error, validator.History(),

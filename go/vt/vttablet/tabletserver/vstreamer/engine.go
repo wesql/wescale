@@ -219,12 +219,10 @@ func (vse *Engine) Stream(ctx context.Context, tableSchema string, startPos stri
 		}
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
-		//vse.ts.WatchSrvVSchema()
 		uvLocalSchema := &localVSchema{
 			keyspace: tableSchema,
 			vschema:  vse.lvschema.vschema,
 		}
-		//vse.setWatch()
 		streamer := newUVStreamer(ctx, tableSchema, vse, vse.se, startPos, tablePKs, filter, uvLocalSchema, send)
 		idx := vse.streamIdx
 		vse.streamers[idx] = streamer
@@ -351,8 +349,7 @@ func (vse *Engine) setWatch() {
 	// If there's no toposerver, create an empty vschema.
 	if vse.ts == nil {
 		vse.lvschema = &localVSchema{
-			keyspace: sidecardb.SidecarDBName,
-			vschema:  &vindexes.VSchema{},
+			vschema: &vindexes.VSchema{},
 		}
 		return
 	}

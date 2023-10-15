@@ -28,8 +28,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/sidecardb"
-
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/vt/schema"
@@ -137,7 +135,8 @@ func (tr *Tracker) process(ctx context.Context) {
 
 	var gtid string
 	for {
-		err := tr.vs.Stream(ctx, sidecardb.SidecarDBName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
+		schemaName := tr.env.Config().DB.DBName
+		err := tr.vs.Stream(ctx, schemaName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
 			for _, event := range events {
 				if event.Type == binlogdatapb.VEventType_GTID {
 					gtid = event.Gtid

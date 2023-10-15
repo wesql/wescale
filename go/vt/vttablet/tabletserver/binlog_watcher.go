@@ -25,8 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/sidecardb"
-
 	"context"
 
 	"vitess.io/vitess/go/vt/log"
@@ -97,8 +95,9 @@ func (blw *BinlogWatcher) process(ctx context.Context) {
 	}
 
 	for {
+		schemaName := blw.env.Config().DB.DBName
 		// VStreamer will reload the schema when it encounters a DDL.
-		err := blw.vs.Stream(ctx, sidecardb.SidecarDBName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
+		err := blw.vs.Stream(ctx, schemaName, "current", nil, filter, func(events []*binlogdatapb.VEvent) error {
 			return nil
 		})
 		log.Infof("ReplicationWatcher VStream ended: %v, retrying in 5 seconds", err)

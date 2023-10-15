@@ -27,8 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/mysqlctl"
-
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -89,7 +87,7 @@ func newRowStreamer(ctx context.Context, tableSchema string, se *schema.Engine, 
 	ctx, cancel := context.WithCancel(ctx)
 
 	cp := vse.env.Config().DB.Clone()
-	cp.DBName = tableSchema
+	//cp.DBName = tableSchema
 	return &rowStreamer{
 		ctx:         ctx,
 		cancel:      cancel,
@@ -132,25 +130,6 @@ func (rs *rowStreamer) Stream() error {
 	return rs.streamQuery(conn, rs.send)
 }
 
-func (rs *rowStreamer) getTableInfo(fromTable string) (*Table, error) {
-	conn, err := rs.cp.Connect(rs.ctx)
-	if err != nil {
-		return nil, err
-	}
-	exec := func(query string, maxRows int, wantFields bool) (*sqltypes.Result, error) {
-		return conn.ExecuteFetch(query, maxRows, wantFields)
-	}
-	fields, _, err := mysqlctl.GetColumns(rs.tableSchema, fromTable, exec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Table{
-		Name:   fromTable,
-		Fields: fields,
-	}, nil
-}
-
 func (rs *rowStreamer) buildPlan() error {
 	// This pre-parsing is required to extract the table name
 	// and create its metadata.
@@ -160,7 +139,6 @@ func (rs *rowStreamer) buildPlan() error {
 	}
 
 	st, err := rs.se.GetTableForPos(rs.tableSchema, fromTable, "")
-
 	if err != nil {
 		// There is a scenario where vstreamer's table state can be out-of-date, and this happens
 		// with vitess migrations, based on vreplication.
