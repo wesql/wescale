@@ -1156,6 +1156,7 @@ func (tsv *TabletServer) VStream(ctx context.Context, request *binlogdatapb.VStr
 		//todo onlineDDL: remove this once all the clients are updated to send the table schema
 		//if the table schema is not provided, an error should be returned
 		request.TableSchema = request.Target.Keyspace
+		log.Error("VStreamRows: table schema not provided, using keyspace name as table schema")
 	}
 	return tsv.vstreamer.Stream(ctx, request.TableSchema, request.Position, request.TableLastPKs, request.Filter, send)
 }
@@ -1177,6 +1178,7 @@ func (tsv *TabletServer) VStreamRows(ctx context.Context, request *binlogdatapb.
 		//todo onlineDDL: remove this once all the clients are updated to send the table schema
 		//if the table schema is not provided, an error should be returned
 		request.TableSchema = request.Target.Keyspace
+		log.Error("VStreamRows: table schema not provided, using keyspace name as table schema")
 	}
 	return tsv.vstreamer.StreamRows(ctx, request.TableSchema, request.Query, row, send)
 }
