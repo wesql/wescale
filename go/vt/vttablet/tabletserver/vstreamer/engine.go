@@ -261,8 +261,11 @@ func (vse *Engine) StreamRows(ctx context.Context, tableSchema string, query str
 		}
 		vse.mu.Lock()
 		defer vse.mu.Unlock()
-
-		rowStreamer := newRowStreamer(ctx, tableSchema, vse.se, query, lastpk, vse.lvschema, send, vse)
+		uvlschema := &localVSchema{
+			keyspace: tableSchema,
+			vschema:  vse.vschema(),
+		}
+		rowStreamer := newRowStreamer(ctx, tableSchema, vse.se, query, lastpk, uvlschema, send, vse)
 		idx := vse.streamIdx
 		vse.rowStreamers[idx] = rowStreamer
 		vse.streamIdx++
