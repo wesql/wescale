@@ -137,11 +137,7 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 
-	// todo onlineDDL: remove 'GetTableForPos' and use 'GetTableFromSchema' instead
-	st, err := rs.se.GetTableForPos(fromTable, "")
-	if err != nil {
-		st, err = rs.se.GetTableFromSchema(rs.tableSchema, fromTable.String())
-	}
+	st, err := rs.se.GetTableFromSchema(rs.tableSchema, fromTable.String())
 
 	if err != nil {
 		return err

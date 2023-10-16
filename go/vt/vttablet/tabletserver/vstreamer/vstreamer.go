@@ -771,10 +771,7 @@ func (vs *vstreamer) buildTableColumns(tm *mysql.TableMap) ([]*querypb.Field, er
 	// todo onlineDDL: remove 'GetTableForPos' and use 'GetTableFromSchema' instead
 	// todo onlineDDL: Do we need GTID here?
 	//previous code:
-	st, err := vs.se.GetTableForPos(sqlparser.NewIdentifierCS(tm.Name), mysql.EncodePosition(vs.pos))
-	if err != nil {
-		st, err = vs.se.GetTableFromSchema(vs.tableSchema, tm.Name)
-	}
+	st, err := vs.se.GetTableFromSchema(vs.tableSchema, tm.Name)
 
 	if err != nil {
 		if vs.filter.FieldEventMode == binlogdatapb.Filter_ERR_ON_MISMATCH {
