@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +64,7 @@ func TestExternalConnectorCopy(t *testing.T) {
 	bls1 := &binlogdatapb.BinlogSource{
 		ExternalMysql: "exta",
 		Filter:        filter1,
+		Keyspace:      env.KeyspaceName,
 	}
 	cancel1 := startExternalVReplication(t, bls1, "")
 
@@ -91,6 +97,7 @@ func TestExternalConnectorCopy(t *testing.T) {
 	bls2 := &binlogdatapb.BinlogSource{
 		ExternalMysql: "exta",
 		Filter:        filter2,
+		Keyspace:      env.KeyspaceName,
 	}
 	cancel2 := startExternalVReplication(t, bls2, "")
 
@@ -116,6 +123,7 @@ func TestExternalConnectorCopy(t *testing.T) {
 	bls3 := &binlogdatapb.BinlogSource{
 		ExternalMysql: "extb",
 		Filter:        filter3,
+		Keyspace:      env.KeyspaceName,
 	}
 	cancel3 := startExternalVReplication(t, bls3, "")
 
@@ -152,6 +160,7 @@ func TestExternalConnectorPlay(t *testing.T) {
 	bls1 := &binlogdatapb.BinlogSource{
 		ExternalMysql: "exta",
 		Filter:        filter1,
+		Keyspace:      env.KeyspaceName,
 	}
 	pos := primaryPosition(t)
 	cancel1 := startExternalVReplication(t, bls1, pos)
