@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +29,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"vitess.io/vitess/go/pools"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sidecardb"
@@ -566,6 +573,39 @@ func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn
 // It triggers the historian to load the newer rows from the database to update its cache
 func (se *Engine) RegisterVersionEvent() error {
 	return se.historian.RegisterVersionEvent()
+}
+
+// GetTableFromSchema
+func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*binlogdatapb.MinimalTable, error) {
+	ctx := context.Background()
+	var setting pools.Setting
+	setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+	setting.SetResetQuery(fmt.Sprintf("use %s", se.cp.DBName()))
+
+	conn, err := se.conns.Get(ctx, &setting)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Recycle()
+	table, err := LoadTable(conn, tableSchema, tableName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	pkData, err := conn.Exec(ctx, fmt.Sprintf(mysql.BaseShowPrimaryOfTable, tableSchema, tableName), maxTableCount, false)
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_UNKNOWN, "could not get table primary key info: %v", err)
+	}
+	for _, row := range pkData.Rows {
+		colName := row[0].ToString()
+		index := table.FindColumn(sqlparser.NewIdentifierCI(colName))
+		if index < 0 {
+			return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "column %v is listed as primary key, but not present in table %v", colName, tableName)
+		}
+		table.PKColumns = append(table.PKColumns, index)
+	}
+
+	return newMinimalTable(table), nil
 }
 
 // GetTableForPos returns a best-effort schema for a specific gtid
