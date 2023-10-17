@@ -1,6 +1,6 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
-name: Cluster (onlineddl_scheduler)
+name: EndToEnd Test (onlineddl_scheduler)
 on:
 #  pull_request:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
     branches:
       - main
 concurrency:
-  group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (onlineddl_scheduler)')
+  group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (wesql)')
   cancel-in-progress: true
 
 env:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Run endtoend tests on Cluster (onlineddl_scheduler)
+    name: Run endtoend OnlineDDL tests on Cluster (wesql)
     runs-on: ubuntu-22.04
 
     steps:
