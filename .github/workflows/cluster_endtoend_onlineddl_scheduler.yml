@@ -1,8 +1,8 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
-name: EndToEnd Test (onlineddl_scheduler)
+name: OnlineDDL scheduler
 on:
-  #  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Run endtoend OnlineDDL tests on Cluster (wesql)
+    name: Run endtoend OnlineDDL tests on Cluster
     runs-on: ubuntu-22.04
 
     steps:
