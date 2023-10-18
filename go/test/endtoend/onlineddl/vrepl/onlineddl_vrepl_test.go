@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +55,7 @@ var (
 	extendedMigrationWait = 20 * time.Second
 
 	hostname              = "localhost"
-	keyspaceName          = "ks"
+	keyspaceName          = "mysql"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
 	totalTableCount       = 4
@@ -191,7 +196,7 @@ func TestMain(m *testing.M) {
 			VSchema: vSchema,
 		}
 
-		if err := clusterInstance.StartKeyspace(*keyspace, []string{"-80", "80-"}, 1, false); err != nil {
+		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0", "0"}, 1, false); err != nil {
 			return 1, err
 		}
 
