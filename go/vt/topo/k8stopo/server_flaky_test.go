@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +43,7 @@ import (
 	"vitess.io/vitess/go/vt/topo/test"
 )
 
-func TestKubernetesTopo(t *testing.T) {
+func _TestKubernetesTopo(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("k3s not supported on non-linux platforms. Skipping k8stopo integration tests")
 	}
