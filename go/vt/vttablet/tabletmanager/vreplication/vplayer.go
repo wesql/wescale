@@ -243,9 +243,9 @@ func (vp *vplayer) applyRowEvent(ctx context.Context, rowEvent *binlogdatapb.Row
 	return nil
 }
 
-func (vp *vplayer) updatePos(commentPrefix bool, ts int64) (posReached bool, err error) {
+func (vp *vplayer) updatePos(ts int64) (posReached bool, err error) {
 	vp.numAccumulatedHeartbeats = 0
-	update := binlogplayer.GenerateUpdatePos(commentPrefix, vp.vr.id, vp.pos, time.Now().Unix(), ts, vp.vr.stats.CopyRowCount.Get(), vreplicationStoreCompressedGTID)
+	update := binlogplayer.GenerateUpdatePos(vp.vr.id, vp.pos, time.Now().Unix(), ts, vp.vr.stats.CopyRowCount.Get(), vreplicationStoreCompressedGTID)
 	if _, err := vp.vr.dbClient.Execute(update); err != nil {
 		return false, fmt.Errorf("error %v updating position", err)
 	}
@@ -364,7 +364,7 @@ func (vp *vplayer) applyEvents(ctx context.Context, relay *relayLog) error {
 		// In both cases, now > timeLastSaved. If so, the GTID of the last unsavedEvent
 		// must be saved.
 		if time.Since(vp.timeLastSaved) >= idleTimeout && vp.unsavedEvent != nil {
-			posReached, err := vp.updatePos(true, vp.unsavedEvent.Timestamp)
+			posReached, err := vp.updatePos(vp.unsavedEvent.Timestamp)
 			if err != nil {
 				return err
 			}
@@ -463,7 +463,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 			vp.unsavedEvent = event
 			return nil
 		}
-		posReached, err := vp.updatePos(false, event.Timestamp)
+		posReached, err := vp.updatePos(event.Timestamp)
 		if err != nil {
 			return err
 		}
@@ -519,7 +519,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 			return fmt.Errorf("internal error: vplayer is in a transaction on event: %v", event)
 		}
 		// Just update the position.
-		posReached, err := vp.updatePos(false, event.Timestamp)
+		posReached, err := vp.updatePos(event.Timestamp)
 		if err != nil {
 			return err
 		}
@@ -535,7 +535,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 		switch vp.vr.source.OnDdl {
 		case binlogdatapb.OnDDLAction_IGNORE:
 			// We still have to update the position.
-			posReached, err := vp.updatePos(false, event.Timestamp)
+			posReached, err := vp.updatePos(event.Timestamp)
 			if err != nil {
 				return err
 			}
@@ -546,7 +546,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 			if err := vp.vr.dbClient.Begin(); err != nil {
 				return err
 			}
-			if _, err := vp.updatePos(false, event.Timestamp); err != nil {
+			if _, err := vp.updatePos(event.Timestamp); err != nil {
 				return err
 			}
 			if err := vp.vr.setState(binlogplayer.BlpStopped, fmt.Sprintf("Stopped at DDL %s", event.Statement)); err != nil {
@@ -565,7 +565,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 				return err
 			}
 			stats.Send(fmt.Sprintf("%v", event.Statement))
-			posReached, err := vp.updatePos(false, event.Timestamp)
+			posReached, err := vp.updatePos(event.Timestamp)
 			if err != nil {
 				return err
 			}
@@ -577,7 +577,7 @@ func (vp *vplayer) applyEvent(ctx context.Context, event *binlogdatapb.VEvent, m
 				log.Infof("Ignoring error: %v for DDL: %s", err, event.Statement)
 			}
 			stats.Send(fmt.Sprintf("%v", event.Statement))
-			posReached, err := vp.updatePos(false, event.Timestamp)
+			posReached, err := vp.updatePos(event.Timestamp)
 			if err != nil {
 				return err
 			}
