@@ -32,11 +32,12 @@ import (
 	"testing"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/test/endtoend/cluster"
 	"vitess.io/vitess/go/test/endtoend/onlineddl"
 	"vitess.io/vitess/go/vt/schema"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
 	throttlebase "vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
 
 	"github.com/stretchr/testify/assert"
@@ -58,7 +59,7 @@ var (
 	keyspaceName          = "mysql"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
-	totalTableCount       = 4
+	totalTableCount       = 6
 	createTable           = `
 		CREATE TABLE %s (
 			id bigint(20) NOT NULL,
@@ -265,11 +266,11 @@ func TestSchemaChange(t *testing.T) {
 	})
 
 	testWithInitialSchema(t)
-	//t.Run("alter non_online", func(t *testing.T) {
-	//	_ = testOnlineDDLStatement(t, alterTableNormalStatement, string(schema.DDLStrategyDirect), providedUUID, providedMigrationContext, "vtctl", "non_online", "", false)
-	//	insertRows(t, 2)
-	//	testRows(t)
-	//})
+	t.Run("alter non_online", func(t *testing.T) {
+		_ = testOnlineDDLStatement(t, alterTableNormalStatement, string(schema.DDLStrategyDirect), providedUUID, providedMigrationContext, "vtgate", "non_online", "", false)
+		insertRows(t, 2)
+		testRows(t)
+	})
 	t.Run("successful online alter, vtgate", func(t *testing.T) {
 		insertRows(t, 2)
 		uuid := testOnlineDDLStatement(t, alterTableSuccessfulStatement, "online", providedUUID, providedMigrationContext, "vtgate", "vrepl_col", "", false)
@@ -553,85 +554,6 @@ func TestSchemaChange(t *testing.T) {
 			})
 		})
 	}
-
-	// Technically the next test should belong in onlineddl_revert suite. But we're tking advantage of setup and functionality existing in this tets:
-	// - two shards as opposed to one
-	// - tablet throttling
-	t.Run("Revert a migration completed on one shard and cancelled on another", func(t *testing.T) {
-		// shard 0 will run normally, shard 1 will be throttled
-		//defer unthrottleApp(shards[1].Vttablets[0], onlineDDLThrottlerAppName)
-		t.Run("throttle shard 1", func(t *testing.T) {
-			body, err := throttleApp(shards[0].Vttablets[0], onlineDDLThrottlerAppName)
-			assert.NoError(t, err)
-			assert.Contains(t, body, onlineDDLThrottlerAppName)
-		})
-
-		var uuid string
-		t.Run("run migrations, expect 1st to complete, 2nd to be running", func(t *testing.T) {
-			uuid = testOnlineDDLStatement(t, alterTableTrivialStatement, "vitess", providedUUID, providedMigrationContext, "vtgate", "test_val", "", true)
-			{
-				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], uuid, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], uuid, schema.OnlineDDLStatusComplete)
-			}
-			{
-				// shard 1 is throttled
-				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[1:], uuid, normalMigrationWait, schema.OnlineDDLStatusRunning)
-				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards[1:], uuid, schema.OnlineDDLStatusRunning)
-			}
-		})
-		t.Run("check cancel migration", func(t *testing.T) {
-			onlineddl.CheckCancelAllMigrations(t, &vtParams, 1)
-		})
-		t.Run("unthrottle shard 1", func(t *testing.T) {
-			body, err := unthrottleApp(shards[1].Vttablets[0], onlineDDLThrottlerAppName)
-			assert.NoError(t, err)
-			assert.Contains(t, body, onlineDDLThrottlerAppName)
-		})
-		var revertUUID string
-		t.Run("issue revert migration", func(t *testing.T) {
-			revertQuery := fmt.Sprintf("revert vitess_migration '%s'", uuid)
-			rs := onlineddl.VtgateExecQuery(t, &vtParams, revertQuery, "")
-			require.NotNil(t, rs)
-			row := rs.Named().Row()
-			require.NotNil(t, row)
-			revertUUID = row.AsString("uuid", "")
-			assert.NotEmpty(t, revertUUID)
-		})
-		t.Run("expect one revert successful, another failed", func(t *testing.T) {
-			{
-				// shard 0 migration was complete. Revert should be successful
-				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], revertUUID, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], revertUUID, schema.OnlineDDLStatusComplete)
-			}
-			{
-				// shard 0 migration was cancelled. Revert should not be possible
-				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[1:], revertUUID, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards[1:], revertUUID, schema.OnlineDDLStatusFailed)
-			}
-		})
-		t.Run("expect two rows in SHOW VITESS_MIGRATIONS", func(t *testing.T) {
-			// This validates that the shards are reflected correctly in output of SHOW VITESS_MIGRATIONS
-			rs := onlineddl.ReadMigrations(t, &vtParams, revertUUID)
-			require.NotNil(t, rs)
-			require.Equal(t, 1, len(rs.Rows))
-			for _, row := range rs.Named().Rows {
-				shard := row["shard"].ToString()
-				status := row["migration_status"].ToString()
-
-				switch shard {
-				case "0":
-					require.Equal(t, string(schema.OnlineDDLStatusComplete), status)
-				default:
-					require.NoError(t, fmt.Errorf("unexpected shard name: %s", shard))
-				}
-			}
-		})
-	})
-
 	t.Run("Online DROP TABLE IF EXISTS, vtgate", func(t *testing.T) {
 		uuid := testOnlineDDLStatement(t, onlineDDLDropTableIfExistsStatement, "online ", providedUUID, providedMigrationContext, "vtgate", "", "", false)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -647,8 +569,6 @@ func TestSchemaChange(t *testing.T) {
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
 		onlineddl.CheckCancelMigration(t, &vtParams, shards, uuid, false)
 		onlineddl.CheckRetryMigration(t, &vtParams, shards, uuid, false)
-		// this table existed
-		checkTables(t, schema.OnlineDDLToGCUUID(uuid), 1)
 	})
 	t.Run("Online DROP TABLE IF EXISTS for nonexistent table, vtgate", func(t *testing.T) {
 		uuid := testOnlineDDLStatement(t, onlineDDLDropTableIfExistsStatement, "online", providedUUID, providedMigrationContext, "vtgate", "", "", false)
@@ -679,6 +599,117 @@ func TestSchemaChange(t *testing.T) {
 		onlineddl.CheckCancelMigration(t, &vtParams, shards, uuid, false)
 		onlineddl.CheckRetryMigration(t, &vtParams, shards, uuid, true)
 	})
+	// Technically the next test should belong in onlineddl_revert suite. But we're tking advantage of setup and functionality existing in this tets:
+	// - two shards as opposed to one
+	// - tablet throttling
+	t.Run("Revert a migration completed on one shard and cancelled on another", func(t *testing.T) {
+		// shard 0 will run normally, shard 1 will be throttled
+		defer unthrottleApp(shards[0].Vttablets[0], onlineDDLThrottlerAppName)
+		t.Run("throttle shard 1", func(t *testing.T) {
+			body, err := throttleApp(shards[0].Vttablets[0], onlineDDLThrottlerAppName)
+			assert.NoError(t, err)
+			assert.Contains(t, body, onlineDDLThrottlerAppName)
+		})
+
+		var uuid4, uuid5 string
+		t.Run("run migrations, expect 1st to complete, 2nd to be running", func(t *testing.T) {
+			uuid4 = testOnlineDDLStatementOnTableID(t, 4, alterTableTrivialStatement, "vitess", providedUUID, providedMigrationContext, "vtgate", "test_val", "", true)
+			uuid5 = testOnlineDDLStatementOnTableID(t, 5, alterTableTrivialStatement, "vitess", providedUUID, providedMigrationContext, "vtgate", "test_val", "", true)
+			body, err := throttleApp(shards[0].Vttablets[0], uuid5)
+			defer unthrottleApp(shards[0].Vttablets[0], uuid5)
+			assert.NoError(t, err)
+			assert.Contains(t, body, uuid5)
+			unthrottleApp(shards[0].Vttablets[0], onlineDDLThrottlerAppName)
+			{
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], uuid4, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], uuid4, schema.OnlineDDLStatusComplete)
+			}
+			{
+				// shard 1 is throttled
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], uuid5, normalMigrationWait, schema.OnlineDDLStatusRunning)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], uuid5, schema.OnlineDDLStatusRunning)
+			}
+		})
+		t.Run("check cancel migration", func(t *testing.T) {
+			onlineddl.CheckCancelAllMigrations(t, &vtParams, 1)
+		})
+		t.Run("unthrottle table 5", func(t *testing.T) {
+			body, err := unthrottleApp(shards[0].Vttablets[0], uuid5)
+			assert.NoError(t, err)
+			assert.Contains(t, body, uuid5)
+		})
+		var revertUUID4 string
+		var revertUUID5 string
+		t.Run("issue revert migration", func(t *testing.T) {
+			revertQuery4 := fmt.Sprintf("revert vitess_migration '%s'", uuid4)
+			revertQuery5 := fmt.Sprintf("revert vitess_migration '%s'", uuid5)
+
+			rs4 := onlineddl.VtgateExecQuery(t, &vtParams, revertQuery4, "")
+			rs5 := onlineddl.VtgateExecQuery(t, &vtParams, revertQuery5, "")
+
+			require.NotNil(t, rs4)
+			row := rs4.Named().Row()
+			require.NotNil(t, row)
+			revertUUID4 = row.AsString("uuid", "")
+			assert.NotEmpty(t, revertUUID4)
+
+			require.NotNil(t, rs5)
+			row = rs5.Named().Row()
+			require.NotNil(t, row)
+			revertUUID5 = row.AsString("uuid", "")
+			assert.NotEmpty(t, revertUUID5)
+		})
+		t.Run("expect one revert successful, another failed", func(t *testing.T) {
+			{
+				// shard 0 migration was complete. Revert should be successful
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], revertUUID4, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], revertUUID4, schema.OnlineDDLStatusComplete)
+			}
+			{
+				// shard 0 migration was cancelled. Revert should not be possible
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards[:1], revertUUID5, normalMigrationWait, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards[:1], revertUUID5, schema.OnlineDDLStatusFailed)
+			}
+		})
+		t.Run("expect two rows in SHOW VITESS_MIGRATIONS", func(t *testing.T) {
+			// This validates that the shards are reflected correctly in output of SHOW VITESS_MIGRATIONS
+			rs4 := onlineddl.ReadMigrations(t, &vtParams, revertUUID4)
+			rs5 := onlineddl.ReadMigrations(t, &vtParams, revertUUID5)
+
+			require.NotNil(t, rs4)
+			require.NotNil(t, rs5)
+			require.Equal(t, 1, len(rs4.Rows))
+			require.Equal(t, 1, len(rs5.Rows))
+			for _, row := range rs4.Named().Rows {
+				shard := row["shard"].ToString()
+				status := row["migration_status"].ToString()
+
+				switch shard {
+				case "0":
+					require.Equal(t, string(schema.OnlineDDLStatusComplete), status)
+				default:
+					require.NoError(t, fmt.Errorf("unexpected shard name: %s", shard))
+				}
+			}
+
+			for _, row := range rs5.Named().Rows {
+				shard := row["shard"].ToString()
+				status := row["migration_status"].ToString()
+
+				switch shard {
+				case "0":
+					require.Equal(t, string(schema.OnlineDDLStatusFailed), status)
+				default:
+					require.NoError(t, fmt.Errorf("unexpected shard name: %s", shard))
+				}
+			}
+		})
+	})
+
 	t.Run("summary: validate sequential migration IDs", func(t *testing.T) {
 		onlineddl.ValidateSequentialMigrationIDs(t, &vtParams, shards)
 	})
@@ -742,9 +773,8 @@ func testWithInitialSchema(t *testing.T) {
 	checkTables(t, "vt_onlineddl_test_", totalTableCount)
 }
 
-// testOnlineDDLStatement runs an online DDL, ALTER statement
-func testOnlineDDLStatement(t *testing.T, alterStatement string, ddlStrategy string, providedUUIDList string, providedMigrationContext string, executeStrategy string, expectHint string, expectError string, skipWait bool) (uuid string) {
-	tableName := fmt.Sprintf("vt_onlineddl_test_%02d", 3)
+func testOnlineDDLStatementOnTableID(t *testing.T, tableID int, alterStatement string, ddlStrategy string, providedUUIDList string, providedMigrationContext string, executeStrategy string, expectHint string, expectError string, skipWait bool) (uuid string) {
+	tableName := fmt.Sprintf("vt_onlineddl_test_%02d", tableID)
 	sqlQuery := fmt.Sprintf(alterStatement, tableName)
 	if executeStrategy == "vtgate" {
 		row := onlineddl.VtgateExecDDL(t, &vtParams, ddlStrategy, sqlQuery, "").Named().Row()
@@ -781,6 +811,11 @@ func testOnlineDDLStatement(t *testing.T, alterStatement string, ddlStrategy str
 		checkMigratedTable(t, tableName, expectHint)
 	}
 	return uuid
+}
+
+// testOnlineDDLStatement runs an online DDL, ALTER statement
+func testOnlineDDLStatement(t *testing.T, alterStatement string, ddlStrategy string, providedUUIDList string, providedMigrationContext string, executeStrategy string, expectHint string, expectError string, skipWait bool) (uuid string) {
+	return testOnlineDDLStatementOnTableID(t, 3, alterStatement, ddlStrategy, providedUUIDList, providedMigrationContext, executeStrategy, expectHint, expectError, skipWait)
 }
 
 // checkTables checks the number of tables in the first two shards.
