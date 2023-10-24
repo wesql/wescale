@@ -1,14 +1,14 @@
 # DO NOT MODIFY: THIS FILE IS GENERATED USING "make generate_ci_workflows"
 
-name: EndToEnd Test
+name: Cluster (onlineddl_vrepl)
 on:
-  pull_request:
+#  pull_request:
   workflow_dispatch:
   push:
     branches:
       - main
 concurrency:
-  group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (wesql)')
+  group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (onlineddl_vrepl)')
   cancel-in-progress: true
 
 env:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Run endtoend tests on Cluster (wesql)
+    name: Run endtoend tests on Cluster (onlineddl_vrepl)
     runs-on: ubuntu-22.04
 
     steps:
@@ -59,7 +59,8 @@ jobs:
             - 'tools/**'
             - 'config/**'
             - 'bootstrap.sh'
-            - '.github/workflows/cluster_endtoend_wesql.yml'
+            - '.github/workflows/cluster_endtoend_onlineddl_vrepl.yml'
+            - 'go/test/endtoend/onlineddl/vrepl_suite/testdata'
 
     - name: Set up Go
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
@@ -114,29 +115,27 @@ jobs:
         source build.env
 
         set -x
-        
-        make failpoint-enable
-        chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
 
         # run the tests however you normally do, then produce a JUnit XML file
-        eatmydata -- go run test.go -docker=false -follow -shard wesql | tee -a output.txt | go-junit-report -set-exit-code > report.xml
-        make failpoint-disable
+        eatmydata -- go run test.go -docker=false -follow -shard onlineddl_vrepl | tee -a output.txt | go-junit-report -set-exit-code > report.xml
 
     - name: Print test output and Record test result
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
       run: |
+
         # print test output
         cat output.txt
+
     - name: Check test results
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
       run: |
-          # check if any test failed
-          if grep -q -- '--- FAIL' output.txt; then
-              echo "Testcase is failed"
-              exit 1
-          elif grep -q -- 'FAIL	vitess.io' output.txt; then
-              echo "Testcase is failed"
-              exit 1
-          else
-              echo "Testcase is successful"
-          fi
+        # check if any test failed
+        if grep -q -- '--- FAIL' output.txt; then
+            echo "Testcase is failed"
+            exit 1
+        elif grep -q -- 'FAIL	vitess.io' output.txt; then
+            echo "Testcase is failed"
+            exit 1
+        else
+            echo "Testcase is successful"
+        fi

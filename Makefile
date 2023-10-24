@@ -208,6 +208,11 @@ unit_test: build dependency_check
 e2e_test: build
 	tools/wesql_cluster_test.sh
 
+e2e_test_scheduler: build
+	tools/wesql_onlineddl_scheduler.sh
+
+e2e_test_vrepl: build
+	tools/wesql_onlineddl_vrepl.sh
 
 .ONESHELL:
 SHELL = /bin/bash
