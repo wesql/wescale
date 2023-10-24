@@ -52,7 +52,7 @@ var (
 )
 
 const (
-	workflowConfigDir = "../.github/workflows"
+	workflowConfigDir = "../.github/workflows/archive"
 
 	unitTestTemplate = "templates/unit_test.tpl"
 
