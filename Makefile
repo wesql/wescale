@@ -209,6 +209,15 @@ e2e_test: build
 	tools/wesql_cluster_test.sh
 
 
+e2e_test_vrepl_stress: build
+	tools/wesql_onlineddl_vrepl_stress.sh
+
+e2e_test_vrepl_stress_suite: build
+	tools/wesql_onlineddl_vrepl_stress_suite.sh
+
+e2e_test_vrepl_suite: build
+	tools/wesql_onlineddl_vrepl_stress_suite.sh
+
 .ONESHELL:
 SHELL = /bin/bash
 .SHELLFLAGS = -ec

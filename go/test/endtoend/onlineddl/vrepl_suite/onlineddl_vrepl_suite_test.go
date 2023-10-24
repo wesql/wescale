@@ -52,7 +52,7 @@ var (
 	waitForMigrationTimeout = 20 * time.Second
 
 	hostname              = "localhost"
-	keyspaceName          = "ks"
+	keyspaceName          = "mysql"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
 	tableName             = `onlineddl_test`
@@ -106,7 +106,7 @@ func TestMain(m *testing.M) {
 		}
 
 		// No need for replicas in this stress test
-		if err := clusterInstance.StartKeyspace(*keyspace, []string{"1"}, 0, false); err != nil {
+		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0"}, 0, false); err != nil {
 			return 1, err
 		}
 
@@ -118,8 +118,9 @@ func TestMain(m *testing.M) {
 		// ensure it is torn down during cluster TearDown
 		clusterInstance.VtgateProcess = *vtgateInstance
 		vtParams = mysql.ConnParams{
-			Host: clusterInstance.Hostname,
-			Port: clusterInstance.VtgateMySQLPort,
+			Host:   clusterInstance.Hostname,
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: keyspaceName,
 		}
 
 		return m.Run(), nil
