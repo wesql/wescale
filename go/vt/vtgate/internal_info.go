@@ -8,34 +8,41 @@ package vtgate
 import (
 	"context"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/topo/topoproto"
+	"vitess.io/vitess/go/vt/vtorc/inst"
 )
 
 const (
 	InternalInfoKeyEcho       = "echo"
-	InternalInfoKeyTabletInfo = "tablet_info"
+	InternalInfoKeyTabletInfo = "tablet_info_.*"
 )
 
 func GetInternalInfo(key string, e *Executor) (string, error) {
-	switch key {
-	case InternalInfoKeyEcho:
+	if key == InternalInfoKeyEcho {
 		return key, nil
-	case InternalInfoKeyTabletInfo:
-		return GetTabletInfo(e)
-	default:
-		return "", nil
 	}
+	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeyTabletInfo}) {
+		return GetTabletInfo(key, e)
+	}
+	return "", nil
 }
 
-func GetTabletInfo(e *Executor) (string, error) {
+/**
+ * Usage:
+ * set @internal_info_key='tablet_info_zone1-100';
+ * select internal_info();
+ */
+func GetTabletInfo(key string, e *Executor) (string, error) {
 	topoServer, err := e.serv.GetTopoServer()
 	if err != nil {
 		return "", err
 	}
-	tabletInfo, err := topoServer.GetTablet(context.Background(), &topodatapb.TabletAlias{
-		Cell: e.cell,
-		Uid:  uint32(100),
-	})
+	alias, err := topoproto.ParseTabletAlias(key[len("tablet_info_"):])
+	if err != nil {
+		return "", err
+	}
+	tabletInfo, err := topoServer.GetTablet(context.Background(), alias)
+
 	if err != nil {
 		return "", err
 	}
