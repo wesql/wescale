@@ -8,14 +8,16 @@ package vtgate
 import (
 	"context"
 	"encoding/json"
+	"vitess.io/vitess/go/vt/topo"
 
 	"vitess.io/vitess/go/vt/topo/topoproto"
 	"vitess.io/vitess/go/vt/vtorc/inst"
 )
 
 const (
-	InternalInfoKeyEcho       = "echo"
-	InternalInfoKeyTabletInfo = "tablet_info_.*"
+	InternalInfoKeyEcho                     = "echo"
+	InternalInfoKeyTabletInfo               = "tablet_info_.*"
+	InternalInfoKeygetFromGlobalTopoServer_ = "getFromGlobalTopoServer_.*"
 )
 
 func GetInternalInfo(key string, e *Executor) (string, error) {
@@ -24,6 +26,9 @@ func GetInternalInfo(key string, e *Executor) (string, error) {
 	}
 	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeyTabletInfo}) {
 		return GetTabletInfo(key, e)
+	}
+	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeygetFromGlobalTopoServer_}) {
+		return GetFromTopoServer(key, e)
 	}
 	return "", nil
 }
@@ -51,4 +56,21 @@ func GetTabletInfo(key string, e *Executor) (string, error) {
 		return "", err
 	}
 	return string(j), nil
+}
+
+func GetFromTopoServer(key string, e *Executor) (string, error) {
+	topoServer, err := e.serv.GetTopoServer()
+	if err != nil {
+		return "", err
+	}
+	conn, err := topoServer.ConnForCell(context.Background(), topo.GlobalCell)
+	if err != nil {
+		return "", err
+	}
+	filePath := key[len("getFromGlobalTopoServer_"):]
+	data, _, err := conn.Get(context.Background(), filePath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
