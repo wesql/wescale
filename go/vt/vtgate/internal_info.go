@@ -7,6 +7,7 @@ package vtgate
 
 import (
 	"context"
+	"encoding/json"
 
 	"vitess.io/vitess/go/vt/topo/topoproto"
 	"vitess.io/vitess/go/vt/vtorc/inst"
@@ -45,5 +46,9 @@ func GetTabletInfo(key string, e *Executor) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tabletInfo.String(), nil
+	j, err := json.MarshalIndent(tabletInfo, "", "\t")
+	if err != nil {
+		return "", err
+	}
+	return string(j), nil
 }
