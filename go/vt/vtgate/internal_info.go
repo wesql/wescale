@@ -27,11 +27,10 @@ func GetInternalInfo(key string, e *Executor) (string, error) {
 	return "", nil
 }
 
-/**
- * Usage:
- * set @internal_info_key='tablet_info_zone1-100';
- * select internal_info();
- */
+// GetTabletInfo returns the tablet info for the given tablet alias.
+// Usage:
+// set @internal_info_key='tablet_info_zone1-100';
+// select internal_info();
 func GetTabletInfo(key string, e *Executor) (string, error) {
 	topoServer, err := e.serv.GetTopoServer()
 	if err != nil {
