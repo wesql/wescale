@@ -455,6 +455,11 @@ func (e *Executor) execute(ctx context.Context, safeSession *SafeSession, sql st
 
 // addNeededBindVars adds bind vars that are needed by the plan
 func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparser.BindVarNeeds, bindVars map[string]*querypb.BindVariable, session *SafeSession) error {
+	udvMap := session.UserDefinedVariables
+	if udvMap == nil {
+		udvMap = map[string]*querypb.BindVariable{}
+	}
+
 	for _, funcName := range bindVarNeeds.NeedFunctionResult {
 		switch funcName {
 		case sqlparser.DBVarName:
@@ -472,6 +477,16 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			im := callerid.ImmediateCallerIDFromContext(ctx)
 			userAndHost := im.GetUsername() + "@" + im.GetHost()
 			bindVars[sqlparser.CurrentUserName] = sqltypes.StringBindVariable(userAndHost)
+		case sqlparser.InternalInfo:
+			key := udvMap["internal_info_key"]
+			if key == nil {
+				return errors.New("internal_info_key is not set")
+			}
+			res, err := GetInternalInfo(string(key.Value), e)
+			if err != nil {
+				return err
+			}
+			bindVars[sqlparser.InternalInfo] = sqltypes.StringBindVariable(res)
 		}
 	}
 
@@ -572,10 +587,6 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 		}
 	}
 
-	udvMap := session.UserDefinedVariables
-	if udvMap == nil {
-		udvMap = map[string]*querypb.BindVariable{}
-	}
 	for _, udv := range bindVarNeeds.NeedUserDefinedVariables {
 		val := udvMap[udv]
 		if val == nil {

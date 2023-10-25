@@ -71,9 +71,6 @@ func (tr *tableRewriter) rewriteDown(node SQLNode, parent SQLNode) bool {
 			return false
 		}
 		return true
-		// the table information is missing in the stmt.
-		tr.skipUse = false
-		return false
 	case *ColName:
 		return false
 	// DDLStatement
