@@ -48,6 +48,6 @@ func continuousInsertData() {
 	go insertFunc()
 	go insertFunc()
 
-	time.Sleep(100 * time.Second)
+	time.Sleep(3600 * time.Second)
 	cancel()
 }
