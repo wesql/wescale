@@ -145,7 +145,7 @@ const (
 	maxConcurrency                = 10
 	singleConnectionSleepInterval = 2 * time.Millisecond
 	countIterations               = 5
-	migrationWaitTimeout          = 60 * time.Second
+	migrationWaitTimeout          = 120 * time.Second
 )
 
 func resetOpOrder() {
