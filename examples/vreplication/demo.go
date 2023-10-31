@@ -23,8 +23,8 @@ func submitVReplication(sourceDb, targetDb string, tables []string) error {
 	for _, table := range tables {
 		bls.Filter.Rules = append(bls.Filter.Rules,
 			&binlogdatapb.Rule{
-				Match:  table,
-				Filter: "select `c1` as `c1`, `c2` as `c2`, `c3` as `c3` from `t1`",
+				Match: table,
+				//Filter: "select `c1` as `c1`, `c2` as `c2`, `c3` as `c3` from `t1`",
 			})
 	}
 	val := sqltypes.NewVarBinary(fmt.Sprintf("%v", bls))
@@ -38,10 +38,10 @@ func submitVReplication(sourceDb, targetDb string, tables []string) error {
 	cmd := fmt.Sprintf("vtctlclient --server localhost:15999 VReplicationExec '%s' \"%s\"", cell, query)
 	fmt.Println("======cmd======\n", cmd)
 
-	err := executeBash(cmd)
-	if err != nil {
-		return err
-	}
+	//err := executeBash(cmd)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
