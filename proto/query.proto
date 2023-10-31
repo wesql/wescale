@@ -1061,7 +1061,8 @@ message SetFailPointResponse{
 }
 
 message DropSchemaRequest {
-  string schemaName = 1;
+  Target target = 1;
+  string schemaName = 2;
 }
 
 message DropSchemaResponse {

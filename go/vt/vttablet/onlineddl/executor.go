@@ -1398,6 +1398,22 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 	return onlineDDL, row, nil
 }
 
+func (e *Executor) deleteMigration(ctx context.Context, uuid string) error {
+	parsed := sqlparser.BuildParsedQuery(sqlDeleteOnlineDDL, ":migration_uuid")
+	bindVars := map[string]*querypb.BindVariable{
+		"migration_uuid": sqltypes.StringBindVariable(uuid),
+	}
+	bound, err := parsed.GenerateQuery(bindVars, nil)
+	if err != nil {
+		return err
+	}
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // readPendingMigrationsUUIDs returns UUIDs for migrations in pending state (queued/ready/running)
 func (e *Executor) readPendingMigrationsUUIDs(ctx context.Context) (uuids []string, err error) {
 	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
@@ -3809,7 +3825,11 @@ func (e *Executor) OnDropSchema(ctx context.Context, schemaName string) (err err
 		return err
 	}
 	for _, uuid := range uuidList {
-		e.CancelMigration(ctx, uuid, "cancel by dropping database", false)
+		_, err := e.CancelMigration(ctx, uuid, "cancel by dropping database", false)
+		if err != nil {
+			return err
+		}
+		e.deleteMigration(ctx, uuid)
 	}
 	return err
 }

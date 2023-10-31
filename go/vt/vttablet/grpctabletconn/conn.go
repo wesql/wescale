@@ -1102,6 +1102,7 @@ func (conn *gRPCQueryClient) DropSchema(ctx context.Context, target *querypb.Tar
 	}
 
 	_, err := conn.c.DropSchema(ctx, &querypb.DropSchemaRequest{
+		Target:     target,
 		SchemaName: schemaName,
 	})
 	if err != nil {

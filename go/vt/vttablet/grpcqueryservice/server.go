@@ -511,6 +511,13 @@ func (q *query) GetSchema(request *querypb.GetSchemaRequest, stream queryservice
 	return vterrors.ToGRPC(err)
 }
 
+func (q *query) DropSchema(ctx context.Context, request *querypb.DropSchemaRequest) (resp *querypb.DropSchemaResponse, err error) {
+	defer q.server.HandlePanic(&err)
+	err = q.server.DropSchema(ctx, request.Target, request.SchemaName)
+	err = vterrors.ToGRPC(err)
+	return &querypb.DropSchemaResponse{}, err
+}
+
 func (q *query) SetFailPoint(ctx context.Context, request *querypb.SetFailPointRequest) (*querypb.SetFailPointResponse, error) {
 	return nil, q.server.SetFailPoint(ctx, request.Command, request.Key, request.Value)
 }

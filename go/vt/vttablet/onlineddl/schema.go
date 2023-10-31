@@ -45,6 +45,7 @@ const (
 	) VALUES (
 		%a, %a, %a, %a, %a, %a, %a, %a, %a, NOW(6), %a, %a, %a, %a, %a, %a, %a, %a, %a
 	)`
+	sqlDeleteOnlineDDL = "DELETE FROM mysql.schema_migrations where migration_uuid=%a"
 
 	sqlSelectQueuedMigrations = `SELECT
 			migration_uuid,
