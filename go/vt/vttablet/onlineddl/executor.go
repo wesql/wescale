@@ -1771,10 +1771,12 @@ func (e *Executor) reviewQueuedMigrations(ctx context.Context) error {
 		isView := row.AsBool("is_view", false)
 		isImmediate, err := e.reviewImmediateOperations(ctx, capableOf, onlineDDL, ddlAction, isRevert, isView)
 		if err != nil {
+			e.failMigration(ctx, onlineDDL, err)
 			return err
 		}
 		if isImmediate {
 			if err := e.updateMigrationSetImmediateOperation(ctx, onlineDDL.UUID); err != nil {
+				e.failMigration(ctx, onlineDDL, err)
 				return err
 			}
 		}
