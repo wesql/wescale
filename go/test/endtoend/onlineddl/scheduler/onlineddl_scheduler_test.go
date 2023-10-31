@@ -278,7 +278,7 @@ func testScheduler(t *testing.T) {
 
 	mysqlVersion := onlineddl.GetMySQLVersion(t, clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet())
 	require.NotEmpty(t, mysqlVersion)
-	_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
+	//_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
 
 	var (
 		t1uuid string
@@ -821,7 +821,7 @@ func testScheduler(t *testing.T) {
 		})
 	})
 	// in-order-completion
-	t.Run("alter non-exist table before alter exist table", func(t *testing.T) {
+	t.Run("alter non-exist table before ", func(t *testing.T) {
 		t.Run("alter non-exist table, it should be fail", func(t *testing.T) {
 			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vegate", "", "", false))
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusFailed)
