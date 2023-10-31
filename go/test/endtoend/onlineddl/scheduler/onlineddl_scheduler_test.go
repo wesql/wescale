@@ -278,14 +278,15 @@ func testScheduler(t *testing.T) {
 
 	mysqlVersion := onlineddl.GetMySQLVersion(t, clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet())
 	require.NotEmpty(t, mysqlVersion)
-	//_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
+	_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
 
 	var (
 		t1uuid string
 		t2uuid string
 
-		t1Name            = "t1_test"
-		t2Name            = "t2_test"
+		t1Name = "t1_test"
+		t2Name = "t2_test"
+
 		createT1Statement = `
 			CREATE TABLE t1_test (
 				id bigint(20) not null,
@@ -312,6 +313,9 @@ func testScheduler(t *testing.T) {
 		`
 		trivialAlterT2Statement = `
 			ALTER TABLE t2_test ENGINE=InnoDB;
+		`
+		trivialAlterT3Statement = `
+			ALTER TABLE t3_test ENGINE=InnoDB;
 		`
 		instantAlterT1Statement = `
 			ALTER TABLE t1_test ADD COLUMN i0 INT NOT NULL DEFAULT 0;
@@ -753,99 +757,28 @@ func testScheduler(t *testing.T) {
 		})
 	})
 
-	//t.Run("Idempotent submission, retry failed migration", func(t *testing.T) {
-	//	uuid := "00000000_1111_2222_3333_444444444444"
-	//	overrideVtctlParams = &cluster.VtctlClientParams{DDLStrategy: ddlStrategy, SkipPreflight: true, UUIDList: uuid, MigrationContext: "idempotent:1111-2222-3333"}
-	//	defer func() { overrideVtctlParams = nil }()
-	//	// create a migration and cancel it. We don't let it complete. We want it in "failed" state
-	//	t.Run("start and fail migration", func(t *testing.T) {
-	//		executedUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, ddlStrategy+" -postpone-completion", "vtctl", "", "", true)) // skip wait
-	//		require.Equal(t, uuid, executedUUID)
-	//		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusRunning)
-	//		// let's cancel it
-	//		onlineddl.CheckCancelMigration(t, &vtParams, shards, uuid, true)
-	//		status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusFailed, schema.OnlineDDLStatusCancelled)
-	//		fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusCancelled)
-	//	})
-	//
-	//	// now, we submit the exact same migratoin again: same UUID, same migration context.
-	//	t.Run("resubmit migration", func(t *testing.T) {
-	//		executedUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, ddlStrategy, "vtctl", "", "", true)) // skip wait
-	//		require.Equal(t, uuid, executedUUID)
-	//
-	//		// expect it to complete
-	//		status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-	//		fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
-	//
-	//		rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
-	//		require.NotNil(t, rs)
-	//		for _, row := range rs.Named().Rows {
-	//			retries := row.AsInt64("retries", 0)
-	//			assert.Greater(t, retries, int64(0))
-	//		}
-	//	})
-	//})
-	//
-	//t.Run("Idempotent submission, retry failed migration in singleton context", func(t *testing.T) {
-	//	uuid := "00000000_1111_3333_3333_444444444444"
-	//	ddlStrategy := ddlStrategy + " --singleton-context"
-	//	overrideVtctlParams = &cluster.VtctlClientParams{DDLStrategy: ddlStrategy, SkipPreflight: true, UUIDList: uuid, MigrationContext: "idempotent:1111-3333-3333"}
-	//	defer func() { overrideVtctlParams = nil }()
-	//	// create a migration and cancel it. We don't let it complete. We want it in "failed" state
-	//	t.Run("start and fail migration", func(t *testing.T) {
-	//		executedUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, ddlStrategy+" --postpone-completion", "vtctl", "", "", true)) // skip wait
-	//		require.Equal(t, uuid, executedUUID)
-	//		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusRunning)
-	//		// let's cancel it
-	//		onlineddl.CheckCancelMigration(t, &vtParams, shards, uuid, true)
-	//		status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusFailed, schema.OnlineDDLStatusCancelled)
-	//		fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusCancelled)
-	//	})
-	//
-	//	// now, we submit the exact same migratoin again: same UUID, same migration context.
-	//	t.Run("resubmit migration", func(t *testing.T) {
-	//		executedUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, ddlStrategy, "vtctl", "", "", true)) // skip wait
-	//		require.Equal(t, uuid, executedUUID)
-	//
-	//		// expect it to complete
-	//		status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-	//		fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
-	//
-	//		rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
-	//		require.NotNil(t, rs)
-	//		for _, row := range rs.Named().Rows {
-	//			retries := row.AsInt64("retries", 0)
-	//			assert.Greater(t, retries, int64(0))
-	//		}
-	//	})
-	//})
-
 	// INSTANT DDL
-	//instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
-	//require.NoError(t, err)
-	//if instantDDLCapable {
-	//t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
-	//	t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
-	//
-	//	t.Run("expect t1 queued", func(t *testing.T) {
-	//		// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
-	//		time.Sleep(ensureStateNotChangedTime)
-	//		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-	//	})
-	//	t.Run("complete t1", func(t *testing.T) {
-	//		// Issue a complete and wait for successful completion
-	//		onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
-	//		status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-	//		fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//		onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
-	//	})
-	//})
-	//}
+	instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
+	require.NoError(t, err)
+	if instantDDLCapable {
+		t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
+			t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
+
+			t.Run("expect t1 queued", func(t *testing.T) {
+				// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
+				time.Sleep(ensureStateNotChangedTime)
+				onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+			})
+			t.Run("complete t1", func(t *testing.T) {
+				// Issue a complete and wait for successful completion
+				onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+			})
+		})
+	}
 	// 'mysql' strategy
 	t.Run("mysql strategy", func(t *testing.T) {
 		t.Run("declarative", func(t *testing.T) {
@@ -888,6 +821,20 @@ func testScheduler(t *testing.T) {
 		})
 	})
 	// in-order-completion
+	t.Run("alter non-exist table before alter exist table", func(t *testing.T) {
+		t.Run("alter non-exist table, it should be fail", func(t *testing.T) {
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vegate", "", "", false))
+			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusFailed)
+			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusFailed)
+		})
+		t.Run("alter exist table, it should be completed", func(t *testing.T) {
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "online", "vegate", "", "", false))
+			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusComplete)
+		})
+	})
 	//t.Run("in-order-completion: multiple drops for nonexistent tables and views", func(t *testing.T) {
 	//	u, err := schema.CreateOnlineDDLUUID()
 	//	require.NoError(t, err)
@@ -901,7 +848,7 @@ func testScheduler(t *testing.T) {
 	//	sql := strings.Join(sqls, ";")
 	//	var vuuids []string
 	//	t.Run("drop multiple tables and views, in-order-completion", func(t *testing.T) {
-	//		uuidList := testOnlineDDLStatement(t, createParams(sql, ddlStrategy+" --allow-concurrent --in-order-completion", "vtctl", "", "", true)) // skip wait
+	//		uuidList := testOnlineDDLStatement(t, createParams(sql, ddlStrategy+" --allow-concurrent --in-order-completion", "vtgate", "", "", true)) // skip wait
 	//		vuuids = strings.Split(uuidList, "\n")
 	//		assert.Equal(t, 4, len(vuuids))
 	//		for _, uuid := range vuuids {
