@@ -13,11 +13,14 @@ import (
 )
 
 func main() {
-	continuousInsertData()
+	createDatabaseIfNotExists("root@tcp(127.0.0.1:15306)/mysql", "d2")
+	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online", "create table t1 (c1 int primary key auto_increment, c2 int)")
+	continuousInsertData("root@tcp(127.0.0.1:15306)/d2", "insert into t1(c1, c2) values(null, 1)", 5, 300*time.Second)
+	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online", "alter table t1 add column c3 int")
 }
 
-func continuousInsertData() {
-	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:15306)/d2")
+func continuousInsertData(dsn string, insertSQL string, parallelism int, duration time.Duration) {
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -25,29 +28,27 @@ func continuousInsertData() {
 
 	ctx := context.Background()
 	conn, err := db.Conn(ctx)
+	defer conn.Close()
 	if err != nil {
 		panic(err.Error())
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
+	cancelCtx, cancel := context.WithCancel(context.Background())
 
 	insertFunc := func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-cancelCtx.Done():
 				return
 			default:
-				conn.ExecContext(ctx, "insert into t1(c1, c2) values(null, 1)")
+				conn.ExecContext(cancelCtx, insertSQL)
 			}
 		}
 	}
 
-	go insertFunc()
-	go insertFunc()
-	go insertFunc()
-	go insertFunc()
-	go insertFunc()
-
-	time.Sleep(3600 * time.Second)
+	for i := 1; i <= parallelism; i++ {
+		go insertFunc()
+	}
+	time.Sleep(duration)
 	cancel()
 }
