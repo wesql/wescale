@@ -82,7 +82,7 @@ var (
 	directDDLStrategy     = "direct"
 	onlineDDLStrategy     = "vitess -vreplication-test-suite -skip-topo"
 	hostname              = "localhost"
-	keyspaceName          = "ks"
+	keyspaceName          = "mysql"
 	cell                  = "zone1"
 	shards                []cluster.Shard
 	opOrder               int64
@@ -457,7 +457,7 @@ func TestMain(m *testing.M) {
 		}
 
 		// No need for replicas in this stress test
-		if err := clusterInstance.StartKeyspace(*keyspace, []string{"1"}, 0, false); err != nil {
+		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0"}, 0, false); err != nil {
 			return 1, err
 		}
 
@@ -469,8 +469,9 @@ func TestMain(m *testing.M) {
 		// ensure it is torn down during cluster TearDown
 		clusterInstance.VtgateProcess = *vtgateInstance
 		vtParams = mysql.ConnParams{
-			Host: clusterInstance.Hostname,
-			Port: clusterInstance.VtgateMySQLPort,
+			Host:   clusterInstance.Hostname,
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: keyspaceName,
 		}
 
 		return m.Run(), nil

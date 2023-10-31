@@ -2982,7 +2982,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 
 					isReady, err := e.isVReplMigrationReadyToCutOver(ctx, s)
 					if err != nil {
-						_ = e.updateMigrationMessage(ctx, uuid, err.Error())
+						_ = e.updateMigrationMessage(ctx, uuid, fmt.Sprintf("isVReplMigrationReadyToCutOver failed: err=%v", err))
 						return countRunnning, cancellable, err
 					}
 					if isReady && isVreplicationTestSuite {
@@ -3008,7 +3008,7 @@ func (e *Executor) reviewRunningMigrations(ctx context.Context) (countRunnning i
 					}
 					if isReady {
 						if err := e.cutOverVReplMigration(ctx, s); err != nil {
-							_ = e.updateMigrationMessage(ctx, uuid, err.Error())
+							_ = e.updateMigrationMessage(ctx, uuid, fmt.Sprintf("cutOverVReplMigration failed: err=%v", err))
 							log.Errorf("cutOverVReplMigration failed: err=%v", err)
 							if merr, ok := err.(*mysql.SQLError); ok {
 								switch merr.Num {

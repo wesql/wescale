@@ -214,6 +214,15 @@ e2e_test_scheduler: build
 e2e_test_vrepl: build
 	tools/wesql_onlineddl_vrepl.sh
 
+e2e_test_vrepl_stress: build
+	tools/wesql_onlineddl_vrepl_stress.sh
+
+e2e_test_vrepl_stress_suite: build
+	tools/wesql_onlineddl_vrepl_stress_suite.sh
+
+e2e_test_vrepl_suite: build
+	tools/wesql_onlineddl_vrepl_stress_suite.sh
+
 .ONESHELL:
 SHELL = /bin/bash
 .SHELLFLAGS = -ec
