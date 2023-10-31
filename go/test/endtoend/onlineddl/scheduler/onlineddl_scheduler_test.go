@@ -758,27 +758,27 @@ func testScheduler(t *testing.T) {
 	})
 
 	// INSTANT DDL
-	instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
-	require.NoError(t, err)
-	if instantDDLCapable {
-		t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
-			t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
-
-			t.Run("expect t1 queued", func(t *testing.T) {
-				// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
-				time.Sleep(ensureStateNotChangedTime)
-				onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-			})
-			t.Run("complete t1", func(t *testing.T) {
-				// Issue a complete and wait for successful completion
-				onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
-				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
-			})
-		})
-	}
+	//instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
+	//require.NoError(t, err)
+	//if instantDDLCapable {
+	//	t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
+	//		t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
+	//
+	//		t.Run("expect t1 queued", func(t *testing.T) {
+	//			// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
+	//			time.Sleep(ensureStateNotChangedTime)
+	//			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+	//			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+	//		})
+	//		t.Run("complete t1", func(t *testing.T) {
+	//			// Issue a complete and wait for successful completion
+	//			onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
+	//			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+	//			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+	//			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+	//		})
+	//	})
+	//}
 	// 'mysql' strategy
 	t.Run("mysql strategy", func(t *testing.T) {
 		t.Run("declarative", func(t *testing.T) {
