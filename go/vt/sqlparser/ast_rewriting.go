@@ -318,6 +318,8 @@ const (
 
 	// CurrentUserName is a reserved bind var name for current_user()
 	CurrentUserName = "__vtcun"
+
+	InternalInfo = "__internal_info"
 )
 
 func (er *astRewriter) rewriteAliasedExpr(node *AliasedExpr) (*BindVarNeeds, error) {
@@ -578,6 +580,7 @@ var funcRewrites = map[string]string{
 	"row_count":           RowCountName,
 	"current_user":        CurrentUserName,
 	"jaeger_span_context": JaegerSpanContextName,
+	"internal_info":       InternalInfo,
 }
 
 func (er *astRewriter) funcRewrite(cursor *Cursor, node *FuncExpr) {
