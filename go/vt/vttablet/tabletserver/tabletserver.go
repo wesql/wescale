@@ -1462,6 +1462,20 @@ func (tsv *TabletServer) GetSchema(ctx context.Context, target *querypb.Target, 
 	return
 }
 
+func (tsv *TabletServer) DropSchema(ctx context.Context, target *querypb.Target, schemaName string) (err error) {
+	err = tsv.execRequest(
+		ctx, tsv.QueryTimeout.Get(),
+		"DropSchema", "", nil,
+		target, nil, false, /* allowOnShutdown */
+		func(ctx context.Context, logStats *tabletenv.LogStats) error {
+			defer tsv.stats.QueryTimings.Record("DropSchema", time.Now())
+			tsv.onlineDDLExecutor.OnDropSchema(ctx, schemaName)
+			return nil
+		},
+	)
+	return
+}
+
 func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key string, value string) error {
 	var err error
 	switch command {

@@ -350,6 +350,13 @@ func (ws *wrappedService) GetSchema(ctx context.Context, target *querypb.Target,
 	return err
 }
 
+func (ws *wrappedService) DropSchema(ctx context.Context, target *querypb.Target, schemaName string) error {
+	return ws.wrapper(ctx, target, ws.impl, "DropSchema", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
+		innerErr := conn.DropSchema(ctx, target, schemaName)
+		return canRetry(ctx, innerErr), innerErr
+	})
+}
+
 func (ws *wrappedService) Close(ctx context.Context) error {
 	return ws.wrapper(ctx, nil, ws.impl, "Close", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
 		// No point retrying Close.

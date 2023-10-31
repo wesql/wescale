@@ -609,6 +609,10 @@ func (sbc *SandboxConn) GetSchema(ctx context.Context, target *querypb.Target, t
 	return callback(&querypb.GetSchemaResponse{TableDefinition: resp})
 }
 
+func (sbc *SandboxConn) DropSchema(ctx context.Context, target *querypb.Target, schemaName string) error {
+	return nil
+}
+
 // SetFailPoint dynamically inject fail-point
 func (sbc *SandboxConn) SetFailPoint(ctx context.Context, command string, key string, value string) error {
 	var err error

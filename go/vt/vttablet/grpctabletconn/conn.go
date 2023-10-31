@@ -1093,6 +1093,23 @@ func (conn *gRPCQueryClient) GetSchema(ctx context.Context, target *querypb.Targ
 		}
 	}
 }
+
+func (conn *gRPCQueryClient) DropSchema(ctx context.Context, target *querypb.Target, schemaName string) error {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return tabletconn.ConnClosed
+	}
+
+	_, err := conn.c.DropSchema(ctx, &querypb.DropSchemaRequest{
+		SchemaName: schemaName,
+	})
+	if err != nil {
+		return tabletconn.ErrorFromGRPC(err)
+	}
+	return nil
+}
+
 func (conn *gRPCQueryClient) GetUser(ctx context.Context, target *querypb.Target) (*sqltypes.Result, error) {
 	return nil, nil
 }

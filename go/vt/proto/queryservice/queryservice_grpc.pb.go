@@ -87,6 +87,8 @@ type QueryClient interface {
 	// GetSchema returns the schema information.
 	GetSchema(ctx context.Context, in *query.GetSchemaRequest, opts ...grpc.CallOption) (Query_GetSchemaClient, error)
 	SetFailPoint(ctx context.Context, in *query.SetFailPointRequest, opts ...grpc.CallOption) (*query.SetFailPointResponse, error)
+	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
+	DropSchema(ctx context.Context, in *query.DropSchemaRequest, opts ...grpc.CallOption) (*query.DropSchemaResponse, error)
 }
 
 type queryClient struct {
@@ -588,6 +590,15 @@ func (c *queryClient) SetFailPoint(ctx context.Context, in *query.SetFailPointRe
 	return out, nil
 }
 
+func (c *queryClient) DropSchema(ctx context.Context, in *query.DropSchemaRequest, opts ...grpc.CallOption) (*query.DropSchemaResponse, error) {
+	out := new(query.DropSchemaResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/DropSchema", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
@@ -655,6 +666,8 @@ type QueryServer interface {
 	// GetSchema returns the schema information.
 	GetSchema(*query.GetSchemaRequest, Query_GetSchemaServer) error
 	SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error)
+	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
+	DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -748,6 +761,9 @@ func (UnimplementedQueryServer) GetSchema(*query.GetSchemaRequest, Query_GetSche
 }
 func (UnimplementedQueryServer) SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetFailPoint not implemented")
+}
+func (UnimplementedQueryServer) DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DropSchema not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -1314,6 +1330,24 @@ func _Query_SetFailPoint_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_DropSchema_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.DropSchemaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).DropSchema(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/queryservice.Query/DropSchema",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).DropSchema(ctx, req.(*query.DropSchemaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1396,6 +1430,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetFailPoint",
 			Handler:    _Query_SetFailPoint_Handler,
+		},
+		{
+			MethodName: "DropSchema",
+			Handler:    _Query_DropSchema_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

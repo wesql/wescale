@@ -689,6 +689,12 @@ func (itc *internalTabletConn) GetSchema(ctx context.Context, target *querypb.Ta
 	err := itc.tablet.qsc.QueryService().GetSchema(ctx, target, tableType, tableNames, callback)
 	return tabletconn.ErrorFromGRPC(vterrors.ToGRPC(err))
 }
+
+func (itc *internalTabletConn) DropSchema(ctx context.Context, target *querypb.Target, schemaName string) error {
+	err := itc.tablet.qsc.QueryService().DropSchema(ctx, target, schemaName)
+	return tabletconn.ErrorFromGRPC(vterrors.ToGRPC(err))
+}
+
 func (itc *internalTabletConn) SetFailPoint(ctx context.Context, command string, key string, value string) error {
 	return itc.tablet.qsc.QueryService().SetFailPoint(ctx, command, key, value)
 }
