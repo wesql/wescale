@@ -410,6 +410,13 @@ const (
 			migration_status='ready'
 		ORDER BY id
 	`
+	sqlSelectMigrationsBySchemaName = `SELECT
+			migration_uuid
+		FROM mysql.schema_migrations
+		WHERE
+			mysql_schema=%a
+		ORDER BY id
+	`
 	sqlSelectColumnTypes = `
 		select
 				*,

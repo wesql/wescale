@@ -3797,9 +3797,40 @@ func (e *Executor) CleanupMigration(ctx context.Context, uuid string) (result *s
 	return rs, nil
 }
 
-func (e *Executor) OnDropSchema(ctx context.Context, uuid string) (err error) {
-	//todo OnDropSchema
+func (e *Executor) OnDropSchema(ctx context.Context, schemaName string) (err error) {
+	if atomic.LoadInt64(&e.isOpen) == 0 {
+		return vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
+	}
+	if schemaName == "" {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "schema name cannot be empty")
+	}
+	uuidList, err := e.readMigrationsBySchemaName(ctx, schemaName)
+	if err != nil {
+		return err
+	}
+	for _, uuid := range uuidList {
+		e.CancelMigration(ctx, uuid, "cancel by dropping database", false)
+	}
 	return err
+}
+
+func (e *Executor) readMigrationsBySchemaName(ctx context.Context, schemaName string) ([]string, error) {
+	query, err := sqlparser.ParseAndBind(sqlSelectMigrationsBySchemaName,
+		sqltypes.StringBindVariable(schemaName),
+	)
+	if err != nil {
+		return nil, err
+	}
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
+	if err != nil {
+		return nil, err
+	}
+	uuidResult := make([]string, 0, len(rs.Rows))
+	for _, row := range rs.Named().Rows {
+		uuid := row["migration_uuid"].ToString()
+		uuidResult = append(uuidResult, uuid)
+	}
+	return uuidResult, nil
 }
 
 // CompleteMigration clears the postpone_completion flag for a given migration, assuming it was set in the first place

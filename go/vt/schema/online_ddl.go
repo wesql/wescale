@@ -87,6 +87,14 @@ const (
 	OnlineDDLStatusFailed    OnlineDDLStatus = "failed"
 )
 
+func IsOnlineDDLStatusTerminated(status OnlineDDLStatus) bool {
+	switch status {
+	case OnlineDDLStatusComplete, OnlineDDLStatusFailed, OnlineDDLStatusCancelled:
+		return true
+	}
+	return false
+}
+
 // OnlineDDL encapsulates the relevant information in an online schema change request
 type OnlineDDL struct {
 	Keyspace         string          `json:"keyspace,omitempty"`
