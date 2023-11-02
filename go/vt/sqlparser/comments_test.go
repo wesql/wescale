@@ -26,13 +26,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
-
-	"github.com/stretchr/testify/assert"
+	"vitess.io/vitess/go/vt/topo/topoproto"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
 )
 
 func TestSplitComments(t *testing.T) {
@@ -570,6 +570,73 @@ func TestGetNodeType(t *testing.T) {
 			got := GetNodeType(stmt)
 			if got != tt.want {
 				t.Errorf("GetNodeType(%s) = %v, want %v", tt.sql, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetTabletAlias(t *testing.T) {
+	tests := []struct {
+		name          string
+		sql           string
+		expectedAlias *tabletpb.TabletAlias
+		expectedError error
+	}{
+		{
+			name:          "Select with valid Tablet Alias",
+			sql:           "SELECT /*vt+ TABLET_ALIAS=zone1-0000000101 */ * from user",
+			expectedAlias: &tabletpb.TabletAlias{Cell: "zone1", Uid: 101},
+		},
+		{
+			name:          "Select with invalid directive",
+			sql:           "SELECT /*vt+ TABLET_ALIAS=FOOBAR */ * from user",
+			expectedError: fmt.Errorf(""),
+		},
+		{
+			name: "Select with other directive",
+			sql:  "SELECT /*vt+ ROLE=FOOBAR */ * from user",
+		},
+		{
+			name: "Show with tablet alias directive",
+			sql:  "SHOW /*vt+ TABLET_ALIAS=FOOBAR */ databases",
+		},
+		{
+			name:          "Insert with valid Tablet Alias",
+			sql:           "INSERT /*vt+ TABLET_ALIAS=zone1-0000000101 */ INTO user (id, name) VALUES (1, 'Alice')",
+			expectedAlias: &tabletpb.TabletAlias{Cell: "zone1", Uid: 101},
+		},
+		{
+			name:          "Update with valid Tablet Alias",
+			sql:           "UPDATE /*vt+ TABLET_ALIAS=zone1-0000000101 */ user SET name='Bob' WHERE id=1",
+			expectedAlias: &tabletpb.TabletAlias{Cell: "zone1", Uid: 101},
+		},
+		{
+			name:          "Delete with valid Tablet Alias",
+			sql:           "DELETE /*vt+ TABLET_ALIAS=zone1-0000000101 */ FROM user WHERE id=1",
+			expectedAlias: &tabletpb.TabletAlias{Cell: "zone1", Uid: 101},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stmt, err := Parse(tt.sql)
+			if err != nil {
+				t.Fatalf("Failed to parse SQL statement: %v", err)
+			}
+			alias, err := GetTabletAlias(stmt)
+			if err != nil {
+				if tt.expectedError == nil {
+					t.Errorf("For SQL '%v': expected success but got error: %v", tt.sql, err)
+				}
+			} else if tt.expectedError != nil {
+				t.Errorf("For SQL '%v': expected error %v, but got nil", tt.sql, tt.expectedError)
+			} else if alias == nil {
+				if tt.expectedAlias != nil {
+					t.Errorf("For SQL '%v': expected alias %v but got nil", tt.sql, tt.expectedAlias.String())
+				}
+			} else if tt.expectedAlias == nil {
+				t.Errorf("For SQL '%v': expected nil alias but got %v", tt.sql, alias.String())
+			} else if !topoproto.TabletAliasEqual(alias, tt.expectedAlias) {
+				t.Errorf("For SQL '%v': expected alias %v but got %v", tt.sql, tt.expectedAlias.String(), alias.String())
 			}
 		})
 	}

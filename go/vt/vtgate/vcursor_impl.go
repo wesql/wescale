@@ -107,6 +107,7 @@ type vcursorImpl struct {
 	safeSession    *SafeSession
 	keyspace       string
 	tabletType     topodatapb.TabletType
+	tabletAlias    *topodatapb.TabletAlias
 	destination    key.Destination
 	marginComments sqlparser.MarginComments
 	executor       iExecute
@@ -673,7 +674,7 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 }
 
 func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace string, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
-	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, vc.tabletType, destination)
+	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, vc.tabletType, vc.tabletAlias, destination)
 	return result, nil
 }
 
@@ -1224,4 +1225,14 @@ func (vc *vcursorImpl) FindRoutedShard(keyspace, shard string) (keyspaceName str
 
 func (vc *vcursorImpl) IsViewsEnabled() bool {
 	return enableViews
+}
+
+// SetTabletAliasFromHint specifies the tablet alias to route the query to.
+// If a transaction is active, the hint will be rejected.
+func (vc *vcursorImpl) SetTabletAliasFromHint(tabletAlias *topodatapb.TabletAlias) error {
+	if tabletAlias != nil && vc.safeSession.InTransaction() {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.LockOrActiveTransaction, "can't execute the given command because you have an active transaction")
+	}
+	vc.tabletAlias = tabletAlias
+	return nil
 }

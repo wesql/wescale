@@ -281,9 +281,12 @@ func TestResolveDefaultDestinations(t *testing.T) {
 		name string
 
 		destination      key.Destination
+		tabletAlias      *topodatapb.TabletAlias
 		errString        string
 		expectedShard    string
 		expectedKeySpace string
+		expectedCell     string
+		expectedUID      uint32
 	}{
 		{
 			name:             "unsharded keyspace, no keyspace",
@@ -291,10 +294,22 @@ func TestResolveDefaultDestinations(t *testing.T) {
 			expectedShard:    "0",
 			expectedKeySpace: "",
 		},
+		{
+			name:        "with alias",
+			destination: key.DestinationShard("0"),
+			tabletAlias: &topodatapb.TabletAlias{
+				Cell: "cell1",
+				Uid:  1,
+			},
+			expectedShard:    "0",
+			expectedKeySpace: "",
+			expectedCell:     "cell1",
+			expectedUID:      1,
+		},
 	}
 	for _, testCase := range testCases {
 		ctx := context.Background()
-		rss, _ := resolver.ResolveDefaultDestination(ctx, "", topodatapb.TabletType_PRIMARY, testCase.destination)
+		rss, _ := resolver.ResolveDefaultDestination(ctx, "", topodatapb.TabletType_PRIMARY, testCase.tabletAlias, testCase.destination)
 
 		// Check the ResolvedShard are correct.
 		if len(rss) != 1 {
@@ -307,6 +322,12 @@ func TestResolveDefaultDestinations(t *testing.T) {
 			}
 			if rs.Target.Keyspace != testCase.expectedKeySpace {
 				t.Errorf("%v: expected rss[%v] keyspace to be '%v', but got: %v", testCase.name, i, testCase.expectedShard, rs.Target.Shard)
+			}
+			if rs.Target.Cell != testCase.expectedCell {
+				t.Errorf("%v: expected rss[%v] cell to be '%v', but got: %v", testCase.name, i, testCase.expectedCell, rs.Target.Cell)
+			}
+			if rs.Target.Uid != testCase.expectedUID {
+				t.Errorf("%v: expected rss[%v] uid to be '%v', but got: %v", testCase.name, i, testCase.expectedUID, rs.Target.Uid)
 			}
 		}
 	}

@@ -332,7 +332,7 @@ func (r *Resolver) ResolveDestination(ctx context.Context, keyspace string, tabl
 }
 
 // ResolveDefaultDestination resolves values and default destination without keyspace into the respective.
-func (r *Resolver) ResolveDefaultDestination(ctx context.Context, keyspace string, tabletType topodatapb.TabletType, destination key.Destination) ([]*ResolvedShard, error) {
+func (r *Resolver) ResolveDefaultDestination(ctx context.Context, keyspace string, tabletType topodatapb.TabletType, tabletAlias *topodatapb.TabletAlias, destination key.Destination) ([]*ResolvedShard, error) {
 	var result []*ResolvedShard
 	_, _, allShards, err := r.GetKeyspaceShards(ctx, global.DefaultKeyspace, tabletType)
 	if err != nil {
@@ -350,6 +350,10 @@ func (r *Resolver) ResolveDefaultDestination(ctx context.Context, keyspace strin
 		// Later we can fallback to another cell if needed.
 		// We would then need to read the SrvKeyspace there too.
 		target.Cell = ""
+		if tabletAlias != nil {
+			target.Cell = tabletAlias.Cell
+			target.Uid = tabletAlias.Uid
+		}
 		result = append(result, &ResolvedShard{
 			Target:  target,
 			Gateway: r.gateway,
