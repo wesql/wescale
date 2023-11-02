@@ -82,6 +82,7 @@ var (
 
 	hostname              = "localhost"
 	keyspaceName          = "mysql"
+	DBName                = "test"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
 	overrideVtctlParams   *cluster.VtctlClientParams
@@ -171,6 +172,16 @@ func TestParseTableName(t *testing.T) {
 	}
 }
 
+func initSchema(t *testing.T) {
+	createSchemaSQL := "create database %s"
+	createVtParams := mysql.ConnParams{
+		Host: clusterInstance.Hostname,
+		Port: clusterInstance.VtgateMySQLPort,
+	}
+	query := onlineddl.VtgateExecQuery(t, &createVtParams, fmt.Sprintf(createSchemaSQL, DBName), "")
+	require.Equal(t, 1, int(query.RowsAffected))
+}
+
 func TestMain(m *testing.M) {
 	defer cluster.PanicHandler(nil)
 	flag.Parse()
@@ -224,9 +235,8 @@ func TestMain(m *testing.M) {
 		vtParams = mysql.ConnParams{
 			Host:   clusterInstance.Hostname,
 			Port:   clusterInstance.VtgateMySQLPort,
-			DbName: "mysql",
+			DbName: DBName,
 		}
-
 		return m.Run(), nil
 	}()
 	if err != nil {
@@ -239,6 +249,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSchemaChange(t *testing.T) {
+	t.Run("initSchema", initSchema)
 	t.Run("scheduler", testScheduler)
 	//t.Run("singleton", testSingleton)
 	//t.Run("declarative", testDeclarative)
@@ -833,13 +844,13 @@ func testScheduler(t *testing.T) {
 	// in-order-completion
 	t.Run("alter non-exist table before ", func(t *testing.T) {
 		t.Run("alter non-exist table, it should be fail", func(t *testing.T) {
-			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vegate", "", "", false))
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vtgate", "", "", false))
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusFailed)
 		})
 		t.Run("alter exist table, it should be completed", func(t *testing.T) {
-			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "online", "vegate", "", "", false))
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "online", "vtgate", "", "", false))
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusComplete)
@@ -2135,7 +2146,7 @@ func checkTable(t *testing.T, showTableName string, expectExists bool) bool {
 // checkTablesCount checks the number of tables in the given tablet
 func checkTablesCount(t *testing.T, tablet *cluster.Vttablet, showTableName string, expectCount int) bool {
 	query := fmt.Sprintf(`show tables like '%%%s%%';`, showTableName)
-	queryResult, err := tablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
+	queryResult, err := tablet.VttabletProcess.QueryTablet(query, vtParams.DbName, true)
 	require.Nil(t, err)
 	return assert.Equal(t, expectCount, len(queryResult.Rows))
 }
@@ -2150,7 +2161,7 @@ func checkMigratedTable(t *testing.T, tableName, expectHint string) {
 
 // getCreateTableStatement returns the CREATE TABLE statement for a given table
 func getCreateTableStatement(t *testing.T, tablet *cluster.Vttablet, tableName string) (statement string) {
-	queryResult, err := tablet.VttabletProcess.QueryTablet(fmt.Sprintf("show create table %s;", tableName), keyspaceName, true)
+	queryResult, err := tablet.VttabletProcess.QueryTablet(fmt.Sprintf("show create table %s;", tableName), vtParams.DbName, true)
 	require.Nil(t, err)
 
 	assert.Equal(t, len(queryResult.Rows), 1)
