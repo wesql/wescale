@@ -82,6 +82,7 @@ var (
 
 	hostname              = "localhost"
 	keyspaceName          = "mysql"
+	DBName                = "test"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
 	overrideVtctlParams   *cluster.VtctlClientParams
@@ -171,6 +172,16 @@ func TestParseTableName(t *testing.T) {
 	}
 }
 
+func initSchema(t *testing.T) {
+	createSchemaSQL := "create database %s"
+	createVtParams := mysql.ConnParams{
+		Host: clusterInstance.Hostname,
+		Port: clusterInstance.VtgateMySQLPort,
+	}
+	query := onlineddl.VtgateExecQuery(t, &createVtParams, fmt.Sprintf(createSchemaSQL, DBName), "")
+	require.Equal(t, 1, int(query.RowsAffected))
+}
+
 func TestMain(m *testing.M) {
 	defer cluster.PanicHandler(nil)
 	flag.Parse()
@@ -224,9 +235,8 @@ func TestMain(m *testing.M) {
 		vtParams = mysql.ConnParams{
 			Host:   clusterInstance.Hostname,
 			Port:   clusterInstance.VtgateMySQLPort,
-			DbName: "mysql",
+			DbName: DBName,
 		}
-
 		return m.Run(), nil
 	}()
 	if err != nil {
@@ -239,6 +249,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestSchemaChange(t *testing.T) {
+	t.Run("initSchema", initSchema)
 	t.Run("scheduler", testScheduler)
 	//t.Run("singleton", testSingleton)
 	//t.Run("declarative", testDeclarative)
@@ -278,7 +289,7 @@ func testScheduler(t *testing.T) {
 
 	mysqlVersion := onlineddl.GetMySQLVersion(t, clusterInstance.Keyspaces[0].Shards[0].PrimaryTablet())
 	require.NotEmpty(t, mysqlVersion)
-	//_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
+	_, capableOf, _ := mysql.GetFlavor(mysqlVersion, nil)
 
 	var (
 		t1uuid string
@@ -758,29 +769,39 @@ func testScheduler(t *testing.T) {
 	})
 
 	// INSTANT DDL
-	//instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
-	//require.NoError(t, err)
-	//if instantDDLCapable {
-	//	t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
-	//		t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
-	//
-	//		t.Run("expect t1 queued", func(t *testing.T) {
-	//			// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
-	//			time.Sleep(ensureStateNotChangedTime)
-	//			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-	//			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
-	//		})
-	//		t.Run("complete t1", func(t *testing.T) {
-	//			// Issue a complete and wait for successful completion
-	//			onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
-	//			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-	//			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-	//			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
-	//		})
-	//	})
-	//}
+	instantDDLCapable, err := capableOf(mysql.InstantAddLastColumnFlavorCapability)
+	require.NoError(t, err)
+	t.Logf("instantDDLCapable : %v", instantDDLCapable)
+	if instantDDLCapable {
+		t.Run("INSTANT DDL: postpone-completion", func(t *testing.T) {
+			t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, ddlStrategy+" --prefer-instant-ddl --postpone-completion", "vtgate", "", "", true))
+
+			t.Run("expect t1 queued", func(t *testing.T) {
+				// we want to validate that the migration remains queued even after some time passes. It must not move beyond 'queued'
+				time.Sleep(ensureStateNotChangedTime)
+				onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusQueued, schema.OnlineDDLStatusReady)
+			})
+			t.Run("complete t1", func(t *testing.T) {
+				// Issue a complete and wait for successful completion
+				onlineddl.CheckCompleteMigration(t, &vtParams, shards, t1uuid, true)
+				status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+				fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
+				onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+			})
+		})
+	}
 	// 'mysql' strategy
 	t.Run("mysql strategy", func(t *testing.T) {
+		t.Run("show create table t1_test", func(t *testing.T) {
+			r := onlineddl.VtgateExecQuery(t, &vtParams, "show create table t1_test", "")
+			for _, row := range r.Named().Rows {
+				for key, value := range row {
+					t.Logf("[%v : %v]", key, value)
+				}
+				t.Logf("\n")
+			}
+		})
 		t.Run("declarative", func(t *testing.T) {
 			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql --declarative", "vtgate", "just-created", "", false))
 
@@ -823,13 +844,13 @@ func testScheduler(t *testing.T) {
 	// in-order-completion
 	t.Run("alter non-exist table before ", func(t *testing.T) {
 		t.Run("alter non-exist table, it should be fail", func(t *testing.T) {
-			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vegate", "", "", false))
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT3Statement, "online", "vtgate", "", "", false))
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusFailed)
 		})
 		t.Run("alter exist table, it should be completed", func(t *testing.T) {
-			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "online", "vegate", "", "", false))
+			dropUUID := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "online", "vtgate", "", "", false))
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, dropUUID, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
 			onlineddl.CheckMigrationStatus(t, &vtParams, shards, dropUUID, schema.OnlineDDLStatusComplete)
@@ -2125,7 +2146,7 @@ func checkTable(t *testing.T, showTableName string, expectExists bool) bool {
 // checkTablesCount checks the number of tables in the given tablet
 func checkTablesCount(t *testing.T, tablet *cluster.Vttablet, showTableName string, expectCount int) bool {
 	query := fmt.Sprintf(`show tables like '%%%s%%';`, showTableName)
-	queryResult, err := tablet.VttabletProcess.QueryTablet(query, keyspaceName, true)
+	queryResult, err := tablet.VttabletProcess.QueryTablet(query, vtParams.DbName, true)
 	require.Nil(t, err)
 	return assert.Equal(t, expectCount, len(queryResult.Rows))
 }
@@ -2140,7 +2161,7 @@ func checkMigratedTable(t *testing.T, tableName, expectHint string) {
 
 // getCreateTableStatement returns the CREATE TABLE statement for a given table
 func getCreateTableStatement(t *testing.T, tablet *cluster.Vttablet, tableName string) (statement string) {
-	queryResult, err := tablet.VttabletProcess.QueryTablet(fmt.Sprintf("show create table %s;", tableName), keyspaceName, true)
+	queryResult, err := tablet.VttabletProcess.QueryTablet(fmt.Sprintf("show create table %s;", tableName), vtParams.DbName, true)
 	require.Nil(t, err)
 
 	assert.Equal(t, len(queryResult.Rows), 1)
