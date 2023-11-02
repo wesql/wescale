@@ -88,11 +88,8 @@ func (tm *TabletManager) ApplySchema(ctx context.Context, change *tmutils.Schema
 	}
 	defer tm.unlock()
 
-	// get the db name from the tablet
-	dbName := topoproto.TabletDbName(tm.Tablet())
-
 	// apply the change
-	scr, err := tm.MysqlDaemon.ApplySchemaChange(ctx, dbName, change)
+	scr, err := tm.MysqlDaemon.ApplySchemaChange(ctx, change.DbName, change)
 	if err != nil {
 		return nil, err
 	}

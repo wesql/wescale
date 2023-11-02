@@ -1164,6 +1164,7 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 				Force:            false,
 				AllowReplication: true,
 				SQLMode:          vreplication.SQLMode,
+				DbName:           targetDbName,
 			})
 			if err != nil {
 				return err

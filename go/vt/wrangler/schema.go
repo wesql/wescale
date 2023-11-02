@@ -242,7 +242,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 		return fmt.Errorf("GetTablet(%v) failed: %v", destShardInfo.PrimaryAlias, err)
 	}
 	for _, createSQL := range createSQLstmts {
-		err = wr.applySQLShard(ctx, destTabletInfo, createSQL)
+		err = wr.applySQLShard(ctx, destTabletInfo, destKeyspace, createSQL)
 		if err != nil {
 			return fmt.Errorf("creating a table failed."+
 				" Most likely some tables already exist on the destination and differ from the source."+
@@ -297,7 +297,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 // Thus it should be used only for changes that can be applied on a live instance without causing issues;
 // it shouldn't be used for anything that will require a pivot.
 // The SQL statement string is expected to have {{.DatabaseName}} in place of the actual db name.
-func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletInfo, change string) error {
+func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletInfo, destKeyspace string, change string) error {
 	filledChange, err := fillStringTemplate(change, map[string]string{"DatabaseName": tabletInfo.DbName()})
 	if err != nil {
 		return fmt.Errorf("fillStringTemplate failed: %v", err)
@@ -310,6 +310,7 @@ func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletIn
 		Force:            false,
 		AllowReplication: true,
 		SQLMode:          vreplication.SQLMode,
+		DbName:           destKeyspace,
 	})
 	return err
 }

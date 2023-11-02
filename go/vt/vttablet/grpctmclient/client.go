@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -395,6 +400,7 @@ func (client *Client) ApplySchema(ctx context.Context, tablet *topodatapb.Tablet
 		BeforeSchema:     change.BeforeSchema,
 		AfterSchema:      change.AfterSchema,
 		SqlMode:          change.SQLMode,
+		DbName:           change.DbName,
 	})
 	if err != nil {
 		return nil, err

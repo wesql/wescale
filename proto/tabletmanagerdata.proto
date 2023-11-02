@@ -217,6 +217,7 @@ message ApplySchemaRequest {
   SchemaDefinition before_schema = 4;
   SchemaDefinition after_schema = 5;
   string sql_mode = 6;
+  string db_name = 7;
 }
 
 message ApplySchemaResponse {
