@@ -130,6 +130,8 @@ type QueryService interface {
 	// GetSchema returns the table definition for the specified tables.
 	GetSchema(ctx context.Context, target *querypb.Target, tableType querypb.SchemaTableType, tableNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error
 
+	DropSchema(ctx context.Context, target *querypb.Target, schemaName string) error
+
 	// Close must be called for releasing resources.
 	Close(ctx context.Context) error
 }

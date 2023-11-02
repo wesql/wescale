@@ -1059,3 +1059,12 @@ message SetFailPointRequest{
 message SetFailPointResponse{
   vtrpc.RPCError error = 1;
 }
+
+message DropSchemaRequest {
+  Target target = 1;
+  string schemaName = 2;
+}
+
+message DropSchemaResponse {
+
+}

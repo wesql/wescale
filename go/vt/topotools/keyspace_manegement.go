@@ -43,6 +43,10 @@ func DropDatabase(ctx context.Context, ts *topo.Server, gw queryservice.QuerySer
 		target := &querypb.Target{Keyspace: defaultKeyspace, Shard: defaultShardName, TabletType: topodatapb.TabletType_PRIMARY}
 		sql := "DROP DATABASE IF EXISTS `" + dbname + "`"
 		_, err := gw.Execute(ctx, target, sql, nil, 0, 0, nil)
+		if err != nil {
+			return err
+		}
+		err = gw.DropSchema(ctx, target, dbname)
 		return err
 	}, keyspaceName, cells)
 }

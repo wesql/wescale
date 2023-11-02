@@ -1398,6 +1398,22 @@ func (e *Executor) readMigration(ctx context.Context, uuid string) (onlineDDL *s
 	return onlineDDL, row, nil
 }
 
+func (e *Executor) deleteMigration(ctx context.Context, uuid string) error {
+	parsed := sqlparser.BuildParsedQuery(sqlDeleteOnlineDDL, ":migration_uuid")
+	bindVars := map[string]*querypb.BindVariable{
+		"migration_uuid": sqltypes.StringBindVariable(uuid),
+	}
+	bound, err := parsed.GenerateQuery(bindVars, nil)
+	if err != nil {
+		return err
+	}
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, bound)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // readPendingMigrationsUUIDs returns UUIDs for migrations in pending state (queued/ready/running)
 func (e *Executor) readPendingMigrationsUUIDs(ctx context.Context) (uuids []string, err error) {
 	r, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectPendingMigrations)
@@ -3797,6 +3813,46 @@ func (e *Executor) CleanupMigration(ctx context.Context, uuid string) (result *s
 	}
 	log.Infof("CleanupMigration: migration %s marked as ready to clean up", uuid)
 	return rs, nil
+}
+
+func (e *Executor) OnDropSchema(ctx context.Context, schemaName string) (err error) {
+	if atomic.LoadInt64(&e.isOpen) == 0 {
+		return vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
+	}
+	if schemaName == "" {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "schema name cannot be empty")
+	}
+	uuidList, err := e.readMigrationsBySchemaName(ctx, schemaName)
+	if err != nil {
+		return err
+	}
+	for _, uuid := range uuidList {
+		_, err := e.CancelMigration(ctx, uuid, "cancel by dropping database", false)
+		if err != nil {
+			return err
+		}
+		e.deleteMigration(ctx, uuid)
+	}
+	return err
+}
+
+func (e *Executor) readMigrationsBySchemaName(ctx context.Context, schemaName string) ([]string, error) {
+	query, err := sqlparser.ParseAndBind(sqlSelectMigrationsBySchemaName,
+		sqltypes.StringBindVariable(schemaName),
+	)
+	if err != nil {
+		return nil, err
+	}
+	rs, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
+	if err != nil {
+		return nil, err
+	}
+	uuidResult := make([]string, 0, len(rs.Rows))
+	for _, row := range rs.Named().Rows {
+		uuid := row["migration_uuid"].ToString()
+		uuidResult = append(uuidResult, uuid)
+	}
+	return uuidResult, nil
 }
 
 // CompleteMigration clears the postpone_completion flag for a given migration, assuming it was set in the first place

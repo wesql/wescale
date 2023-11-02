@@ -122,4 +122,9 @@ service Query {
   rpc GetSchema(query.GetSchemaRequest) returns (stream query.GetSchemaResponse) {};
 
   rpc SetFailPoint(query.SetFailPointRequest) returns (query.SetFailPointResponse) {};
+
+  // DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
+  rpc DropSchema(query.DropSchemaRequest) returns (query.DropSchemaResponse) {};
+
+
 }
