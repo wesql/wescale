@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2020 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1424,8 +1429,10 @@ func (s *VtctldServer) GetSchema(ctx context.Context, req *vtctldatapb.GetSchema
 	span.Annotate("table_names_only", req.TableNamesOnly)
 	span.Annotate("table_sizes_only", req.TableSizesOnly)
 	span.Annotate("table_schema_only", req.TableSchemaOnly)
+	span.Annotate("db_name", req.DbName)
 
-	r := &tabletmanagerdatapb.GetSchemaRequest{Tables: req.Tables, ExcludeTables: req.ExcludeTables, IncludeViews: req.IncludeViews, TableSchemaOnly: req.TableSchemaOnly}
+	r := &tabletmanagerdatapb.GetSchemaRequest{Tables: req.Tables, ExcludeTables: req.ExcludeTables,
+		IncludeViews: req.IncludeViews, TableSchemaOnly: req.TableSchemaOnly, DbName: req.DbName}
 	sd, err := schematools.GetSchema(ctx, s.ts, s.tmc, req.TabletAlias, r)
 	if err != nil {
 		return nil, err
@@ -3841,7 +3848,7 @@ func (s *VtctldServer) ValidateSchemaKeyspace(ctx context.Context, req *vtctldat
 		wg              sync.WaitGroup
 	)
 
-	r := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: req.ExcludeTables, IncludeViews: req.IncludeViews}
+	r := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: req.ExcludeTables, IncludeViews: req.IncludeViews, DbName: keyspace}
 	for _, shard := range shards[0:] {
 		wg.Add(1)
 		go func(shard string) {
@@ -4309,7 +4316,7 @@ func (s *VtctldServer) ValidateVSchema(ctx context.Context, req *vtctldatapb.Val
 				m.Unlock()
 				return
 			}
-			r := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: req.ExcludeTables, IncludeViews: req.IncludeViews}
+			r := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: req.ExcludeTables, IncludeViews: req.IncludeViews, DbName: keyspace}
 			primarySchema, err := schematools.GetSchema(ctx, s.ts, s.tmc, si.PrimaryAlias, r)
 			if err != nil {
 				errorMessage := fmt.Sprintf("GetSchema(%s, nil, %v, %v) (%v/%v) failed: %v", si.PrimaryAlias.String(),

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -236,7 +241,7 @@ func (exec *TabletExecutor) detectBigSchemaChanges(ctx context.Context, parsedDD
 	// Otherwise, Open should fail and executor should fail.
 	primaryTabletInfo := exec.tablets[0]
 	// get database schema, excluding views.
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{}, ExcludeTables: []string{}, TableSchemaOnly: true}
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{}, ExcludeTables: []string{}, TableSchemaOnly: true, DbName: exec.keyspace}
 	dbSchema, err := exec.tmc.GetSchema(ctx, primaryTabletInfo, req)
 	if err != nil {
 		return false, fmt.Errorf("unable to get database schema, error: %v", err)
