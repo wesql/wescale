@@ -782,6 +782,15 @@ func testScheduler(t *testing.T) {
 	}
 	// 'mysql' strategy
 	t.Run("mysql strategy", func(t *testing.T) {
+		t.Run("show create table t1_test", func(t *testing.T) {
+			r := onlineddl.VtgateExecQuery(t, &vtParams, "show create table t1_test", "")
+			for _, row := range r.Named().Rows {
+				for key, value := range row {
+					t.Logf("[%v : %v]", key, value)
+				}
+				t.Logf("\n")
+			}
+		})
 		t.Run("declarative", func(t *testing.T) {
 			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql --declarative", "vtgate", "just-created", "", false))
 
