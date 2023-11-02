@@ -593,7 +593,8 @@ func (wr *Wrangler) prepareCreateLookup(ctx context.Context, keyspace string, sp
 	if onesource.PrimaryAlias == nil {
 		return nil, nil, nil, fmt.Errorf("source shard has no primary: %v", onesource.ShardName())
 	}
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{sourceTableName}}
+	dbName := onesource.Keyspace()
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{sourceTableName}, DbName: dbName}
 	tableSchema, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, onesource.PrimaryAlias, req)
 	if err != nil {
 		return nil, nil, nil, err
