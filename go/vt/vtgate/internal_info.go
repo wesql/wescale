@@ -8,6 +8,8 @@ package vtgate
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+
 	"vitess.io/vitess/go/vt/topo"
 
 	"vitess.io/vitess/go/vt/topo/topoproto"
@@ -15,9 +17,9 @@ import (
 )
 
 const (
-	InternalInfoKeyEcho                     = "echo"
-	InternalInfoKeyTabletInfo               = "tablet_info_.*"
-	InternalInfoKeygetFromGlobalTopoServer_ = "getFromGlobalTopoServer_.*"
+	InternalInfoKeyEcho                    = "echo"
+	InternalInfoKeyTabletInfo              = "tablet_info_.*"
+	InternalInfoKeygetFromGlobalTopoServer = "getFromGlobalTopoServer_.*"
 )
 
 func GetInternalInfo(key string, e *Executor) (string, error) {
@@ -27,7 +29,7 @@ func GetInternalInfo(key string, e *Executor) (string, error) {
 	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeyTabletInfo}) {
 		return GetTabletInfo(key, e)
 	}
-	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeygetFromGlobalTopoServer_}) {
+	if inst.RegexpMatchPatterns(key, []string{InternalInfoKeygetFromGlobalTopoServer}) {
 		return GetFromTopoServer(key, e)
 	}
 	return "", nil
@@ -72,5 +74,7 @@ func GetFromTopoServer(key string, e *Executor) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	si, _ := topoServer.GetShard(context.Background(), "mysql", "0")
+	fmt.Println(si)
 	return string(data), nil
 }

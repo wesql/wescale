@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +31,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"vitess.io/vitess/go/internal/global"
 
 	"google.golang.org/protobuf/proto"
 
@@ -195,6 +202,45 @@ func (si *ShardInfo) SetPrimaryTermStartTime(t time.Time) {
 // GetShard is a high level function to read shard data.
 // It generates trace spans.
 func (ts *Server) GetShard(ctx context.Context, keyspace, shard string) (*ShardInfo, error) {
+	span, ctx := trace.NewSpan(ctx, "TopoServer.GetShard")
+	span.Annotate("keyspace", keyspace)
+	span.Annotate("shard", shard)
+	defer span.Finish()
+
+	shardPath := shardFilePath(keyspace, shard)
+
+	data, version, err := ts.globalCell.Get(ctx, shardPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	value := &topodatapb.Shard{}
+	if err = proto.Unmarshal(data, value); err != nil {
+		return nil, vterrors.Wrapf(err, "GetShard(%v,%v): bad shard data", keyspace, shard)
+	}
+
+	if global.TopoServerConfigOverwriteShard {
+		defaultShardInfo, err := ts.GetDefaultKeyspaceShard(ctx)
+		if err != nil {
+			return nil, err
+		}
+		value.PrimaryAlias = defaultShardInfo.Shard.PrimaryAlias
+		value.PrimaryTermStartTime = defaultShardInfo.Shard.PrimaryTermStartTime
+		value.IsPrimaryServing = defaultShardInfo.Shard.IsPrimaryServing
+	}
+
+	return &ShardInfo{
+		keyspace:  keyspace,
+		shardName: shard,
+		version:   version,
+		Shard:     value,
+	}, nil
+}
+
+func (ts *Server) GetDefaultKeyspaceShard(ctx context.Context) (*ShardInfo, error) {
+	keyspace := global.DefaultKeyspace
+	shard := global.DefaultShard
 	span, ctx := trace.NewSpan(ctx, "TopoServer.GetShard")
 	span.Annotate("keyspace", keyspace)
 	span.Annotate("shard", shard)
