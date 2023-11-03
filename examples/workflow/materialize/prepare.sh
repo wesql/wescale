@@ -14,7 +14,7 @@ mysql -h127.0.0.1 -P15306 -e 'create table materialize_source.t1(
                               );
 '
 sleep 1
-mysql -h127.0.0.1 -P15306 -e 'create table materialize_target.t1 like materialize_source.t1'
+mysql -h127.0.0.1 -P15306 -e 'create table materialize_target.t1_shadow like materialize_source.t1'
 sleep 1
 
 mysql -h127.0.0.1 -P15306 -e 'insert into materialize_source.t1 values (null, 1, 1);'
