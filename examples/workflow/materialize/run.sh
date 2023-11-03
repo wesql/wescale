@@ -43,3 +43,23 @@ vtctlclient --server localhost:15999 Materialize '{
                                       	"tablet_types": "REPLICA"
                                       }'
 mysql -h127.0.0.1 -P15306 -e 'select * from materialize_target.t1'
+
+echo 'listall materialize workflows'
+echo 'vtctlclient --server localhost:15999 materialize_target listall'
+vtctlclient --server localhost:15999 workflow materialize_target listall
+
+echo 'show materialize workflow: test_materialize_name_1'
+echo 'vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 show'
+vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 show
+
+echo 'stop materialize workflow: test_materialize_name_1'
+echo 'vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 stop'
+vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 stop
+
+echo 'start materialize workflow: test_materialize_name_1'
+echo 'vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 start'
+vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 start
+
+echo 'delete materialize workflow: test_materialize_name_1'
+echo 'vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 delete'
+vtctlclient --server localhost:15999 Workflow -- materialize_target.test_materialize_1 delete
