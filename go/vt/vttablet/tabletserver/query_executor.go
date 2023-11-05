@@ -1139,6 +1139,14 @@ func (qre *QueryExecutor) execAlterMigration() (*sqltypes.Result, error) {
 		return qre.tsv.onlineDDLExecutor.UnthrottleMigration(qre.ctx, alterMigration.UUID)
 	case sqlparser.UnthrottleAllMigrationType:
 		return qre.tsv.onlineDDLExecutor.UnthrottleAllMigrations(qre.ctx)
+	case sqlparser.PauseMigrationType:
+		return qre.tsv.onlineDDLExecutor.PauseMigration(qre.ctx, alterMigration.UUID)
+	case sqlparser.UnpauseMigrationType:
+		return qre.tsv.onlineDDLExecutor.UnpauseMigration(qre.ctx, alterMigration.UUID)
+	case sqlparser.PauseAllMigrationType:
+		return qre.tsv.onlineDDLExecutor.PauseAllMigrations(qre.ctx)
+	case sqlparser.UnpauseAllMigrationType:
+		return qre.tsv.onlineDDLExecutor.UnpauseAllMigrations(qre.ctx)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER VITESS_MIGRATION not implemented")
 }

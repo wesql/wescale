@@ -24,6 +24,7 @@ package sqlparser
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -402,6 +403,10 @@ func (node *AlterMigration) formatFast(buf *TrackedBuffer) {
 		alterType = "complete all"
 	case CancelMigrationType:
 		alterType = "cancel"
+	case PauseMigrationType:
+		alterType = "pause"
+	case UnpauseMigrationType:
+		alterType = "unpause"
 	case CancelAllMigrationType:
 		alterType = "cancel all"
 	case ThrottleMigrationType:

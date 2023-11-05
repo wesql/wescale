@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS mysql.schema_migrations
     `completed_timestamp`             timestamp(6)     NULL     DEFAULT NULL,
     `cleanup_timestamp`               timestamp        NULL     DEFAULT NULL,
     `migration_status`                varchar(128)     NOT NULL,
+    `status_before_paused`            varchar(128)     NULL     DEFAULT NULL,
     `log_path`                        varchar(1024)    NOT NULL,
     `artifacts`                       text             NOT NULL,
     `retries`                         int unsigned     NOT NULL DEFAULT '0',
