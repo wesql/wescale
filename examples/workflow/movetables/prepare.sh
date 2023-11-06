@@ -25,5 +25,9 @@ mysql -h127.0.0.1 -P15306 -e 'create table if not exists movetables_source.produ
                                 price bigint,
                                 primary key(order_id)
                               ) ENGINE=InnoDB;'
-sleep 1
+sleep 5
+
+mysql -h127.0.0.1 -P15306 -e 'insert into movetables_source.customer values (1, "alice@domain.com")'
+
+mysql -h127.0.0.1 -P15306 -e 'insert into movetables_source.corder values (1, 1, "SKU-1001", 100)'
 
