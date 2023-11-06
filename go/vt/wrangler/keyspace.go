@@ -69,10 +69,10 @@ func (wr *Wrangler) validateNewWorkflow(ctx context.Context, keyspace, workflow 
 				query string
 				msg   string
 			}{{
-				fmt.Sprintf("select 1 from mysql.vreplication where db_name=%s and workflow=%s", encodeString(primary.DbName()), encodeString(workflow)),
+				fmt.Sprintf("select 1 from mysql.vreplication where db_name=%s and workflow=%s", encodeString(keyspace), encodeString(workflow)),
 				fmt.Sprintf("workflow %s already exists in keyspace %s on tablet %d", workflow, keyspace, primary.Alias.Uid),
 			}, {
-				fmt.Sprintf("select 1 from mysql.vreplication where db_name=%s and message='FROZEN' and workflow_sub_type != %d", encodeString(primary.DbName()), binlogdata.VReplicationWorkflowSubType_Partial),
+				fmt.Sprintf("select 1 from mysql.vreplication where db_name=%s and message='FROZEN' and workflow_sub_type != %d", encodeString(keyspace), binlogdata.VReplicationWorkflowSubType_Partial),
 				fmt.Sprintf("found previous frozen workflow on tablet %d, please review and delete it first before creating a new workflow",
 					primary.Alias.Uid),
 			}}
