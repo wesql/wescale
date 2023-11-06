@@ -103,7 +103,7 @@ func (wr *Wrangler) printShards(ctx context.Context, si []*topo.ShardInfo) error
 		if err != nil {
 			return err
 		}
-		qr, err := wr.tmc.VReplicationExec(ctx, ti.Tablet, fmt.Sprintf("select * from mysql.vreplication where db_name=%v", encodeString(ti.DbName())))
+		qr, err := wr.tmc.VReplicationExec(ctx, ti.Tablet, fmt.Sprintf("select * from mysql.vreplication where db_name=%v", encodeString(si.Keyspace())))
 		if err != nil {
 			return err
 		}
