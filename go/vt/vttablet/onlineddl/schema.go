@@ -48,6 +48,13 @@ const (
 
 	sqlDeleteOnlineDDL = "DELETE FROM mysql.schema_migrations where migration_uuid=%a"
 
+	sqlSelectMigrationsPaused = `SELECT
+			migration_uuid
+		FROM mysql.schema_migrations
+		WHERE
+			migration_status='paused'
+		ORDER BY id
+	`
 	sqlSelectMigrationsPausedWhenQueued = `SELECT
 			id,
 			mysql_table
@@ -99,8 +106,8 @@ const (
 			migration_uuid=%a
 	`
 	sqlUpdateMigrationStatusPaused = `UPDATE mysql.schema_migrations SET 
-            migration_status='paused'
-            status_before_paused='%a'
+            migration_status='paused',
+            status_before_paused=%a
 		WHERE
 			migration_uuid=%a
 	`
@@ -111,6 +118,12 @@ const (
 	`
 	sqlUpdateMigrationStatusQueued = `UPDATE mysql.schema_migrations
 			SET migration_status='queued'
+		WHERE
+			migration_uuid=%a
+	`
+	sqlUpdateMigrationStatusAndClearStatusBeforePaused = `UPDATE mysql.schema_migrations
+			SET migration_status=%a,
+			status_before_paused= NULL
 		WHERE
 			migration_uuid=%a
 	`
@@ -470,7 +483,7 @@ const (
 			mysql_schema=%a
 	`
 	sqlSelectReadyMigrationsToRunContinue = `SELECT
-			migration_uuid,
+			migration_uuid
 		FROM mysql.schema_migrations
 		WHERE
 			migration_status='ready'
@@ -576,15 +589,18 @@ const (
 			AND TABLES.TABLE_NAME=%a
 			AND AUTO_INCREMENT IS NOT NULL
 		`
-	sqlAlterTableAutoIncrement      = "ALTER TABLE `%s` AUTO_INCREMENT=%a"
-	sqlAlterTableExchangePartition  = "ALTER TABLE `%a` EXCHANGE PARTITION `%a` WITH TABLE `%a`"
-	sqlAlterTableRemovePartitioning = "ALTER TABLE `%a` REMOVE PARTITIONING"
-	sqlAlterTableDropPartition      = "ALTER TABLE `%a` DROP PARTITION `%a`"
-	sqlStartVReplStream             = "UPDATE mysql.vreplication set state='Running' where db_name=%a and workflow=%a"
-	sqlRestartVReplStream           = "UPDATE mysql.vreplication set state='Copying' where db_name=%a and workflow=%a"
-	sqlStopVReplStream              = "UPDATE mysql.vreplication set state='Stopped' where db_name=%a and workflow=%a"
-	sqlDeleteVReplStream            = "DELETE FROM mysql.vreplication where db_name=%a and workflow=%a"
-	sqlReadVReplStream              = `SELECT
+	sqlAlterTableAutoIncrement           = "ALTER TABLE `%s` AUTO_INCREMENT=%a"
+	sqlAlterTableExchangePartition       = "ALTER TABLE `%a` EXCHANGE PARTITION `%a` WITH TABLE `%a`"
+	sqlAlterTableRemovePartitioning      = "ALTER TABLE `%a` REMOVE PARTITIONING"
+	sqlAlterTableDropPartition           = "ALTER TABLE `%a` DROP PARTITION `%a`"
+	sqlStartVReplStream                  = "UPDATE mysql.vreplication set state='Running' where db_name=%a and workflow=%a"
+	sqlContinueVReplStream               = "UPDATE mysql.vreplication set state=state_before_pause, state_before_pause=NULL where db_name=%a and workflow=%a"
+	sqlStopVReplStream                   = "UPDATE mysql.vreplication set state_before_pause=state, state='Stopped' where db_name=%a and workflow=%a"
+	sqlPauseVReplStream                  = "UPDATE mysql.vreplication set state_before_pause=state, state='Stopped' where db_name=%a and workflow=%a"
+	sqlSelectVReplStreamStateBeforePause = "SELECT state_before_pause FROM mysql.vreplication where db_name=%a and workflow=%a"
+	sqlClearVReplStreamStateBeforePause  = "UPDATE mysql.vreplication set state_before_pause=NULL where db_name=%a and workflow=%a"
+	sqlDeleteVReplStream                 = "DELETE FROM mysql.vreplication where db_name=%a and workflow=%a"
+	sqlReadVReplStream                   = `SELECT
 			id,
 			workflow,
 			source,

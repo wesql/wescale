@@ -1447,7 +1447,7 @@ func (e *Executor) terminateMigration(ctx context.Context, onlineDDL *schema.Onl
 	return foundRunning, nil
 }
 
-func (e *Executor) stopVReplMigration(ctx context.Context, tableSchma string, uuid string) error {
+func (e *Executor) stopVReplMigration(ctx context.Context, tableSchema string, uuid string) error {
 	tmClient := e.tabletManagerClient()
 	defer tmClient.Close()
 
@@ -1455,8 +1455,33 @@ func (e *Executor) stopVReplMigration(ctx context.Context, tableSchma string, uu
 	if err != nil {
 		return err
 	}
-	query, err := sqlparser.ParseAndBind(sqlStopVReplStream,
-		sqltypes.StringBindVariable(tableSchma),
+	query, err := sqlparser.ParseAndBind(sqlPauseVReplStream,
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(uuid),
+	)
+	if err != nil {
+		return err
+	}
+	// silently skip error; stopping the stream is just a graceful act; later deleting it is more important
+	if _, err := e.vreplicationExec(ctx, tablet.Tablet, query); err != nil {
+		log.Errorf("FAIL vreplicationExec: uuid=%s, query=%v, error=%v", uuid, query, err)
+	}
+
+	return err
+}
+
+// 做restart检查 done 重启后，依然会完成任务，且row copied的数量是之前的
+// onlineddl running, vrepllication stop
+func (e *Executor) continueVReplMigration(ctx context.Context, tableSchema string, uuid string) error {
+	tmClient := e.tabletManagerClient()
+	defer tmClient.Close()
+
+	tablet, err := e.ts.GetTablet(ctx, e.tabletAlias)
+	if err != nil {
+		return err
+	}
+	query, err := sqlparser.ParseAndBind(sqlContinueVReplStream,
+		sqltypes.StringBindVariable(tableSchema),
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -1469,8 +1494,7 @@ func (e *Executor) stopVReplMigration(ctx context.Context, tableSchma string, uu
 	return err
 }
 
-// todo, 做restart检查
-func (e *Executor) restartVReplMigration(ctx context.Context, tableSchma string, uuid string) error {
+func (e *Executor) clearStateBeforePauseOfVReplMigration(ctx context.Context, tableSchema string, uuid string) error {
 	tmClient := e.tabletManagerClient()
 	defer tmClient.Close()
 
@@ -1478,8 +1502,8 @@ func (e *Executor) restartVReplMigration(ctx context.Context, tableSchma string,
 	if err != nil {
 		return err
 	}
-	query, err := sqlparser.ParseAndBind(sqlRestartVReplStream,
-		sqltypes.StringBindVariable(tableSchma),
+	query, err := sqlparser.ParseAndBind(sqlClearVReplStreamStateBeforePause,
+		sqltypes.StringBindVariable(tableSchema),
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -1489,14 +1513,15 @@ func (e *Executor) restartVReplMigration(ctx context.Context, tableSchma string,
 	if _, err := e.vreplicationExec(ctx, tablet.Tablet, query); err != nil {
 		log.Errorf("FAIL vreplicationExec: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
+
 	return err
 }
 
 func (e *Executor) updateMigrationStatusPaused(ctx context.Context, uuid string, statusBeforePaused schema.OnlineDDLStatus) error {
 	log.Infof("updateMigrationStatusPaused: transitioning migration: %s into status paused", uuid)
 	query, err := sqlparser.ParseAndBind(sqlUpdateMigrationStatusPaused,
-		sqltypes.StringBindVariable(uuid),
 		sqltypes.StringBindVariable(string(statusBeforePaused)),
+		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
 		return err
@@ -1505,9 +1530,43 @@ func (e *Executor) updateMigrationStatusPaused(ctx context.Context, uuid string,
 	return err
 }
 
+func (e *Executor) isVreplAlreadyStopBeforePause(ctx context.Context, tableSchema string, uuid string) (bool, error) {
+	query, err := sqlparser.ParseAndBind(sqlSelectVReplStreamStateBeforePause,
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(uuid),
+	)
+	if err != nil {
+		return false, err
+	}
+	rst, err := e.execQuery(ctx, sidecardb.SidecarDBName, query)
+	if err != nil {
+		return false, err
+	}
+	if len(rst.Named().Rows) != 1 {
+		return false, errors.New("the num of vreplication entry is not 1")
+	}
+	if rst.Named().Rows[0]["state_before_pause"].ToString() == "Stopped" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (e *Executor) updateMigrationStatusReady(ctx context.Context, uuid string) error {
 	log.Infof("updateMigrationStatusReady: transitioning migration: %s into status ready", uuid)
 	query, err := sqlparser.ParseAndBind(sqlUpdateMigrationStatusReady,
+		sqltypes.StringBindVariable(uuid),
+	)
+	if err != nil {
+		return err
+	}
+	_, err = e.execQuery(ctx, sidecardb.SidecarDBName, query)
+	return err
+}
+
+func (e *Executor) updateMigrationStatusAndClearStatusBeforePaused(ctx context.Context, status schema.OnlineDDLStatus, uuid string) error {
+	log.Infof("updateMigrationStatusQueued: transitioning migration: %s into status queued", uuid)
+	query, err := sqlparser.ParseAndBind(sqlUpdateMigrationStatusAndClearStatusBeforePaused,
+		sqltypes.StringBindVariable(string(status)),
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -1563,11 +1622,12 @@ func (e *Executor) readMigrationStatusBeforePaused(ctx context.Context, uuid str
 	return schema.OnlineDDLStatus(row["status_before_paused"].ToString()), nil
 }
 
-// todo，区别nil和empty set
+// 添加对当前online ddl策略的判断 done
 func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sqltypes.Result, err error) {
 	if atomic.LoadInt64(&e.isOpen) == 0 {
 		return nil, vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
 	}
+
 	log.Infof("PauseMigration: request to pause %s", uuid)
 
 	e.migrationMutex.Lock()
@@ -1578,15 +1638,34 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 		return nil, err
 	}
 
+	if onlineDDL.Strategy != schema.DDLStrategyOnline && onlineDDL.Strategy != schema.DDLStrategyVitess {
+		log.Infof("PauseMigration: migration %s strategy is not online or vitess: strategy %v and can not be paused", uuid, onlineDDL.Strategy)
+		return emptyResult, nil
+	}
+
 	switch onlineDDL.Status {
-	case schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed, schema.OnlineDDLStatusCancelled:
+	case schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed, schema.OnlineDDLStatusCancelled, schema.OnlineDDLStatusPaused:
 		log.Infof("PauseMigration: migration %s is in status: %v and can not be paused", uuid, onlineDDL.Status)
 		return emptyResult, nil
 	case schema.OnlineDDLStatusRunning:
 		// need to stop vreplication
 		if err = e.stopVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
-			return nil, err
+			return emptyResult, err
 		}
+		// 判断在暂停时是否已经为"Stopped"状态了，如果是，则直接清理state_before_pause为空，并且不支持本次暂停
+		alreadyStopped := false
+		if alreadyStopped, err = e.isVreplAlreadyStopBeforePause(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
+			return emptyResult, err
+		}
+		if alreadyStopped {
+			if err = e.clearStateBeforePauseOfVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
+				log.Warningf("clearStateBeforePauseOfVReplMigration failed, table schema:%s uuid:%s", onlineDDL.Schema, onlineDDL.UUID)
+				return emptyResult, err
+			}
+			log.Infof("the Vrepl is already stopped so the onlineDDL %s can not be paused now", onlineDDL.UUID)
+			return emptyResult, err // 返回emptyResult向前端表明本次的uuid没有被暂停
+		}
+		e.ownedRunningMigrations.Delete(onlineDDL.UUID)
 	}
 
 	if err = e.updateMigrationStatusPaused(ctx, onlineDDL.UUID, onlineDDL.Status); err != nil {
@@ -1600,52 +1679,40 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 // queued before paused -> queued
 // ready before paused -> ready
 // running before paused -> ready
-func (e *Executor) UnpauseMigration(ctx context.Context, uuid string) (result *sqltypes.Result, err error) {
+func (e *Executor) ResumeMigration(ctx context.Context, uuid string) (result *sqltypes.Result, err error) {
 	if atomic.LoadInt64(&e.isOpen) == 0 {
 		return nil, vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
 	}
-	log.Infof("UnpauseMigration: request to cancel %s", uuid)
+	log.Infof("ResumeMigration: request to cancel %s", uuid)
 
 	e.migrationMutex.Lock()
 	defer e.migrationMutex.Unlock()
 
-	// todo ，检查是否已经pause
-	// todo 返回nil和empty的区别？
 	onlineDDL, _, err := e.readMigration(ctx, uuid)
 	if err != nil {
 		return nil, err
 	}
 	if onlineDDL.Status != schema.OnlineDDLStatusPaused {
-		return nil, fmt.Errorf("can not unpause migration %s which is in %s state", uuid, onlineDDL.Status)
+		log.Infof("can not unpause migration %s which is in %s state", uuid, onlineDDL.Status)
+		return emptyResult, nil
 	}
 
-	//if err = e.restartVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
-	//	return nil, err
-	//}
-
-	// todo 返回nil和empty的区别？
 	statusBeforePaused, err := e.readMigrationStatusBeforePaused(ctx, uuid)
 	if err != nil {
-		return nil, err
+		return emptyResult, err
 	}
 	switch statusBeforePaused {
 	case schema.OnlineDDLStatusQueued:
-		if err = e.clearMigrationStatusBeforePaused(ctx, uuid); err != nil {
-			return nil, err
-		}
-		if err = e.updateMigrationStatusQueued(ctx, uuid); err != nil {
-			return nil, err
+		if err = e.updateMigrationStatusAndClearStatusBeforePaused(ctx, schema.OnlineDDLStatusQueued, uuid); err != nil {
+			return emptyResult, err
 		}
 	case schema.OnlineDDLStatusReady:
-		if err = e.clearMigrationStatusBeforePaused(ctx, uuid); err != nil {
-			return nil, err
-		}
-		if err = e.updateMigrationStatusReady(ctx, uuid); err != nil {
-			return nil, err
+		if err = e.updateMigrationStatusAndClearStatusBeforePaused(ctx, schema.OnlineDDLStatusReady, uuid); err != nil {
+			return emptyResult, err
 		}
 	case schema.OnlineDDLStatusRunning:
 		if err = e.updateMigrationStatusReady(ctx, uuid); err != nil {
-			return nil, err
+			return emptyResult, err
 		}
 	}
 
@@ -1676,26 +1743,26 @@ func (e *Executor) PauseAllMigrations(ctx context.Context) (result *sqltypes.Res
 	return result, nil
 }
 
-func (e *Executor) UnpauseAllMigrations(ctx context.Context) (result *sqltypes.Result, err error) {
+func (e *Executor) ResumeAllMigrations(ctx context.Context) (result *sqltypes.Result, err error) {
 	if atomic.LoadInt64(&e.isOpen) == 0 {
 		return nil, vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
 	}
 
-	pausedMigrations, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectMigrationsPausedWhenQueued)
+	pausedMigrations, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectMigrationsPaused)
 	if err != nil {
 		return result, err
 	}
-
+	result = &sqltypes.Result{}
 	for _, row := range pausedMigrations.Named().Rows {
 		uuid := row["migration_uuid"].ToString()
-		log.Infof("UnpauseAllMigrations: unpausing %s", uuid)
-		res, err := e.UnpauseMigration(ctx, uuid)
+		log.Infof("ResumeAllMigrations: unpausing %s", uuid)
+		res, err := e.ResumeMigration(ctx, uuid)
 		if err != nil {
 			return result, err
 		}
 		result.AppendResult(res)
 	}
-	log.Infof("UnpauseAllMigrations: done iterating all paused migrations")
+	log.Infof("ResumeAllMigrations: done iterating all paused migrations")
 	return result, nil
 }
 
@@ -2987,7 +3054,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 			continue // this migration conflicts with a running one
 		}
 
-		if err = e.restartVReplMigration(ctx, onlineDDLToRunContinue.Schema, onlineDDLToRunContinue.UUID); err != nil {
+		if err = e.continueVReplMigration(ctx, onlineDDLToRunContinue.Schema, onlineDDLToRunContinue.UUID); err != nil {
 			return err
 		}
 		if err = e.clearMigrationStatusBeforePaused(ctx, onlineDDLToRunContinue.UUID); err != nil {
@@ -3034,7 +3101,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 
 				pausedMigrationID, _ := pausedMigrationRow["id"].ToInt64()
 				pausedMigrationTable := pausedMigrationRow["mysql_table"].ToString()
-
+				// pausedMigrationTable == table 靠谱? done，revert也是表名而不是影子表
 				if pausedMigrationID < id && pausedMigrationTable == table {
 					migrationQueuedBeforeIsPaused = true
 					break

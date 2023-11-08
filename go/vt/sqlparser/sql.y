@@ -322,7 +322,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> SEQUENCE MERGE TEMPORARY TEMPTABLE INVOKER SECURITY FIRST AFTER LAST
 
 // Migration tokens
-%token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE UNPAUSE
+%token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME
 // Throttler tokens
 %token <str> VITESS_THROTTLER
 
@@ -3349,10 +3349,10 @@ alter_statement:
       UUID: string($4),
     }
   }
-|  ALTER comment_opt VITESS_MIGRATION STRING UNPAUSE
+|  ALTER comment_opt VITESS_MIGRATION STRING RESUME
   {
     $$ = &AlterMigration{
-      Type: UnpauseMigrationType,
+      Type: ResumeMigrationType,
       UUID: string($4),
     }
   }
@@ -3368,10 +3368,10 @@ alter_statement:
       Type: PauseAllMigrationType,
     }
   }
-| ALTER comment_opt VITESS_MIGRATION UNPAUSE ALL
+| ALTER comment_opt VITESS_MIGRATION RESUME ALL
   {
     $$ = &AlterMigration{
-      Type: UnpauseAllMigrationType,
+      Type: ResumeAllMigrationType,
     }
   }
 | ALTER comment_opt VITESS_MIGRATION STRING THROTTLE expire_opt ratio_opt
@@ -7922,7 +7922,7 @@ non_reserved_keyword:
 | PASSWORD
 | PATH
 | PAUSE
-| UNPAUSE
+| RESUME
 | PERSIST
 | PERSIST_ONLY
 | PLAN

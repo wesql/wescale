@@ -342,7 +342,7 @@ const UNTHROTTLE = 57634
 const EXPIRE = 57635
 const RATIO = 57636
 const PAUSE = 57637
-const UNPAUSE = 57638
+const RESUME = 57638
 const VITESS_THROTTLER = 57639
 const BEGIN = 57640
 const START = 57641
@@ -1018,7 +1018,7 @@ var yyToknames = [...]string{
 	"EXPIRE",
 	"RATIO",
 	"PAUSE",
-	"UNPAUSE",
+	"RESUME",
 	"VITESS_THROTTLER",
 	"BEGIN",
 	"START",
@@ -13264,7 +13264,7 @@ yydefault:
 //line sql.y:3353
 		{
 			yyLOCAL = &AlterMigration{
-				Type: UnpauseMigrationType,
+				Type: ResumeMigrationType,
 				UUID: string(yyDollar[4].str),
 			}
 		}
@@ -13295,7 +13295,7 @@ yydefault:
 //line sql.y:3372
 		{
 			yyLOCAL = &AlterMigration{
-				Type: UnpauseAllMigrationType,
+				Type: ResumeAllMigrationType,
 			}
 		}
 		yyVAL.union = yyLOCAL

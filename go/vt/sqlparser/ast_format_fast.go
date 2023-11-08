@@ -403,12 +403,16 @@ func (node *AlterMigration) formatFast(buf *TrackedBuffer) {
 		alterType = "complete all"
 	case CancelMigrationType:
 		alterType = "cancel"
-	case PauseMigrationType:
-		alterType = "pause"
-	case UnpauseMigrationType:
-		alterType = "unpause"
 	case CancelAllMigrationType:
 		alterType = "cancel all"
+	case PauseMigrationType:
+		alterType = "pause"
+	case PauseAllMigrationType:
+		alterType = "pause all"
+	case ResumeMigrationType:
+		alterType = "resume"
+	case ResumeAllMigrationType:
+		alterType = "resume all"
 	case ThrottleMigrationType:
 		alterType = "throttle"
 	case ThrottleAllMigrationType:

@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS mysql.vreplication
     `time_updated`          bigint           NOT NULL,
     `transaction_timestamp` bigint           NOT NULL,
     `state`                 varbinary(100)   NOT NULL,
+    `state_before_pause`    varbinary(100)            DEFAULT NULL,
     `message`               varbinary(1000)           DEFAULT NULL,
     `db_name`               varbinary(255)   NOT NULL,
     `rows_copied`           bigint           NOT NULL DEFAULT '0',

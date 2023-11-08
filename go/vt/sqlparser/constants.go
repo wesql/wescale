@@ -877,9 +877,9 @@ const (
 	UnthrottleMigrationType
 	UnthrottleAllMigrationType
 	PauseMigrationType
-	UnpauseMigrationType
+	ResumeMigrationType
 	PauseAllMigrationType
-	UnpauseAllMigrationType
+	ResumeAllMigrationType
 )
 
 // ColumnStorage constants
