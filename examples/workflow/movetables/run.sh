@@ -10,4 +10,3 @@ vtctlclient --server localhost:15999 GetRoutingRules
 
 #TODO fixme: should be able to display the progress
 vtctlclient --server localhost:15999 MoveTables -- Progress movetables_target.source2target
-
