@@ -880,10 +880,20 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 	go log.Infof("cutOverVReplMigration %v: done waiting for position %v", s.workflow, mysql.EncodePosition(postWritesPos))
 	// Stop vreplication
 	e.updateMigrationStage(ctx, onlineDDL.UUID, "stopping vreplication")
+	failpoint.Inject(failpointkey.WaitJustBeforeStopVreplication.Name, func(val failpoint.Value) {
+		if val.(bool) {
+			time.Sleep(1 * time.Minute)
+		}
+	})
 	if _, err := e.vreplicationExec(ctx, tablet.Tablet, binlogplayer.StopVReplication(uint32(s.id), "stopped for online DDL cutover")); err != nil {
 		return err
 	}
 	go log.Infof("cutOverVReplMigration %v: stopped vreplication", s.workflow)
+	failpoint.Inject(failpointkey.WaitJustAfterStopVreplication.Name, func(val failpoint.Value) {
+		if val.(bool) {
+			time.Sleep(1 * time.Minute)
+		}
+	})
 
 	// rename tables atomically (remember, writes on source tables are stopped)
 	{
@@ -1653,17 +1663,23 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 			return emptyResult, err
 		}
 		// 判断在暂停时是否已经为"Stopped"状态了，如果是，则直接清理state_before_pause为空，并且不支持本次暂停
-		alreadyStopped := false
-		if alreadyStopped, err = e.isVreplAlreadyStopBeforePause(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
-			return emptyResult, err
-		}
-		if alreadyStopped {
-			if err = e.clearStateBeforePauseOfVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
-				log.Warningf("clearStateBeforePauseOfVReplMigration failed, table schema:%s uuid:%s", onlineDDL.Schema, onlineDDL.UUID)
+		// 实际上，在没有错误的情况下，{}内的代码并不会运行到。因为当onlineDDL scheduler将vreplication的状态改为'Stopped'时，其依然持有着migrationMutex锁，
+		// 并且直到将onlieDDL migration的状态改为complete时才会释放锁。
+		// 因此当没有错误发生时，PauseMigration获得锁时并不会出现migration为running且vreplication为"Stopped"的情况
+		// 但如果在vreplication stopped后，migration complete前发生错误，则可能会出现这样的情况。
+		{
+			alreadyStopped := false
+			if alreadyStopped, err = e.isVreplAlreadyStopBeforePause(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
 				return emptyResult, err
 			}
-			log.Infof("the Vrepl is already stopped so the onlineDDL %s can not be paused now", onlineDDL.UUID)
-			return emptyResult, err // 返回emptyResult向前端表明本次的uuid没有被暂停
+			if alreadyStopped {
+				if err = e.clearStateBeforePauseOfVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
+					log.Warningf("clearStateBeforePauseOfVReplMigration failed, table schema:%s uuid:%s", onlineDDL.Schema, onlineDDL.UUID)
+					return emptyResult, err
+				}
+				log.Infof("the Vrepl is already stopped so the onlineDDL %s can not be paused now", onlineDDL.UUID)
+				return emptyResult, err // 返回emptyResult向前端表明本次的uuid没有被暂停
+			}
 		}
 		e.ownedRunningMigrations.Delete(onlineDDL.UUID)
 	}
