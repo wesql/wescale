@@ -447,7 +447,7 @@ func testPause(t *testing.T) {
 			ALTER vitess_migration '%s' launch;
 		`
 		CompleteOnlineDDLStatement = `
-			ALTER vitess_migration '%s' launch;
+			ALTER vitess_migration '%s' complete;
 		`
 	)
 
@@ -559,7 +559,7 @@ func testPause(t *testing.T) {
 	// test of --postpone-launch, resume before launch
 	t.Run("postpone launch, resume before launch", func(t *testing.T) {
 
-		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol1, ddlStrategy, "vtgate --postpone-launch", "", "", true))
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol1, ddlStrategy+" --postpone-launch", "vtgate", "", "", true))
 		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
 		checkStateBeforePauseOfMigration(t, uuid1, "queued")
@@ -576,7 +576,7 @@ func testPause(t *testing.T) {
 	// test of --postpone-launch, launch before resume
 	t.Run("postpone launch, launch before resume", func(t *testing.T) {
 
-		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol1, ddlStrategy, "vtgate --postpone-launch", "", "", true))
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol1, ddlStrategy+" --postpone-launch", "vtgate", "", "", true))
 		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
 		checkStateBeforePauseOfMigration(t, uuid1, "queued")
@@ -594,7 +594,7 @@ func testPause(t *testing.T) {
 	// test of --postpone-completion, resume before complete
 	t.Run("postpone completion, resume before complete", func(t *testing.T) {
 
-		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol2, ddlStrategy, "vtgate --postpone-completion", "", "", true))
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol2, ddlStrategy+" --postpone-completion", "vtgate", "", "", true))
 		assert.Equal(t, schema.OnlineDDLStatusRunning, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning))
 
 		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
@@ -613,7 +613,7 @@ func testPause(t *testing.T) {
 	// test of --postpone-completion, complete before resume
 	t.Run("postpone completion, complete before resume", func(t *testing.T) {
 
-		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol2, ddlStrategy, "vtgate --postpone-completion", "", "", true))
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol2, ddlStrategy+" --postpone-completion", "vtgate", "", "", true))
 		assert.Equal(t, schema.OnlineDDLStatusRunning, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning))
 
 		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
