@@ -222,8 +222,6 @@ func CheckMigrationStatus(t *testing.T, vtParams *mysql.ConnParams, shards []clu
 			}
 		}
 	}
-	fmt.Printf("uuid is %s\n", uuid)
-	fmt.Printf("count is %d\n", count)
 	assert.Equal(t, len(shards), count)
 }
 

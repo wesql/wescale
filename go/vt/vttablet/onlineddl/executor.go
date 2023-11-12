@@ -1480,8 +1480,7 @@ func (e *Executor) stopVReplMigration(ctx context.Context, tableSchema string, u
 	return err
 }
 
-// 做restart检查 done 重启后，依然会完成任务，且row copied的数量是之前的
-// onlineddl running, vrepllication stop
+// set Vreplication state to the value of state_before_pause, and clear the value of state_before_pause
 func (e *Executor) continueVReplMigration(ctx context.Context, tableSchema string, uuid string) error {
 	tmClient := e.tabletManagerClient()
 	defer tmClient.Close()
@@ -1497,7 +1496,6 @@ func (e *Executor) continueVReplMigration(ctx context.Context, tableSchema strin
 	if err != nil {
 		return err
 	}
-	// silently skip error; stopping the stream is just a graceful act; later deleting it is more important
 	if _, err := e.vreplicationExec(ctx, tablet.Tablet, query); err != nil {
 		log.Errorf("FAIL vreplicationExec: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
@@ -1519,7 +1517,6 @@ func (e *Executor) clearStateBeforePauseOfVReplMigration(ctx context.Context, ta
 	if err != nil {
 		return err
 	}
-	// silently skip error; stopping the stream is just a graceful act; later deleting it is more important
 	if _, err := e.vreplicationExec(ctx, tablet.Tablet, query); err != nil {
 		log.Errorf("FAIL vreplicationExec: uuid=%s, query=%v, error=%v", uuid, query, err)
 	}
@@ -1632,7 +1629,8 @@ func (e *Executor) readMigrationStatusBeforePaused(ctx context.Context, uuid str
 	return schema.OnlineDDLStatus(row["status_before_paused"].ToString()), nil
 }
 
-// 添加对当前online ddl策略的判断 done
+// pause an online DDL migration with uuid, this function simply do some legality check,
+// then it stop the vreplication if migration status is 'running', and set migration status to 'paused'
 func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sqltypes.Result, err error) {
 	if atomic.LoadInt64(&e.isOpen) == 0 {
 		return nil, vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
@@ -1667,6 +1665,7 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 		// 并且直到将onlieDDL migration的状态改为complete时才会释放锁。
 		// 因此当没有错误发生时，PauseMigration获得锁时并不会出现migration为running且vreplication为"Stopped"的情况
 		// 但如果在vreplication stopped后，migration complete前发生错误，则可能会出现这样的情况。
+		// review代码之后将这段注释改为英文
 		{
 			alreadyStopped := false
 			if alreadyStopped, err = e.isVreplAlreadyStopBeforePause(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
@@ -1692,9 +1691,10 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 
 }
 
-// queued before paused -> queued
-// ready before paused -> ready
-// running before paused -> ready
+// set migration status based on status before paused
+// if 'queued' before paused, then set to 'queued'
+// if 'ready' before paused, then set to 'ready'
+// if 'running' before paused, then set to 'ready'
 func (e *Executor) ResumeMigration(ctx context.Context, uuid string) (result *sqltypes.Result, err error) {
 	if atomic.LoadInt64(&e.isOpen) == 0 {
 		return nil, vterrors.New(vtrpcpb.Code_FAILED_PRECONDITION, "online ddl is disabled")
@@ -1969,7 +1969,8 @@ func (e *Executor) scheduleNextMigration(ctx context.Context) error {
 		readyToComplete := row.AsBool("ready_to_complete", false)
 		isImmediateOperation := row.AsBool("is_immediate_operation", false)
 
-		// 如果前面有一个paused且同表且id更小且为queued的，则当前跳过
+		// if there is one online DDL task with smaller id, the same table and was 'pasued'
+		// then the current online DDL should be blocked for the sake of correctness
 		migrationQueuedBeforeIsPaused := false
 		for _, pausedMigrationRow := range pausedMigrations.Named().Rows {
 
@@ -3055,7 +3056,8 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 		return nil
 	}
 
-	// 如果是running paused，且当前没有冲突的，则跑它（不仅仅是没有running的，因为可能可以并行）
+	// if there are any online DDL tasks resume from 'paused' and its status before paused is 'running',
+	// then we should run them first if they can run
 	migrationsToRunContinue, err := e.execQuery(ctx, sidecardb.SidecarDBName, sqlSelectReadyMigrationsToRunContinue)
 	if err != nil {
 		return err
@@ -3082,10 +3084,9 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 
 	// getNonConflictingMigration finds a single 'ready' migration which does not conflict with running migrations.
 	// Conflicts are:
+	// - a migration is 'ready', but there is another 'paused' migration which status before paused is 'running' or 'ready'. Its id is smaller than the ready one, and it also has the same table with the ready one.
 	// - a migration is 'ready' but is not set to run _concurrently_, and there's a running migration that is also non-concurrent
 	// - a migration is 'ready' but there's another migration 'running' on the exact same table
-	// - 前面有一个paused的ready的同表的id更小的阻住了去路
-	// - 前面有一个paused的running的同表的id更小的阻住了去路
 	getNonConflictingMigration := func() (*schema.OnlineDDL, error) {
 		pendingMigrationsUUIDs, err := e.readPendingMigrationsUUIDs(ctx)
 		if err != nil {
@@ -3111,13 +3112,13 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 			}
 			isImmediateOperation := migrationRow.AsBool("is_immediate_operation", false)
 
-			// 检查是否有pasued的ready或者running的且同表的且id更小的
+			// there is another 'paused' migration which status before paused is 'running' or 'ready'.
+			// Its id is smaller than the ready one, and it also has the same table with the ready one.
 			migrationQueuedBeforeIsPaused := false
 			for _, pausedMigrationRow := range pausedMigrations.Named().Rows {
 
 				pausedMigrationID, _ := pausedMigrationRow["id"].ToInt64()
 				pausedMigrationTable := pausedMigrationRow["mysql_table"].ToString()
-				// pausedMigrationTable == table 靠谱? done，revert也是表名而不是影子表
 				if pausedMigrationID < id && pausedMigrationTable == table {
 					migrationQueuedBeforeIsPaused = true
 					break
