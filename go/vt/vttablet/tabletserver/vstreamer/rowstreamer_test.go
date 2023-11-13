@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -173,6 +178,8 @@ func TestStreamRowsScan(t *testing.T) {
 	// t1: test for unsupported literal type
 	wantError = "only integer literals are supported"
 	expectStreamError(t, "select 'a' from t1", wantError)
+
+	time.Sleep(1 * time.Second)
 }
 
 func TestStreamRowsUnicode(t *testing.T) {
