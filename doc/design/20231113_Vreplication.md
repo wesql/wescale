@@ -93,7 +93,7 @@ Then, SNAPSHOT 2 can continue the copying process.
 
 As described above, a typical VStream process is as follows, experiencing one crash recovery during the process. The numbers in parentheses indicate the order of operations.
 
-![Algorithm Flow](images/Vreplication_2.png)
+![Algorithm Flow](images/Vreplication_2.jpeg)
 
 (1) Start with repeatable read isolation level, initiating a consistent snapshot transaction.
 

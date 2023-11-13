@@ -31,9 +31,10 @@ set @@ddl_strategy='online';
 - fast-range-rotation: The table partitioning feature has been removed.
 - in-order-completion: Completes migrations in order. If migrations queued before the current one are still in pending status (queued, ready, running), then the current migration will have to wait until previous ones are completed. This flag is mainly to support multiple online DDLs running concurrently in an orderly manner.
     - This feature is designed to allow users to initiate multiple migrations simultaneously, which may depend on each other. For instance, task2 depends on task1, so they must be executed in the order they were submitted to achieve correct results.
-    - Applicable to **`CREATE|DROP TABLE|VIEW`** statements, and also supports **`alter table`** in **`vitess|onlineddl`** mode.
-    - **`alter table`** is not applicable for **`gh-ost`**, **`pt-osc`**, **`mysql`**, or **`direct`** modes.
+    - Applicable to **`CREATE|DROP TABLE|VIEW`** statements, and also supports **`alter table`** in **`vitess|online`** mode.
+    - **`alter table`** is not applicable for **`mysql`**, or **`direct`** modes.
 - postpone-completion: Only transitions state under user command, not automatically completed, allowing better control over the timing of schema changes.
+- prefer-instant-ddl: Prioritize using the instant-ddl function of mysql. [instant-ddl](https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html)
 
 If a migration is both **`--declarative`** and **`--postpone-completion`**, it will remain in **`queued`** status until the user executes the **`alter vitess_migration ... complete`** command.
 
