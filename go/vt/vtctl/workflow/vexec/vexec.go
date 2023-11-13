@@ -212,7 +212,7 @@ func (vx *VExec) GetPlanner(ctx context.Context, table string) (QueryPlanner, er
 
 	switch table {
 	case qualifiedTableName(VReplicationTableName):
-		return NewVReplicationQueryPlanner(vx.tmc, vx.workflow, vx.primaries[0].DbName()), nil
+		return NewVReplicationQueryPlanner(vx.tmc, vx.workflow, vx.keyspace), nil
 	case qualifiedTableName(VReplicationLogTableName):
 		results, err := vx.QueryContext(ctx, "select id from mysql.vreplication")
 		if err != nil {

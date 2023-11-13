@@ -51,3 +51,7 @@ const (
 	PutFailPoint    = "put_failpoint"
 	RemoveFailPoint = "remove_failpoint"
 )
+
+const (
+	TopoServerConfigOverwriteShard = true
+)

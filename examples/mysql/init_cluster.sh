@@ -60,6 +60,11 @@ if [ "$debug" == "on" ]; then
   echo "vtgate and vttablet processes killed"
 fi
 
+if [ "$debug_vtctld" == "on" ]; then
+  killall vtctld
+  echo "vtctld killed"
+fi
+
 # start vtadmin
 if [ "$vtadmin" == "on" ]; then
   echo "start vtadmin"

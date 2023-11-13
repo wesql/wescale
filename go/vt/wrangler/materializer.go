@@ -62,12 +62,14 @@ import (
 )
 
 type materializer struct {
-	wr            *Wrangler
-	ms            *vtctldatapb.MaterializeSettings
-	targetVSchema *vindexes.KeyspaceSchema
-	sourceShards  []*topo.ShardInfo
-	targetShards  []*topo.ShardInfo
-	isPartial     bool
+	wr             *Wrangler
+	ms             *vtctldatapb.MaterializeSettings
+	targetVSchema  *vindexes.KeyspaceSchema
+	sourceShards   []*topo.ShardInfo
+	targetShards   []*topo.ShardInfo
+	sourceKeyspace string
+	targetKeyspace string
+	isPartial      bool
 }
 
 const (
@@ -789,7 +791,7 @@ func (wr *Wrangler) ExternalizeVindex(ctx context.Context, qualifiedVindexName s
 		if err != nil {
 			return err
 		}
-		p3qr, err := wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, fmt.Sprintf("select id, state, message, source from mysql.vreplication where workflow=%s and db_name=%s", encodeString(workflow), encodeString(targetPrimary.DbName())))
+		p3qr, err := wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, fmt.Sprintf("select id, state, message, source from mysql.vreplication where workflow=%s and db_name=%s", encodeString(workflow), encodeString(targetKeyspace)))
 		if err != nil {
 			return err
 		}
@@ -835,7 +837,7 @@ func (wr *Wrangler) ExternalizeVindex(ctx context.Context, qualifiedVindexName s
 			if err != nil {
 				return err
 			}
-			query := fmt.Sprintf("delete from mysql.vreplication where db_name=%s and workflow=%s", encodeString(targetPrimary.DbName()), encodeString(workflow))
+			query := fmt.Sprintf("delete from mysql.vreplication where db_name=%s and workflow=%s", encodeString(targetKeyspace), encodeString(workflow))
 			_, err = wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query)
 			if err != nil {
 				return err
@@ -866,7 +868,7 @@ func (wr *Wrangler) collectTargetStreams(ctx context.Context, mz *materializer) 
 		if err != nil {
 			return vterrors.Wrapf(err, "GetTablet(%v) failed", target.PrimaryAlias)
 		}
-		query := fmt.Sprintf("select id from mysql.vreplication where db_name=%s and workflow=%s", encodeString(targetPrimary.DbName()), encodeString(mz.ms.Workflow))
+		query := fmt.Sprintf("select id from mysql.vreplication where db_name=%s and workflow=%s", encodeString(mz.targetKeyspace), encodeString(mz.ms.Workflow))
 		if qrproto, err = mz.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
 		}
@@ -1031,12 +1033,14 @@ func (wr *Wrangler) buildMaterializer(ctx context.Context, ms *vtctldatapb.Mater
 	}
 
 	return &materializer{
-		wr:            wr,
-		ms:            ms,
-		targetVSchema: targetVSchema,
-		sourceShards:  sourceShards,
-		targetShards:  targetShards,
-		isPartial:     isPartial,
+		wr:             wr,
+		ms:             ms,
+		targetVSchema:  targetVSchema,
+		sourceShards:   sourceShards,
+		targetShards:   targetShards,
+		sourceKeyspace: sourceShards[0].Keyspace(),
+		targetKeyspace: targetShards[0].Keyspace(),
+		isPartial:      isPartial,
 	}, nil
 }
 
@@ -1367,7 +1371,7 @@ func (mz *materializer) createStreams(ctx context.Context, insertsMap map[string
 		t := template.Must(template.New("").Parse(inserts))
 		input := map[string]string{
 			"keyrange": key.KeyRangeString(target.KeyRange),
-			"dbname":   targetPrimary.DbName(),
+			"dbname":   mz.targetKeyspace,
 		}
 		if err := t.Execute(buf, input); err != nil {
 			return err
@@ -1385,7 +1389,7 @@ func (mz *materializer) startStreams(ctx context.Context) error {
 		if err != nil {
 			return vterrors.Wrapf(err, "GetTablet(%v) failed", target.PrimaryAlias)
 		}
-		query := fmt.Sprintf("update mysql.vreplication set state='Running' where db_name=%s and workflow=%s", encodeString(targetPrimary.DbName()), encodeString(mz.ms.Workflow))
+		query := fmt.Sprintf("update mysql.vreplication set state='Running' where db_name=%s and workflow=%s", encodeString(mz.targetKeyspace), encodeString(mz.ms.Workflow))
 		if _, err := mz.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
 		}
