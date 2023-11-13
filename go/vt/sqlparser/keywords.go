@@ -156,6 +156,8 @@ var keywords = []keyword{
 	{"byte", BYTE},
 	{"call", CALL},
 	{"cancel", CANCEL},
+	{"pause", PAUSE},
+	{"resume", RESUME},
 	{"cascade", CASCADE},
 	{"cascaded", CASCADED},
 	{"case", CASE},

@@ -128,24 +128,15 @@ jobs:
         set -x
 
         # run the tests however you normally do, then produce a JUnit XML file
+        # failpoint
+        chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
+        echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
+        make failpoint-enable
         eatmydata -- go run test.go -docker=false -follow -shard onlineddl_scheduler | tee -a output.txt | go-junit-report -set-exit-code > report.xml
+        make failpoint-disable
 
     - name: Print test output and Record test result
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
       run: |
         # print test output
         cat output.txt
-
-    - name: Check test results
-      if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
-      run: |
-        # check if any test failed
-        if grep -q -- '--- FAIL' output.txt; then
-            echo "Testcase is failed"
-            exit 1
-        elif grep -q -- 'FAIL	vitess.io' output.txt; then
-            echo "Testcase is failed"
-            exit 1
-        else
-            echo "Testcase is successful"
-        fi

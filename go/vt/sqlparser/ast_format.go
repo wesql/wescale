@@ -282,6 +282,14 @@ func (node *AlterMigration) Format(buf *TrackedBuffer) {
 		alterType = "cancel"
 	case CancelAllMigrationType:
 		alterType = "cancel all"
+	case PauseMigrationType:
+		alterType = "pause"
+	case PauseAllMigrationType:
+		alterType = "pause all"
+	case ResumeMigrationType:
+		alterType = "resume"
+	case ResumeAllMigrationType:
+		alterType = "resume all"
 	case ThrottleMigrationType:
 		alterType = "throttle"
 	case ThrottleAllMigrationType:

@@ -214,6 +214,7 @@ func CheckMigrationStatus(t *testing.T, vtParams *mysql.ConnParams, shards []clu
 		if row["migration_uuid"].ToString() != uuid {
 			continue
 		}
+		fmt.Printf("uuid %s status is %s\n", uuid, row["migration_status"].ToString())
 		for _, expectStatus := range expectStatuses {
 			if row["migration_status"].ToString() == string(expectStatus) {
 				count++
@@ -265,6 +266,47 @@ func WaitForMigrationStatus(t *testing.T, vtParams *mysql.ConnParams, shards []c
 		time.Sleep(1 * time.Second)
 	}
 	return schema.OnlineDDLStatus(lastKnownStatus)
+}
+
+// WaitForMigrationStage waits for a migration to reach either provided stages (returns immediately), or eventually time out
+func WaitForMigrationStage(t *testing.T, vtParams *mysql.ConnParams, shards []cluster.Shard, uuid string, timeout time.Duration, expectStages ...string) string {
+	shardNames := map[string]bool{}
+	for _, shard := range shards {
+		shardNames[shard.Name] = true
+	}
+	query, err := sqlparser.ParseAndBind("show vitess_migrations like %a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+
+	stages := map[string]bool{}
+	for _, stage := range expectStages {
+		stages[string(stage)] = true
+	}
+	startTime := time.Now()
+	lastKnownStage := ""
+	for time.Since(startTime) < timeout {
+		countMatchedShards := 0
+		r := VtgateExecQuery(t, vtParams, query, "")
+		for _, row := range r.Named().Rows {
+			shardName := row["shard"].ToString()
+			if !shardNames[shardName] {
+				// irrelevant shard
+				continue
+			}
+			lastKnownStage = row["stage"].ToString()
+			fmt.Printf("lastKnownStage: %s \n", lastKnownStage)
+
+			if row["migration_uuid"].ToString() == uuid && stages[lastKnownStage] {
+				countMatchedShards++
+			}
+		}
+		if countMatchedShards == len(shards) {
+			return lastKnownStage
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return lastKnownStage
 }
 
 // CheckMigrationArtifacts verifies given migration exists, and checks if it has artifacts

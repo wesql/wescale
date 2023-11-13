@@ -27,6 +27,14 @@ var (
 		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/IsVReplMigrationReadyToCutOver",
 		Name:     "IsVReplMigrationReadyToCutOver",
 	}
+	WaitJustBeforeStopVreplication = FailpointKey{
+		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustBeforeStopVreplication",
+		Name:     "WaitJustBeforeStopVreplication",
+	}
+	WaitJustAfterStopVreplication = FailpointKey{
+		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustAfterStopVreplication",
+		Name:     "WaitJustAfterStopVreplication",
+	}
 )
 
 func init() {
@@ -38,4 +46,6 @@ func init() {
 	FailpointTable[CreateDatabaseErrorOnDbname.FullName] = CreateDatabaseErrorOnDbname.Name
 	FailpointTable[TestFailPointError.FullName] = TestFailPointError.Name
 	FailpointTable[IsVReplMigrationReadyToCutOver.FullName] = IsVReplMigrationReadyToCutOver.Name
+	FailpointTable[WaitJustBeforeStopVreplication.FullName] = WaitJustBeforeStopVreplication.Name
+	FailpointTable[WaitJustAfterStopVreplication.FullName] = WaitJustAfterStopVreplication.Name
 }

@@ -85,6 +85,7 @@ const (
 	OnlineDDLStatusRunning   OnlineDDLStatus = "running"
 	OnlineDDLStatusComplete  OnlineDDLStatus = "complete"
 	OnlineDDLStatusFailed    OnlineDDLStatus = "failed"
+	OnlineDDLStatusPaused    OnlineDDLStatus = "paused"
 )
 
 // OnlineDDL encapsulates the relevant information in an online schema change request

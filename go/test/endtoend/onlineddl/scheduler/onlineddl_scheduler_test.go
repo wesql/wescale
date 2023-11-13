@@ -27,6 +27,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"path"
@@ -34,6 +35,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"vitess.io/vitess/go/sqltypes"
 
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/textutil"
@@ -251,12 +254,436 @@ func TestMain(m *testing.M) {
 func TestSchemaChange(t *testing.T) {
 	t.Run("initSchema", initSchema)
 	t.Run("scheduler", testScheduler)
+	t.Run("pause", testPause)
+
 	//t.Run("singleton", testSingleton)
 	//t.Run("declarative", testDeclarative)
 	//t.Run("foreign-keys", testForeignKeys)
 	//t.Run("summary: validate sequential migration IDs", func(t *testing.T) {
 	//	onlineddl.ValidateSequentialMigrationIDs(t, &vtParams, shards)
 	//})
+}
+
+func testRows(t *testing.T, tableName string, expectedRows int64) {
+	sqlQuery := fmt.Sprintf("SELECT COUNT(*) AS c FROM %s ;", tableName)
+	r := onlineddl.VtgateExecQuery(t, &vtParams, sqlQuery, "")
+	require.NotNil(t, r)
+	row := r.Named().Row()
+	require.NotNil(t, row)
+	require.Equal(t, expectedRows, row.AsInt64("c", 0))
+}
+
+func checkTableColExist(t *testing.T, tableName, expectColumn string) {
+	for i := range clusterInstance.Keyspaces[0].Shards {
+		createStatement := getCreateTableStatement(t, clusterInstance.Keyspaces[0].Shards[i].Vttablets[0], tableName)
+		fmt.Printf("table create statement is %s\n", createStatement)
+		assert.Contains(t, createStatement, expectColumn)
+	}
+}
+
+func checkTableColNotExist(t *testing.T, tableName, expectColumn string) {
+	for i := range clusterInstance.Keyspaces[0].Shards {
+		createStatement := getCreateTableStatement(t, clusterInstance.Keyspaces[0].Shards[i].Vttablets[0], tableName)
+		fmt.Printf("table create statement is %s\n", createStatement)
+		assert.NotContains(t, createStatement, expectColumn)
+	}
+}
+
+// check the state before pause value of a given migration
+func checkStateBeforePauseOfMigration(t *testing.T, uuid, expectState string) {
+	rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
+	require.NotNil(t, rs)
+	assert.Equal(t, 1, len(rs.Named().Rows))
+	assert.Equal(t, expectState, rs.Named().Rows[0].AsString("status_before_paused", ""))
+}
+
+func checkStateOfVreplication(t *testing.T, uuid, expectState string) {
+	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+	rs := onlineddl.VtgateExecQuery(t, &vtParams, query, "")
+	require.NotNil(t, rs)
+
+	assert.Equal(t, 1, len(rs.Named().Rows))
+	assert.Equal(t, expectState, rs.Named().Rows[0].AsString("state", ""))
+}
+
+func WaitForVreplicationState(t *testing.T, vtParams *mysql.ConnParams, uuid string, timeout time.Duration, expectStates ...string) string {
+	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+
+	statesMap := map[string]bool{}
+	for _, state := range expectStates {
+		statesMap[string(state)] = true
+	}
+	startTime := time.Now()
+	lastKnownVreplicationState := ""
+	for time.Since(startTime) < timeout {
+		r := onlineddl.VtgateExecQuery(t, vtParams, query, "")
+		for _, row := range r.Named().Rows {
+			lastKnownVreplicationState = row["state"].ToString()
+			fmt.Printf("lastKnownVreplicationState: %s\n", lastKnownVreplicationState)
+
+			if statesMap[lastKnownVreplicationState] {
+				return lastKnownVreplicationState
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return lastKnownVreplicationState
+}
+
+func testPause(t *testing.T) {
+	defer cluster.PanicHandler(t)
+	shards = clusterInstance.Keyspaces[0].Shards
+	require.Equal(t, 1, len(shards))
+
+	ddlStrategy := "vitess"
+
+	createParams := func(ddlStatement string, ddlStrategy string, executeStrategy string, expectHint string, expectError string, skipWait bool) *testOnlineDDLStatementParams {
+		return &testOnlineDDLStatementParams{
+			ddlStatement:    ddlStatement,
+			ddlStrategy:     ddlStrategy,
+			executeStrategy: executeStrategy,
+			expectHint:      expectHint,
+			expectError:     expectError,
+			skipWait:        skipWait,
+		}
+	}
+
+	var (
+		t1uuid string
+		t2uuid string
+
+		t1Name = "pause_test1"
+		t2Name = "pause_test2"
+
+		createT1Statement = `
+			CREATE TABLE pause_test1 (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				hint_col varchar(64) not null default 'just-created'
+			) ENGINE=InnoDB
+		`
+		createT2Statement = `
+			CREATE TABLE pause_test2 (
+				id INT AUTO_INCREMENT PRIMARY KEY,
+				hint_col varchar(64) not null default 'just-created'
+			) ENGINE=InnoDB
+		`
+		InsertT1Statement = `
+			INSERT INTO pause_test1 (hint_col) VALUES
+		  		('newborn22'),
+		  		('newborn66');
+		`
+		InsertSelectT1Statement = `
+			INSERT INTO pause_test1 (hint_col)
+			SELECT hint_col
+			FROM pause_test1;
+		`
+		InsertT2Statement = `
+			INSERT INTO pause_test2 (hint_col) VALUES
+		  		('newborn22'),
+		  		('newborn66');
+		`
+		InsertSelectT2Statement = `
+			INSERT INTO pause_test2 (hint_col)
+			SELECT hint_col
+			FROM pause_test2;
+		`
+		AlterT1StatementAddCol1 = `
+			ALTER TABLE pause_test1 add column new_col11 int;
+		`
+		AlterT1StatementAddCol2 = `
+			ALTER TABLE pause_test1 add column new_col12 int;
+		`
+		AlterT1StatementAddCol3 = `
+			ALTER TABLE pause_test1 add column new_col13 int;
+		`
+		AlterT1StatementDropCol1 = `
+			ALTER TABLE pause_test1 drop column new_col11;
+		`
+		AlterT1StatementDropCol2 = `
+			ALTER TABLE pause_test1 drop column new_col12;
+			`
+		AlterT1StatementDropCol3 = `
+			ALTER TABLE pause_test1 drop column new_col13;
+		`
+
+		AlterT2StatementAddCol1 = `
+			ALTER TABLE pause_test2 add column new_col21 int;
+		`
+		AlterT2StatementAddCol2 = `
+			ALTER TABLE pause_test2 add column new_col22 int;
+		`
+		AlterT2StatementAddCol3 = `
+			ALTER TABLE pause_test2 add column new_col23 int;
+		`
+		AlterT2StatementDropCol1 = `
+			ALTER TABLE pause_test2 drop column new_col21;
+		`
+		AlterT2StatementDropCol2 = `
+			ALTER TABLE pause_test2 drop column new_col22;
+		`
+		AlterT2StatementDropCol3 = `
+			ALTER TABLE pause_test2 drop column new_col23;
+		`
+
+		PauseOnlineDDLStatement = `
+			ALTER vitess_migration '%s' pause;
+		`
+		ResumeOnlineDDLStatement = `
+			ALTER vitess_migration '%s' resume;
+		`
+		PauseAllOnlineDDLStatement = `
+			ALTER vitess_migration pause all;
+		`
+		ResumeAllOnlineDDLStatement = `
+			ALTER vitess_migration resume all;
+		`
+		LaunchOnlineDDLStatement = `
+			ALTER vitess_migration '%s' launch;
+		`
+		CompleteOnlineDDLStatement = `
+			ALTER vitess_migration '%s' complete;
+		`
+	)
+
+	testReadTimestamp := func(t *testing.T, uuid string, timestampColumn string) (timestamp string) {
+		rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
+		require.NotNil(t, rs)
+		for _, row := range rs.Named().Rows {
+			timestamp = row.AsString(timestampColumn, "")
+			assert.NotEmpty(t, timestamp)
+		}
+		return timestamp
+	}
+	testTableSequentialTimes := func(t *testing.T, firstUUID, secondUUID string) {
+		// expect secondUUID to start after firstUUID completes
+		t.Run("Compare t1, t2 sequential times", func(t *testing.T) {
+			endTime1 := testReadTimestamp(t, firstUUID, "completed_timestamp")
+			startTime2 := testReadTimestamp(t, secondUUID, "started_timestamp")
+			assert.GreaterOrEqual(t, startTime2, endTime1)
+		})
+	}
+
+	t.Run("CREATE TABLEs", func(t *testing.T) {
+		{ // The table pause_test does not exist
+			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, ddlStrategy, "vtgate", "", "", false))
+			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+			checkTable(t, t1Name, true)
+		}
+		{
+			// The table pause_test2 does not exist
+			t2uuid = testOnlineDDLStatement(t, createParams(createT2Statement, ddlStrategy, "vtgate", "just-created", "", false))
+			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t2uuid, schema.OnlineDDLStatusComplete)
+			checkTable(t, t2Name, true)
+		}
+	})
+
+	t.Run("INSERT DATA", func(t *testing.T) {
+		{
+			onlineddl.VtgateExecQuery(t, &vtParams, InsertT1Statement, "")
+			for i := 0; i < 19; i++ {
+				onlineddl.VtgateExecQuery(t, &vtParams, InsertSelectT1Statement, "")
+			}
+			testRows(t, t1Name, int64(math.Pow(2, 20)))
+		}
+		{
+			onlineddl.VtgateExecQuery(t, &vtParams, InsertT2Statement, "")
+			for i := 0; i < 19; i++ {
+				onlineddl.VtgateExecQuery(t, &vtParams, InsertSelectT2Statement, "")
+			}
+			testRows(t, t2Name, int64(math.Pow(2, 20)))
+		}
+	})
+
+	// basic test of pause and resume
+	t.Run("basic pause and resume test", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementAddCol1, ddlStrategy, "vtgate", "", "", true))
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+
+		uuid2 := testOnlineDDLStatement(t, createParams(AlterT2StatementAddCol1, ddlStrategy, "vtgate", "", "", false))
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid2, schema.OnlineDDLStatusComplete)
+
+		uuid3 := testOnlineDDLStatement(t, createParams(AlterT1StatementAddCol2, ddlStrategy, "vtgate", "", "", true))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid3, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		testTableSequentialTimes(t, uuid1, uuid3)
+
+		checkTableColExist(t, t1Name, "new_col11")
+		checkTableColExist(t, t1Name, "new_col12")
+		checkTableColExist(t, t2Name, "new_col21")
+
+	})
+
+	// basic test of pause all and resume all
+	t.Run("basic pause all and resume all test", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementAddCol3, ddlStrategy, "vtgate", "", "", true))
+		uuid2 := testOnlineDDLStatement(t, createParams(AlterT2StatementAddCol2, ddlStrategy, "vtgate", "", "", true))
+		uuid3 := testOnlineDDLStatement(t, createParams(AlterT2StatementAddCol3, ddlStrategy, "vtgate", "", "", true))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, PauseAllOnlineDDLStatement, "")
+
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid2, schema.OnlineDDLStatusPaused)
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid3, schema.OnlineDDLStatusPaused)
+
+		onlineddl.VtgateExecQuery(t, &vtParams, ResumeAllOnlineDDLStatement, "")
+
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid2, 10*time.Minute, schema.OnlineDDLStatusComplete))
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid3, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		// because pause all is simply pause ddl task one by one, so the following situation is possible to happen:
+		// 1. uuid1 is paused when ready
+		// 2. after uuid1 is paused, uuid2 is scheduled by onlineDDL scheduler and start running, then is paused when running
+		// 3. when resume all, uuid2 run ahead uuid1
+		testTableSequentialTimes(t, uuid2, uuid3)
+
+		checkTableColExist(t, t1Name, "new_col13")
+		checkTableColExist(t, t2Name, "new_col22")
+		checkTableColExist(t, t2Name, "new_col23")
+
+	})
+
+	// test of --postpone-launch, resume before launch
+	t.Run("postpone launch, resume before launch", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol1, ddlStrategy+" --postpone-launch", "vtgate", "", "", true))
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+		checkStateBeforePauseOfMigration(t, uuid1, "queued")
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusQueued)
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(LaunchOnlineDDLStatement, uuid1), "")
+
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t1Name, "new_col11")
+	})
+
+	// test of --postpone-launch, launch before resume
+	t.Run("postpone launch, launch before resume", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol1, ddlStrategy+" --postpone-launch", "vtgate", "", "", true))
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+		checkStateBeforePauseOfMigration(t, uuid1, "queued")
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(LaunchOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t2Name, "new_col21")
+	})
+
+	// test of --postpone-completion, resume before complete
+	t.Run("postpone completion, resume before complete", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol2, ddlStrategy+" --postpone-completion", "vtgate", "", "", true))
+		assert.Equal(t, schema.OnlineDDLStatusRunning, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+		checkStateBeforePauseOfMigration(t, uuid1, "running")
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+		assert.Equal(t, schema.OnlineDDLStatusRunning, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(CompleteOnlineDDLStatement, uuid1), "")
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t1Name, "new_col12")
+	})
+
+	// test of --postpone-completion, complete before resume
+	t.Run("postpone completion, complete before resume", func(t *testing.T) {
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol2, ddlStrategy+" --postpone-completion", "vtgate", "", "", true))
+		assert.Equal(t, schema.OnlineDDLStatusRunning, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		checkStateBeforePauseOfMigration(t, uuid1, "running")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(CompleteOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t2Name, "new_col22")
+	})
+
+	// when onlineDDL is ready to cut over or is doing cut-over, it can not be paused
+	t.Run("can not pause after cutover starts, want to pause just before stop vreplication", func(t *testing.T) {
+		// want to pause just before stop vreplication, and it will not succeed
+
+		// enable failpoint, and cutover will sleep 1 minite just before set vreplication state to "stopped"
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @put_failpoint='vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustBeforeStopVreplication=return(true)';", "")
+
+		r := onlineddl.VtgateExecQuery(t, &vtParams, "show failpoints;", "")
+		for _, row := range r.Named().Rows {
+			fmt.Printf("%s	%s\n", row["failpoint keys"], row["Enabled"])
+		}
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol3, ddlStrategy, "vtgate", "", "", true))
+		// because of the failpoint, and cutover will sleep 1 minite while the migration stage is "stopping vreplication"
+		assert.Equal(t, "stopping vreplication", onlineddl.WaitForMigrationStage(t, &vtParams, shards, uuid1, 10*time.Minute, "stopping vreplication"))
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusRunning)
+
+		// pause will wait, because it will acquire mutex which cutover holds
+		pauseRst := onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		assert.Equal(t, 0, int(pauseRst.RowsAffected))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @remove_failpoint='vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustBeforeStopVreplication';", "")
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t1Name, "new_col13")
+	})
+
+	// when onlineDDL is ready to cut over or is doing cut-over, it can not be paused
+	t.Run("can not pause after cutover starts, want to pause just after stop vreplication", func(t *testing.T) {
+		// want to pause just after stop vreplication, and it will not succeed
+
+		// enable failpoint, and cutover will sleep 1 minite just before set vreplication state to "stopped"
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @put_failpoint='vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustAfterStopVreplication=return(true)';", "")
+
+		r := onlineddl.VtgateExecQuery(t, &vtParams, "show failpoints;", "")
+		for _, row := range r.Named().Rows {
+			fmt.Printf("%s	%s\n", row["failpoint keys"], row["Enabled"])
+		}
+
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT2StatementDropCol3, ddlStrategy, "vtgate", "", "", true))
+		// because of the failpoint, and cutover will sleep 1 minite after the vreplication state is "Stopped"
+		assert.Equal(t, "Stopped", WaitForVreplicationState(t, &vtParams, uuid1, 10*time.Minute, "Stopped"))
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusRunning)
+
+		// pause will wait, because it will acquire mutex which cutover holds
+		pauseRst := onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		assert.Equal(t, 0, int(pauseRst.RowsAffected))
+
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @remove_failpoint='vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustAfterStopVreplication';", "")
+		assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete))
+
+		checkTableColNotExist(t, t2Name, "new_col23")
+	})
+
 }
 
 func testScheduler(t *testing.T) {

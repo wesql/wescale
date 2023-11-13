@@ -45,10 +45,39 @@ const (
 	) VALUES (
 		%a, %a, %a, %a, %a, %a, %a, %a, %a, NOW(6), %a, %a, %a, %a, %a, %a, %a, %a, %a
 	)`
+
 	sqlDeleteOnlineDDL = "DELETE FROM mysql.schema_migrations where migration_uuid=%a"
 
+	sqlSelectMigrationsPaused = `SELECT
+			migration_uuid
+		FROM mysql.schema_migrations
+		WHERE
+			migration_status='paused'
+		ORDER BY id
+	`
+	sqlSelectMigrationsPausedWhenQueued = `SELECT
+			id,
+			mysql_table
+		FROM mysql.schema_migrations
+		WHERE
+			migration_status='paused'
+		    AND status_before_paused='queued'
+		ORDER BY id
+	`
+	sqlSelectMigrationsPausedWhenReadyOrRunning = `SELECT
+			id,
+			mysql_table
+		FROM mysql.schema_migrations
+		WHERE
+			migration_status='paused'
+		    AND status_before_paused IN ('ready','running')
+		ORDER BY id
+	`
+
 	sqlSelectQueuedMigrations = `SELECT
-			migration_uuid,
+			id,
+			mysql_table,
+    		migration_uuid,
 			ddl_action,
 			is_view,
 			is_immediate_operation,
@@ -73,6 +102,33 @@ const (
 	`
 	sqlUpdateMigrationStatusFailedOrCancelled = `UPDATE mysql.schema_migrations
 			SET migration_status=IF(cancelled_timestamp IS NULL, 'failed', 'cancelled')
+		WHERE
+			migration_uuid=%a
+	`
+	sqlUpdateMigrationStatusPaused = `UPDATE mysql.schema_migrations SET 
+            migration_status='paused',
+            status_before_paused=%a
+		WHERE
+			migration_uuid=%a
+	`
+	sqlUpdateMigrationStatusReady = `UPDATE mysql.schema_migrations
+			SET migration_status='ready'
+		WHERE
+			migration_uuid=%a
+	`
+	sqlUpdateMigrationStatusQueued = `UPDATE mysql.schema_migrations
+			SET migration_status='queued'
+		WHERE
+			migration_uuid=%a
+	`
+	sqlUpdateMigrationStatusAndClearStatusBeforePaused = `UPDATE mysql.schema_migrations
+			SET migration_status=%a,
+			status_before_paused= NULL
+		WHERE
+			migration_uuid=%a
+	`
+	sqlClearMigrationStatusBefore = `UPDATE mysql.schema_migrations
+			SET status_before_paused= NULL
 		WHERE
 			migration_uuid=%a
 	`
@@ -404,18 +460,34 @@ const (
 		WHERE
 			migration_uuid=%a
 	`
+	sqlSelectMigrationStatusBeforePause = `SELECT
+			status_before_paused
+		FROM mysql.schema_migrations
+		WHERE
+			migration_uuid=%a
+	`
 	sqlSelectReadyMigrations = `SELECT
-			migration_uuid
+    		id,
+			migration_uuid,
+			mysql_table
 		FROM mysql.schema_migrations
 		WHERE
 			migration_status='ready'
 		ORDER BY id
 	`
+
 	sqlSelectMigrationsBySchemaName = `SELECT
 			migration_uuid
 		FROM mysql.schema_migrations
 		WHERE
 			mysql_schema=%a
+	`
+	sqlSelectReadyMigrationsToRunContinue = `SELECT
+			migration_uuid
+		FROM mysql.schema_migrations
+		WHERE
+			migration_status='ready'
+		    AND status_before_paused='running'
 		ORDER BY id
 	`
 	sqlSelectColumnTypes = `
@@ -517,14 +589,18 @@ const (
 			AND TABLES.TABLE_NAME=%a
 			AND AUTO_INCREMENT IS NOT NULL
 		`
-	sqlAlterTableAutoIncrement      = "ALTER TABLE `%s` AUTO_INCREMENT=%a"
-	sqlAlterTableExchangePartition  = "ALTER TABLE `%a` EXCHANGE PARTITION `%a` WITH TABLE `%a`"
-	sqlAlterTableRemovePartitioning = "ALTER TABLE `%a` REMOVE PARTITIONING"
-	sqlAlterTableDropPartition      = "ALTER TABLE `%a` DROP PARTITION `%a`"
-	sqlStartVReplStream             = "UPDATE mysql.vreplication set state='Running' where db_name=%a and workflow=%a"
-	sqlStopVReplStream              = "UPDATE mysql.vreplication set state='Stopped' where db_name=%a and workflow=%a"
-	sqlDeleteVReplStream            = "DELETE FROM mysql.vreplication where db_name=%a and workflow=%a"
-	sqlReadVReplStream              = `SELECT
+	sqlAlterTableAutoIncrement           = "ALTER TABLE `%s` AUTO_INCREMENT=%a"
+	sqlAlterTableExchangePartition       = "ALTER TABLE `%a` EXCHANGE PARTITION `%a` WITH TABLE `%a`"
+	sqlAlterTableRemovePartitioning      = "ALTER TABLE `%a` REMOVE PARTITIONING"
+	sqlAlterTableDropPartition           = "ALTER TABLE `%a` DROP PARTITION `%a`"
+	sqlStartVReplStream                  = "UPDATE mysql.vreplication set state='Running' where db_name=%a and workflow=%a"
+	sqlContinueVReplStream               = "UPDATE mysql.vreplication set state=state_before_pause, state_before_pause=NULL where db_name=%a and workflow=%a"
+	sqlStopVReplStream                   = "UPDATE mysql.vreplication set state_before_pause=state, state='Stopped' where db_name=%a and workflow=%a"
+	sqlPauseVReplStream                  = "UPDATE mysql.vreplication set state_before_pause=state, state='Stopped' where db_name=%a and workflow=%a"
+	sqlSelectVReplStreamStateBeforePause = "SELECT state_before_pause FROM mysql.vreplication where db_name=%a and workflow=%a"
+	sqlClearVReplStreamStateBeforePause  = "UPDATE mysql.vreplication set state_before_pause=NULL where db_name=%a and workflow=%a"
+	sqlDeleteVReplStream                 = "DELETE FROM mysql.vreplication where db_name=%a and workflow=%a"
+	sqlReadVReplStream                   = `SELECT
 			id,
 			workflow,
 			source,
