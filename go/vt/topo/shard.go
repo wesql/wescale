@@ -223,11 +223,14 @@ func (ts *Server) GetShard(ctx context.Context, keyspace, shard string) (*ShardI
 	if global.TopoServerConfigOverwriteShard {
 		defaultShardInfo, err := ts.GetDefaultKeyspaceShard(ctx)
 		if err != nil {
-			return nil, err
+			log.Infof("GetDefaultKeyspaceShard(%v) failed: %v", keyspace, err)
 		}
-		value.PrimaryAlias = defaultShardInfo.Shard.PrimaryAlias
-		value.PrimaryTermStartTime = defaultShardInfo.Shard.PrimaryTermStartTime
-		value.IsPrimaryServing = defaultShardInfo.Shard.IsPrimaryServing
+		if defaultShardInfo != nil {
+			value.PrimaryAlias = defaultShardInfo.Shard.PrimaryAlias
+			value.PrimaryTermStartTime = defaultShardInfo.Shard.PrimaryTermStartTime
+			value.IsPrimaryServing = defaultShardInfo.Shard.IsPrimaryServing
+		}
+
 	}
 
 	return &ShardInfo{
