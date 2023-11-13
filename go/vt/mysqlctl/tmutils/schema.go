@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -351,6 +356,7 @@ type SchemaChange struct {
 	BeforeSchema     *tabletmanagerdatapb.SchemaDefinition
 	AfterSchema      *tabletmanagerdatapb.SchemaDefinition
 	SQLMode          string
+	DbName           string
 }
 
 // Equal compares two SchemaChange objects.
@@ -359,5 +365,6 @@ func (s *SchemaChange) Equal(s2 *SchemaChange) bool {
 		s.Force == s2.Force &&
 		s.AllowReplication == s2.AllowReplication &&
 		proto.Equal(s.BeforeSchema, s2.BeforeSchema) &&
-		proto.Equal(s.AfterSchema, s2.AfterSchema)
+		proto.Equal(s.AfterSchema, s2.AfterSchema) &&
+		s.DbName == s2.DbName
 }

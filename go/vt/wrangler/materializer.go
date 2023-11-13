@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -355,7 +360,7 @@ func (wr *Wrangler) getKeyspaceTables(ctx context.Context, ks string, ts *topo.S
 	if err != nil {
 		return nil, err
 	}
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables}
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables, DbName: ks}
 	schema, err := wr.tmc.GetSchema(ctx, ti.Tablet, req)
 	if err != nil {
 		return nil, err
@@ -588,7 +593,8 @@ func (wr *Wrangler) prepareCreateLookup(ctx context.Context, keyspace string, sp
 	if onesource.PrimaryAlias == nil {
 		return nil, nil, nil, fmt.Errorf("source shard has no primary: %v", onesource.ShardName())
 	}
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{sourceTableName}}
+	dbName := onesource.Keyspace()
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{sourceTableName}, DbName: dbName}
 	tableSchema, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, onesource.PrimaryAlias, req)
 	if err != nil {
 		return nil, nil, nil, err
@@ -1047,7 +1053,8 @@ func (mz *materializer) getSourceTableDDLs(ctx context.Context) (map[string]stri
 	if err != nil {
 		return nil, err
 	}
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables}
+	dbName := mz.sourceShards[0].Keyspace() //source keyspace
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables, DbName: dbName}
 	sourceSchema, err := mz.wr.tmc.GetSchema(ctx, ti.Tablet, req)
 	if err != nil {
 		return nil, err
@@ -1063,11 +1070,12 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 	var sourceDDLs map[string]string
 	var mu sync.Mutex
 
+	targetDbName := mz.targetShards[0].Keyspace() //target keyspace
 	return mz.forAllTargets(func(target *topo.ShardInfo) error {
 		allTables := []string{"/.*/"}
 
 		hasTargetTable := map[string]bool{}
-		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables}
+		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables, DbName: targetDbName}
 		targetSchema, err := schematools.GetSchema(ctx, mz.wr.ts, mz.wr.tmc, target.PrimaryAlias, req)
 		if err != nil {
 			return err
@@ -1156,6 +1164,7 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 				Force:            false,
 				AllowReplication: true,
 				SQLMode:          vreplication.SQLMode,
+				DbName:           targetDbName,
 			})
 			if err != nil {
 				return err

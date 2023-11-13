@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2691,6 +2696,7 @@ func commandGetSchema(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfla
 	tableNamesOnly := subFlags.Bool("table_names_only", false, "Only displays table names that match")
 	tableSizesOnly := subFlags.Bool("table_sizes_only", false, "Only displays size information for tables. Ignored if --table_names_only is passed.")
 	tableSchemaOnly := subFlags.Bool("table_schema_only", false, "Only displays table schema. Skip columns and fields.")
+	dbName := subFlags.String("db_name", "mysql", "Specifies the database name to use for the query. Defaults to 'mysql'")
 
 	if err := subFlags.Parse(args); err != nil {
 		return err
@@ -2719,6 +2725,7 @@ func commandGetSchema(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfla
 		TableNamesOnly:  *tableNamesOnly,
 		TableSizesOnly:  *tableSizesOnly,
 		TableSchemaOnly: *tableSchemaOnly,
+		DbName:          *dbName,
 	})
 	if err != nil {
 		return err
@@ -3105,7 +3112,7 @@ func commandCopySchemaShard(ctx context.Context, wr *wrangler.Wrangler, subFlags
 	}
 	sourceTabletAlias, err := topoproto.ParseTabletAlias(subFlags.Arg(0))
 	if err == nil {
-		return wr.CopySchemaShard(ctx, sourceTabletAlias, tableArray, excludeTableArray, *includeViews, destKeyspace, destShard, *waitReplicasTimeout, *skipVerify)
+		return wr.CopySchemaShard(ctx, sourceTabletAlias, tableArray, excludeTableArray, *includeViews, sourceKeyspace, destKeyspace, destShard, *waitReplicasTimeout, *skipVerify)
 	}
 	return err
 }

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -169,6 +174,7 @@ func (s *server) ApplySchema(ctx context.Context, request *tabletmanagerdatapb.A
 		BeforeSchema:     request.BeforeSchema,
 		AfterSchema:      request.AfterSchema,
 		SQLMode:          request.SqlMode,
+		DbName:           request.DbName,
 	})
 	if err == nil {
 		response.BeforeSchema = scr.BeforeSchema
