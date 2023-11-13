@@ -53,5 +53,5 @@ const (
 )
 
 const (
-	TopoServerConfigOverwriteShard = true
+	TopoServerConfigOverwriteShard = false
 )
