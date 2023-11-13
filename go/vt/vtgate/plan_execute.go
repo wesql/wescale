@@ -23,6 +23,8 @@ package vtgate
 
 import (
 	"context"
+	"errors"
+	"strconv"
 	"time"
 
 	"vitess.io/vitess/go/vt/vtgate/logstats"
@@ -67,6 +69,11 @@ func (e *Executor) newExecute(
 
 	// 2: Create a plan for the query
 	plan, stmt, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
+
+	if err := interceptDMLWithoutWhereEnable(safeSession, stmt); err != nil {
+		return err
+	}
+
 	execStart := e.logPlanningFinished(logStats, plan)
 
 	if err != nil {
@@ -292,4 +299,27 @@ func (e *Executor) logPlanningFinished(logStats *logstats.LogStats, plan *engine
 	}
 	logStats.PlanTime = execStart.Sub(logStats.StartTime)
 	return execStart
+}
+
+func interceptDMLWithoutWhereEnable(safeSession *SafeSession, stmt sqlparser.Statement) error {
+	interceptDMLWithoutWhereEnable := false
+	enable, exist := safeSession.Session.UserDefinedVariables["interceptdmlwithoutwhere"]
+	if exist {
+		if boolVal, err := strconv.ParseBool(string(enable.GetValue())); err == nil && boolVal {
+			interceptDMLWithoutWhereEnable = true
+		}
+	}
+	if interceptDMLWithoutWhereEnable {
+		switch t := stmt.(type) {
+		case *sqlparser.Delete:
+			if t.Where == nil {
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set @interceptDMLWithoutWhere=false;")
+			}
+		case *sqlparser.Update:
+			if t.Where == nil {
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set @interceptDMLWithoutWhere=false;")
+			}
+		}
+	}
+	return nil
 }
