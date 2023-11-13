@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +53,7 @@ const (
 func (wr *Wrangler) diffSchema(ctx context.Context, primarySchema *tabletmanagerdatapb.SchemaDefinition, primaryTabletAlias, alias *topodatapb.TabletAlias, excludeTables []string, includeViews bool, wg *sync.WaitGroup, er concurrency.ErrorRecorder) {
 	defer wg.Done()
 	log.Infof("Gathering schema for %v", topoproto.TabletAliasString(alias))
-	req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews}
+	req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: primarySchema.DatabaseSchema}
 	replicaSchema, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, alias, req)
 	if err != nil {
 		er.RecordError(fmt.Errorf("GetSchema(%v, nil, %v, %v) failed: %v", alias, excludeTables, includeViews, err))
@@ -71,7 +76,7 @@ func (wr *Wrangler) ValidateSchemaShard(ctx context.Context, keyspace, shard str
 		return fmt.Errorf("no primary in shard %v/%v", keyspace, shard)
 	}
 	log.Infof("Gathering schema for primary %v", topoproto.TabletAliasString(si.PrimaryAlias))
-	req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews}
+	req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: keyspace}
 	primarySchema, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, si.PrimaryAlias, req)
 	if err != nil {
 		return fmt.Errorf("GetSchema(%v, nil, %v, %v) failed: %v", si.PrimaryAlias, excludeTables, includeViews, err)
@@ -150,7 +155,7 @@ func (wr *Wrangler) ValidateVSchema(ctx context.Context, keyspace string, shards
 				shardFailures.RecordError(fmt.Errorf("GetShard(%v, %v) failed: %v", keyspace, shard, err))
 				return
 			}
-			req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews}
+			req := &tabletmanagerdatapb.GetSchemaRequest{ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: keyspace}
 			primarySchema, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, si.PrimaryAlias, req)
 			if err != nil {
 				shardFailures.RecordError(fmt.Errorf("GetSchema(%s, nil, %v, %v) (%v/%v) failed: %v", si.PrimaryAlias.String(),
@@ -198,14 +203,14 @@ func (wr *Wrangler) CopySchemaShardFromShard(ctx context.Context, tables, exclud
 		return fmt.Errorf("no primary in shard record %v/%v. Consider running 'vtctl InitShardPrimary' in case of a new shard or reparenting the shard to fix the topology data, or providing a non-primary tablet alias", sourceKeyspace, sourceShard)
 	}
 
-	return wr.CopySchemaShard(ctx, sourceShardInfo.PrimaryAlias, tables, excludeTables, includeViews, destKeyspace, destShard, waitReplicasTimeout, skipVerify)
+	return wr.CopySchemaShard(ctx, sourceShardInfo.PrimaryAlias, tables, excludeTables, includeViews, sourceKeyspace, destKeyspace, destShard, waitReplicasTimeout, skipVerify)
 }
 
 // CopySchemaShard copies the schema from a source tablet to the
 // specified shard.  The schema is applied directly on the primary of
 // the destination shard, and is propagated to the replicas through
 // binlogs.
-func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topodatapb.TabletAlias, tables, excludeTables []string, includeViews bool, destKeyspace, destShard string, waitReplicasTimeout time.Duration, skipVerify bool) error {
+func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topodatapb.TabletAlias, tables, excludeTables []string, includeViews bool, sourceKeyspace, destKeyspace, destShard string, waitReplicasTimeout time.Duration, skipVerify bool) error {
 	destShardInfo, err := wr.ts.GetShard(ctx, destKeyspace, destShard)
 	if err != nil {
 		return fmt.Errorf("GetShard(%v, %v) failed: %v", destKeyspace, destShard, err)
@@ -215,7 +220,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 		return fmt.Errorf("no primary in shard record %v/%v. Consider running 'vtctl InitShardPrimary' in case of a new shard or reparenting the shard to fix the topology data", destKeyspace, destShard)
 	}
 
-	diffs, err := schematools.CompareSchemas(ctx, wr.ts, wr.tmc, sourceTabletAlias, destShardInfo.PrimaryAlias, tables, excludeTables, includeViews)
+	diffs, err := schematools.CompareSchemas(ctx, wr.ts, wr.tmc, sourceTabletAlias, destShardInfo.PrimaryAlias, sourceKeyspace, destKeyspace, tables, excludeTables, includeViews)
 	if err != nil {
 		return fmt.Errorf("CopySchemaShard failed because schemas could not be compared initially: %v", err)
 	}
@@ -224,7 +229,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 		return nil
 	}
 
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: tables, ExcludeTables: excludeTables, IncludeViews: includeViews}
+	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: tables, ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: sourceKeyspace}
 	sourceSd, err := schematools.GetSchema(ctx, wr.ts, wr.tmc, sourceTabletAlias, req)
 	if err != nil {
 		return fmt.Errorf("GetSchema(%v, %v, %v, %v) failed: %v", sourceTabletAlias, tables, excludeTables, includeViews, err)
@@ -237,7 +242,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 		return fmt.Errorf("GetTablet(%v) failed: %v", destShardInfo.PrimaryAlias, err)
 	}
 	for _, createSQL := range createSQLstmts {
-		err = wr.applySQLShard(ctx, destTabletInfo, createSQL)
+		err = wr.applySQLShard(ctx, destTabletInfo, destKeyspace, createSQL)
 		if err != nil {
 			return fmt.Errorf("creating a table failed."+
 				" Most likely some tables already exist on the destination and differ from the source."+
@@ -258,7 +263,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 	// In that case, MySQL would have skipped our CREATE DATABASE IF NOT EXISTS
 	// statement.
 	if !skipVerify {
-		diffs, err = schematools.CompareSchemas(ctx, wr.ts, wr.tmc, sourceTabletAlias, destShardInfo.PrimaryAlias, tables, excludeTables, includeViews)
+		diffs, err = schematools.CompareSchemas(ctx, wr.ts, wr.tmc, sourceTabletAlias, destShardInfo.PrimaryAlias, sourceKeyspace, destKeyspace, tables, excludeTables, includeViews)
 		if err != nil {
 			return fmt.Errorf("CopySchemaShard failed because schemas could not be compared finally: %v", err)
 		}
@@ -292,7 +297,7 @@ func (wr *Wrangler) CopySchemaShard(ctx context.Context, sourceTabletAlias *topo
 // Thus it should be used only for changes that can be applied on a live instance without causing issues;
 // it shouldn't be used for anything that will require a pivot.
 // The SQL statement string is expected to have {{.DatabaseName}} in place of the actual db name.
-func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletInfo, change string) error {
+func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletInfo, destKeyspace string, change string) error {
 	filledChange, err := fillStringTemplate(change, map[string]string{"DatabaseName": tabletInfo.DbName()})
 	if err != nil {
 		return fmt.Errorf("fillStringTemplate failed: %v", err)
@@ -305,6 +310,7 @@ func (wr *Wrangler) applySQLShard(ctx context.Context, tabletInfo *topo.TabletIn
 		Force:            false,
 		AllowReplication: true,
 		SQLMode:          vreplication.SQLMode,
+		DbName:           destKeyspace,
 	})
 	return err
 }

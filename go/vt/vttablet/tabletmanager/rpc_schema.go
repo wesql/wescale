@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +22,7 @@ limitations under the License.
 package tabletmanager
 
 import (
+	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 
 	"context"
@@ -31,7 +37,10 @@ import (
 
 // GetSchema returns the schema.
 func (tm *TabletManager) GetSchema(ctx context.Context, request *tabletmanagerdatapb.GetSchemaRequest) (*tabletmanagerdatapb.SchemaDefinition, error) {
-	return tm.MysqlDaemon.GetSchema(ctx, topoproto.TabletDbName(tm.Tablet()), request)
+	if request.DbName == "" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "no database name provided")
+	}
+	return tm.MysqlDaemon.GetSchema(ctx, request.DbName, request)
 }
 
 // ReloadSchema will reload the schema
@@ -79,11 +88,8 @@ func (tm *TabletManager) ApplySchema(ctx context.Context, change *tmutils.Schema
 	}
 	defer tm.unlock()
 
-	// get the db name from the tablet
-	dbName := topoproto.TabletDbName(tm.Tablet())
-
 	// apply the change
-	scr, err := tm.MysqlDaemon.ApplySchemaChange(ctx, dbName, change)
+	scr, err := tm.MysqlDaemon.ApplySchemaChange(ctx, change.DbName, change)
 	if err != nil {
 		return nil, err
 	}

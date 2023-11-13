@@ -1,4 +1,10 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -138,6 +144,7 @@ message GetSchemaRequest {
   // TableSchemaOnly specifies whether to limit the results to just table/view
   // schema definition (CREATE TABLE/VIEW statements) and skip column/field information
   bool table_schema_only = 4;
+  string db_name = 5;
 }
 
 message GetSchemaResponse {
@@ -210,6 +217,7 @@ message ApplySchemaRequest {
   SchemaDefinition before_schema = 4;
   SchemaDefinition after_schema = 5;
   string sql_mode = 6;
+  string db_name = 7;
 }
 
 message ApplySchemaResponse {

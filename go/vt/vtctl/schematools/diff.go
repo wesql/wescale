@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,17 +43,20 @@ func CompareSchemas(
 	tmc tmclient.TabletManagerClient,
 	source *topodatapb.TabletAlias,
 	dest *topodatapb.TabletAlias,
+	sourceKeyspace string,
+	destKeyspace string,
 	tables []string,
 	excludeTables []string,
 	includeViews bool,
 ) (diffs []string, err error) {
-	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: tables, ExcludeTables: excludeTables, IncludeViews: includeViews}
-	sourceSchema, err := GetSchema(ctx, ts, tmc, source, req)
+	sourceReq := &tabletmanagerdatapb.GetSchemaRequest{Tables: tables, ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: sourceKeyspace}
+	sourceSchema, err := GetSchema(ctx, ts, tmc, source, sourceReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get schema from tablet %v. err: %v", source, err)
 	}
 
-	destSchema, err := GetSchema(ctx, ts, tmc, dest, req)
+	destReq := &tabletmanagerdatapb.GetSchemaRequest{Tables: tables, ExcludeTables: excludeTables, IncludeViews: includeViews, DbName: destKeyspace}
+	destSchema, err := GetSchema(ctx, ts, tmc, dest, destReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get schema from tablet %v. err: %v", dest, err)
 	}
