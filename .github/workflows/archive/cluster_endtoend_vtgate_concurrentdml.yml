@@ -116,7 +116,12 @@ jobs:
         set -x
 
         # run the tests however you normally do, then produce a JUnit XML file
+        # failpoint
+        chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
+        echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
+        make failpoint-enable
         eatmydata -- go run test.go -docker=false -follow -shard vtgate_concurrentdml | tee -a output.txt | go-junit-report -set-exit-code > report.xml
+        make failpoint-disable
 
     - name: Print test output and Record test result
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()

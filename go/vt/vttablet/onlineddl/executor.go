@@ -1660,12 +1660,13 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 		if err = e.stopVReplMigration(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
 			return emptyResult, err
 		}
-		// 判断在暂停时是否已经为"Stopped"状态了，如果是，则直接清理state_before_pause为空，并且不支持本次暂停
-		// 实际上，在没有错误的情况下，{}内的代码并不会运行到。因为当onlineDDL scheduler将vreplication的状态改为'Stopped'时，其依然持有着migrationMutex锁，
-		// 并且直到将onlieDDL migration的状态改为complete时才会释放锁。
-		// 因此当没有错误发生时，PauseMigration获得锁时并不会出现migration为running且vreplication为"Stopped"的情况
-		// 但如果在vreplication stopped后，migration complete前发生错误，则可能会出现这样的情况。
-		// review代码之后将这段注释改为英文
+		// Determine whether the vreplication is already in the "Stopped" state when pausing by reading the 'state_before_pause' field.
+		// If so, directly set 'state_before_pause' to NULL, and return.
+		// Actually, the code within { } below will not run if there is no error occurs during vreplication cut over.
+		// Because when the onlineDDL scheduler changes the state of vreplication to 'Stopped', it still holds the migrationMutex lock.
+		// And the lock will not be released until the status of onlieDDL migration is changed to complete at the end of vreplication cut over.
+		// Therefore, if no error occurs, when this function holds the lock, it is impossible for the status of migration to be 'running' and the state of vreplication to be 'Stopped' at the same time.
+		// But if an error occurs after vreplication is stopped but before the migration is completed, this may occur.
 		{
 			alreadyStopped := false
 			if alreadyStopped, err = e.isVreplAlreadyStopBeforePause(ctx, onlineDDL.Schema, onlineDDL.UUID); err != nil {
@@ -1677,7 +1678,7 @@ func (e *Executor) PauseMigration(ctx context.Context, uuid string) (result *sql
 					return emptyResult, err
 				}
 				log.Infof("the Vrepl is already stopped so the onlineDDL %s can not be paused now", onlineDDL.UUID)
-				return emptyResult, err // 返回emptyResult向前端表明本次的uuid没有被暂停
+				return emptyResult, err // emptyResult represents no migration is paused
 			}
 		}
 		e.ownedRunningMigrations.Delete(onlineDDL.UUID)
