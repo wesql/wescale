@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1002,7 +1007,7 @@ func (c *Conn) writeRows(result *sqltypes.Result) error {
 
 // writeEndResult concludes the sending of a Result.
 // if more is set to true, then it means there are more results afterwords
-func (c *Conn) writeEndResult(more bool, affectedRows, lastInsertID uint64, warnings uint16) error {
+func (c *Conn) writeEndResult(more bool, affectedRows, lastInsertID uint64, warnings uint16, qrInfo string) error {
 	// Send either an EOF, or an OK packet.
 	// See doc.go.
 	flags := c.StatusFlags
@@ -1020,6 +1025,7 @@ func (c *Conn) writeEndResult(more bool, affectedRows, lastInsertID uint64, warn
 			lastInsertID: lastInsertID,
 			statusFlags:  flags,
 			warnings:     warnings,
+			info:         qrInfo,
 		}); err != nil {
 			return err
 		}

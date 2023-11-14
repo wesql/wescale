@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1120,7 +1125,9 @@ func (c *Conn) handleComStmtExecute(handler Handler, data []byte) (kontinue bool
 	// sendFinished is set if the response should just be an OK packet.
 	sendFinished := false
 	prepare := c.PrepareData[stmtID]
+	var qrInfo string
 	err = handler.ComStmtExecute(c, prepare, func(qr *sqltypes.Result) error {
+		qrInfo = " " + qr.Info
 		if sendFinished {
 			// Failsafe: Unreachable if server is well-behaved.
 			return io.EOF
@@ -1137,7 +1144,7 @@ func (c *Conn) handleComStmtExecute(handler Handler, data []byte) (kontinue bool
 					lastInsertID:     qr.InsertID,
 					statusFlags:      c.StatusFlags,
 					warnings:         0,
-					info:             "",
+					info:             qr.Info,
 					sessionStateData: qr.SessionStateChanges,
 				}
 				return c.writeOKPacket(&ok)
@@ -1171,7 +1178,7 @@ func (c *Conn) handleComStmtExecute(handler Handler, data []byte) (kontinue bool
 		// In this case the affectedRows and lastInsertID are always 0 since it
 		// was a read operation.
 		if !sendFinished {
-			if err := c.writeEndResult(false, 0, 0, handler.WarningCount(c)); err != nil {
+			if err := c.writeEndResult(false, 0, 0, handler.WarningCount(c), qrInfo); err != nil {
 				log.Errorf("Error writing result to %s: %v", c, err)
 				return false
 			}
@@ -1278,7 +1285,7 @@ func (c *Conn) handleComSetOption(data []byte) bool {
 				return false
 			}
 		}
-		if err := c.writeEndResult(false, 0, 0, 0); err != nil {
+		if err := c.writeEndResult(false, 0, 0, 0, ""); err != nil {
 			log.Errorf("Error writeEndResult error %v ", err)
 			return false
 		}
@@ -1358,7 +1365,10 @@ func (c *Conn) execQuery(query string, handler Handler, more bool) execResult {
 	// sendFinished is set if the response should just be an OK packet.
 	sendFinished := false
 
+	var qrInfo string
+
 	err := handler.ComQuery(c, query, func(qr *sqltypes.Result) error {
+		qrInfo = " " + qr.Info
 		flag := c.StatusFlags
 		if more {
 			flag |= ServerMoreResultsExists
@@ -1385,7 +1395,7 @@ func (c *Conn) execQuery(query string, handler Handler, more bool) execResult {
 					lastInsertID:     qr.InsertID,
 					statusFlags:      flag,
 					warnings:         handler.WarningCount(c),
-					info:             "",
+					info:             qr.Info,
 					sessionStateData: qr.SessionStateChanges,
 				}
 				return c.writeOKPacket(&ok)
@@ -1420,7 +1430,7 @@ func (c *Conn) execQuery(query string, handler Handler, more bool) execResult {
 	// In this case the affectedRows and lastInsertID are always 0 since it
 	// was a read operation.
 	if !sendFinished {
-		if err := c.writeEndResult(more, 0, 0, handler.WarningCount(c)); err != nil {
+		if err := c.writeEndResult(more, 0, 0, handler.WarningCount(c), qrInfo); err != nil {
 			log.Errorf("Error writing result to %s: %v", c, err)
 			return connErr
 		}

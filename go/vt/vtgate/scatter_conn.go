@@ -24,6 +24,7 @@ package vtgate
 import (
 	"context"
 	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -194,6 +195,15 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			qs, err = getQueryService(rs, info, session, false)
 			if err != nil {
 				return nil, err
+			}
+
+			// add sql execution tablet type to qr.info if the switch is on
+			// the content of qr.info will show to users
+			enable, exist := session.Session.UserDefinedVariables["displaysqlexecutionnodetype"]
+			if exist {
+				if boolVal, err := strconv.ParseBool(string(enable.GetValue())); err == nil && boolVal {
+					qr.Info += "the sql is executed on " + rs.Target.TabletType.String() + " node"
+				}
 			}
 
 			retryRequest := func(exec func()) {
