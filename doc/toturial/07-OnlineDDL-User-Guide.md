@@ -71,7 +71,7 @@ alter vitess_migration 'uuid' cancel;
 - Cancel all ddl
 
 ```sql
-alter vitess_migrations cancel all;
+alter vitess_migration cancel all;
 ```
 
 This command will cancel all ddl in pending (queued, ready, running) status.
@@ -79,8 +79,10 @@ This command will cancel all ddl in pending (queued, ready, running) status.
 - Advancing ddl in postpone status
 
 ```sql
-alter vitess_migrations 'uuid' running; queued -> running
-alter vitess_migrations 'uuid' complete; running -> complete
+-- queued -> running
+alter vitess_migration 'uuid' running;
+-- running -> complete
+alter vitess_migration 'uuid' complete; 
 ```
 
 Under the effect of **`--postpone`**, transitioning from **`running -> complete`** is actually the process of manually performing a cutover.
