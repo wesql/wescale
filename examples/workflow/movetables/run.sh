@@ -8,4 +8,6 @@ vtctlclient --server localhost:15999 MoveTables -- --source movetables_source --
 #GetRoutingRules
 vtctlclient --server localhost:15999 GetRoutingRules
 
+vtctlclient --server localhost:15999 MoveTables -- Show movetables_target.source2target
+
 vtctlclient --server localhost:15999 MoveTables -- Progress movetables_target.source2target
