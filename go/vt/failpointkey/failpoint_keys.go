@@ -7,33 +7,39 @@ package failpointkey
 
 import "github.com/pingcap/failpoint"
 
-type FailpointKey struct {
-	FullName string
-	Name     string
+type FailpointValue struct {
+	FullName   string
+	Name       string
+	ExampleStr string
 }
 
-var FailpointTable map[string]string
+var FailpointTable map[string]FailpointValue
 
 var (
-	TestFailPointError = FailpointKey{
-		FullName: "TestFailPointError",
-		Name:     "TestFailPointError",
+	TestFailPointError = FailpointValue{
+		FullName:   "TestFailPointError",
+		Name:       "TestFailPointError",
+		ExampleStr: "",
 	}
-	CreateDatabaseErrorOnDbname = FailpointKey{
-		FullName: "vitess.io/vitess/go/vt/topotools/create-database-error-on-dbname",
-		Name:     "create-database-error-on-dbname",
+	CreateDatabaseErrorOnDbname = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/topotools/create-database-error-on-dbname",
+		Name:       "create-database-error-on-dbname",
+		ExampleStr: "return(db)",
 	}
-	IsVReplMigrationReadyToCutOver = FailpointKey{
-		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/IsVReplMigrationReadyToCutOver",
-		Name:     "IsVReplMigrationReadyToCutOver",
+	IsVReplMigrationReadyToCutOver = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vttablet/onlineddl/IsVReplMigrationReadyToCutOver",
+		Name:       "IsVReplMigrationReadyToCutOver",
+		ExampleStr: "return(true)",
 	}
-	WaitJustBeforeStopVreplication = FailpointKey{
-		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustBeforeStopVreplication",
-		Name:     "WaitJustBeforeStopVreplication",
+	WaitJustBeforeStopVreplication = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustBeforeStopVreplication",
+		Name:       "WaitJustBeforeStopVreplication",
+		ExampleStr: "return(true)",
 	}
-	WaitJustAfterStopVreplication = FailpointKey{
-		FullName: "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustAfterStopVreplication",
-		Name:     "WaitJustAfterStopVreplication",
+	WaitJustAfterStopVreplication = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vttablet/onlineddl/WaitJustAfterStopVreplication",
+		Name:       "WaitJustAfterStopVreplication",
+		ExampleStr: "return(true)",
 	}
 )
 
@@ -42,10 +48,10 @@ func init() {
 	if err != nil {
 		return
 	}
-	FailpointTable = make(map[string]string)
-	FailpointTable[CreateDatabaseErrorOnDbname.FullName] = CreateDatabaseErrorOnDbname.Name
-	FailpointTable[TestFailPointError.FullName] = TestFailPointError.Name
-	FailpointTable[IsVReplMigrationReadyToCutOver.FullName] = IsVReplMigrationReadyToCutOver.Name
-	FailpointTable[WaitJustBeforeStopVreplication.FullName] = WaitJustBeforeStopVreplication.Name
-	FailpointTable[WaitJustAfterStopVreplication.FullName] = WaitJustAfterStopVreplication.Name
+	FailpointTable = make(map[string]FailpointValue)
+	FailpointTable[CreateDatabaseErrorOnDbname.FullName] = CreateDatabaseErrorOnDbname
+	FailpointTable[TestFailPointError.FullName] = TestFailPointError
+	FailpointTable[IsVReplMigrationReadyToCutOver.FullName] = IsVReplMigrationReadyToCutOver
+	FailpointTable[WaitJustBeforeStopVreplication.FullName] = WaitJustBeforeStopVreplication
+	FailpointTable[WaitJustAfterStopVreplication.FullName] = WaitJustAfterStopVreplication
 }
