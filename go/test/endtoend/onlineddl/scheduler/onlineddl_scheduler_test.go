@@ -602,7 +602,8 @@ func testPause(t *testing.T) {
 		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning)
 		checkArtifactsOfMigration(t, uuid1, artifacts1)
 
-		testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol4, ddlStrategy, "vtgate", "", "", false))
+		testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol4, ddlStrategy, "vtgate", "", "", true))
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusComplete)
 		checkTableColNotExist(t, t1Name, "new_col14")
 	})
 
