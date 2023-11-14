@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -226,7 +231,7 @@ func BuildTargets(ctx context.Context, ts *topo.Server, tmc tmclient.TabletManag
 		// NB: changing the whitespace of this query breaks tests for now.
 		// (TODO:@ajm188) extend FakeDBClient to be less whitespace-sensitive on
 		// expected queries.
-		query := fmt.Sprintf("select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where workflow=%s and db_name=%s", encodeString(workflow), encodeString(primary.DbName()))
+		query := fmt.Sprintf("select id, source, message, cell, tablet_types, workflow_type, workflow_sub_type, defer_secondary_keys from mysql.vreplication where workflow=%s and db_name=%s", encodeString(workflow), encodeString(targetKeyspace))
 		p3qr, err := tmc.VReplicationExec(ctx, primary.Tablet, query)
 		if err != nil {
 			return nil, err
