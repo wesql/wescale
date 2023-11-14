@@ -887,7 +887,7 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		if err == nil {
 			Enabled = true
 		}
-		rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+		rows = append(rows, buildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
 	}
 	// then show failpoint not in static map but in failpoint.List()
 	for _, key := range failpoint.List() {
@@ -897,11 +897,11 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 			if err == nil {
 				Enabled = true
 			}
-			rows = append(rows, buildVarCharRow(key, boolToString(Enabled)))
+			rows = append(rows, buildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
 		}
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("failpoint keys", "Enabled"),
+		Fields: buildVarCharFields("failpoint keys", "Enabled", "Example"),
 		Rows:   rows,
 	}, nil
 }
