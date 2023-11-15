@@ -163,6 +163,9 @@ type (
 		SetReadWriteSplittingRatio(rate int32)
 		GetReadWriteSplittingRatio() int32
 
+		SetEnableInterceptionForDMLWithoutWhere(bool)
+		GetEnableInterceptionForDMLWithoutWhere() bool
+
 		GetRewriteTableNameWithDbNamePrefix() bool
 		SetRewriteTableNameWithDbNamePrefix(context.Context, bool) error
 

@@ -726,6 +726,20 @@ func (session *SafeSession) GetReadWriteSplittingRatio() int32 {
 	return session.ReadWriteSplittingRatio
 }
 
+// SetEnableInterceptionForDMLWithoutWhere set the EnableInterceptionForDMLWithoutWhere setting.
+func (session *SafeSession) SetEnableInterceptionForDMLWithoutWhere(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.EnableInterceptionForDMLWithoutWhere = enable
+}
+
+// GetEnableInterceptionForDMLWithoutWhere returns the EnableInterceptionForDMLWithoutWhere value.
+func (session *SafeSession) GetEnableInterceptionForDMLWithoutWhere() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.EnableInterceptionForDMLWithoutWhere
+}
+
 func (session *SafeSession) SetRewriteTableNameWithDbNamePrefix(allow bool) {
 	session.mu.Lock()
 	defer session.mu.Unlock()

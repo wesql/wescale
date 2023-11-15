@@ -191,6 +191,9 @@ message Session {
 
   // TxAccessMode
   TransactionAccessMode transaction_access_mode = 30;
+
+  // when enabled, vtgate will intercpet DELETE and UPDATE SQLs that are without WHERE condition
+  bool EnableInterceptionForDMLWithoutWhere = 31;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout
