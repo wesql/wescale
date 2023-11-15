@@ -55,6 +55,14 @@ var _ SessionActions = (*noopVCursor)(nil)
 type noopVCursor struct {
 }
 
+func (t *noopVCursor) SetEnableInterceptionForDMLWithoutWhere(b bool) {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetEnableInterceptionForDMLWithoutWhere() bool {
+	panic("implement me")
+}
+
 func (t *noopVCursor) InTransaction() bool {
 	return false
 }
