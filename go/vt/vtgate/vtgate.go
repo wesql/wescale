@@ -136,6 +136,8 @@ var (
 	enableDefaultUnShardedMode   = true
 
 	defaultReadWriteSplittingRatio = 100
+
+	defaultEnableInterceptionForDMLWithoutWhere = false
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -176,6 +178,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&enableDefaultUnShardedMode, "enable_default_unsharded_mode", enableDefaultUnShardedMode, "Enable unsharded mode by default")
 	fs.IntVar(&defaultReadWriteSplittingRatio, "read_write_splitting_ratio", defaultReadWriteSplittingRatio, "read write splitting ratio to replica")
 	fs.BoolVar(&defaultRewriteTableNameWithDbNamePrefix, "rewrite_tablename_with_dbname_prefix", defaultRewriteTableNameWithDbNamePrefix, "Automatically add databases to the vschema when they are created")
+	fs.BoolVar(&defaultEnableInterceptionForDMLWithoutWhere, "enable_interception_for_dml_without_where", defaultEnableInterceptionForDMLWithoutWhere, "Enable interception for DELETE and UPDATE DMLs that are without WHERE condition")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -740,5 +743,14 @@ func SetDefaultRewriteTableNameWithDbNamePrefix(value string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid rewrite_tablename_with_dbname_prefix value: %s", value)
 	}
 	defaultRewriteTableNameWithDbNamePrefix = val
+	return nil
+}
+
+func SetDefaultEnableInterceptionForDMLWithoutWhere(value string) error {
+	val, err := strconv.ParseBool(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid enable_interception_for_DML_without_where value: %s", value)
+	}
+	defaultEnableInterceptionForDMLWithoutWhere = val
 	return nil
 }

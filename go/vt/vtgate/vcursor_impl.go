@@ -945,6 +945,14 @@ func (vc *vcursorImpl) GetReadWriteSplittingRatio() int32 {
 	return vc.safeSession.GetReadWriteSplittingRatio()
 }
 
+func (vc *vcursorImpl) SetEnableInterceptionForDMLWithoutWhere(enable bool) {
+	vc.safeSession.SetEnableInterceptionForDMLWithoutWhere(enable)
+}
+
+func (vc *vcursorImpl) GetEnableInterceptionForDMLWithoutWhere() bool {
+	return vc.safeSession.GetEnableInterceptionForDMLWithoutWhere()
+}
+
 func (vc *vcursorImpl) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, allow bool) error {
 	vc.safeSession.SetRewriteTableNameWithDbNamePrefix(allow)
 	return nil
@@ -1178,6 +1186,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultReadAfterWriteTimeout(value)
 	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
 		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
+	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
+		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

@@ -94,6 +94,9 @@ var (
 
 	RewriteTableNameWithDbNamePrefix = SystemVariable{Name: "rewrite_tablename_with_dbname_prefix", IsBoolean: true, Default: on}
 
+	// interception for DML without where setting
+	EnableInterceptionForDMLWithoutWhere = SystemVariable{Name: "enable_interception_for_dml_without_where", IdentifierAsString: true}
+
 	VitessAware = []SystemVariable{
 		Autocommit,
 		ClientFoundRows,
@@ -116,6 +119,7 @@ var (
 		ReadWriteSplittingPolicy,
 		ReadWriteSplittingRatio,
 		RewriteTableNameWithDbNamePrefix,
+		EnableInterceptionForDMLWithoutWhere,
 	}
 
 	ReadOnly = []SystemVariable{

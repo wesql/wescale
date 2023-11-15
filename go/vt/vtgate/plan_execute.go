@@ -24,7 +24,6 @@ package vtgate
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"vitess.io/vitess/go/vt/vtgate/logstats"
@@ -302,22 +301,15 @@ func (e *Executor) logPlanningFinished(logStats *logstats.LogStats, plan *engine
 }
 
 func interceptDMLWithoutWhereEnable(safeSession *SafeSession, stmt sqlparser.Statement) error {
-	interceptDMLWithoutWhereEnable := false
-	enable, exist := safeSession.Session.UserDefinedVariables["interceptdmlwithoutwhere"]
-	if exist {
-		if boolVal, err := strconv.ParseBool(string(enable.GetValue())); err == nil && boolVal {
-			interceptDMLWithoutWhereEnable = true
-		}
-	}
-	if interceptDMLWithoutWhereEnable {
+	if safeSession.GetEnableInterceptionForDMLWithoutWhere() {
 		switch t := stmt.(type) {
 		case *sqlparser.Delete:
 			if t.Where == nil {
-				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set @interceptDMLWithoutWhere=false;")
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where='false';")
 			}
 		case *sqlparser.Update:
 			if t.Where == nil {
-				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set @interceptDMLWithoutWhere=false;")
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where='false';")
 			}
 		}
 	}
