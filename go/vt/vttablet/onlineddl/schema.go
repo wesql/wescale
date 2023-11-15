@@ -127,8 +127,9 @@ const (
 		WHERE
 			migration_uuid=%a
 	`
-	sqlClearMigrationStatusBefore = `UPDATE mysql.schema_migrations
-			SET status_before_paused= NULL
+	sqlClearMigrationStatusBeforeAndSetRunning = `UPDATE mysql.schema_migrations
+			SET status_before_paused= NULL,
+			    migration_status='running'
 		WHERE
 			migration_uuid=%a
 	`

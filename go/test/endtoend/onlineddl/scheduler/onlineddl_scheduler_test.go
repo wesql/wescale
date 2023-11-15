@@ -297,6 +297,22 @@ func checkStateBeforePauseOfMigration(t *testing.T, uuid, expectState string) {
 	assert.Equal(t, expectState, rs.Named().Rows[0].AsString("status_before_paused", ""))
 }
 
+func getArtifactsOfMigration(t *testing.T, uuid string) string {
+	rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
+	require.NotNil(t, rs)
+	assert.Equal(t, 1, len(rs.Named().Rows))
+	return rs.Named().Rows[0].AsString("artifacts", "")
+}
+
+func checkArtifactsOfMigration(t *testing.T, uuid, expectArtifacts string) {
+	rs := onlineddl.ReadMigrations(t, &vtParams, uuid)
+	require.NotNil(t, rs)
+	assert.Equal(t, 1, len(rs.Named().Rows))
+	actualArtifacts := rs.Named().Rows[0].AsString("artifacts", "")
+	fmt.Printf("expectArtifacts is %s, actualArtifacts is %s", expectArtifacts, actualArtifacts)
+	assert.Equal(t, expectArtifacts, actualArtifacts)
+}
+
 func checkStateOfVreplication(t *testing.T, uuid, expectState string) {
 	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
 		sqltypes.StringBindVariable(uuid),
@@ -402,6 +418,9 @@ func testPause(t *testing.T) {
 		AlterT1StatementAddCol3 = `
 			ALTER TABLE pause_test1 add column new_col13 int;
 		`
+		AlterT1StatementAddCol4 = `
+			ALTER TABLE pause_test1 add column new_col14 int;
+		`
 		AlterT1StatementDropCol1 = `
 			ALTER TABLE pause_test1 drop column new_col11;
 		`
@@ -410,6 +429,9 @@ func testPause(t *testing.T) {
 			`
 		AlterT1StatementDropCol3 = `
 			ALTER TABLE pause_test1 drop column new_col13;
+		`
+		AlterT1StatementDropCol4 = `
+			ALTER TABLE pause_test1 drop column new_col14;
 		`
 
 		AlterT2StatementAddCol1 = `
@@ -532,6 +554,8 @@ func testPause(t *testing.T) {
 		uuid2 := testOnlineDDLStatement(t, createParams(AlterT2StatementAddCol2, ddlStrategy, "vtgate", "", "", true))
 		uuid3 := testOnlineDDLStatement(t, createParams(AlterT2StatementAddCol3, ddlStrategy, "vtgate", "", "", true))
 
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning)
+
 		onlineddl.VtgateExecQuery(t, &vtParams, PauseAllOnlineDDLStatement, "")
 
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
@@ -554,6 +578,33 @@ func testPause(t *testing.T) {
 		checkTableColExist(t, t2Name, "new_col22")
 		checkTableColExist(t, t2Name, "new_col23")
 
+	})
+
+	// test of artifacts
+	t.Run("artifacts", func(t *testing.T) {
+		// artifacts should remain unchanged regardless of how many times "pause" and "resume"
+		uuid1 := testOnlineDDLStatement(t, createParams(AlterT1StatementAddCol4, ddlStrategy, "vtgate", "", "", true))
+
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning)
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+
+		artifacts1 := getArtifactsOfMigration(t, uuid1)
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning)
+		// ensure no extra shadow tables are added
+		checkArtifactsOfMigration(t, uuid1, artifacts1)
+
+		// pause second times
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(PauseOnlineDDLStatement, uuid1), "")
+		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid1, schema.OnlineDDLStatusPaused)
+		// resume again
+		onlineddl.VtgateExecQuery(t, &vtParams, fmt.Sprintf(ResumeOnlineDDLStatement, uuid1), "")
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid1, 10*time.Minute, schema.OnlineDDLStatusRunning)
+		checkArtifactsOfMigration(t, uuid1, artifacts1)
+
+		uuid2 := testOnlineDDLStatement(t, createParams(AlterT1StatementDropCol4, ddlStrategy, "vtgate", "", "", true))
+		onlineddl.WaitForMigrationStatus(t, &vtParams, shards, uuid2, 10*time.Minute, schema.OnlineDDLStatusComplete)
+		checkTableColNotExist(t, t1Name, "new_col14")
 	})
 
 	// test of --postpone-launch, resume before launch

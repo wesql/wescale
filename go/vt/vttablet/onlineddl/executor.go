@@ -1595,9 +1595,9 @@ func (e *Executor) updateMigrationStatusQueued(ctx context.Context, uuid string)
 	return err
 }
 
-func (e *Executor) clearMigrationStatusBeforePaused(ctx context.Context, uuid string) error {
-	log.Infof("clearMigrationStatusBeforePaused: set status before paused of migration: %s as NULL ", uuid)
-	query, err := sqlparser.ParseAndBind(sqlClearMigrationStatusBefore,
+func (e *Executor) clearMigrationStatusBeforePausedAndSetRunning(ctx context.Context, uuid string) error {
+	log.Infof("clearMigrationStatusBeforePausedAndSetRunning: set status before paused of migration: %s as NULL, and set status as 'running'", uuid)
+	query, err := sqlparser.ParseAndBind(sqlClearMigrationStatusBeforeAndSetRunning,
 		sqltypes.StringBindVariable(uuid),
 	)
 	if err != nil {
@@ -3076,7 +3076,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 		if err = e.continueVReplMigration(ctx, onlineDDLToRunContinue.Schema, onlineDDLToRunContinue.UUID); err != nil {
 			return err
 		}
-		if err = e.clearMigrationStatusBeforePaused(ctx, onlineDDLToRunContinue.UUID); err != nil {
+		if err = e.clearMigrationStatusBeforePausedAndSetRunning(ctx, onlineDDLToRunContinue.UUID); err != nil {
 			return err
 		}
 		log.Infof("Executor.runNextMigration: migration %s was paused while running and unpaused , it is non conflicting and will be executed next", onlineDDLToRunContinue.UUID)
