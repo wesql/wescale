@@ -903,6 +903,7 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("failpoint keys", "Enabled", "Example"),
 		Rows:   rows,
+		Info:   "\nTo enable failpoint: set @put_failpoint='key=value'\nTo disable failpoint: set @remove_failpoint='key'",
 	}, nil
 }
 
