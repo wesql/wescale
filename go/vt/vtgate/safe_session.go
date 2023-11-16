@@ -740,6 +740,30 @@ func (session *SafeSession) GetEnableInterceptionForDMLWithoutWhere() bool {
 	return session.EnableInterceptionForDMLWithoutWhere
 }
 
+func (session *SafeSession) SetEnableDisplaySQLExecutionVTTabletType(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.EnableDisplaySQLExecutionVTTabletType = enable
+}
+
+func (session *SafeSession) GetEnableDisplaySQLExecutionVTTabletType() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.EnableDisplaySQLExecutionVTTabletType
+}
+
+func (session *SafeSession) SetReadWriteSplitForReadOnlyTxnUserInput(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.ReadWriteSplitForReadOnlyTxnUserInput = enable
+}
+
+func (session *SafeSession) GetReadWriteSplitForReadOnlyTxnUserInput() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.ReadWriteSplitForReadOnlyTxnUserInput
+}
+
 func (session *SafeSession) SetRewriteTableNameWithDbNamePrefix(allow bool) {
 	session.mu.Lock()
 	defer session.mu.Unlock()

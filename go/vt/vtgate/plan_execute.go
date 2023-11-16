@@ -305,11 +305,11 @@ func interceptDMLWithoutWhereEnable(safeSession *SafeSession, stmt sqlparser.Sta
 		switch t := stmt.(type) {
 		case *sqlparser.Delete:
 			if t.Where == nil {
-				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where='false';")
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where=false;")
 			}
 		case *sqlparser.Update:
 			if t.Where == nil {
-				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where='false';")
+				return errors.New("the interception of DELETE and UPDATE SQL statements without a WHERE condition is enabled. Disable this feature by inputting set session enable_interception_for_dml_without_where=false;")
 			}
 		}
 	}

@@ -189,11 +189,19 @@ message Session {
   // read_only_transaction_policy is the policy used for read only transaction, such as enable and disable
   bool EnableReadWriteSplitForReadOnlyTxn = 29;
 
+  // system var to receive input from user and change the EnableReadWriteSplitForReadOnlyTxn value when not in a txn
+  bool ReadWriteSplitForReadOnlyTxnUserInput = 30;
+
   // TxAccessMode
-  TransactionAccessMode transaction_access_mode = 30;
+  TransactionAccessMode transaction_access_mode = 31;
 
   // when enabled, vtgate will intercpet DELETE and UPDATE SQLs that are without WHERE condition
-  bool EnableInterceptionForDMLWithoutWhere = 31;
+  bool EnableInterceptionForDMLWithoutWhere = 32;
+
+  // when enabled, vtgate will display the type of SQL execution vttablet
+  bool EnableDisplaySQLExecutionVTTabletType = 33;
+
+
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout

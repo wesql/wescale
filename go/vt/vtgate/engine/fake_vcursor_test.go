@@ -55,11 +55,31 @@ var _ SessionActions = (*noopVCursor)(nil)
 type noopVCursor struct {
 }
 
-func (t *noopVCursor) SetEnableInterceptionForDMLWithoutWhere(b bool) {
+func (t *noopVCursor) SetEnableInterceptionForDMLWithoutWhere(ctx context.Context, b bool) error {
 	panic("implement me")
 }
 
 func (t *noopVCursor) GetEnableInterceptionForDMLWithoutWhere() bool {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetEnableDisplaySQLExecutionVTTabletType(ctx context.Context, b bool) error {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetEnableDisplaySQLExecutionVTTabletType() bool {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetReadWriteSplitForReadOnlyTxnUserInput(ctx context.Context, b bool) error {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetReadWriteSplitForReadOnlyTxnUserInput() bool {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetE(b bool) {
 	panic("implement me")
 }
 

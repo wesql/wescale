@@ -529,6 +529,12 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
+		case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.EnableInterceptionForDMLWithoutWhere)
+		case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.EnableDisplaySQLExecutionVTTabletType)
+		case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.ReadWriteSplitForReadOnlyTxnUserInput)
 		case sysvars.RewriteTableNameWithDbNamePrefix.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.RewriteTableNameWithDbNamePrefix)
 		case sysvars.SessionUUID.Name:
