@@ -101,7 +101,7 @@ var (
 	EnableDisplaySQLExecutionVTTabletType = SystemVariable{Name: "enable_display_sql_execution_vttablet_type", IsBoolean: true}
 
 	// user input to enable or disable read write splittikng for read only txn, but it only works when it is not in a txn
-	ReadWriteSplitForReadOnlyTxnUserInput = SystemVariable{Name: "enable_display_sql_execution_vttablet_type", IsBoolean: true}
+	ReadWriteSplitForReadOnlyTxnUserInput = SystemVariable{Name: "enable_read_write_splitting_for_read_only_txn", IsBoolean: true}
 
 	VitessAware = []SystemVariable{
 		Autocommit,
