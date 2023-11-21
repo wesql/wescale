@@ -77,6 +77,9 @@ type VReplicationWorkflowParams struct {
 
 	// Migrate specific
 	ExternalCluster string
+
+	//Branch specific
+	SpecialRules string
 }
 
 // VReplicationWorkflow stores various internal objects for a workflow
@@ -215,6 +218,8 @@ func (vrw *VReplicationWorkflow) Create(ctx context.Context) error {
 		return fmt.Errorf("workflow has already been created, state is %s", vrw.CachedState())
 	}
 	switch vrw.workflowType {
+	case BranchWorkflow:
+		err = vrw.initBranch()
 	case MoveTablesWorkflow, MigrateWorkflow:
 		err = vrw.initMoveTables()
 	case ReshardWorkflow:
@@ -273,7 +278,7 @@ func (vrw *VReplicationWorkflow) GetStreamCount() (int64, int64, []*WorkflowErro
 			if st.Pos == "" {
 				continue
 			}
-			if st.State == "Running" || st.State == "Copying" {
+			if st.State == "Running" || st.State == "Copying" || (st.State == "Stopped" && st.Message == "Stopped after copy.") {
 				started++
 			}
 		}
@@ -440,6 +445,13 @@ func (vrw *VReplicationWorkflow) initMoveTables() error {
 		vrw.params.Tables, vrw.params.Cells, vrw.params.TabletTypes, vrw.params.AllTables, vrw.params.ExcludeTables,
 		vrw.params.AutoStart, vrw.params.StopAfterCopy, vrw.params.ExternalCluster, vrw.params.DropForeignKeys,
 		vrw.params.DeferSecondaryKeys, vrw.params.SourceTimeZone, vrw.params.OnDDL, vrw.params.SourceShards)
+}
+
+func (vrw *VReplicationWorkflow) initBranch() error {
+	log.Infof("In VReplicationWorkflow.VReplicationWorkflow() for %+v", vrw)
+	return vrw.wr.Branch(vrw.ctx, vrw.params.Workflow, vrw.params.SourceKeyspace, vrw.params.TargetKeyspace, vrw.params.Tables,
+		vrw.params.Cells, vrw.params.TabletTypes, vrw.params.AllTables, vrw.params.ExcludeTables, vrw.params.ExternalCluster,
+		vrw.params.StopAfterCopy, vrw.params.SourceTimeZone, vrw.params.SpecialRules)
 }
 
 func (vrw *VReplicationWorkflow) initReshard() error {
