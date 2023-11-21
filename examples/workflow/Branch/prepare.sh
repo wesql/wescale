@@ -27,32 +27,6 @@ mysql -h127.0.0.1 -P15306 -e 'create table if not exists branch_source.product(
 sleep 5
 
 mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer values (1, "alice@domain.com")'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-#mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.customer select null,email from branch_source.customer'
-
-
 
 mysql -h127.0.0.1 -P15306 -e 'insert into branch_source.corder values (1, 1, "SKU-1001", 100)'
 
