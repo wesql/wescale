@@ -163,8 +163,14 @@ type (
 		SetReadWriteSplittingRatio(rate int32)
 		GetReadWriteSplittingRatio() int32
 
-		SetEnableInterceptionForDMLWithoutWhere(bool)
+		SetEnableInterceptionForDMLWithoutWhere(context.Context, bool) error
 		GetEnableInterceptionForDMLWithoutWhere() bool
+
+		SetEnableDisplaySQLExecutionVTTabletType(context.Context, bool) error
+		GetEnableDisplaySQLExecutionVTTabletType() bool
+
+		SetReadWriteSplitForReadOnlyTxnUserInput(context.Context, bool) error
+		GetReadWriteSplitForReadOnlyTxnUserInput() bool
 
 		GetRewriteTableNameWithDbNamePrefix() bool
 		SetRewriteTableNameWithDbNamePrefix(context.Context, bool) error

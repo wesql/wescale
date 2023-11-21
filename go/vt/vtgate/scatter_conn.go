@@ -196,6 +196,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				return nil, err
 			}
 
+			// add sql execution tablet type to qr.info if the switch is on
+			// the content of qr.info will show to users
+			if session.GetEnableDisplaySQLExecutionVTTabletType() {
+				qr.Info += "the sql is executed on " + rs.Target.TabletType.String() + " node"
+			}
+
 			retryRequest := func(exec func()) {
 				retry := checkAndResetShardSession(info, err, session, rs.Target)
 				switch retry {

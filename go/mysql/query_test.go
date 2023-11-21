@@ -778,7 +778,7 @@ func writeResult(conn *Conn, result *sqltypes.Result) error {
 	if err := conn.writeRows(result); err != nil {
 		return err
 	}
-	return conn.writeEndResult(false, 0, 0, 0)
+	return conn.writeEndResult(false, 0, 0, 0, "")
 }
 
 func RowString(row []sqltypes.Value) string {

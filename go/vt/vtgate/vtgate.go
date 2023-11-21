@@ -126,7 +126,6 @@ var (
 
 	// read write splitting flags
 	defaultReadWriteSplittingPolicy      = string(schema.ReadWriteSplittingPolicyDisable)
-	EnableReadWriteSplitForReadOnlyTxn   = false
 	defaultReadAfterWriteConsistencyName = vtgatepb.ReadAfterWriteConsistency_EVENTUAL.String()
 
 	defaultRewriteTableNameWithDbNamePrefix = true
@@ -138,6 +137,10 @@ var (
 	defaultReadWriteSplittingRatio = 100
 
 	defaultEnableInterceptionForDMLWithoutWhere = false
+
+	defaultEnableDisplaySQLExecutionVTTabletType = false
+
+	defaultReadWriteSplitForReadOnlyTxnUserInput = false
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -752,5 +755,23 @@ func SetDefaultEnableInterceptionForDMLWithoutWhere(value string) error {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid enable_interception_for_DML_without_where value: %s", value)
 	}
 	defaultEnableInterceptionForDMLWithoutWhere = val
+	return nil
+}
+
+func SetDefaultEnableDisplaySQLExecutionVTTabletType(value string) error {
+	val, err := strconv.ParseBool(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid display_sql_execution_vtttablet_type value: %s", value)
+	}
+	defaultEnableDisplaySQLExecutionVTTabletType = val
+	return nil
+}
+
+func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
+	val, err := strconv.ParseBool(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid enable_read_write_split_for_read_only_txn value: %s", value)
+	}
+	defaultReadWriteSplitForReadOnlyTxnUserInput = val
 	return nil
 }

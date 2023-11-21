@@ -26,7 +26,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"vitess.io/vitess/go/internal/global"
@@ -276,7 +275,10 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
-
+	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
+	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	}
 	//handle set global to mysql
 	checkSysVarQuery := fmt.Sprintf("select 1 from dual where @@%s = %s", svci.Name, svci.Expr)
@@ -542,15 +544,11 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 		}
 		vcursor.Session().SetReadWriteSplittingRatio(ratio)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
-		boolValueStr, err := svss.evalAsString(env)
-		if err != nil {
-			return err
-		}
-		enable, err := strconv.ParseBool(boolValueStr)
-		if err != nil {
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid value to enable or disable interception of DMLs without where: %s", boolValueStr)
-		}
-		vcursor.Session().SetEnableInterceptionForDMLWithoutWhere(enable)
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableInterceptionForDMLWithoutWhere)
+	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableDisplaySQLExecutionVTTabletType)
+	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetReadWriteSplitForReadOnlyTxnUserInput)
 	case sysvars.QueryTimeout.Name:
 		queryTimeout, err := svss.evalAsInt64(env)
 		if err != nil {

@@ -25,7 +25,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -146,14 +145,10 @@ func newVCursorImpl(
 	// but the sql will not send to tablet to execute
 	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
 	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
-	if val, ok := safeSession.Session.UserDefinedVariables["enablereadwritesplitforreadonlytxn"]; ok {
-		if !isReadOnlyTx {
-			if boolVal, err := strconv.ParseBool(string(val.GetValue())); err == nil {
-				safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = boolVal
-				delete(safeSession.Session.UserDefinedVariables, "enablereadwritesplitforreadonlytxn")
-			}
-		}
+	if !isReadOnlyTx {
+		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
 	}
+
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
 		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
@@ -945,12 +940,31 @@ func (vc *vcursorImpl) GetReadWriteSplittingRatio() int32 {
 	return vc.safeSession.GetReadWriteSplittingRatio()
 }
 
-func (vc *vcursorImpl) SetEnableInterceptionForDMLWithoutWhere(enable bool) {
+func (vc *vcursorImpl) SetEnableInterceptionForDMLWithoutWhere(ctx context.Context, enable bool) error {
 	vc.safeSession.SetEnableInterceptionForDMLWithoutWhere(enable)
+	return nil
 }
 
 func (vc *vcursorImpl) GetEnableInterceptionForDMLWithoutWhere() bool {
 	return vc.safeSession.GetEnableInterceptionForDMLWithoutWhere()
+}
+
+func (vc *vcursorImpl) SetEnableDisplaySQLExecutionVTTabletType(ctx context.Context, enable bool) error {
+	vc.safeSession.SetEnableDisplaySQLExecutionVTTabletType(enable)
+	return nil
+}
+
+func (vc *vcursorImpl) GetEnableDisplaySQLExecutionVTTabletType() bool {
+	return vc.safeSession.GetEnableDisplaySQLExecutionVTTabletType()
+}
+
+func (vc *vcursorImpl) SetReadWriteSplitForReadOnlyTxnUserInput(ctx context.Context, enable bool) error {
+	vc.safeSession.SetReadWriteSplitForReadOnlyTxnUserInput(enable)
+	return nil
+}
+
+func (vc *vcursorImpl) GetReadWriteSplitForReadOnlyTxnUserInput() bool {
+	return vc.safeSession.GetReadWriteSplitForReadOnlyTxnUserInput()
 }
 
 func (vc *vcursorImpl) SetRewriteTableNameWithDbNamePrefix(ctx context.Context, allow bool) error {
@@ -1188,6 +1202,10 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
+	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+		return SetDefaultEnableDisplaySQLExecutionVTTabletType(value)
+	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
+		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

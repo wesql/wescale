@@ -127,6 +127,18 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.EnableDisplaySQLExecutionVTTabletType {
+		i--
+		if m.EnableDisplaySQLExecutionVTTabletType {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x2
+		i--
+		dAtA[i] = 0x88
+	}
 	if m.EnableInterceptionForDMLWithoutWhere {
 		i--
 		if m.EnableInterceptionForDMLWithoutWhere {
@@ -135,12 +147,24 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			dAtA[i] = 0
 		}
 		i--
+		dAtA[i] = 0x2
+		i--
+		dAtA[i] = 0x80
+	}
+	if m.TransactionAccessMode != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.TransactionAccessMode))
+		i--
 		dAtA[i] = 0x1
 		i--
 		dAtA[i] = 0xf8
 	}
-	if m.TransactionAccessMode != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.TransactionAccessMode))
+	if m.ReadWriteSplitForReadOnlyTxnUserInput {
+		i--
+		if m.ReadWriteSplitForReadOnlyTxnUserInput {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
 		i--
 		dAtA[i] = 0x1
 		i--
@@ -1533,10 +1557,16 @@ func (m *Session) SizeVT() (n int) {
 	if m.EnableReadWriteSplitForReadOnlyTxn {
 		n += 3
 	}
+	if m.ReadWriteSplitForReadOnlyTxnUserInput {
+		n += 3
+	}
 	if m.TransactionAccessMode != 0 {
 		n += 2 + sov(uint64(m.TransactionAccessMode))
 	}
 	if m.EnableInterceptionForDMLWithoutWhere {
+		n += 3
+	}
+	if m.EnableDisplaySQLExecutionVTTabletType {
 		n += 3
 	}
 	n += len(m.unknownFields)
@@ -3112,6 +3142,26 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			m.EnableReadWriteSplitForReadOnlyTxn = bool(v != 0)
 		case 30:
 			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReadWriteSplitForReadOnlyTxnUserInput", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ReadWriteSplitForReadOnlyTxnUserInput = bool(v != 0)
+		case 31:
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TransactionAccessMode", wireType)
 			}
 			m.TransactionAccessMode = 0
@@ -3129,7 +3179,7 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 31:
+		case 32:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EnableInterceptionForDMLWithoutWhere", wireType)
 			}
@@ -3149,6 +3199,26 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.EnableInterceptionForDMLWithoutWhere = bool(v != 0)
+		case 33:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EnableDisplaySQLExecutionVTTabletType", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.EnableDisplaySQLExecutionVTTabletType = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

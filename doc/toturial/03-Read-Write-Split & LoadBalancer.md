@@ -63,11 +63,11 @@ vtgate \
   - COM_STMT_PREPARE command.
  
  # Route Read Only Transaction to Read-Only Nodes
-  When read-write splitting is enabled, you can use the "set" command `set @EnableReadWriteSplitForReadOnlyTxn=true;` on the client side to enable read only transaction routing. 
+  When read-write splitting is enabled, you can use the "set" command `set session enable_read_write_splitting_for_read_only_txn=true;` or `set global enable_read_write_splitting_for_read_only_txn=true;` on the client side to enable read only transaction routing. 
   
   After enabling this feature, the SQL statements in the read only transaction will be routed to the read only nodes for execution, which can reduce the load on the primary node. 
   
-  By default, the read only transaction routing feature is disabled, which means that read only transactions will be routed to the primary node like all other transactions. After enabling this feature, you can use the "set" command `set @EnableReadWriteSplitForReadOnlyTxn=false;` to disable it. 
+  By default, the read only transaction routing feature is disabled, which means that read only transactions will be routed to the primary node like all other transactions. After enabling this feature, you can use the "set" command `set session enable_read_write_splitting_for_read_only_txn=false;` or `set global enable_read_write_splitting_for_read_only_txn=false;` to disable it. 
   
   Note that you can also execute the "set" command to turn this feature on or off during a read only transaction, but the switch will not take effect immediately. It will take effect only after the current read only transaction ends. 
   
