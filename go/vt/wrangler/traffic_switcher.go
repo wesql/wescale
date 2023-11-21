@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -749,6 +754,36 @@ func (wr *Wrangler) finalizeMigrateWorkflow(ctx context.Context, targetKeyspace,
 		}
 	}
 	return sw.logs(), nil
+}
+
+func (wr *Wrangler) CreateDatabase(ctx context.Context, dbName string) error {
+	sql := fmt.Sprintf("create database if not exists %s", dbName)
+	tabletAliases, err := wr.TopoServer().GetTabletAliasesByCell(ctx, "zone1")
+	if err != nil {
+		return err
+	}
+	for _, tabletAlias := range tabletAliases {
+		tablet, err := wr.TopoServer().GetTablet(ctx, tabletAlias)
+		if err != nil {
+			return err
+		}
+		if tablet.Type == topodatapb.TabletType_PRIMARY {
+			wr.ExecuteFetchAsDba(ctx, tabletAlias, sql, 1, false, true)
+		}
+	}
+	err = wr.TopoServer().CreateKeyspace(ctx, dbName, &topodatapb.Keyspace{KeyspaceType: topodatapb.KeyspaceType_NORMAL})
+	if err != nil {
+		return err
+	}
+	err = wr.TopoServer().SaveVSchema(ctx, dbName, &vschemapb.Keyspace{})
+	if err != nil {
+		return err
+	}
+	err = wr.TopoServer().CreateShard(ctx, dbName, "0")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DropSources cleans up source tables, shards and denied tables after a MoveTables/Reshard is completed

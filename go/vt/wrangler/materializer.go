@@ -126,6 +126,132 @@ func shouldInclude(table string, excludes []string) bool {
 	return true
 }
 
+// Branch initiates
+func (wr *Wrangler) Branch(ctx context.Context, workflow, sourceKeyspace, targetKeyspace, tableSpecs,
+	cell, tabletTypes string, allTables bool, excludeTables string, externalCluster string, stopAfterCopy bool, sourceTimeZone string,
+	specialRules string) error {
+	var tables []string
+	var err error
+	var vschema *vschemapb.Keyspace
+	vschema, err = wr.ts.GetVSchema(ctx, targetKeyspace)
+	if err != nil {
+		return err
+	}
+	if vschema == nil {
+		return fmt.Errorf("no vschema found for target keyspace %s", targetKeyspace)
+	}
+	// get source keyspace tables
+	if strings.HasPrefix(tableSpecs, "{") {
+		if vschema.Tables == nil {
+			vschema.Tables = make(map[string]*vschemapb.Table)
+		}
+		wrap := fmt.Sprintf(`{"tables": %s}`, tableSpecs)
+		ks := &vschemapb.Keyspace{}
+		if err := json2.Unmarshal([]byte(wrap), ks); err != nil {
+			return err
+		}
+		for table, vtab := range ks.Tables {
+			vschema.Tables[table] = vtab
+			tables = append(tables, table)
+		}
+	} else {
+		if len(strings.TrimSpace(tableSpecs)) > 0 {
+			tables = strings.Split(tableSpecs, ",")
+		}
+		ksTables, err := wr.getKeyspaceTables(ctx, sourceKeyspace, wr.sourceTs)
+		if err != nil {
+			return err
+		}
+		if len(tables) > 0 {
+			err = wr.validateSourceTablesExist(ctx, sourceKeyspace, ksTables, tables)
+			if err != nil {
+				return err
+			}
+		} else {
+			if allTables {
+				tables = ksTables
+			} else {
+				return fmt.Errorf("no tables to move")
+			}
+		}
+		var excludeTablesList []string
+		excludeTables = strings.TrimSpace(excludeTables)
+		if excludeTables != "" {
+			excludeTablesList = strings.Split(excludeTables, ",")
+			err = wr.validateSourceTablesExist(ctx, sourceKeyspace, ksTables, excludeTablesList)
+			if err != nil {
+				return err
+			}
+		}
+		var tables2 []string
+		for _, t := range tables {
+			if shouldInclude(t, excludeTablesList) {
+				tables2 = append(tables2, t)
+			}
+		}
+		tables = tables2
+		if len(tables) == 0 {
+			return fmt.Errorf("no tables to move")
+		}
+		log.Infof("Found tables to move: %s", strings.Join(tables, ","))
+	}
+	if err := wr.ts.RebuildSrvVSchema(ctx, nil); err != nil {
+		return err
+	}
+	ms := &vtctldatapb.MaterializeSettings{
+		Workflow:              workflow,
+		MaterializationIntent: vtctldatapb.MaterializationIntent_BRANCH,
+		SourceKeyspace:        sourceKeyspace,
+		TargetKeyspace:        targetKeyspace,
+		Cell:                  cell,
+		TabletTypes:           tabletTypes,
+		StopAfterCopy:         true,
+		ExternalCluster:       externalCluster,
+	}
+	if sourceTimeZone != "" {
+		ms.SourceTimeZone = sourceTimeZone
+		ms.TargetTimeZone = "UTC"
+	}
+	specialRulesSettings := &vtctldatapb.BranchSettings{}
+	if specialRules != "" {
+		if err := json2.Unmarshal([]byte(specialRules), specialRulesSettings); err != nil {
+			return err
+		}
+	}
+	tableMapRules := make(map[string]*vtctldatapb.SpecialTableRule)
+	for _, item := range specialRulesSettings.SpecialRules {
+		tableMapRules[item.SourceTable] = item
+	}
+	createDDLMode := createDDLAsCopy
+	for _, table := range tables {
+		if rule, ok := tableMapRules[table]; ok {
+			ms.TableSettings = append(ms.TableSettings, &vtctldatapb.TableMaterializeSettings{
+				TargetTable:      table,
+				SourceExpression: rule.FilterRule,
+				CreateDdl:        rule.CreateDdl,
+			})
+			continue
+		}
+		buf := sqlparser.NewTrackedBuffer(nil)
+		buf.Myprintf("select * from %v", sqlparser.NewIdentifierCS(table))
+		ms.TableSettings = append(ms.TableSettings, &vtctldatapb.TableMaterializeSettings{
+			TargetTable:      table,
+			SourceExpression: buf.String(),
+			CreateDdl:        createDDLMode,
+		})
+	}
+	mz, err := wr.prepareMaterializerStreams(ctx, ms)
+	if err != nil {
+		return err
+	}
+	if sourceTimeZone != "" {
+		if err := mz.checkTZConversion(ctx, sourceTimeZone); err != nil {
+			return err
+		}
+	}
+	return mz.startStreams(ctx)
+}
+
 // MoveTables initiates moving table(s) over to another keyspace
 func (wr *Wrangler) MoveTables(ctx context.Context, workflow, sourceKeyspace, targetKeyspace, tableSpecs,
 	cell, tabletTypes string, allTables bool, excludeTables string, autoStart, stopAfterCopy bool,
@@ -1095,6 +1221,10 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 		}
 
 		var applyDDLs []string
+		if mz.targetKeyspace != "" {
+			sql := fmt.Sprintf("create database if not exists %s", mz.targetKeyspace)
+			applyDDLs = append(applyDDLs, sql)
+		}
 		for _, ts := range mz.ms.TableSettings {
 			if hasTargetTable[ts.TargetTable] {
 				// Table already exists.

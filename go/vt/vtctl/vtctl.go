@@ -517,6 +517,12 @@ var commands = []commandGroup{
 				params: "[--topo_type=etcd2|consul|zookeeper] [--topo_server=topo_url] [--topo_root=root_topo_node> [--unmount] [--list] [--show]  [<cluster_name>]",
 				help:   "Add/Remove/Display/List external cluster(s) to this vitess cluster",
 			},
+			{
+				name:   "Branch",
+				method: commandBranch,
+				params: "Branch -- [--source_topo=<source_topo_url>] [--source_table_type=<source_typelet_type>] [--all] [--tables=<tables>] [--exclude=<tables>] [--special_rule=<rule_json>]",
+				help:   "new a data branch from source cluster",
+			},
 		},
 	},
 	{
@@ -2124,6 +2130,8 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
 	sourceKeyspace := subFlags.String("source", "", "MoveTables only. Source keyspace")
 
+	// Branch params
+	specialRules := subFlags.String("special_rules", "", "Branch only. Special rules")
 	// if sourceTimeZone is specified, the target needs to have time zones loaded
 	// note we make an opinionated decision to not allow specifying a different target time zone than UTC.
 	sourceTimeZone := subFlags.String("source_time_zone", "", "MoveTables only. Specifying this causes any DATETIME fields to be converted from given time zone into UTC")
@@ -2161,7 +2169,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 		return err
 	}
 	_, err = wr.TopoServer().GetKeyspace(ctx, target)
-	if err != nil {
+	if err != nil && workflowType != wrangler.BranchWorkflow {
 		wr.Logger().Errorf("keyspace %s not found", target)
 		return err
 	}
@@ -2232,7 +2240,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	switch action {
 	case vReplicationWorkflowActionCreate:
 		switch workflowType {
-		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow:
+		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow, wrangler.BranchWorkflow:
 			var sourceTopo *topo.Server
 			var externalClusterName string
 
@@ -2267,6 +2275,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 			vrwp.ExternalCluster = externalClusterName
 			vrwp.SourceTimeZone = *sourceTimeZone
 			vrwp.DropForeignKeys = *dropForeignKeys
+			vrwp.SpecialRules = *specialRules
 			if *sourceShards != "" {
 				vrwp.SourceShards = strings.Split(*sourceShards, ",")
 			}
@@ -2423,7 +2432,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 				}
 				wr.Logger().Printf("%d%% ... ", 100*progress.started/progress.total)
 			case <-timedCtx.Done():
-				wr.Logger().Printf("\nThe workflow did not start within %s. The workflow may simply be slow to start or there may be an issue.\n",
+				wr.Logger().Printf("\nThe workflow did not start within %s. The workflow may simply be slow  to start or there may be an issue.\n",
 					(*timeout).String())
 				wr.Logger().Printf("Check the status using the 'Workflow %s show' client command for details.\n", ksWorkflow)
 				return fmt.Errorf("timed out waiting for workflow to start")
@@ -3702,6 +3711,16 @@ func commandWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag
 
 	printQueryResult(loggerWriter{wr.Logger()}, qr)
 	return nil
+}
+
+func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.FlagSet, args []string) error {
+	ksWorkflow := args[len(args)-1]
+	target, _, err := splitKeyspaceWorkflow(ksWorkflow)
+	if err != nil {
+		return err
+	}
+	wr.CreateDatabase(ctx, target)
+	return commandVRWorkflow(ctx, wr, subFlags, args, wrangler.BranchWorkflow)
 }
 
 func commandMount(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.FlagSet, args []string) error {

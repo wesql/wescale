@@ -61,10 +61,20 @@ enum MaterializationIntent {
 
   // CREATELOOKUPINDEX is when we are creating a CreateLookupIndex flow
   CREATELOOKUPINDEX = 2;
+
+  // BRANCH is when we are creating a Branch flow
+  BRANCH = 3;
+}
+// SpecialTableRule use to special Branch request
+message SpecialTableRule{
+  string source_schema = 1;
+  string source_table = 2;
+  string filter_rule = 3;
+  string create_ddl = 4;
 }
 
 // TableMaterializeSttings contains the settings for one table.
-message TableMaterializeSettings {
+message  TableMaterializeSettings {
   string target_table = 1;
   // source_expression is a select statement.
   string source_expression = 2;
@@ -73,7 +83,9 @@ message TableMaterializeSettings {
   // if "copy", the target table DDL is the same as the source table.
   string create_ddl = 3;
 }
-
+message BranchSettings{
+  repeated SpecialTableRule special_rules = 1;
+}
 // MaterializeSettings contains the settings for the Materialize command.
 message MaterializeSettings {
   // workflow is the name of the workflow.
