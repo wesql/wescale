@@ -520,7 +520,7 @@ var commands = []commandGroup{
 			{
 				name:   "Branch",
 				method: commandBranch,
-				params: "Branch -- [--source_topo=<source_topo_url>] [--source_table_type=<source_typelet_type>] [--all] [--tables=<tables>] [--exclude=<tables>] [--special_rule=<rule_json>]",
+				params: "Branch -- --source_database=<source_database> --target_database=<target_database> --workflow_name=<workflow_name> [--source_topo_url=<source_topo_url>] [--source_table_type=<source_typelet_type>] [--include=<tables>] [--exclude=<tables>]  <action>",
 				help:   "new a data branch from source cluster",
 			},
 		},
@@ -2076,6 +2076,12 @@ func commandMoveTables(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 type VReplicationWorkflowAction string
 
 const (
+	vBranchWorkflowActionPrepare             = "prepare"
+	vBranchWorkflowActionStart               = "start"
+	vBranchWorkflowActionStop                = "stop"
+	vBranchWorkflowActionPrepareMergeBack    = "preparemergeback"
+	vBranchWorkflowActionStartMergeBack      = "startmergeback"
+	vBranchWorkflowActionCleanup             = "cleanup"
 	vReplicationWorkflowActionCreate         = "create"
 	vReplicationWorkflowActionSwitchTraffic  = "switchtraffic"
 	vReplicationWorkflowActionReverseTraffic = "reversetraffic"
@@ -2130,8 +2136,6 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
 	sourceKeyspace := subFlags.String("source", "", "MoveTables only. Source keyspace")
 
-	// Branch params
-	specialRules := subFlags.String("special_rules", "", "Branch only. Special rules")
 	// if sourceTimeZone is specified, the target needs to have time zones loaded
 	// note we make an opinionated decision to not allow specifying a different target time zone than UTC.
 	sourceTimeZone := subFlags.String("source_time_zone", "", "MoveTables only. Specifying this causes any DATETIME fields to be converted from given time zone into UTC")
@@ -2238,7 +2242,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	}
 
 	switch action {
-	case vReplicationWorkflowActionCreate:
+	case vReplicationWorkflowActionCreate, vBranchWorkflowActionPrepare:
 		switch workflowType {
 		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow, wrangler.BranchWorkflow:
 			var sourceTopo *topo.Server
@@ -2275,7 +2279,6 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 			vrwp.ExternalCluster = externalClusterName
 			vrwp.SourceTimeZone = *sourceTimeZone
 			vrwp.DropForeignKeys = *dropForeignKeys
-			vrwp.SpecialRules = *specialRules
 			if *sourceShards != "" {
 				vrwp.SourceShards = strings.Split(*sourceShards, ",")
 			}
@@ -2326,7 +2329,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 		log.Warningf("NewVReplicationWorkflow returned error %+v", wf)
 		return err
 	}
-	if !wf.Exists() && action != vReplicationWorkflowActionCreate {
+	if !wf.Exists() && action != vReplicationWorkflowActionCreate && action != vBranchWorkflowActionPrepare {
 		return fmt.Errorf("workflow %s does not exist", ksWorkflow)
 	}
 
@@ -3714,13 +3717,44 @@ func commandWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag
 }
 
 func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.FlagSet, args []string) error {
-	ksWorkflow := args[len(args)-1]
-	target, _, err := splitKeyspaceWorkflow(ksWorkflow)
+	var err error
+	cells := subFlags.String("cells", "zone1", "Cell(s) or CellAlias(es) (comma-separated) to replicate from.")
+	stopAfterCopy := subFlags.Bool("stop_after_copy", false, "Streams will be stopped once the copy phase is completed")
+	tabletTypes := subFlags.String("tablet_types", "in_order:REPLICA,PRIMARY", "Source tablet types to replicate from (e.g. PRIMARY, REPLICA, RDONLY). Defaults to --vreplication_tablet_type parameter value for the tablet, which has the default value of in_order:REPLICA,PRIMARY. Note: SwitchTraffic overrides this default and uses in_order:RDONLY,REPLICA,PRIMARY to switch all traffic by default.")
+	include := subFlags.String("include", "", "MoveTables only. A table spec or a list of tables. Either table_specs or --all needs to be specified.")
+	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
+	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
+	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Source keyspace")
+
+	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
+	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
+	if err := subFlags.Parse(args); err != nil {
+		return err
+	}
+	if subFlags.NArg() != 1 {
+		return fmt.Errorf("one arguments are needed: action")
+	}
+	action := subFlags.Arg(0)
+	wr.CreateDatabase(ctx, *targetDatabase)
+	action = strings.ToLower(action)
+	//ksWorkflow := args[len(args)-1]
+	//targetKeyspace, _, err := splitKeyspaceWorkflow(ksWorkflow)
+	switch action {
+	case vBranchWorkflowActionPrepare:
+		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy)
+	case vBranchWorkflowActionStart:
+		err = wr.StartBranch(ctx, *workflowName)
+	case vBranchWorkflowActionStop:
+		err = wr.StopBranch(ctx, *workflowName)
+	case vBranchWorkflowActionPrepareMergeBack:
+	case vBranchWorkflowActionStartMergeBack:
+
+	}
 	if err != nil {
 		return err
 	}
-	wr.CreateDatabase(ctx, target)
-	return commandVRWorkflow(ctx, wr, subFlags, args, wrangler.BranchWorkflow)
+
+	return nil
 }
 
 func commandMount(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.FlagSet, args []string) error {

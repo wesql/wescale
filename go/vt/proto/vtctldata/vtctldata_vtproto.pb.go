@@ -120,7 +120,7 @@ func (m *ExecuteVtctlCommandResponse) MarshalToSizedBufferVT(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *SpecialTableRule) MarshalVT() (dAtA []byte, err error) {
+func (m *FilterTableRule) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -133,12 +133,12 @@ func (m *SpecialTableRule) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SpecialTableRule) MarshalToVT(dAtA []byte) (int, error) {
+func (m *FilterTableRule) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *SpecialTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *FilterTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -150,6 +150,13 @@ func (m *SpecialTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.MergeDdl) > 0 {
+		i -= len(m.MergeDdl)
+		copy(dAtA[i:], m.MergeDdl)
+		i = encodeVarint(dAtA, i, uint64(len(m.MergeDdl)))
+		i--
+		dAtA[i] = 0x2a
+	}
 	if len(m.CreateDdl) > 0 {
 		i -= len(m.CreateDdl)
 		copy(dAtA[i:], m.CreateDdl)
@@ -157,24 +164,24 @@ func (m *SpecialTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.FilterRule) > 0 {
-		i -= len(m.FilterRule)
-		copy(dAtA[i:], m.FilterRule)
-		i = encodeVarint(dAtA, i, uint64(len(m.FilterRule)))
+	if len(m.FilteringRule) > 0 {
+		i -= len(m.FilteringRule)
+		copy(dAtA[i:], m.FilteringRule)
+		i = encodeVarint(dAtA, i, uint64(len(m.FilteringRule)))
 		i--
 		dAtA[i] = 0x1a
+	}
+	if len(m.TargetTable) > 0 {
+		i -= len(m.TargetTable)
+		copy(dAtA[i:], m.TargetTable)
+		i = encodeVarint(dAtA, i, uint64(len(m.TargetTable)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.SourceTable) > 0 {
 		i -= len(m.SourceTable)
 		copy(dAtA[i:], m.SourceTable)
 		i = encodeVarint(dAtA, i, uint64(len(m.SourceTable)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.SourceSchema) > 0 {
-		i -= len(m.SourceSchema)
-		copy(dAtA[i:], m.SourceSchema)
-		i = encodeVarint(dAtA, i, uint64(len(m.SourceSchema)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -265,9 +272,9 @@ func (m *BranchSettings) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.SpecialRules) > 0 {
-		for iNdEx := len(m.SpecialRules) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.SpecialRules[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+	if len(m.FilterTableRules) > 0 {
+		for iNdEx := len(m.FilterTableRules) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.FilterTableRules[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -9843,25 +9850,29 @@ func (m *ExecuteVtctlCommandResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *SpecialTableRule) SizeVT() (n int) {
+func (m *FilterTableRule) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	l = len(m.SourceSchema)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
-	}
 	l = len(m.SourceTable)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	l = len(m.FilterRule)
+	l = len(m.TargetTable)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.FilteringRule)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
 	l = len(m.CreateDdl)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.MergeDdl)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -9897,8 +9908,8 @@ func (m *BranchSettings) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.SpecialRules) > 0 {
-		for _, e := range m.SpecialRules {
+	if len(m.FilterTableRules) > 0 {
+		for _, e := range m.FilterTableRules {
 			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
@@ -13619,7 +13630,7 @@ func (m *ExecuteVtctlCommandResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SpecialTableRule) UnmarshalVT(dAtA []byte) error {
+func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -13642,45 +13653,13 @@ func (m *SpecialTableRule) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SpecialTableRule: wiretype end group for non-group")
+			return fmt.Errorf("proto: FilterTableRule: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SpecialTableRule: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: FilterTableRule: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SourceSchema", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SourceSchema = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SourceTable", wireType)
 			}
@@ -13712,9 +13691,9 @@ func (m *SpecialTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.SourceTable = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FilterRule", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TargetTable", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -13742,7 +13721,39 @@ func (m *SpecialTableRule) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.FilterRule = string(dAtA[iNdEx:postIndex])
+			m.TargetTable = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FilteringRule", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.FilteringRule = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -13775,6 +13786,38 @@ func (m *SpecialTableRule) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.CreateDdl = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MergeDdl", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MergeDdl = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -13976,7 +14019,7 @@ func (m *BranchSettings) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SpecialRules", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field FilterTableRules", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -14003,8 +14046,8 @@ func (m *BranchSettings) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SpecialRules = append(m.SpecialRules, &SpecialTableRule{})
-			if err := m.SpecialRules[len(m.SpecialRules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.FilterTableRules = append(m.FilterTableRules, &FilterTableRule{})
+			if err := m.FilterTableRules[len(m.FilterTableRules)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

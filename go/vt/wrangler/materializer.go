@@ -218,8 +218,8 @@ func (wr *Wrangler) Branch(ctx context.Context, workflow, sourceKeyspace, target
 			return err
 		}
 	}
-	tableMapRules := make(map[string]*vtctldatapb.SpecialTableRule)
-	for _, item := range specialRulesSettings.SpecialRules {
+	tableMapRules := make(map[string]*vtctldatapb.FilterTableRule)
+	for _, item := range specialRulesSettings.FilterTableRules {
 		tableMapRules[item.SourceTable] = item
 	}
 	createDDLMode := createDDLAsCopy
@@ -227,7 +227,7 @@ func (wr *Wrangler) Branch(ctx context.Context, workflow, sourceKeyspace, target
 		if rule, ok := tableMapRules[table]; ok {
 			ms.TableSettings = append(ms.TableSettings, &vtctldatapb.TableMaterializeSettings{
 				TargetTable:      table,
-				SourceExpression: rule.FilterRule,
+				SourceExpression: rule.FilteringRule,
 				CreateDdl:        rule.CreateDdl,
 			})
 			continue
@@ -1520,6 +1520,20 @@ func (mz *materializer) startStreams(ctx context.Context) error {
 			return vterrors.Wrapf(err, "GetTablet(%v) failed", target.PrimaryAlias)
 		}
 		query := fmt.Sprintf("update mysql.vreplication set state='Running' where db_name=%s and workflow=%s", encodeString(mz.targetKeyspace), encodeString(mz.ms.Workflow))
+		if _, err := mz.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
+			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
+		}
+		return nil
+	})
+}
+
+func (mz *materializer) stopStreams(ctx context.Context) error {
+	return mz.forAllTargets(func(target *topo.ShardInfo) error {
+		targetPrimary, err := mz.wr.ts.GetTablet(ctx, target.PrimaryAlias)
+		if err != nil {
+			return vterrors.Wrapf(err, "GetTablet(%v) failed", target.PrimaryAlias)
+		}
+		query := fmt.Sprintf("update mysql.vreplication set state='Stopped' where db_name=%s and workflow=%s", encodeString(mz.targetKeyspace), encodeString(mz.ms.Workflow))
 		if _, err := mz.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
 			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
 		}
