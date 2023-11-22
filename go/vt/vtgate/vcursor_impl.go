@@ -155,6 +155,9 @@ func newVCursorImpl(
 	if err != nil {
 		return nil, err
 	}
+	if safeSession.ResolverOptions == nil {
+		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
+	}
 	safeSession.ResolverOptions.SuggestedTabletType = suggestedTabletType
 
 	keyspace, tabletType, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
