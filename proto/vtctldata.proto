@@ -66,11 +66,12 @@ enum MaterializationIntent {
   BRANCH = 3;
 }
 // SpecialTableRule use to special Branch request
-message SpecialTableRule{
-  string source_schema = 1;
-  string source_table = 2;
-  string filter_rule = 3;
+message FilterTableRule{
+  string source_table = 1;
+  string target_table = 2;
+  string filtering_rule = 3;
   string create_ddl = 4;
+  string merge_ddl = 5;
 }
 
 // TableMaterializeSttings contains the settings for one table.
@@ -84,7 +85,7 @@ message  TableMaterializeSettings {
   string create_ddl = 3;
 }
 message BranchSettings{
-  repeated SpecialTableRule special_rules = 1;
+  repeated FilterTableRule special_rules = 1;
 }
 // MaterializeSettings contains the settings for the Materialize command.
 message MaterializeSettings {

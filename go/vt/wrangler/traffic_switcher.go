@@ -791,13 +791,8 @@ func (wr *Wrangler) CreateDatabase(ctx context.Context, dbName string) error {
 	if err != nil && !topo.IsErrType(err, topo.NodeExists) {
 		return err
 	}
-	_, err = wr.TopoServer().GetOrCreateShard(ctx, dbName, "0")
+	err = wr.TopoServer().CreateShard(ctx, dbName, "0")
 	if err != nil && !topo.IsErrType(err, topo.NodeExists) {
-		return err
-	}
-	var cells []string
-	cells = append(cells, "zone1")
-	if err = wr.TopoServer().RebuildSrvVSchema(ctx, cells); err != nil {
 		return err
 	}
 	return nil

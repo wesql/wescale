@@ -2173,7 +2173,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 		return err
 	}
 	_, err = wr.TopoServer().GetKeyspace(ctx, target)
-	if err != nil {
+	if err != nil && workflowType != wrangler.BranchWorkflow {
 		wr.Logger().Errorf("keyspace %s not found", target)
 		return err
 	}
@@ -2242,9 +2242,9 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	}
 
 	switch action {
-	case vReplicationWorkflowActionCreate:
+	case vReplicationWorkflowActionCreate, vBranchWorkflowActionPrepare:
 		switch workflowType {
-		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow:
+		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow, wrangler.BranchWorkflow:
 			var sourceTopo *topo.Server
 			var externalClusterName string
 
@@ -2329,7 +2329,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 		log.Warningf("NewVReplicationWorkflow returned error %+v", wf)
 		return err
 	}
-	if !wf.Exists() && action != vReplicationWorkflowActionCreate {
+	if !wf.Exists() && action != vReplicationWorkflowActionCreate && action != vBranchWorkflowActionPrepare {
 		return fmt.Errorf("workflow %s does not exist", ksWorkflow)
 	}
 
@@ -2435,7 +2435,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 				}
 				wr.Logger().Printf("%d%% ... ", 100*progress.started/progress.total)
 			case <-timedCtx.Done():
-				wr.Logger().Printf("\nThe workflow did not start within %s. The workflow may simply be slow to start or there may be an issue.\n",
+				wr.Logger().Printf("\nThe workflow did not start within %s. The workflow may simply be slow  to start or there may be an issue.\n",
 					(*timeout).String())
 				wr.Logger().Printf("Check the status using the 'Workflow %s show' client command for details.\n", ksWorkflow)
 				return fmt.Errorf("timed out waiting for workflow to start")
@@ -3713,6 +3713,47 @@ func commandWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag
 	qr := wr.QueryResultForRowsAffected(results)
 
 	printQueryResult(loggerWriter{wr.Logger()}, qr)
+	return nil
+}
+
+func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.FlagSet, args []string) error {
+	var err error
+	cells := subFlags.String("cells", "zone1", "Cell(s) or CellAlias(es) (comma-separated) to replicate from.")
+	stopAfterCopy := subFlags.Bool("stop_after_copy", false, "Streams will be stopped once the copy phase is completed")
+	tabletTypes := subFlags.String("tablet_types", "in_order:REPLICA,PRIMARY", "Source tablet types to replicate from (e.g. PRIMARY, REPLICA, RDONLY). Defaults to --vreplication_tablet_type parameter value for the tablet, which has the default value of in_order:REPLICA,PRIMARY. Note: SwitchTraffic overrides this default and uses in_order:RDONLY,REPLICA,PRIMARY to switch all traffic by default.")
+	include := subFlags.String("include", "", "MoveTables only. A table spec or a list of tables. Either table_specs or --all needs to be specified.")
+	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
+	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
+	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Source keyspace")
+
+	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
+	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
+	if err := subFlags.Parse(args); err != nil {
+		return err
+	}
+	if subFlags.NArg() != 1 {
+		return fmt.Errorf("one arguments are needed: action")
+	}
+	action := subFlags.Arg(0)
+	wr.CreateDatabase(ctx, *targetDatabase)
+	action = strings.ToLower(action)
+	//ksWorkflow := args[len(args)-1]
+	//targetKeyspace, _, err := splitKeyspaceWorkflow(ksWorkflow)
+	switch action {
+	case vBranchWorkflowActionPrepare:
+		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy)
+	case vBranchWorkflowActionStart:
+		err = wr.StartBranch(ctx, *workflowName)
+	case vBranchWorkflowActionStop:
+		err = wr.StopBranch(ctx, *workflowName)
+	case vBranchWorkflowActionPrepareMergeBack:
+	case vBranchWorkflowActionStartMergeBack:
+
+	}
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

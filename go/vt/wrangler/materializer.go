@@ -218,8 +218,8 @@ func (wr *Wrangler) Branch(ctx context.Context, workflow, sourceKeyspace, target
 			return err
 		}
 	}
-	tableMapRules := make(map[string]*vtctldatapb.SpecialTableRule)
-	for _, item := range specialRulesSettings.SpecialRules {
+	tableMapRules := make(map[string]*vtctldatapb.FilterTableRule)
+	for _, item := range specialRulesSettings.FilterTableRules {
 		tableMapRules[item.SourceTable] = item
 	}
 	createDDLMode := createDDLAsCopy
@@ -227,7 +227,7 @@ func (wr *Wrangler) Branch(ctx context.Context, workflow, sourceKeyspace, target
 		if rule, ok := tableMapRules[table]; ok {
 			ms.TableSettings = append(ms.TableSettings, &vtctldatapb.TableMaterializeSettings{
 				TargetTable:      table,
-				SourceExpression: rule.FilterRule,
+				SourceExpression: rule.FilteringRule,
 				CreateDdl:        rule.CreateDdl,
 			})
 			continue
