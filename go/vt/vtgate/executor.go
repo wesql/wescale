@@ -1151,6 +1151,7 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 		if err != nil {
 			return nil, nil, err
 		}
+		vcursor.safeSession.ResolverOptions.UserHintTabletType = tabletTypeFromHint
 	}
 
 	setVarComment, err := prepareSetVarComment(vcursor, stmt)

@@ -155,10 +155,16 @@ func newVCursorImpl(
 	if err != nil {
 		return nil, err
 	}
+	safeSession.ResolverOptions.SuggestedTabletType = suggestedTabletType
 
 	keyspace, tabletType, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
 	if err != nil {
 		return nil, err
+	}
+	// todo，挪到parseDestinationTarget函数中去
+	last := strings.LastIndexAny(safeSession.TargetString, "@")
+	if last != -1 {
+		safeSession.ResolverOptions.KeyspaceTabletType, _ = topoprotopb.ParseTabletType(safeSession.TargetString[last+1:])
 	}
 
 	var ts *topo.Server
@@ -668,8 +674,23 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 }
 
 func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace string, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
-	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, vc.tabletType, destination)
+	tabletType := ResolveTabletType(vc.safeSession.ReadWriteSplittingRatio, vc.safeSession.ResolverOptions)
+	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, tabletType, destination)
 	return result, nil
+}
+
+func ResolveTabletType(ratio int32, opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
+	if opts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
+		return opts.UserHintTabletType
+	}
+	if opts.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
+		return opts.KeyspaceTabletType
+	}
+	if opts.SuggestedTabletType == topodatapb.TabletType_PRIMARY {
+		return opts.SuggestedTabletType
+	}
+	// From now on, all statements can be routed to Replica/ReadOnly VTTablet
+	return pickTabletTypeForReadWriteSplitting(ratio)
 }
 
 func (vc *vcursorImpl) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {

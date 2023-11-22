@@ -201,7 +201,14 @@ message Session {
   // when enabled, vtgate will display the type of SQL execution vttablet
   bool EnableDisplaySQLExecutionVTTabletType = 33;
 
+  // used to resolve tablet type/types to load balance
+  ResolverOptions resolver_options = 34;
+}
 
+message ResolverOptions {
+  topodata.TabletType user_hint_tablet_type = 1;
+  topodata.TabletType keyspace_tablet_type = 2;
+  topodata.TabletType suggested_tablet_type = 3;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout
