@@ -1125,15 +1125,11 @@ type iQueryOption interface {
 
 // getPlan computes the plan for the given query. If one is in
 // the cache, it reuses it.
-func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string, comments sqlparser.MarginComments, bindVars map[string]*querypb.BindVariable, qo iQueryOption, logStats *logstats.LogStats) (*engine.Plan, sqlparser.Statement, error) {
+func (e *Executor) getPlan(ctx context.Context, stmt sqlparser.Statement, reserved sqlparser.BindVars, vcursor *vcursorImpl, sql string, comments sqlparser.MarginComments, bindVars map[string]*querypb.BindVariable, qo iQueryOption, logStats *logstats.LogStats) (*engine.Plan, sqlparser.Statement, error) {
 	if e.VSchema() == nil {
 		return nil, nil, errors.New("vschema not initialized")
 	}
 
-	stmt, reserved, err := sqlparser.Parse2(sql)
-	if err != nil {
-		return nil, nil, err
-	}
 	query := sql
 	statement := stmt
 	reservedVars := sqlparser.NewReservedVars("vtg", reserved)
@@ -1433,7 +1429,7 @@ func (e *Executor) prepare(ctx context.Context, safeSession *SafeSession, sql st
 func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, sql string, bindVars map[string]*querypb.BindVariable, logStats *logstats.LogStats) ([]*querypb.Field, error) {
 	// V3 mode.
 	query, comments := sqlparser.SplitMarginComments(sql)
-	mystmt, _, err := sqlparser.Parse2(query)
+	mystmt, reserved, err := sqlparser.Parse2(query)
 	if err != nil {
 		return nil, err
 	}
@@ -1445,7 +1441,7 @@ func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, 
 		return nil, err
 	}
 
-	plan, _, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
+	plan, _, err := e.getPlan(ctx, mystmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
 	execStart := time.Now()
 	logStats.PlanTime = execStart.Sub(logStats.StartTime)

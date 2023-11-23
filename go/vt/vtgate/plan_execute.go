@@ -65,7 +65,7 @@ func (e *Executor) newExecute(
 	}
 
 	query, comments := sqlparser.SplitMarginComments(sql)
-	mystmt, _, err := sqlparser.Parse2(query)
+	stmt, reserved, err := sqlparser.Parse2(query)
 	if err != nil {
 		return err
 	}
@@ -76,13 +76,13 @@ func (e *Executor) newExecute(
 	}
 
 	// get type of vttablet that sql will be routed to
-	err = ResolveTabletType(safeSession, vcursor, mystmt, sql)
+	err = ResolveTabletType(safeSession, vcursor, stmt, sql)
 	if err != nil {
 		return err
 	}
 
 	// 2: Create a plan for the query
-	plan, stmt, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
+	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
 	execStart := e.logPlanningFinished(logStats, plan)
 

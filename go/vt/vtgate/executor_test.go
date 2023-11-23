@@ -958,7 +958,9 @@ func assertCacheContains(t *testing.T, e *Executor, want []string) {
 
 func getPlanCached(t *testing.T, e *Executor, vcursor *vcursorImpl, sql string, comments sqlparser.MarginComments, bindVars map[string]*querypb.BindVariable, skipQueryPlanCache bool) (*engine.Plan, *logstats.LogStats) {
 	logStats := logstats.NewLogStats(ctx, "Test", "", "", nil)
-	plan, _, err := e.getPlan(context.Background(), vcursor, sql, comments, bindVars, &SafeSession{
+	stmt, reserved, err := sqlparser.Parse2(sql)
+	require.NoError(t, err)
+	plan, _, err := e.getPlan(context.Background(), stmt, reserved, vcursor, sql, comments, bindVars, &SafeSession{
 		Session: &vtgatepb.Session{Options: &querypb.ExecuteOptions{SkipQueryPlanCache: skipQueryPlanCache}},
 	}, logStats)
 	require.NoError(t, err)
