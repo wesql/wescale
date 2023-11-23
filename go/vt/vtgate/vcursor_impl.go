@@ -657,7 +657,7 @@ func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace s
 	return result, nil
 }
 
-func ResolveTabletType(opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
+func ResolveTabletTypeBaseOnOptions(opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
 	if opts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
 		return opts.UserHintTabletType
 	}

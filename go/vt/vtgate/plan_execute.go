@@ -52,16 +52,10 @@ func (e *Executor) newExecute(
 	execPlan planExec, // used when there is a plan to execute
 	recResult txResult, // used when it's something simple like begin/commit/rollback/savepoint
 ) error {
-
-	mystmt, _, err := sqlparser.Parse2(sql)
-	if err != nil {
-		return err
-	}
-
 	// 1: Prepare before planning and execution
 
 	// Start an implicit transaction if necessary.
-	err = e.startTxIfNecessary(ctx, safeSession)
+	err := e.startTxIfNecessary(ctx, safeSession)
 	if err != nil {
 		return err
 	}
@@ -71,56 +65,33 @@ func (e *Executor) newExecute(
 	}
 
 	query, comments := sqlparser.SplitMarginComments(sql)
+	mystmt, _, err := sqlparser.Parse2(query)
+	if err != nil {
+		return err
+	}
+
 	vcursor, err := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
 	if err != nil {
 		return err
 	}
-	// ---- start ------
-	if safeSession.ResolverOptions == nil {
-		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio),
-			KeyspaceTabletType:  topodatapb.TabletType_UNKNOWN,
-			UserHintTabletType:  topodatapb.TabletType_UNKNOWN,
-			SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-	}
 
-	safeSession.ResolverOptions.SuggestedTabletType, err = GetSuggestedTabletType(safeSession, sql)
+	// get type of vttablet that sql will be routed to
+	err = ResolveTabletType(safeSession, vcursor, mystmt, sql)
 	if err != nil {
 		return err
 	}
-
-	safeSession.ResolverOptions.KeyspaceTabletType, err = GetKeyspaceTabletType(safeSession)
-	if err != nil {
-		return err
-	}
-
-	tabletTypeFromHint := sqlparser.GetNodeType(mystmt)
-	if tabletTypeFromHint == topodatapb.TabletType_PRIMARY || tabletTypeFromHint == topodatapb.TabletType_REPLICA || tabletTypeFromHint == topodatapb.TabletType_RDONLY {
-		err := vcursor.CheckTabletTypeFromHint(tabletTypeFromHint)
-		if err != nil {
-			return err
-		}
-		if vcursor.safeSession.ResolverOptions == nil {
-			vcursor.safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-		}
-		vcursor.safeSession.ResolverOptions.UserHintTabletType = tabletTypeFromHint
-	}
-
-	// decide tablet type
-	vcursor.tabletType = ResolveTabletType(vcursor.safeSession.ResolverOptions)
-
-	// end-------------------
 
 	// 2: Create a plan for the query
 	plan, stmt, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
-
-	if err := interceptDMLWithoutWhereEnable(safeSession, stmt); err != nil {
-		return err
-	}
 
 	execStart := e.logPlanningFinished(logStats, plan)
 
 	if err != nil {
 		safeSession.ClearWarnings()
+		return err
+	}
+
+	if err := interceptDMLWithoutWhereEnable(safeSession, stmt); err != nil {
 		return err
 	}
 
@@ -385,4 +356,45 @@ func GetKeyspaceTabletType(safeSession *SafeSession) (topodatapb.TabletType, err
 		return topoprotopb.ParseTabletType(safeSession.TargetString[last+1:])
 	}
 	return topodatapb.TabletType_UNKNOWN, nil
+}
+
+func GetUserHintTabletType(stmt sqlparser.Statement, vcursor *vcursorImpl) (topodatapb.TabletType, error) {
+	tabletTypeFromHint := sqlparser.GetNodeType(stmt)
+	if tabletTypeFromHint == topodatapb.TabletType_PRIMARY || tabletTypeFromHint == topodatapb.TabletType_REPLICA || tabletTypeFromHint == topodatapb.TabletType_RDONLY {
+		err := vcursor.CheckTabletTypeFromHint(tabletTypeFromHint)
+		if err != nil {
+			return topodatapb.TabletType_UNKNOWN, err
+		}
+		return tabletTypeFromHint, nil
+	}
+	return topodatapb.TabletType_UNKNOWN, nil
+}
+
+func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlparser.Statement, sql string) error {
+	// init ResolverOptions if nil
+	if safeSession.ResolverOptions == nil {
+		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio),
+			KeyspaceTabletType:  topodatapb.TabletType_UNKNOWN,
+			UserHintTabletType:  topodatapb.TabletType_UNKNOWN,
+			SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
+	}
+	// get SuggestedTabletType
+	var err error
+	safeSession.ResolverOptions.SuggestedTabletType, err = GetSuggestedTabletType(safeSession, sql)
+	if err != nil {
+		return err
+	}
+	// get KeyspaceTabletType
+	safeSession.ResolverOptions.KeyspaceTabletType, err = GetKeyspaceTabletType(safeSession)
+	if err != nil {
+		return err
+	}
+	// get UserHintTabletType
+	safeSession.ResolverOptions.UserHintTabletType, err = GetUserHintTabletType(stmt, vcursor)
+	if err != nil {
+		return err
+	}
+	// decide tablet type
+	vcursor.tabletType = ResolveTabletTypeBaseOnOptions(vcursor.safeSession.ResolverOptions)
+	return nil
 }

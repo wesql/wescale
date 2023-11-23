@@ -1433,58 +1433,19 @@ func (e *Executor) prepare(ctx context.Context, safeSession *SafeSession, sql st
 func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, sql string, bindVars map[string]*querypb.BindVariable, logStats *logstats.LogStats) ([]*querypb.Field, error) {
 	// V3 mode.
 	query, comments := sqlparser.SplitMarginComments(sql)
+	mystmt, _, err := sqlparser.Parse2(query)
+	if err != nil {
+		return nil, err
+	}
+
 	vcursor, _ := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
 
-	// ---- start ------
-	mystmt, _, err := sqlparser.Parse2(sql)
+	err = ResolveTabletType(safeSession, vcursor, mystmt, sql)
 	if err != nil {
 		return nil, err
 	}
-	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
-	// but the sql will not send to tablet to execute
-	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
-	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
-	if !isReadOnlyTx {
-		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
-	}
-
-	// use the suggestedTabletType if safeSession.TargetString is not specified
-	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
-	if err != nil {
-		return nil, err
-	}
-	if safeSession.ResolverOptions == nil {
-		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-	}
-	safeSession.ResolverOptions.SuggestedTabletType = suggestedTabletType
-
-	// get keyspace tablet type, like: use d1@primary
-	last := strings.LastIndexAny(safeSession.TargetString, "@")
-	if last != -1 {
-		safeSession.ResolverOptions.KeyspaceTabletType, _ = ParseTabletType(safeSession.TargetString[last+1:])
-	}
-
-	tabletTypeFromHint := sqlparser.GetNodeType(mystmt)
-	if tabletTypeFromHint == topodatapb.TabletType_PRIMARY || tabletTypeFromHint == topodatapb.TabletType_REPLICA || tabletTypeFromHint == topodatapb.TabletType_RDONLY {
-		err := vcursor.CheckTabletTypeFromHint(tabletTypeFromHint)
-		if err != nil {
-			return nil, err
-		}
-		if vcursor.safeSession.ResolverOptions == nil {
-			vcursor.safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-		}
-		vcursor.safeSession.ResolverOptions.UserHintTabletType = tabletTypeFromHint
-	}
-
-	// decide tablet type
-	vcursor.tabletType = ResolveTabletType(vcursor.safeSession.ResolverOptions)
-
-	// end-------------------
 
 	plan, _, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
-	//	decide tablet type
-	vcursor.tabletType = ResolveTabletType(safeSession.ResolverOptions)
 
 	execStart := time.Now()
 	logStats.PlanTime = execStart.Sub(logStats.StartTime)
