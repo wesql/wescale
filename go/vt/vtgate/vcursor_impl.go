@@ -141,33 +141,10 @@ func newVCursorImpl(
 	warnShardedOnly bool,
 	pv plancontext.PlannerVersion,
 ) (*vcursorImpl, error) {
-	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
-	// but the sql will not send to tablet to execute
-	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
-	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
-	if !isReadOnlyTx {
-		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
-	}
 
-	// use the suggestedTabletType if safeSession.TargetString is not specified
-	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
+	keyspace, _, destination, err := parseDestinationTarget(topodatapb.TabletType_UNKNOWN, safeSession.TargetString, vschema)
 	if err != nil {
 		return nil, err
-	}
-	if safeSession.ResolverOptions == nil {
-		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-	}
-	safeSession.ResolverOptions.SuggestedTabletType = suggestedTabletType
-
-	keyspace, _, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
-	if err != nil {
-		return nil, err
-	}
-	// get keyspace tablet type, like: use d1@primary
-	last := strings.LastIndexAny(safeSession.TargetString, "@")
-	if last != -1 {
-		safeSession.ResolverOptions.KeyspaceTabletType, _ = topoprotopb.ParseTabletType(safeSession.TargetString[last+1:])
 	}
 
 	var ts *topo.Server
