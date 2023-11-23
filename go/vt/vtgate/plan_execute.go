@@ -331,6 +331,15 @@ func interceptDMLWithoutWhereEnable(safeSession *SafeSession, stmt sqlparser.Sta
 	return nil
 }
 
+func InitResolverOptionsIfNil(safeSession *SafeSession) {
+	if safeSession.ResolverOptions == nil {
+		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio),
+			KeyspaceTabletType:  topodatapb.TabletType_UNKNOWN,
+			UserHintTabletType:  topodatapb.TabletType_UNKNOWN,
+			SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
+	}
+}
+
 func GetSuggestedTabletType(safeSession *SafeSession, sql string) (topodatapb.TabletType, error) {
 	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
 	// but the sql will not send to tablet to execute
@@ -372,12 +381,7 @@ func GetUserHintTabletType(stmt sqlparser.Statement, vcursor *vcursorImpl) (topo
 
 func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlparser.Statement, sql string) error {
 	// init ResolverOptions if nil
-	if safeSession.ResolverOptions == nil {
-		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio),
-			KeyspaceTabletType:  topodatapb.TabletType_UNKNOWN,
-			UserHintTabletType:  topodatapb.TabletType_UNKNOWN,
-			SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
-	}
+	InitResolverOptionsIfNil(safeSession)
 	// get SuggestedTabletType
 	var err error
 	safeSession.ResolverOptions.SuggestedTabletType, err = GetSuggestedTabletType(safeSession, sql)

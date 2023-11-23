@@ -171,14 +171,20 @@ func TestDestinationKeyspace(t *testing.T) {
 
 	for i, tc := range tests {
 		t.Run(strconv.Itoa(i)+tc.targetString, func(t *testing.T) {
-			impl, _ := newVCursorImpl(NewSafeSession(&vtgatepb.Session{TargetString: tc.targetString}), "", sqlparser.MarginComments{}, nil, nil, &fakeVSchemaOperator{vschema: tc.vschema}, tc.vschema, nil, nil, false, querypb.ExecuteOptions_Gen4)
+			safeSession := NewSafeSession(&vtgatepb.Session{TargetString: tc.targetString})
+			impl, _ := newVCursorImpl(safeSession, "", sqlparser.MarginComments{}, nil, nil, &fakeVSchemaOperator{vschema: tc.vschema}, tc.vschema, nil, nil, false, querypb.ExecuteOptions_Gen4)
+			var err error
+			var mystmt sqlparser.Statement
+			err = ResolveTabletType(safeSession, impl, mystmt, "")
+			require.NoError(t, err)
+
 			impl.vschema = tc.vschema
-			dest, keyspace, tabletType, err := impl.TargetDestination(tc.qualifier)
+			dest, keyspace, _, err := impl.TargetDestination(tc.qualifier)
 			if tc.expectedError == "" {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedDest, dest)
 				require.Equal(t, tc.expectedKeyspace, keyspace.Name)
-				require.Equal(t, tc.expectedTabletType, tabletType)
+				require.Equal(t, tc.expectedTabletType, impl.tabletType)
 			} else {
 				require.EqualError(t, err, tc.expectedError)
 			}
@@ -266,6 +272,9 @@ func TestPlanPrefixKey(t *testing.T) {
 			vc, err := newVCursorImpl(ss, "", sqlparser.MarginComments{}, nil, nil, &fakeVSchemaOperator{vschema: tc.vschema}, tc.vschema, srvtopo.NewResolver(&fakeTopoServer{}, nil, ""), nil, false, querypb.ExecuteOptions_Gen4)
 			require.NoError(t, err)
 			vc.vschema = tc.vschema
+			var mystmt sqlparser.Statement
+			err = ResolveTabletType(ss, vc, mystmt, "")
+			require.NoError(t, err)
 			require.Equal(t, tc.expectedPlanPrefixKey, vc.planPrefixKey(context.Background()))
 		})
 	}
