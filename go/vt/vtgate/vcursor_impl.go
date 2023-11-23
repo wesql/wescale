@@ -156,15 +156,15 @@ func newVCursorImpl(
 		return nil, err
 	}
 	if safeSession.ResolverOptions == nil {
-		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
+		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
 	}
 	safeSession.ResolverOptions.SuggestedTabletType = suggestedTabletType
 
-	keyspace, tabletType, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
+	keyspace, _, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
 	if err != nil {
 		return nil, err
 	}
-	// todo，挪到parseDestinationTarget函数中去
+	// get keyspace tablet type, like: use d1@primary
 	last := strings.LastIndexAny(safeSession.TargetString, "@")
 	if last != -1 {
 		safeSession.ResolverOptions.KeyspaceTabletType, _ = topoprotopb.ParseTabletType(safeSession.TargetString[last+1:])
@@ -194,7 +194,6 @@ func newVCursorImpl(
 	return &vcursorImpl{
 		safeSession:     safeSession,
 		keyspace:        keyspace,
-		tabletType:      tabletType,
 		destination:     destination,
 		marginComments:  marginComments,
 		executor:        executor,
@@ -677,12 +676,11 @@ func (vc *vcursorImpl) ResolveDestinations(ctx context.Context, keyspace string,
 }
 
 func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace string, destination key.Destination) ([]*srvtopo.ResolvedShard, error) {
-	tabletType := ResolveTabletType(vc.safeSession.ReadWriteSplittingRatio, vc.safeSession.ResolverOptions)
-	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, tabletType, destination)
+	result, _ := vc.resolver.ResolveDefaultDestination(ctx, keyspace, vc.tabletType, destination)
 	return result, nil
 }
 
-func ResolveTabletType(ratio int32, opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
+func ResolveTabletType(opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
 	if opts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
 		return opts.UserHintTabletType
 	}
@@ -693,7 +691,7 @@ func ResolveTabletType(ratio int32, opts *vtgatepb.ResolverOptions) topodatapb.T
 		return opts.SuggestedTabletType
 	}
 	// From now on, all statements can be routed to Replica/ReadOnly VTTablet
-	return pickTabletTypeForReadWriteSplitting(ratio)
+	return pickTabletTypeForReadWriteSplitting(opts.ReadWriteSplittingRatio)
 }
 
 func (vc *vcursorImpl) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
@@ -811,13 +809,12 @@ func (vc *vcursorImpl) TabletType() topodatapb.TabletType {
 	return vc.tabletType
 }
 
-// SetTabletTypeFromHint specifies the tablet type to use for the query.
-func (vc *vcursorImpl) SetTabletTypeFromHint(tabletType topodatapb.TabletType) error {
+// CheckTabletTypeFromHint specifies the tablet type to use for the query.
+func (vc *vcursorImpl) CheckTabletTypeFromHint(tabletType topodatapb.TabletType) error {
 	if tabletType == topodatapb.TabletType_PRIMARY || tabletType == topodatapb.TabletType_REPLICA || tabletType == topodatapb.TabletType_RDONLY {
-		if vc.safeSession.InTransaction() && tabletType != topodatapb.TabletType_PRIMARY {
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.LockOrActiveTransaction, "can't execute the given command because you have an active transaction")
+		if vc.safeSession.InTransaction() && vc.safeSession.GetTransactionAccessMode() != vtgatepb.TransactionAccessMode_READ_ONLY && tabletType != topodatapb.TabletType_PRIMARY {
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.LockOrActiveTransaction, "can't execute the given command because you have an active transaction that is not read only")
 		}
-		vc.tabletType = tabletType
 		return nil
 	}
 	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unsupported tablet type: %v", tabletType)
@@ -957,6 +954,7 @@ func (vc *vcursorImpl) GetReadWriteSplittingPolicy() string {
 // SetReadWriteSplittingRatio implements the SessionActions interface
 func (vc *vcursorImpl) SetReadWriteSplittingRatio(ratio int32) {
 	vc.safeSession.SetReadWriteSplittingRatio(ratio)
+	vc.safeSession.ResolverOptions.ReadWriteSplittingRatio = ratio
 }
 
 // GetReadWriteSplittingRatio implements the SessionActions interface

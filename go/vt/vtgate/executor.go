@@ -1147,9 +1147,12 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	vcursor.SetConsolidator(consolidator)
 	tabletTypeFromHint := sqlparser.GetNodeType(statement)
 	if tabletTypeFromHint == topodatapb.TabletType_PRIMARY || tabletTypeFromHint == topodatapb.TabletType_REPLICA || tabletTypeFromHint == topodatapb.TabletType_RDONLY {
-		err := vcursor.SetTabletTypeFromHint(tabletTypeFromHint)
+		err := vcursor.CheckTabletTypeFromHint(tabletTypeFromHint)
 		if err != nil {
 			return nil, nil, err
+		}
+		if vcursor.safeSession.ResolverOptions == nil {
+			vcursor.safeSession.ResolverOptions = &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN}
 		}
 		vcursor.safeSession.ResolverOptions.UserHintTabletType = tabletTypeFromHint
 	}

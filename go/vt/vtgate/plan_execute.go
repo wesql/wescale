@@ -73,6 +73,9 @@ func (e *Executor) newExecute(
 		return err
 	}
 
+	// decide tablet type
+	vcursor.tabletType = ResolveTabletType(vcursor.safeSession.ResolverOptions)
+
 	execStart := e.logPlanningFinished(logStats, plan)
 
 	if err != nil {
