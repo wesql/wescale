@@ -1446,6 +1446,9 @@ func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, 
 	query, comments := sqlparser.SplitMarginComments(sql)
 	vcursor, _ := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
 	plan, _, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
+	//	decide tablet type
+	vcursor.tabletType = ResolveTabletType(safeSession.ResolverOptions)
+
 	execStart := time.Now()
 	logStats.PlanTime = execStart.Sub(logStats.StartTime)
 
