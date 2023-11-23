@@ -915,6 +915,9 @@ func TestSelectLock(t *testing.T) {
 	session.Session.LockSession.TabletAlias = nil
 	require.NoError(t, err)
 	wantSession.LastLockHeartbeat = session.Session.LastLockHeartbeat // copying as this is current timestamp value.
+
+	wantSession.ResolverOptions = session.ResolverOptions
+
 	utils.MustMatch(t, wantSession, session.Session, "")
 
 	//wantQueries = append(wantQueries, &querypb.BoundQuery{

@@ -129,6 +129,9 @@ func TestExecutorTransactionsNoAutoCommit(t *testing.T) {
 	_, err := executor.Execute(ctx, "TestExecute", session, "begin", nil)
 	require.NoError(t, err)
 	wantSession := &vtgatepb.Session{InTransaction: true, TargetString: "@primary", SessionUUID: "suuid"}
+
+	wantSession.ResolverOptions = session.ResolverOptions
+
 	utils.MustMatch(t, wantSession, session.Session, "session")
 	assert.EqualValues(t, 0, sbclookup.CommitCount.Get(), "commit count")
 	logStats := testQueryLog(t, logChan, "TestExecute", "BEGIN", "begin", 0)
@@ -147,6 +150,9 @@ func TestExecutorTransactionsNoAutoCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantSession = &vtgatepb.Session{TargetString: "@primary", SessionUUID: "suuid"}
+
+	wantSession.ResolverOptions = session.ResolverOptions
+
 	if !proto.Equal(session.Session, wantSession) {
 		t.Errorf("begin: %v, want %v", session.Session, wantSession)
 	}
@@ -167,6 +173,9 @@ func TestExecutorTransactionsNoAutoCommit(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "rollback", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{TargetString: "@primary", SessionUUID: "suuid"}
+
+	wantSession.ResolverOptions = session.ResolverOptions
+
 	utils.MustMatch(t, wantSession, session.Session, "session")
 	assert.EqualValues(t, 1, sbclookup.RollbackCount.Get(), "rollback count")
 	_ = testQueryLog(t, logChan, "TestExecute", "BEGIN", "begin", 0)
@@ -294,6 +303,7 @@ func TestExecutorTransactionsAutoCommitStreaming(t *testing.T) {
 		Options:       oltpOptions,
 		SessionUUID:   "suuid",
 	}
+	wantSession.ResolverOptions = session.ResolverOptions
 	utils.MustMatch(t, wantSession, session.Session, "session")
 	assert.Zero(t, sbclookup.CommitCount.Get())
 	logStats := testQueryLog(t, logChan, "TestExecute", "BEGIN", "begin", 0)
@@ -305,6 +315,7 @@ func TestExecutorTransactionsAutoCommitStreaming(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "commit", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{TargetString: "@primary", Autocommit: true, Options: oltpOptions, SessionUUID: "suuid"}
+	wantSession.ResolverOptions = session.ResolverOptions
 	utils.MustMatch(t, wantSession, session.Session, "session")
 	assert.EqualValues(t, 1, sbclookup.CommitCount.Get())
 
@@ -323,6 +334,7 @@ func TestExecutorTransactionsAutoCommitStreaming(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "rollback", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{TargetString: "@primary", Autocommit: true, Options: oltpOptions, SessionUUID: "suuid"}
+	wantSession.ResolverOptions = session.ResolverOptions
 	utils.MustMatch(t, wantSession, session.Session, "session")
 	assert.EqualValues(t, 1, sbclookup.RollbackCount.Get())
 }
@@ -373,6 +385,7 @@ func TestExecutorAutocommit(t *testing.T) {
 	wantSession := &vtgatepb.Session{TargetString: "@primary", InTransaction: true, FoundRows: 1, RowCount: -1}
 	testSession := proto.Clone(session.Session).(*vtgatepb.Session)
 	testSession.ShardSessions = nil
+	wantSession.ResolverOptions = testSession.ResolverOptions
 	utils.MustMatch(t, wantSession, testSession, "session does not match for autocommit=0")
 
 	logStats := testQueryLog(t, logChan, "TestExecute", "SELECT", "select id from main1", 1)
@@ -396,6 +409,7 @@ func TestExecutorAutocommit(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "update main1 set id=1", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{Autocommit: true, TargetString: "@primary", FoundRows: 0, RowCount: 1}
+	wantSession.ResolverOptions = session.ResolverOptions
 	utils.MustMatch(t, wantSession, session.Session, "session does not match for autocommit=1")
 
 	logStats = testQueryLog(t, logChan, "TestExecute", "UPDATE", "update main1 set id=1", 1)
@@ -414,6 +428,7 @@ func TestExecutorAutocommit(t *testing.T) {
 	wantSession = &vtgatepb.Session{InTransaction: true, Autocommit: true, TargetString: "@primary", FoundRows: 0, RowCount: 1}
 	testSession = proto.Clone(session.Session).(*vtgatepb.Session)
 	testSession.ShardSessions = nil
+	wantSession.ResolverOptions = testSession.ResolverOptions
 	utils.MustMatch(t, wantSession, testSession, "session does not match for autocommit=1")
 	if got, want := sbclookup.CommitCount.Get(), startCount; got != want {
 		t.Errorf("Commit count: %d, want %d", got, want)
@@ -430,6 +445,7 @@ func TestExecutorAutocommit(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "commit", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{Autocommit: true, TargetString: "@primary"}
+	wantSession.ResolverOptions = session.ResolverOptions
 	if !proto.Equal(session.Session, wantSession) {
 		t.Errorf("autocommit=1: %v, want %v", session.Session, wantSession)
 	}
@@ -451,6 +467,7 @@ func TestExecutorAutocommit(t *testing.T) {
 	_, err = executor.Execute(ctx, "TestExecute", session, "set autocommit=1", nil)
 	require.NoError(t, err)
 	wantSession = &vtgatepb.Session{Autocommit: true, TargetString: "@primary"}
+	wantSession.ResolverOptions = session.ResolverOptions
 	if !proto.Equal(session.Session, wantSession) {
 		t.Errorf("autocommit=1: %v, want %v", session.Session, wantSession)
 	}
@@ -607,6 +624,7 @@ func TestExecutorUse(t *testing.T) {
 			t.Error(err)
 		}
 		wantSession := &vtgatepb.Session{Autocommit: true, TargetString: want[i], RowCount: -1}
+		wantSession.ResolverOptions = session.ResolverOptions
 		utils.MustMatch(t, wantSession, session.Session, "session does not match")
 	}
 
