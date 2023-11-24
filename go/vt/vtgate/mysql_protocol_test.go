@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,6 +61,7 @@ func TestMySQLProtocolExecute(t *testing.T) {
 		IncludedFields: querypb.ExecuteOptions_ALL,
 		Workload:       querypb.ExecuteOptions_OLTP,
 	}
+	options.TabletInfoToDisplay = sbc.Options[0].TabletInfoToDisplay
 	if !proto.Equal(sbc.Options[0], options) {
 		t.Errorf("got ExecuteOptions \n%+v, want \n%+v", sbc.Options[0], options)
 	}
@@ -83,6 +89,7 @@ func TestMySQLProtocolStreamExecute(t *testing.T) {
 		IncludedFields: querypb.ExecuteOptions_ALL,
 		Workload:       querypb.ExecuteOptions_OLAP,
 	}
+	options.TabletInfoToDisplay = sbc.Options[0].TabletInfoToDisplay
 	if !proto.Equal(sbc.Options[0], options) {
 		t.Errorf("got ExecuteOptions \n%+v, want \n%+v", sbc.Options[0], options)
 	}
@@ -159,6 +166,7 @@ func TestMySQLProtocolClientFoundRows(t *testing.T) {
 		Workload:        querypb.ExecuteOptions_OLTP,
 	}
 
+	options.TabletInfoToDisplay = sbc.Options[0].TabletInfoToDisplay
 	if !proto.Equal(sbc.Options[0], options) {
 		t.Errorf("got ExecuteOptions \n%+v, want \n%+v", sbc.Options[0], options)
 	}

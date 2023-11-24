@@ -289,7 +289,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 
 			// add sql execution tablet info to qr.info if the switch is on
 			// the content of qr.info will show to users
-			if session.GetEnableDisplaySQLExecutionVTTabletType() {
+			if session.GetEnableDisplaySQLExecutionVTTablet() {
 				qr.Info += "the sql is executed on " + GetTabletInfoStr(opts.TabletInfoToDisplay) + "\n"
 				qr.Info += "routing reason is: " + GetRoutingReasonStr(session.ResolverOptions, opts.LoadBalancePolicy)
 			}

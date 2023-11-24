@@ -403,7 +403,7 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 			RewriteTableNameWithDbNamePrefix:      defaultRewriteTableNameWithDbNamePrefix,
 			ReadWriteSplitForReadOnlyTxnUserInput: defaultReadWriteSplitForReadOnlyTxnUserInput,
 			EnableInterceptionForDMLWithoutWhere:  defaultEnableInterceptionForDMLWithoutWhere,
-			EnableDisplaySQLExecutionVTTabletType: defaultEnableDisplaySQLExecutionVTTabletType,
+			EnableDisplaySQLExecutionVTTabletType: defaultEnableDisplaySQLExecutionVTTablet,
 			ResolverOptions:                       &vtgatepb.ResolverOptions{ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio), KeyspaceTabletType: topodatapb.TabletType_UNKNOWN, UserHintTabletType: topodatapb.TabletType_UNKNOWN, SuggestedTabletType: topodatapb.TabletType_UNKNOWN},
 		}
 		if c.Capabilities&mysql.CapabilityClientFoundRows != 0 {

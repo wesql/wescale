@@ -948,13 +948,13 @@ func (vc *vcursorImpl) GetEnableInterceptionForDMLWithoutWhere() bool {
 	return vc.safeSession.GetEnableInterceptionForDMLWithoutWhere()
 }
 
-func (vc *vcursorImpl) SetEnableDisplaySQLExecutionVTTabletType(ctx context.Context, enable bool) error {
-	vc.safeSession.SetEnableDisplaySQLExecutionVTTabletType(enable)
+func (vc *vcursorImpl) SetEnableDisplaySQLExecutionVTTablet(ctx context.Context, enable bool) error {
+	vc.safeSession.SetEnableDisplaySQLExecutionVTTablet(enable)
 	return nil
 }
 
-func (vc *vcursorImpl) GetEnableDisplaySQLExecutionVTTabletType() bool {
-	return vc.safeSession.GetEnableDisplaySQLExecutionVTTabletType()
+func (vc *vcursorImpl) GetEnableDisplaySQLExecutionVTTablet() bool {
+	return vc.safeSession.GetEnableDisplaySQLExecutionVTTablet()
 }
 
 func (vc *vcursorImpl) SetReadWriteSplitForReadOnlyTxnUserInput(ctx context.Context, enable bool) error {
@@ -1201,8 +1201,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
-	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
-		return SetDefaultEnableDisplaySQLExecutionVTTabletType(value)
+	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
+		return SetDefaultEnableDisplaySQLExecutionVTTablet(value)
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
 	}

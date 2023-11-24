@@ -275,7 +275,7 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
-	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
@@ -545,8 +545,8 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 		vcursor.Session().SetReadWriteSplittingRatio(ratio)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableInterceptionForDMLWithoutWhere)
-	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
-		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableDisplaySQLExecutionVTTabletType)
+	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableDisplaySQLExecutionVTTablet)
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetReadWriteSplitForReadOnlyTxnUserInput)
 	case sysvars.QueryTimeout.Name:

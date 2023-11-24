@@ -558,7 +558,7 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.ReadWriteSplittingRatio.Name,
 		sysvars.RewriteTableNameWithDbNamePrefix.Name,
 		sysvars.EnableInterceptionForDMLWithoutWhere.Name,
-		sysvars.EnableDisplaySQLExecutionVTTabletType.Name,
+		sysvars.EnableDisplaySQLExecutionVTTablet.Name,
 		sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		found = true
 	}

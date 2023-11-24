@@ -138,7 +138,7 @@ var (
 
 	defaultEnableInterceptionForDMLWithoutWhere = false
 
-	defaultEnableDisplaySQLExecutionVTTabletType = false
+	defaultEnableDisplaySQLExecutionVTTablet = false
 
 	defaultReadWriteSplitForReadOnlyTxnUserInput = false
 )
@@ -758,12 +758,12 @@ func SetDefaultEnableInterceptionForDMLWithoutWhere(value string) error {
 	return nil
 }
 
-func SetDefaultEnableDisplaySQLExecutionVTTabletType(value string) error {
+func SetDefaultEnableDisplaySQLExecutionVTTablet(value string) error {
 	val, err := strconv.ParseBool(value)
 	if err != nil {
 		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid display_sql_execution_vtttablet_type value: %s", value)
 	}
-	defaultEnableDisplaySQLExecutionVTTabletType = val
+	defaultEnableDisplaySQLExecutionVTTablet = val
 	return nil
 }
 

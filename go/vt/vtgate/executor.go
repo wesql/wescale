@@ -531,7 +531,7 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
 		case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.EnableInterceptionForDMLWithoutWhere)
-		case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+		case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.EnableDisplaySQLExecutionVTTabletType)
 		case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.ReadWriteSplitForReadOnlyTxnUserInput)
