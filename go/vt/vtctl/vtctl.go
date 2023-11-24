@@ -2242,7 +2242,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 	}
 
 	switch action {
-	case vReplicationWorkflowActionCreate, vBranchWorkflowActionPrepare:
+	case vReplicationWorkflowActionCreate:
 		switch workflowType {
 		case wrangler.MoveTablesWorkflow, wrangler.MigrateWorkflow, wrangler.BranchWorkflow:
 			var sourceTopo *topo.Server
@@ -2329,7 +2329,7 @@ func commandVRWorkflow(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 		log.Warningf("NewVReplicationWorkflow returned error %+v", wf)
 		return err
 	}
-	if !wf.Exists() && action != vReplicationWorkflowActionCreate && action != vBranchWorkflowActionPrepare {
+	if !wf.Exists() && action != vReplicationWorkflowActionCreate {
 		return fmt.Errorf("workflow %s does not exist", ksWorkflow)
 	}
 
@@ -3747,8 +3747,11 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	case vBranchWorkflowActionStop:
 		err = wr.StopBranch(ctx, *workflowName)
 	case vBranchWorkflowActionPrepareMergeBack:
+		err = wr.PrepareMergeBackBranch(ctx, *workflowName)
 	case vBranchWorkflowActionStartMergeBack:
-
+		err = wr.StartMergeBackBranch(ctx, *workflowName)
+	default:
+		return fmt.Errorf("%v action is not support in Branch", action)
 	}
 	if err != nil {
 		return err

@@ -63,12 +63,12 @@ var DiffFormat map[string]string
 
 func init() {
 	DiffFormat = map[string]string{
-		SchemasDiff:       "schemas are different:\n%v: %v, %v: %v",
-		SchemasDiffDetail: "schemas are different:\n%v: %v\n differs from:\n%v: %v",
-		ExtraTable:        "%v has an extra table named %v",
-		ExtraView:         "%v has an extra view named %v",
-		TableSchemaDiff:   "schemas differ on table %v:\n%v: %v\n differs from:\n%v: %v",
-		TableTypeDiff:     "schemas differ on table type for table %v:\n%v: %v\n differs from:\n%v: %v",
+		SchemasDiff:       `schemas are different:\n%v: %v, %v: %v`,
+		SchemasDiffDetail: `schemas are different:\n%v: %v\n differs from:\n%v: %v`,
+		ExtraTable:        `%v has an extra table named %v`,
+		ExtraView:         `%v has an extra view named %v`,
+		TableSchemaDiff:   `schemas differ on table %v:\n%v: %v\n differs from:\n%v: %v`,
+		TableTypeDiff:     `schemas differ on table type for table %v:\n%v: %v\n differs from:\n%v: %v`,
 	}
 	DiffPatterns = map[string]*regexp.Regexp{
 		SchemasDiff:       regexp.MustCompile(strings.Replace(DiffFormat[SchemasDiff], "%v", "(.+)", -1)),
