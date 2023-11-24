@@ -10,6 +10,12 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/protoutil"
+	"vitess.io/vitess/go/vt/concurrency"
+	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
+	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
+	"vitess.io/vitess/go/vt/vtctl/schematools"
+
 	"vitess.io/vitess/go/json2"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/log"
@@ -357,4 +363,107 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 		return err
 	}
 	return mz.stopStreams(ctx)
+}
+func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	if err != nil {
+		return err
+	}
+	var tables []string
+	for _, tableRules := range branchJob.bs.FilterTableRules {
+		tables = append(tables, tableRules.TargetTable)
+	}
+	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.sourceDatabase,
+	}
+	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		//Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.targetDatabase,
+	}
+	er := concurrency.AllErrorRecorder{}
+
+	// analyze Schema diff between sourceDatabase and targetDatabase
+	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	record := tmutils.DiffSchema(targetDatabaseReqeust.DbName, targetSchema, sourceDatabaseReqeust.DbName, sourceSchema, &er)
+	ddls, err := tmutils.AnalyzeDiffRecord(record, sourceDatabaseReqeust.DbName, targetDatabaseReqeust.DbName, sourceSchema, targetSchema)
+	if err != nil {
+		return err
+	}
+	sqlBuf := strings.Builder{}
+	for _, ddl := range ddls {
+		switch ddl.DiffType {
+		case tmutils.ExtraTable:
+			// add element into
+			tableName := ddl.TableName
+			sqlBuf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) VALUES")
+			sqlBuf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v');", branchJob.workflowName, tableName, tableName, "Merge back new table is not needed.", "Merge back new table is not needed.", ddl.Ddl))
+			sqlBuf.WriteString("\n")
+		case tmutils.TableSchemaDiff, tmutils.TableTypeDiff:
+			sqlBuf.WriteString(fmt.Sprintf("UPDATE mysql.branch_table_rules set merge_ddl='%v' where workflow_name='%v' and target_table_name='%v';", ddl.Ddl, branchJob.workflowName, ddl.TableName))
+			sqlBuf.WriteString("\n")
+		}
+	}
+	alias, err = wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
+	if err != nil {
+		return err
+	}
+	sql := sqlBuf.String()
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, sql, 1, false, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) error {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+
+	var parts []string
+	for _, tableRules := range branchJob.bs.FilterTableRules {
+		if tableRules.MergeDdl == "copy" {
+			continue
+		}
+		parts = append(parts, tableRules.MergeDdl)
+	}
+	resp, err := wr.VtctldServer().ApplySchema(ctx, &vtctldatapb.ApplySchemaRequest{
+		Keyspace:                branchJob.sourceDatabase,
+		AllowLongUnavailability: false,
+		DdlStrategy:             "online",
+		Sql:                     parts,
+		SkipPreflight:           true,
+		WaitReplicasTimeout:     protoutil.DurationToProto(DefaultWaitReplicasTimeout),
+	})
+	if err != nil {
+		wr.Logger().Errorf("%s\n", err.Error())
+		return err
+	}
+	for _, uuid := range resp.UuidList {
+		wr.Logger().Printf("%s\n", uuid)
+	}
+	return nil
 }
