@@ -387,6 +387,11 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			break
 		}
 
+		// record the info of the tablet that the sql will be routed to
+		if options != nil && th != nil && th.Tablet != nil {
+			options.TabletInfoToDisplay = &querypb.TabletInfoToDisplay{TabletAlias: th.Tablet.Alias, TabletType: th.Tablet.Type}
+		}
+
 		tabletLastUsed = th.Tablet
 		// execute
 		if th.Conn == nil {

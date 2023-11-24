@@ -23,7 +23,9 @@ package vtgate
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -196,12 +198,6 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				return nil, err
 			}
 
-			// add sql execution tablet type to qr.info if the switch is on
-			// the content of qr.info will show to users
-			if session.GetEnableDisplaySQLExecutionVTTabletType() {
-				qr.Info += "the sql is executed on " + rs.Target.TabletType.String() + " node"
-			}
-
 			retryRequest := func(exec func()) {
 				retry := checkAndResetShardSession(info, err, session, rs.Target)
 				switch retry {
@@ -289,6 +285,13 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			if qr.SessionStateChanges != "" {
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
 				stc.gateway.AddGtid(qr.SessionStateChanges)
+			}
+
+			// add sql execution tablet info to qr.info if the switch is on
+			// the content of qr.info will show to users
+			if session.GetEnableDisplaySQLExecutionVTTabletType() {
+				qr.Info += "the sql is executed on " + GetTabletInfoStr(opts.TabletInfoToDisplay) + "\n"
+				qr.Info += "routing reason is: " + GetRoutingReasonStr(session.ResolverOptions, opts.LoadBalancePolicy)
 			}
 			return newInfo, nil
 		},
@@ -955,4 +958,38 @@ func queryGTID(ctx context.Context, qs queryservice.QueryService, target *queryp
 		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected GTID query result")
 	}
 	return innerqr.Rows[0][0].ToString(), nil
+}
+
+var TabletTypeEnumToStr = map[topodatapb.TabletType]string{
+	topodatapb.TabletType_RDONLY:  "RDONLY",
+	topodatapb.TabletType_REPLICA: "REPLICA",
+	topodatapb.TabletType_PRIMARY: "PRIMARY",
+	topodatapb.TabletType_UNKNOWN: "UNKNOWN"}
+
+var LBPolicyEnumToStr = map[querypb.ExecuteOptions_LoadBalancePolicy]string{
+	querypb.ExecuteOptions_RANDOM:                            "RANDOM",
+	querypb.ExecuteOptions_LEAST_GLOBAL_QPS:                  "LEAST_GLOBAL_QPS",
+	querypb.ExecuteOptions_LEAST_QPS:                         "LEAST_QPS",
+	querypb.ExecuteOptions_LEAST_RT:                          "LEAST_RT",
+	querypb.ExecuteOptions_LEAST_BEHIND_PRIMARY:              "LEAST_BEHIND_PRIMARY",
+	querypb.ExecuteOptions_LEAST_MYSQL_CONNECTED_CONNECTIONS: "LEAST_MYSQL_CONNECTED_CONNECTIONS",
+	querypb.ExecuteOptions_LEAST_MYSQL_RUNNING_CONNECTIONS:   "LEAST_MYSQL_RUNNING_CONNECTIONS",
+	querypb.ExecuteOptions_LEAST_TABLET_INUSE_CONNECTIONS:    "LEAST_TABLET_INUSE_CONNECTIONS",
+}
+
+func GetTabletInfoStr(tabletInfo *querypb.TabletInfoToDisplay) string {
+	return tabletInfo.TabletAlias.Cell + "-" + strconv.Itoa(int(tabletInfo.TabletAlias.Uid)) + fmt.Sprintf("(%s)", TabletTypeEnumToStr[tabletInfo.TabletType])
+}
+
+func GetRoutingReasonStr(resolverOpts *vtgatepb.ResolverOptions, lbPolicy querypb.ExecuteOptions_LoadBalancePolicy) string {
+	var reason string
+	if resolverOpts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
+		reason = fmt.Sprintf("user hint set vttablet type as %s,", TabletTypeEnumToStr[resolverOpts.UserHintTabletType])
+	} else if resolverOpts.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
+		reason = fmt.Sprintf("keyspace vttablet type is set as %s,", TabletTypeEnumToStr[resolverOpts.KeyspaceTabletType])
+	} else if resolverOpts.SuggestedTabletType != topodatapb.TabletType_UNKNOWN {
+		reason = fmt.Sprintf("suggested vttablet type based on read write splitting rule is %s, and the read write splitting ratio is %d%%, ", TabletTypeEnumToStr[resolverOpts.SuggestedTabletType], resolverOpts.ReadWriteSplittingRatio)
+	}
+	reason += fmt.Sprintf("the load balance policy is %s", LBPolicyEnumToStr[lbPolicy])
+	return reason
 }
