@@ -223,6 +223,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 				opts.AccountVerificationEnabled = mysqlAuthServerImpl != global.AuthServerNone
+				// if the target tablet type is REPLIC or RDONLY and it's not set by user, then the load balance
+				if (rs.Target.TabletType == topodatapb.TabletType_REPLICA || rs.Target.TabletType == topodatapb.TabletType_RDONLY) &&
+					session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
+					session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN {
+					opts.CanLoadBalanceBetweenReplicAndRdonly = true
+				}
 			}
 
 			switch info.actionNeeded {
@@ -291,7 +297,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 			// the content of qr.info will show to users
 			if session.GetEnableDisplaySQLExecutionVTTablet() {
 				qr.Info += "the sql is executed on " + GetTabletInfoStr(opts.TabletInfoToDisplay) + "\n"
-				qr.Info += "routing reason is: " + GetRoutingReasonStr(session.ResolverOptions, opts.LoadBalancePolicy)
+				qr.Info += GetRoutingReasonStr(rs.Target.TabletType, session, opts.LoadBalancePolicy)
 			}
 			return newInfo, nil
 		},
@@ -981,15 +987,49 @@ func GetTabletInfoStr(tabletInfo *querypb.TabletInfoToDisplay) string {
 	return tabletInfo.TabletAlias.Cell + "-" + strconv.Itoa(int(tabletInfo.TabletAlias.Uid)) + fmt.Sprintf("(%s)", TabletTypeEnumToStr[tabletInfo.TabletType])
 }
 
-func GetRoutingReasonStr(resolverOpts *vtgatepb.ResolverOptions, lbPolicy querypb.ExecuteOptions_LoadBalancePolicy) string {
+func GetRoutingReasonStr(finalTabletType topodatapb.TabletType, session *SafeSession, lbPolicy querypb.ExecuteOptions_LoadBalancePolicy) string {
 	var reason string
-	if resolverOpts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
-		reason = fmt.Sprintf("user hint set vttablet type as %s,", TabletTypeEnumToStr[resolverOpts.UserHintTabletType])
-	} else if resolverOpts.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
-		reason = fmt.Sprintf("keyspace vttablet type is set as %s,", TabletTypeEnumToStr[resolverOpts.KeyspaceTabletType])
-	} else if resolverOpts.SuggestedTabletType != topodatapb.TabletType_UNKNOWN {
-		reason = fmt.Sprintf("suggested vttablet type based on read write splitting rule is %s, and the read write splitting ratio is %d%%, ", TabletTypeEnumToStr[resolverOpts.SuggestedTabletType], resolverOpts.ReadWriteSplittingRatio)
+	// reason to decide finalTabletType
+	if session.ResolverOptions.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
+		reason = fmt.Sprintf("user hint set vttablet type as %s", TabletTypeEnumToStr[session.ResolverOptions.UserHintTabletType])
+	} else if session.ResolverOptions.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
+		reason = fmt.Sprintf("keyspace vttablet type is set as %s", TabletTypeEnumToStr[session.ResolverOptions.KeyspaceTabletType])
+	} else if session.ResolverOptions.SuggestedTabletType != topodatapb.TabletType_UNKNOWN {
+		// read write rules
+		if session.ReadWriteSplittingPolicy == "disable" {
+			reason = "read write splitting policy is DISABLE, sql should execute on PRIMARY"
+		} else {
+			var subReason string
+			isReadOnlyTx := session.Session.InTransaction && session.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
+			if finalTabletType == topodatapb.TabletType_REPLICA || finalTabletType == topodatapb.TabletType_RDONLY {
+				if isReadOnlyTx {
+					subReason = "the sql is in read only txn and 'enable_read_write_splitting_for_read_only_txn' is true"
+				} else {
+					subReason = "and is a pure select sql"
+				}
+			} else {
+				if isReadOnlyTx {
+					subReason = "the sql is in  read only txn and 'enable_read_write_splitting_for_read_only_txn' is false"
+				} else if session.Session.InTransaction {
+					subReason = "the sql is in a txn"
+				} else {
+					subReason = "it's a sql should execute on PRIMARY"
+				}
+			}
+			reason = fmt.Sprintf("read write splitting policy is %s, %s", session.ReadWriteSplittingPolicy, subReason)
+		}
+
+		reason = fmt.Sprintf("suggested vttablet type is %s, read write splitting ratio is %d%%, ", TabletTypeEnumToStr[session.ResolverOptions.SuggestedTabletType], session.ResolverOptions.ReadWriteSplittingRatio) + reason
 	}
-	reason += fmt.Sprintf("the load balance policy is %s", LBPolicyEnumToStr[lbPolicy])
+	// load balance
+	var loadBalanceScope string
+	if session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
+		session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN &&
+		(session.ResolverOptions.SuggestedTabletType == topodatapb.TabletType_REPLICA || session.ResolverOptions.SuggestedTabletType == topodatapb.TabletType_RDONLY) {
+		loadBalanceScope = TabletTypeEnumToStr[topodatapb.TabletType_REPLICA] + " and " + TabletTypeEnumToStr[topodatapb.TabletType_RDONLY]
+	} else {
+		loadBalanceScope = TabletTypeEnumToStr[finalTabletType]
+	}
+	reason += fmt.Sprintf("\nload balance policy is %s, load balance between %s vttablets", LBPolicyEnumToStr[lbPolicy], loadBalanceScope)
 	return reason
 }

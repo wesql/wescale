@@ -377,6 +377,8 @@ message ExecuteOptions {
   bool account_verification_enabled = 19;
 
   TabletInfoToDisplay tablet_info_to_display = 20;
+
+  bool can_load_balance_between_replic_and_rdonly = 21;
 }
 
 message TabletInfoToDisplay{

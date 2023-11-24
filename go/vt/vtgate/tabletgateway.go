@@ -348,7 +348,12 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		}
 
 		// Get a healthy tablet connection that can be used for executing the query.
-		tablets := gw.hc.GetHealthyTabletStats(target)
+		var tablets []*discovery.TabletHealth
+		if options != nil && options.CanLoadBalanceBetweenReplicAndRdonly {
+			tablets = gw.hc.GetAllHealthyTabletStats()
+		} else {
+			tablets = gw.hc.GetHealthyTabletStats(target)
+		}
 		if len(tablets) == 0 {
 			// if we have a keyspace event watcher, check if the reason why our primary is not available is that it's currently being resharded
 			// or if a reparent operation is in progress.

@@ -25,13 +25,6 @@ const (
 )
 
 const (
-	// ReadWriteSplitEnablesREPLICA means Replica nodes can be used for reads in read-write-split.
-	ReadWriteSplitEnablesREPLICA = true
-	// ReadWriteSplitEnablesRDONLY means RdOnly nodes can be used for reads in read-write-split.
-	ReadWriteSplitEnablesRDONLY = false
-)
-
-const (
 	MysqlBased = "mysqlbased"
 )
 

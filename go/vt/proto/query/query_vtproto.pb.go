@@ -384,6 +384,18 @@ func (m *ExecuteOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.CanLoadBalanceBetweenReplicAndRdonly {
+		i--
+		if m.CanLoadBalanceBetweenReplicAndRdonly {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0xa8
+	}
 	if m.TabletInfoToDisplay != nil {
 		size, err := m.TabletInfoToDisplay.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -4825,6 +4837,9 @@ func (m *ExecuteOptions) SizeVT() (n int) {
 		l = m.TabletInfoToDisplay.SizeVT()
 		n += 2 + l + sov(uint64(l))
 	}
+	if m.CanLoadBalanceBetweenReplicAndRdonly {
+		n += 3
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -7701,6 +7716,26 @@ func (m *ExecuteOptions) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 21:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CanLoadBalanceBetweenReplicAndRdonly", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.CanLoadBalanceBetweenReplicAndRdonly = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
