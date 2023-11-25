@@ -40,7 +40,8 @@ func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreate
 	if !support {
 		return defaultTabletType, nil
 	}
-	return topodatapb.TabletType_REPLICA, nil
+	// From now on, all statements can be routed to Replica/ReadOnly VTTablet
+	return pickTabletTypeForReadWriteSplitting(ratio), nil
 }
 
 func pickTabletTypeForReadWriteSplitting(ratio int32) topodatapb.TabletType {

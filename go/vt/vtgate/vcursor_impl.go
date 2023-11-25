@@ -664,11 +664,7 @@ func ResolveTabletTypeBaseOnOptions(opts *vtgatepb.ResolverOptions) topodatapb.T
 	if opts.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
 		return opts.KeyspaceTabletType
 	}
-	if opts.SuggestedTabletType == topodatapb.TabletType_PRIMARY {
-		return opts.SuggestedTabletType
-	}
-	// From now on, all statements can be routed to Replica/ReadOnly VTTablet
-	return pickTabletTypeForReadWriteSplitting(opts.ReadWriteSplittingRatio)
+	return opts.SuggestedTabletType
 }
 
 func (vc *vcursorImpl) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {

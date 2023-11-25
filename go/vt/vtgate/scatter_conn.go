@@ -223,10 +223,12 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 				opts.AccountVerificationEnabled = mysqlAuthServerImpl != global.AuthServerNone
-				// if the target tablet type is REPLIC or RDONLY and it's not set by user, then the load balance
+				// if the target tablet type is REPLIC or RDONLY and it's not set by user, then the load balance should decide between REPLIC and RDONLY nodes
 				if (rs.Target.TabletType == topodatapb.TabletType_REPLICA || rs.Target.TabletType == topodatapb.TabletType_RDONLY) &&
 					session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
-					session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN {
+					session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN &&
+					!session.ResolverOptions.ShouldForceRouteToReadOnlyTxnVttablet {
+					// if ShouldForceRouteToReadOnly is true, it means it is in read only txn, and sql should be routed to one single node
 					opts.CanLoadBalanceBetweenReplicAndRdonly = true
 				}
 			}
@@ -1023,9 +1025,10 @@ func GetRoutingReasonStr(finalTabletType topodatapb.TabletType, session *SafeSes
 	}
 	// load balance
 	var loadBalanceScope string
-	if session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
+	if (finalTabletType == topodatapb.TabletType_REPLICA || finalTabletType == topodatapb.TabletType_RDONLY) &&
+		session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
 		session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN &&
-		(session.ResolverOptions.SuggestedTabletType == topodatapb.TabletType_REPLICA || session.ResolverOptions.SuggestedTabletType == topodatapb.TabletType_RDONLY) {
+		!session.ResolverOptions.ShouldForceRouteToReadOnlyTxnVttablet {
 		loadBalanceScope = TabletTypeEnumToStr[topodatapb.TabletType_REPLICA] + " and " + TabletTypeEnumToStr[topodatapb.TabletType_RDONLY]
 	} else {
 		loadBalanceScope = TabletTypeEnumToStr[finalTabletType]

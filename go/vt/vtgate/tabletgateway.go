@@ -351,9 +351,11 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		var tablets []*discovery.TabletHealth
 		if options != nil && options.CanLoadBalanceBetweenReplicAndRdonly {
 			tablets = gw.hc.GetAllHealthyTabletStats()
+			options.CanLoadBalanceBetweenReplicAndRdonly = false
 		} else {
 			tablets = gw.hc.GetHealthyTabletStats(target)
 		}
+
 		if len(tablets) == 0 {
 			// if we have a keyspace event watcher, check if the reason why our primary is not available is that it's currently being resharded
 			// or if a reparent operation is in progress.

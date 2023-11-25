@@ -210,6 +210,7 @@ message ResolverOptions {
   topodata.TabletType keyspace_tablet_type = 2;
   topodata.TabletType suggested_tablet_type = 3;
   int32 ReadWriteSplittingRatio = 4;
+  bool shouldForceRouteToReadOnlyTxnVttablet = 5;
 }
 
 // ReadAfterWrite contains information regarding gtid set and timeout
