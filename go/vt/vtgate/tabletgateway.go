@@ -25,10 +25,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pingcap/failpoint"
+
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"vitess.io/vitess/go/mysql"
 
@@ -350,7 +355,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		// Get a healthy tablet connection that can be used for executing the query.
 		var tablets []*discovery.TabletHealth
 		if options != nil && options.CanLoadBalanceBetweenReplicAndRdonly {
-			tablets = gw.hc.GetAllHealthyTabletStats()
+			tablets = gw.hc.GetReplicAndRdonlyHealthyTabletStats()
 			options.CanLoadBalanceBetweenReplicAndRdonly = false
 		} else {
 			tablets = gw.hc.GetHealthyTabletStats(target)
@@ -393,6 +398,20 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			}
 			break
 		}
+		failpoint.Inject(failpointkey.AssertRoutingTabletType.Name, func(val failpoint.Value) {
+			if val.(string) == "primary" && th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+				os.Exit(-1)
+			}
+			if val.(string) == "replica" && th.Tablet.Type != topodatapb.TabletType_REPLICA {
+				os.Exit(-1)
+			}
+			if val.(string) == "rdonly" && th.Tablet.Type != topodatapb.TabletType_RDONLY {
+				os.Exit(-1)
+			}
+			if (val.(string) == "replica or rdonly" || val.(string) == "rdonly or replica") && th.Tablet.Type != topodatapb.TabletType_RDONLY && th.Tablet.Type != topodatapb.TabletType_REPLICA {
+				os.Exit(-1)
+			}
+		})
 
 		// record the info of the tablet that the sql will be routed to
 		if options != nil && th != nil && th.Tablet != nil {

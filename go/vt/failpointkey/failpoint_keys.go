@@ -41,6 +41,11 @@ var (
 		Name:       "WaitJustAfterStopVreplication",
 		ExampleStr: "return(true)",
 	}
+	AssertRoutingTabletType = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType",
+		Name:       "AssertRoutingTabletType",
+		ExampleStr: "return(\"primary\")",
+	}
 )
 
 func init() {
@@ -54,4 +59,5 @@ func init() {
 	FailpointTable[IsVReplMigrationReadyToCutOver.FullName] = IsVReplMigrationReadyToCutOver
 	FailpointTable[WaitJustBeforeStopVreplication.FullName] = WaitJustBeforeStopVreplication
 	FailpointTable[WaitJustAfterStopVreplication.FullName] = WaitJustAfterStopVreplication
+	FailpointTable[AssertRoutingTabletType.FullName] = AssertRoutingTabletType
 }
