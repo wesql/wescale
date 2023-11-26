@@ -705,6 +705,8 @@ func (hc *HealthCheckImpl) GetReplicAndRdonlyHealthyTabletStats() []*TabletHealt
 
 func (hc *HealthCheckImpl) GetAllHealthyTabletStats() []*TabletHealth {
 	var result []*TabletHealth
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
 	for _, value := range hc.healthy {
 		result = append(result, value...)
 	}
