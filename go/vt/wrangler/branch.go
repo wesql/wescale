@@ -51,6 +51,12 @@ const SelectBranchJobByWorkflow = "select * from mysql.branch_jobs where workflo
 
 const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules where workflow_name = '%s'"
 
+const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
+
+const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules where workflow_name='%s'"
+
+const DeleteVreplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
+
 func (branchJob *BranchJob) generateInsert() (string, error) {
 	buf := &strings.Builder{}
 	buf.WriteString("INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, skip_copy_phase, stop_after_copy, onddl, status, message) VALUES ")
@@ -94,13 +100,17 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 }
 
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
-func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace, targetKeyspace,
+func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
 	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool) error {
+	err := wr.CreateDatabase(ctx, targetDatabase)
+	if err != nil {
+		return err
+	}
 	branchJob := &BranchJob{
 		status:           BranchStatusOfPrePare,
 		workflowName:     workflow,
-		sourceDatabase:   sourceKeyspace,
-		targetDatabase:   targetKeyspace,
+		sourceDatabase:   sourceDatabase,
+		targetDatabase:   targetDatabase,
 		sourceTabletType: tabletTypes,
 		includeTables:    includeTables,
 		excludeTables:    excludeTables,
@@ -119,12 +129,12 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace,
 	}
 	var tables []string
 	var vschema *vschemapb.Keyspace
-	vschema, err = wr.ts.GetVSchema(ctx, targetKeyspace)
+	vschema, err = wr.ts.GetVSchema(ctx, targetDatabase)
 	if err != nil {
 		return err
 	}
 	if vschema == nil {
-		return fmt.Errorf("no vschema found for target keyspace %s", targetKeyspace)
+		return fmt.Errorf("no vschema found for target keyspace %s", targetDatabase)
 	}
 	// get source keyspace tables
 	if strings.HasPrefix(includeTables, "{") {
@@ -144,12 +154,12 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace,
 		if len(strings.TrimSpace(includeTables)) > 0 {
 			tables = strings.Split(includeTables, ",")
 		}
-		ksTables, err := wr.getKeyspaceTables(ctx, sourceKeyspace, wr.sourceTs)
+		ksTables, err := wr.getKeyspaceTables(ctx, sourceDatabase, wr.sourceTs)
 		if err != nil {
 			return err
 		}
 		if len(tables) > 0 {
-			err = wr.validateSourceTablesExist(ctx, sourceKeyspace, ksTables, tables)
+			err = wr.validateSourceTablesExist(ctx, sourceDatabase, ksTables, tables)
 			if err != nil {
 				return err
 			}
@@ -160,7 +170,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace,
 		excludeTables = strings.TrimSpace(excludeTables)
 		if excludeTables != "" {
 			excludeTablesList = strings.Split(excludeTables, ",")
-			err = wr.validateSourceTablesExist(ctx, sourceKeyspace, ksTables, excludeTablesList)
+			err = wr.validateSourceTablesExist(ctx, sourceDatabase, ksTables, excludeTablesList)
 			if err != nil {
 				return err
 			}
@@ -258,6 +268,10 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		cells:            cells,
 		status:           status,
 	}
+	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return nil, err
+	}
 	return branchJob, nil
 }
 
@@ -302,10 +316,6 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 	if err != nil {
 		return nil, err
 	}
-	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
-	if err != nil {
-		return nil, err
-	}
 	ms := &vtctldatapb.MaterializeSettings{
 		Workflow:              workflow,
 		MaterializationIntent: vtctldatapb.MaterializationIntent_BRANCH,
@@ -345,10 +355,6 @@ func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, err
 
 func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 	ms, err := wr.RebuildMaterializeSettings(ctx, workflow)
-	if err != nil {
-		return err
-	}
-	err = wr.CreateDatabase(ctx, ms.TargetKeyspace)
 	if err != nil {
 		return err
 	}
@@ -397,10 +403,6 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 	if err != nil {
 		return err
 	}
-	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
-	if err != nil {
-		return err
-	}
 	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
 	if err != nil {
 		return err
@@ -436,6 +438,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		return err
 	}
 	sqlBuf := strings.Builder{}
+	logBuf := strings.Builder{}
 	for _, ddl := range ddls {
 		switch ddl.DiffType {
 		case tmutils.ExtraTable:
@@ -444,9 +447,11 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 			sqlBuf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) VALUES")
 			sqlBuf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v');", branchJob.workflowName, tableName, tableName, "Merge back new table is not needed.", "Merge back new table is not needed.", ddl.Ddl))
 			sqlBuf.WriteString("\n")
+			logBuf.WriteString(fmt.Sprintf("extratable: %v ddl: %v\n", tableName, ddl.Ddl))
 		case tmutils.TableSchemaDiff, tmutils.TableTypeDiff:
 			sqlBuf.WriteString(fmt.Sprintf("UPDATE mysql.branch_table_rules set merge_ddl='%v' where workflow_name='%v' and target_table_name='%v';", ddl.Ddl, branchJob.workflowName, ddl.TableName))
 			sqlBuf.WriteString("\n")
+			logBuf.WriteString(fmt.Sprintf("table: %v ddl: %v\n", ddl.TableName, ddl.Ddl))
 		}
 	}
 	alias, err = wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
@@ -461,7 +466,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		}
 	}
 	wr.Logger().Printf("PrepareMergeBack %v successfully \n", workflow)
-	wr.Logger().Printf("ddl: %v\n", sql)
+	wr.Logger().Printf("%v", logBuf.String())
 	return nil
 }
 
@@ -470,11 +475,6 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 	if err != nil {
 		return err
 	}
-	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
-	if err != nil {
-		return err
-	}
-
 	var parts []string
 	for _, tableRules := range branchJob.bs.FilterTableRules {
 		if tableRules.MergeDdl == "copy" || !tableRules.NeedMergeBack {
@@ -504,4 +504,36 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 		}
 	}
 	return nil
+}
+
+func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	if err != nil {
+		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, "START TRANSACTION", 1, false, false)
+	if err != nil {
+		return err
+	}
+	deleteTableRules := fmt.Sprintf(DeleteBranchTableRuleByWorkflow, branchJob.workflowName)
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteTableRules, 1, false, false)
+	if err != nil {
+		return err
+	}
+	deleteBranchJob := fmt.Sprintf(DeleteBranchJobByWorkflow, branchJob.workflowName)
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteBranchJob, 1, false, false)
+	if err != nil {
+		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, "COMMIT", 1, false, false)
+	if err != nil {
+		return err
+	}
+	wr.Logger().Printf("cleanup workflow:%v successfully", branchJob.workflowName)
+	return nil
+	// delete from branch_table_rules
 }

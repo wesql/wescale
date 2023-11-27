@@ -3735,10 +3735,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 		return fmt.Errorf("one arguments are needed: action")
 	}
 	action := subFlags.Arg(0)
-	wr.CreateDatabase(ctx, *targetDatabase)
 	action = strings.ToLower(action)
-	//ksWorkflow := args[len(args)-1]
-	//targetKeyspace, _, err := splitKeyspaceWorkflow(ksWorkflow)
 	switch action {
 	case vBranchWorkflowActionPrepare:
 		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy)
@@ -3750,6 +3747,8 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 		err = wr.PrepareMergeBackBranch(ctx, *workflowName)
 	case vBranchWorkflowActionStartMergeBack:
 		err = wr.StartMergeBackBranch(ctx, *workflowName)
+	case vBranchWorkflowActionCleanup:
+		err = wr.CleanupBranch(ctx, *workflowName)
 	default:
 		return fmt.Errorf("%v action is not support in Branch", action)
 	}
