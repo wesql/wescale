@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS mysql.branch_table_rules
     `create_ddl`                        text,
     `merge_ddl`                         text,
     `need_merge_back`                   tinyint unsigned NOT NULL DEFAULT '1',
+    `merge_ddl_uuid`                    varchar(128),
     PRIMARY KEY (`id`),
     KEY (`workflow_name`)
 ) ENGINE = InnoDB;

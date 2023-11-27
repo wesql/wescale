@@ -150,6 +150,13 @@ func (m *FilterTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.MergeDdlUuid) > 0 {
+		i -= len(m.MergeDdlUuid)
+		copy(dAtA[i:], m.MergeDdlUuid)
+		i = encodeVarint(dAtA, i, uint64(len(m.MergeDdlUuid)))
+		i--
+		dAtA[i] = 0x42
+	}
 	if m.NeedMergeBack {
 		i--
 		if m.NeedMergeBack {
@@ -158,42 +165,47 @@ func (m *FilterTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			dAtA[i] = 0
 		}
 		i--
-		dAtA[i] = 0x30
+		dAtA[i] = 0x38
 	}
 	if len(m.MergeDdl) > 0 {
 		i -= len(m.MergeDdl)
 		copy(dAtA[i:], m.MergeDdl)
 		i = encodeVarint(dAtA, i, uint64(len(m.MergeDdl)))
 		i--
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x32
 	}
 	if len(m.CreateDdl) > 0 {
 		i -= len(m.CreateDdl)
 		copy(dAtA[i:], m.CreateDdl)
 		i = encodeVarint(dAtA, i, uint64(len(m.CreateDdl)))
 		i--
-		dAtA[i] = 0x22
+		dAtA[i] = 0x2a
 	}
 	if len(m.FilteringRule) > 0 {
 		i -= len(m.FilteringRule)
 		copy(dAtA[i:], m.FilteringRule)
 		i = encodeVarint(dAtA, i, uint64(len(m.FilteringRule)))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x22
 	}
 	if len(m.TargetTable) > 0 {
 		i -= len(m.TargetTable)
 		copy(dAtA[i:], m.TargetTable)
 		i = encodeVarint(dAtA, i, uint64(len(m.TargetTable)))
 		i--
-		dAtA[i] = 0x12
+		dAtA[i] = 0x1a
 	}
 	if len(m.SourceTable) > 0 {
 		i -= len(m.SourceTable)
 		copy(dAtA[i:], m.SourceTable)
 		i = encodeVarint(dAtA, i, uint64(len(m.SourceTable)))
 		i--
-		dAtA[i] = 0xa
+		dAtA[i] = 0x12
+	}
+	if m.Id != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Id))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -9866,6 +9878,9 @@ func (m *FilterTableRule) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Id != 0 {
+		n += 1 + sov(uint64(m.Id))
+	}
 	l = len(m.SourceTable)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
@@ -9888,6 +9903,10 @@ func (m *FilterTableRule) SizeVT() (n int) {
 	}
 	if m.NeedMergeBack {
 		n += 2
+	}
+	l = len(m.MergeDdlUuid)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -13673,6 +13692,25 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			m.Id = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Id |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field SourceTable", wireType)
 			}
@@ -13704,7 +13742,7 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.SourceTable = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TargetTable", wireType)
 			}
@@ -13736,7 +13774,7 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.TargetTable = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FilteringRule", wireType)
 			}
@@ -13768,7 +13806,7 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.FilteringRule = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CreateDdl", wireType)
 			}
@@ -13800,7 +13838,7 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.CreateDdl = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MergeDdl", wireType)
 			}
@@ -13832,7 +13870,7 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.MergeDdl = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NeedMergeBack", wireType)
 			}
@@ -13852,6 +13890,38 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.NeedMergeBack = bool(v != 0)
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MergeDdlUuid", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MergeDdlUuid = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
