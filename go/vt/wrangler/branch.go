@@ -55,7 +55,7 @@ const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_
 
 const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules where workflow_name='%s'"
 
-const DeleteVreplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
+const DeleteVReplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
 
 func (branchJob *BranchJob) generateInsert() (string, error) {
 	buf := &strings.Builder{}
@@ -241,6 +241,9 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 	if err != nil {
 		return nil, err
 	}
+	if qr == nil || len(qr.Rows) == 0 {
+		return nil, fmt.Errorf("workflow:%v not exist", workflow)
+	}
 	branchJobMap := qr.Named().Row()
 
 	sourceDatabase := branchJobMap["source_database"].ToString()
@@ -253,6 +256,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		return nil, err
 	}
 	onddl := branchJobMap["onddl"].ToString()
+
 	status := branchJobMap["status"].ToString()
 	if status != BranchStatusOfPrePare {
 		return nil, vterrors.Errorf(vtrpc.Code_ABORTED, "can not start an branch which status [%v] is not prepare", status)
@@ -288,22 +292,29 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 		return nil, err
 	}
 	for _, tableRules := range qr.Named().Rows {
+		id, err := tableRules["id"].ToUint64()
+		if err != nil {
+			return nil, err
+		}
 		sourceTableName := tableRules["source_table_name"].ToString()
 		targetTableName := tableRules["target_table_name"].ToString()
 		filterRule := tableRules["filtering_rule"].ToString()
 		createDDL := tableRules["create_ddl"].ToString()
 		mergeDDL := tableRules["merge_ddl"].ToString()
+		mergeUUID := tableRules["merge_ddl_uuid"].ToString()
 		needMergeBack, err := tableRules["need_merge_back"].ToBool()
 		if err != nil {
 			return nil, err
 		}
 		fileterRule := &vtctldatapb.FilterTableRule{
+			Id:            id,
 			SourceTable:   sourceTableName,
 			TargetTable:   targetTableName,
 			FilteringRule: filterRule,
 			CreateDdl:     createDDL,
 			MergeDdl:      mergeDDL,
 			NeedMergeBack: needMergeBack,
+			MergeDdlUuid:  mergeUUID,
 		}
 		bs.FilterTableRules = append(bs.FilterTableRules, fileterRule)
 	}
@@ -497,6 +508,32 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 			return err
 		}
 	}
+	if resp != nil {
+		alias, err := wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
+		if err != nil {
+			return err
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, "START TRANSACTION", 1, false, false)
+		if err != nil {
+			return err
+		}
+		index := 0
+		for _, tableRules := range branchJob.bs.FilterTableRules {
+			if tableRules.MergeDdl == "copy" || !tableRules.NeedMergeBack {
+				continue
+			}
+			sql := fmt.Sprintf("UPDATE mysql.branch_table_rules set merge_ddl_uuid='%s' where id=%d", resp.UuidList[index], tableRules.Id)
+			_, err = wr.ExecuteFetchAsDba(ctx, alias, sql, 1, false, false)
+			if err != nil {
+				return err
+			}
+			index++
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, "COMMIT", 1, false, false)
+		if err != nil {
+			return err
+		}
+	}
 	wr.Logger().Printf("Start mergeBack %v successfully. uuid list:\n", workflow)
 	if resp != nil {
 		for _, uuid := range resp.UuidList {
@@ -526,6 +563,20 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	}
 	deleteBranchJob := fmt.Sprintf(DeleteBranchJobByWorkflow, branchJob.workflowName)
 	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteBranchJob, 1, false, false)
+	if err != nil {
+		return err
+	}
+	for _, tableRule := range branchJob.bs.FilterTableRules {
+		if tableRule.MergeDdlUuid != "" {
+			deleteVReplication := fmt.Sprintf(DeleteVReplicationByWorkFlow, tableRule.MergeDdlUuid)
+			_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteVReplication, 1, false, false)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	deleteVReplication := fmt.Sprintf(DeleteVReplicationByWorkFlow, branchJob.workflowName)
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteVReplication, 1, false, false)
 	if err != nil {
 		return err
 	}
