@@ -3754,6 +3754,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 		return fmt.Errorf("%v action is not support in Branch", action)
 	}
 	if err != nil {
+		wr.Logger().Printf("err : %v", err)
 		return err
 	}
 

@@ -117,10 +117,6 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace,
 	if err != nil {
 		return err
 	}
-	_, err = wr.ExecuteFetchAsDba(ctx, alias, insert, 1, false, false)
-	if err != nil {
-		return err
-	}
 	var tables []string
 	var vschema *vschemapb.Keyspace
 	vschema, err = wr.ts.GetVSchema(ctx, targetKeyspace)
@@ -200,9 +196,26 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceKeyspace,
 	if err != nil {
 		return err
 	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, "START TRANSACTION", 1, false, false)
+	if err != nil {
+		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, insert, 1, false, false)
+	if err != nil {
+		return err
+	}
 	_, err = wr.ExecuteFetchAsDba(ctx, alias, rulesInsert, 1, false, false)
 	if err != nil {
 		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, "COMMIT", 1, false, false)
+	if err != nil {
+		return err
+	}
+	wr.Logger().Printf("successfully create branch workflow : %v sourceDatabase : %v targetDatabase : %v\n", branchJob.workflowName, branchJob.sourceDatabase, branchJob.targetDatabase)
+	wr.Logger().Printf("rules : \n")
+	for _, rule := range branchJob.bs.FilterTableRules {
+		wr.Logger().Printf("[%v]\n", rule)
 	}
 	return nil
 }
@@ -266,12 +279,17 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 		filterRule := tableRules["filtering_rule"].ToString()
 		createDDL := tableRules["create_ddl"].ToString()
 		mergeDDL := tableRules["merge_ddl"].ToString()
+		needMergeBack, err := tableRules["need_merge_back"].ToBool()
+		if err != nil {
+			return nil, err
+		}
 		fileterRule := &vtctldatapb.FilterTableRule{
 			SourceTable:   sourceTableName,
 			TargetTable:   targetTableName,
 			FilteringRule: filterRule,
 			CreateDdl:     createDDL,
 			MergeDdl:      mergeDDL,
+			NeedMergeBack: needMergeBack,
 		}
 		bs.FilterTableRules = append(bs.FilterTableRules, fileterRule)
 	}
@@ -350,7 +368,12 @@ func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 			return err
 		}
 	}
-	return mz.startStreams(ctx)
+	err = mz.startStreams(ctx)
+	if err != nil {
+		return err
+	}
+	wr.Logger().Printf("Start workflow:%v successfully.", workflow)
+	return nil
 }
 
 func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
@@ -362,7 +385,12 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	return mz.stopStreams(ctx)
+	err = mz.stopStreams(ctx)
+	if err != nil {
+		return err
+	}
+	wr.Logger().Printf("Start workflow %v successfully", workflow)
+	return nil
 }
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
@@ -426,10 +454,14 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		return err
 	}
 	sql := sqlBuf.String()
-	_, err = wr.ExecuteFetchAsDba(ctx, alias, sql, 1, false, false)
-	if err != nil {
-		return err
+	if sql != "" {
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, sql, 1, false, false)
+		if err != nil {
+			return err
+		}
 	}
+	wr.Logger().Printf("PrepareMergeBack %v successfully \n", workflow)
+	wr.Logger().Printf("ddl: %v\n", sql)
 	return nil
 }
 
@@ -445,25 +477,31 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 
 	var parts []string
 	for _, tableRules := range branchJob.bs.FilterTableRules {
-		if tableRules.MergeDdl == "copy" {
+		if tableRules.MergeDdl == "copy" || !tableRules.NeedMergeBack {
 			continue
 		}
 		parts = append(parts, tableRules.MergeDdl)
 	}
-	resp, err := wr.VtctldServer().ApplySchema(ctx, &vtctldatapb.ApplySchemaRequest{
-		Keyspace:                branchJob.sourceDatabase,
-		AllowLongUnavailability: false,
-		DdlStrategy:             "online",
-		Sql:                     parts,
-		SkipPreflight:           true,
-		WaitReplicasTimeout:     protoutil.DurationToProto(DefaultWaitReplicasTimeout),
-	})
-	if err != nil {
-		wr.Logger().Errorf("%s\n", err.Error())
-		return err
+	var resp *vtctldatapb.ApplySchemaResponse
+	if len(parts) != 0 {
+		resp, err = wr.VtctldServer().ApplySchema(ctx, &vtctldatapb.ApplySchemaRequest{
+			Keyspace:                branchJob.sourceDatabase,
+			AllowLongUnavailability: false,
+			DdlStrategy:             "online",
+			Sql:                     parts,
+			SkipPreflight:           true,
+			WaitReplicasTimeout:     protoutil.DurationToProto(DefaultWaitReplicasTimeout),
+		})
+		if err != nil {
+			wr.Logger().Errorf("%s\n", err.Error())
+			return err
+		}
 	}
-	for _, uuid := range resp.UuidList {
-		wr.Logger().Printf("%s\n", uuid)
+	wr.Logger().Printf("Start mergeBack %v successfully. uuid list:\n", workflow)
+	if resp != nil {
+		for _, uuid := range resp.UuidList {
+			wr.Logger().Printf("[%s]\n", uuid)
+		}
 	}
 	return nil
 }

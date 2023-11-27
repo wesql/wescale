@@ -72,6 +72,7 @@ message FilterTableRule{
   string filtering_rule = 3;
   string create_ddl = 4;
   string merge_ddl = 5;
+  bool   need_merge_back = 6;
 }
 
 // TableMaterializeSttings contains the settings for one table.
@@ -85,7 +86,7 @@ message  TableMaterializeSettings {
   string create_ddl = 3;
 }
 message BranchSettings{
-  repeated FilterTableRule special_rules = 1;
+  repeated FilterTableRule filter_table_rules = 1;
 }
 // MaterializeSettings contains the settings for the Materialize command.
 message MaterializeSettings {
