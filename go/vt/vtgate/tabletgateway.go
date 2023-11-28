@@ -356,7 +356,6 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		var tablets []*discovery.TabletHealth
 		if options != nil && options.CanLoadBalanceBetweenReplicAndRdonly {
 			tablets = gw.hc.GetReplicAndRdonlyHealthyTabletStats()
-			options.CanLoadBalanceBetweenReplicAndRdonly = false
 		} else {
 			tablets = gw.hc.GetHealthyTabletStats(target)
 		}

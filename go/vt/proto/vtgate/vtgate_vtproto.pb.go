@@ -511,16 +511,6 @@ func (m *ResolverOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.ShouldForceRouteToReadOnlyTxnVttablet {
-		i--
-		if m.ShouldForceRouteToReadOnlyTxnVttablet {
-			dAtA[i] = 1
-		} else {
-			dAtA[i] = 0
-		}
-		i--
-		dAtA[i] = 0x28
-	}
 	if m.ReadWriteSplittingRatio != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.ReadWriteSplittingRatio))
 		i--
@@ -1669,9 +1659,6 @@ func (m *ResolverOptions) SizeVT() (n int) {
 	}
 	if m.ReadWriteSplittingRatio != 0 {
 		n += 1 + sov(uint64(m.ReadWriteSplittingRatio))
-	}
-	if m.ShouldForceRouteToReadOnlyTxnVttablet {
-		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3486,26 +3473,6 @@ func (m *ResolverOptions) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ShouldForceRouteToReadOnlyTxnVttablet", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				v |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.ShouldForceRouteToReadOnlyTxnVttablet = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

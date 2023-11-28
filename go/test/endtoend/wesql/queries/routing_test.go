@@ -43,13 +43,13 @@ func TestRoutingTabletType(t *testing.T) {
 
 		// select should execute on replica, it's in read only txn, enable_read_write_splitting_for_read_only_txn is true,
 		// and read only txn should execute on single vttablet to guarantee correctness
-		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"replica\")';")
+		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"replica or rdonly\")';")
 		utils.Exec(t, conn, "set session enable_read_write_splitting_for_read_only_txn=true")
-		utils.Exec(t, conn, "start transaction read only")
 		for i := 0; i < 10; i++ {
+			utils.Exec(t, conn, "start transaction read only")
 			utils.Exec(t, conn, "select * from routingTest.t")
+			utils.Exec(t, conn, "commit")
 		}
-		utils.Exec(t, conn, "commit")
 
 		// select should execute on primary because read write splitting policy is DISABLE
 		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"primary\")';")

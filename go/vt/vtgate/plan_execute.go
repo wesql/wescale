@@ -334,11 +334,11 @@ func interceptDMLWithoutWhereEnable(safeSession *SafeSession, stmt sqlparser.Sta
 func InitResolverOptionsIfNil(safeSession *SafeSession) {
 	if safeSession.ResolverOptions == nil {
 		safeSession.ResolverOptions = &vtgatepb.ResolverOptions{
-			ReadWriteSplittingRatio:               int32(defaultReadWriteSplittingRatio),
-			KeyspaceTabletType:                    topodatapb.TabletType_UNKNOWN,
-			UserHintTabletType:                    topodatapb.TabletType_UNKNOWN,
-			SuggestedTabletType:                   topodatapb.TabletType_UNKNOWN,
-			ShouldForceRouteToReadOnlyTxnVttablet: false}
+			ReadWriteSplittingRatio: int32(defaultReadWriteSplittingRatio),
+			KeyspaceTabletType:      topodatapb.TabletType_UNKNOWN,
+			UserHintTabletType:      topodatapb.TabletType_UNKNOWN,
+			SuggestedTabletType:     topodatapb.TabletType_UNKNOWN,
+		}
 	}
 }
 
@@ -364,8 +364,6 @@ func GetSuggestedTabletType(safeSession *SafeSession, sql string) (topodatapb.Ta
 	if !isReadOnlyTx {
 		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
 	}
-
-	safeSession.ResolverOptions.ShouldForceRouteToReadOnlyTxnVttablet = isReadOnlyTx && safeSession.EnableReadWriteSplitForReadOnlyTxn
 
 	// use the suggestedTabletType if safeSession.TargetString is not specified
 	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),

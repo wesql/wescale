@@ -223,13 +223,16 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				}
 				opts.LoadBalancePolicy = schema.ToLoadBalancePolicy(session.GetReadWriteSplittingPolicy())
 				opts.AccountVerificationEnabled = mysqlAuthServerImpl != global.AuthServerNone
-				// if the target tablet type is REPLIC or RDONLY and it's not set by user, then the load balance should decide between REPLIC and RDONLY nodes
+				// the CanLoadBalanceBetweenReplicAndRdonly flag is used to indicate whether load balance module can choose tablet among tablets with type of REPLIC or RDONLY
+				// if the target tablet type is PRIMARY, of course can't
+				// if the target tablet type is REPLIC or RDONLY, we should also consider whether the target tablet type is set by user hint or keyspace tablet type. If so, we can select tablets ONLY in replic-type tablets or ONLY in rdonly-type tablets.
 				if (rs.Target.TabletType == topodatapb.TabletType_REPLICA || rs.Target.TabletType == topodatapb.TabletType_RDONLY) &&
 					session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
-					session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN &&
-					!session.ResolverOptions.ShouldForceRouteToReadOnlyTxnVttablet {
+					session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN {
 					// if ShouldForceRouteToReadOnly is true, it means it is in read only txn, and sql should be routed to one single node
 					opts.CanLoadBalanceBetweenReplicAndRdonly = true
+				} else {
+					opts.CanLoadBalanceBetweenReplicAndRdonly = false
 				}
 			}
 
@@ -1027,8 +1030,7 @@ func GetRoutingReasonStr(finalTabletType topodatapb.TabletType, session *SafeSes
 	var loadBalanceScope string
 	if (finalTabletType == topodatapb.TabletType_REPLICA || finalTabletType == topodatapb.TabletType_RDONLY) &&
 		session.ResolverOptions.UserHintTabletType == topodatapb.TabletType_UNKNOWN &&
-		session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN &&
-		!session.ResolverOptions.ShouldForceRouteToReadOnlyTxnVttablet {
+		session.ResolverOptions.KeyspaceTabletType == topodatapb.TabletType_UNKNOWN {
 		loadBalanceScope = TabletTypeEnumToStr[topodatapb.TabletType_REPLICA] + " and " + TabletTypeEnumToStr[topodatapb.TabletType_RDONLY]
 	} else {
 		loadBalanceScope = TabletTypeEnumToStr[finalTabletType]
