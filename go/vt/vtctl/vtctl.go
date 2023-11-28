@@ -3725,6 +3725,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
 	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
 	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Source keyspace")
+	defaultFilterRules := subFlags.String("default_filter_rules", "", "Add WHERE clause conditions to all tables.")
 
 	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
 	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
@@ -3738,7 +3739,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	action = strings.ToLower(action)
 	switch action {
 	case vBranchWorkflowActionPrepare:
-		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy)
+		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy, *defaultFilterRules)
 	case vBranchWorkflowActionStart:
 		err = wr.StartBranch(ctx, *workflowName)
 	case vBranchWorkflowActionStop:

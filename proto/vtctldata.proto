@@ -75,6 +75,7 @@ message FilterTableRule{
   string merge_ddl = 6;
   bool   need_merge_back = 7;
   string merge_ddl_uuid = 8;
+  string default_filter_rules = 9;
 }
 
 // TableMaterializeSttings contains the settings for one table.
