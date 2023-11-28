@@ -1965,6 +1965,7 @@ func (e *Executor) scheduleNextMigration(ctx context.Context) error {
 		id, _ := row["id"].ToInt64()
 		uuid := row["migration_uuid"].ToString()
 		table := row["mysql_table"].ToString()
+		tableSchema := row["mysql_schema"].ToString()
 		postponeLaunch := row.AsBool("postpone_launch", false)
 		postponeCompletion := row.AsBool("postpone_completion", false)
 		readyToComplete := row.AsBool("ready_to_complete", false)
@@ -1977,8 +1978,9 @@ func (e *Executor) scheduleNextMigration(ctx context.Context) error {
 
 			pausedMigrationID, _ := pausedMigrationRow["id"].ToInt64()
 			pausedMigrationTable := pausedMigrationRow["mysql_table"].ToString()
+			pausedMigrationSchema := pausedMigrationRow["mysql_schema"].ToString()
 
-			if pausedMigrationID < id && pausedMigrationTable == table {
+			if pausedMigrationID < id && pausedMigrationTable == table && tableSchema == pausedMigrationSchema {
 				migrationQueuedBeforeIsPaused = true
 				break
 			}
@@ -3107,6 +3109,7 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 			id, _ := row["id"].ToInt64()
 			table := row["mysql_table"].ToString()
 			uuid := row["migration_uuid"].ToString()
+			tableSchema := row["mysql_schema"].ToString()
 			onlineDDL, migrationRow, err := e.readMigration(ctx, uuid)
 			if err != nil {
 				return nil, err
@@ -3115,17 +3118,17 @@ func (e *Executor) runNextMigration(ctx context.Context) error {
 
 			// there is another 'paused' migration which status before paused is 'running' or 'ready'.
 			// Its id is smaller than the ready one, and it also has the same table with the ready one.
-			migrationQueuedBeforeIsPaused := false
+			migrationReadyOrRunningBeforeIsPaused := false
 			for _, pausedMigrationRow := range pausedMigrations.Named().Rows {
-
 				pausedMigrationID, _ := pausedMigrationRow["id"].ToInt64()
 				pausedMigrationTable := pausedMigrationRow["mysql_table"].ToString()
-				if pausedMigrationID < id && pausedMigrationTable == table {
-					migrationQueuedBeforeIsPaused = true
+				pausedMigrationSchema := pausedMigrationRow["mysql_schema"].ToString()
+				if pausedMigrationID < id && pausedMigrationTable == table && tableSchema == pausedMigrationSchema {
+					migrationReadyOrRunningBeforeIsPaused = true
 					break
 				}
 			}
-			if migrationQueuedBeforeIsPaused {
+			if migrationReadyOrRunningBeforeIsPaused {
 				continue
 			}
 

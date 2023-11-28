@@ -57,7 +57,8 @@ const (
 	`
 	sqlSelectMigrationsPausedWhenQueued = `SELECT
 			id,
-			mysql_table
+			mysql_table,
+			mysql_schema
 		FROM mysql.schema_migrations
 		WHERE
 			migration_status='paused'
@@ -66,7 +67,8 @@ const (
 	`
 	sqlSelectMigrationsPausedWhenReadyOrRunning = `SELECT
 			id,
-			mysql_table
+			mysql_table,
+			mysql_schema
 		FROM mysql.schema_migrations
 		WHERE
 			migration_status='paused'
@@ -77,6 +79,7 @@ const (
 	sqlSelectQueuedMigrations = `SELECT
 			id,
 			mysql_table,
+			mysql_schema,
     		migration_uuid,
 			ddl_action,
 			is_view,
@@ -470,7 +473,8 @@ const (
 	sqlSelectReadyMigrations = `SELECT
     		id,
 			migration_uuid,
-			mysql_table
+			mysql_table,
+			mysql_schema
 		FROM mysql.schema_migrations
 		WHERE
 			migration_status='ready'
