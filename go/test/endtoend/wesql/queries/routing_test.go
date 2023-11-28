@@ -61,10 +61,21 @@ func TestRoutingTabletType(t *testing.T) {
 		utils.Exec(t, conn, "use routingTest@RDONLY")
 		utils.Exec(t, conn, "select * from t")
 
-		// select should execute on primary because user hint tablet type is set
+		// select should execute on primary because user hint tablet type is set, and it will override keyspace tablet type
 		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"primary\")';")
 		utils.Exec(t, conn, "select /*vt+ ROLE=PRIMARY */ * from t")
 
+		// next we test that user hint tablet type should override suggested tablet type
+		// the suggested type will be replic, and the sql will execute on replica or rdonly tablets
+		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"replica or rdonly\")';")
+		utils.Exec(t, conn, "use routingTest")
+		utils.Exec(t, conn, "set session read_write_splitting_policy='random'")
+		utils.Exec(t, conn, "select * from t")
+		// select should execute on primary because user hint tablet type is set, and it will override suggested tablet type
+		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"primary\")';")
+		utils.Exec(t, conn, "select /*vt+ ROLE=PRIMARY */ * from t")
+
+		utils.Exec(t, conn, "set session read_write_splitting_policy='disable'")
 		utils.Exec(t, conn, "set @remove_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType';")
 	})
 }

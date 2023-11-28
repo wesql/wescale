@@ -343,10 +343,24 @@ func InitResolverOptionsIfNil(safeSession *SafeSession) {
 }
 
 func GetSuggestedTabletType(safeSession *SafeSession, sql string) (topodatapb.TabletType, error) {
-	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
-	// but the sql will not send to tablet to execute
 	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
-	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
+	// Users can input "set session/global enable_read_write_splitting_for_read_only_txn=true/false" to enable or disable read-only transaction routing.
+	// The user-input value is save in the session.ReadWriteSplitForReadOnlyTxnUserInput field.
+	// However, if the user enables or disables this feature while already in a read-only transaction, immediate efficiency is not applied.
+	// Instead, the user input takes effect only when not in a read-only transaction.
+	// Here, EnableReadWriteSplitForReadOnlyTxn serves as a true switch for this feature, and it will equal to the user input only when not in a read-only transaction.
+	// Here is an example to help understanding:
+	// -------------------------------
+	// user enable/disable this feature --- 1
+	// user start read only txn
+	// SQLs...
+	// user enable/disable this feature --- 2
+	// other SQLs...
+	// user enable/disable this feature --- 3
+	// user commit
+	// -------------------------------
+	// During the txn, value set in 1 works. After committing, value set in 3 works.
+
 	if !isReadOnlyTx {
 		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
 	}
@@ -387,23 +401,33 @@ func GetUserHintTabletType(stmt sqlparser.Statement, vcursor *vcursorImpl) (topo
 func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlparser.Statement, sql string) error {
 	// init ResolverOptions if nil
 	InitResolverOptionsIfNil(safeSession)
-	// get SuggestedTabletType
+
+	// get UserHintTabletType
 	var err error
-	safeSession.ResolverOptions.SuggestedTabletType, err = GetSuggestedTabletType(safeSession, sql)
+	safeSession.ResolverOptions.UserHintTabletType, err = GetUserHintTabletType(stmt, vcursor)
 	if err != nil {
 		return err
 	}
+	if safeSession.ResolverOptions.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
+		vcursor.tabletType = safeSession.ResolverOptions.UserHintTabletType
+		return nil
+	}
+
 	// get KeyspaceTabletType
 	safeSession.ResolverOptions.KeyspaceTabletType, err = GetKeyspaceTabletType(safeSession)
 	if err != nil {
 		return err
 	}
-	// get UserHintTabletType
-	safeSession.ResolverOptions.UserHintTabletType, err = GetUserHintTabletType(stmt, vcursor)
+	if safeSession.ResolverOptions.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
+		vcursor.tabletType = safeSession.ResolverOptions.KeyspaceTabletType
+		return nil
+	}
+
+	// get SuggestedTabletType
+	safeSession.ResolverOptions.SuggestedTabletType, err = GetSuggestedTabletType(safeSession, sql)
 	if err != nil {
 		return err
 	}
-	// decide tablet type
-	vcursor.tabletType = ResolveTabletTypeBaseOnOptions(vcursor.safeSession.ResolverOptions)
+	vcursor.tabletType = safeSession.ResolverOptions.SuggestedTabletType
 	return nil
 }

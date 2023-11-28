@@ -657,16 +657,6 @@ func (vc *vcursorImpl) ResolveDefaultDestination(ctx context.Context, keyspace s
 	return result, nil
 }
 
-func ResolveTabletTypeBaseOnOptions(opts *vtgatepb.ResolverOptions) topodatapb.TabletType {
-	if opts.UserHintTabletType != topodatapb.TabletType_UNKNOWN {
-		return opts.UserHintTabletType
-	}
-	if opts.KeyspaceTabletType != topodatapb.TabletType_UNKNOWN {
-		return opts.KeyspaceTabletType
-	}
-	return opts.SuggestedTabletType
-}
-
 func (vc *vcursorImpl) ResolveDestinationsMultiCol(ctx context.Context, keyspace string, ids [][]sqltypes.Value, destinations []key.Destination) ([]*srvtopo.ResolvedShard, [][][]sqltypes.Value, error) {
 	rss, values, err := vc.resolver.ResolveDestinationsMultiCol(ctx, keyspace, vc.tabletType, ids, destinations)
 	if err != nil {

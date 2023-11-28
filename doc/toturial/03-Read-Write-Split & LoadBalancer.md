@@ -47,7 +47,7 @@ vtgate \
 - Only sent to the primary instance
   - INSERT, UPDATE, DELETE, SELECT FOR UPDATE.
   - All DDL operations (creating/dropping tables/databases, altering table structures, permissions, etc.).
-  - All requests within a transaction when transaction is not read only or read write splitting for read only transaction is disable.
+  - All requests within a transaction, except when the transaction is read-only and `enable_read_write_splitting_for_read_only_txn=true`.
   - Requests that use temporary tables.
   - Requests that use GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS/IS_FREE_LOCK.
   - SELECT last_insert_id() statements.
@@ -57,7 +57,7 @@ vtgate \
 - Sent to read-only or primary instances
   - SELECT statements outside of a transaction.
   - COM_STMT_EXECUTE commands.
-  - Valid requests within a read only transaction and read write splitting for read only transaction is enable.
+  - Valid requests within a read only transaction and `enable_read_write_splitting_for_read_only_txn=true`.
 - Only sent to VTGate layer
   - All queries and modifications to User Variables.
   - USE command.
