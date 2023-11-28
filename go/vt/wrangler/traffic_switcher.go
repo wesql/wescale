@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -751,6 +756,53 @@ func (wr *Wrangler) finalizeMigrateWorkflow(ctx context.Context, targetKeyspace,
 	return sw.logs(), nil
 }
 
+func (wr *Wrangler) GetPrimaryTabletAlias(ctx context.Context, cell string) (*topodatapb.TabletAlias, error) {
+	tabletAliases, err := wr.TopoServer().GetTabletAliasesByCell(ctx, "zone1")
+	if err != nil {
+		return nil, err
+	}
+	for _, tabletAlias := range tabletAliases {
+		tablet, err := wr.TopoServer().GetTablet(ctx, tabletAlias)
+		if err != nil {
+			return nil, err
+		}
+		if tablet.Type == topodatapb.TabletType_PRIMARY {
+			return tabletAlias, nil
+		}
+	}
+	return nil, vterrors.Errorf(vtrpcpb.Code_NOT_FOUND, "not found primary talets alias")
+}
+
+func (wr *Wrangler) CreateDatabase(ctx context.Context, dbName string) error {
+	sql := fmt.Sprintf("create database if not exists %s", dbName)
+	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	if err != nil {
+		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, tabletAliases, sql, 1, false, true)
+	if err != nil {
+		return err
+	}
+	err = wr.TopoServer().CreateKeyspace(ctx, dbName, &topodatapb.Keyspace{KeyspaceType: topodatapb.KeyspaceType_NORMAL})
+	if err != nil && !topo.IsErrType(err, topo.NodeExists) {
+		return err
+	}
+	err = wr.TopoServer().SaveVSchema(ctx, dbName, &vschemapb.Keyspace{})
+	if err != nil && !topo.IsErrType(err, topo.NodeExists) {
+		return err
+	}
+	_, err = wr.TopoServer().GetOrCreateShard(ctx, dbName, "0")
+	if err != nil && !topo.IsErrType(err, topo.NodeExists) {
+		return err
+	}
+	var cells []string
+	cells = append(cells, "zone1")
+	if err = wr.TopoServer().RebuildSrvVSchema(ctx, cells); err != nil {
+		return err
+	}
+	return nil
+}
+
 // DropSources cleans up source tables, shards and denied tables after a MoveTables/Reshard is completed
 func (wr *Wrangler) DropSources(ctx context.Context, targetKeyspace, workflowName string, removalType workflow.TableRemovalType, keepData, keepRoutingRules, force, dryRun bool) (*[]string, error) {
 	ts, err := wr.buildTrafficSwitcher(ctx, targetKeyspace, workflowName)
@@ -1036,8 +1088,8 @@ func (ts *trafficSwitcher) switchTableReads(ctx context.Context, cells []string,
 		return err
 	}
 	// We assume that the following rules were setup when the targets were created:
-	// table -> sourceKeyspace.table
-	// targetKeyspace.table -> sourceKeyspace.table
+	// table -> sourceDatabase.table
+	// targetDatabase.table -> sourceDatabase.table
 	// For forward migration, we add tablet type specific rules to redirect traffic to the target.
 	// For backward, we redirect to source
 	for _, servedType := range servedTypes {

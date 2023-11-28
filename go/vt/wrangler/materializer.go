@@ -1397,6 +1397,20 @@ func (mz *materializer) startStreams(ctx context.Context) error {
 	})
 }
 
+func (mz *materializer) stopStreams(ctx context.Context) error {
+	return mz.forAllTargets(func(target *topo.ShardInfo) error {
+		targetPrimary, err := mz.wr.ts.GetTablet(ctx, target.PrimaryAlias)
+		if err != nil {
+			return vterrors.Wrapf(err, "GetTablet(%v) failed", target.PrimaryAlias)
+		}
+		query := fmt.Sprintf("update mysql.vreplication set state='Stopped' where db_name=%s and workflow=%s", encodeString(mz.targetKeyspace), encodeString(mz.ms.Workflow))
+		if _, err := mz.wr.tmc.VReplicationExec(ctx, targetPrimary.Tablet, query); err != nil {
+			return vterrors.Wrapf(err, "VReplicationExec(%v, %s)", targetPrimary.Tablet, query)
+		}
+		return nil
+	})
+}
+
 func (mz *materializer) forAllTargets(f func(*topo.ShardInfo) error) error {
 	var wg sync.WaitGroup
 	allErrors := &concurrency.AllErrorRecorder{}

@@ -24,6 +24,7 @@ package vstreamer
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -68,6 +69,35 @@ type Plan struct {
 	Filters []Filter
 }
 
+type FuncImpl struct {
+	FuncExpr *sqlparser.FuncExpr
+}
+
+var SupportFuncList []string
+
+func init() {
+	SupportFuncList = append(SupportFuncList, "RAND")
+}
+func IsSupportFunc(funcName string) bool {
+	for _, f := range SupportFuncList {
+		if f == funcName {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *FuncImpl) eval() sqltypes.Value {
+	switch f.FuncExpr.Name.String() {
+	case "RAND":
+		randVal := rand.ExpFloat64() // 生成一个浮点数
+		return sqltypes.MakeTrusted(querypb.Type_FLOAT64, strconv.AppendFloat(nil, randVal, 'f', -1, 64))
+	default:
+		// 对于未知的函数名，返回一个空的sqltypes.Value或错误
+		return sqltypes.Value{}
+	}
+}
+
 // Opcode enumerates the operators supported in a where clause
 type Opcode int
 
@@ -102,6 +132,7 @@ type Filter struct {
 	Vindex        vindexes.Vindex
 	VindexColumns []int
 	KeyRange      *topodatapb.KeyRange
+	funcImpl      *FuncImpl
 }
 
 // ColExpr represents a column expression.
@@ -233,7 +264,13 @@ func (plan *Plan) filter(values, result []sqltypes.Value, charsets []collations.
 				return false, nil
 			}
 		default:
-			match, err := compare(filter.Opcode, values[filter.ColNum], filter.Value, charsets[filter.ColNum])
+			var match bool
+			var err error
+			if filter.funcImpl != nil {
+				match, err = compare(filter.Opcode, filter.funcImpl.eval(), filter.Value, charsets[filter.ColNum])
+			} else {
+				match, err = compare(filter.Opcode, values[filter.ColNum], filter.Value, charsets[filter.ColNum])
+			}
 			if err != nil {
 				return false, err
 			}
@@ -519,39 +556,74 @@ func (plan *Plan) analyzeWhere(vschema *localVSchema, where *sqlparser.Where) er
 			if err != nil {
 				return err
 			}
-			qualifiedName, ok := expr.Left.(*sqlparser.ColName)
-			if !ok {
+			switch expr.Left.(type) {
+			case *sqlparser.FuncExpr:
+				funcExpr, ok := expr.Left.(*sqlparser.FuncExpr)
+				if !ok {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				if !IsSupportFunc(funcExpr.Name.String()) {
+					return fmt.Errorf("not support func: %v", sqlparser.String(expr))
+				}
+				val, ok := expr.Right.(*sqlparser.Literal)
+				if !ok {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				//StrVal is varbinary, we do not support varchar since we would have to implement all collation types
+				if val.Type != sqlparser.IntVal && val.Type != sqlparser.StrVal && val.Type != sqlparser.DecimalVal {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				pv, err := evalengine.Translate(val, semantics.EmptySemTable())
+				if err != nil {
+					return err
+				}
+				env := evalengine.EmptyExpressionEnv()
+				resolved, err := env.Evaluate(pv)
+				if err != nil {
+					return err
+				}
+				plan.Filters = append(plan.Filters, Filter{
+					Opcode:   opcode,
+					funcImpl: &FuncImpl{FuncExpr: funcExpr},
+					Value:    resolved.Value(),
+				})
+			case *sqlparser.ColName:
+				qualifiedName, ok := expr.Left.(*sqlparser.ColName)
+				if !ok {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				if !qualifiedName.Qualifier.IsEmpty() {
+					return fmt.Errorf("unsupported qualifier for column: %v", sqlparser.String(qualifiedName))
+				}
+				colnum, err := findColumn(plan.Table, qualifiedName.Name)
+				if err != nil {
+					return err
+				}
+				val, ok := expr.Right.(*sqlparser.Literal)
+				if !ok {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				//StrVal is varbinary, we do not support varchar since we would have to implement all collation types
+				if val.Type != sqlparser.IntVal && val.Type != sqlparser.StrVal {
+					return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
+				}
+				pv, err := evalengine.Translate(val, semantics.EmptySemTable())
+				if err != nil {
+					return err
+				}
+				env := evalengine.EmptyExpressionEnv()
+				resolved, err := env.Evaluate(pv)
+				if err != nil {
+					return err
+				}
+				plan.Filters = append(plan.Filters, Filter{
+					Opcode: opcode,
+					ColNum: colnum,
+					Value:  resolved.Value(),
+				})
+			default:
 				return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
 			}
-			if !qualifiedName.Qualifier.IsEmpty() {
-				return fmt.Errorf("unsupported qualifier for column: %v", sqlparser.String(qualifiedName))
-			}
-			colnum, err := findColumn(plan.Table, qualifiedName.Name)
-			if err != nil {
-				return err
-			}
-			val, ok := expr.Right.(*sqlparser.Literal)
-			if !ok {
-				return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
-			}
-			//StrVal is varbinary, we do not support varchar since we would have to implement all collation types
-			if val.Type != sqlparser.IntVal && val.Type != sqlparser.StrVal {
-				return fmt.Errorf("unexpected: %v", sqlparser.String(expr))
-			}
-			pv, err := evalengine.Translate(val, semantics.EmptySemTable())
-			if err != nil {
-				return err
-			}
-			env := evalengine.EmptyExpressionEnv()
-			resolved, err := env.Evaluate(pv)
-			if err != nil {
-				return err
-			}
-			plan.Filters = append(plan.Filters, Filter{
-				Opcode: opcode,
-				ColNum: colnum,
-				Value:  resolved.Value(),
-			})
 		case *sqlparser.FuncExpr:
 			if !expr.Name.EqualString("in_keyrange") {
 				return fmt.Errorf("unsupported constraint: %v", sqlparser.String(expr))

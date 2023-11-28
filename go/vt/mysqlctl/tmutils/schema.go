@@ -28,6 +28,8 @@ import (
 	"regexp"
 	"strings"
 
+	"vitess.io/vitess/go/vt/schemadiff"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/sqlescape"
@@ -46,6 +48,62 @@ const (
 	// TableView indicates the table type is a view.
 	TableView = "VIEW"
 )
+
+const (
+	SchemasDiff       = "schemasDiff"
+	SchemasDiffDetail = "schemasDiffDetail"
+	ExtraTable        = "extraTable"
+	ExtraView         = "extraView"
+	TableSchemaDiff   = "tableSchemaDiff"
+	TableTypeDiff     = "tableTypeDiff"
+)
+
+var DiffPatterns map[string]*regexp.Regexp
+var DiffFormat map[string]string
+
+func init() {
+	DiffFormat = map[string]string{
+		SchemasDiff:       "schemas are different:\n%v: %v, %v: %v",
+		SchemasDiffDetail: "schemas are different:\n%v: %v\n differs from:\n%v: %v",
+		ExtraTable:        "%v has an extra table named %v",
+		ExtraView:         "%v has an extra view named %v",
+		TableSchemaDiff:   "schemas differ on table %v:\n%v: %v\n differs from:\n%v: %v",
+		TableTypeDiff:     "schemas differ on table type for table %v:\n%v: %v\n differs from:\n%v: %v",
+	}
+	DiffPatterns = map[string]*regexp.Regexp{
+		SchemasDiff:       regexp.MustCompile(strings.Replace(DiffFormat[SchemasDiff], "%v", "(.+)", -1)),
+		SchemasDiffDetail: regexp.MustCompile(strings.Replace(DiffFormat[SchemasDiffDetail], "%v", "(.+)", -1)),
+		ExtraTable:        regexp.MustCompile(strings.Replace(DiffFormat[ExtraTable], "%v", "(.+)", -1)),
+		ExtraView:         regexp.MustCompile(strings.Replace(DiffFormat[ExtraView], "%v", "(.+)", -1)),
+		TableSchemaDiff:   regexp.MustCompile(strings.Replace(DiffFormat[TableSchemaDiff], "%v", "(.+)", -1)),
+		TableTypeDiff:     regexp.MustCompile(strings.Replace(DiffFormat[TableTypeDiff], "%v", "(.+)", -1)),
+	}
+}
+
+type SchemaDiffElement struct {
+	diffType string
+
+	leftDatabase string
+	left         *tabletmanagerdatapb.SchemaDefinition
+
+	rightDatabase string
+	right         *tabletmanagerdatapb.SchemaDefinition
+
+	extraTableDatabase string
+	extraTableName     string
+
+	extraViewDatabase string
+	extraViewName     string
+
+	diffSchemaTableName string
+	diffTypeTableName   string
+}
+
+type TableDiffDDL struct {
+	TableName string
+	DiffType  string
+	Ddl       string
+}
 
 // TableDefinitionGetColumn returns the index of a column inside a
 // TableDefinition.
@@ -263,16 +321,21 @@ func SchemaDefinitionToSQLStrings(sd *tabletmanagerdatapb.SchemaDefinition) []st
 
 // DiffSchema generates a report on what's different between two SchemaDefinitions
 // including views, but Vitess internal tables are ignored.
-func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rightName string, right *tabletmanagerdatapb.SchemaDefinition, er concurrency.ErrorRecorder) {
+func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rightName string, right *tabletmanagerdatapb.SchemaDefinition, er concurrency.ErrorRecorder) []SchemaDiffElement {
+
+	var schemaDiffs []SchemaDiffElement
 	if left == nil && right == nil {
-		return
+		return schemaDiffs
 	}
 	if left == nil || right == nil {
-		er.RecordError(fmt.Errorf("schemas are different:\n%s: %v, %s: %v", leftName, left, rightName, right))
-		return
+		er.RecordError(fmt.Errorf(DiffFormat[SchemasDiff], leftName, left, rightName, right))
+		schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: SchemasDiff, left: left, leftDatabase: leftName, rightDatabase: rightName, right: right})
+		return schemaDiffs
 	}
 	if left.DatabaseSchema != right.DatabaseSchema {
-		er.RecordError(fmt.Errorf("schemas are different:\n%s: %v\n differs from:\n%s: %v", leftName, left.DatabaseSchema, rightName, right.DatabaseSchema))
+		er.RecordError(fmt.Errorf(DiffFormat[SchemasDiffDetail], leftName, left.DatabaseSchema, rightName, right.DatabaseSchema))
+		schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: SchemasDiffDetail, left: left, leftDatabase: leftName, rightDatabase: rightName, right: right})
+
 	}
 
 	leftIndex := 0
@@ -281,7 +344,8 @@ func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rig
 		// extra table on the left side
 		if left.TableDefinitions[leftIndex].Name < right.TableDefinitions[rightIndex].Name {
 			if !schema.IsInternalOperationTableName(left.TableDefinitions[leftIndex].Name) {
-				er.RecordError(fmt.Errorf("%v has an extra table named %v", leftName, left.TableDefinitions[leftIndex].Name))
+				er.RecordError(fmt.Errorf(DiffFormat[ExtraTable], leftName, left.TableDefinitions[leftIndex].Name))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraTable, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraTableDatabase: leftName, extraTableName: left.TableDefinitions[leftIndex].Name})
 			}
 			leftIndex++
 			continue
@@ -290,7 +354,9 @@ func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rig
 		// extra table on the right side
 		if left.TableDefinitions[leftIndex].Name > right.TableDefinitions[rightIndex].Name {
 			if !schema.IsInternalOperationTableName(right.TableDefinitions[rightIndex].Name) {
-				er.RecordError(fmt.Errorf("%v has an extra table named %v", rightName, right.TableDefinitions[rightIndex].Name))
+				er.RecordError(fmt.Errorf(DiffFormat[ExtraTable], rightName, right.TableDefinitions[rightIndex].Name))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraTable, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraTableDatabase: rightName, extraTableName: right.TableDefinitions[rightIndex].Name})
+
 			}
 			rightIndex++
 			continue
@@ -299,13 +365,17 @@ func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rig
 		// same name, let's see content
 		if left.TableDefinitions[leftIndex].Schema != right.TableDefinitions[rightIndex].Schema {
 			if !schema.IsInternalOperationTableName(left.TableDefinitions[leftIndex].Name) {
-				er.RecordError(fmt.Errorf("schemas differ on table %v:\n%s: %v\n differs from:\n%s: %v", left.TableDefinitions[leftIndex].Name, leftName, left.TableDefinitions[leftIndex].Schema, rightName, right.TableDefinitions[rightIndex].Schema))
+				er.RecordError(fmt.Errorf(DiffFormat[TableSchemaDiff], left.TableDefinitions[leftIndex].Name, leftName, left.TableDefinitions[leftIndex].Schema, rightName, right.TableDefinitions[rightIndex].Schema))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: TableSchemaDiff, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, diffSchemaTableName: left.TableDefinitions[leftIndex].Name})
+
 			}
 		}
 
 		if left.TableDefinitions[leftIndex].Type != right.TableDefinitions[rightIndex].Type {
 			if !schema.IsInternalOperationTableName(right.TableDefinitions[rightIndex].Name) {
-				er.RecordError(fmt.Errorf("schemas differ on table type for table %v:\n%s: %v\n differs from:\n%s: %v", left.TableDefinitions[leftIndex].Name, leftName, left.TableDefinitions[leftIndex].Type, rightName, right.TableDefinitions[rightIndex].Type))
+				er.RecordError(fmt.Errorf(DiffFormat[TableTypeDiff], left.TableDefinitions[leftIndex].Name, leftName, left.TableDefinitions[leftIndex].Type, rightName, right.TableDefinitions[rightIndex].Type))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: TableTypeDiff, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, diffTypeTableName: left.TableDefinitions[leftIndex].Name})
+
 			}
 		}
 
@@ -316,25 +386,75 @@ func DiffSchema(leftName string, left *tabletmanagerdatapb.SchemaDefinition, rig
 	for leftIndex < len(left.TableDefinitions) {
 		if left.TableDefinitions[leftIndex].Type == TableBaseTable {
 			if !schema.IsInternalOperationTableName(left.TableDefinitions[leftIndex].Name) {
-				er.RecordError(fmt.Errorf("%v has an extra table named %v", leftName, left.TableDefinitions[leftIndex].Name))
+				er.RecordError(fmt.Errorf(DiffFormat[ExtraTable], leftName, left.TableDefinitions[leftIndex].Name))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraTable, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraTableDatabase: leftName, extraTableName: left.TableDefinitions[leftIndex].Name})
 			}
 		}
 		if left.TableDefinitions[leftIndex].Type == TableView {
-			er.RecordError(fmt.Errorf("%v has an extra view named %v", leftName, left.TableDefinitions[leftIndex].Name))
+			er.RecordError(fmt.Errorf(DiffFormat[ExtraView], leftName, left.TableDefinitions[leftIndex].Name))
+			schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraView, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraViewDatabase: leftName, extraViewName: left.TableDefinitions[leftIndex].Name})
+
 		}
 		leftIndex++
 	}
 	for rightIndex < len(right.TableDefinitions) {
 		if right.TableDefinitions[rightIndex].Type == TableBaseTable {
 			if !schema.IsInternalOperationTableName(right.TableDefinitions[rightIndex].Name) {
-				er.RecordError(fmt.Errorf("%v has an extra table named %v", rightName, right.TableDefinitions[rightIndex].Name))
+				er.RecordError(fmt.Errorf(DiffFormat[ExtraTable], rightName, right.TableDefinitions[rightIndex].Name))
+				schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraTable, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraTableDatabase: rightName, extraTableName: right.TableDefinitions[rightIndex].Name})
+
 			}
 		}
 		if right.TableDefinitions[rightIndex].Type == TableView {
-			er.RecordError(fmt.Errorf("%v has an extra view named %v", rightName, right.TableDefinitions[rightIndex].Name))
+			er.RecordError(fmt.Errorf(DiffFormat[ExtraView], rightName, right.TableDefinitions[rightIndex].Name))
+			schemaDiffs = append(schemaDiffs, SchemaDiffElement{diffType: ExtraView, left: left, leftDatabase: leftName, right: right, rightDatabase: rightName, extraViewDatabase: rightName, extraViewName: right.TableDefinitions[rightIndex].Name})
+
 		}
 		rightIndex++
 	}
+	return schemaDiffs
+}
+
+func FindTableDefinitionFromSchema(schema *tabletmanagerdatapb.SchemaDefinition, tableName string) *tabletmanagerdatapb.TableDefinition {
+	for _, table := range schema.TableDefinitions {
+		if table.Name == tableName {
+			return table
+		}
+	}
+	return nil
+}
+
+func AnalyzeDiffRecord(diffSchemaStrings []SchemaDiffElement, sourceDatabase, targetDatabase string, sourceSchema, targetSchema *tabletmanagerdatapb.SchemaDefinition) ([]TableDiffDDL, error) {
+	var results []TableDiffDDL
+	for _, schemaDiffElement := range diffSchemaStrings {
+		switch schemaDiffElement.diffType {
+		case SchemasDiff:
+		case SchemasDiffDetail:
+		case ExtraView:
+			// ignore view
+		case ExtraTable:
+			extraDatabase := schemaDiffElement.extraTableDatabase
+			extraTableName := schemaDiffElement.extraTableName
+			if extraDatabase == targetDatabase {
+				extraTable := FindTableDefinitionFromSchema(targetSchema, extraTableName)
+				if extraTable != nil {
+					results = append(results, TableDiffDDL{TableName: extraTable.Name, DiffType: ExtraTable, Ddl: extraTable.Schema})
+				}
+			}
+		case TableSchemaDiff, TableTypeDiff:
+			diffTableName := schemaDiffElement.diffSchemaTableName
+			sourceTableSchema := FindTableDefinitionFromSchema(sourceSchema, diffTableName)
+			targetTableSchema := FindTableDefinitionFromSchema(targetSchema, diffTableName)
+			hints := &schemadiff.DiffHints{AutoIncrementStrategy: schemadiff.AutoIncrementApplyHigher}
+			diff, err := schemadiff.DiffCreateTablesQueries(sourceTableSchema.Schema, targetTableSchema.Schema, hints)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, TableDiffDDL{TableName: diffTableName, DiffType: schemaDiffElement.diffType, Ddl: diff.CanonicalStatementString()})
+		}
+	}
+
+	return results, nil
 }
 
 // DiffSchemaToArray diffs two schemas and return the schema diffs if there is any.
