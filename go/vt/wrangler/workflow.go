@@ -273,7 +273,7 @@ func (vrw *VReplicationWorkflow) GetStreamCount() (int64, int64, []*WorkflowErro
 			if st.Pos == "" {
 				continue
 			}
-			if st.State == "Running" || st.State == "Copying" || (st.State == "Stopped" && st.Message == "Stopped after copy.") {
+			if st.State == "Running" || st.State == "Copying" {
 				started++
 			}
 		}
