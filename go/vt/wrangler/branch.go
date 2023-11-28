@@ -85,7 +85,7 @@ func boolToInt(b bool) int {
 
 func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 	buf := &strings.Builder{}
-	buf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) VALUES")
+	buf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl,default_filter_rules) VALUES")
 	first := true
 	for _, tableRule := range branchJob.bs.FilterTableRules {
 		if first {
@@ -93,7 +93,7 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 		} else {
 			buf.WriteString(",")
 		}
-		buf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v')", branchJob.workflowName, tableRule.SourceTable, tableRule.TargetTable, tableRule.FilteringRule, tableRule.CreateDdl, tableRule.MergeDdl))
+		buf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v','%v')", branchJob.workflowName, tableRule.SourceTable, tableRule.TargetTable, tableRule.FilteringRule, tableRule.CreateDdl, tableRule.MergeDdl, tableRule.DefaultFilterRules))
 	}
 	buf.WriteString(";")
 	return buf.String(), nil
@@ -101,7 +101,7 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
 func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
-	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool) error {
+	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string) error {
 	err := wr.CreateDatabase(ctx, targetDatabase)
 	if err != nil {
 		return err
@@ -191,13 +191,17 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 	//generate filterTableRule
 	for _, table := range tables {
 		buf := sqlparser.NewTrackedBuffer(nil)
-		buf.Myprintf("select * from %v", sqlparser.NewIdentifierCS(table))
+		buf.Myprintf("select * from %v ", sqlparser.NewIdentifierCS(table))
+		if defaultFilterRules != "" {
+			buf.WriteString(fmt.Sprintf("WHERE %v", defaultFilterRules))
+		}
 		filterTableRule := &vtctldatapb.FilterTableRule{
-			SourceTable:   table,
-			TargetTable:   table,
-			FilteringRule: buf.String(),
-			CreateDdl:     createDDLMode,
-			MergeDdl:      createDDLMode,
+			SourceTable:        table,
+			TargetTable:        table,
+			FilteringRule:      buf.String(),
+			CreateDdl:          createDDLMode,
+			MergeDdl:           createDDLMode,
+			DefaultFilterRules: defaultFilterRules,
 		}
 		branchJob.bs.FilterTableRules = append(branchJob.bs.FilterTableRules, filterTableRule)
 	}
