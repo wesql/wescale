@@ -51,8 +51,6 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/netutil"
@@ -231,6 +229,8 @@ type HealthCheck interface {
 
 	// GetAllHealthyTabletStats return all TabletHealth of the tablet in healthy.
 	GetAllHealthyTabletStats() []*TabletHealth
+
+	GetReplicAndRdonlyHealthyTabletStats() []*TabletHealth
 
 	// GetTabletHealthByAlias results the TabletHealth of the tablet that matches the given alias
 	GetTabletHealthByAlias(alias *topodata.TabletAlias) (*TabletHealth, error)
@@ -674,16 +674,7 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	defer hc.mu.Unlock()
 
 	targetTypes := make([]topodata.TabletType, 0)
-	if target.TabletType == topodata.TabletType_REPLICA || target.TabletType == topodata.TabletType_RDONLY {
-		if global.ReadWriteSplitEnablesREPLICA {
-			targetTypes = append(targetTypes, topodata.TabletType_REPLICA)
-		}
-		if global.ReadWriteSplitEnablesRDONLY {
-			targetTypes = append(targetTypes, topodata.TabletType_RDONLY)
-		}
-	} else {
-		targetTypes = append(targetTypes, target.TabletType)
-	}
+	targetTypes = append(targetTypes, target.TabletType)
 
 	for _, value := range hc.healthy {
 		for _, th := range value {
@@ -694,8 +685,28 @@ func (hc *HealthCheckImpl) GetHealthyTabletStats(target *query.Target) []*Tablet
 	}
 	return result
 }
+
+func (hc *HealthCheckImpl) GetReplicAndRdonlyHealthyTabletStats() []*TabletHealth {
+	var result []*TabletHealth
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+
+	targetTypes := make([]topodata.TabletType, 0)
+	targetTypes = append(targetTypes, topodata.TabletType_REPLICA, topodata.TabletType_RDONLY)
+	for _, value := range hc.healthy {
+		for _, th := range value {
+			if slices.Contains(targetTypes, th.Target.TabletType) {
+				result = append(result, th)
+			}
+		}
+	}
+	return result
+}
+
 func (hc *HealthCheckImpl) GetAllHealthyTabletStats() []*TabletHealth {
 	var result []*TabletHealth
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
 	for _, value := range hc.healthy {
 		result = append(result, value...)
 	}

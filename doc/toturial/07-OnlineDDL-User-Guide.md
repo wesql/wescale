@@ -76,6 +76,30 @@ alter vitess_migration cancel all;
 
 This command will cancel all ddl in pending (queued, ready, running) status.
 
+- Pause a ddl
+```sql
+alter vitess_migration 'uuid' pause;
+```
+
+This command will pause a ddl in pending (queued, ready, running) status. To guarantee correctness, the subsequent ddls which have the same table with the paused one will be blocked.
+
+- Unpause a ddl
+```sql
+alter vitess_migration 'uuid' resume;
+```
+
+- Pause all ddl
+
+```sql
+alter vitess_migration pause all;
+```
+
+- Unpause all ddl
+
+```sql
+alter vitess_migration resume all;
+```
+
 - Advancing ddl in postpone status
 
 ```sql

@@ -375,6 +375,15 @@ message ExecuteOptions {
   // Set to false if mysql_auth_server_impl is set to "none".
   // Set to true if mysql_auth_server_impl is not set to "none".
   bool account_verification_enabled = 19;
+
+  TabletInfoToDisplay tablet_info_to_display = 20;
+
+  bool can_load_balance_between_replic_and_rdonly = 21;
+}
+
+message TabletInfoToDisplay{
+  topodata.TabletAlias tablet_alias = 1;
+  topodata.TabletType tablet_type = 2;
 }
 
 // Field describes a single column returned by a query

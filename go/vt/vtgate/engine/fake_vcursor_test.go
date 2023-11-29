@@ -63,11 +63,11 @@ func (t *noopVCursor) GetEnableInterceptionForDMLWithoutWhere() bool {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetEnableDisplaySQLExecutionVTTabletType(ctx context.Context, b bool) error {
+func (t *noopVCursor) SetEnableDisplaySQLExecutionVTTablet(ctx context.Context, b bool) error {
 	panic("implement me")
 }
 
-func (t *noopVCursor) GetEnableDisplaySQLExecutionVTTabletType() bool {
+func (t *noopVCursor) GetEnableDisplaySQLExecutionVTTablet() bool {
 	panic("implement me")
 }
 

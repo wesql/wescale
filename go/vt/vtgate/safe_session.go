@@ -740,13 +740,13 @@ func (session *SafeSession) GetEnableInterceptionForDMLWithoutWhere() bool {
 	return session.EnableInterceptionForDMLWithoutWhere
 }
 
-func (session *SafeSession) SetEnableDisplaySQLExecutionVTTabletType(enable bool) {
+func (session *SafeSession) SetEnableDisplaySQLExecutionVTTablet(enable bool) {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	session.EnableDisplaySQLExecutionVTTabletType = enable
 }
 
-func (session *SafeSession) GetEnableDisplaySQLExecutionVTTabletType() bool {
+func (session *SafeSession) GetEnableDisplaySQLExecutionVTTablet() bool {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	return session.EnableDisplaySQLExecutionVTTabletType

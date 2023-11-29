@@ -141,22 +141,8 @@ func newVCursorImpl(
 	warnShardedOnly bool,
 	pv plancontext.PlannerVersion,
 ) (*vcursorImpl, error) {
-	// current sql is in read only transaction or not, if is a sql begins a read-only tx like "start transaction read only;", the isReadOnlyTx will be false,
-	// but the sql will not send to tablet to execute
-	isReadOnlyTx := safeSession.Session.InTransaction && safeSession.Session.TransactionAccessMode == vtgatepb.TransactionAccessMode_READ_ONLY
-	// user can use set @EnableReadWriteSplitForReadOnlyTxn=true/false to enable/disable read only tx routing
-	if !isReadOnlyTx {
-		safeSession.Session.EnableReadWriteSplitForReadOnlyTxn = safeSession.Session.GetReadWriteSplitForReadOnlyTxnUserInput()
-	}
 
-	// use the suggestedTabletType if safeSession.TargetString is not specified
-	suggestedTabletType, err := suggestTabletType(safeSession.GetReadWriteSplittingPolicy(), safeSession.InTransaction(),
-		safeSession.HasCreatedTempTables(), safeSession.HasAdvisoryLock(), safeSession.GetReadWriteSplittingRatio(), sql, safeSession.GetEnableReadWriteSplitForReadOnlyTxn(), isReadOnlyTx)
-	if err != nil {
-		return nil, err
-	}
-
-	keyspace, tabletType, destination, err := parseDestinationTarget(suggestedTabletType, safeSession.TargetString, vschema)
+	keyspace, _, destination, err := parseDestinationTarget(topodatapb.TabletType_UNKNOWN, safeSession.TargetString, vschema)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +171,6 @@ func newVCursorImpl(
 	return &vcursorImpl{
 		safeSession:     safeSession,
 		keyspace:        keyspace,
-		tabletType:      tabletType,
 		destination:     destination,
 		marginComments:  marginComments,
 		executor:        executor,
@@ -787,13 +772,12 @@ func (vc *vcursorImpl) TabletType() topodatapb.TabletType {
 	return vc.tabletType
 }
 
-// SetTabletTypeFromHint specifies the tablet type to use for the query.
-func (vc *vcursorImpl) SetTabletTypeFromHint(tabletType topodatapb.TabletType) error {
+// CheckTabletTypeFromHint specifies the tablet type to use for the query.
+func (vc *vcursorImpl) CheckTabletTypeFromHint(tabletType topodatapb.TabletType) error {
 	if tabletType == topodatapb.TabletType_PRIMARY || tabletType == topodatapb.TabletType_REPLICA || tabletType == topodatapb.TabletType_RDONLY {
-		if vc.safeSession.InTransaction() && tabletType != topodatapb.TabletType_PRIMARY {
-			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.LockOrActiveTransaction, "can't execute the given command because you have an active transaction")
+		if vc.safeSession.InTransaction() && vc.safeSession.GetTransactionAccessMode() != vtgatepb.TransactionAccessMode_READ_ONLY && tabletType != topodatapb.TabletType_PRIMARY {
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.LockOrActiveTransaction, "can't execute the given command because you have an active transaction that is not read only")
 		}
-		vc.tabletType = tabletType
 		return nil
 	}
 	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unsupported tablet type: %v", tabletType)
@@ -933,6 +917,7 @@ func (vc *vcursorImpl) GetReadWriteSplittingPolicy() string {
 // SetReadWriteSplittingRatio implements the SessionActions interface
 func (vc *vcursorImpl) SetReadWriteSplittingRatio(ratio int32) {
 	vc.safeSession.SetReadWriteSplittingRatio(ratio)
+	vc.safeSession.ResolverOptions.ReadWriteSplittingRatio = ratio
 }
 
 // GetReadWriteSplittingRatio implements the SessionActions interface
@@ -949,13 +934,13 @@ func (vc *vcursorImpl) GetEnableInterceptionForDMLWithoutWhere() bool {
 	return vc.safeSession.GetEnableInterceptionForDMLWithoutWhere()
 }
 
-func (vc *vcursorImpl) SetEnableDisplaySQLExecutionVTTabletType(ctx context.Context, enable bool) error {
-	vc.safeSession.SetEnableDisplaySQLExecutionVTTabletType(enable)
+func (vc *vcursorImpl) SetEnableDisplaySQLExecutionVTTablet(ctx context.Context, enable bool) error {
+	vc.safeSession.SetEnableDisplaySQLExecutionVTTablet(enable)
 	return nil
 }
 
-func (vc *vcursorImpl) GetEnableDisplaySQLExecutionVTTabletType() bool {
-	return vc.safeSession.GetEnableDisplaySQLExecutionVTTabletType()
+func (vc *vcursorImpl) GetEnableDisplaySQLExecutionVTTablet() bool {
+	return vc.safeSession.GetEnableDisplaySQLExecutionVTTablet()
 }
 
 func (vc *vcursorImpl) SetReadWriteSplitForReadOnlyTxnUserInput(ctx context.Context, enable bool) error {
@@ -1202,8 +1187,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
-	case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
-		return SetDefaultEnableDisplaySQLExecutionVTTabletType(value)
+	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
+		return SetDefaultEnableDisplaySQLExecutionVTTablet(value)
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
 	}

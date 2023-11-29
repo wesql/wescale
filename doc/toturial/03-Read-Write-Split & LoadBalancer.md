@@ -47,7 +47,7 @@ vtgate \
 - Only sent to the primary instance
   - INSERT, UPDATE, DELETE, SELECT FOR UPDATE.
   - All DDL operations (creating/dropping tables/databases, altering table structures, permissions, etc.).
-  - All requests within a transaction.
+  - All requests within a transaction, except when the transaction is read-only and `enable_read_write_splitting_for_read_only_txn=true`.
   - Requests that use temporary tables.
   - Requests that use GET_LOCK/RELEASE_LOCK/IS_USED_LOCK/RELEASE_ALL_LOCKS/IS_FREE_LOCK.
   - SELECT last_insert_id() statements.
@@ -57,10 +57,38 @@ vtgate \
 - Sent to read-only or primary instances
   - SELECT statements outside of a transaction.
   - COM_STMT_EXECUTE commands.
+  - Valid requests within a read only transaction and `enable_read_write_splitting_for_read_only_txn=true`.
 - Only sent to VTGate layer
   - All queries and modifications to User Variables.
   - USE command.
   - COM_STMT_PREPARE command.
+
+You can use the set command `set session/global enable_display_sql_execution_vttablet=true` to examine the complete routing process of an SQL  in detail. 
+
+The process mainly consists of two steps: 1. Determining the tablet type. 2.Among the tablets with the type determined in step 1, selecting a tablet to execute the SQL based on the load balance rules. 
+
+In step 1, users can use `use database@tablet_type` to specify the keyspace tablet type. For example, using `use mydb@REPLICA` will cause all subsequent SQLs to be directed to the corresponding tablets of REPLICA type by default. 
+
+Users can also use hint to specify which tablet the current SQL should be sent to. For example, `select /*vt+ ROLE=PRIMARY*/ * from mytable;` will cause the SQL to be executed on the primary tablets. 
+
+If the user does not specify keyspace tablet type and hint, the read-write splitting module will also resolve the suggested tablet type according to the rules. 
+
+**The priority relationship between them is: hint tablet type > keyspace tablet type > suggested tablet type**. 
+
+After using the set command mentioned above, you can see something as follows:
+```
+mysql> select * from t;
++------+------+
+| c1   | c2   |
++------+------+
+|    2 |    2 |
+| 2222 | 2222 |
++------+------+
+2 rows in set (0.01 sec)
+the sql is executed on zone1-101(PRIMARY)
+suggested vttablet type is PRIMARY, read write splitting ratio is 100%, read write splitting policy is DISABLE, sql should execute on PRIMARY
+load balance policy is RANDOM, load balance between PRIMARY vttablets
+```
  
  # Route Read Only Transaction to Read-Only Nodes
   When read-write splitting is enabled, you can use the "set" command `set session enable_read_write_splitting_for_read_only_txn=true;` or `set global enable_read_write_splitting_for_read_only_txn=true;` on the client side to enable read only transaction routing. 

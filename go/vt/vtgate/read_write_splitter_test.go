@@ -447,8 +447,10 @@ func Test_suggestTabletType_random(t *testing.T) {
 				}
 			}
 		})
+
 		assert.Equalf(t, primaryTypeCount+replicaTypeCount, 1000, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
 		ratio := float32(replicaTypeCount) / float32(replicaTypeCount+primaryTypeCount)
+		fmt.Printf("case name %s, ratio is %f \n", tt.name, ratio)
 		assert.LessOrEqualf(t, math.Abs(float64(ratio-tt.wantRatio)), 0.1, "suggestTabletType(%v, %v, %v, %v, %v)", tt.args.readWriteSplittingPolicy, tt.args.inTransaction, tt.args.hasCreatedTempTables, tt.args.hasAdvisoryLock, tt.args.sql)
 		primaryTypeCount, replicaTypeCount = 0, 0
 	}

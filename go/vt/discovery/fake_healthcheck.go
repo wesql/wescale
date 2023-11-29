@@ -71,6 +71,10 @@ func (fhc *FakeHealthCheck) GetAllHealthyTabletStats() []*TabletHealth {
 	return nil
 }
 
+func (fhc *FakeHealthCheck) GetReplicAndRdonlyHealthyTabletStats() []*TabletHealth {
+	return nil
+}
+
 type fhcItem struct {
 	ts *TabletHealth
 }

@@ -531,7 +531,7 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[key] = sqltypes.Int32BindVariable(session.ReadWriteSplittingRatio)
 		case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.EnableInterceptionForDMLWithoutWhere)
-		case sysvars.EnableDisplaySQLExecutionVTTabletType.Name:
+		case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.EnableDisplaySQLExecutionVTTabletType)
 		case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 			bindVars[key] = sqltypes.BoolBindVariable(session.ReadWriteSplitForReadOnlyTxnUserInput)
@@ -1125,15 +1125,11 @@ type iQueryOption interface {
 
 // getPlan computes the plan for the given query. If one is in
 // the cache, it reuses it.
-func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string, comments sqlparser.MarginComments, bindVars map[string]*querypb.BindVariable, qo iQueryOption, logStats *logstats.LogStats) (*engine.Plan, sqlparser.Statement, error) {
+func (e *Executor) getPlan(ctx context.Context, stmt sqlparser.Statement, reserved sqlparser.BindVars, vcursor *vcursorImpl, sql string, comments sqlparser.MarginComments, bindVars map[string]*querypb.BindVariable, qo iQueryOption, logStats *logstats.LogStats) (*engine.Plan, sqlparser.Statement, error) {
 	if e.VSchema() == nil {
 		return nil, nil, errors.New("vschema not initialized")
 	}
 
-	stmt, reserved, err := sqlparser.Parse2(sql)
-	if err != nil {
-		return nil, nil, err
-	}
 	query := sql
 	statement := stmt
 	reservedVars := sqlparser.NewReservedVars("vtg", reserved)
@@ -1145,13 +1141,6 @@ func (e *Executor) getPlan(ctx context.Context, vcursor *vcursorImpl, sql string
 	vcursor.SetIgnoreMaxMemoryRows(ignoreMaxMemoryRows)
 	consolidator := sqlparser.Consolidator(stmt)
 	vcursor.SetConsolidator(consolidator)
-	tabletTypeFromHint := sqlparser.GetNodeType(statement)
-	if tabletTypeFromHint == topodatapb.TabletType_PRIMARY || tabletTypeFromHint == topodatapb.TabletType_REPLICA || tabletTypeFromHint == topodatapb.TabletType_RDONLY {
-		err := vcursor.SetTabletTypeFromHint(tabletTypeFromHint)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
 
 	setVarComment, err := prepareSetVarComment(vcursor, stmt)
 	if err != nil {
@@ -1440,8 +1429,20 @@ func (e *Executor) prepare(ctx context.Context, safeSession *SafeSession, sql st
 func (e *Executor) handlePrepare(ctx context.Context, safeSession *SafeSession, sql string, bindVars map[string]*querypb.BindVariable, logStats *logstats.LogStats) ([]*querypb.Field, error) {
 	// V3 mode.
 	query, comments := sqlparser.SplitMarginComments(sql)
+	mystmt, reserved, err := sqlparser.Parse2(query)
+	if err != nil {
+		return nil, err
+	}
+
 	vcursor, _ := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
-	plan, _, err := e.getPlan(ctx, vcursor, query, comments, bindVars, safeSession, logStats)
+
+	err = ResolveTabletType(safeSession, vcursor, mystmt, sql)
+	if err != nil {
+		return nil, err
+	}
+
+	plan, _, err := e.getPlan(ctx, mystmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
+
 	execStart := time.Now()
 	logStats.PlanTime = execStart.Sub(logStats.StartTime)
 
@@ -1614,4 +1615,12 @@ func getTabletThrottlerStatus(tabletHostPort string) (string, error) {
 // ReleaseLock implements the IExecutor interface
 func (e *Executor) ReleaseLock(ctx context.Context, session *SafeSession) error {
 	return e.txConn.ReleaseLock(ctx, session)
+}
+
+func ParseTabletType(param string) (topodatapb.TabletType, error) {
+	value, ok := topodatapb.TabletType_value[strings.ToUpper(param)]
+	if !ok {
+		return topodatapb.TabletType_UNKNOWN, fmt.Errorf("unknown TabletType %v", param)
+	}
+	return topodatapb.TabletType(value), nil
 }

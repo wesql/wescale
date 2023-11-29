@@ -106,6 +106,14 @@ func (m *MockHealthCheck) GetAllHealthyTabletStats() []*discovery.TabletHealth {
 	return ret0
 }
 
+// GetAllHealthyTabletStats mocks base method.
+func (m *MockHealthCheck) GetReplicAndRdonlyHealthyTabletStats() []*discovery.TabletHealth {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetReplicAndRdonlyHealthyTabletStats")
+	ret0, _ := ret[0].([]*discovery.TabletHealth)
+	return ret0
+}
+
 // GetAllHealthyTabletStats indicates an expected call of GetAllHealthyTabletStats.
 func (mr *MockHealthCheckMockRecorder) GetAllHealthyTabletStats() *gomock.Call {
 	mr.mock.ctrl.T.Helper()

@@ -166,8 +166,8 @@ type (
 		SetEnableInterceptionForDMLWithoutWhere(context.Context, bool) error
 		GetEnableInterceptionForDMLWithoutWhere() bool
 
-		SetEnableDisplaySQLExecutionVTTabletType(context.Context, bool) error
-		GetEnableDisplaySQLExecutionVTTabletType() bool
+		SetEnableDisplaySQLExecutionVTTablet(context.Context, bool) error
+		GetEnableDisplaySQLExecutionVTTablet() bool
 
 		SetReadWriteSplitForReadOnlyTxnUserInput(context.Context, bool) error
 		GetReadWriteSplitForReadOnlyTxnUserInput() bool
