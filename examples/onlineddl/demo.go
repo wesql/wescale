@@ -6,60 +6,57 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package main
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
 
 func main() {
-	createDatabaseIfNotExists("root@tcp(127.0.0.1:15306)/mysql", "d2")
-	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online", "create table t1 (c1 int primary key auto_increment, c2 int)")
+	createDatabaseIfNotExists("root@tcp(127.0.0.1:15306)/mysql", "d1")
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online", `create table t1(
+		c1 bigint primary key auto_increment, 
+		c2 int not null default 1,
+		c3 int not null default 0
+	)`)
 
-	continuousInsertData("root@tcp(127.0.0.1:15306)/d2", "insert into t1(c1, c2) values(null, 1)", 5, 300*time.Second)
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 values (null, 1, 1)")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
 
-	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online", "alter table t1 add column c3 int default 0")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
 
-	uuid := executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online --postpone-completion", "alter table t1 add column c4 int default 0")
-	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online --postpone-completion", fmt.Sprintf("alter vitess_migration '%s' complete", uuid))
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
 
-	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online --prefer-instant-ddl", "alter table t1 add column c5 int default 0")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
+	execute("root@tcp(127.0.0.1:15306)/d1", "insert into t1 select null, c2, c3 from t1")
 
-	executeOnlineDDL("root@tcp(127.0.0.1:15306)/d2", "online --declarative", "CREATE TABLE `t1` (  `c1` bigint NOT NULL AUTO_INCREMENT,\n  `c2` int NOT NULL DEFAULT '0',\n  `c3` int NOT NULL DEFAULT '0',\n  `c4` char NOT NULL DEFAULT '0',\n  `c6` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`c1`),\n  KEY(c2)\n) ENGINE=InnoDB AUTO_INCREMENT=5232588 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci")
+	//When there is no traffic at the source end, execute a normal OnlineDDL.
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online", "alter table t1 add column c4 int not null default 0")
 
-}
+	//When there is continuous traffic at the source end, execute DDL.
+	go continuousInsertData("root@tcp(127.0.0.1:15306)/d1", "insert into t1 values (null, 0, 0, 0)", 5, 60*time.Second)
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online", "alter table t1 add column c5 int not null default 0")
 
-func continuousInsertData(dsn string, insertSQL string, parallelism int, duration time.Duration) {
-	db, err := sql.Open("mysql", dsn)
+	uuid, err := executeOnlineDDL("root@tcp(127.0.0.1:15306)/d1", "online --postpone-completion", "alter table t1 add column c6 int default 0")
 	if err != nil {
 		panic(err.Error())
 	}
-	defer db.Close()
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online --postpone-completion", fmt.Sprintf("alter vitess_migration '%s' complete", uuid))
 
-	ctx := context.Background()
-	conn, err := db.Conn(ctx)
-	defer conn.Close()
-	if err != nil {
-		panic(err.Error())
-	}
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online --prefer-instant-ddl", "alter table t1 add column c7 int default 0")
 
-	cancelCtx, cancel := context.WithCancel(context.Background())
-
-	insertFunc := func() {
-		for {
-			select {
-			case <-cancelCtx.Done():
-				return
-			default:
-				conn.ExecContext(cancelCtx, insertSQL)
-			}
-		}
-	}
-
-	for i := 1; i <= parallelism; i++ {
-		go insertFunc()
-	}
-	time.Sleep(duration)
-	cancel()
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online --declarative", "CREATE TABLE `t1` (  `c1` bigint NOT NULL AUTO_INCREMENT,  `c2` int NOT NULL DEFAULT '0',\n  `c3` int NOT NULL DEFAULT '0',\n  `c4` char NOT NULL DEFAULT '0',\n  `c6` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`c1`),\n  KEY(c2)\n) ENGINE=InnoDB AUTO_INCREMENT=5232588 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci")
 }
