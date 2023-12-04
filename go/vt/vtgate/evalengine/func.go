@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,9 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"math/rand"
+
+	"github.com/brianvoe/gofakeit/v6"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -49,6 +57,8 @@ var builtinFunctions = map[string]builtin{
 	"bit_length":       builtinBitLength{},
 	"ascii":            builtinASCII{},
 	"repeat":           builtinRepeat{},
+	"rand":             builtinRand{},
+	"fakename":         builtinFakeName{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{
@@ -753,4 +763,132 @@ func (builtinCeiling) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, fl
 	} else {
 		return sqltypes.Float64, f
 	}
+}
+
+type builtinRand struct {
+}
+
+func (builtinRand) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 2 {
+		throwArgError("Rand")
+	}
+	left := args[0].typeof()
+	right := args[1].typeof()
+	if left != right || (!sqltypes.IsIntegral(left) && !sqltypes.IsFloat(left)) {
+		throwArgError("args type error")
+	}
+	if sqltypes.IsIntegral(left) {
+		min := args[0].int64()
+		max := args[1].int64()
+		if min > max {
+			throwArgError("min > max")
+		}
+		result.setInt64(min + rand.Int63n(max-min+1))
+	} else {
+		min := args[0].float64()
+		max := args[1].float64()
+		if min > max {
+			throwArgError("min > max")
+		}
+		result.setFloat(min + rand.Float64()*(max-min))
+	}
+}
+func (builtinRand) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 2 {
+		throwArgError("Rand")
+	}
+	t, f := args[0].typeof(env)
+	if sqltypes.IsIntegral(t) {
+		return sqltypes.Int64, f
+	} else if sqltypes.Decimal == t {
+		return sqltypes.Decimal, f
+	} else {
+		return sqltypes.Float64, f
+	}
+}
+
+type builtinUUID struct{}
+
+func (builtinUUID) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	result.setString(gofakeit.UUID(), collations.TypedCollation{
+		Collation:    collations.CollationUtf8ID,
+		Coercibility: collations.CoerceImplicit,
+		Repertoire:   collations.RepertoireASCII,
+	})
+}
+func (builtinUUID) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	return sqltypes.VarChar, flagIntegerCap
+}
+
+type builtinFakeName struct{}
+
+func (builtinFakeName) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	result.setString(gofakeit.Name(), collations.TypedCollation{
+		Collation:    collations.CollationUtf8ID,
+		Coercibility: collations.CoerceImplicit,
+		Repertoire:   collations.RepertoireASCII,
+	})
+}
+
+func (builtinFakeName) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	return sqltypes.VarChar, flagIntegerCap
+}
+
+type builtinUsername struct{}
+
+func (builtinUsername) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	result.setString(gofakeit.Username(), collations.TypedCollation{
+		Collation:    collations.CollationUtf8ID,
+		Coercibility: collations.CoerceImplicit,
+		Repertoire:   collations.RepertoireASCII,
+	})
+}
+
+func (builtinUsername) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 0 {
+		throwArgError("not need args")
+	}
+	return sqltypes.VarChar, flagIntegerCap
+}
+
+type builtinTemplate struct{}
+
+func (builtinTemplate) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 1 {
+		throwArgError("args error")
+	}
+	if !sqltypes.IsText(args[0].typeof()) {
+		throwArgError("args type is not text")
+	}
+	template := args[0].string()
+	value, err := gofakeit.Template(template, &gofakeit.TemplateOptions{Data: 5})
+	if err != nil {
+		throwEvalError(err)
+	}
+	result.setString(value, collations.TypedCollation{
+		Collation:    collations.CollationUtf8ID,
+		Coercibility: collations.CoerceImplicit,
+		Repertoire:   collations.RepertoireASCII,
+	})
+}
+func (builtinTemplate) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 1 {
+		throwArgError("not need args")
+	}
+	return sqltypes.VarChar, flagIntegerCap
 }

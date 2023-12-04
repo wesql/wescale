@@ -3724,7 +3724,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	include := subFlags.String("include", "", "MoveTables only. A table spec or a list of tables. Either table_specs or --all needs to be specified.")
 	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
 	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
-	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Source keyspace")
+	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Target keyspace")
 	defaultFilterRules := subFlags.String("default_filter_rules", "", "Add WHERE clause conditions to all tables.")
 
 	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")

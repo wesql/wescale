@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS mysql.branch_jobs
     `source_topo`                    varchar(256)     NOT NULL,
     `source_tablet_type`             varchar(64)      NOT NULL,
     `cells`                          varchar(64)      NOT NULL,
-    `skip_copy_phase`                tinyint unsigned NOT NULL DEFAULT '1',
     `stop_after_copy`                tinyint unsigned NOT NULL DEFAULT '1',
     `onddl`                          varchar(256),
     `status`                         varchar(64)      NOT NULL,

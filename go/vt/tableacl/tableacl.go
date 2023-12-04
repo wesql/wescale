@@ -181,7 +181,9 @@ func (tacl *TableACL) Close() {
 		log.Infof("tableACL - closing pool")
 		tacl.conns.Close()
 	}
-	tacl.ticker.Stop()
+	if tacl.ticker != nil {
+		tacl.ticker.Stop()
+	}
 }
 func (tacl *TableACL) InitMysqlBasedACL() error {
 	//tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)

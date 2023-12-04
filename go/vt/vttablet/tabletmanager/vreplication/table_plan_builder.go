@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,6 +91,7 @@ const (
 	opExpr = operation(iota)
 	opCount
 	opSum
+	opFuncExpr
 )
 
 // insertType describes the type of insert statement to generate.
@@ -257,7 +263,6 @@ func buildTablePlan(tableName string, rule *binlogdatapb.Rule, colInfos []*Colum
 		stats:    stats,
 		source:   source,
 	}
-
 	if err := tpb.analyzeExprs(sel.SelectExprs); err != nil {
 		return nil, err
 	}
@@ -440,6 +445,10 @@ func (tpb *tablePlanBuilder) analyzeExpr(selExpr sqlparser.SelectExpr) (*colExpr
 			tpb.sendSelect.SelectExprs = append(tpb.sendSelect.SelectExprs, &sqlparser.AliasedExpr{Expr: aliased.Expr})
 			// The vstreamer responds with "keyspace_id" as the field name for this request.
 			cexpr.expr = &sqlparser.ColName{Name: sqlparser.NewIdentifierCI("keyspace_id")}
+			return cexpr, nil
+		default:
+			tpb.sendSelect.SelectExprs = append(tpb.sendSelect.SelectExprs, selExpr)
+			cexpr.expr = &sqlparser.ColName{Name: aliased.As}
 			return cexpr, nil
 		}
 	}
