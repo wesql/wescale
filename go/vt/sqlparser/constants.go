@@ -844,6 +844,7 @@ const (
 	Workload
 	LastSeenGTID
 	FailPoints
+	SchemaMigrations
 )
 
 // DropKeyType constants
