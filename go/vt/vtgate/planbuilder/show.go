@@ -122,7 +122,7 @@ func buildShowBasicPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) 
 		return buildPlanWithDB(show, vschema)
 	case sqlparser.StatusGlobal, sqlparser.StatusSession:
 		return buildSendAnywherePlan(show, vschema)
-	case sqlparser.VitessMigrations, sqlparser.SchemaMigrations:
+	case sqlparser.VitessMigrations, sqlparser.SchemaMigration:
 		return buildShowVMigrationsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
@@ -152,7 +152,7 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 	switch show.Command {
 	case sqlparser.Keyspace, sqlparser.Database:
 		return buildDBPlan(show, vschema)
-	case sqlparser.VitessMigrations, sqlparser.SchemaMigrations:
+	case sqlparser.VitessMigrations, sqlparser.SchemaMigration:
 		return buildShowVMigrationsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
