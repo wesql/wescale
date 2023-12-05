@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,6 +50,7 @@ import (
 
 const (
 	SidecarDBName              = "mysql"
+	DefaultCellName            = "zone1"
 	CreateSidecarDatabaseQuery = "create database if not exists mysql"
 	UseSidecarDatabaseQuery    = "use mysql"
 	ShowSidecarDatabasesQuery  = "SHOW DATABASES LIKE 'mysql'"
@@ -215,8 +221,8 @@ func GetDDLErrorCount() int64 {
 	return ddlErrorCount.Get()
 }
 
-// GetDDLErrorHistory returns the errors encountered as part of this vttablet's init process..
-func GetDDLErrorHistory() []*ddlError {
+// getDDLErrorHistory returns the errors encountered as part of this vttablet's init process..
+func getDDLErrorHistory() []*ddlError {
 	var errors []*ddlError
 	for _, e := range ddlErrorHistory.Records() {
 		ddle, ok := e.(*ddlError)

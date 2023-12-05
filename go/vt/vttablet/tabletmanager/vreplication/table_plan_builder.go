@@ -446,7 +446,8 @@ func (tpb *tablePlanBuilder) analyzeExpr(selExpr sqlparser.SelectExpr) (*colExpr
 			// The vstreamer responds with "keyspace_id" as the field name for this request.
 			cexpr.expr = &sqlparser.ColName{Name: sqlparser.NewIdentifierCI("keyspace_id")}
 			return cexpr, nil
-		default:
+		case "rand", "fake":
+			// transform and filter will push to source end.
 			tpb.sendSelect.SelectExprs = append(tpb.sendSelect.SelectExprs, selExpr)
 			cexpr.expr = &sqlparser.ColName{Name: aliased.As}
 			return cexpr, nil

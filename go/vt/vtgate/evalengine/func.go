@@ -27,6 +27,7 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
+	"strings"
 
 	"github.com/brianvoe/gofakeit/v6"
 
@@ -58,7 +59,7 @@ var builtinFunctions = map[string]builtin{
 	"ascii":            builtinASCII{},
 	"repeat":           builtinRepeat{},
 	"rand":             builtinRand{},
-	"fakename":         builtinFakeName{},
+	"fake":             builtinFake{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{
@@ -807,88 +808,51 @@ func (builtinRand) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag)
 	}
 }
 
-type builtinUUID struct{}
+type builtinFake struct{}
 
-func (builtinUUID) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	result.setString(gofakeit.UUID(), collations.TypedCollation{
-		Collation:    collations.CollationUtf8ID,
-		Coercibility: collations.CoerceImplicit,
-		Repertoire:   collations.RepertoireASCII,
-	})
-}
-func (builtinUUID) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	return sqltypes.VarChar, flagIntegerCap
-}
-
-type builtinFakeName struct{}
-
-func (builtinFakeName) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	result.setString(gofakeit.Name(), collations.TypedCollation{
-		Collation:    collations.CollationUtf8ID,
-		Coercibility: collations.CoerceImplicit,
-		Repertoire:   collations.RepertoireASCII,
-	})
-}
-
-func (builtinFakeName) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	return sqltypes.VarChar, flagIntegerCap
-}
-
-type builtinUsername struct{}
-
-func (builtinUsername) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	result.setString(gofakeit.Username(), collations.TypedCollation{
-		Collation:    collations.CollationUtf8ID,
-		Coercibility: collations.CoerceImplicit,
-		Repertoire:   collations.RepertoireASCII,
-	})
-}
-
-func (builtinUsername) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
-	if len(args) != 0 {
-		throwArgError("not need args")
-	}
-	return sqltypes.VarChar, flagIntegerCap
-}
-
-type builtinTemplate struct{}
-
-func (builtinTemplate) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
-	if len(args) != 1 {
-		throwArgError("args error")
+func (builtinFake) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) < 1 {
+		throwArgError("not found function param")
 	}
 	if !sqltypes.IsText(args[0].typeof()) {
-		throwArgError("args type is not text")
+		throwArgError("first param type is not string")
 	}
-	template := args[0].string()
-	value, err := gofakeit.Template(template, &gofakeit.TemplateOptions{Data: 5})
-	if err != nil {
-		throwEvalError(err)
+	funcName := args[0].string()
+	switch strings.ToLower(funcName) {
+	case "name":
+		result.setString(gofakeit.Name(), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+	case "address":
+		result.setString(gofakeit.Address().Address, collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+	case "uuid":
+		result.setString(gofakeit.UUID(), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
 	}
-	result.setString(value, collations.TypedCollation{
-		Collation:    collations.CollationUtf8ID,
-		Coercibility: collations.CoerceImplicit,
-		Repertoire:   collations.RepertoireASCII,
-	})
 }
-func (builtinTemplate) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
-	if len(args) != 1 {
-		throwArgError("not need args")
+func (builtinFake) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) < 1 {
+		throwArgError("not found function param")
 	}
+	result := EvalResult{}
+	args[0].eval(env, &result)
+	if !sqltypes.IsText(result.typeof()) {
+		throwArgError("first param type is not string")
+	}
+	funcName := result.string()
+	switch strings.ToLower(funcName) {
+	case "name", "address", "uuid":
+		return sqltypes.VarChar, flagIntegerCap
+	}
+	throwEvalError(fmt.Errorf("function %v is not support to get type", funcName))
 	return sqltypes.VarChar, flagIntegerCap
 }

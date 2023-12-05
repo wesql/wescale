@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
 	querypb "vitess.io/vitess/go/vt/proto/query"
 
 	"vitess.io/vitess/go/protoutil"
@@ -263,7 +265,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 }
 
 func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*BranchJob, error) {
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +315,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 
 func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*vtctldatapb.BranchSettings, error) {
 	bs := &vtctldatapb.BranchSettings{}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +392,7 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 
 func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, error) {
 	sql := fmt.Sprintf("SELECT 1 FROM mysql.vreplication WHERE workflow='%s';", workflow)
-	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return false, err
 	}
@@ -454,7 +456,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 	if err != nil {
 		return err
 	}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return err
 	}

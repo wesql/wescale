@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +108,7 @@ func TestInitErrors(t *testing.T) {
 	}
 	// sort expected and reported errors for easy comparison
 	sort.Strings(want)
-	got := GetDDLErrorHistory()
+	got := getDDLErrorHistory()
 	sort.Slice(got, func(i, j int) bool {
 		return got[i].tableName < got[j].tableName
 	})
