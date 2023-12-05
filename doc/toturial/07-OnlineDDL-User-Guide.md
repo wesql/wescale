@@ -36,7 +36,7 @@ set @@ddl_strategy='online';
 - postpone-completion: Only transitions state under user command, not automatically completed, allowing better control over the timing of schema changes.
 - prefer-instant-ddl: Prioritize using the instant-ddl function of mysql. [instant-ddl](https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html)
 
-If a migration is both **`--declarative`** and **`--postpone-completion`**, it will remain in **`queued`** status until the user executes the **`alter vitess_migration ... complete`** command.
+If a migration is both **`--declarative`** and **`--postpone-completion`**, it will remain in **`queued`** status until the user executes the **`alter schema_migration ... complete`** command.
 
 - postpone-launch: Initializes a queue in **`queued`** status, set to transition state only on user command.
 - singleton: Allows only one migration in pending status to be submitted at a time. From the point a migration enters **`queued`** status, until it reaches **`completion`**, **`failure`**, or **`cancellation`**, no other migrations can be submitted. New migrations will be rejected. This can be seen as a mutex lock for migrations, affecting only those with the **`singleton`** flag, others are not impacted.
@@ -52,12 +52,12 @@ set @@ddl_strategy='online --allow-concurrent';
 
 ## **Monitoring DDL Progress**
 
-After executing onlineDDL, a uuid is returned. You can use this uuid and the **`show vitess_migrations`** command to:
+After executing onlineDDL, a uuid is returned. You can use this uuid and the **`show schema_migration`** command to:
 
 - View the ddl status
 
 ```sql
-show vitess_migrations like 'uuid' \G;
+show schema_migration like 'uuid' \G;
 ```
 
 ## ****Controlling**** ddl
@@ -65,48 +65,48 @@ show vitess_migrations like 'uuid' \G;
 - Cancel a ddl
 
 ```sql
-alter vitess_migration 'uuid' cancel;
+alter schema_migration 'uuid' cancel;
 ```
 
 - Cancel all ddl
 
 ```sql
-alter vitess_migration cancel all;
+alter schema_migration cancel all;
 ```
 
 This command will cancel all ddl in pending (queued, ready, running) status.
 
 - Pause a ddl
 ```sql
-alter vitess_migration 'uuid' pause;
+alter schema_migration 'uuid' pause;
 ```
 
 This command will pause a ddl in pending (queued, ready, running) status. To guarantee correctness, the subsequent ddls which have the same table with the paused one will be blocked.
 
 - Unpause a ddl
 ```sql
-alter vitess_migration 'uuid' resume;
+alter schema_migration 'uuid' resume;
 ```
 
 - Pause all ddl
 
 ```sql
-alter vitess_migration pause all;
+alter schema_migration pause all;
 ```
 
 - Unpause all ddl
 
 ```sql
-alter vitess_migration resume all;
+alter schema_migration resume all;
 ```
 
 - Advancing ddl in postpone status
 
 ```sql
 -- queued -> running
-alter vitess_migration 'uuid' running;
+alter schema_migration 'uuid' running;
 -- running -> complete
-alter vitess_migration 'uuid' complete; 
+alter schema_migration 'uuid' complete; 
 ```
 
 Under the effect of **`--postpone`**, transitioning from **`running -> complete`** is actually the process of manually performing a cutover.

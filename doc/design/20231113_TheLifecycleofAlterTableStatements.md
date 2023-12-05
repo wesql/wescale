@@ -21,7 +21,7 @@
     - **`running`**: Online DDL in progress, including the creation of shadow tables, generation of select and insert statements, and initiation of Vreplication tasks.
     - **`complete`**: Online DDL execution finished, entering this state after cutover completion.
     - **`fail`**: Execution fails due to internal errors. Error details can be diagnosed using the **`message`** field with the corresponding uuid.
-    - **`cancel`**: WeSQL provides **`alter vitess_migration`** to cancel an online DDL task. Tasks in this state can be re-executed using the **`retry`** command.
+    - **`cancel`**: WeSQL provides **`alter schema_migration`** to cancel an online DDL task. Tasks in this state can be re-executed using the **`retry`** command.
     - **`pause`**: Currently under development, this feature can pause online DDL tasks in **`queue`**, **`ready`**, or **`running`** states.
 
    For state transitions, refer to the article [OnlineDDLScheduler](20231113_OnlineDDLScheduler.md)
