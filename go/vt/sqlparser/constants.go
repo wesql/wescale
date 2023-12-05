@@ -855,6 +855,7 @@ const (
 	LastSeenGTID
 	FailPoints
 	SchemaMigration
+	DMLJobs
 )
 
 // DropKeyType constants

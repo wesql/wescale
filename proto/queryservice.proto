@@ -128,5 +128,5 @@ service Query {
   // DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
   rpc DropSchema(query.DropSchemaRequest) returns (query.DropSchemaResponse) {};
 
-
+  rpc HandleDMLJob(query.DMLJobRequest) returns (query.DMLJobResponse) {};
 }

@@ -34,6 +34,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+
 	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
 
@@ -128,6 +130,7 @@ type TabletServer struct {
 	// sm manages state transitions.
 	sm                *stateManager
 	onlineDDLExecutor *onlineddl.Executor
+	dmlJonController  *jobcontroller.JobController
 
 	// alias is used for identifying this tabletserver in healthcheck responses.
 	alias *topodatapb.TabletAlias
@@ -194,6 +197,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
+	tsv.dmlJonController = jobcontroller.NewJobController("big_dml_jobs_table", tabletTypeFunc, tsv)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
 
 	tsv.sm = &stateManager{
@@ -1489,6 +1493,11 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 		err = failpoint.Disable(key)
 	}
 	return err
+}
+
+func (tsv *TabletServer) HandleDMLJob(ctx context.Context, command, sql, jobUUID string) (*sqltypes.Result, error) {
+	// todo newborn22, 这个地方要进行封装?，变成更通用的
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID)
 }
 
 // execRequest performs verifications, sets up the necessary environments

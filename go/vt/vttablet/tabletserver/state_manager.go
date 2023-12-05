@@ -115,21 +115,22 @@ type stateManager struct {
 	// Open must be done in forward order.
 	// Close must be done in reverse order.
 	// All Close functions must be called before Open.
-	hs          *healthStreamer
-	se          schemaEngine
-	rt          replTracker
-	vstreamer   subComponent
-	tracker     subComponent
-	watcher     subComponent
-	branchWatch subComponent
-	qe          queryEngine
-	txThrottler txThrottler
-	te          txEngine
-	messager    subComponent
-	ddle        onlineDDLExecutor
-	throttler   lagThrottler
-	tableGC     tableGarbageCollector
-	tableACL    tableACLController
+	hs               *healthStreamer
+	se               schemaEngine
+	rt               replTracker
+	vstreamer        subComponent
+	tracker          subComponent
+	watcher          subComponent
+	branchWatch      subComponent
+	qe               queryEngine
+	txThrottler      txThrottler
+	te               txEngine
+	messager         subComponent
+	ddle             onlineDDLExecutor
+	dmlJobController jobController
+	throttler        lagThrottler
+	tableGC          tableGarbageCollector
+	tableACL         tableACLController
 
 	// hcticks starts on initialiazation and runs forever.
 	hcticks *timer.Timer
@@ -205,6 +206,10 @@ type (
 		Close()
 	}
 	branchController interface {
+		Open() error
+		Close()
+	}
+	jobController interface {
 		Open() error
 		Close()
 	}
@@ -475,6 +480,7 @@ func (sm *stateManager) servePrimary() error {
 	sm.throttler.Open()
 	sm.tableGC.Open()
 	sm.ddle.Open()
+	sm.dmlJobController.Open()
 	sm.tableACL.Open()
 	sm.branchWatch.Open()
 	sm.setState(topodatapb.TabletType_PRIMARY, StateServing)
@@ -502,6 +508,7 @@ func (sm *stateManager) serveNonPrimary(wantTabletType topodatapb.TabletType) er
 	defer cancel()
 
 	sm.ddle.Close()
+	sm.dmlJobController.Close()
 	sm.tableGC.Close()
 	sm.messager.Close()
 	sm.tracker.Close()
@@ -558,6 +565,8 @@ func (sm *stateManager) unserveCommon() {
 
 	log.Infof("Started online ddl executor close")
 	sm.ddle.Close()
+	log.Infof("Started dml job controller close")
+	sm.dmlJobController.Close()
 	log.Infof("Finished online ddl executor close. Started table garbage collector close")
 	sm.tableGC.Close()
 	log.Infof("Finished table garbage collector close. Started lag throttler close")

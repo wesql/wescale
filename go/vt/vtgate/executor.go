@@ -1556,6 +1556,21 @@ func (e *Executor) SetFailPoint(command string, key string, value string) error 
 	return nil
 }
 
+func (e *Executor) SubmitDMLJob(command, sql, uuid string) (*sqltypes.Result, error) {
+	ctx := context.Background()
+	//  todo newborn22, scatterConn or txnConn?
+	//  todo ，这个写法丑陋，要直接拿到primary
+	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
+	var th *discovery.TabletHealth
+	for _, tablet := range healthyTablets {
+		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
+			th = tablet
+			break
+		}
+	}
+	return th.Conn.HandleDMLJob(ctx, command, sql, uuid)
+}
+
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {
 	if e.allowScatter || plan.Instructions == nil || sqlparser.AllowScatterDirective(stmt) {
 		return nil

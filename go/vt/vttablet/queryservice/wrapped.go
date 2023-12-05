@@ -374,3 +374,13 @@ func (ws *wrappedService) SetFailPoint(ctx context.Context, command string, key 
 		return false, service.SetFailPoint(ctx, command, key, value)
 	})
 }
+
+func (ws *wrappedService) HandleDMLJob(ctx context.Context, cmd, sql, uuid string) (qr *sqltypes.Result, err error) {
+	err = ws.wrapper(ctx, nil, ws.impl, "HandleDMLJob", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
+		// todo newborn22，这个地方是否要canRetry? 参考 dropschema
+		var innerErr error
+		qr, innerErr = conn.HandleDMLJob(ctx, cmd, sql, uuid)
+		return canRetry(ctx, innerErr), innerErr
+	})
+	return qr, err
+}

@@ -1133,6 +1133,26 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 	return nil
 }
 
+func (conn *gRPCQueryClient) HandleDMLJob(ctx context.Context, command, sql, uuid string) (*sqltypes.Result, error) {
+	// todo newborn22,为什么要加锁？
+	// todo，什么时候调用？
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return nil, tabletconn.ConnClosed
+	}
+	req := querypb.DMLJobRequest{
+		Cmd:     command,
+		Sql:     sql,
+		JobUuid: uuid,
+	}
+	er, err := conn.c.HandleDMLJob(ctx, &req)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(err)
+	}
+	return sqltypes.Proto3ToResult(er.Result), nil
+}
+
 // Close closes underlying gRPC channel.
 func (conn *gRPCQueryClient) Close(ctx context.Context) error {
 	conn.mu.Lock()

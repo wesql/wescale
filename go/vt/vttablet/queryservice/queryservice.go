@@ -115,6 +115,8 @@ type QueryService interface {
 
 	SetFailPoint(ctx context.Context, command string, key string, value string) error
 
+	HandleDMLJob(ctx context.Context, command, sql, uuid string) (*sqltypes.Result, error)
+
 	// HandlePanic will be called if any of the functions panic.
 	HandlePanic(err *error)
 

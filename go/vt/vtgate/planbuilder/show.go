@@ -154,6 +154,8 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 		return buildDBPlan(show, vschema)
 	case sqlparser.VitessMigrations, sqlparser.SchemaMigration:
 		return buildShowVMigrationsPlan(show, vschema)
+	case sqlparser.DMLJobs:
+		return buildShowDMLJobsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
 	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload, sqlparser.LastSeenGTID, sqlparser.FailPoints:
@@ -305,6 +307,40 @@ func buildShowVMigrationsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 	}
 
 	sql := "SELECT * FROM mysql.schema_migrations"
+
+	if show.Filter != nil {
+		if show.Filter.Filter != nil {
+			sql += fmt.Sprintf(" where %s", sqlparser.String(show.Filter.Filter))
+		} else if show.Filter.Like != "" {
+			lit := sqlparser.String(sqlparser.NewStrLiteral(show.Filter.Like))
+			sql += fmt.Sprintf(" where migration_uuid LIKE %s OR migration_context LIKE %s OR migration_status LIKE %s", lit, lit, lit)
+		}
+	}
+	return &engine.Send{
+		Keyspace:          ks,
+		TargetDestination: dest,
+		Query:             sql,
+	}, nil
+}
+
+func buildShowDMLJobsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
+	dest, ks, tabletType, err := vschema.TargetDestination(show.DbName.String())
+	if err != nil {
+		return nil, err
+	}
+	if ks == nil {
+		return nil, vterrors.VT09005()
+	}
+
+	if tabletType != topodatapb.TabletType_PRIMARY {
+		return nil, vterrors.VT09006("SHOW")
+	}
+
+	if dest == nil {
+		dest = key.DestinationAllShards{}
+	}
+
+	sql := "SELECT * FROM mysql.big_dml_jobs_table"
 
 	if show.Filter != nil {
 		if show.Filter.Filter != nil {

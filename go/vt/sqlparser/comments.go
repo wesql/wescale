@@ -57,6 +57,8 @@ const (
 	DirectiveConsolidator = "CONSOLIDATOR"
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
+
+	DirectiveDMLCMD = "DML_CMD"
 )
 
 func isNonSpace(r rune) bool {
@@ -430,4 +432,29 @@ func GetNodeType(stmt Statement) tabletpb.TabletType {
 		return tabletpb.TabletType(i32v)
 	}
 	return tabletpb.TabletType_UNKNOWN
+}
+
+// todo newborn22，是否换成别的命令名字
+// 改成enum?
+func GetDMLJobCmd(stmt Statement) string {
+	var comments *ParsedComments
+	switch stmt := stmt.(type) {
+	case *Select:
+		return ""
+	case *Insert:
+		return ""
+	case *Update:
+		comments = stmt.Comments
+	case *Delete:
+		comments = stmt.Comments
+	}
+	if comments == nil {
+		return ""
+	}
+	directives := comments.Directives()
+	str, isSet := directives.GetString(DirectiveDMLCMD, "")
+	if !isSet {
+		return ""
+	}
+	return str
 }

@@ -95,6 +95,16 @@ func (e *Executor) newExecute(
 		return err
 	}
 
+	// todo newborn22, 是不是要换位置。
+	// 注意只有提交的时候需要这样加hint，其他的都是通过show和alter命令进行，参考online ddl执行路径
+	rst, err := HandleDMLJobSubmit(stmt, vcursor, sql)
+	if err != nil {
+		return err
+	}
+	if rst != nil {
+		return recResult(plan.Type, rst)
+	}
+
 	if plan.Type != sqlparser.StmtShow {
 		safeSession.ClearWarnings()
 	}
@@ -428,4 +438,27 @@ func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlp
 	}
 	vcursor.tabletType = safeSession.ResolverOptions.SuggestedTabletType
 	return nil
+}
+
+func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
+	cmd := sqlparser.GetDMLJobCmd(stmt)
+	return cmd == "submit"
+}
+
+// todo newborn22，提交成功后要返回结果集
+func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
+	// todo newborn22,检查是否在事务中，如果是则报错
+	if IsSubmitDMLJob(stmt) {
+		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "")
+		// todo ，在这个地方把qr写回到前端
+		if qr != nil {
+			if qr.RowsAffected == 1 {
+				qr.Info = " job submitted successfully"
+			} else {
+				qr.Info = " job submitted failed"
+			}
+		}
+		return qr, err
+	}
+	return nil, nil
 }

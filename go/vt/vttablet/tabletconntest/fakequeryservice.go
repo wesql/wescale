@@ -71,6 +71,10 @@ func (f *FakeQueryService) SetFailPoint(ctx context.Context, command string, key
 	return nil
 }
 
+func (f *FakeQueryService) HandleDMLJob(ctx context.Context, command, sql, uuid string) (*sqltypes.Result, error) {
+	panic("implement me")
+}
+
 var _ queryservice.QueryService = (*FakeQueryService)(nil)
 
 // Close is a no-op.

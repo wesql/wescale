@@ -90,6 +90,7 @@ type QueryClient interface {
 	SetFailPoint(ctx context.Context, in *query.SetFailPointRequest, opts ...grpc.CallOption) (*query.SetFailPointResponse, error)
 	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
 	DropSchema(ctx context.Context, in *query.DropSchemaRequest, opts ...grpc.CallOption) (*query.DropSchemaResponse, error)
+	HandleDMLJob(ctx context.Context, in *query.DMLJobRequest, opts ...grpc.CallOption) (*query.DMLJobResponse, error)
 }
 
 type queryClient struct {
@@ -609,6 +610,15 @@ func (c *queryClient) DropSchema(ctx context.Context, in *query.DropSchemaReques
 	return out, nil
 }
 
+func (c *queryClient) HandleDMLJob(ctx context.Context, in *query.DMLJobRequest, opts ...grpc.CallOption) (*query.DMLJobResponse, error) {
+	out := new(query.DMLJobResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/HandleDMLJob", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
@@ -679,6 +689,7 @@ type QueryServer interface {
 	SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error)
 	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
 	DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error)
+	HandleDMLJob(context.Context, *query.DMLJobRequest) (*query.DMLJobResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -778,6 +789,9 @@ func (UnimplementedQueryServer) SetFailPoint(context.Context, *query.SetFailPoin
 }
 func (UnimplementedQueryServer) DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropSchema not implemented")
+}
+func (UnimplementedQueryServer) HandleDMLJob(context.Context, *query.DMLJobRequest) (*query.DMLJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HandleDMLJob not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -1380,6 +1394,24 @@ func _Query_DropSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_HandleDMLJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.DMLJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).HandleDMLJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/queryservice.Query/HandleDMLJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).HandleDMLJob(ctx, req.(*query.DMLJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1470,6 +1502,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DropSchema",
 			Handler:    _Query_DropSchema_Handler,
+		},
+		{
+			MethodName: "HandleDMLJob",
+			Handler:    _Query_HandleDMLJob_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -1078,10 +1078,24 @@ message DropSchemaResponse {
 
 }
 
+
 message ReloadExecRequest{
   int32 reloadType = 1;
 }
 
 message ReloadExecResponse{
+}
 
+message DMLJobRequest{
+  string cmd = 1;
+  string job_uuid = 2;
+  string sql = 3;
+  string related_schema= 4;
+  int64 timegap = 6;
+  int64 subtask_rows = 7;
+  bool auto_retry = 8;
+  bool postpone_launch = 9;
+}
+message DMLJobResponse {
+  QueryResult result = 1;
 }
