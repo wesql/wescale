@@ -322,7 +322,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> SEQUENCE MERGE TEMPORARY TEMPTABLE INVOKER SECURITY FIRST AFTER LAST
 
 // Migration tokens
-%token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME
+%token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME SCHEMA_MIGRATION
 // Throttler tokens
 %token <str> VITESS_THROTTLER
 
@@ -3404,6 +3404,124 @@ alter_statement:
       Type: UnthrottleAllMigrationType,
     }
   }
+| ALTER comment_opt SCHEMA_MIGRATION STRING RETRY
+    {
+      $$ = &AlterMigration{
+        Type: RetryMigrationType,
+        UUID: string($4),
+      }
+    }
+| ALTER comment_opt SCHEMA_MIGRATION STRING CLEANUP
+  {
+    $$ = &AlterMigration{
+      Type: CleanupMigrationType,
+      UUID: string($4),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING LAUNCH
+  {
+    $$ = &AlterMigration{
+      Type: LaunchMigrationType,
+      UUID: string($4),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING LAUNCH VITESS_SHARDS STRING
+  {
+    $$ = &AlterMigration{
+      Type: LaunchMigrationType,
+      UUID: string($4),
+      Shards: string($7),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION LAUNCH ALL
+  {
+    $$ = &AlterMigration{
+      Type: LaunchAllMigrationType,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING COMPLETE
+  {
+    $$ = &AlterMigration{
+      Type: CompleteMigrationType,
+      UUID: string($4),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION COMPLETE ALL
+  {
+    $$ = &AlterMigration{
+      Type: CompleteAllMigrationType,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING CANCEL
+  {
+    $$ = &AlterMigration{
+      Type: CancelMigrationType,
+      UUID: string($4),
+    }
+  }
+|  ALTER comment_opt SCHEMA_MIGRATION STRING PAUSE
+  {
+    $$ = &AlterMigration{
+      Type: PauseMigrationType,
+      UUID: string($4),
+    }
+  }
+|  ALTER comment_opt SCHEMA_MIGRATION STRING RESUME
+  {
+    $$ = &AlterMigration{
+      Type: ResumeMigrationType,
+      UUID: string($4),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION CANCEL ALL
+  {
+    $$ = &AlterMigration{
+      Type: CancelAllMigrationType,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION PAUSE ALL
+  {
+    $$ = &AlterMigration{
+      Type: PauseAllMigrationType,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION RESUME ALL
+  {
+    $$ = &AlterMigration{
+      Type: ResumeAllMigrationType,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING THROTTLE expire_opt ratio_opt
+  {
+    $$ = &AlterMigration{
+      Type: ThrottleMigrationType,
+      UUID: string($4),
+      Expire: $6,
+      Ratio: $7,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION THROTTLE ALL expire_opt ratio_opt
+  {
+    $$ = &AlterMigration{
+      Type: ThrottleAllMigrationType,
+      Expire: $6,
+      Ratio: $7,
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION STRING UNTHROTTLE
+  {
+    $$ = &AlterMigration{
+      Type: UnthrottleMigrationType,
+      UUID: string($4),
+    }
+  }
+| ALTER comment_opt SCHEMA_MIGRATION UNTHROTTLE ALL
+  {
+    $$ = &AlterMigration{
+      Type: UnthrottleAllMigrationType,
+    }
+  }
+
 
 partitions_options_opt:
   {
@@ -4176,7 +4294,15 @@ show_statement:
   {
     $$ = &Show{&ShowBasic{Command: VitessMigrations, Filter: $4, DbName: $3}}
   }
+| SHOW SCHEMA_MIGRATION from_database_opt like_or_where_opt
+  {
+    $$ = &Show{&ShowBasic{Command: VitessMigrations, Filter: $4, DbName: $3}}
+  }
 | SHOW VITESS_MIGRATION STRING LOGS
+  {
+    $$ = &ShowMigrationLogs{UUID: string($3)}
+  }
+| SHOW SCHEMA_MIGRATION STRING LOGS
   {
     $$ = &ShowMigrationLogs{UUID: string($3)}
   }
@@ -4637,6 +4763,10 @@ unlock_statement:
 
 revert_statement:
   REVERT comment_opt VITESS_MIGRATION STRING
+  {
+    $$ = &RevertMigration{Comments: Comments($2).Parsed(), UUID: string($4)}
+  }
+| REVERT comment_opt SCHEMA_MIGRATION STRING
   {
     $$ = &RevertMigration{Comments: Comments($2).Parsed(), UUID: string($4)}
   }
@@ -8059,6 +8189,7 @@ non_reserved_keyword:
 | VITESS_METADATA
 | VITESS_MIGRATION
 | VITESS_MIGRATIONS
+| SCHEMA_MIGRATION
 | VITESS_REPLICATION_STATUS
 | VITESS_SHARDS
 | VITESS_TABLETS

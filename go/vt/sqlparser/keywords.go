@@ -390,6 +390,7 @@ var keywords = []keyword{
 	{"keyspaces", KEYSPACES},
 	{"lastseengtid", LASTSEENGTID},
 	{"failpoints", FAILPOINTS},
+	{"schema_migration", SCHEMA_MIGRATION},
 	{"key_block_size", KEY_BLOCK_SIZE},
 	{"kill", KILL},
 	{"lag", LAG},
