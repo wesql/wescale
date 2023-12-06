@@ -680,3 +680,47 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	return nil
 	// delete from branch_table_rules
 }
+
+func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
+	if err != nil {
+		return err
+	}
+	var tables []string
+	for _, tableRules := range branchJob.bs.FilterTableRules {
+		tables = append(tables, tableRules.TargetTable)
+	}
+	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.sourceDatabase,
+	}
+	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		//Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.targetDatabase,
+	}
+	er := concurrency.AllErrorRecorder{}
+
+	// analyze Schema diff between sourceDatabase and targetDatabase
+	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	records := tmutils.DiffSchema(targetDatabaseReqeust.DbName, targetSchema, sourceDatabaseReqeust.DbName, sourceSchema, &er)
+	if len(records) == 0 {
+		wr.Logger().Printf("schema is same")
+	}
+	for _, record := range records {
+		wr.Logger().Printf("%v\n", record.Report())
+	}
+	return nil
+}

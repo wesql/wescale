@@ -2082,6 +2082,7 @@ const (
 	vBranchWorkflowActionPrepareMergeBack    = "preparemergeback"
 	vBranchWorkflowActionStartMergeBack      = "startmergeback"
 	vBranchWorkflowActionCleanup             = "cleanup"
+	vBranchWorkflowActionSchemeDiff          = "schemadiff"
 	vReplicationWorkflowActionCreate         = "create"
 	vReplicationWorkflowActionSwitchTraffic  = "switchtraffic"
 	vReplicationWorkflowActionReverseTraffic = "reversetraffic"
@@ -3750,6 +3751,8 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 		err = wr.StartMergeBackBranch(ctx, *workflowName)
 	case vBranchWorkflowActionCleanup:
 		err = wr.CleanupBranch(ctx, *workflowName)
+	case vBranchWorkflowActionSchemeDiff:
+		err = wr.SchemaDiff(ctx, *workflowName)
 	default:
 		return fmt.Errorf("%v action is not support in Branch", action)
 	}
