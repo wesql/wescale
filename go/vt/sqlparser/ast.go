@@ -482,6 +482,15 @@ type (
 		Shards string
 	}
 
+	AlterDMLJobType int8
+
+	AlterDMLJob struct {
+		Type   AlterDMLJobType
+		UUID   string
+		Expire string
+		Ratio  *Literal
+	}
+
 	// AlterTable represents a ALTER TABLE statement.
 	AlterTable struct {
 		Table           TableName
@@ -761,6 +770,7 @@ func (*UnlockTables) iStatement()        {}
 func (*AlterTable) iStatement()          {}
 func (*AlterVschema) iStatement()        {}
 func (*AlterMigration) iStatement()      {}
+func (*AlterDMLJob) iStatement()         {}
 func (*RevertMigration) iStatement()     {}
 func (*ShowMigrationLogs) iStatement()   {}
 func (*ShowThrottledApps) iStatement()   {}

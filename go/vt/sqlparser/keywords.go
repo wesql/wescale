@@ -679,6 +679,7 @@ var keywords = []keyword{
 	{"vitess_metadata", VITESS_METADATA},
 	{"vitess_migration", VITESS_MIGRATION},
 	{"vitess_migrations", VITESS_MIGRATIONS},
+	{"dml_job", DML_JOB},
 	{"dml_jobs", DML_JOBS},
 	{"vitess_replication_status", VITESS_REPLICATION_STATUS},
 	{"vitess_shards", VITESS_SHARDS},

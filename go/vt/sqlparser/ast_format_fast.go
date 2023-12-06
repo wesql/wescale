@@ -440,6 +440,54 @@ func (node *AlterMigration) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
+func (node *AlterDMLJob) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("alter dml_job")
+	if node.UUID != "" {
+		buf.WriteString(" '")
+		buf.WriteString(node.UUID)
+		buf.WriteByte('\'')
+	}
+	var alterType string
+	switch node.Type {
+	case LaunchDMLJobType:
+		alterType = "launch"
+	case LaunchAllDMLJobType:
+		alterType = "launch all"
+	case CancelDMLJobType:
+		alterType = "cancel"
+	case CancelAllDMLJobType:
+		alterType = "cancel all"
+	case PauseDMLJobType:
+		alterType = "pause"
+	case PauseAllDMLJobType:
+		alterType = "pause all"
+	case ResumeDMLJobType:
+		alterType = "resume"
+	case ResumeAllDMLJobType:
+		alterType = "resume all"
+	case ThrottleDMLJobType:
+		alterType = "throttle"
+	case ThrottleAllDMLJobType:
+		alterType = "throttle all"
+	case UnthrottleDMLJobType:
+		alterType = "unthrottle"
+	case UnthrottleAllDMLJobType:
+		alterType = "unthrottle all"
+	}
+	buf.WriteByte(' ')
+	buf.WriteString(alterType)
+	if node.Expire != "" {
+		buf.WriteString(" expire '")
+		buf.WriteString(node.Expire)
+		buf.WriteByte('\'')
+	}
+	if node.Ratio != nil {
+		buf.WriteString(" ratio ")
+		node.Ratio.formatFast(buf)
+	}
+}
+
+// formatFast formats the node.
 func (node *RevertMigration) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("revert ")
 	node.Comments.formatFast(buf)

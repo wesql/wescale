@@ -325,6 +325,8 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME SCHEMA_MIGRATION
 // Throttler tokens
 %token <str> VITESS_THROTTLER
+// DML JOB tokens
+%token <str> DML_JOB
 
 // Transaction Tokens
 %token <str> BEGIN START TRANSACTION COMMIT ROLLBACK SAVEPOINT RELEASE WORK
@@ -3409,6 +3411,102 @@ alter_statement:
       Type: UnthrottleAllMigrationType,
     }
   }
+
+
+
+
+
+
+
+
+
+
+
+  | ALTER comment_opt DML_JOB STRING LAUNCH
+    {
+      $$ = &AlterDMLJob{
+        Type: LaunchDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB LAUNCH ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: LaunchAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING CANCEL
+    {
+      $$ = &AlterDMLJob{
+        Type: CancelDMLJobType,
+        UUID: string($4),
+      }
+    }
+  |  ALTER comment_opt DML_JOB STRING PAUSE
+    {
+      $$ = &AlterDMLJob{
+        Type: PauseDMLJobType,
+        UUID: string($4),
+      }
+    }
+  |  ALTER comment_opt DML_JOB STRING RESUME
+    {
+      $$ = &AlterDMLJob{
+        Type: ResumeDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB CANCEL ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: CancelAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB PAUSE ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: PauseAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB RESUME ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: ResumeAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING THROTTLE expire_opt ratio_opt
+    {
+      $$ = &AlterDMLJob{
+        Type: ThrottleDMLJobType,
+        UUID: string($4),
+        Expire: $6,
+        Ratio: $7,
+      }
+    }
+  | ALTER comment_opt DML_JOB THROTTLE ALL expire_opt ratio_opt
+    {
+      $$ = &AlterDMLJob{
+        Type: ThrottleAllDMLJobType,
+        Expire: $6,
+        Ratio: $7,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING UNTHROTTLE
+    {
+      $$ = &AlterDMLJob{
+        Type: UnthrottleDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB UNTHROTTLE ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: UnthrottleAllDMLJobType,
+      }
+    }
+
+
+
 | ALTER comment_opt SCHEMA_MIGRATION STRING RETRY
     {
       $$ = &AlterMigration{
@@ -8215,6 +8313,7 @@ non_reserved_keyword:
 | VITESS_MIGRATION
 | VITESS_MIGRATIONS
 | SCHEMA_MIGRATION
+| DML_JOB
 | DML_JOBS
 | VITESS_REPLICATION_STATUS
 | VITESS_SHARDS

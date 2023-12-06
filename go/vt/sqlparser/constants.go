@@ -894,6 +894,22 @@ const (
 	ResumeAllMigrationType
 )
 
+// AlterDMLJobType constants
+const (
+	LaunchDMLJobType AlterDMLJobType = iota
+	LaunchAllDMLJobType
+	CancelDMLJobType
+	CancelAllDMLJobType
+	ThrottleDMLJobType
+	ThrottleAllDMLJobType
+	UnthrottleDMLJobType
+	UnthrottleAllDMLJobType
+	PauseDMLJobType
+	ResumeDMLJobType
+	PauseAllDMLJobType
+	ResumeAllDMLJobType
+)
+
 // ColumnStorage constants
 const (
 	VirtualStorage ColumnStorage = iota

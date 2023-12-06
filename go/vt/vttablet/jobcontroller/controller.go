@@ -10,12 +10,15 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/pools"
 	"vitess.io/vitess/go/sqltypes"
+	querypb "vitess.io/vitess/go/vt/proto/query"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -29,8 +32,18 @@ const (
 )
 
 const (
-	SubmitJob = "submit_job"
-	ShowJobs  = "show_jobs"
+	SubmitJob         = "submit_job"
+	ShowJobs          = "show_jobs"
+	LaunchJob         = "launch"
+	LaunchAllJobs     = "launch_all"
+	PauseJob          = "pause"
+	PauseAllJobs      = "pause_all"
+	ResumeJob         = "resume"
+	ResumeAllJobs     = "resume_all"
+	ThrottleJob       = "throttle"
+	ThrottleAllJobs   = "throttle_all"
+	UnthrottleJob     = "unthrottle"
+	UnthrottleAllJobs = "unthrottle_all"
 )
 
 // todo ，支持用户输入
@@ -44,6 +57,7 @@ const (
 	queuedStatus         = "queued"
 	blockedStatus        = "blocked"
 	runningStatus        = "running"
+	pausedStatus         = "paused"
 	interruptedStatus    = "interrupted"
 	canceledStatus       = "canceled"
 	failedStatus         = "failed"
@@ -58,7 +72,8 @@ const (
                                       related_table,
                                       timegap_in_ms,
                                       subtask_rows,
-                                      job_status) values(%a,%a,%a,%a,%a,%a,%a)`
+                                      subtask_sql,
+                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -74,6 +89,10 @@ const (
                                     job_status = %a 
                                 where 
                                     job_uuid = %a`
+
+	sqlDMLJobGetInfo = `select * from mysql.big_dml_jobs_table 
+                                where
+                                	job_uuid = %a`
 )
 
 type JobController struct {
@@ -83,8 +102,8 @@ type JobController struct {
 	env            tabletenv.Env
 	pool           *connpool.Pool
 
-	runningTables      map[string]bool // 用于调度时检测当前任务是否和正在运行的表冲突
-	runningTablesMutex sync.Mutex
+	workingTables      map[string]bool // 用于调度时检测当前任务是否和正在工作的表冲突，paused、running状态的job的表都在里面
+	workingTablesMutex sync.Mutex
 
 	jobChans      map[string]JobChanStruct
 	jobChansMutex sync.Mutex
@@ -104,7 +123,7 @@ func (jc *JobController) Open() error {
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 
-		jc.runningTables = map[string]bool{}
+		jc.workingTables = map[string]bool{}
 		jc.jobChans = map[string]JobChanStruct{}
 
 		go jc.jonScheduler()
@@ -141,6 +160,10 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID string) (*sqltypes.
 			return jc.SubmitJob(sql)
 		case ShowJobs:
 			return jc.ShowJobs()
+		case PauseJob:
+			return jc.PauseJob(jobUUID)
+		case ResumeJob:
+			return jc.ResumeJob(jobUUID)
 		}
 	}
 	// todo newborn22,对返回值判断为空？
@@ -162,18 +185,20 @@ func (jc *JobController) SubmitJob(sql string) (*sqltypes.Result, error) {
 
 	ctx := context.Background()
 	sql = rewirteSQL(sql)
-	relatedSchema := "mydb" // todo，传入
-	table := "test_table2"  // todo ,前端传入
-	timeGap := defaultTimeGap
-	subtaskRows := defaultSubtaskRows
+	relatedSchema := "mydb"                  // todo，传入
+	table := "test_table2"                   // todo ,前端传入
+	timeGap := int64(defaultTimeGap)         // todo 传入
+	subtaskRows := int64(defaultSubtaskRows) // todo 传入
+	subtaskSQL := genSubtaskDMLSQL(sql, subtaskRows)
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
 		sqltypes.StringBindVariable(sql),
 		sqltypes.StringBindVariable(relatedSchema),
 		sqltypes.StringBindVariable(table),
-		sqltypes.Int64BindVariable(int64(timeGap)),
-		sqltypes.Int64BindVariable(int64(subtaskRows)),
+		sqltypes.Int64BindVariable(timeGap),
+		sqltypes.Int64BindVariable(subtaskRows),
+		sqltypes.StringBindVariable(subtaskSQL),
 		sqltypes.StringBindVariable(queuedStatus))
 	if err != nil {
 		return nil, err
@@ -182,7 +207,23 @@ func (jc *JobController) SubmitJob(sql string) (*sqltypes.Result, error) {
 	jobChan := JobChanStruct{pauseAndResume: make(chan string), throttleAndUnthrottle: make(chan string)}
 	jc.jobChans[jobUUID] = jobChan
 
-	return jc.execQuery(ctx, "", submitQuery)
+	_, err = jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+	return jc.buildJobSubmitResult(jobUUID, subtaskSQL, timeGap, subtaskRows), nil
+}
+
+func (jc *JobController) buildJobSubmitResult(jobUUID, subtaskSQL string, timeGap, subtaskRows int64) *sqltypes.Result {
+	var rows []sqltypes.Row
+	row := buildVarCharRow(jobUUID, strconv.FormatInt(timeGap, 10), "support later", strconv.FormatInt(subtaskRows, 10), subtaskSQL, "support later", "support later")
+	rows = append(rows, row)
+	submitRst := &sqltypes.Result{
+		Fields:       buildVarCharFields("job_uuid", "time_gap_in_ms", "total_rows", "subtask_rows", "subtask_sql", "auto_retry", "postpone_launch"),
+		Rows:         rows,
+		RowsAffected: 1,
+	}
+	return submitRst
 }
 
 func (jc *JobController) ShowJobs() (*sqltypes.Result, error) {
@@ -193,8 +234,55 @@ func (jc *JobController) ShowJobs() (*sqltypes.Result, error) {
 	return jc.execQuery(ctx, "mysql", showJobsSQL)
 }
 
-func (jc *JobController) ControlJob() error {
-	return nil
+func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
+	var emptyResult = &sqltypes.Result{}
+	ctx := context.Background()
+	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	if err != nil {
+		return emptyResult, err
+	}
+	if status != runningStatus {
+		// todo，将info写回给vtgate，目前还不生效
+		emptyResult.Info = " The job status is not running and can't be paused"
+		return emptyResult, nil
+	}
+
+	qr, err := jc.updateJobStatus(ctx, uuid, pausedStatus)
+	if err != nil {
+		return emptyResult, err
+	}
+
+	// 往通道发送cmd进行暂停
+	jc.jobChansMutex.Lock()
+	defer jc.jobChansMutex.Unlock()
+	pauseChan := jc.jobChans[uuid].pauseAndResume
+	pauseChan <- "pause"
+	return qr, nil
+}
+
+func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
+	var emptyResult = &sqltypes.Result{}
+	ctx := context.Background()
+	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	if err != nil {
+		return emptyResult, err
+	}
+	if status != pausedStatus {
+		emptyResult.Info = " The job status is not paused and don't need resume"
+		return emptyResult, nil
+	}
+
+	qr, err := jc.updateJobStatus(ctx, uuid, runningStatus)
+	if err != nil {
+		return emptyResult, err
+	}
+
+	// 往通道发送cmd以继续
+	jc.jobChansMutex.Lock()
+	defer jc.jobChansMutex.Unlock()
+	pauseChan := jc.jobChans[uuid].pauseAndResume
+	pauseChan <- "resume"
+	return qr, nil
 }
 
 func (jc *JobController) RunJob() error {
@@ -205,10 +293,10 @@ func (jc *JobController) QueryJob() error {
 	return nil
 }
 
-func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) error {
-	jc.runningTablesMutex.Lock()
-	defer jc.runningTablesMutex.Unlock()
-	delete(jc.runningTables, table)
+func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*sqltypes.Result, error) {
+	jc.workingTablesMutex.Lock()
+	defer jc.workingTablesMutex.Unlock()
+	delete(jc.workingTables, table)
 
 	jc.jobChansMutex.Lock()
 	defer jc.jobChansMutex.Unlock()
@@ -222,7 +310,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) er
 // todo, 记录错误时的错误怎么处理
 func (jc *JobController) FailJob(ctx context.Context, uuid, message string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
-	_ = jc.updateJobStatus(ctx, uuid, failedStatus)
+	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus)
 }
 
 // todo newborn 做成接口
@@ -234,7 +322,8 @@ func jobTask() {
 func (jc *JobController) jonScheduler() {
 	ctx := context.Background()
 	for {
-		jc.runningTablesMutex.Lock()
+		// todo,这里拿锁存在潜在bug，因为checkDmlJobRunnable中也拿了并去变成running状态，一个job可能被启动多次，要成睡眠和唤醒的方式
+		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
 
 		qr, _ := jc.execQuery(ctx, "", "select * from mysql.big_dml_jobs_table;")
@@ -246,15 +335,15 @@ func (jc *JobController) jonScheduler() {
 			schema := row["related_schema"].ToString()
 			table := row["related_table"].ToString()
 			uuid := row["job_uuid"].ToString()
-			sql := row["dml_sql"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
-			subtaskRows, _ := row["subtask_rows"].ToInt64()
+			subtaskSQL := row["subtask_sql"].ToString()
 			if jc.checkDmlJobRunnable(status, table) {
-				go jc.dmlJobRunner(uuid, table, sql, schema, subtaskRows, timegap)
+				jc.workingTables[table] = true // todo 这里之后改成休眠的方式后要删掉
+				go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, timegap)
 			}
 		}
 
-		jc.runningTablesMutex.Unlock()
+		jc.workingTablesMutex.Unlock()
 		jc.tableMutex.Unlock()
 
 		time.Sleep(3 * time.Second)
@@ -267,14 +356,14 @@ func (jc *JobController) checkDmlJobRunnable(status, table string) bool {
 	if status != queuedStatus {
 		return false
 	}
-	if _, exit := jc.runningTables[table]; exit {
+	if _, exit := jc.workingTables[table]; exit {
 		return false
 	}
 	return true
 }
 
-func (jc *JobController) dmlJobRunner(uuid, table, sql, relatedSchema string, subtaskRows, timeGap int64) {
-	subtaskSQL := genSubtaskDMLSQL(sql, subtaskRows)
+func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL string, timeGap int64) {
+
 	jc.jobChansMutex.Lock()
 	jobChan := jc.jobChans[uuid]
 	jc.jobChansMutex.Unlock()
@@ -287,10 +376,13 @@ func (jc *JobController) dmlJobRunner(uuid, table, sql, relatedSchema string, su
 
 	ctx := context.Background()
 
-	jc.runningTablesMutex.Lock()
-	jc.runningTables[table] = true
-	jc.runningTablesMutex.Unlock()
-	_ = jc.updateJobStatus(ctx, uuid, runningStatus)
+	jc.workingTablesMutex.Lock()
+	jc.workingTables[table] = true
+	jc.workingTablesMutex.Unlock()
+	_, err := jc.updateJobStatus(ctx, uuid, runningStatus)
+	if err != nil {
+		jc.FailJob(ctx, uuid, err.Error())
+	}
 
 	// 在一个无限循环中等待定时器触发
 	for {
@@ -303,7 +395,7 @@ func (jc *JobController) dmlJobRunner(uuid, table, sql, relatedSchema string, su
 				return
 			}
 			if qr.RowsAffected == 0 {
-				err = jc.CompleteJob(ctx, uuid, table)
+				_, err = jc.CompleteJob(ctx, uuid, table)
 				if err != nil {
 					jc.FailJob(ctx, uuid, err.Error())
 				}
@@ -396,7 +488,7 @@ func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string,
 	return err
 }
 
-func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status string) error {
+func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -404,8 +496,66 @@ func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status strin
 		sqltypes.StringBindVariable(status),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
-		return err
+		return &sqltypes.Result{}, err
 	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	return err
+	return jc.execQuery(ctx, "", submitQuery)
+}
+
+func (jc *JobController) GetIntJobInfo(ctx context.Context, uuid, fieldName string) (int64, error) {
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+
+	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return 0, err
+	}
+	qr, err := jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return 0, fmt.Errorf("uuid %s has %d entrys in the table instead of 1", uuid, len(qr.Named().Rows))
+	}
+	return qr.Named().Rows[0].ToInt64(fieldName)
+}
+
+func (jc *JobController) GetStrJobInfo(ctx context.Context, uuid, fieldName string) (string, error) {
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+
+	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return "", err
+	}
+	qr, err := jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return "", err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return "", fmt.Errorf("uuid %s has %d entrys in the table instead of 1", uuid, len(qr.Named().Rows))
+	}
+	return qr.Named().Rows[0].ToString(fieldName)
+}
+
+func buildVarCharFields(names ...string) []*querypb.Field {
+	fields := make([]*querypb.Field, len(names))
+	for i, v := range names {
+		fields[i] = &querypb.Field{
+			Name:    v,
+			Type:    sqltypes.VarChar,
+			Charset: collations.CollationUtf8ID,
+			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
+		}
+	}
+	return fields
+}
+
+func buildVarCharRow(values ...string) []sqltypes.Value {
+	row := make([]sqltypes.Value, len(values))
+	for i, v := range values {
+		row[i] = sqltypes.NewVarChar(v)
+	}
+	return row
 }

@@ -40,6 +40,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfAlterCheck(parent, node, replacer)
 	case *AlterColumn:
 		return a.rewriteRefOfAlterColumn(parent, node, replacer)
+	case *AlterDMLJob:
+		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
 	case *AlterIndex:
@@ -760,6 +762,33 @@ func (a *application) rewriteRefOfAlterColumn(parent SQLNode, node *AlterColumn,
 	}
 	if !a.rewriteExpr(node, node.DefaultVal, func(newNode, parent SQLNode) {
 		parent.(*AlterColumn).DefaultVal = newNode.(Expr)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfAlterDMLJob(parent SQLNode, node *AlterDMLJob, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfLiteral(node, node.Ratio, func(newNode, parent SQLNode) {
+		parent.(*AlterDMLJob).Ratio = newNode.(*Literal)
 	}) {
 		return false
 	}
@@ -8906,6 +8935,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return true
 	}
 	switch node := node.(type) {
+	case *AlterDMLJob:
+		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
 	case *AlterMigration:

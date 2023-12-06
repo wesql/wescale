@@ -312,6 +312,48 @@ func (node *AlterMigration) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
+func (node *AlterDMLJob) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "alter dml_job")
+	if node.UUID != "" {
+		buf.astPrintf(node, " '%s'", node.UUID)
+	}
+	var alterType string
+	switch node.Type {
+	case LaunchDMLJobType:
+		alterType = "launch"
+	case LaunchAllDMLJobType:
+		alterType = "launch all"
+	case CancelDMLJobType:
+		alterType = "cancel"
+	case CancelAllDMLJobType:
+		alterType = "cancel all"
+	case PauseDMLJobType:
+		alterType = "pause"
+	case PauseAllDMLJobType:
+		alterType = "pause all"
+	case ResumeDMLJobType:
+		alterType = "resume"
+	case ResumeAllDMLJobType:
+		alterType = "resume all"
+	case ThrottleDMLJobType:
+		alterType = "throttle"
+	case ThrottleAllDMLJobType:
+		alterType = "throttle all"
+	case UnthrottleDMLJobType:
+		alterType = "unthrottle"
+	case UnthrottleAllDMLJobType:
+		alterType = "unthrottle all"
+	}
+	buf.astPrintf(node, " %s", alterType)
+	if node.Expire != "" {
+		buf.astPrintf(node, " expire '%s'", node.Expire)
+	}
+	if node.Ratio != nil {
+		buf.astPrintf(node, " ratio %v", node.Ratio)
+	}
+}
+
+// Format formats the node.
 func (node *RevertMigration) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "revert %vvitess_migration '%#s'", node.Comments, node.UUID)
 }

@@ -80,6 +80,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterColumn(a, b)
+	case *AlterDMLJob:
+		b, ok := inB.(*AlterDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterDMLJob(a, b)
 	case *AlterDatabase:
 		b, ok := inB.(*AlterDatabase)
 		if !ok {
@@ -1612,6 +1618,20 @@ func (cmp *Comparator) RefOfAlterColumn(a, b *AlterColumn) bool {
 		cmp.RefOfColName(a.Column, b.Column) &&
 		cmp.Expr(a.DefaultVal, b.DefaultVal) &&
 		cmp.RefOfBool(a.Invisible, b.Invisible)
+}
+
+// RefOfAlterDMLJob does deep equals between the two objects.
+func (cmp *Comparator) RefOfAlterDMLJob(a, b *AlterDMLJob) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.UUID == b.UUID &&
+		a.Expire == b.Expire &&
+		a.Type == b.Type &&
+		cmp.RefOfLiteral(a.Ratio, b.Ratio)
 }
 
 // RefOfAlterDatabase does deep equals between the two objects.
@@ -6113,6 +6133,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 		return false
 	}
 	switch a := inA.(type) {
+	case *AlterDMLJob:
+		b, ok := inB.(*AlterDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterDMLJob(a, b)
 	case *AlterDatabase:
 		b, ok := inB.(*AlterDatabase)
 		if !ok {

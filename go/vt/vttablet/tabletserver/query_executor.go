@@ -201,6 +201,8 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		return qre.execCallProc()
 	case p.PlanAlterMigration:
 		return qre.execAlterMigration()
+	case p.PlanAlterDMLJob:
+		return qre.execAlterDMLJob()
 	case p.PlanRevertMigration:
 		return qre.execRevertMigration()
 	case p.PlanShowMigrationLogs:
@@ -1149,6 +1151,21 @@ func (qre *QueryExecutor) execAlterMigration() (*sqltypes.Result, error) {
 		return qre.tsv.onlineDDLExecutor.ResumeAllMigrations(qre.ctx)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER VITESS_MIGRATION not implemented")
+}
+
+func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
+	alterDMLJob, ok := qre.plan.FullStmt.(*sqlparser.AlterDMLJob)
+	if !ok {
+		return nil, vterrors.New(vtrpcpb.Code_INTERNAL, "Expecting ALTER DML_JOB plan")
+	}
+	uuid := alterDMLJob.UUID
+	switch alterDMLJob.Type {
+	case sqlparser.PauseDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid)
+	case sqlparser.ResumeDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid)
+	}
+	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }
 
 func (qre *QueryExecutor) execRevertMigration() (*sqltypes.Result, error) {

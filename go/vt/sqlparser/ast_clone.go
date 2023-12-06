@@ -41,6 +41,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterCheck(in)
 	case *AlterColumn:
 		return CloneRefOfAlterColumn(in)
+	case *AlterDMLJob:
+		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
 	case *AlterIndex:
@@ -607,6 +609,16 @@ func CloneRefOfAlterColumn(n *AlterColumn) *AlterColumn {
 	out.Column = CloneRefOfColName(n.Column)
 	out.DefaultVal = CloneExpr(n.DefaultVal)
 	out.Invisible = CloneRefOfBool(n.Invisible)
+	return &out
+}
+
+// CloneRefOfAlterDMLJob creates a deep clone of the input.
+func CloneRefOfAlterDMLJob(n *AlterDMLJob) *AlterDMLJob {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Ratio = CloneRefOfLiteral(n.Ratio)
 	return &out
 }
 
@@ -3776,6 +3788,8 @@ func CloneStatement(in Statement) Statement {
 		return nil
 	}
 	switch in := in.(type) {
+	case *AlterDMLJob:
+		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
 	case *AlterMigration:

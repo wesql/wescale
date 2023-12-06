@@ -18,14 +18,14 @@ limitations under the License.
 CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
 (
     `id`                              bigint unsigned  NOT NULL AUTO_INCREMENT,
-    `job_uuid`                  varchar(64)      NOT NULL,
+    `job_uuid`                  varchar(64)      NOT NULL UNIQUE,
     `job_status`                varchar(128)     NOT NULL,
     `message`                   varchar(2048)     NULL   DEFAULT NULL,
     `dml_sql`                       varchar(256)     NOT NULL,
     `related_schema`                     varchar(256)     NOT NULL,
     `related_table`                     varchar(256)     NOT NULL,
     `timegap_in_ms`             bigint        NOT NULL     ,
-    `subtask_rows`        bigint        NOT NULL     ,
+    `subtask_rows`              bigint        NOT NULL     ,
     `subtask_sql`                   varchar(256)     NULL   DEFAULT NULL,
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
     PRIMARY KEY (`id`)

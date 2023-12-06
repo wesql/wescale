@@ -453,9 +453,9 @@ func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql stri
 		// todo ，在这个地方把qr写回到前端
 		if qr != nil {
 			if qr.RowsAffected == 1 {
-				qr.Info = " job submitted successfully"
+				qr.Info = "job submitted successfully"
 			} else {
-				qr.Info = " job submitted failed"
+				qr.Info = "job submitted failed"
 			}
 		}
 		return qr, err
