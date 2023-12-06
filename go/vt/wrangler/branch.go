@@ -361,6 +361,22 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 
 }
 
+func removeComments(sql string) (string, error) {
+	stmt, err := sqlparser.Parse(sql)
+	if err != nil {
+		return "", err
+	}
+	sqlparser.Rewrite(stmt, func(cursor *sqlparser.Cursor) bool {
+		switch cursor.Node().(type) {
+		case *sqlparser.ParsedComments:
+			cursor.Replace(nil)
+		}
+		return true
+	}, nil)
+
+	return sqlparser.String(stmt), nil
+}
+
 func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
@@ -380,6 +396,21 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		if rule.SkipCopyPhase {
 			continue
 		}
+		removedSQL, err := removeComments(rule.FilteringRule)
+		if err != nil {
+			return nil, err
+		}
+		rule.FilteringRule = removedSQL
+		//ruleNode, err := sqlparser.Parse(rule.FilteringRule)
+		//switch node := ruleNode.(type) {
+		//case *sqlparser.Select:
+		//	node.Comments = nil
+		//default:
+		//	return nil, fmt.Errorf("not support sql type %v", node)
+		//}
+		//if err != nil {
+		//	return nil, err
+		//}
 		ts := &vtctldatapb.TableMaterializeSettings{
 			TargetTable:      rule.TargetTable,
 			SourceExpression: rule.FilteringRule,
