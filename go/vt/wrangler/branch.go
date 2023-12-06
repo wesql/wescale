@@ -626,10 +626,11 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
+	// todo: delete Vreplication and delete branch jobs should be atomic.
 	for _, tableRule := range branchJob.bs.FilterTableRules {
 		if tableRule.MergeDdlUuid != "" {
 			deleteVReplication := fmt.Sprintf(DeleteVReplicationByWorkFlow, tableRule.MergeDdlUuid)
-			_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteVReplication, 1, false, false)
+			_, err := wr.VReplicationExec(ctx, alias, deleteVReplication)
 			if err != nil {
 				return err
 			}
