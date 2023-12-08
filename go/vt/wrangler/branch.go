@@ -101,13 +101,13 @@ func boolToInt(b bool) int64 {
 }
 
 func (branchJob *BranchJob) generateRulesInsert() (string, error) {
-	sqlInsertTemplate := "INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl, default_filter_rules) VALUES "
+	sqlInsertTemplate := "INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl, default_filter_rules,skip_copy_phase) VALUES "
 
 	valuesPlaceholders := []string{}
 	var bindVariables []*querypb.BindVariable
 
 	for _, tableRule := range branchJob.bs.FilterTableRules {
-		valuesPlaceholders = append(valuesPlaceholders, "(%a, %a, %a, %a, %a, %a, %a)")
+		valuesPlaceholders = append(valuesPlaceholders, "(%a, %a, %a, %a, %a, %a, %a, %a)")
 		bindVariables = append(bindVariables,
 			sqltypes.StringBindVariable(branchJob.workflowName),
 			sqltypes.StringBindVariable(tableRule.SourceTable),
@@ -116,6 +116,7 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 			sqltypes.StringBindVariable(tableRule.CreateDdl),
 			sqltypes.StringBindVariable(tableRule.MergeDdl),
 			sqltypes.StringBindVariable(tableRule.DefaultFilterRules),
+			sqltypes.Int64BindVariable(boolToInt(tableRule.SkipCopyPhase)),
 		)
 	}
 
@@ -131,7 +132,7 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
 func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
-	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string) error {
+	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool) error {
 	err := wr.CreateDatabase(ctx, targetDatabase)
 	if err != nil {
 		return err
@@ -232,6 +233,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 			CreateDdl:          createDDLMode,
 			MergeDdl:           createDDLMode,
 			DefaultFilterRules: defaultFilterRules,
+			SkipCopyPhase:      skipCopyPhase,
 		}
 		branchJob.bs.FilterTableRules = append(branchJob.bs.FilterTableRules, filterTableRule)
 	}
@@ -393,28 +395,16 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		ExternalCluster:       "",
 	}
 	for _, rule := range branchJob.bs.FilterTableRules {
-		if rule.SkipCopyPhase {
-			continue
-		}
 		removedSQL, err := removeComments(rule.FilteringRule)
 		if err != nil {
 			return nil, err
 		}
 		rule.FilteringRule = removedSQL
-		//ruleNode, err := sqlparser.Parse(rule.FilteringRule)
-		//switch node := ruleNode.(type) {
-		//case *sqlparser.Select:
-		//	node.Comments = nil
-		//default:
-		//	return nil, fmt.Errorf("not support sql type %v", node)
-		//}
-		//if err != nil {
-		//	return nil, err
-		//}
 		ts := &vtctldatapb.TableMaterializeSettings{
 			TargetTable:      rule.TargetTable,
 			SourceExpression: rule.FilteringRule,
 			CreateDdl:        rule.CreateDdl,
+			SkipCopyPhase:    rule.SkipCopyPhase,
 		}
 		ms.TableSettings = append(ms.TableSettings, ts)
 	}
@@ -458,9 +448,15 @@ func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 			return err
 		}
 	}
-	err = mz.startStreams(ctx)
+	exist, err = wr.StreamExist(ctx, workflow)
 	if err != nil {
 		return err
+	}
+	if exist {
+		err = mz.startStreams(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	wr.Logger().Printf("Start workflow:%v successfully.", workflow)
 	return nil
@@ -475,9 +471,15 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	err = mz.stopStreams(ctx)
+	exist, err := wr.StreamExist(ctx, workflow)
 	if err != nil {
 		return err
+	}
+	if exist {
+		err = mz.stopStreams(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	wr.Logger().Printf("Start workflow %v successfully", workflow)
 	return nil

@@ -88,6 +88,8 @@ message  TableMaterializeSettings {
   // If empty, the target table must already exist.
   // if "copy", the target table DDL is the same as the source table.
   string create_ddl = 3;
+
+  bool skip_copy_phase = 4;
 }
 message BranchSettings{
   repeated FilterTableRule filter_table_rules = 1;
