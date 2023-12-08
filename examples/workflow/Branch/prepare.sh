@@ -53,7 +53,7 @@ function insert_users() {
             SQL="${SQL}${COMMA}($i, CONCAT('user', FLOOR(1 + RAND() * 999999)))"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P17102 -e "$SQL"
+        mysql -h127.0.0.1 -P15306 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -77,7 +77,7 @@ function insert_customer() {
             SQL="${SQL}${COMMA}($i, CONCAT('user', FLOOR(1 + RAND() * 999999), '@domain.com'))"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P17102 -e "$SQL"
+        mysql -h127.0.0.1 -P15306 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -101,7 +101,7 @@ function insert_product() {
             SQL="${SQL}${COMMA}(CONCAT('SKU-', $i), 'product description', $i)"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P17102 -e "$SQL"
+        mysql -h127.0.0.1 -P15306 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -127,7 +127,7 @@ function insert_corder() {
             SQL="${SQL}${COMMA}($i, $random_customer_id, CONCAT('SKU-', $random_sku_id), $random_sku_id)"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P17102 -e "$SQL"
+        mysql -h127.0.0.1 -P15306 -e "$SQL"
 
         start=$((batch_end + 1))
     done
