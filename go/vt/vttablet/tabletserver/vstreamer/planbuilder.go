@@ -150,6 +150,8 @@ type ColExpr struct {
 	Field *querypb.Field
 
 	FixedValue sqltypes.Value
+
+	FuncExpr *evalengine.Expr
 }
 
 // Table contains the metadata for a table.
@@ -287,7 +289,14 @@ func (plan *Plan) filter(values, result []sqltypes.Value, charsets []collations.
 		if colExpr.ColNum >= len(values) {
 			return false, fmt.Errorf("index out of range, colExpr.ColNum: %d, len(values): %d", colExpr.ColNum, len(values))
 		}
-		if colExpr.Vindex == nil {
+		if colExpr.FuncExpr != nil {
+			env := evalengine.EnvWithBindVars(nil, collations.Unknown)
+			evalResult, err := env.Evaluate(*colExpr.FuncExpr)
+			if err != nil {
+				return false, err
+			}
+			result[i] = evalResult.Value()
+		} else if colExpr.Vindex == nil {
 			result[i] = values[colExpr.ColNum]
 		} else {
 			ksid, err := getKeyspaceID(values, colExpr.Vindex, colExpr.VindexColumns, plan.Table.Fields)
@@ -754,7 +763,17 @@ func (plan *Plan) analyzeExpr(vschema *localVSchema, selExpr sqlparser.SelectExp
 				Field:  field,
 			}, nil
 		default:
-			return ColExpr{}, fmt.Errorf("unsupported function: %v", sqlparser.String(inner))
+			expr, err := evalengine.TranslateEx(inner, nil, false)
+			if err != nil {
+				return ColExpr{}, err
+			}
+			return ColExpr{
+				Field: &querypb.Field{
+					Name: aliased.As.String(),
+					Type: sqltypes.VarBinary,
+				},
+				FuncExpr: &expr,
+			}, nil
 		}
 	case *sqlparser.Literal:
 		//allow only intval 1

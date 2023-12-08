@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/vt/sidecardb"
+
+	querypb "vitess.io/vitess/go/vt/proto/query"
+
 	"vitess.io/vitess/go/protoutil"
 	"vitess.io/vitess/go/vt/concurrency"
 	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
@@ -47,6 +51,12 @@ const (
 	BranchStatusOfPrePare = "Prepare"
 	BranchStatusOfRunning = "Running"
 )
+const InsertTableRulesTemplate = "INSERT INTO mysql.branch_table_rules " +
+	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) " +
+	"VALUES (%a, %a, %a, %a, %a, %a);"
+
+const UpdateMergeDDLTemplate = "UPDATE mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and target_table_name=%a;"
+
 const SelectBranchJobByWorkflow = "select * from mysql.branch_jobs where workflow_name = '%s'"
 
 const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules where workflow_name = '%s'"
@@ -58,25 +68,32 @@ const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules wh
 const DeleteVReplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
 
 func (branchJob *BranchJob) generateInsert() (string, error) {
-	buf := &strings.Builder{}
-	buf.WriteString("INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, skip_copy_phase, stop_after_copy, onddl, status, message) VALUES ")
-	buf.WriteString(fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s', %d, %d, '%s', '%s', '%s')",
-		branchJob.sourceDatabase,
-		branchJob.targetDatabase,
-		branchJob.workflowName,
-		branchJob.sourceTopo,
-		branchJob.sourceTabletType,
-		branchJob.cells,
-		boolToInt(branchJob.skipCopyPhase),
-		boolToInt(branchJob.stopAfterCopy),
-		branchJob.onddl,
-		branchJob.status,
-		""))
-	return buf.String(), nil
+	// 构建 SQL 插入语句，使用占位符
+	sqlInsertTemplate := "INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, stop_after_copy, onddl, status, message) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
+
+	// 使用 ParseAndBind 函数来准备查询和绑定变量
+	sqlInsertQuery, err := sqlparser.ParseAndBind(sqlInsertTemplate,
+		sqltypes.StringBindVariable(branchJob.sourceDatabase),
+		sqltypes.StringBindVariable(branchJob.targetDatabase),
+		sqltypes.StringBindVariable(branchJob.workflowName),
+		sqltypes.StringBindVariable(branchJob.sourceTopo),
+		sqltypes.StringBindVariable(branchJob.sourceTabletType),
+		sqltypes.StringBindVariable(branchJob.cells),
+		sqltypes.Int64BindVariable(boolToInt(branchJob.stopAfterCopy)),
+		sqltypes.StringBindVariable(branchJob.onddl),
+		sqltypes.StringBindVariable(branchJob.status),
+		sqltypes.StringBindVariable(""), // 空字符串
+	)
+	if err != nil {
+		// 处理错误
+		return "", err
+	}
+
+	return sqlInsertQuery, nil
 }
 
 // Helper function to convert bool to int (0 or 1) for tinyint fields
-func boolToInt(b bool) int {
+func boolToInt(b bool) int64 {
 	if b {
 		return 1
 	}
@@ -84,24 +101,38 @@ func boolToInt(b bool) int {
 }
 
 func (branchJob *BranchJob) generateRulesInsert() (string, error) {
-	buf := &strings.Builder{}
-	buf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl,default_filter_rules) VALUES")
-	first := true
+	sqlInsertTemplate := "INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl, default_filter_rules,skip_copy_phase) VALUES "
+
+	valuesPlaceholders := []string{}
+	var bindVariables []*querypb.BindVariable
+
 	for _, tableRule := range branchJob.bs.FilterTableRules {
-		if first {
-			first = false
-		} else {
-			buf.WriteString(",")
-		}
-		buf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v','%v')", branchJob.workflowName, tableRule.SourceTable, tableRule.TargetTable, tableRule.FilteringRule, tableRule.CreateDdl, tableRule.MergeDdl, tableRule.DefaultFilterRules))
+		valuesPlaceholders = append(valuesPlaceholders, "(%a, %a, %a, %a, %a, %a, %a, %a)")
+		bindVariables = append(bindVariables,
+			sqltypes.StringBindVariable(branchJob.workflowName),
+			sqltypes.StringBindVariable(tableRule.SourceTable),
+			sqltypes.StringBindVariable(tableRule.TargetTable),
+			sqltypes.StringBindVariable(tableRule.FilteringRule),
+			sqltypes.StringBindVariable(tableRule.CreateDdl),
+			sqltypes.StringBindVariable(tableRule.MergeDdl),
+			sqltypes.StringBindVariable(tableRule.DefaultFilterRules),
+			sqltypes.Int64BindVariable(boolToInt(tableRule.SkipCopyPhase)),
+		)
 	}
-	buf.WriteString(";")
-	return buf.String(), nil
+
+	fullQuery := sqlInsertTemplate + strings.Join(valuesPlaceholders, ",")
+
+	sqlQuery, err := sqlparser.ParseAndBind(fullQuery, bindVariables...)
+	if err != nil {
+		return "", err
+	}
+
+	return sqlQuery + ";", nil
 }
 
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
 func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
-	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string) error {
+	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool) error {
 	err := wr.CreateDatabase(ctx, targetDatabase)
 	if err != nil {
 		return err
@@ -202,6 +233,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 			CreateDdl:          createDDLMode,
 			MergeDdl:           createDDLMode,
 			DefaultFilterRules: defaultFilterRules,
+			SkipCopyPhase:      skipCopyPhase,
 		}
 		branchJob.bs.FilterTableRules = append(branchJob.bs.FilterTableRules, filterTableRule)
 	}
@@ -235,7 +267,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 }
 
 func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*BranchJob, error) {
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +317,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 
 func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*vtctldatapb.BranchSettings, error) {
 	bs := &vtctldatapb.BranchSettings{}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +342,10 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 		if err != nil {
 			return nil, err
 		}
+		skipCopyPhase, err := tableRules["skip_copy_phase"].ToBool()
+		if err != nil {
+			return nil, err
+		}
 		fileterRule := &vtctldatapb.FilterTableRule{
 			Id:            id,
 			SourceTable:   sourceTableName,
@@ -319,11 +355,28 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 			MergeDdl:      mergeDDL,
 			NeedMergeBack: needMergeBack,
 			MergeDdlUuid:  mergeUUID,
+			SkipCopyPhase: skipCopyPhase,
 		}
 		bs.FilterTableRules = append(bs.FilterTableRules, fileterRule)
 	}
 	return bs, nil
 
+}
+
+func removeComments(sql string) (string, error) {
+	stmt, err := sqlparser.Parse(sql)
+	if err != nil {
+		return "", err
+	}
+	sqlparser.Rewrite(stmt, func(cursor *sqlparser.Cursor) bool {
+		switch cursor.Node().(type) {
+		case *sqlparser.ParsedComments:
+			cursor.Replace(nil)
+		}
+		return true
+	}, nil)
+
+	return sqlparser.String(stmt), nil
 }
 
 func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
@@ -342,10 +395,16 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		ExternalCluster:       "",
 	}
 	for _, rule := range branchJob.bs.FilterTableRules {
+		removedSQL, err := removeComments(rule.FilteringRule)
+		if err != nil {
+			return nil, err
+		}
+		rule.FilteringRule = removedSQL
 		ts := &vtctldatapb.TableMaterializeSettings{
 			TargetTable:      rule.TargetTable,
 			SourceExpression: rule.FilteringRule,
 			CreateDdl:        rule.CreateDdl,
+			SkipCopyPhase:    rule.SkipCopyPhase,
 		}
 		ms.TableSettings = append(ms.TableSettings, ts)
 	}
@@ -354,7 +413,7 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 
 func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, error) {
 	sql := fmt.Sprintf("SELECT 1 FROM mysql.vreplication WHERE workflow='%s';", workflow)
-	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return false, err
 	}
@@ -389,9 +448,15 @@ func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 			return err
 		}
 	}
-	err = mz.startStreams(ctx)
+	exist, err = wr.StreamExist(ctx, workflow)
 	if err != nil {
 		return err
+	}
+	if exist {
+		err = mz.startStreams(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	wr.Logger().Printf("Start workflow:%v successfully.", workflow)
 	return nil
@@ -406,9 +471,15 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	err = mz.stopStreams(ctx)
+	exist, err := wr.StreamExist(ctx, workflow)
 	if err != nil {
 		return err
+	}
+	if exist {
+		err = mz.stopStreams(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	wr.Logger().Printf("Start workflow %v successfully", workflow)
 	return nil
@@ -418,7 +489,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 	if err != nil {
 		return err
 	}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, "zone1")
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return err
 	}
@@ -459,12 +530,30 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		case tmutils.ExtraTable:
 			// add element into
 			tableName := ddl.TableName
-			sqlBuf.WriteString("INSERT INTO mysql.branch_table_rules (workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) VALUES")
-			sqlBuf.WriteString(fmt.Sprintf("('%v','%v','%v','%v','%v','%v');", branchJob.workflowName, tableName, tableName, "Merge back new table is not needed.", "Merge back new table is not needed.", ddl.Ddl))
+			sqlInsertQuery, err := sqlparser.ParseAndBind(InsertTableRulesTemplate,
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable("Merge back new table is not needed."),
+				sqltypes.StringBindVariable("Merge back new table is not needed."),
+				sqltypes.StringBindVariable(ddl.Ddl),
+			)
+			if err != nil {
+				log.Fatalf("Error preparing query: %v", err)
+			}
+			sqlBuf.WriteString(sqlInsertQuery)
 			sqlBuf.WriteString("\n")
 			logBuf.WriteString(fmt.Sprintf("extratable: %v ddl: %v\n", tableName, ddl.Ddl))
 		case tmutils.TableSchemaDiff, tmutils.TableTypeDiff:
-			sqlBuf.WriteString(fmt.Sprintf("UPDATE mysql.branch_table_rules set merge_ddl='%v' where workflow_name='%v' and target_table_name='%v';", ddl.Ddl, branchJob.workflowName, ddl.TableName))
+			sqlUpdateQuery, err := sqlparser.ParseAndBind(UpdateMergeDDLTemplate,
+				sqltypes.StringBindVariable(ddl.Ddl),
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(ddl.TableName),
+			)
+			if err != nil {
+				log.Fatalf("Error preparing query: %v", err)
+			}
+			sqlBuf.WriteString(sqlUpdateQuery)
 			sqlBuf.WriteString("\n")
 			logBuf.WriteString(fmt.Sprintf("table: %v ddl: %v\n", ddl.TableName, ddl.Ddl))
 		}
@@ -570,10 +659,11 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
+	// todo: delete Vreplication and delete branch jobs should be atomic.
 	for _, tableRule := range branchJob.bs.FilterTableRules {
 		if tableRule.MergeDdlUuid != "" {
 			deleteVReplication := fmt.Sprintf(DeleteVReplicationByWorkFlow, tableRule.MergeDdlUuid)
-			_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteVReplication, 1, false, false)
+			_, err := wr.VReplicationExec(ctx, alias, deleteVReplication)
 			if err != nil {
 				return err
 			}
@@ -591,4 +681,48 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	wr.Logger().Printf("cleanup workflow:%v successfully", branchJob.workflowName)
 	return nil
 	// delete from branch_table_rules
+}
+
+func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return err
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
+	if err != nil {
+		return err
+	}
+	var tables []string
+	for _, tableRules := range branchJob.bs.FilterTableRules {
+		tables = append(tables, tableRules.TargetTable)
+	}
+	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.sourceDatabase,
+	}
+	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		//Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.targetDatabase,
+	}
+	er := concurrency.AllErrorRecorder{}
+
+	// analyze Schema diff between sourceDatabase and targetDatabase
+	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	if err != nil {
+		return err
+	}
+	records := tmutils.DiffSchema(targetDatabaseReqeust.DbName, targetSchema, sourceDatabaseReqeust.DbName, sourceSchema, &er)
+	if len(records) == 0 {
+		wr.Logger().Printf("schema is same")
+	}
+	for _, record := range records {
+		wr.Logger().Printf("%v\n", record.Report())
+	}
+	return nil
 }

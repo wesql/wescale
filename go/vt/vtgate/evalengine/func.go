@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +26,10 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"math/rand"
+	"strings"
+
+	"github.com/brianvoe/gofakeit/v6"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -49,6 +58,8 @@ var builtinFunctions = map[string]builtin{
 	"bit_length":       builtinBitLength{},
 	"ascii":            builtinASCII{},
 	"repeat":           builtinRepeat{},
+	"rand":             builtinRand{},
+	"fake":             builtinFake{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{
@@ -753,4 +764,95 @@ func (builtinCeiling) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, fl
 	} else {
 		return sqltypes.Float64, f
 	}
+}
+
+type builtinRand struct {
+}
+
+func (builtinRand) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) != 2 {
+		throwArgError("Rand")
+	}
+	left := args[0].typeof()
+	right := args[1].typeof()
+	if left != right || (!sqltypes.IsIntegral(left) && !sqltypes.IsFloat(left)) {
+		throwArgError("args type error")
+	}
+	if sqltypes.IsIntegral(left) {
+		min := args[0].int64()
+		max := args[1].int64()
+		if min > max {
+			throwArgError("min > max")
+		}
+		result.setInt64(min + rand.Int63n(max-min+1))
+	} else {
+		min := args[0].float64()
+		max := args[1].float64()
+		if min > max {
+			throwArgError("min > max")
+		}
+		result.setFloat(min + rand.Float64()*(max-min))
+	}
+}
+func (builtinRand) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) != 2 {
+		throwArgError("Rand")
+	}
+	t, f := args[0].typeof(env)
+	if sqltypes.IsIntegral(t) {
+		return sqltypes.Int64, f
+	} else if sqltypes.Decimal == t {
+		return sqltypes.Decimal, f
+	} else {
+		return sqltypes.Float64, f
+	}
+}
+
+type builtinFake struct{}
+
+func (builtinFake) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
+	if len(args) < 1 {
+		throwArgError("not found function param")
+	}
+	if !sqltypes.IsText(args[0].typeof()) {
+		throwArgError("first param type is not string")
+	}
+	funcName := args[0].string()
+	switch strings.ToLower(funcName) {
+	case "name":
+		result.setString(gofakeit.Name(), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+	case "address":
+		result.setString(gofakeit.Address().Address, collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+	case "uuid":
+		result.setString(gofakeit.UUID(), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+	}
+}
+func (builtinFake) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+	if len(args) < 1 {
+		throwArgError("not found function param")
+	}
+	result := EvalResult{}
+	args[0].eval(env, &result)
+	if !sqltypes.IsText(result.typeof()) {
+		throwArgError("first param type is not string")
+	}
+	funcName := result.string()
+	switch strings.ToLower(funcName) {
+	case "name", "address", "uuid":
+		return sqltypes.VarChar, flagIntegerCap
+	}
+	throwEvalError(fmt.Errorf("function %v is not support to get type", funcName))
+	return sqltypes.VarChar, flagIntegerCap
 }

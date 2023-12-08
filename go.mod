@@ -219,4 +219,8 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-require github.com/pingcap/failpoint v0.0.0-20220801062533-2eaa32854a6c
+require (
+	github.com/brianvoe/gofakeit v3.18.0+incompatible
+	github.com/brianvoe/gofakeit/v6 v6.25.0
+	github.com/pingcap/failpoint v0.0.0-20220801062533-2eaa32854a6c
+)

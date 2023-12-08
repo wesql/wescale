@@ -935,6 +935,18 @@ func (wr *Wrangler) createDefaultShardRoutingRules(ctx context.Context, ms *vtct
 	return nil
 }
 
+func shouldSkipCreateStream(settings *vtctldatapb.MaterializeSettings) bool {
+	if settings == nil || settings.TableSettings == nil {
+		return true
+	}
+	for _, tableSetting := range settings.TableSettings {
+		if !tableSetting.SkipCopyPhase {
+			return false
+		}
+	}
+	return true
+}
+
 func (wr *Wrangler) prepareMaterializerStreams(ctx context.Context, ms *vtctldatapb.MaterializeSettings) (*materializer, error) {
 	if err := wr.validateNewWorkflow(ctx, ms.TargetKeyspace, ms.Workflow); err != nil {
 		return nil, err
@@ -950,6 +962,9 @@ func (wr *Wrangler) prepareMaterializerStreams(ctx context.Context, ms *vtctldat
 	}
 	if err := mz.deploySchema(ctx); err != nil {
 		return nil, err
+	}
+	if shouldSkipCreateStream(ms) {
+		return mz, nil
 	}
 	insertMap := make(map[string]string, len(mz.targetShards))
 	for _, targetShard := range mz.targetShards {
@@ -1253,6 +1268,9 @@ func (mz *materializer) generateInserts(ctx context.Context, targetShard *topo.S
 			OnDdl:           binlogdatapb.OnDDLAction(binlogdatapb.OnDDLAction_value[mz.ms.OnDdl]),
 		}
 		for _, ts := range mz.ms.TableSettings {
+			if ts.SkipCopyPhase {
+				continue
+			}
 			rule := &binlogdatapb.Rule{
 				Match: ts.TargetTable,
 			}

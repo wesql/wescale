@@ -150,6 +150,16 @@ func (m *FilterTableRule) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.SkipCopyPhase {
+		i--
+		if m.SkipCopyPhase {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x50
+	}
 	if len(m.DefaultFilterRules) > 0 {
 		i -= len(m.DefaultFilterRules)
 		copy(dAtA[i:], m.DefaultFilterRules)
@@ -246,6 +256,16 @@ func (m *TableMaterializeSettings) MarshalToSizedBufferVT(dAtA []byte) (int, err
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.SkipCopyPhase {
+		i--
+		if m.SkipCopyPhase {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x20
 	}
 	if len(m.CreateDdl) > 0 {
 		i -= len(m.CreateDdl)
@@ -9919,6 +9939,9 @@ func (m *FilterTableRule) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.SkipCopyPhase {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -9940,6 +9963,9 @@ func (m *TableMaterializeSettings) SizeVT() (n int) {
 	l = len(m.CreateDdl)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
+	}
+	if m.SkipCopyPhase {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -13965,6 +13991,26 @@ func (m *FilterTableRule) UnmarshalVT(dAtA []byte) error {
 			}
 			m.DefaultFilterRules = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SkipCopyPhase", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SkipCopyPhase = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -14112,6 +14158,26 @@ func (m *TableMaterializeSettings) UnmarshalVT(dAtA []byte) error {
 			}
 			m.CreateDdl = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SkipCopyPhase", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SkipCopyPhase = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
