@@ -7,6 +7,7 @@ package jobcontroller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -73,7 +74,8 @@ const (
                                       timegap_in_ms,
                                       subtask_rows,
                                       subtask_sql,
-                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      dml_type,
+                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -93,6 +95,17 @@ const (
 	sqlDMLJobGetInfo = `select * from mysql.big_dml_jobs_table 
                                 where
                                 	job_uuid = %a`
+
+	sqlGetTablePk = ` SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+								WHERE 
+						    		TABLE_SCHEMA = %a
+									AND TABLE_NAME = %a
+									AND CONSTRAINT_NAME = 'PRIMARY'`
+
+	sqlGetTableColNames = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+								WHERE 
+								    TABLE_SCHEMA = %a
+									AND TABLE_NAME = %a`
 )
 
 type JobController struct {
@@ -186,10 +199,14 @@ func (jc *JobController) SubmitJob(sql string) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	sql = rewirteSQL(sql)
 	relatedSchema := "mydb"                  // todo，传入
-	table := "test_table2"                   // todo ,前端传入
 	timeGap := int64(defaultTimeGap)         // todo 传入
 	subtaskRows := int64(defaultSubtaskRows) // todo 传入
-	subtaskSQL := genSubtaskDMLSQL(sql, subtaskRows)
+	// todo，改写，根据stmt
+	// todo 对于jobrunner，要区分update和delete，update每次都要更新执行的limit值。
+	table, dmlType, subtaskSQL, err := jc.genSubtaskDMLSQL(sql, relatedSchema, subtaskRows)
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
@@ -199,6 +216,7 @@ func (jc *JobController) SubmitJob(sql string) (*sqltypes.Result, error) {
 		sqltypes.Int64BindVariable(timeGap),
 		sqltypes.Int64BindVariable(subtaskRows),
 		sqltypes.StringBindVariable(subtaskSQL),
+		sqltypes.StringBindVariable(dmlType),
 		sqltypes.StringBindVariable(queuedStatus))
 	if err != nil {
 		return nil, err
@@ -285,14 +303,6 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	return qr, nil
 }
 
-func (jc *JobController) RunJob() error {
-	return nil
-}
-
-func (jc *JobController) QueryJob() error {
-	return nil
-}
-
 func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*sqltypes.Result, error) {
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
@@ -308,9 +318,14 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 }
 
 // todo, 记录错误时的错误怎么处理
-func (jc *JobController) FailJob(ctx context.Context, uuid, message string) {
+func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
 	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus)
+
+	jc.workingTablesMutex.Lock()
+	defer jc.workingTablesMutex.Unlock()
+	delete(jc.workingTables, tableName)
+
 }
 
 // todo newborn 做成接口
@@ -337,9 +352,10 @@ func (jc *JobController) jonScheduler() {
 			uuid := row["job_uuid"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
 			subtaskSQL := row["subtask_sql"].ToString()
+			dmlType := row["dml_type"].ToString()
 			if jc.checkDmlJobRunnable(status, table) {
 				jc.workingTables[table] = true // todo 这里之后改成休眠的方式后要删掉
-				go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, timegap)
+				go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, dmlType, timegap)
 			}
 		}
 
@@ -362,7 +378,7 @@ func (jc *JobController) checkDmlJobRunnable(status, table string) bool {
 	return true
 }
 
-func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL string, timeGap int64) {
+func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL, dmlType string, timeGap int64) {
 
 	jc.jobChansMutex.Lock()
 	jobChan := jc.jobChans[uuid]
@@ -381,30 +397,45 @@ func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL str
 	jc.workingTablesMutex.Unlock()
 	_, err := jc.updateJobStatus(ctx, uuid, runningStatus)
 	if err != nil {
-		jc.FailJob(ctx, uuid, err.Error())
+		jc.FailJob(ctx, uuid, err.Error(), table)
 	}
+
+	offset := int64(0)
 
 	// 在一个无限循环中等待定时器触发
 	for {
 		select {
 		case <-timer.C:
 			// 定时器触发时执行的函数
-			qr, err := jc.execQuery(ctx, relatedSchema, subtaskSQL)
+			var query string
+			if dmlType == "update" {
+				query, err = sqlparser.ParseAndBind(subtaskSQL, sqltypes.Int64BindVariable(offset))
+				if err != nil {
+					jc.FailJob(ctx, uuid, err.Error(), table)
+				}
+			}
+			if dmlType == "delete" {
+				query = subtaskSQL
+			}
+			qr, err := jc.execQuery(ctx, relatedSchema, query)
 			if err != nil {
-				jc.FailJob(ctx, uuid, err.Error())
+				jc.FailJob(ctx, uuid, err.Error(), table)
 				return
 			}
 			if qr.RowsAffected == 0 {
 				_, err = jc.CompleteJob(ctx, uuid, table)
 				if err != nil {
-					jc.FailJob(ctx, uuid, err.Error())
+					jc.FailJob(ctx, uuid, err.Error(), table)
 				}
 				return
 			}
 			err = jc.updateJobAffectedRows(ctx, uuid, int64(qr.RowsAffected))
 			if err != nil {
-				jc.FailJob(ctx, uuid, err.Error())
+				jc.FailJob(ctx, uuid, err.Error(), table)
 				return
+			}
+			if dmlType == "update" {
+				offset += int64(qr.RowsAffected)
 			}
 
 		// 控制暂停
@@ -425,14 +456,103 @@ func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL str
 
 // todo sql类型的判断换成别的方式
 // todo 加行数字段
-func genSubtaskDMLSQL(sql string, subtaskRows int64) string {
-	var subtaskSQL string
-	sqlType := strings.ToLower(strings.Fields(sql)[0])
-	switch sqlType {
-	case "delete":
-		subtaskSQL = sql + fmt.Sprintf(" LIMIT %d", subtaskRows)
+func (jc *JobController) genSubtaskDMLSQL(sql, tableSchema string, subtaskRows int64) (tableName, dmlType string, subTaskSQL string, err error) {
+
+	stmt, _, err := sqlparser.Parse2(sql)
+	if err != nil {
+		return "", "", "", err
 	}
-	return subtaskSQL
+	switch s := stmt.(type) {
+	case *sqlparser.Delete:
+		if s.Limit != nil {
+			return "", "", "", errors.New("the sql already has a LIMIT condition, can't be transferred to a DML job")
+		}
+		s.Limit = &sqlparser.Limit{Rowcount: sqlparser.NewIntLiteral(strconv.FormatInt(subtaskRows, 10))}
+		// todo，目前只支持单表
+		if len(s.TableExprs) > 1 {
+			return "", "", "", errors.New("the delete sql deals multi tables can't be transferred to a DML job")
+		}
+		tableName := sqlparser.String(s.TableExprs)
+		return tableName, "delete", sqlparser.String(s), nil
+	case *sqlparser.Update:
+		// todo，最set中包含有pk的进行过滤
+		// 如何获得一个表的pk/ pks?
+		// update t set c1=v1,c2=v2... where P
+		// update t temp1 join (select PK order by PK limit rows offset off t2) on t1.Pk=t2.Pk set temp1.c1=v1, temp1.c2=v2.. where P
+		// 需要获得表名、set后的投影，where谓词的字符串，然后用字符串拼接的方式完成
+
+		// select statement -> derivedTable -> joinTable
+		// todo，目前只支持单表
+		if len(s.TableExprs) > 1 {
+			return "", "", "", errors.New("the update sql deals multi tables can't be transferred to a DML job")
+		}
+		tableName := sqlparser.String(s.TableExprs)
+		ctx := context.Background()
+		pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
+		if err != nil {
+			return "", "", "", err
+		}
+		// todo ，目前只支持单个PK
+		if len(pkNames) > 1 {
+			return "", "", "", errors.New("the update sql on table with multi Pks can't be transferred to a DML job")
+		}
+		selectStr := "select "
+		firstPK := true
+		for _, pkName := range pkNames {
+			if firstPK {
+				selectStr += pkName
+				firstPK = false
+			} else {
+				selectStr += " ,"
+				selectStr += pkName
+			}
+		}
+		selectStr += fmt.Sprintf(" from %s ", tableName)
+
+		whereStr := sqlparser.String(s.Where)
+		selectStr += whereStr
+
+		firstPK = true
+		selectStr += " order by "
+		for _, pkName := range pkNames {
+			if firstPK {
+				selectStr += pkName
+				firstPK = false
+			} else {
+				selectStr += " ,"
+				selectStr += pkName
+			}
+		}
+
+		selectStr += fmt.Sprintf(" limit %d offset %%a", subtaskRows)
+
+		updateExprStr := sqlparser.String(s.Exprs)
+
+		//colNames, err := jc.getTableColNames(ctx, tableSchema, tableName)
+		//if err != nil {
+		//	return "", "", err
+		//}
+		// whereStr = rewriteWhereStr(whereStr, "dml_job_temp_table222", colNames)
+
+		pkName := pkNames[0]
+
+		subtaskSQL := ""
+		if s.With != nil {
+			subtaskSQL = sqlparser.String(s.With) + " "
+		}
+		subtaskSQL += fmt.Sprintf("UPDATE %s dml_job_temp_table111 JOIN (%s) dml_job_temp_table222 ON dml_job_temp_table111.%s = dml_job_temp_table222.%s SET %s",
+			tableName, selectStr, pkName, pkName, updateExprStr)
+
+		//selectStmt, _, err := sqlparser.Parse2(selectStr)
+		//if err != nil {
+		//	return "", err
+		//}
+		//joinLeftExpr := sqlparser.AliasedTableExpr{Expr:  sqlparser.TableName{Name: sqlparser.IdentifierCS{}}}
+		//sqlparser.JoinTableExpr{Join: sqlparser.NormalJoinType,LeftExpr: }
+		return tableName, "update", subtaskSQL, nil
+
+	}
+	return "", "", "", errors.New("the sql type can't be transferred to a DML job")
 }
 
 // execQuery execute sql by using connect poll,so if targetString is not empty, it will add prefix `use database` first then execute sql.
@@ -558,4 +678,68 @@ func buildVarCharRow(values ...string) []sqltypes.Value {
 		row[i] = sqltypes.NewVarChar(v)
 	}
 	return row
+}
+
+func (jc *JobController) getTablePkName(ctx context.Context, tableSchema, tableName string) ([]string, error) {
+	submitQuery, err := sqlparser.ParseAndBind(sqlGetTablePk,
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(tableName))
+	if err != nil {
+		return nil, err
+	}
+	qr, err := jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return nil, err
+	}
+	var pkNames []string
+	for _, row := range qr.Named().Rows {
+		pkNames = append(pkNames, row["COLUMN_NAME"].ToString())
+	}
+	return pkNames, nil
+}
+
+func (jc *JobController) getTableColNames(ctx context.Context, tableSchema, tableName string) ([]string, error) {
+	submitQuery, err := sqlparser.ParseAndBind(sqlGetTableColNames,
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(tableName))
+	if err != nil {
+		return nil, err
+	}
+	qr, err := jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return nil, err
+	}
+	var colNames []string
+	for _, row := range qr.Named().Rows {
+		colNames = append(colNames, row["COLUMN_NAME"].ToString())
+	}
+	return colNames, nil
+}
+
+func rewriteWhereStr(whereStr, subQueryTableName string, colNames []string) string {
+
+	// 使用正则表达式匹配单词
+	re := regexp.MustCompile(`\b\w+(\.\w+)?\b`)
+	modifiedStr := re.ReplaceAllStringFunc(whereStr, func(match string) string {
+		// 检查匹配的单词是否在 colNames 中或者是否以 'mytable.' 开头
+		parts := strings.Split(match, ".")
+		if len(parts) > 1 {
+			if contains(colNames, parts[1]) {
+				return subQueryTableName + "." + parts[1]
+			}
+		} else if contains(colNames, match) {
+			return subQueryTableName + "." + match
+		}
+		return match
+	})
+	return modifiedStr
+}
+
+func contains(arr []string, str string) bool {
+	for _, v := range arr {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
