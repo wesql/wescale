@@ -203,6 +203,10 @@ type (
 		Open() error
 		Close()
 	}
+	branchController interface {
+		Open() error
+		Close()
+	}
 )
 
 // Init performs the second phase of initialization.
