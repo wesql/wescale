@@ -271,12 +271,8 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 }
 
 func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*BranchJob, error) {
-	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return nil, err
-	}
 	sql := fmt.Sprintf(SelectBranchJobByWorkflow, workflow)
-	result, err := wr.ExecuteFetchAsApp(ctx, alias, true, sql, 1)
+	result, err := wr.ExecuteQueryByPrimary(ctx, sql, false, false)
 	qr := sqltypes.Proto3ToResult(result)
 	if err != nil {
 		return nil, err
@@ -326,7 +322,7 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 		return nil, err
 	}
 	sql := fmt.Sprintf(SelectBranchTableRuleByWorkflow, workflow)
-	result, err := wr.ExecuteFetchAsApp(ctx, alias, true, sql, 1000)
+	result, err := wr.ExecuteFetchAsDba(ctx, alias, sql, 1000, false, false)
 	qr := sqltypes.Proto3ToResult(result)
 	if err != nil {
 		return nil, err
@@ -383,12 +379,12 @@ func removeComments(sql string) (string, error) {
 	return sqlparser.String(stmt), nil
 }
 
-func (wr *Wrangler) ExecuteQueryByPrimary(ctx context.Context, sql string) (*querypb.QueryResult, error) {
+func (wr *Wrangler) ExecuteQueryByPrimary(ctx context.Context, sql string, disableBinlog, reloadSchema bool) (*querypb.QueryResult, error) {
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
 	}
-	return wr.ExecuteFetchAsApp(ctx, alias, false, sql, 10000)
+	return wr.ExecuteFetchAsDba(ctx, alias, sql, 10000, disableBinlog, reloadSchema)
 }
 
 func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
@@ -425,11 +421,7 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 
 func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, error) {
 	sql := fmt.Sprintf("SELECT 1 FROM mysql.vreplication WHERE workflow='%s';", workflow)
-	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return false, err
-	}
-	result, err := wr.ExecuteFetchAsApp(ctx, tabletAliases, true, sql, 1)
+	result, err := wr.ExecuteQueryByPrimary(ctx, sql, false, false)
 	if err != nil {
 		return false, err
 	}
@@ -509,7 +501,7 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, ddl tmut
 		if err != nil {
 			return "", err
 		}
-		qr, err := wr.ExecuteQueryByPrimary(ctx, querySQL)
+		qr, err := wr.ExecuteQueryByPrimary(ctx, querySQL, false, false)
 		if err != nil {
 			return "", err
 		}
