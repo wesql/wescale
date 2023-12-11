@@ -61,6 +61,10 @@ const SelectBranchJobByWorkflow = "select * from mysql.branch_jobs where workflo
 
 const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules where workflow_name = '%s'"
 
+const SelectBranchTableRuleByWorkflowAndTableName = "select * from mysql.branch_table_rules where workflow_name=%a and source_table_name=%a and target_table_name=%a"
+
+const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and source_table_name=%a and target_table_name=%a"
+
 const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
 
 const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules where workflow_name='%s'"
@@ -267,12 +271,8 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 }
 
 func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) (*BranchJob, error) {
-	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return nil, err
-	}
 	sql := fmt.Sprintf(SelectBranchJobByWorkflow, workflow)
-	result, err := wr.ExecuteFetchAsApp(ctx, alias, true, sql, 1)
+	result, err := wr.ExecuteQueryByPrimary(ctx, sql, false, false)
 	qr := sqltypes.Proto3ToResult(result)
 	if err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func GetBranchTableRulesByWorkflow(ctx context.Context, workflow string, wr *Wra
 		return nil, err
 	}
 	sql := fmt.Sprintf(SelectBranchTableRuleByWorkflow, workflow)
-	result, err := wr.ExecuteFetchAsApp(ctx, alias, true, sql, 1000)
+	result, err := wr.ExecuteFetchAsDba(ctx, alias, sql, 1000, false, false)
 	qr := sqltypes.Proto3ToResult(result)
 	if err != nil {
 		return nil, err
@@ -379,6 +379,14 @@ func removeComments(sql string) (string, error) {
 	return sqlparser.String(stmt), nil
 }
 
+func (wr *Wrangler) ExecuteQueryByPrimary(ctx context.Context, sql string, disableBinlog, reloadSchema bool) (*querypb.QueryResult, error) {
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
+	if err != nil {
+		return nil, err
+	}
+	return wr.ExecuteFetchAsDba(ctx, alias, sql, 10000, disableBinlog, reloadSchema)
+}
+
 func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
@@ -413,11 +421,7 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 
 func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, error) {
 	sql := fmt.Sprintf("SELECT 1 FROM mysql.vreplication WHERE workflow='%s';", workflow)
-	tabletAliases, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return false, err
-	}
-	result, err := wr.ExecuteFetchAsApp(ctx, tabletAliases, true, sql, 1)
+	result, err := wr.ExecuteQueryByPrimary(ctx, sql, false, false)
 	if err != nil {
 		return false, err
 	}
@@ -484,6 +488,51 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	wr.Logger().Printf("Start workflow %v successfully", workflow)
 	return nil
 }
+
+func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, ddl tmutils.TableDiffDDL, branchJob *BranchJob) (string, error) {
+	switch ddl.DiffType {
+	case tmutils.ExtraTable:
+		// add element into
+		tableName := ddl.TableName
+		querySQL, err := sqlparser.ParseAndBind(SelectBranchTableRuleByWorkflowAndTableName,
+			sqltypes.StringBindVariable(branchJob.workflowName),
+			sqltypes.StringBindVariable(tableName),
+			sqltypes.StringBindVariable(tableName))
+		if err != nil {
+			return "", err
+		}
+		qr, err := wr.ExecuteQueryByPrimary(ctx, querySQL, false, false)
+		if err != nil {
+			return "", err
+		}
+		var sqlInsertQuery string
+		if len(qr.Rows) != 0 {
+			sqlInsertQuery, err = sqlparser.ParseAndBind(UpdateMergeDDLByWorkFlowAndTableName,
+				sqltypes.StringBindVariable(ddl.Ddl),
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable(tableName),
+			)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			sqlInsertQuery, err = sqlparser.ParseAndBind(InsertTableRulesTemplate,
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable("Merge back new table is not needed."),
+				sqltypes.StringBindVariable("Merge back new table is not needed."),
+				sqltypes.StringBindVariable(ddl.Ddl),
+			)
+			if err != nil {
+				return "", err
+			}
+		}
+		return sqlInsertQuery, nil
+	}
+	return "", fmt.Errorf("unsupport diffType in GenerateUpdateOrInsertNewTable")
+}
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
@@ -530,14 +579,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		case tmutils.ExtraTable:
 			// add element into
 			tableName := ddl.TableName
-			sqlInsertQuery, err := sqlparser.ParseAndBind(InsertTableRulesTemplate,
-				sqltypes.StringBindVariable(branchJob.workflowName),
-				sqltypes.StringBindVariable(tableName),
-				sqltypes.StringBindVariable(tableName),
-				sqltypes.StringBindVariable("Merge back new table is not needed."),
-				sqltypes.StringBindVariable("Merge back new table is not needed."),
-				sqltypes.StringBindVariable(ddl.Ddl),
-			)
+			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, ddl, branchJob)
 			if err != nil {
 				log.Fatalf("Error preparing query: %v", err)
 			}
