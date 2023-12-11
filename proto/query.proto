@@ -1078,7 +1078,6 @@ message DropSchemaResponse {
 
 }
 
-
 message ReloadExecRequest{
   int32 reloadType = 1;
 }
@@ -1086,7 +1085,7 @@ message ReloadExecRequest{
 message ReloadExecResponse{
 }
 
-message DMLJobRequest{
+message SubmitDMLJobRequest{
   string cmd = 1;
   string job_uuid = 2;
   string sql = 3;
@@ -1096,6 +1095,6 @@ message DMLJobRequest{
   bool auto_retry = 8;
   bool postpone_launch = 9;
 }
-message DMLJobResponse {
+message SubmitDMLJobResponse {
   QueryResult result = 1;
 }

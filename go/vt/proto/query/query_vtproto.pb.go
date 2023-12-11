@@ -4677,7 +4677,7 @@ func (m *ReloadExecResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *DMLJobRequest) MarshalVT() (dAtA []byte, err error) {
+func (m *SubmitDMLJobRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -4690,12 +4690,12 @@ func (m *DMLJobRequest) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *DMLJobRequest) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SubmitDMLJobRequest) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *DMLJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SubmitDMLJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -4768,7 +4768,7 @@ func (m *DMLJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *DMLJobResponse) MarshalVT() (dAtA []byte, err error) {
+func (m *SubmitDMLJobResponse) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -4781,12 +4781,12 @@ func (m *DMLJobResponse) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *DMLJobResponse) MarshalToVT(dAtA []byte) (int, error) {
+func (m *SubmitDMLJobResponse) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *DMLJobResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *SubmitDMLJobResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -6627,7 +6627,7 @@ func (m *ReloadExecResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *DMLJobRequest) SizeVT() (n int) {
+func (m *SubmitDMLJobRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -6665,7 +6665,7 @@ func (m *DMLJobRequest) SizeVT() (n int) {
 	return n
 }
 
-func (m *DMLJobResponse) SizeVT() (n int) {
+func (m *SubmitDMLJobResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -18705,7 +18705,7 @@ func (m *ReloadExecResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *DMLJobRequest) UnmarshalVT(dAtA []byte) error {
+func (m *SubmitDMLJobRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -18728,10 +18728,10 @@ func (m *DMLJobRequest) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DMLJobRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: SubmitDMLJobRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DMLJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SubmitDMLJobRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -18962,7 +18962,7 @@ func (m *DMLJobRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *DMLJobResponse) UnmarshalVT(dAtA []byte) error {
+func (m *SubmitDMLJobResponse) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -18985,10 +18985,10 @@ func (m *DMLJobResponse) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: DMLJobResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: SubmitDMLJobResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: DMLJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SubmitDMLJobResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

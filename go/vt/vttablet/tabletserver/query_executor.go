@@ -1161,9 +1161,9 @@ func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
 	uuid := alterDMLJob.UUID
 	switch alterDMLJob.Type {
 	case sqlparser.PauseDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid)
+		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid, "", 0, 0, false, false)
 	case sqlparser.ResumeDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid)
+		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid, "", 0, 0, false, false)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }

@@ -58,7 +58,11 @@ const (
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
 
-	DirectiveDMLCMD = "DML_CMD"
+	DirectiveDMLCMD            = "DML_CMD"
+	DirectiveDMLTimeGap        = "DML_TIME_GAP"
+	DirectiveSubtaskRows       = "DML_SUBTASK_ROWS"
+	DirectiveDMLPostponeLaunch = "DML_POSTPONE_LAUNCH"
+	DirectiveDMLAutoRetry      = "DML_AUTO_RETRY"
 )
 
 func isNonSpace(r rune) bool {
@@ -457,4 +461,54 @@ func GetDMLJobCmd(stmt Statement) string {
 		return ""
 	}
 	return str
+}
+
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, subTaskRows int64, postponeLaunch bool, autoRetry bool) {
+	var comments *ParsedComments
+	switch stmt := stmt.(type) {
+	case *Update:
+		comments = stmt.Comments
+	case *Delete:
+		comments = stmt.Comments
+	}
+	if comments == nil {
+		return timeGapInMs, subTaskRows, postponeLaunch, autoRetry
+	}
+
+	var err error
+	directives := comments.Directives()
+
+	timeGapInMsStr, isSet := directives.GetString(DirectiveDMLTimeGap, "")
+	if isSet {
+		timeGapInMs, err = strconv.ParseInt(timeGapInMsStr, 10, 64)
+		if err != nil {
+			timeGapInMs = 0
+		}
+	}
+
+	subTaskRowsStr, isSet := directives.GetString(DirectiveSubtaskRows, "")
+	if isSet {
+		subTaskRows, err = strconv.ParseInt(subTaskRowsStr, 10, 64)
+		if err != nil {
+			subTaskRows = 0
+		}
+	}
+
+	postponeLaunchStr, isSet := directives.GetString(DirectiveDMLPostponeLaunch, "")
+	if isSet {
+		postponeLaunch, err = strconv.ParseBool(postponeLaunchStr)
+		if err != nil {
+			postponeLaunch = false
+		}
+	}
+
+	autoRetryStr, isSet := directives.GetString(DirectiveDMLAutoRetry, "")
+	if isSet {
+		autoRetry, err = strconv.ParseBool(autoRetryStr)
+		if err != nil {
+			autoRetry = false
+		}
+	}
+
+	return timeGapInMs, subTaskRows, postponeLaunch, autoRetry
 }

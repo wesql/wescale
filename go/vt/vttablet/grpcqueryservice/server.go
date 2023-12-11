@@ -528,9 +528,9 @@ func (q *query) SetFailPoint(ctx context.Context, request *querypb.SetFailPointR
 	return nil, q.server.SetFailPoint(ctx, request.Command, request.Key, request.Value)
 }
 
-func (q *query) HandleDMLJob(ctx context.Context, request *querypb.DMLJobRequest) (*querypb.DMLJobResponse, error) {
-	rst, err := q.server.HandleDMLJob(ctx, request.Cmd, request.Sql, request.JobUuid)
-	return &querypb.DMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
+func (q *query) SubmitDMLJob(ctx context.Context, request *querypb.SubmitDMLJobRequest) (*querypb.SubmitDMLJobResponse, error) {
+	rst, err := q.server.SubmitDMLJob(ctx, request.Cmd, request.Sql, request.JobUuid, request.RelatedSchema, request.Timegap, request.SubtaskRows, request.PostponeLaunch, request.AutoRetry)
+	return &querypb.SubmitDMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
 }
 
 // Register registers the implementation on the provide gRPC Server.

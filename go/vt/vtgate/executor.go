@@ -1556,7 +1556,7 @@ func (e *Executor) SetFailPoint(command string, key string, value string) error 
 	return nil
 }
 
-func (e *Executor) SubmitDMLJob(command, sql, uuid string) (*sqltypes.Result, error) {
+func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	//  todo newborn22, scatterConn or txnConn?
 	//  todo ，这个写法丑陋，要直接拿到primary
@@ -1568,7 +1568,7 @@ func (e *Executor) SubmitDMLJob(command, sql, uuid string) (*sqltypes.Result, er
 			break
 		}
 	}
-	return th.Conn.HandleDMLJob(ctx, command, sql, uuid)
+	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timeGapInMs, subtaskRows, postponeLaunch, autoRetry)
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {

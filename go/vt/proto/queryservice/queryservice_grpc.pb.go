@@ -90,7 +90,7 @@ type QueryClient interface {
 	SetFailPoint(ctx context.Context, in *query.SetFailPointRequest, opts ...grpc.CallOption) (*query.SetFailPointResponse, error)
 	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
 	DropSchema(ctx context.Context, in *query.DropSchemaRequest, opts ...grpc.CallOption) (*query.DropSchemaResponse, error)
-	HandleDMLJob(ctx context.Context, in *query.DMLJobRequest, opts ...grpc.CallOption) (*query.DMLJobResponse, error)
+	SubmitDMLJob(ctx context.Context, in *query.SubmitDMLJobRequest, opts ...grpc.CallOption) (*query.SubmitDMLJobResponse, error)
 }
 
 type queryClient struct {
@@ -610,9 +610,9 @@ func (c *queryClient) DropSchema(ctx context.Context, in *query.DropSchemaReques
 	return out, nil
 }
 
-func (c *queryClient) HandleDMLJob(ctx context.Context, in *query.DMLJobRequest, opts ...grpc.CallOption) (*query.DMLJobResponse, error) {
-	out := new(query.DMLJobResponse)
-	err := c.cc.Invoke(ctx, "/queryservice.Query/HandleDMLJob", in, out, opts...)
+func (c *queryClient) SubmitDMLJob(ctx context.Context, in *query.SubmitDMLJobRequest, opts ...grpc.CallOption) (*query.SubmitDMLJobResponse, error) {
+	out := new(query.SubmitDMLJobResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/SubmitDMLJob", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -689,7 +689,7 @@ type QueryServer interface {
 	SetFailPoint(context.Context, *query.SetFailPointRequest) (*query.SetFailPointResponse, error)
 	// DropSchema drops the schema on the tablet and cleans up the relevant resources such as OnlineDDL and VReplication
 	DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error)
-	HandleDMLJob(context.Context, *query.DMLJobRequest) (*query.DMLJobResponse, error)
+	SubmitDMLJob(context.Context, *query.SubmitDMLJobRequest) (*query.SubmitDMLJobResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -790,8 +790,8 @@ func (UnimplementedQueryServer) SetFailPoint(context.Context, *query.SetFailPoin
 func (UnimplementedQueryServer) DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DropSchema not implemented")
 }
-func (UnimplementedQueryServer) HandleDMLJob(context.Context, *query.DMLJobRequest) (*query.DMLJobResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HandleDMLJob not implemented")
+func (UnimplementedQueryServer) SubmitDMLJob(context.Context, *query.SubmitDMLJobRequest) (*query.SubmitDMLJobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitDMLJob not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -1394,20 +1394,20 @@ func _Query_DropSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Query_HandleDMLJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(query.DMLJobRequest)
+func _Query_SubmitDMLJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.SubmitDMLJobRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(QueryServer).HandleDMLJob(ctx, in)
+		return srv.(QueryServer).SubmitDMLJob(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/queryservice.Query/HandleDMLJob",
+		FullMethod: "/queryservice.Query/SubmitDMLJob",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(QueryServer).HandleDMLJob(ctx, req.(*query.DMLJobRequest))
+		return srv.(QueryServer).SubmitDMLJob(ctx, req.(*query.SubmitDMLJobRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1504,8 +1504,8 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Query_DropSchema_Handler,
 		},
 		{
-			MethodName: "HandleDMLJob",
-			Handler:    _Query_HandleDMLJob_Handler,
+			MethodName: "SubmitDMLJob",
+			Handler:    _Query_SubmitDMLJob_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

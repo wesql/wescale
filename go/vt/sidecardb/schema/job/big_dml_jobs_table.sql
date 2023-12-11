@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `related_table`                     varchar(256)     NOT NULL,
     `timegap_in_ms`             bigint        NOT NULL     ,
     `subtask_rows`              bigint        NOT NULL     ,
-    `subtask_sql`                   varchar(256)     NULL   DEFAULT NULL,
+    `count_total_rows`              bigint        NOT NULL     ,
+    `subtask_sql`                   varchar(2048)     NULL   DEFAULT NULL,
+    `count_total_rows_sql`                   varchar(256)     NULL   DEFAULT NULL,
     `dml_type`                   varchar(256)     NULL   DEFAULT NULL,
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
     PRIMARY KEY (`id`)
