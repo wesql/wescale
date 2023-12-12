@@ -837,6 +837,12 @@ func (builtinFake) call(env *ExpressionEnv, args []EvalResult, result *EvalResul
 			Coercibility: collations.CoerceImplicit,
 			Repertoire:   collations.RepertoireASCII,
 		})
+	case "email":
+		result.setString(gofakeit.Email(), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
 	}
 }
 func (builtinFake) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
@@ -850,7 +856,7 @@ func (builtinFake) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag)
 	}
 	funcName := result.string()
 	switch strings.ToLower(funcName) {
-	case "name", "address", "uuid":
+	case "name", "address", "uuid", "email":
 		return sqltypes.VarChar, flagIntegerCap
 	}
 	throwEvalError(fmt.Errorf("function %v is not support to get type", funcName))

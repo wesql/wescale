@@ -33,7 +33,7 @@ mysql -h127.0.0.1 -P15306 -e 'create table if not exists branch_source.product(
                                   name VARCHAR(255) NOT NULL
                               ) ENGINE=InnoDB;'
 
-sleep 5
+sleep 10
 
 function insert_users() {
     local start=1
