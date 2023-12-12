@@ -197,7 +197,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
-	tsv.dmlJonController = jobcontroller.NewJobController("big_dml_jobs_table", tabletTypeFunc, tsv)
+	tsv.dmlJonController = jobcontroller.NewJobController("big_dml_jobs_table", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
 
 	tsv.sm = &stateManager{
@@ -1498,7 +1498,7 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 // todo newborn22，改名，submitDMLjob
 func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22, 这个地方要进行封装?，变成更通用的
-	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, timeGapInMs, subtaskRows, postponeLaunch, autoRetry)
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", nil, timeGapInMs, subtaskRows, postponeLaunch, autoRetry)
 }
 
 // execRequest performs verifications, sets up the necessary environments

@@ -31,5 +31,7 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `count_total_rows_sql`                   varchar(256)     NULL   DEFAULT NULL,
     `dml_type`                   varchar(256)     NULL   DEFAULT NULL,
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
+    `throttle_ratio`        double NULL DEFAULT NULL,
+    `throttle_expire_time` varchar(256)     NULL   DEFAULT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
