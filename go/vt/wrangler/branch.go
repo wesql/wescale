@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 
+	"vitess.io/vitess/go/vt/schemadiff"
 	"vitess.io/vitess/go/vt/sidecardb"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -64,6 +65,8 @@ const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules 
 const SelectBranchTableRuleByWorkflowAndTableName = "select * from mysql.branch_table_rules where workflow_name=%a and source_table_name=%a and target_table_name=%a"
 
 const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and source_table_name=%a and target_table_name=%a"
+
+const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS %a"
 
 const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
 
@@ -488,12 +491,48 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	wr.Logger().Printf("Start workflow %v successfully", workflow)
 	return nil
 }
+func analyzeDiffSchema(source *tabletmanagerdatapb.SchemaDefinition, target *tabletmanagerdatapb.SchemaDefinition) ([]schemadiff.EntityDiff, error) {
+	var sourceQueries []string
+	var targetQueries []string
+	for _, table := range source.TableDefinitions {
+		sourceQueries = append(sourceQueries, table.Schema)
+	}
+	for _, table := range target.TableDefinitions {
+		targetQueries = append(targetQueries, table.Schema)
+	}
+	sourceSchema, err := schemadiff.NewSchemaFromQueries(sourceQueries)
+	if err != nil {
+		return nil, err
+	}
+	targetSchema, err := schemadiff.NewSchemaFromQueries(targetQueries)
+	if err != nil {
+		return nil, err
+	}
 
-func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, ddl tmutils.TableDiffDDL, branchJob *BranchJob) (string, error) {
-	switch ddl.DiffType {
-	case tmutils.ExtraTable:
+	hint := schemadiff.DiffHints{}
+	diffEntries, err := sourceSchema.Diff(targetSchema, &hint)
+	if err != nil {
+		return nil, err
+	}
+	newTartgetSchema, err := sourceSchema.Apply(diffEntries)
+	if err != nil {
+		return nil, err
+	}
+	if targetSchema.ToSQL() != newTartgetSchema.ToSQL() {
+		return nil, fmt.Errorf("analyze diff error")
+	}
+	return diffEntries, nil
+}
+func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntry schemadiff.EntityDiff, branchJob *BranchJob) (string, error) {
+	switch entry := diffEntry.Statement().(type) {
+	case *sqlparser.CreateTable, *sqlparser.CreateView:
 		// add element into
-		tableName := ddl.TableName
+		var tableName string
+		if createTableStmt, ok := entry.(*sqlparser.CreateTable); ok {
+			tableName = createTableStmt.Table.Name.String()
+		} else if createTableStmt, ok := entry.(*sqlparser.CreateView); ok {
+			tableName = createTableStmt.ViewName.Name.String()
+		}
 		querySQL, err := sqlparser.ParseAndBind(SelectBranchTableRuleByWorkflowAndTableName,
 			sqltypes.StringBindVariable(branchJob.workflowName),
 			sqltypes.StringBindVariable(tableName),
@@ -508,7 +547,7 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, ddl tmut
 		var sqlInsertQuery string
 		if len(qr.Rows) != 0 {
 			sqlInsertQuery, err = sqlparser.ParseAndBind(UpdateMergeDDLByWorkFlowAndTableName,
-				sqltypes.StringBindVariable(ddl.Ddl),
+				sqltypes.StringBindVariable(diffEntry.CanonicalStatementString()),
 				sqltypes.StringBindVariable(branchJob.workflowName),
 				sqltypes.StringBindVariable(tableName),
 				sqltypes.StringBindVariable(tableName),
@@ -523,13 +562,60 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, ddl tmut
 				sqltypes.StringBindVariable(tableName),
 				sqltypes.StringBindVariable("Merge back new table is not needed."),
 				sqltypes.StringBindVariable("Merge back new table is not needed."),
-				sqltypes.StringBindVariable(ddl.Ddl),
+				sqltypes.StringBindVariable(diffEntry.CanonicalStatementString()),
 			)
 			if err != nil {
 				return "", err
 			}
 		}
 		return sqlInsertQuery, nil
+	case *sqlparser.DropTable:
+		sqlBuf := strings.Builder{}
+		for _, table := range entry.FromTables {
+			tableName := table.Name.String()
+			querySQL, err := sqlparser.ParseAndBind(SelectBranchTableRuleByWorkflowAndTableName,
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(tableName),
+				sqltypes.StringBindVariable(tableName))
+			if err != nil {
+				return "", err
+			}
+			qr, err := wr.ExecuteQueryByPrimary(ctx, querySQL, false, false)
+			if err != nil {
+				return "", err
+			}
+			var sqlInsertQuery string
+			dropQuery, err := sqlparser.ParseAndBind(DropTableAndDropViewTemplate,
+				sqltypes.StringBindVariable(tableName))
+			if err != nil {
+				return "", err
+			}
+			if len(qr.Rows) != 0 {
+				sqlInsertQuery, err = sqlparser.ParseAndBind(UpdateMergeDDLByWorkFlowAndTableName,
+					sqltypes.StringBindVariable(dropQuery),
+					sqltypes.StringBindVariable(branchJob.workflowName),
+					sqltypes.StringBindVariable(tableName),
+					sqltypes.StringBindVariable(tableName),
+				)
+				if err != nil {
+					return "", err
+				}
+			} else {
+				sqlInsertQuery, err = sqlparser.ParseAndBind(InsertTableRulesTemplate,
+					sqltypes.StringBindVariable(branchJob.workflowName),
+					sqltypes.StringBindVariable(tableName),
+					sqltypes.StringBindVariable(tableName),
+					sqltypes.StringBindVariable("Merge back new table is not needed."),
+					sqltypes.StringBindVariable("Merge back new table is not needed."),
+					sqltypes.StringBindVariable(dropQuery),
+				)
+				if err != nil {
+					return "", err
+				}
+			}
+			sqlBuf.WriteString(sqlInsertQuery + ";")
+		}
+		return sqlBuf.String(), nil
 	}
 	return "", fmt.Errorf("unsupport diffType in GenerateUpdateOrInsertNewTable")
 }
@@ -552,12 +638,9 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 		DbName:          branchJob.sourceDatabase,
 	}
 	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		//Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.targetDatabase,
 	}
-	er := concurrency.AllErrorRecorder{}
-
 	// analyze Schema diff between sourceDatabase and targetDatabase
 	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
 	if err != nil {
@@ -567,37 +650,76 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 	if err != nil {
 		return err
 	}
-	record := tmutils.DiffSchema(targetDatabaseReqeust.DbName, targetSchema, sourceDatabaseReqeust.DbName, sourceSchema, &er)
-	ddls, err := tmutils.AnalyzeDiffRecord(record, sourceDatabaseReqeust.DbName, targetDatabaseReqeust.DbName, sourceSchema, targetSchema)
+	diffEntries, err := analyzeDiffSchema(sourceSchema, targetSchema)
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
 	sqlBuf := strings.Builder{}
 	logBuf := strings.Builder{}
-	for _, ddl := range ddls {
-		switch ddl.DiffType {
-		case tmutils.ExtraTable:
+	for _, entry := range diffEntries {
+		switch entryStatement := entry.Statement().(type) {
+		case *sqlparser.CreateTable:
 			// add element into
-			tableName := ddl.TableName
-			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, ddl, branchJob)
+			tableName := entryStatement.Table.Name.String()
+			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, entry, branchJob)
 			if err != nil {
-				log.Fatalf("Error preparing query: %v", err)
+				return fmt.Errorf("error preparing query: %v", err)
 			}
 			sqlBuf.WriteString(sqlInsertQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("extratable: %v ddl: %v\n", tableName, ddl.Ddl))
-		case tmutils.TableSchemaDiff, tmutils.TableTypeDiff:
+			logBuf.WriteString(fmt.Sprintf("extratable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+		case *sqlparser.CreateView:
+			tableName := entryStatement.ViewName.Name.String()
+			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, entry, branchJob)
+			if err != nil {
+				return fmt.Errorf("error preparing query: %v", err)
+			}
+			sqlBuf.WriteString(sqlInsertQuery)
+			sqlBuf.WriteString("\n")
+			logBuf.WriteString(fmt.Sprintf("extratable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+		case *sqlparser.AlterTable:
+			tableName := entryStatement.Table.Name.String()
+			sql := entry.CanonicalStatementString()
 			sqlUpdateQuery, err := sqlparser.ParseAndBind(UpdateMergeDDLTemplate,
-				sqltypes.StringBindVariable(ddl.Ddl),
+				sqltypes.StringBindVariable(sql),
 				sqltypes.StringBindVariable(branchJob.workflowName),
-				sqltypes.StringBindVariable(ddl.TableName),
+				sqltypes.StringBindVariable(tableName),
 			)
 			if err != nil {
-				log.Fatalf("Error preparing query: %v", err)
+				return fmt.Errorf("error preparing query: %v", err)
 			}
 			sqlBuf.WriteString(sqlUpdateQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("table: %v ddl: %v\n", ddl.TableName, ddl.Ddl))
+			logBuf.WriteString(fmt.Sprintf("table: %v entry: %v\n", tableName, sql))
+		case *sqlparser.AlterView:
+			ViewName := entryStatement.ViewName.Name.String()
+			sql := entry.CanonicalStatementString()
+			sqlUpdateQuery, err := sqlparser.ParseAndBind(UpdateMergeDDLTemplate,
+				sqltypes.StringBindVariable(sql),
+				sqltypes.StringBindVariable(branchJob.workflowName),
+				sqltypes.StringBindVariable(ViewName),
+			)
+			if err != nil {
+				return fmt.Errorf("error preparing query: %v", err)
+			}
+			sqlBuf.WriteString(sqlUpdateQuery)
+			sqlBuf.WriteString("\n")
+			logBuf.WriteString(fmt.Sprintf("table: %v entry: %v\n", ViewName, sql))
+		case *sqlparser.DropTable:
+			tableName := entryStatement.FromTables[0].Name
+			entryStatement.IfExists = true
+			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, entry, branchJob)
+			if err != nil {
+				return fmt.Errorf("error preparing query: %v", err)
+			}
+			sqlBuf.WriteString(sqlInsertQuery)
+			sqlBuf.WriteString("\n")
+			logBuf.WriteString(fmt.Sprintf("dropTable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+		default:
+			return fmt.Errorf("unsupport diff entry %v", entry)
 		}
 	}
 	alias, err = wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
