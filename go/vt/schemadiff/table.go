@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1634,7 +1639,7 @@ func (c *CreateTableEntity) Drop() EntityDiff {
 	return &DropTableEntityDiff{from: c, dropTable: dropTable}
 }
 
-func sortAlterOptions(diff *AlterTableEntityDiff) {
+func SortAlterOptions(diff *AlterTableEntityDiff) {
 	optionOrder := func(opt sqlparser.AlterOption) int {
 		switch opt.(type) {
 		case *sqlparser.DropKey:
@@ -1666,7 +1671,7 @@ func sortAlterOptions(diff *AlterTableEntityDiff) {
 // apply attempts to apply an ALTER TABLE diff onto this entity's table definition.
 // supported modifications are only those created by schemadiff's Diff() function.
 func (c *CreateTableEntity) apply(diff *AlterTableEntityDiff) error {
-	sortAlterOptions(diff)
+	SortAlterOptions(diff)
 	// Apply partitioning changes:
 	if spec := diff.alterTable.PartitionSpec; spec != nil {
 		switch {
