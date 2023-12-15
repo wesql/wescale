@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,6 +128,85 @@ func (vtctlclient *VtctlClientProcess) ApplyRoutingRules(JSON string) (err error
 // ApplyRoutingRules does it
 func (vtctlclient *VtctlClientProcess) ApplyShardRoutingRules(JSON string) (err error) {
 	return vtctlclient.ExecuteCommand("ApplyShardRoutingRules", "--", "--rules", JSON)
+}
+
+func (vtctlclient *VtctlClientProcess) PrepareBranch(workflow, sourceDatabase, targetDatabase, cell, tabletTypes, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool) (string, error) {
+	args := []string{"Branch", "--"}
+
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	if sourceDatabase != "" {
+		args = append(args, "--source_database", sourceDatabase)
+	}
+	if targetDatabase != "" {
+		args = append(args, "--target_database", targetDatabase)
+	}
+	if cell != "" {
+		args = append(args, "--cell", cell)
+	}
+	if tabletTypes != "" {
+		args = append(args, "--tabletTypes", tabletTypes)
+	}
+	if includeTables != "" {
+		args = append(args, "--include_tables", includeTables)
+	}
+	if excludeTables != "" {
+		args = append(args, "--exclude_tables", excludeTables)
+	}
+	if stopAfterCopy {
+		args = append(args, "--stop_after_copy")
+	}
+	if defaultFilterRules != "" {
+		args = append(args, "--default_filter_rules", fmt.Sprintf("\"%v\"", defaultFilterRules))
+	}
+	if !skipCopyPhase {
+		args = append(args, "--skip_copy_phase=false")
+	}
+	args = append(args, "Prepare")
+
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+
+func (vtctlclient *VtctlClientProcess) StartBranch(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "Start")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+func (vtctlclient *VtctlClientProcess) StopBranch(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "Stop")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+func (vtctlclient *VtctlClientProcess) BranchPrepareMergeBack(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "PrepareMergeBack")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+func (vtctlclient *VtctlClientProcess) BranchStartMergeBack(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "StartMergeBack")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+func (vtctlclient *VtctlClientProcess) Cleanupbranch(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "Cleanup")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
 }
 
 // OnlineDDLShowRecent responds with recent schema migration list
