@@ -74,8 +74,8 @@ After this, when you enter WSL again, you will log in as the regular user. You w
 ## **Pull Source Code**
 
 ```Shell
-git clone https://github.com/apecloud/WeSQL WeScale.git
-cd WeSQL WeScale
+git clone https://github.com/wesql/wescale.git
+cd wescale
 ```
 
 ## **Build**
