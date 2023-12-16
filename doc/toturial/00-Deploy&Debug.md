@@ -97,7 +97,7 @@ export PATH={WeSQL WeScale-project-root-path}/bin:$PATH
 
 # **Deploy** **&** **Debug**
 
-You can deploy a WeSQL WeScale cluster locally by using the scripts in `WeSQL WeScale/examples/mysql` folder
+You can deploy a WeSQL WeScale cluster locally by using the scripts in `wescale/examples/mysql` folder
 
 ## **Deploy**
 
