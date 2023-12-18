@@ -210,6 +210,6 @@ func TestGeneratorWithoutPattern(t *testing.T) {
 	builtinFake{}.call(env, args, result)
 
 	if string(result.bytes_) != errorStr {
-		t.Errorf("Expected no output for missing pattern, but got: %s", string(result.bytes_))
+		t.Errorf("Expected no output for missing pattern, but got output: %s", string(result.bytes_))
 	}
 }
