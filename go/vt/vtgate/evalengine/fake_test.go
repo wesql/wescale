@@ -25,7 +25,7 @@ func TestDateFunctionWithNoFormat(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	// Check if the result is a valid date in the expected format
 	s := string(result.bytes_)
@@ -54,7 +54,7 @@ func TestDateFunctionWithCustomFormat(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	s := string(result.bytes_)
 	match, err := regexp.MatchString(`^[A-Za-z]+ \d{1,2}, \d{4}$`, s)
@@ -76,7 +76,7 @@ func TestDateFunctionWithInvalidFormat(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	// 假设错误情况下返回空字符串或特定错误信息
 	if string(result.bytes_) != invalidPattern {
@@ -96,7 +96,7 @@ func TestGeneratorWithNamePattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^[A-Za-z]+ [A-Za-z]+$`, string(result.bytes_))
 	if err != nil {
@@ -118,7 +118,7 @@ func TestGeneratorWithBSPattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^.+ .+$`, string(result.bytes_))
@@ -141,7 +141,7 @@ func TestGeneratorWithAddressPattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 
 	match, err := regexp.MatchString(`^.+ .+, .+$`, string(result.bytes_))
@@ -163,7 +163,7 @@ func TestGeneratorWithNumberAndCharPattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	match, err := regexp.MatchString(`^\d{3}-[A-Za-z]{3}$`, string(result.bytes_))
 	if err != nil {
@@ -186,7 +186,7 @@ func TestGeneratorWithMixedDataPattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^.+ - .+: \d+$`, string(result.bytes_))
 	if err != nil {
@@ -207,7 +207,7 @@ func TestGeneratorWithoutPattern(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	if string(result.bytes_) != errorStr {
 		t.Errorf("Expected no output for missing pattern, but got output: %s", string(result.bytes_))

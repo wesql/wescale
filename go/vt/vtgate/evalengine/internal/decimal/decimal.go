@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 Copyright (c) 2015 Spring, Inc.
 Copyright (c) 2013 Oguz Bilgic
@@ -25,6 +30,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"math/rand"
 	"strconv"
 )
 
@@ -132,6 +138,31 @@ type Decimal struct {
 	// could make exp a *big.Int but it would hurt performance and numbers
 	// like that are unrealistic.
 	exp int32
+}
+
+// randomDecimal generates a random Decimal value with specified precision and scale.
+// `precision` is the total number of digits, `scale` is the number of digits after the decimal point.
+func RandomDecimal(precision int32, scale int32) Decimal {
+	// Ensure the scale is not greater than the precision
+	if scale > precision {
+		scale = precision
+	}
+
+	// Calculate the range for the integer part
+	integerDigits := precision - scale
+	maxIntegerValue := pow10bigtab[integerDigits]
+	floatIntegerValue := pow10bigtab[scale]
+
+	// Generate a random integer within the maxIntegerValue
+	integerPart := rand.Int63n(maxIntegerValue.Int64() + 1)
+
+	// Generate a random integer within the floatIntegerValue
+	floatPart := rand.Int63n(floatIntegerValue.Int64() + 1)
+
+	// Adjust the value based on the scale
+	adjustedValue := integerPart*pow10bigtab[scale].Int64() + floatPart
+
+	return New(adjustedValue, -scale)
 }
 
 // New returns a new fixed-point decimal, value * 10 ^ exp.
