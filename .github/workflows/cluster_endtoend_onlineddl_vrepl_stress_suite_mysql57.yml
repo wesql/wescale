@@ -2,7 +2,7 @@
 
 name: Cluster (onlineddl_vrepl_stress_suite) mysql57
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:
