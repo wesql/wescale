@@ -56,7 +56,7 @@ var builtinFunctions = map[string]builtin{
 	"ascii":            builtinASCII{},
 	"repeat":           builtinRepeat{},
 	"rand":             builtinRand{},
-	"fake":             builtinFake{},
+	"gofakeit":         builtinFake{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{
