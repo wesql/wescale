@@ -91,6 +91,15 @@
 			"RetryMax": 1,
 			"Tags": []
 		},
+		"wesql_branch": {
+			"File": "unused.go",
+			"Args": ["vitess.io/vitess/go/test/endtoend/branch", "-timeout", "30m"],
+			"Command": [],
+			"Manual": false,
+			"Shard": "branch",
+			"RetryMax": 1,
+			"Tags": []
+		},
 		"wesql_auth": {
 			"File": "unused.go",
 			"Args": ["vitess.io/vitess/go/test/endtoend/wesql/auth", "-timeout", "30m"],

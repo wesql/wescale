@@ -27,9 +27,6 @@ import (
 	"math"
 	"math/bits"
 	"math/rand"
-	"strings"
-
-	"github.com/brianvoe/gofakeit/v6"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -806,53 +803,4 @@ func (builtinRand) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag)
 	} else {
 		return sqltypes.Float64, f
 	}
-}
-
-type builtinFake struct{}
-
-func (builtinFake) call(env *ExpressionEnv, args []EvalResult, result *EvalResult) {
-	if len(args) < 1 {
-		throwArgError("not found function param")
-	}
-	if !sqltypes.IsText(args[0].typeof()) {
-		throwArgError("first param type is invalid type")
-	}
-	funcName := args[0].string()
-	switch strings.ToLower(funcName) {
-	case "name":
-		result.setString(gofakeit.Name(), collations.TypedCollation{
-			Collation:    collations.CollationUtf8ID,
-			Coercibility: collations.CoerceImplicit,
-			Repertoire:   collations.RepertoireASCII,
-		})
-	case "address":
-		result.setString(gofakeit.Address().Address, collations.TypedCollation{
-			Collation:    collations.CollationUtf8ID,
-			Coercibility: collations.CoerceImplicit,
-			Repertoire:   collations.RepertoireASCII,
-		})
-	case "uuid":
-		result.setString(gofakeit.UUID(), collations.TypedCollation{
-			Collation:    collations.CollationUtf8ID,
-			Coercibility: collations.CoerceImplicit,
-			Repertoire:   collations.RepertoireASCII,
-		})
-	}
-}
-func (builtinFake) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
-	if len(args) < 1 {
-		throwArgError("not found function param")
-	}
-	result := EvalResult{}
-	args[0].eval(env, &result)
-	if !sqltypes.IsText(result.typeof()) {
-		throwArgError("first param type is not string")
-	}
-	funcName := result.string()
-	switch strings.ToLower(funcName) {
-	case "name", "address", "uuid":
-		return sqltypes.VarChar, flagIntegerCap
-	}
-	throwEvalError(fmt.Errorf("function %v is not support to get type", funcName))
-	return sqltypes.VarChar, flagIntegerCap
 }
