@@ -815,7 +815,7 @@ func (builtinFake) call(env *ExpressionEnv, args []EvalResult, result *EvalResul
 		throwArgError("not found function param")
 	}
 	if !sqltypes.IsText(args[0].typeof()) {
-		throwArgError("first param type is not string")
+		throwArgError("first param type is invalid type")
 	}
 	funcName := args[0].string()
 	switch strings.ToLower(funcName) {
