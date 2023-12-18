@@ -43,3 +43,7 @@ go/vt/sqlparser/cached_size.go
 go/vt/vtgate/engine/cached_size.go
 go/vt/vttablet/tabletserver/cached_size.go
 go/vt/vttablet/tabletserver/planbuilder/cached_size.go
+
+docker/*
+docker/bootstrap/*
+docker/lite/Dockerfile.*
