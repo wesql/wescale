@@ -93,7 +93,7 @@ jobs:
 
         {{if (eq .Platform "mysql57")}}
         # Get key to latest MySQL repo
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A8D3785C
 
         # mysql57
         wget -c https://dev.mysql.com/get/mysql-apt-config_0.8.24-1_all.deb
@@ -109,7 +109,7 @@ jobs:
 
         {{if (eq .Platform "mysql80")}}
         # Get key to latest MySQL repo
-        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 467B942D3A79BD29
+        sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys A8D3785C
 
         # mysql80
         wget -c https://dev.mysql.com/get/mysql-apt-config_0.8.24-1_all.deb
