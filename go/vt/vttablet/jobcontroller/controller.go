@@ -59,6 +59,7 @@ const (
 const (
 	defaultTimeGap     = 1000 // 1000ms
 	defaultSubtaskRows = 100
+	defaultThreshold   = 3000 // todo，通过函数来计算出threshold并传入runner中，要依据索引的个数
 )
 
 const (
@@ -80,13 +81,10 @@ const (
                                       dml_sql,
                                       related_schema,
                                       related_table,
+                                      job_batch_table,
                                       timegap_in_ms,
                                       subtask_rows,
-                                      count_total_rows,
-                                      subtask_sql,
-                                      count_total_rows_sql,
-                                      dml_type,
-                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -248,18 +246,20 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 		timeGapInMs = int64(defaultTimeGap)
 	}
 	if subtaskRows == 0 {
-		subtaskRows = int64(defaultSubtaskRows) // todo 传入
-	}
-	table, dmlType, subtaskSQL, countTotalRowsSQL, err := jc.genSubtaskDMLSQL(sql, tableSchema, subtaskRows)
-	if err != nil {
-		return &sqltypes.Result{}, err
+		subtaskRows = int64(defaultSubtaskRows)
 	}
 
-	qr, err := jc.execQuery(ctx, tableSchema, countTotalRowsSQL)
+	// todo，修改后的代码
+	selectSQL, countSQLTemplate, tableName, err := jc.genSelectBatchKeySQL(sql, tableSchema)
+	if err != nil {
+		return nil, err
+	}
+	pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	countTotalRows, err := qr.Named().Rows[0].ToInt64("count(*)")
+	// todo，处理返回值
+	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, pkNames, subtaskRows)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -273,13 +273,10 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 		sqltypes.StringBindVariable(jobUUID),
 		sqltypes.StringBindVariable(sql),
 		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(table),
+		sqltypes.StringBindVariable(tableName),
+		sqltypes.StringBindVariable(jobBatchTable),
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(subtaskRows),
-		sqltypes.Int64BindVariable(countTotalRows),
-		sqltypes.StringBindVariable(subtaskSQL),
-		sqltypes.StringBindVariable(countTotalRowsSQL),
-		sqltypes.StringBindVariable(dmlType),
 		sqltypes.StringBindVariable(jobStatus))
 	if err != nil {
 		return nil, err
@@ -289,15 +286,16 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	return jc.buildJobSubmitResult(jobUUID, subtaskSQL, timeGapInMs, subtaskRows, countTotalRows, postponeLaunch, autoRetry), nil
+	// todo 增加 recursive-split，递归拆分batch的选项
+	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, subtaskRows, postponeLaunch, autoRetry), nil
 }
 
-func (jc *JobController) buildJobSubmitResult(jobUUID, subtaskSQL string, timeGap, subtaskRows, countTotalRows int64, postponeLaunch, autoRetry bool) *sqltypes.Result {
+func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch, autoRetry bool) *sqltypes.Result {
 	var rows []sqltypes.Row
-	row := buildVarCharRow(jobUUID, strconv.FormatInt(timeGap, 10), strconv.FormatInt(countTotalRows, 10), strconv.FormatInt(subtaskRows, 10), subtaskSQL, strconv.FormatBool(autoRetry), strconv.FormatBool(postponeLaunch))
+	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), strconv.FormatBool(autoRetry), strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "time_gap_in_ms", "count_total_rows", "subtask_rows", "subtask_sql", "auto_retry", "postpone_launch"),
+		Fields:       buildVarCharFields("job_uuid", "job_batch_table", "time_gap_in_ms", "subtask_rows", "auto_retry", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -577,15 +575,17 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 			schema := row["related_schema"].ToString()
 			table := row["related_table"].ToString()
 			uuid := row["job_uuid"].ToString()
+			jobBatchTable := row["job_batch_table"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
-			subtaskSQL := row["subtask_sql"].ToString()
-			dmlType := row["dml_type"].ToString()
-			countTotalRows, _ := row["count_total_rows"].ToInt64()
-			subtaskRows, _ := row["subtask_rows"].ToInt64()
+			//subtaskSQL := row["subtask_sql"].ToString()
+			//dmlType := row["dml_type"].ToString()
+			//countTotalRows, _ := row["count_total_rows"].ToInt64()
+			//subtaskRows, _ := row["subtask_rows"].ToInt64()
 			if jc.checkDmlJobRunnable(status, table) {
 				// todo 这里之后改成休眠的方式后要删掉， 由于外面拿锁，必须在这里就加上，不然后面的循环可能：已经启动go runner的但是还未加入到working table,导致多个表的同时启动
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, dmlType, timegap, countTotalRows, 0, subtaskRows, true)
+				// go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, dmlType, timegap, countTotalRows, 0, subtaskRows, true)
+				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap)
 			}
 		}
 
@@ -699,6 +699,214 @@ func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL, dm
 		}
 	}
 
+}
+
+const (
+	getDealingBatchIDSQL    = `select dealing_batch_id from mysql.big_dml_jobs_table where job_uuid = %a`
+	updateDealingBatchIDSQL = `update mysql.big_dml_jobs_table set dealing_batch_id = %a where job_uuid = %a`
+	getBatchSQLsByID        = `select batch_sql,batch_count_sql from %s where batch_id = %%a`
+	getMaxBatchID           = `select max(batch_id) as max_batch_id from %s`
+)
+
+func (jc *JobController) getDealingBatchID(ctx context.Context, uuid string) (float64, error) {
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+
+	submitQuery, err := sqlparser.ParseAndBind(getDealingBatchIDSQL,
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return 0, err
+	}
+	qr, err := jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return 0, errors.New("the len of query result of batch ID is not one")
+	}
+	return qr.Named().Rows[0].ToFloat64("dealing_batch_id")
+}
+
+func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID float64) error {
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+
+	submitQuery, err := sqlparser.ParseAndBind(updateDealingBatchIDSQL,
+		sqltypes.Float64BindVariable(batchID),
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return err
+	}
+	_, err = jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// todo to confirm，对于同一个job的batch表只有一个线程在访问，因此不用加锁
+func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID float64, batchTableName, tableSchema string) (batchSQL, batchCountSQL string, err error) {
+	getBatchSQLWithTableName := fmt.Sprintf(getBatchSQLsByID, batchTableName)
+	query, err := sqlparser.ParseAndBind(getBatchSQLWithTableName,
+		sqltypes.Float64BindVariable(batchID))
+	if err != nil {
+		return "", "", err
+	}
+	qr, err := jc.execQuery(ctx, tableSchema, query)
+	if err != nil {
+		return "", "", err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return "", "", errors.New("the len of qr of getting batch sql by ID is not 1")
+	}
+	batchSQL, _ = qr.Named().Rows[0].ToString("batch_sql")
+	batchCountSQL, _ = qr.Named().Rows[0].ToString("batch_count_sql")
+	return batchSQL, batchCountSQL, nil
+}
+
+func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tableSchema string) (float64, error) {
+	getMaxBatchIDWithTableName := fmt.Sprintf(getMaxBatchID, batchTableName)
+	qr, err := jc.execQuery(ctx, tableSchema, getMaxBatchIDWithTableName)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return 0, errors.New("the len of qr of getting batch sql by ID is not 1")
+	}
+	return qr.Named().Rows[0].ToFloat64("max_batch_id")
+}
+
+func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, batchSQL, batchCountSQL, uuid string, threshold int64, batchID float64) (nextBatchID float64, err error) {
+	defer jc.env.LogError()
+
+	var setting pools.Setting
+	if tableSchema != "" {
+		setting.SetWithoutDBName(false)
+		setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+	}
+	conn, err := jc.pool.Get(ctx, &setting)
+	defer conn.Recycle()
+	if err != nil {
+		return 0, err
+	}
+
+	// 1.开启事务
+	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+
+	// 2.查询batch sql预计影响的行数，如果超过阈值，则生成新的batch ID
+	batchCountSQL += " FOR SHARE"
+	qr, err := conn.Exec(ctx, batchCountSQL, math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return 0, errors.New("the len of qr of count expected batch size is not 1")
+	}
+	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
+	if expectedRow > threshold {
+		// todo，递归生成新的batch
+		fmt.Printf("expectedRow > threshold")
+	}
+
+	// 3.执行batch sql
+	_, err = conn.Exec(ctx, batchSQL, math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+
+	// 4.更新正在处理的batch ID
+	nextBatchID = batchID + 1 // todo，考虑生成新batch的情况，如何正确地获得下一个batch ID？
+	err = jc.updateDealingBatchID(ctx, uuid, nextBatchID)
+	if err != nil {
+		return 0, err
+	}
+
+	// 5.提交事务
+	_, err = conn.Exec(ctx, "commit", math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+	return nextBatchID, nil
+}
+
+func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap int64) {
+
+	// timeGap 单位ms，duration输入ns，应该乘上1000000
+	timer := time.NewTicker(time.Duration(timeGap * 1e6))
+	defer timer.Stop()
+
+	var err error
+	ctx := context.Background()
+
+	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	if err != nil {
+		return
+	}
+
+	if status != runningStatus {
+		_, err = jc.updateJobStatus(ctx, uuid, runningStatus)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+		err = jc.updateDealingBatchID(ctx, uuid, 1)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+	}
+	currentBatchID, err := jc.getDealingBatchID(ctx, uuid)
+	if err != nil {
+		jc.FailJob(ctx, uuid, err.Error(), table)
+		return
+	}
+	// todo，当动态生成batch时，如何更新max?
+	maxBatchID, err := jc.getMaxBatchID(ctx, batchTable, relatedSchema)
+	if err != nil {
+		jc.FailJob(ctx, uuid, err.Error(), table)
+		return
+	}
+
+	// 在一个无限循环中等待定时器触发
+	for range timer.C {
+		// 定时器触发时执行的函数
+		status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+		// maybe paused / canceled
+		if status != runningStatus {
+			return
+		}
+
+		// 先请求throttle，若被throttle阻塞，则等待下一次timer事件
+		if !jc.requestThrottle(uuid) {
+			continue
+		}
+
+		batchSQL, batchCountSQL, err := jc.getBatchSQLsByID(ctx, currentBatchID, batchTable, relatedSchema)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+
+		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, batchSQL, batchCountSQL, uuid, defaultThreshold, currentBatchID)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+		if currentBatchID > maxBatchID {
+			_, err = jc.CompleteJob(ctx, uuid, table)
+			if err != nil {
+				jc.FailJob(ctx, uuid, err.Error(), table)
+				return
+			}
+		}
+	}
 }
 
 // 注意在外面拿锁
@@ -1149,4 +1357,170 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 
 		time.Sleep(healthCheckTimeGap)
 	}
+}
+
+// 目前只支持
+// 1.PK作为拆分列,支持多列PK todo 支持UK或其他列
+// 2.目前只支持单表，且没有join
+func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQL, countSQLTemplate, tableName string, err error) {
+	// SELECT `id` FROM `test`.`t` WHERE (`v` < 6) ORDER BY IF(ISNULL(`id`),0,1),`id`， 由于是PK，因此不需要判断ISNULL
+	stmt, _, err := sqlparser.Parse2(sql)
+	if err != nil {
+		return "", "", "", err
+	}
+	wherePart := ""
+	switch s := stmt.(type) {
+	case *sqlparser.Delete:
+		if len(s.TableExprs) != 1 {
+			return "", "", "", errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		// 目前暂不支持join和多表 todo
+		if !ok {
+			return "", "", "", errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+		wherePart = sqlparser.String(s.Where)
+	case *sqlparser.Update:
+		if len(s.TableExprs) != 1 {
+			return "", "", "", errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		// 目前暂不支持join和多表 todo
+		if !ok {
+			return "", "", "", errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+		wherePart = sqlparser.String(s.Where)
+	}
+
+	// 选择出PK
+	ctx := context.Background()
+	pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
+	if err != nil {
+		return "", "", "", err
+	}
+	PKPart := ""
+	firstPK := true
+	for _, pkName := range pkNames {
+		if !firstPK {
+			PKPart += ","
+		}
+		PKPart += pkName
+		firstPK = false
+	}
+
+	selectSQL = fmt.Sprintf("select %s from %s.%s %s order by %s",
+		PKPart, tableSchema, tableName, wherePart, PKPart)
+
+	// todo，支持多PK多类型
+	countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
+		tableSchema, tableName, wherePart, PKPart, PKPart)
+
+	return selectSQL, countSQLTemplate, tableName, nil
+}
+
+const (
+	insertBatchSQL = ` insert into %s (
+		batch_id,
+		batch_sql,
+	 	batch_count_sql,
+		batch_size
+	) values (%%a,%%a,%%a,%%a)`
+)
+
+// 创建表，todo 表gc
+// todo，discussion，建表的过程中需要放在一个事务内，防止崩了,由于一个事务容纳的数据有限，oom，因此需要多个事务?
+func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql string, pkNames []string, batchSize int64) (string, error) {
+	ctx := context.Background()
+
+	qr, err := jc.execQuery(ctx, "", selectSQL)
+	if err != nil {
+		return "", err
+	}
+	if len(qr.Named().Rows) == 0 {
+		return "", nil
+	}
+
+	// 建表
+	batchTableName := "job_batch_table_" + strings.Replace(jobUUID, "-", "_", -1)
+	createTableSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
+	(
+		id                              bigint unsigned  NOT NULL AUTO_INCREMENT,
+		batch_id                              DOUBLE NOT NULL, 
+		batch_sql                       varchar(1024)     NOT NULL,
+    	batch_count_sql                       varchar(1024)     NOT NULL,
+    	batch_size 						bigint unsigned  NOT NULL,
+		PRIMARY KEY (id)
+	) ENGINE = InnoDB`, batchTableName)
+
+	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
+	if err != nil {
+		return "", err
+	}
+
+	// todo，处理多pk的情况
+	// todo 处理不同类型的PK
+	// todo 创建一个新的value结构，表示PK的名字和类型
+	currentBatchSize := int64(0)
+	currentBatchStart := int64(0)
+	currentBatchEnd := int64(0)
+	currentBatchID := float64(1)
+
+	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
+
+	var pkName string
+	// todo 对结果集为0的情况进行特判
+	for _, row := range qr.Named().Rows {
+		for _, pkName = range pkNames {
+			// todo，对于每一列PK的值类型进行判断
+			keyVal, _ := row[pkName].ToInt64()
+
+			if currentBatchSize == 0 {
+				currentBatchStart = keyVal
+			}
+			currentBatchEnd = keyVal
+			currentBatchSize++ // 改成多pk后要移出去 todo
+			if currentBatchSize == batchSize {
+				// between是一个闭区间，batch job的sql也是闭区间
+				// todo 处理整数之外的类型
+				batchSQL := sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart, currentBatchEnd)
+				countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+
+				currentBatchSize = 0
+				// insert into table
+				insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
+					sqltypes.Float64BindVariable(currentBatchID),
+					sqltypes.StringBindVariable(batchSQL),
+					sqltypes.StringBindVariable(countSQL),
+					sqltypes.Int64BindVariable(int64(batchSize)))
+				if err != nil {
+					return "", err
+				}
+				_, err = jc.execQuery(ctx, tableSchema, insertBatchSQLQuery)
+				if err != nil {
+					return "", err
+				}
+				currentBatchID++ // 改成多pk后要移出循环 todo
+			}
+		}
+	}
+	//最后一个batch
+	if currentBatchSize != 0 {
+		batchSQL := sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart, currentBatchEnd)
+		countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
+			sqltypes.Float64BindVariable(currentBatchID),
+			sqltypes.StringBindVariable(batchSQL),
+			sqltypes.StringBindVariable(countSQL),
+			sqltypes.Int64BindVariable(int64(currentBatchSize)))
+		if err != nil {
+			return "", err
+		}
+		_, err = jc.execQuery(ctx, tableSchema, insertBatchSQLQuery)
+		if err != nil {
+			return "", err
+		}
+	}
+	return batchTableName, nil
 }
