@@ -8,9 +8,17 @@ package branch
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"vitess.io/vitess/go/sqltypes"
+	"vitess.io/vitess/go/test/endtoend/onlineddl"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/require"
 
@@ -148,6 +156,7 @@ func TestInitTable(t *testing.T) {
                                 sku varchar(128),
                                 description varchar(128),
                                 price bigint,
+    							weight float,
                                 primary key(sku)
                               ) ENGINE=InnoDB;`
 	createCustomerTable := `create table if not exists branch_source.customer(
@@ -200,10 +209,114 @@ func CleanupDatabase(t *testing.T) {
 	require.Nil(t, err)
 }
 
+// VtgateExecQuery runs a query on VTGate using given query params
+func VtgateExecQuery(t *testing.T, vtParams *mysql.ConnParams, query string, expectError string) *sqltypes.Result {
+	t.Helper()
+
+	ctx := context.Background()
+	conn, err := mysql.Connect(ctx, vtParams)
+	require.Nil(t, err)
+	defer conn.Close()
+
+	qr, err := conn.ExecuteFetch(query, math.MaxInt64, true)
+	if expectError == "" {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err, "error should not be nil")
+		assert.Contains(t, err.Error(), expectError, "Unexpected error")
+	}
+	return qr
+}
+
 func RequireVRplicationExist(t *testing.T, workflow string) {
 	result, err := mysqlConn.ExecuteFetch(fmt.Sprintf("SELECT 1 FROM mysql.vreplication WHERE workflow='%s'", workflow), -1, false)
 	require.Nil(t, err)
 	require.True(t, len(result.Rows) >= 1)
+}
+
+func checkStateOfVreplication(t *testing.T, uuid, expectState string) {
+	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+	rs := onlineddl.VtgateExecQuery(t, &vtParams, query, "")
+	require.NotNil(t, rs)
+
+	require.Equal(t, 1, len(rs.Named().Rows))
+	require.Equal(t, expectState, rs.Named().Rows[0].AsString("state", ""))
+}
+
+func WaitForVreplicationState(t *testing.T, vtParams *mysql.ConnParams, workflow string, timeout time.Duration, expectStates ...string) string {
+	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
+		sqltypes.StringBindVariable(workflow),
+	)
+	require.NoError(t, err)
+
+	statesMap := map[string]bool{}
+	for _, state := range expectStates {
+		statesMap[string(state)] = true
+	}
+	startTime := time.Now()
+	lastKnownVreplicationState := ""
+	for time.Since(startTime) < timeout {
+		r := onlineddl.VtgateExecQuery(t, vtParams, query, "")
+		for _, row := range r.Named().Rows {
+			lastKnownVreplicationState = row["state"].ToString()
+
+			if statesMap[lastKnownVreplicationState] {
+				return lastKnownVreplicationState
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return lastKnownVreplicationState
+}
+
+func TestBranchGoFakeitFunction(t *testing.T) {
+	workflowName := "branch_test"
+	t.Run("prepare branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.PrepareBranch(workflowName, "branch_source", "branch_target", "", "", "", "", false, "RAND()<0.1", false)
+		require.Nil(t, err)
+		require.True(t, strings.HasPrefix(output, "successfully"))
+	})
+	t.Run("update filterling rules", func(t *testing.T) {
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select id, gofakeit_generate(\'{firstname}:###:???:{moviename}\') as name from user WHERE id<=100' where source_table_name = 'user';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select customer_id, gofakeit_bytype(\'regex\',\'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$\') as email from customer WHERE customer_id<=100' where source_table_name = 'customer';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select sku,description,gofakeit_bytype(\'intrange\',110,150) as price,gofakeit_bytype(\'floatrange\',23.5,23.9) as weight from product' where source_table_name = 'product';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='SELECT order_id,gofakeit_bytype(\'bigint\') as customer_id,gofakeit_generate(\'{firstname}:###:???:{moviename}\') as sku,gofakeit_bytype(\'bigint\') as price FROM corder where customer_id<=100' where source_table_name = 'corder';`, "")
+	})
+	t.Run("start branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.StartBranch(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.HasSuffix(output, "successfully."))
+		RequireVRplicationExist(t, workflowName)
+		WaitForVreplicationState(t, &vtParams, workflowName, 5*time.Second, "Stopped")
+
+		// id<=100
+		qr := VtgateExecQuery(t, &vtParams, `select max(id) as id from branch_target.user`, "")
+		maxID, err := qr.Rows[0][0].ToInt64()
+		require.Nil(t, err)
+		require.True(t, maxID <= 100)
+		// customer_id <= 100
+		qr = VtgateExecQuery(t, &vtParams, `select max(customer_id) as id from branch_target.customer`, "")
+		customerID, err := qr.Rows[0][0].ToInt64()
+		require.Nil(t, err)
+		require.True(t, customerID <= 100)
+
+		qr = VtgateExecQuery(t, &vtParams, `select price,weight from branch_target.product limit 100`, "")
+		for _, row := range qr.Rows {
+			price, err := row[0].ToInt64()
+			require.Nil(t, err)
+			require.True(t, price >= 110 && price <= 150)
+			weight, err := row[1].ToFloat64()
+			require.Nil(t, err)
+			require.True(t, weight >= 23.5 && weight <= 23.9)
+		}
+	})
+	defer func() {
+		CleanupDatabase(t)
+		clusterInstance.VtctlclientProcess.Cleanupbranch(workflowName)
+	}()
 }
 
 func TestBranchNormalfunction(t *testing.T) {
