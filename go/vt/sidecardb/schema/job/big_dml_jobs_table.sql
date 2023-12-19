@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `job_uuid`                  varchar(64)      NOT NULL UNIQUE,
     `job_batch_table`                  varchar(64)      NOT NULL UNIQUE,
     `job_status`                varchar(128)     NOT NULL,
+    `status_set_time`           varchar(128)     NOT NULL,
     `message`                   varchar(2048)     NULL   DEFAULT NULL,
     `dml_sql`                       varchar(256)     NOT NULL,
     `related_schema`                     varchar(256)     NOT NULL,

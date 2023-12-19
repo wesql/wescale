@@ -37,7 +37,7 @@ import (
 // todo newborn22, 数一下连接数是不是3够用
 const (
 	databasePoolSize   = 3
-	healthCheckTimeGap = 10000 // ms
+	healthCheckTimeGap = 5000 // ms
 )
 
 const (
@@ -84,7 +84,8 @@ const (
                                       job_batch_table,
                                       timegap_in_ms,
                                       subtask_rows,
-                                      job_status) values(%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      job_status,
+                                      status_set_time) values(%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -97,7 +98,8 @@ const (
                                     job_uuid = %a`
 
 	sqlDMLJobUpdateStatus = `update mysql.big_dml_jobs_table set 
-                                    job_status = %a 
+                                    job_status = %a,
+                                    status_set_time = %a
                                 where 
                                     job_uuid = %a`
 
@@ -127,10 +129,16 @@ const (
                                     throttle_expire_time = NULL
                                 where 
                                     job_uuid = %a`
+
+	sqlDMLJobDeleteJob = `delete from mysql.big_dml_jobs_table where job_uuid = %a`
 )
 
 const (
 	throttleCheckDuration = 250 * time.Millisecond
+)
+
+const (
+	tableEntryGCTimeGap = 30 * time.Second // todo 改成更长的值，为了测试只设了30s
 )
 
 type JobController struct {
@@ -169,7 +177,6 @@ func (jc *JobController) Open() error {
 		jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 
 		jc.workingTables = map[string]bool{}
-		jc.workingUUIDs = map[string]bool{}
 		jc.jobChans = map[string]JobChanStruct{}
 		jc.checkBeforeSchedule = make(chan struct{})
 
@@ -268,6 +275,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 	if postponeLaunch {
 		jobStatus = postponeLaunchStatus
 	}
+	statusSetTime := time.Now().Format(time.RFC3339)
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
@@ -277,7 +285,8 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 		sqltypes.StringBindVariable(jobBatchTable),
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(subtaskRows),
-		sqltypes.StringBindVariable(jobStatus))
+		sqltypes.StringBindVariable(jobStatus),
+		sqltypes.StringBindVariable(statusSetTime))
 	if err != nil {
 		return nil, err
 	}
@@ -310,6 +319,8 @@ func (jc *JobController) ShowJobs() (*sqltypes.Result, error) {
 	return jc.execQuery(ctx, "mysql", showJobsSQL)
 }
 
+// 和cancel的区别：1.pasue不会删除元数据 2.cancel状态的job在经过一段时间后会被后台协程回收
+// 和cancel的相同点：都停止了runner协程
 func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
@@ -323,13 +334,10 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, nil
 	}
 
-	// 往通道发送cmd进行暂停
-	jc.jobChansMutex.Lock()
-	defer jc.jobChansMutex.Unlock()
-	pauseChan := jc.jobChans[uuid].pauseAndResume
-	pauseChan <- "pause"
-
-	qr, err := jc.updateJobStatus(ctx, uuid, pausedStatus)
+	// 将job在表中的状态改为paused，runner在运行时如果检测到状态不是running，就会退出。
+	// pause虽然终止了runner协程，但是
+	statusSetTime := time.Now().Format(time.RFC3339)
+	qr, err := jc.updateJobStatus(ctx, uuid, pausedStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, err
 	}
@@ -347,18 +355,30 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 		emptyResult.Info = " The job status is not paused and don't need resume"
 		return emptyResult, nil
 	}
-	// 往通道发送cmd以继续
-	jc.jobChansMutex.Lock()
-	defer jc.jobChansMutex.Unlock()
-	pauseChan := jc.jobChans[uuid].pauseAndResume
-	pauseChan <- "resume"
 
-	qr, err := jc.updateJobStatus(ctx, uuid, runningStatus)
+	// 准备拉起runner协程的参数
+	query, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
+		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return emptyResult, err
 	}
+	rst, err := jc.execQuery(ctx, "", query)
+	if err != nil {
+		return emptyResult, err
+	}
+	if len(rst.Named().Rows) != 1 {
+		return emptyResult, errors.New("the len of qr of querying job info by uuid is not 1")
+	}
+	row := rst.Named().Rows[0]
+	tableSchema := row["related_schema"].ToString()
+	table := row["related_table"].ToString()
+	jobBatchTable := row["job_batch_table"].ToString()
+	timegap, _ := row["timegap_in_ms"].ToInt64()
 
-	return qr, nil
+	// 拉起runner协程，协程内会将状态改为running
+	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap)
+	emptyResult.RowsAffected = 1
+	return emptyResult, nil
 }
 
 func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
@@ -372,7 +392,8 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 		emptyResult.Info = " The job status is not postpone-launch and don't need launch"
 		return emptyResult, nil
 	}
-	return jc.updateJobStatus(ctx, uuid, queuedStatus)
+	statusSetTime := time.Now().Format(time.RFC3339)
+	return jc.updateJobStatus(ctx, uuid, queuedStatus, statusSetTime)
 }
 
 func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
@@ -386,31 +407,16 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 		emptyResult.Info = fmt.Sprintf(" The job status is %s and can't canceld", status)
 		return emptyResult, nil
 	}
-
-	qr, err := jc.updateJobStatus(ctx, uuid, canceledStatus)
+	statusSetTime := time.Now().Format(time.RFC3339)
+	qr, err := jc.updateJobStatus(ctx, uuid, canceledStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, nil
 	}
 
-	//	对于paused和running这两个状态的job，它们在内存中都有一个jobRunner协程正在运行，需要将协程关闭
-	if status == runningStatus || status == pausedStatus {
-		jc.jobChansMutex.Lock()
-		cancelChan := jc.jobChans[uuid].cancel
-		jc.jobChansMutex.Unlock()
-
-		// 由于chan的容量为1，会阻塞在这里，直到jobRunner中接收了此信号
-		cancelChan <- "cancel"
-	}
-
 	tableName, _ := jc.GetStrJobInfo(ctx, uuid, "related_table")
 
-	jc.jobChansMutex.Lock()
-	jc.workingUUIDsMutex.Lock()
-	jc.workingTablesMutex.Lock()
+	// 相比于pause，cancel需要删除内存中的元数据
 	jc.deleteDMLJobRunningMeta(uuid, tableName)
-	jc.jobChansMutex.Unlock()
-	jc.workingUUIDsMutex.Unlock()
-	jc.workingTablesMutex.Unlock()
 
 	return qr, nil
 }
@@ -522,23 +528,15 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 	defer jc.workingTablesMutex.Unlock()
 	delete(jc.workingTables, table)
 
-	jc.workingUUIDsMutex.Lock()
-	defer jc.workingUUIDsMutex.Unlock()
-	delete(jc.workingUUIDs, uuid)
-
-	jc.jobChansMutex.Lock()
-	defer jc.jobChansMutex.Unlock()
-	close(jc.jobChans[uuid].pauseAndResume)
-	close(jc.jobChans[uuid].cancel)
-	delete(jc.jobChans, uuid)
-
-	return jc.updateJobStatus(ctx, uuid, completedStatus)
+	statusSetTime := time.Now().Format(time.RFC3339)
+	return jc.updateJobStatus(ctx, uuid, completedStatus, statusSetTime)
 }
 
 // todo, 记录错误时的错误怎么处理
 func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
-	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus)
+	statusSetTime := time.Now().Format(time.RFC3339)
+	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus, statusSetTime)
 
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
@@ -564,7 +562,6 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 		// todo,优化这里的拿锁结构
 		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
-		jc.workingUUIDsMutex.Lock()
 
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 		if qr == nil {
@@ -577,21 +574,15 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 			uuid := row["job_uuid"].ToString()
 			jobBatchTable := row["job_batch_table"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
-			//subtaskSQL := row["subtask_sql"].ToString()
-			//dmlType := row["dml_type"].ToString()
-			//countTotalRows, _ := row["count_total_rows"].ToInt64()
-			//subtaskRows, _ := row["subtask_rows"].ToInt64()
 			if jc.checkDmlJobRunnable(status, table) {
 				// todo 这里之后改成休眠的方式后要删掉， 由于外面拿锁，必须在这里就加上，不然后面的循环可能：已经启动go runner的但是还未加入到working table,导致多个表的同时启动
 				jc.initDMLJobRunningMeta(uuid, table)
-				// go jc.dmlJobRunner(uuid, table, schema, subtaskSQL, dmlType, timegap, countTotalRows, 0, subtaskRows, true)
 				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap)
 			}
 		}
 
 		jc.workingTablesMutex.Unlock()
 		jc.tableMutex.Unlock()
-		jc.workingUUIDsMutex.Unlock()
 
 		time.Sleep(3 * time.Second)
 	}
@@ -607,98 +598,6 @@ func (jc *JobController) checkDmlJobRunnable(status, table string) bool {
 		return false
 	}
 	return true
-}
-
-func (jc *JobController) dmlJobRunner(uuid, table, relatedSchema, subtaskSQL, dmlType string, timeGap, countTotalRows, offset, subtaskRows int64, updateStatusRunning bool) {
-
-	jc.jobChansMutex.Lock()
-	jobChan := jc.jobChans[uuid]
-	jc.jobChansMutex.Unlock()
-
-	pauseAndResumeChan := jobChan.pauseAndResume
-	cancelChan := jobChan.cancel
-
-	// timeGap 单位ms，duration输入ns，应该乘上1000000
-	timer := time.NewTicker(time.Duration(timeGap * 1e6))
-	defer timer.Stop()
-
-	var err error
-	ctx := context.Background()
-
-	if updateStatusRunning {
-		_, err = jc.updateJobStatus(ctx, uuid, runningStatus)
-		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
-		}
-	}
-
-	// 在一个无限循环中等待定时器触发
-	for {
-		// 第一层select用于接收是否有用户的cancel命令，以随时结束协程
-		select {
-		case cmd := <-cancelChan:
-			if cmd == "cancel" {
-				_ = jc.updateJobMessage(ctx, uuid, fmt.Sprintf("Canceld by user at %s", time.Now().Format("2006-01-02 15:04:05")))
-				return
-			}
-		default:
-			select {
-			case <-timer.C:
-				// 定时器触发时执行的函数
-
-				// 先请求throttle，若被throttle阻塞，则等待下一次timer事件
-				if !jc.requestThrottle(uuid) {
-					continue
-				}
-
-				// 获得sql，分update和delete两种情况
-				var query string
-				if dmlType == "update" {
-					query, err = sqlparser.ParseAndBind(subtaskSQL, sqltypes.Int64BindVariable(offset))
-					if err != nil {
-						jc.FailJob(ctx, uuid, err.Error(), table)
-					}
-				}
-				if dmlType == "delete" {
-					query = subtaskSQL
-				}
-
-				affectedRows, err := jc.execSubtaskAndRecord(ctx, relatedSchema, query, uuid)
-
-				if err != nil {
-					jc.FailJob(ctx, uuid, err.Error(), table)
-					return
-				}
-
-				// complete，分update和delete两种情况
-				if (dmlType == "delete" && affectedRows == 0) || (dmlType == "update" && offset >= countTotalRows) {
-					_, err = jc.CompleteJob(ctx, uuid, table)
-					if err != nil {
-						jc.FailJob(ctx, uuid, err.Error(), table)
-					}
-					return
-				}
-
-				if dmlType == "update" {
-					//offset += int64(qr.RowsAffected)
-					offset += subtaskRows
-				}
-
-			// 控制暂停
-			case command := <-pauseAndResumeChan:
-				switch command {
-				case "pause":
-					for {
-						cmd := <-pauseAndResumeChan
-						if cmd == "resume" { // actually, cmd will always be "resume", the code logic will guarantee that
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
 }
 
 const (
@@ -846,17 +745,20 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 		return
 	}
 
-	if status != runningStatus {
-		_, err = jc.updateJobStatus(ctx, uuid, runningStatus)
-		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
-			return
-		}
+	// 如果状态为queued，意味着这个job刚刚开始运行，那么将当前处理的batch id设为1。
+	// 否则，意味着这个job之前已经启动过，无需再初始化当前处理的batch id，而是直接取表中这个字段的值并接着运行。
+	if status == queuedStatus {
 		err = jc.updateDealingBatchID(ctx, uuid, 1)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
+	}
+	statusSetTime := time.Now().Format(time.RFC3339)
+	_, err = jc.updateJobStatus(ctx, uuid, runningStatus, statusSetTime)
+	if err != nil {
+		jc.FailJob(ctx, uuid, err.Error(), table)
+		return
 	}
 	currentBatchID, err := jc.getDealingBatchID(ctx, uuid)
 	if err != nil {
@@ -900,6 +802,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 			return
 		}
 		if currentBatchID > maxBatchID {
+			// todo，将completeJob移动到execBatchAndRecord中，确保原子性
 			_, err = jc.CompleteJob(ctx, uuid, table)
 			if err != nil {
 				jc.FailJob(ctx, uuid, err.Error(), table)
@@ -909,42 +812,18 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 	}
 }
 
-// 注意在外面拿锁
+// 注意在外面拿锁,   todo，换成在里面拿锁？
 func (jc *JobController) initDMLJobRunningMeta(uuid, table string) {
-	// 容量为1：如果job crash前为pause，需要先往通道中写入"pause"，然后再启动jobRunner。如果不为1则会阻塞
-	jobChan := JobChanStruct{pauseAndResume: make(chan string, 1), cancel: make(chan string)}
-	//jc.jobChansMutex.Lock()
-	jc.jobChans[uuid] = jobChan
-	//jc.jobChansMutex.Unlock()
-
 	//jc.workingTablesMutex.Lock()
 	jc.workingTables[table] = true
 	//jc.workingTablesMutex.Unlock()
 
-	//jc.workingUUIDsMutex.Lock()
-	jc.workingUUIDs[uuid] = true
-	//jc.workingUUIDsMutex.Unlock()
-
 }
 
-// 注意在外面拿锁
 func (jc *JobController) deleteDMLJobRunningMeta(uuid, table string) {
-	// 容量为1：如果job crash前为pause，需要先往通道中写入"pause"，然后再启动jobRunner。如果不为1则会阻塞
-	//jc.jobChansMutex.Lock()
-	jobChan := jc.jobChans[uuid]
-	close(jobChan.pauseAndResume)
-	close(jobChan.cancel)
-	delete(jc.jobChans, uuid)
-	//jc.jobChansMutex.Unlock()
-
-	//jc.workingTablesMutex.Lock()
+	jc.workingTablesMutex.Lock()
+	defer jc.workingTablesMutex.Unlock()
 	delete(jc.workingTables, table)
-	//jc.workingTablesMutex.Unlock()
-
-	//jc.workingUUIDsMutex.Lock()
-	delete(jc.workingUUIDs, uuid)
-	//jc.workingUUIDsMutex.Unlock()
-
 }
 
 // todo sql类型的判断换成别的方式
@@ -1168,12 +1047,13 @@ func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string,
 	return err
 }
 
-func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status string) (*sqltypes.Result, error) {
+func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, statusSetTime string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
 		sqltypes.StringBindVariable(status),
+		sqltypes.StringBindVariable(statusSetTime),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return &sqltypes.Result{}, err
@@ -1308,43 +1188,35 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	ctx := context.Background()
 
 	// 用于crash后，重启时，先扫一遍running和paused的
+	// todo，能不能用代码手段确保下面的逻辑只运行一次
 	qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 	if qr != nil {
 
 		jc.workingTablesMutex.Lock()
-		jc.tableMutex.Lock()
-		jc.workingUUIDsMutex.Lock()
+		jc.tableMutex.Lock() // todo，删掉？
 
 		for _, row := range qr.Named().Rows {
 			status := row["job_status"].ToString()
 			tableSchema := row["related_schema"].ToString()
 			table := row["related_table"].ToString()
+			jobBatchTable := row["job_batch_table"].ToString()
 			uuid := row["job_uuid"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
-			subtaskSQL := row["subtask_sql"].ToString()
-			dmlType := row["dml_type"].ToString()
-			countTotalRows, _ := row["count_total_rows"].ToInt64()
-			AffectedRows, _ := row["affected_rows"].ToInt64()
-			subtaskRows, _ := row["subtask_rows"].ToInt64()
 
 			if status == runningStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobRunner(uuid, table, tableSchema, subtaskSQL, dmlType, timegap, countTotalRows, AffectedRows, subtaskRows, false)
+				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap)
 			}
+
+			// 对于暂停的，不启动协程，只需要恢复内存元数据
 			if status == pausedStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				// 触发暂停
-				jc.jobChansMutex.Lock()
-				pauseChan := jc.jobChans[uuid].pauseAndResume
-				jc.jobChansMutex.Unlock()
-				pauseChan <- "pause"
-				go jc.dmlJobRunner(uuid, table, tableSchema, subtaskSQL, dmlType, timegap, countTotalRows, AffectedRows, subtaskRows, false)
 			}
+
 		}
 
 		jc.workingTablesMutex.Unlock()
 		jc.tableMutex.Unlock()
-		jc.workingUUIDsMutex.Unlock()
 	}
 
 	fmt.Printf("check of running and paused done \n")
@@ -1355,7 +1227,38 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		// todo, 增加对长时间未增加 rows的处理
 		// todo，对于cancel和failed 垃圾条目的删除
 
-		time.Sleep(healthCheckTimeGap)
+		jc.tableMutex.Lock()
+		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
+		if qr != nil {
+			for _, row := range qr.Named().Rows {
+				status := row["job_status"].ToString()
+				statusSetTime := row["status_set_time"].ToString()
+				uuid := row["job_uuid"].ToString()
+				jobBatchTable := row["job_batch_table"].ToString()
+				tableSchema := row["related_schema"].ToString()
+
+				statusSetTimeObj, err := time.Parse(time.RFC3339, statusSetTime)
+				if err != nil {
+					continue
+				}
+
+				if status == canceledStatus || status == failedStatus || status == completedStatus {
+					if time.Now().After(statusSetTimeObj.Add(tableEntryGCTimeGap)) {
+						deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
+							sqltypes.StringBindVariable(uuid))
+						if err != nil {
+							continue
+						}
+						_, _ = jc.execQuery(ctx, "", deleteJobSQL)
+
+						_, _ = jc.execQuery(ctx, tableSchema, fmt.Sprintf("drop table %s", jobBatchTable))
+					}
+				}
+			}
+		}
+
+		jc.tableMutex.Unlock()
+		time.Sleep(healthCheckTimeGap * time.Millisecond)
 	}
 }
 
