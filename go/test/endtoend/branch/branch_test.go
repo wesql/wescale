@@ -10,9 +10,13 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"vitess.io/vitess/go/test/endtoend/cluster"
+	"vitess.io/vitess/go/vt/schema"
 
 	"github.com/stretchr/testify/assert"
 
@@ -146,6 +150,20 @@ func insertCorder(dbConn *mysql.Conn, end int, customerCount, productCount int) 
 	return nil
 }
 
+func ExtractUUIDs(output string) []string {
+	uuidPattern := regexp.MustCompile(`\[([a-fA-F0-9_]+)\]`)
+	extractedUUIDs := []string{}
+
+	matches := uuidPattern.FindAllStringSubmatch(output, -1)
+	for _, match := range matches {
+		if len(match) == 2 {
+			extractedUUIDs = append(extractedUUIDs, match[1])
+		}
+	}
+
+	return extractedUUIDs
+}
+
 func TestInitTable(t *testing.T) {
 	ctx := context.Background()
 	var err error
@@ -272,6 +290,75 @@ func WaitForVreplicationState(t *testing.T, vtParams *mysql.ConnParams, workflow
 	return lastKnownVreplicationState
 }
 
+// CheckMigrationStatus verifies that the migration indicated by given UUID has the given expected status
+func CheckMigrationStatus(t *testing.T, vtParams *mysql.ConnParams, shards []cluster.Shard, uuid string, expectStatuses ...schema.OnlineDDLStatus) {
+	query, err := sqlparser.ParseAndBind("show vitess_migrations like %a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+
+	r := VtgateExecQuery(t, vtParams, query, "")
+	fmt.Printf("# output for `%s`:\n", query)
+
+	count := 0
+	for _, row := range r.Named().Rows {
+		if row["migration_uuid"].ToString() != uuid {
+			continue
+		}
+		fmt.Printf("uuid %s status is %s\n", uuid, row["migration_status"].ToString())
+		for _, expectStatus := range expectStatuses {
+			if row["migration_status"].ToString() == string(expectStatus) {
+				count++
+				break
+			}
+		}
+	}
+	assert.Equal(t, len(shards), count)
+}
+
+// WaitForMigrationStatus waits for a migration to reach either provided statuses (returns immediately), or eventually time out
+func WaitForMigrationStatus(t *testing.T, vtParams *mysql.ConnParams, shards []cluster.Shard, uuid string, timeout time.Duration, expectStatuses ...schema.OnlineDDLStatus) schema.OnlineDDLStatus {
+	shardNames := map[string]bool{}
+	for _, shard := range shards {
+		shardNames[shard.Name] = true
+	}
+	query, err := sqlparser.ParseAndBind("show vitess_migrations like %a",
+		sqltypes.StringBindVariable(uuid),
+	)
+	require.NoError(t, err)
+
+	statusesMap := map[string]bool{}
+	for _, status := range expectStatuses {
+		statusesMap[string(status)] = true
+	}
+	startTime := time.Now()
+	lastKnownStatus := ""
+	for time.Since(startTime) < timeout {
+		countMatchedShards := 0
+		r := VtgateExecQuery(t, vtParams, query, "")
+		for _, row := range r.Named().Rows {
+			shardName := row["shard"].ToString()
+			if !shardNames[shardName] {
+				// irrelevant shard
+				continue
+			}
+			lastKnownStatus = row["migration_status"].ToString()
+			message := row["message"].ToString()
+			if lastKnownStatus == string(schema.OnlineDDLStatusFailed) {
+				t.Logf("schemaMigration fail, message : %v", message)
+			}
+			if row["migration_uuid"].ToString() == uuid && statusesMap[lastKnownStatus] {
+				countMatchedShards++
+			}
+		}
+		if countMatchedShards == len(shards) {
+			return schema.OnlineDDLStatus(lastKnownStatus)
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return schema.OnlineDDLStatus(lastKnownStatus)
+}
+
 func TestBranchGoFakeitFunction(t *testing.T) {
 	workflowName := "branch_test"
 	t.Run("prepare branch", func(t *testing.T) {
@@ -319,8 +406,97 @@ func TestBranchGoFakeitFunction(t *testing.T) {
 	}()
 }
 
-func TestBranchNormalfunction(t *testing.T) {
-	workflowName := "branch_test"
+func TestBranchMergeBack(t *testing.T) {
+	workflowName := "TestBranchMergeBack"
+	defer func() {
+		CleanupDatabase(t)
+		clusterInstance.VtctlclientProcess.Cleanupbranch(workflowName)
+	}()
+	t.Run("prepare branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.PrepareBranch(workflowName, "branch_source", "branch_target", "", "", "", "", false, "RAND()<0.1", false)
+		require.Nil(t, err)
+		require.True(t, strings.HasPrefix(output, "successfully"))
+	})
+	t.Run("update filterling rules", func(t *testing.T) {
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select id, gofakeit_generate(\'{firstname}:###:???:{moviename}\') as name from user WHERE id<=100' where source_table_name = 'user';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select customer_id, gofakeit_bytype(\'regex\',\'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$\') as email from customer WHERE customer_id<=100' where source_table_name = 'customer';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='select sku,description,gofakeit_bytype(\'intrange\',110,150) as price,gofakeit_bytype(\'floatrange\',23.5,23.9) as weight from product' where source_table_name = 'product';`, "")
+		VtgateExecQuery(t, &vtParams, `update mysql.branch_table_rules set filtering_rule='SELECT order_id,gofakeit_bytype(\'bigint\') as customer_id,gofakeit_generate(\'{firstname}:###:???:{moviename}\') as sku,gofakeit_bytype(\'bigint\') as price FROM corder where customer_id<=100' where source_table_name = 'corder';`, "")
+	})
+	t.Run("start branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.StartBranch(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.HasSuffix(output, "successfully."))
+		RequireVRplicationExist(t, workflowName)
+		WaitForVreplicationState(t, &vtParams, workflowName, 5*time.Second, "Stopped")
+
+		// id<=100
+		qr := VtgateExecQuery(t, &vtParams, `select max(id) as id from branch_target.user`, "")
+		maxID, err := qr.Rows[0][0].ToInt64()
+		require.Nil(t, err)
+		require.True(t, maxID <= 100)
+		// customer_id <= 100
+		qr = VtgateExecQuery(t, &vtParams, `select max(customer_id) as id from branch_target.customer`, "")
+		customerID, err := qr.Rows[0][0].ToInt64()
+		require.Nil(t, err)
+		require.True(t, customerID <= 100)
+
+		qr = VtgateExecQuery(t, &vtParams, `select price,weight from branch_target.product limit 100`, "")
+		for _, row := range qr.Rows {
+			price, err := row[0].ToInt64()
+			require.Nil(t, err)
+			require.True(t, price >= 110 && price <= 150)
+			weight, err := row[1].ToFloat64()
+			require.Nil(t, err)
+			require.True(t, weight >= 23.5 && weight <= 23.9)
+		}
+	})
+	t.Run("change target schema", func(t *testing.T) {
+		vtParamsTmp := mysql.ConnParams{
+			Host:   clusterInstance.Hostname,
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: "branch_target",
+		}
+		VtgateExecQuery(t, &vtParamsTmp, "alter table user add column v3 int", "")
+		VtgateExecQuery(t, &vtParamsTmp, "create table new_table(v1 int,v2 int)", "")
+	})
+	t.Run("PrepareMergeBack", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.BranchPrepareMergeBack(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.Contains(output, "successfully"))
+		t.Logf("output : %v", output)
+		qr := VtgateExecQuery(t, &vtParams, "select 1 from mysql.branch_table_rules where source_table_name='new_table'", "")
+		require.Equal(t, len(qr.Rows[0]), 1)
+		qr = VtgateExecQuery(t, &vtParams, "select merge_ddl from mysql.branch_table_rules where source_table_name='user'", "")
+		alterDDL := qr.Rows[0][0].ToString()
+		require.True(t, strings.HasPrefix(alterDDL, "ALTER TABLE"))
+		qr = VtgateExecQuery(t, &vtParams, "select merge_ddl from mysql.branch_table_rules where source_table_name='new_table'", "")
+		createDDL := qr.Rows[0][0].ToString()
+		require.True(t, strings.HasPrefix(createDDL, "CREATE TABLE"))
+
+	})
+	t.Run("start merge back", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.BranchStartMergeBack(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.Contains(output, "successfully."))
+		uuids := ExtractUUIDs(output)
+		for _, uuid := range uuids {
+			WaitForMigrationStatus(t, &vtParams, clusterInstance.Keyspaces[0].Shards, uuid, 30*time.Second, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+		}
+		vtParamsTmp := mysql.ConnParams{
+			Host:   clusterInstance.Hostname,
+			Port:   clusterInstance.VtgateMySQLPort,
+			DbName: "branch_source",
+		}
+		qr := VtgateExecQuery(t, &vtParamsTmp, "show tables like 'new_table'", "")
+		t.Logf("%v", qr.Rows)
+		require.Equal(t, len(qr.Rows[0]), 1)
+		require.Equal(t, qr.Rows[0][0].ToString(), "new_table")
+	})
+}
+
+func TestBranchNormalFunction(t *testing.T) {
+	workflowName := "TestBranchNormalFunction"
 	output, err := clusterInstance.VtctlclientProcess.PrepareBranch(workflowName, "branch_source", "branch_target", "", "", "", "", false, "RAND()<0.1", false)
 	require.Nil(t, err)
 	require.True(t, strings.HasPrefix(output, "successfully"))
@@ -335,8 +511,9 @@ func TestBranchNormalfunction(t *testing.T) {
 }
 
 func TestPrepareBranch(t *testing.T) {
+	workflowName := "TestPrepareBranch"
 	//vtctlclient --server localhost:15999 Branch -- --source_database branch_source --target_database branch_target --skip_copy_phase=false --workflow_name branch_test --default_filter_rules "RAND()<0.1" Prepare
-	output, err := clusterInstance.VtctlclientProcess.PrepareBranch("branch_test", "branch_source", "branch_target", "", "", "", "", false, "RAND()<0.1", false)
+	output, err := clusterInstance.VtctlclientProcess.PrepareBranch(workflowName, "branch_source", "branch_target", "", "", "", "", false, "RAND()<0.1", false)
 	require.Nil(t, err)
 	require.True(t, strings.HasPrefix(output, "successfully"))
 	defer CleanupDatabase(t)
