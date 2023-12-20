@@ -60,12 +60,15 @@ func (builtinGofakeitByType) call(env *ExpressionEnv, args []EvalResult, result 
 			date = gofakeit.Date()
 		}
 		formattedDate := date.Format(formatPattern)
-		result.setString(formattedDate, collations.TypedCollation{
+		err := result.setValue(sqltypes.MakeTrusted(sqltypes.Date, []byte(formattedDate)), collations.TypedCollation{
 			Collation:    collations.CollationUtf8ID,
 			Coercibility: collations.CoerceImplicit,
 			Repertoire:   collations.RepertoireASCII,
 		})
-	case "datetime", "timestamp":
+		if err != nil {
+			throwEvalError(err)
+		}
+	case "datetime":
 		formatPattern := "2006-01-02 00:00:00"
 		if len(args) == 2 {
 			formatPattern = args[1].string()
@@ -77,11 +80,34 @@ func (builtinGofakeitByType) call(env *ExpressionEnv, args []EvalResult, result 
 			date = gofakeit.Date()
 		}
 		formattedDate := date.Format(formatPattern)
-		result.setString(formattedDate, collations.TypedCollation{
+		err := result.setValue(sqltypes.MakeTrusted(sqltypes.Datetime, []byte(formattedDate)), collations.TypedCollation{
 			Collation:    collations.CollationUtf8ID,
 			Coercibility: collations.CoerceImplicit,
 			Repertoire:   collations.RepertoireASCII,
 		})
+		if err != nil {
+			throwEvalError(err)
+		}
+	case "timestamp":
+		formatPattern := "2006-01-02 00:00:00"
+		if len(args) == 2 {
+			formatPattern = args[1].string()
+		}
+		var date time.Time
+		if strings.ToLower(formatPattern) == "now" {
+			date = time.Now()
+		} else {
+			date = gofakeit.Date()
+		}
+		formattedDate := date.Format(formatPattern)
+		err := result.setValue(sqltypes.MakeTrusted(sqltypes.Timestamp, []byte(formattedDate)), collations.TypedCollation{
+			Collation:    collations.CollationUtf8ID,
+			Coercibility: collations.CoerceImplicit,
+			Repertoire:   collations.RepertoireASCII,
+		})
+		if err != nil {
+			throwEvalError(err)
+		}
 	case "time":
 		formatPattern := "00:00:00"
 		if len(args) == 2 {
@@ -94,13 +120,16 @@ func (builtinGofakeitByType) call(env *ExpressionEnv, args []EvalResult, result 
 			date = gofakeit.Date()
 		}
 		formattedDate := date.Format(formatPattern)
-		result.setString(formattedDate, collations.TypedCollation{
+		err := result.setValue(sqltypes.MakeTrusted(sqltypes.Time, []byte(formattedDate)), collations.TypedCollation{
 			Collation:    collations.CollationUtf8ID,
 			Coercibility: collations.CoerceImplicit,
 			Repertoire:   collations.RepertoireASCII,
 		})
+		if err != nil {
+			throwEvalError(err)
+		}
 	case "year":
-		result.setInt64(int64(gofakeit.Int16()))
+		result.setInt64(int64(gofakeit.Year()))
 	case "floatrange":
 		if len(args) < 3 {
 			throwArgError("float32range function need min and max parameters")
