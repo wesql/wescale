@@ -157,7 +157,7 @@ type JobController struct {
 	workingUUIDs      map[string]bool
 	workingUUIDsMutex sync.Mutex
 
-	jobChans            map[string]JobChanStruct
+	jobChans            map[string]JobChanStruct // todo 删除
 	jobChansMutex       sync.Mutex
 	checkBeforeSchedule chan struct{}
 }
@@ -165,6 +165,11 @@ type JobController struct {
 type JobChanStruct struct {
 	pauseAndResume chan string
 	cancel         chan string
+}
+
+type PKInfo struct {
+	pkName string
+	pkType querypb.Type
 }
 
 // todo newborn22, 初始化函数
@@ -255,11 +260,11 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 	if err != nil {
 		return nil, err
 	}
-	pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
+	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, tableName)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, pkNames, subtaskRows)
+	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, pkInfos, subtaskRows)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -851,134 +856,6 @@ func (jc *JobController) deleteDMLJobRunningMeta(uuid, table string) {
 	delete(jc.workingTables, table)
 }
 
-// todo sql类型的判断换成别的方式
-// todo 加行数字段
-func (jc *JobController) genSubtaskDMLSQL(sql, tableSchema string, subtaskRows int64) (tableName, dmlType string, subTaskSQL, countTotalRowsSQL string, err error) {
-
-	stmt, _, err := sqlparser.Parse2(sql)
-	if err != nil {
-		return "", "", "", "", err
-	}
-	switch s := stmt.(type) {
-	case *sqlparser.Delete:
-		if s.Limit != nil {
-			return "", "", "", "", errors.New("the sql already has a LIMIT condition, can't be transferred to a DML job")
-		}
-		s.Limit = &sqlparser.Limit{Rowcount: sqlparser.NewIntLiteral(strconv.FormatInt(subtaskRows, 10))}
-		// todo，目前只支持单表
-		if len(s.TableExprs) > 1 {
-			return "", "", "", "", errors.New("the delete sql deals multi tables can't be transferred to a DML job")
-		}
-		tableName := sqlparser.String(s.TableExprs)
-		whereStr := sqlparser.String(s.Where)
-		if s.Where == nil {
-			return "", "", "", "", errors.New("the sql without WHERE can't be transferred to a DML job")
-		}
-		countTotalRowsSQL = fmt.Sprintf("select count(*) from %s %s", tableName, whereStr)
-
-		return tableName, "delete", sqlparser.String(s), countTotalRowsSQL, nil
-	case *sqlparser.Update:
-		// todo，最set中包含有pk的进行过滤
-		// 如何获得一个表的pk/ pks?
-		// update t set c1=v1,c2=v2... where P
-		// update t temp1 join (select PK order by PK limit rows offset off t2) on t1.Pk=t2.Pk set temp1.c1=v1, temp1.c2=v2.. where P
-		// 需要获得表名、set后的投影，where谓词的字符串，然后用字符串拼接的方式完成
-
-		// select statement -> derivedTable -> joinTable
-		// todo，目前只支持单表
-		if len(s.TableExprs) > 1 {
-			return "", "", "", "", errors.New("the update sql deals multi tables can't be transferred to a DML job")
-		}
-		tableName := sqlparser.String(s.TableExprs)
-		ctx := context.Background()
-		pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
-		if err != nil {
-			return "", "", "", "", err
-		}
-
-		//if len(pkNames) > 1 {
-		//	return "", "", "", "", errors.New("the update sql on table with multi Pks can't be transferred to a DML job")
-		//}
-		selectStr := "select "
-		firstPK := true
-		for _, pkName := range pkNames {
-			if firstPK {
-				selectStr += pkName
-				firstPK = false
-			} else {
-				selectStr += " ,"
-				selectStr += pkName
-			}
-		}
-		selectStr += fmt.Sprintf(" from %s ", tableName)
-
-		whereStr := sqlparser.String(s.Where)
-		if s.Where == nil {
-			return "", "", "", "", errors.New("the sql without WHERE can't be transferred to a DML job")
-		}
-		selectStr += whereStr
-
-		firstPK = true
-		selectStr += " order by "
-		for _, pkName := range pkNames {
-			if firstPK {
-				selectStr += pkName
-				firstPK = false
-			} else {
-				selectStr += " ,"
-				selectStr += pkName
-			}
-		}
-
-		selectStr += fmt.Sprintf(" limit %d offset %%a", subtaskRows)
-
-		updateExprStr := sqlparser.String(s.Exprs)
-
-		//colNames, err := jc.getTableColNames(ctx, tableSchema, tableName)
-		//if err != nil {
-		//	return "", "", err
-		//}
-		// whereStr = rewriteWhereStr(whereStr, "dml_job_temp_table222", colNames)
-
-		subtaskSQL := ""
-		if s.With != nil {
-			subtaskSQL = sqlparser.String(s.With) + " "
-		}
-
-		joinOnConditionStr := ""
-		firstPK = true
-		for _, pkName := range pkNames {
-			if firstPK {
-				joinOnConditionStr += fmt.Sprintf("dml_job_temp_table111.%s = dml_job_temp_table222.%s ", pkName, pkName)
-				firstPK = false
-			} else {
-				joinOnConditionStr += fmt.Sprintf("AND dml_job_temp_table111.%s = dml_job_temp_table222.%s", pkName, pkName)
-			}
-		}
-
-		subtaskSQL += fmt.Sprintf("UPDATE %s dml_job_temp_table111 JOIN (%s) dml_job_temp_table222 ON %s SET %s",
-			tableName, selectStr, joinOnConditionStr, updateExprStr)
-
-		//selectStmt, _, err := sqlparser.Parse2(selectStr)
-		//if err != nil {
-		//	return "", err
-		//}
-		//joinLeftExpr := sqlparser.AliasedTableExpr{Expr:  sqlparser.TableName{Name: sqlparser.IdentifierCS{}}}
-		//sqlparser.JoinTableExpr{Join: sqlparser.NormalJoinType,LeftExpr: }
-
-		// 将 "=" 替换成 "!="
-		rewriteExprStr := strings.Replace(updateExprStr, "=", "!=", -1)
-		// 将 "," 替换成 "AND"
-		rewriteExprStr = strings.Replace(rewriteExprStr, ",", "AND", -1)
-
-		countTotalRowsSQL = fmt.Sprintf("select count(*) from %s %s", tableName, whereStr) + " AND " + rewriteExprStr
-
-		return tableName, "update", subtaskSQL, countTotalRowsSQL, nil
-
-	}
-	return "", "", "", "", errors.New("the sql type can't be transferred to a DML job")
-}
-
 // execQuery execute sql by using connect poll,so if targetString is not empty, it will add prefix `use database` first then execute sql.
 func (jc *JobController) execQuery(ctx context.Context, targetString, query string) (result *sqltypes.Result, err error) {
 	defer jc.env.LogError()
@@ -1145,7 +1022,8 @@ func buildVarCharRow(values ...string) []sqltypes.Value {
 	return row
 }
 
-func (jc *JobController) getTablePkName(ctx context.Context, tableSchema, tableName string) ([]string, error) {
+func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableName string) ([]PKInfo, error) {
+	// 1. 先获取pks 的名字
 	submitQuery, err := sqlparser.ParseAndBind(sqlGetTablePk,
 		sqltypes.StringBindVariable(tableSchema),
 		sqltypes.StringBindVariable(tableName))
@@ -1160,7 +1038,32 @@ func (jc *JobController) getTablePkName(ctx context.Context, tableSchema, tableN
 	for _, row := range qr.Named().Rows {
 		pkNames = append(pkNames, row["COLUMN_NAME"].ToString())
 	}
-	return pkNames, nil
+
+	// 2. 根据获得的pk列的名字，去原表中查一行数据，借助封装好的Value对象获得每个pk的类型
+	pkCols := ""
+	firstPK := true
+	for _, pkName := range pkNames {
+		if !firstPK {
+			pkCols += ","
+		}
+		pkCols += pkName
+		firstPK = false
+	}
+	selectPKCols := fmt.Sprintf("select %s from %s.%s limit 1", pkCols, tableSchema, tableName)
+	qr, err = jc.execQuery(ctx, "", selectPKCols)
+	if err != nil {
+		return nil, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return nil, errors.New("the len of qr of select pk cols should be 1")
+	}
+	// 获得每一列的type，并生成pkInfo切片
+	var pkInfos []PKInfo
+	for _, pkName := range pkNames {
+		pkInfos = append(pkInfos, PKInfo{pkName: pkName, pkType: qr.Named().Rows[0][pkName].Type()})
+	}
+
+	return pkInfos, nil
 }
 
 func (jc *JobController) getTableColNames(ctx context.Context, tableSchema, tableName string) ([]string, error) {
@@ -1324,17 +1227,17 @@ func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQ
 
 	// 选择出PK
 	ctx := context.Background()
-	pkNames, err := jc.getTablePkName(ctx, tableSchema, tableName)
+	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, tableName)
 	if err != nil {
 		return "", "", "", err
 	}
 	PKPart := ""
 	firstPK := true
-	for _, pkName := range pkNames {
+	for _, pkInfo := range pkInfos {
 		if !firstPK {
 			PKPart += ","
 		}
-		PKPart += pkName
+		PKPart += pkInfo.pkName
 		firstPK = false
 	}
 
@@ -1342,10 +1245,32 @@ func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQ
 		PKPart, tableSchema, tableName, wherePart, PKPart)
 
 	// todo，支持多PK多类型
-	countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
-		tableSchema, tableName, wherePart, PKPart, PKPart)
+	countSQLTemplate, err = genCountSQLTemplate(tableSchema, tableName, wherePart, PKPart, pkInfos)
+	return selectSQL, countSQLTemplate, tableName, err
+}
 
-	return selectSQL, countSQLTemplate, tableName, nil
+func genCountSQLTemplate(tableSchema, tableName, wherePart, PKPart string, pkInfos []PKInfo) (countSQLTemplate string, err error) {
+	// todo 当前是单pk的情况，后续需要考虑多pk
+	switch pkInfos[0].pkType {
+	case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
+			tableSchema, tableName, wherePart, PKPart, PKPart)
+	case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
+			tableSchema, tableName, wherePart, PKPart, PKPart)
+	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%f AND %%f order by %s",
+			tableSchema, tableName, wherePart, PKPart, PKPart)
+	// todo decimal类型能否转换成string待定
+	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
+		querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%%s' AND '%%s' order by %s",
+			tableSchema, tableName, wherePart, PKPart, PKPart)
+	default:
+		return "", fmt.Errorf("Unsupported type: %v", pkInfos[0].pkType)
+
+	}
+	return countSQLTemplate, nil
 }
 
 const (
@@ -1359,7 +1284,7 @@ const (
 
 // 创建表，todo 表gc
 // todo，discussion，建表的过程中需要放在一个事务内，防止崩了,由于一个事务容纳的数据有限，oom，因此需要多个事务?
-func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql string, pkNames []string, batchSize int64) (string, error) {
+func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql string, pkInfos []PKInfo, batchSize int64) (string, error) {
 	ctx := context.Background()
 
 	qr, err := jc.execQuery(ctx, "", selectSQL)
@@ -1392,8 +1317,8 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 	// todo 处理不同类型的PK
 	// todo 创建一个新的value结构，表示PK的名字和类型
 	currentBatchSize := int64(0)
-	currentBatchStart := int64(0)
-	currentBatchEnd := int64(0)
+	var currentBatchStart interface{}
+	var currentBatchEnd interface{}
 	currentBatchID := float64(1)
 
 	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
@@ -1401,9 +1326,13 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 	var pkName string
 	// todo 对结果集为0的情况进行特判
 	for _, row := range qr.Named().Rows {
-		for _, pkName = range pkNames {
+		for _, pkInfo := range pkInfos {
+			pkName = pkInfo.pkName
 			// todo，对于每一列PK的值类型进行判断
-			keyVal, _ := row[pkName].ToInt64()
+			keyVal, err := ProcessValue(row[pkName])
+			if err != nil {
+				return "", err
+			}
 
 			if currentBatchSize == 0 {
 				currentBatchStart = keyVal
@@ -1413,7 +1342,11 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 			if currentBatchSize == batchSize {
 				// between是一个闭区间，batch job的sql也是闭区间
 				// todo 处理整数之外的类型
-				batchSQL := sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart, currentBatchEnd)
+				batchSQL, err := jc.genBatchSQL(sql, pkName, currentBatchStart, currentBatchEnd)
+				if err != nil {
+					return "", err
+				}
+				// todo 处理整数之外的类型
 				countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
 
 				currentBatchSize = 0
@@ -1436,7 +1369,10 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 	}
 	//最后一个batch
 	if currentBatchSize != 0 {
-		batchSQL := sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart, currentBatchEnd)
+		batchSQL, err := jc.genBatchSQL(sql, pkName, currentBatchStart, currentBatchEnd)
+		if err != nil {
+			return "", err
+		}
 		countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
 		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
 			sqltypes.Float64BindVariable(currentBatchID),
@@ -1452,4 +1388,45 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 		}
 	}
 	return batchTableName, nil
+}
+
+func ProcessValue(value sqltypes.Value) (interface{}, error) {
+	typ := value.Type()
+
+	switch typ {
+	case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
+		return value.ToInt64()
+	case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
+		return value.ToUint64()
+	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
+		return value.ToFloat64()
+	// todo decimal类型能否转换成string待定
+	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
+		querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+		return value.ToString(), nil
+	default:
+		return nil, fmt.Errorf("Unsupported type: %v", typ)
+	}
+}
+
+func (jc *JobController) genBatchSQL(sql, pkName string, currentBatchStart, currentBatchEnd interface{}) (batchSQL string, err error) {
+	if fmt.Sprintf("%T", currentBatchStart) != fmt.Sprintf("%T", currentBatchEnd) {
+		err = errors.New("the type of currentBatchStart and currentBatchEnd is different")
+		return "", err
+	}
+
+	switch currentBatchEnd.(type) {
+	case int64:
+		batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart.(int64), currentBatchEnd.(int64))
+	case uint64:
+		batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart.(uint64), currentBatchEnd.(uint64))
+	case float64:
+		batchSQL = sql + fmt.Sprintf(" AND %s between %f AND %f", pkName, currentBatchStart.(float64), currentBatchEnd.(float64))
+	case string:
+		batchSQL = sql + fmt.Sprintf(" AND %s between '%s' AND '%s'", pkName, currentBatchStart.(string), currentBatchEnd.(string))
+	default:
+		err = errors.New("unsupported type of currentBatchEnd")
+		return "", err
+	}
+	return batchSQL, nil
 }
