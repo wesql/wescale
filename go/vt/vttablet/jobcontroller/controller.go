@@ -202,11 +202,6 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 		}),
 		lagThrottler: lagThrottler}
-
-	// 检查字段
-
-	// 将实例某些字段持久化写入表，能够crash后恢复
-	// 将实例放入内存中某个地方
 }
 
 // todo newborn22 ， 能否改写得更有通用性? 这样改写是否好？
@@ -256,7 +251,6 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 		subtaskRows = int64(defaultSubtaskRows)
 	}
 
-	// todo，修改后的代码
 	selectSQL, countSQLTemplate, tableName, err := jc.genSelectBatchKeySQL(sql, tableSchema)
 	if err != nil {
 		return nil, err
@@ -265,7 +259,6 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	// todo，处理返回值
 	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, pkNames, subtaskRows)
 	if err != nil {
 		return &sqltypes.Result{}, err
@@ -675,7 +668,7 @@ func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tabl
 	return qr.Named().Rows[0].ToFloat64("max_batch_id")
 }
 
-func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, batchSQL, batchCountSQL, uuid string, threshold int64, batchID float64) (nextBatchID float64, err error) {
+func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, batchSQL, batchCountSQL, uuid, batchTable string, threshold int64, batchID float64) (nextBatchID float64, err error) {
 	defer jc.env.LogError()
 
 	var setting pools.Setting
@@ -711,19 +704,51 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ba
 	}
 
 	// 3.执行batch sql
-	_, err = conn.Exec(ctx, batchSQL, math.MaxInt32, true)
+	qr, err = conn.Exec(ctx, batchSQL, math.MaxInt32, true)
 	if err != nil {
 		return 0, err
 	}
 
-	// 4.更新正在处理的batch ID
+	// 4.记录batch sql已经完成，将行数增加到affected rows中
+	// 4.1在batch table中记录
+	updateBatchStatus := fmt.Sprintf("update %s set batch_status = %%a where batch_id = %%a", batchTable)
+	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
+		sqltypes.StringBindVariable("Done"),
+		sqltypes.Float64BindVariable(batchID))
+	if err != nil {
+		return 0, err
+	}
+	_, err = conn.Exec(ctx, updateBatchStatusDoneSQL, math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+
+	// 4.2在job表中记录
+	updateAffectedRowsSQL, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
+		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return 0, err
+	}
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+	_, err = conn.Exec(ctx, updateAffectedRowsSQL, math.MaxInt32, true)
+	if err != nil {
+		return 0, err
+	}
+
+	// 5.更新正在处理的batch ID
 	nextBatchID = batchID + 1 // todo，考虑生成新batch的情况，如何正确地获得下一个batch ID？
-	err = jc.updateDealingBatchID(ctx, uuid, nextBatchID)
+	submitQuery, err := sqlparser.ParseAndBind(updateDealingBatchIDSQL,
+		sqltypes.Float64BindVariable(nextBatchID),
+		sqltypes.StringBindVariable(uuid))
+
+	_, err = conn.Exec(ctx, submitQuery, math.MaxInt32, true)
 	if err != nil {
 		return 0, err
 	}
 
-	// 5.提交事务
+	// 6.提交事务
 	_, err = conn.Exec(ctx, "commit", math.MaxInt32, true)
 	if err != nil {
 		return 0, err
@@ -796,7 +821,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 			return
 		}
 
-		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, batchSQL, batchCountSQL, uuid, defaultThreshold, currentBatchID)
+		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, batchSQL, batchCountSQL, uuid, batchTable, defaultThreshold, currentBatchID)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
@@ -1354,6 +1379,7 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 		batch_sql                       varchar(1024)     NOT NULL,
     	batch_count_sql                       varchar(1024)     NOT NULL,
     	batch_size 						bigint unsigned  NOT NULL,
+    	batch_status							varchar(1024)     NOT NULL DEFAULT 'Pending',
 		PRIMARY KEY (id)
 	) ENGINE = InnoDB`, batchTableName)
 
