@@ -60,7 +60,7 @@ const (
 
 	DirectiveDMLCMD            = "DML_CMD"
 	DirectiveDMLTimeGap        = "DML_TIME_GAP"
-	DirectiveSubtaskRows       = "DML_SUBTASK_ROWS"
+	DirectiveBATCHSIZE         = "DML_BATCH_SIZE"
 	DirectiveDMLPostponeLaunch = "DML_POSTPONE_LAUNCH"
 	DirectiveDMLAutoRetry      = "DML_AUTO_RETRY"
 )
@@ -463,7 +463,7 @@ func GetDMLJobCmd(stmt Statement) string {
 	return str
 }
 
-func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, subTaskRows int64, postponeLaunch bool, autoRetry bool) {
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, autoRetry bool) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
 	case *Update:
@@ -472,7 +472,7 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, subTaskRows int64, postpo
 		comments = stmt.Comments
 	}
 	if comments == nil {
-		return timeGapInMs, subTaskRows, postponeLaunch, autoRetry
+		return timeGapInMs, batchSize, postponeLaunch, autoRetry
 	}
 
 	var err error
@@ -486,11 +486,11 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, subTaskRows int64, postpo
 		}
 	}
 
-	subTaskRowsStr, isSet := directives.GetString(DirectiveSubtaskRows, "")
+	subTaskRowsStr, isSet := directives.GetString(DirectiveBATCHSIZE, "")
 	if isSet {
-		subTaskRows, err = strconv.ParseInt(subTaskRowsStr, 10, 64)
+		batchSize, err = strconv.ParseInt(subTaskRowsStr, 10, 64)
 		if err != nil {
-			subTaskRows = 0
+			batchSize = 0
 		}
 	}
 
@@ -510,5 +510,5 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, subTaskRows int64, postpo
 		}
 	}
 
-	return timeGapInMs, subTaskRows, postponeLaunch, autoRetry
+	return timeGapInMs, batchSize, postponeLaunch, autoRetry
 }

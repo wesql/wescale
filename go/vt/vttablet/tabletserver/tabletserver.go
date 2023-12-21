@@ -1496,9 +1496,9 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 }
 
 // todo newborn22，改名，submitDMLjob
-func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22, 这个地方要进行封装?，变成更通用的
-	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", nil, timeGapInMs, subtaskRows, postponeLaunch, autoRetry)
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", nil, timeGapInMs, batchSize, postponeLaunch, autoRetry)
 }
 
 // execRequest performs verifications, sets up the necessary environments

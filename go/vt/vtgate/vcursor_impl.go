@@ -93,7 +93,7 @@ type iExecute interface {
 	reloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error
 	VSchema() *vindexes.VSchema
 	SetFailPoint(command string, key string, value string) error
-	SubmitDMLJob(command, sql, uuid, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error)
+	SubmitDMLJob(command, sql, uuid, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error)
 }
 
 // VSchemaOperator is an interface to Vschema Operations

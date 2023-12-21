@@ -1091,7 +1091,7 @@ message SubmitDMLJobRequest{
   string sql = 3;
   string related_schema= 4;
   int64 timegap = 6;
-  int64 subtask_rows = 7;
+  int64 batch_size = 7;
   bool auto_retry = 8;
   bool postpone_launch = 9;
 }

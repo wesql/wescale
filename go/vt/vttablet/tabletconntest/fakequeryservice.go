@@ -71,7 +71,7 @@ func (f *FakeQueryService) SetFailPoint(ctx context.Context, command string, key
 	return nil
 }
 
-func (f *FakeQueryService) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (f *FakeQueryService) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	panic("implement me")
 }
 

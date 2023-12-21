@@ -1133,7 +1133,7 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 	return nil
 }
 
-func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22,为什么要加锁？
 	// todo，什么时候调用？
 	conn.mu.RLock()
@@ -1147,7 +1147,7 @@ func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uui
 		JobUuid:        uuid,
 		RelatedSchema:  tableSchema,
 		Timegap:        timeGapInMs,
-		SubtaskRows:    subtaskRows,
+		BatchSize:      batchSize,
 		PostponeLaunch: postponeLaunch,
 		AutoRetry:      autoRetry,
 	}
