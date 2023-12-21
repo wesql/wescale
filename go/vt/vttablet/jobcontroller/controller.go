@@ -256,7 +256,8 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 		subtaskRows = int64(defaultSubtaskRows)
 	}
 
-	selectSQL, countSQLTemplate, tableName, err := jc.genSelectBatchKeySQL(sql, tableSchema)
+	// todo，优化，将下面genSelectBatchKeySQL getTablePkInfo genBatchTable放在一个函数中，减少参数传递，增加易读性
+	selectSQL, countSQLTemplate, tableName, wherePart, pkPart, err := jc.genSelectBatchKeySQL(sql, tableSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +265,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, subtask
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, pkInfos, subtaskRows)
+	jobBatchTable, err := jc.genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, tableName, wherePart, pkPart, pkInfos, subtaskRows)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -1193,33 +1194,33 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 // 目前只支持
 // 1.PK作为拆分列,支持多列PK todo 支持UK或其他列
 // 2.目前只支持单表，且没有join
-func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQL, countSQLTemplate, tableName string, err error) {
+func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQL, countSQLTemplate, tableName, wherePart, pkPart string, err error) {
 	// SELECT `id` FROM `test`.`t` WHERE (`v` < 6) ORDER BY IF(ISNULL(`id`),0,1),`id`， 由于是PK，因此不需要判断ISNULL
 	stmt, _, err := sqlparser.Parse2(sql)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", "", err
 	}
-	wherePart := ""
+	wherePart = ""
 	switch s := stmt.(type) {
 	case *sqlparser.Delete:
 		if len(s.TableExprs) != 1 {
-			return "", "", "", errors.New("the number of table is more than one")
+			return "", "", "", "", "", errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
 		// 目前暂不支持join和多表 todo
 		if !ok {
-			return "", "", "", errors.New("don't support join table now")
+			return "", "", "", "", "", errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
 	case *sqlparser.Update:
 		if len(s.TableExprs) != 1 {
-			return "", "", "", errors.New("the number of table is more than one")
+			return "", "", "", "", "", errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
 		// 目前暂不支持join和多表 todo
 		if !ok {
-			return "", "", "", errors.New("don't support join table now")
+			return "", "", "", "", "", errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
@@ -1229,48 +1230,259 @@ func (jc *JobController) genSelectBatchKeySQL(sql, tableSchema string) (selectSQ
 	ctx := context.Background()
 	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, tableName)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", "", err
 	}
-	PKPart := ""
+	pkPart = ""
 	firstPK := true
 	for _, pkInfo := range pkInfos {
 		if !firstPK {
-			PKPart += ","
+			pkPart += ","
 		}
-		PKPart += pkInfo.pkName
+		pkPart += pkInfo.pkName
 		firstPK = false
 	}
 
 	selectSQL = fmt.Sprintf("select %s from %s.%s %s order by %s",
-		PKPart, tableSchema, tableName, wherePart, PKPart)
+		pkPart, tableSchema, tableName, wherePart, pkPart)
 
 	// todo，支持多PK多类型
-	countSQLTemplate, err = genCountSQLTemplate(tableSchema, tableName, wherePart, PKPart, pkInfos)
-	return selectSQL, countSQLTemplate, tableName, err
+	countSQLTemplate, err = genCountSQLTemplate(tableSchema, tableName, wherePart, pkPart, pkInfos)
+	return selectSQL, countSQLTemplate, tableName, wherePart, pkPart, err
 }
 
-func genCountSQLTemplate(tableSchema, tableName, wherePart, PKPart string, pkInfos []PKInfo) (countSQLTemplate string, err error) {
+func genCountSQLTemplate(tableSchema, tableName, wherePart, pkPart string, pkInfos []PKInfo) (countSQLTemplate string, err error) {
 	// todo 当前是单pk的情况，后续需要考虑多pk
-	switch pkInfos[0].pkType {
+	if len(pkInfos) == 0 {
+		return "", errors.New("the len of pkInfos is 0")
+	}
+	if len(pkInfos) == 1 {
+		switch pkInfos[0].pkType {
+		case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
+				tableSchema, tableName, wherePart, pkPart, pkPart)
+
+		case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
+				tableSchema, tableName, wherePart, pkPart, pkPart)
+
+		case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%f AND %%f order by %s",
+				tableSchema, tableName, wherePart, pkPart, pkPart)
+
+		// todo decimal类型能否转换成string待定
+		case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
+			querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%%s' AND '%%s' order by %s",
+				tableSchema, tableName, wherePart, pkPart, pkPart)
+
+		default:
+			return "", fmt.Errorf("Unsupported type: %v", pkInfos[0].pkType)
+		}
+	} else {
+		// 1. 生成>=的部分
+		// 遍历PKName，不同的pk类型要对应不同的占位符
+		greatThanPart, err := genPKsGreaterThanTemplate(pkInfos)
+		if err != nil {
+			return "", err
+		}
+
+		// 2.生成<=的部分
+		lessThanPart, err := genPKsLessThanTemplate(pkInfos)
+		if err != nil {
+			return "", err
+		}
+
+		// 3.将各部分拼接成最终的template
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND ( (%s) AND (%s) )",
+			tableSchema, tableName, wherePart, greatThanPart, lessThanPart)
+	}
+	return countSQLTemplate, nil
+}
+
+func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchStart, currentBatchEnd []interface{}, pkInfos []PKInfo) (countSQLTemplate string, err error) {
+	// todo 当前是单pk的情况，后续需要考虑多pk
+	if len(pkInfos) == 0 {
+		return "", errors.New("the len of pkInfos is 0")
+	}
+	if len(pkInfos) == 1 {
+		switch pkInfos[0].pkType {
+		case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %d AND %d order by %s",
+				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
+
+		case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %d AND %d order by %s",
+				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
+
+		case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %f AND %f order by %s",
+				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
+
+		// todo decimal类型能否转换成string待定
+		case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
+			querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%s' AND '%s' order by %s",
+				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
+
+		default:
+			return "", fmt.Errorf("Unsupported type: %v", pkInfos[0].pkType)
+		}
+	} else {
+		// 1. 生成>=的部分
+		// 遍历PKName，不同的pk类型要对应不同的占位符
+		greatThanPart, err := genPKsGreaterThanPart(pkInfos, currentBatchStart)
+		if err != nil {
+			return "", err
+		}
+
+		// 2.生成<=的部分
+		lessThanPart, err := genPKsLessThanPart(pkInfos, currentBatchEnd)
+		if err != nil {
+			return "", err
+		}
+
+		// 3.将各部分拼接成最终的template
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND ( (%s) AND (%s) )",
+			tableSchema, tableName, wherePart, greatThanPart, lessThanPart)
+	}
+	return countSQLTemplate, nil
+}
+
+func genPKsGreaterThanTemplate(pkInfos []PKInfo) (string, error) {
+	curIdx := 0
+	pksNum := len(pkInfos)
+	var equalStr, rst string
+	for curIdx < pksNum {
+		curPkName := pkInfos[curIdx].pkName
+		curPKType := pkInfos[curIdx].pkType
+
+		placeholder, err := genPlaceholderByType(curPKType)
+		if err != nil {
+			return "", err
+		}
+
+		if curIdx == 0 {
+			rst = fmt.Sprintf("( %s >= %s )", curPkName, placeholder)
+		} else {
+			rst += fmt.Sprintf(" OR ( %s AND %s >= %s )", equalStr, curPkName, placeholder)
+		}
+
+		if curIdx == 0 {
+			equalStr = fmt.Sprintf("%s = %s", curPkName, placeholder)
+		} else {
+			equalStr += fmt.Sprintf(" AND %s = %s", curPkName, placeholder)
+		}
+		curIdx++
+	}
+	return rst, nil
+}
+
+func genPKsLessThanTemplate(pkInfos []PKInfo) (string, error) {
+	curIdx := 0
+	pksNum := len(pkInfos)
+	var equalStr, rst string
+	for curIdx < pksNum {
+		curPkName := pkInfos[curIdx].pkName
+		curPKType := pkInfos[curIdx].pkType
+
+		placeholder, err := genPlaceholderByType(curPKType)
+		if err != nil {
+			return "", err
+		}
+
+		if curIdx == 0 {
+			rst = fmt.Sprintf("( %s <= %s )", curPkName, placeholder)
+		} else {
+			rst += fmt.Sprintf(" OR ( %s AND %s <= %s )", equalStr, curPkName, placeholder)
+		}
+
+		if curIdx == 0 {
+			equalStr = fmt.Sprintf("%s = %s", curPkName, placeholder)
+		} else {
+			equalStr += fmt.Sprintf(" AND %s = %s", curPkName, placeholder)
+		}
+		curIdx++
+	}
+	return rst, nil
+}
+
+func genPlaceholderByType(typ querypb.Type) (string, error) {
+	switch typ {
 	case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
-		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
-			tableSchema, tableName, wherePart, PKPart, PKPart)
+		return "%d", nil
 	case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
-		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%d AND %%d order by %s",
-			tableSchema, tableName, wherePart, PKPart, PKPart)
+		return "%d", nil
 	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
-		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %%f AND %%f order by %s",
-			tableSchema, tableName, wherePart, PKPart, PKPart)
+		return "%f", nil
 	// todo decimal类型能否转换成string待定
 	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
 		querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
-		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%%s' AND '%%s' order by %s",
-			tableSchema, tableName, wherePart, PKPart, PKPart)
+		return "%s", nil
 	default:
-		return "", fmt.Errorf("Unsupported type: %v", pkInfos[0].pkType)
-
+		return "", fmt.Errorf("Unsupported type: %v", typ)
 	}
-	return countSQLTemplate, nil
+}
+
+func genPKsGreaterThanPart(pkInfos []PKInfo, currentBatchStart []interface{}) (string, error) {
+	curIdx := 0
+	pksNum := len(pkInfos)
+	var equalStr, rst string
+	for curIdx < pksNum {
+		curPkName := pkInfos[curIdx].pkName
+		curPKType := pkInfos[curIdx].pkType
+
+		placeholder, err := genPlaceholderByType(curPKType)
+		if err != nil {
+			return "", err
+		}
+
+		if curIdx == 0 {
+			rst = fmt.Sprintf("( %s >= %s )", curPkName, placeholder)
+		} else {
+			rst += fmt.Sprintf(" OR ( %s AND %s >= %s )", equalStr, curPkName, placeholder)
+		}
+		rst = fmt.Sprintf(rst, currentBatchStart[curIdx])
+
+		if curIdx == 0 {
+			equalStr = fmt.Sprintf("%s = %s", curPkName, placeholder)
+		} else {
+			equalStr += fmt.Sprintf(" AND %s = %s", curPkName, placeholder)
+		}
+		equalStr = fmt.Sprintf(equalStr, currentBatchStart[curIdx])
+		curIdx++
+	}
+	return rst, nil
+}
+
+func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []interface{}) (string, error) {
+	curIdx := 0
+	pksNum := len(pkInfos)
+	var equalStr, rst string
+	for curIdx < pksNum {
+		curPkName := pkInfos[curIdx].pkName
+		curPKType := pkInfos[curIdx].pkType
+
+		placeholder, err := genPlaceholderByType(curPKType)
+		if err != nil {
+			return "", err
+		}
+
+		if curIdx == 0 {
+			rst = fmt.Sprintf("( %s <= %s )", curPkName, placeholder)
+		} else {
+			rst += fmt.Sprintf(" OR ( %s AND %s <= %s )", equalStr, curPkName, placeholder)
+		}
+		rst = fmt.Sprintf(rst, currentBatchEnd[curIdx])
+
+		if curIdx == 0 {
+			equalStr = fmt.Sprintf("%s = %s", curPkName, placeholder)
+		} else {
+			equalStr += fmt.Sprintf(" AND %s = %s", curPkName, placeholder)
+		}
+		equalStr = fmt.Sprintf(equalStr, currentBatchEnd[curIdx])
+		curIdx++
+	}
+	return rst, nil
 }
 
 const (
@@ -1284,7 +1496,7 @@ const (
 
 // 创建表，todo 表gc
 // todo，discussion，建表的过程中需要放在一个事务内，防止崩了,由于一个事务容纳的数据有限，oom，因此需要多个事务?
-func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql string, pkInfos []PKInfo, batchSize int64) (string, error) {
+func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tableSchema, sql, tableName, wherePart, pkPart string, pkInfos []PKInfo, batchSize int64) (string, error) {
 	ctx := context.Background()
 
 	qr, err := jc.execQuery(ctx, "", selectSQL)
@@ -1317,63 +1529,76 @@ func (jc *JobController) genBatchTable(jobUUID, selectSQL, countSQLTemplate, tab
 	// todo 处理不同类型的PK
 	// todo 创建一个新的value结构，表示PK的名字和类型
 	currentBatchSize := int64(0)
-	var currentBatchStart interface{}
-	var currentBatchEnd interface{}
+	var currentBatchStart []interface{}
+	var currentBatchEnd []interface{}
 	currentBatchID := float64(1)
 
 	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
 
 	var pkName string
+
 	// todo 对结果集为0的情况进行特判
 	for _, row := range qr.Named().Rows {
+		var pkValues []interface{}
 		for _, pkInfo := range pkInfos {
 			pkName = pkInfo.pkName
 			// todo，对于每一列PK的值类型进行判断
 			keyVal, err := ProcessValue(row[pkName])
+			pkValues = append(pkValues, keyVal)
 			if err != nil {
 				return "", err
 			}
+		}
 
-			if currentBatchSize == 0 {
-				currentBatchStart = keyVal
+		if currentBatchSize == 0 {
+			currentBatchStart = pkValues
+		}
+		currentBatchEnd = pkValues
+		currentBatchSize++ // 改成多pk后要移出去 todo
+		if currentBatchSize == batchSize {
+			// between是一个闭区间，batch job的sql也是闭区间
+			// todo 处理多pk
+			batchSQL, err := jc.genBatchSQL(sql, currentBatchStart, currentBatchEnd, pkInfos)
+			if err != nil {
+				return "", err
 			}
-			currentBatchEnd = keyVal
-			currentBatchSize++ // 改成多pk后要移出去 todo
-			if currentBatchSize == batchSize {
-				// between是一个闭区间，batch job的sql也是闭区间
-				// todo 处理整数之外的类型
-				batchSQL, err := jc.genBatchSQL(sql, pkName, currentBatchStart, currentBatchEnd)
-				if err != nil {
-					return "", err
-				}
-				// todo 处理整数之外的类型
-				countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+			// todo 处理多pk
+			//countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+			countSQL, err := genCountSQL(tableSchema, tableName, wherePart, pkPart, currentBatchStart, currentBatchEnd, pkInfos)
+			if err != nil {
+				return "", err
+			}
+			currentBatchSize = 0
+			// insert into table
+			insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
+				sqltypes.Float64BindVariable(currentBatchID),
+				sqltypes.StringBindVariable(batchSQL),
+				sqltypes.StringBindVariable(countSQL),
+				sqltypes.Int64BindVariable(int64(batchSize)))
+			if err != nil {
+				return "", err
+			}
+			_, err = jc.execQuery(ctx, tableSchema, insertBatchSQLQuery)
+			if err != nil {
+				return "", err
+			}
+			currentBatchID++ // 改成多pk后要移出循环 todo
 
-				currentBatchSize = 0
-				// insert into table
-				insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
-					sqltypes.Float64BindVariable(currentBatchID),
-					sqltypes.StringBindVariable(batchSQL),
-					sqltypes.StringBindVariable(countSQL),
-					sqltypes.Int64BindVariable(int64(batchSize)))
-				if err != nil {
-					return "", err
-				}
-				_, err = jc.execQuery(ctx, tableSchema, insertBatchSQLQuery)
-				if err != nil {
-					return "", err
-				}
-				currentBatchID++ // 改成多pk后要移出循环 todo
-			}
 		}
 	}
 	//最后一个batch
 	if currentBatchSize != 0 {
-		batchSQL, err := jc.genBatchSQL(sql, pkName, currentBatchStart, currentBatchEnd)
+		// todo 处理多pk
+		batchSQL, err := jc.genBatchSQL(sql, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
 			return "", err
 		}
-		countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+		// todo 处理多pk
+		//countSQL := fmt.Sprintf(countSQLTemplate, currentBatchStart, currentBatchEnd)
+		countSQL, err := genCountSQL(tableSchema, tableName, wherePart, pkPart, currentBatchStart, currentBatchEnd, pkInfos)
+		if err != nil {
+			return "", err
+		}
 		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
 			sqltypes.Float64BindVariable(currentBatchID),
 			sqltypes.StringBindVariable(batchSQL),
@@ -1409,24 +1634,42 @@ func ProcessValue(value sqltypes.Value) (interface{}, error) {
 	}
 }
 
-func (jc *JobController) genBatchSQL(sql, pkName string, currentBatchStart, currentBatchEnd interface{}) (batchSQL string, err error) {
-	if fmt.Sprintf("%T", currentBatchStart) != fmt.Sprintf("%T", currentBatchEnd) {
-		err = errors.New("the type of currentBatchStart and currentBatchEnd is different")
-		return "", err
-	}
+func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatchEnd []interface{}, pkInfos []PKInfo) (batchSQL string, err error) {
+	if len(pkInfos) == 1 {
+		if fmt.Sprintf("%T", currentBatchStart[0]) != fmt.Sprintf("%T", currentBatchEnd[0]) {
+			err = errors.New("the type of currentBatchStart and currentBatchEnd is different")
+			return "", err
+		}
+		pkName := pkInfos[0].pkName
+		switch currentBatchEnd[0].(type) {
+		case int64:
+			batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart[0].(int64), currentBatchEnd[0].(int64))
+		case uint64:
+			batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart[0].(uint64), currentBatchEnd[0].(uint64))
+		case float64:
+			batchSQL = sql + fmt.Sprintf(" AND %s between %f AND %f", pkName, currentBatchStart[0].(float64), currentBatchEnd[0].(float64))
+		case string:
+			batchSQL = sql + fmt.Sprintf(" AND %s between '%s' AND '%s'", pkName, currentBatchStart[0].(string), currentBatchEnd[0].(string))
+		default:
+			err = errors.New("unsupported type of currentBatchEnd")
+			return "", err
+		}
+	} else {
+		// 1. 生成>=的部分
+		// 遍历PKName，不同的pk类型要对应不同的占位符
+		greatThanPart, err := genPKsGreaterThanPart(pkInfos, currentBatchStart)
+		if err != nil {
+			return "", err
+		}
 
-	switch currentBatchEnd.(type) {
-	case int64:
-		batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart.(int64), currentBatchEnd.(int64))
-	case uint64:
-		batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart.(uint64), currentBatchEnd.(uint64))
-	case float64:
-		batchSQL = sql + fmt.Sprintf(" AND %s between %f AND %f", pkName, currentBatchStart.(float64), currentBatchEnd.(float64))
-	case string:
-		batchSQL = sql + fmt.Sprintf(" AND %s between '%s' AND '%s'", pkName, currentBatchStart.(string), currentBatchEnd.(string))
-	default:
-		err = errors.New("unsupported type of currentBatchEnd")
-		return "", err
+		// 2.生成<=的部分
+		lessThanPart, err := genPKsLessThanPart(pkInfos, currentBatchEnd)
+		if err != nil {
+			return "", err
+		}
+
+		// 3.将各部分拼接成最终的template
+		batchSQL = sql + fmt.Sprintf(" AND ( (%s) AND (%s) )", greatThanPart, lessThanPart)
 	}
 	return batchSQL, nil
 }
