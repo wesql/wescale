@@ -243,7 +243,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, batchSi
 		batchSize = int64(defaultBatchSize)
 	}
 
-	tableName, jobBatchTable, err := jc.createBatchJob(jobUUID, sql, tableSchema, batchSize)
+	tableName, jobBatchTable, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -1137,7 +1137,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	}
 }
 
-func (jc *JobController) createBatchJob(jobUUID, sql, tableSchema string, batchSize int64) (tableName, batchTableName string, err error) {
+func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, batchSize int64) (tableName, batchTableName string, err error) {
 	// 1.解析用户提交的DML sql，返回DML的各个部分。其中selectSQL用于确定每一个batch的pk范围，生成每一个batch所要执行的batch sql
 	selectSQL, tableName, wherePart, pkPart, pkInfos, err := jc.parseDML(sql, tableSchema)
 	if err != nil {
