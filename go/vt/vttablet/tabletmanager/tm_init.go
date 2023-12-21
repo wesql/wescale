@@ -385,7 +385,9 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		servenv.OnTerm(tm.VDiffEngine.Close)
 	}
 
-	tm.roleListener = role.NewListener(tm)
+	tm.roleListener = role.NewListener(func(ctx context.Context, tabletType topodatapb.TabletType) {
+		tm.ChangeType(ctx, tabletType, false)
+	})
 	servenv.OnRun(tm.roleListener.Open)
 	servenv.OnTerm(tm.roleListener.Close)
 

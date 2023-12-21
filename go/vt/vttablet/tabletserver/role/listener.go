@@ -9,11 +9,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager"
+	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/topo"
 
 	"github.com/spf13/pflag"
 
@@ -28,28 +30,29 @@ var (
 )
 
 var (
-	mysqlProbeServicePort = 3501
-	mysqlProbeServiceHost = "localhost"
-	getRoleUrl            = fmt.Sprintf("%s:%s/v1.0/bindings/mysql?operation=getRole", mysqlProbeServiceHost, mysqlProbeServicePort)
+	mysqlProbeServicePort int64 = 3501
+	mysqlProbeServiceHost       = "localhost"
 )
+
+const LORRY_HTTP_PORT_ENV_NAME = "LORRY_HTTP_PORT"
 
 const Leader = "Leader"
 const Follower = "Follower"
 const Learner = "Learner"
 const Logger = "Logger"
 
-func transitionRoleType(role string) tabletpb.TabletType {
+func transitionRoleType(role string) topodatapb.TabletType {
 	switch role {
 	case Leader:
-		return tabletpb.TabletType_PRIMARY
+		return topodatapb.TabletType_PRIMARY
 	case Follower:
-		return tabletpb.TabletType_REPLICA
+		return topodatapb.TabletType_REPLICA
 	case Learner:
-		return tabletpb.TabletType_RDONLY
+		return topodatapb.TabletType_RDONLY
 	case Logger:
-		return tabletpb.TabletType_SPARE
+		return topodatapb.TabletType_SPARE
 	default:
-		return tabletpb.TabletType_UNKNOWN
+		return topodatapb.TabletType_UNKNOWN
 	}
 }
 
@@ -57,24 +60,40 @@ func init() {
 	servenv.OnParseFor("vttablet", registerGCFlags)
 }
 
+func setUpMysqlProbeServicePort() {
+	portStr, ok := os.LookupEnv(LORRY_HTTP_PORT_ENV_NAME)
+	if !ok {
+		return
+	}
+	// parse portStr to int
+	portFromEnv, err := strconv.ParseInt(portStr, 10, 64)
+	if err != nil {
+		return
+	}
+	mysqlProbeServicePort = portFromEnv
+}
+
 func registerGCFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "Interval between garbage collection checks")
+	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "Interval between garbage collection checks")
+
+	fs.StringVar(&mysqlProbeServiceHost, "mysql_role_probe_timeout", mysqlProbeServiceHost, "Interval between garbage collection checks")
 }
 
 type Listener struct {
 	isOpen          int64
 	cancelOperation context.CancelFunc
 
-	tm *tabletmanager.TabletManager
-
 	stateMutex     sync.Mutex
 	reconcileMutex sync.Mutex
+
+	changeTypeFunc func(ctx context.Context, tabletType topodatapb.TabletType)
 }
 
-func NewListener(tm *tabletmanager.TabletManager) *Listener {
+func NewListener(changeTypeFunc func(ctx context.Context, tabletType topodatapb.TabletType)) *Listener {
 	l := &Listener{
-		isOpen: 0,
-		tm:     tm,
+		isOpen:         0,
+		changeTypeFunc: changeTypeFunc,
 	}
 	return l
 }
@@ -139,6 +158,9 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	collector.reconcileMutex.Lock()
 	defer collector.reconcileMutex.Unlock()
 
+	setUpMysqlProbeServicePort()
+	getRoleUrl := fmt.Sprintf("http://%s:%d/v1.0/bindings/mysql?operation=getRole", mysqlProbeServiceHost, mysqlProbeServicePort)
+
 	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
 		log.Errorf("try to probe mysql role, but error happened: %v", err)
@@ -158,9 +180,12 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	}
 
 	tabletType := transitionRoleType(roleStr)
+
 	switch tabletType {
-	case tabletpb.TabletType_PRIMARY, tabletpb.TabletType_REPLICA, tabletpb.TabletType_RDONLY:
-		collector.tm.ChangeType(context.Background(), tabletType, false)
+	case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
+		changeTypeCtx, cancel := context.WithTimeout(context.Background(), topo.RemoteOperationTimeout)
+		defer cancel()
+		collector.changeTypeFunc(changeTypeCtx, tabletType)
 	default:
 		log.Error("role value is not a string, role:%v", role)
 	}
