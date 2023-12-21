@@ -12,13 +12,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/vttablet/tabletmanager"
 
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/timer"
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/topo"
 )
 
 var (
@@ -33,6 +34,24 @@ var (
 )
 
 const Leader = "Leader"
+const Follower = "Follower"
+const Learner = "Learner"
+const Logger = "Logger"
+
+func transitionRoleType(role string) tabletpb.TabletType {
+	switch role {
+	case Leader:
+		return tabletpb.TabletType_PRIMARY
+	case Follower:
+		return tabletpb.TabletType_REPLICA
+	case Learner:
+		return tabletpb.TabletType_RDONLY
+	case Logger:
+		return tabletpb.TabletType_SPARE
+	default:
+		return tabletpb.TabletType_UNKNOWN
+	}
+}
 
 func init() {
 	servenv.OnParseFor("vttablet", registerGCFlags)
@@ -46,15 +65,16 @@ type Listener struct {
 	isOpen          int64
 	cancelOperation context.CancelFunc
 
-	ts *topo.Server
+	tm *tabletmanager.TabletManager
 
-	stateMutex sync.Mutex
+	stateMutex     sync.Mutex
+	reconcileMutex sync.Mutex
 }
 
-func NewListener(ts *topo.Server) *Listener {
+func NewListener(tm *tabletmanager.TabletManager) *Listener {
 	l := &Listener{
 		isOpen: 0,
-		ts:     ts,
+		tm:     tm,
 	}
 	return l
 }
@@ -109,13 +129,16 @@ func (collector *Listener) probeLoop(ctx context.Context) {
 		case <-ticker.C:
 			{
 				log.Info("Listener: receive tick")
-				reconcileLeadership(ctx)
+				collector.reconcileLeadership(ctx)
 			}
 		}
 	}
 }
 
-func reconcileLeadership(ctx context.Context) {
+func (collector *Listener) reconcileLeadership(ctx context.Context) {
+	collector.reconcileMutex.Lock()
+	defer collector.reconcileMutex.Unlock()
+
 	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
 		log.Errorf("try to probe mysql role, but error happened: %v", err)
@@ -134,9 +157,11 @@ func reconcileLeadership(ctx context.Context) {
 		return
 	}
 
-	if roleStr != Leader {
-		return
+	tabletType := transitionRoleType(roleStr)
+	switch tabletType {
+	case tabletpb.TabletType_PRIMARY, tabletpb.TabletType_REPLICA, tabletpb.TabletType_RDONLY:
+		collector.tm.ChangeType(context.Background(), tabletType, false)
+	default:
+		log.Error("role value is not a string, role:%v", role)
 	}
-
-	//todo earayu
 }

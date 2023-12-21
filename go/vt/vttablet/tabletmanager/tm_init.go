@@ -154,10 +154,11 @@ type TabletManager struct {
 	UpdateStream        binlog.UpdateStreamControl
 	VREngine            *vreplication.Engine
 	VDiffEngine         *vdiff.Engine
-	RoleListener        *role.Listener
 
 	// tmState manages the TabletManager state.
 	tmState *tmState
+	// roleListener probes mysql role, then call tmState to change vttablet's type
+	roleListener *role.Listener
 
 	// tabletAlias is saved away from tablet for read-only access
 	tabletAlias *topodatapb.TabletAlias
@@ -383,6 +384,10 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		tm.VDiffEngine.InitDBConfig(tm.DBConfigs)
 		servenv.OnTerm(tm.VDiffEngine.Close)
 	}
+
+	tm.roleListener = role.NewListener(tm)
+	servenv.OnRun(tm.roleListener.Open)
+	servenv.OnTerm(tm.roleListener.Close)
 
 	// The following initializations don't need to be done
 	// in any specific order.
