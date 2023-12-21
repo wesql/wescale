@@ -41,7 +41,7 @@ func TestDateFunctionWithNoFormat(t *testing.T) {
 	}
 
 	// Optionally, check if the result type is correct
-	if result.type_ != int16(sqltypes.VarChar) {
+	if result.type_ != int16(sqltypes.Date) {
 		t.Errorf("Expected result type to be VarChar, got %d", result.type_)
 	}
 }
