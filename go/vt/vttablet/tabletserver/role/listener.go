@@ -19,7 +19,6 @@ import (
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 var (
@@ -33,6 +32,8 @@ var (
 	getRoleUrl            = fmt.Sprintf("%s:%s/v1.0/bindings/mysql?operation=getRole", mysqlProbeServiceHost, mysqlProbeServicePort)
 )
 
+const Leader = "Leader"
+
 func init() {
 	servenv.OnParseFor("vttablet", registerGCFlags)
 }
@@ -45,35 +46,26 @@ type Listener struct {
 	isOpen          int64
 	cancelOperation context.CancelFunc
 
-	env tabletenv.Env
-	ts  *topo.Server
+	ts *topo.Server
 
 	stateMutex sync.Mutex
 }
 
-func NewListener(env tabletenv.Env, ts *topo.Server) *Listener {
+func NewListener(ts *topo.Server) *Listener {
 	l := &Listener{
 		isOpen: 0,
-		env:    env,
 		ts:     ts,
 	}
 	return l
 }
 
 // Open opens database pool and initializes the schema
-func (collector *Listener) Open() (err error) {
+func (collector *Listener) Open() {
 	collector.stateMutex.Lock()
 	defer collector.stateMutex.Unlock()
 	if collector.isOpen > 0 {
 		// already open
-		return nil
-	}
-	if !collector.env.Config().EnableTableGC {
-		return nil
-	}
-
-	if err != nil {
-		return fmt.Errorf("Error parsing --table_gc_lifecycle flag: %+v", err)
+		return
 	}
 
 	log.Info("Listener: opening")
@@ -81,8 +73,6 @@ func (collector *Listener) Open() (err error) {
 	ctx := context.Background()
 	ctx, collector.cancelOperation = context.WithCancel(ctx)
 	go collector.probeLoop(ctx)
-
-	return nil
 }
 
 func (collector *Listener) Close() {
@@ -119,25 +109,34 @@ func (collector *Listener) probeLoop(ctx context.Context) {
 		case <-ticker.C:
 			{
 				log.Info("Listener: receive tick")
-				checkLeadership(ctx)
+				reconcileLeadership(ctx)
 			}
 		}
 	}
 }
 
-func checkLeadership(ctx context.Context) {
-	kvResp, err := probe(ctx, http.MethodGet, getRoleUrl, nil)
+func reconcileLeadership(ctx context.Context) {
+	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
-
+		log.Errorf("try to probe mysql role, but error happened: %v", err)
+		return
 	}
-	role := kvResp["role"].(string)
-	if role == "Leader" {
-
+	role, ok := kvResp["role"]
+	if !ok {
+		log.Errorf("unable to get mysql role from probe response, response content: %v", kvResp)
+		return
 	}
-}
 
-// RoleResponse 是我们期望从HTTP响应中解析出的JSON结构
-type RoleResponse struct {
-	Event string `json:"event"`
-	Role  string `json:"role"`
+	// Safely assert the type of role to string.
+	roleStr, ok := role.(string)
+	if !ok {
+		log.Error("role value is not a string, role:%v", role)
+		return
+	}
+
+	if roleStr != Leader {
+		return
+	}
+
+	//todo earayu
 }

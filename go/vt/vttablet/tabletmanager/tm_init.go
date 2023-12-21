@@ -47,6 +47,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
 
 	"vitess.io/vitess/go/internal/global"
 
@@ -153,6 +154,7 @@ type TabletManager struct {
 	UpdateStream        binlog.UpdateStreamControl
 	VREngine            *vreplication.Engine
 	VDiffEngine         *vdiff.Engine
+	RoleListener        *role.Listener
 
 	// tmState manages the TabletManager state.
 	tmState *tmState

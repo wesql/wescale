@@ -26,6 +26,7 @@ import (
 	"context"
 	"os"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
 
 	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
@@ -127,6 +128,7 @@ func main() {
 		UpdateStream:        binlog.NewUpdateStream(ts, tablet.Keyspace, tabletAlias.Cell, qsc.SchemaEngine()),
 		VREngine:            vreplication.NewEngine(config, ts, tabletAlias.Cell, mysqld, qsc.LagThrottler()),
 		VDiffEngine:         vdiff.NewEngine(config, ts, tablet),
+		RoleListener:        role.NewListener(ts),
 	}
 	if err := tm.Start(tablet, config.Healthcheck.IntervalSeconds.Get()); err != nil {
 		log.Exitf("failed to parse --tablet-path or initialize DB credentials: %v", err)
