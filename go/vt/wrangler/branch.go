@@ -26,9 +26,7 @@ import (
 	"vitess.io/vitess/go/vt/log"
 	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
 	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
 )
 
 type BranchJob struct {
@@ -295,11 +293,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		return nil, err
 	}
 	onddl := branchJobMap["onddl"].ToString()
-
 	status := branchJobMap["status"].ToString()
-	if status != BranchStatusOfPrePare {
-		return nil, vterrors.Errorf(vtrpc.Code_ABORTED, "can not start an branch which status [%v] is not prepare", status)
-	}
 	branchJob := &BranchJob{
 		sourceDatabase:   sourceDatabase,
 		targetDatabase:   targetDatabase,

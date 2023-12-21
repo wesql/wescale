@@ -122,6 +122,7 @@ type TabletServer struct {
 	hs           *healthStreamer
 	lagThrottler *throttle.Throttler
 	tableGC      *gc.TableGC
+	branchWatch  *BranchWatcher
 
 	// sm manages state transitions.
 	sm                *stateManager
@@ -189,6 +190,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.txThrottler = txthrottler.NewTxThrottler(tsv.config, topoServer)
 	tsv.te = NewTxEngine(tsv)
 	tsv.messager = messager.NewEngine(tsv, tsv.se, tsv.vstreamer)
+	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
@@ -203,6 +205,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 		vstreamer:   tsv.vstreamer,
 		tracker:     tsv.tracker,
 		watcher:     tsv.watcher,
+		branchWatch: tsv.branchWatch,
 		qe:          tsv.qe,
 		txThrottler: tsv.txThrottler,
 		te:          tsv.te,

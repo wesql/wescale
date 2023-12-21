@@ -121,6 +121,7 @@ type stateManager struct {
 	vstreamer   subComponent
 	tracker     subComponent
 	watcher     subComponent
+	branchWatch subComponent
 	qe          queryEngine
 	txThrottler txThrottler
 	te          txEngine
@@ -475,6 +476,7 @@ func (sm *stateManager) servePrimary() error {
 	sm.tableGC.Open()
 	sm.ddle.Open()
 	sm.tableACL.Open()
+	sm.branchWatch.Open()
 	sm.setState(topodatapb.TabletType_PRIMARY, StateServing)
 	return nil
 }
@@ -503,6 +505,7 @@ func (sm *stateManager) serveNonPrimary(wantTabletType topodatapb.TabletType) er
 	sm.tableGC.Close()
 	sm.messager.Close()
 	sm.tracker.Close()
+	sm.branchWatch.Close()
 	sm.se.MakeNonPrimary()
 
 	if err := sm.connect(wantTabletType); err != nil {
