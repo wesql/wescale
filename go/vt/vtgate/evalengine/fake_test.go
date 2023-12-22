@@ -6,8 +6,11 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package evalengine
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
+
+	"github.com/brianvoe/gofakeit/v6"
 
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +28,7 @@ func TestDateFunctionWithNoFormat(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	// Check if the result is a valid date in the expected format
 	s := string(result.bytes_)
@@ -38,7 +41,7 @@ func TestDateFunctionWithNoFormat(t *testing.T) {
 	}
 
 	// Optionally, check if the result type is correct
-	if result.type_ != int16(sqltypes.VarChar) {
+	if result.type_ != int16(sqltypes.Date) {
 		t.Errorf("Expected result type to be VarChar, got %d", result.type_)
 	}
 }
@@ -54,7 +57,7 @@ func TestDateFunctionWithCustomFormat(t *testing.T) {
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitByType{}.call(env, args, result)
 
 	s := string(result.bytes_)
 	match, err := regexp.MatchString(`^[A-Za-z]+ \d{1,2}, \d{4}$`, s)
@@ -70,13 +73,11 @@ func TestDateFunctionWithInvalidFormat(t *testing.T) {
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("date")},
-		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte(invalidPattern)},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 
 	// 假设错误情况下返回空字符串或特定错误信息
 	if string(result.bytes_) != invalidPattern {
@@ -90,13 +91,11 @@ func TestGeneratorWithNamePattern(t *testing.T) {
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
-		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte(formatPattern)},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^[A-Za-z]+ [A-Za-z]+$`, string(result.bytes_))
 	if err != nil {
@@ -112,13 +111,11 @@ func TestGeneratorWithBSPattern(t *testing.T) {
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
-		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte(formatPattern)},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^.+ .+$`, string(result.bytes_))
@@ -135,13 +132,11 @@ func TestGeneratorWithAddressPattern(t *testing.T) {
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
-		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte(formatPattern)},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 
 	match, err := regexp.MatchString(`^.+ .+, .+$`, string(result.bytes_))
@@ -157,13 +152,11 @@ func TestGeneratorWithNumberAndCharPattern(t *testing.T) {
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
-		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte("###-???")},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 
 	match, err := regexp.MatchString(`^\d{3}-[A-Za-z]{3}$`, string(result.bytes_))
 	if err != nil {
@@ -176,17 +169,14 @@ func TestGeneratorWithNumberAndCharPattern(t *testing.T) {
 
 func TestGeneratorWithMixedDataPattern(t *testing.T) {
 	formatPattern := "{beername} - {color}: {number:1,100}"
-
 	env := &ExpressionEnv{}
 	args := []EvalResult{
-		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
 		{type_: int16(sqltypes.VarChar),
 			bytes_: []byte(formatPattern)},
 	}
 	result := &EvalResult{}
 
-	builtinFake{}.call(env, args, result)
+	builtinGofakeitGenerate{}.call(env, args, result)
 	require.NotEqual(t, formatPattern, string(result.bytes_))
 	match, err := regexp.MatchString(`^.+ - .+: \d+$`, string(result.bytes_))
 	if err != nil {
@@ -197,19 +187,30 @@ func TestGeneratorWithMixedDataPattern(t *testing.T) {
 	}
 }
 
-func TestGeneratorWithoutPattern(t *testing.T) {
+func TestGenerateWithoutPattern(t *testing.T) {
 	errorStr := "error,need pattern param"
+	env := &ExpressionEnv{}
+	args := []EvalResult{}
+	result := &EvalResult{}
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered from panic:", r)
+		}
+	}()
+	builtinGofakeitGenerate{}.call(env, args, result)
+	if string(result.bytes_) != errorStr {
+		t.Errorf("Expected no output for missing pattern, but got output: %s", string(result.bytes_))
+	}
+}
+
+func TestGenerateBySeed(t *testing.T) {
+	gofakeit.Seed(10086)
 	env := &ExpressionEnv{}
 	args := []EvalResult{
 		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("generator")},
-		// 不提供模式
+			bytes_: []byte("timestamp")},
 	}
 	result := &EvalResult{}
-
-	builtinFake{}.call(env, args, result)
-
-	if string(result.bytes_) != errorStr {
-		t.Errorf("Expected no output for missing pattern, but got: %s", string(result.bytes_))
-	}
+	builtinGofakeitByType{}.call(env, args, result)
+	require.Equal(t, "1923-03-22 00:00:00", string(result.bytes_))
 }
