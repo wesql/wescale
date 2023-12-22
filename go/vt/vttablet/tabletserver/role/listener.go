@@ -14,6 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/topo"
 
@@ -76,8 +77,6 @@ func setUpMysqlProbeServicePort() {
 func registerGCFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "Interval between garbage collection checks")
 	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "Interval between garbage collection checks")
-
-	fs.StringVar(&mysqlProbeServiceHost, "mysql_role_probe_timeout", mysqlProbeServiceHost, "Interval between garbage collection checks")
 }
 
 type Listener struct {
