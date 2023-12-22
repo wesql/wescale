@@ -32,6 +32,6 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
     `throttle_ratio`        double NULL DEFAULT NULL,
     `throttle_expire_time` varchar(256)     NULL   DEFAULT NULL,
-    `dealing_batch_id`        double NULL DEFAULT NULL,
+    `dealing_batch_id`        varchar(256) NULL DEFAULT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
