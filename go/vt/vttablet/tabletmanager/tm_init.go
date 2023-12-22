@@ -385,8 +385,15 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		servenv.OnTerm(tm.VDiffEngine.Close)
 	}
 
-	tm.roleListener = role.NewListener(func(ctx context.Context, tabletType topodatapb.TabletType) {
-		tm.ChangeType(ctx, tabletType, false)
+	tm.roleListener = role.NewListener(func(ctx context.Context, tabletType topodatapb.TabletType) (bool, error) {
+		if tm.Tablet().Type == tabletType {
+			return false, nil
+		}
+		err := tm.ChangeType(ctx, tabletType, false)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
 	})
 	servenv.OnRun(tm.roleListener.Open)
 	servenv.OnTerm(tm.roleListener.Close)
