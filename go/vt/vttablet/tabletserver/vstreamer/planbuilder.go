@@ -635,13 +635,13 @@ func (plan *Plan) analyzeWhere(vschema *localVSchema, where *sqlparser.Where) er
 			}
 		case *sqlparser.FuncExpr:
 			if !expr.Name.EqualString("in_keyrange") {
-				return fmt.Errorf("unsupported constraint: %v", sqlparser.String(expr))
+				return fmt.Errorf("unsupported constraint1: %v", sqlparser.String(expr))
 			}
 			if err := plan.analyzeInKeyRange(vschema, expr.Exprs); err != nil {
 				return err
 			}
 		default:
-			return fmt.Errorf("unsupported constraint: %v", sqlparser.String(expr))
+			return fmt.Errorf("unsupported constraint2: %v", sqlparser.String(expr))
 		}
 	}
 	return nil

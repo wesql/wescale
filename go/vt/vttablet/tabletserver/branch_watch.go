@@ -24,14 +24,14 @@ const SeleteVReplicationByWorkflow = "SELECT * from mysql.vreplication where wor
 const UpdateBranchJobStatusByWorkflow = "update mysql.branch_jobs set status=%a,message=%a where workflow_name=%a"
 
 const (
-	BranchStateOfPrepare   = "prepare"
-	BranchStateOfRunning   = "running"
+	BranchStateOfPrepare   = "Prepare"
+	BranchStateOfRunning   = "Running"
 	BranchStateOfStop      = "Stop"
-	BranchStateOfCompleted = "completed"
-	BranchStateOfError     = "error"
+	BranchStateOfCompleted = "Completed"
+	BranchStateOfError     = "Error"
 )
 
-const UpdateInterval = 5 * time.Second
+const UpdateInterval = 2 * time.Second
 
 type BranchWatcher struct {
 	dbConfig dbconfigs.Connector
@@ -103,7 +103,7 @@ func (b *BranchWatcher) watch() error {
 					return err
 				}
 			} else {
-				err = b.updateBranchState(ctx, conn, BranchStateOfError, message, workflow)
+				err = b.updateBranchState(ctx, conn, BranchStateOfStop, message, workflow)
 				if err != nil {
 					return err
 				}

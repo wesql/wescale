@@ -158,7 +158,7 @@ func (vtctlclient *VtctlClientProcess) PrepareBranch(workflow, sourceDatabase, t
 		args = append(args, "--stop_after_copy")
 	}
 	if defaultFilterRules != "" {
-		args = append(args, "--default_filter_rules", fmt.Sprintf("\"%v\"", defaultFilterRules))
+		args = append(args, "--default_filter_rules", fmt.Sprintf("%v", defaultFilterRules))
 	}
 	if !skipCopyPhase {
 		args = append(args, "--skip_copy_phase=false")
