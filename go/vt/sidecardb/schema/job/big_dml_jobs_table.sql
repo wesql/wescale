@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `related_schema`                     varchar(256)     NOT NULL,
     `related_table`                     varchar(256)     NOT NULL,
     `timegap_in_ms`             bigint        NOT NULL     ,
-    `subtask_rows`              bigint        NOT NULL     ,
+    `batch_size`              bigint        NOT NULL     ,
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
     `throttle_ratio`        double NULL DEFAULT NULL,
     `throttle_expire_time` varchar(256)     NULL   DEFAULT NULL,

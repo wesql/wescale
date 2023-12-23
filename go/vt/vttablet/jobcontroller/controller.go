@@ -82,7 +82,7 @@ const (
                                       related_table,
                                       job_batch_table,
                                       timegap_in_ms,
-                                      subtask_rows,
+                                      batch_size,
                                       job_status,
                                       status_set_time) values(%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
@@ -197,12 +197,12 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 }
 
 // todo newborn22 ， 能否改写得更有通用性? 这样改写是否好？
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString string, ratioLiteral *sqlparser.Literal, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22, if 可以删掉
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		switch command {
 		case SubmitJob:
-			return jc.SubmitJob(sql, tableSchema, timeGapInMs, batchSize, postponeLaunch, autoRetry)
+			return jc.SubmitJob(sql, tableSchema, timeGapInMs, usrBatchSize, postponeLaunch, autoRetry)
 		case ShowJobs:
 			return jc.ShowJobs()
 		case PauseJob:
@@ -225,7 +225,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 
 // todo newboen22 函数的可见性，封装性上的改进？
 // todo 传timegap和table_name
-func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, userBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -239,8 +239,15 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, batchSi
 	if timeGapInMs == 0 {
 		timeGapInMs = int64(defaultTimeGap)
 	}
-	if batchSize == 0 {
-		batchSize = int64(defaultBatchSize)
+	if userBatchSize == 0 {
+		userBatchSize = int64(defaultBatchSize)
+	}
+	// 取用户输入的batchSize和程序的threshold的最小值作为每个batch最终的batchSize
+	var batchSize int64
+	if userBatchSize < defaultThreshold {
+		batchSize = userBatchSize
+	} else {
+		batchSize = defaultThreshold
 	}
 
 	tableName, jobBatchTable, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
@@ -273,7 +280,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, batchSi
 		return &sqltypes.Result{}, err
 	}
 	// todo 增加 recursive-split，递归拆分batch的选项
-	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, batchSize, postponeLaunch, autoRetry), nil
+	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
 }
 
 func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch, autoRetry bool) *sqltypes.Result {
@@ -281,7 +288,7 @@ func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, tim
 	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), strconv.FormatBool(autoRetry), strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "job_batch_table", "time_gap_in_ms", "subtask_rows", "auto_retry", "postpone_launch"),
+		Fields:       buildVarCharFields("job_uuid", "job_batch_table", "time_gap_in_ms", "batch_size", "auto_retry", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -351,9 +358,10 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	table := row["related_table"].ToString()
 	jobBatchTable := row["job_batch_table"].ToString()
 	timegap, _ := row["timegap_in_ms"].ToInt64()
+	batchSize, _ := row["batch_szie"].ToInt64()
 
 	// 拉起runner协程，协程内会将状态改为running
-	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap)
+	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize)
 	emptyResult.RowsAffected = 1
 	return emptyResult, nil
 }
@@ -547,10 +555,11 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 			uuid := row["job_uuid"].ToString()
 			jobBatchTable := row["job_batch_table"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
+			batchSize, _ := row["batch_size"].ToInt64()
 			if jc.checkDmlJobRunnable(status, table) {
 				// todo 这里之后改成休眠的方式后要删掉， 由于外面拿锁，必须在这里就加上，不然后面的循环可能：已经启动go runner的但是还未加入到working table,导致多个表的同时启动
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap)
+				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize)
 			}
 		}
 
@@ -648,7 +657,7 @@ func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tabl
 	return qr.Named().Rows[0].ToString("max_batch_id")
 }
 
-func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchID string, threshold int64) (nextBatchID string, err error) {
+func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchID string, batchSize int64) (nextBatchID string, err error) {
 	defer jc.env.LogError()
 
 	var setting pools.Setting
@@ -679,7 +688,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return "", errors.New("the len of qr of count expected batch size is not 1")
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
-	if expectedRow > threshold {
+	if expectedRow > batchSize {
 		// todo，递归生成新的batch
 		// todo将下面的每一个小步封装在函数中
 		// 1).根据batchCountSQL生成查询pk值的select sql
@@ -717,7 +726,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 
 		for rowCount, row := range qr.Named().Rows {
 			// 将原本batch的PKEnd设在threshold条数处
-			if int64(rowCount) == threshold-1 {
+			if int64(rowCount) == batchSize-1 {
 				for _, pkInfo := range pkInfos {
 					pkName := pkInfo.pkName
 					keyVal, err := ProcessValue(row[pkName])
@@ -728,7 +737,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 				}
 			}
 			// 将第threshold+1条的PK作为新PK的起点
-			if int64(rowCount) == threshold {
+			if int64(rowCount) == batchSize {
 				for _, pkInfo := range pkInfos {
 					pkName := pkInfo.pkName
 					keyVal, err := ProcessValue(row[pkName])
@@ -804,7 +813,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		// 生成新的table条目并插入
 		newBatchID := batchID + "+"
 		nextBatchID = newBatchID
-		newBatchSize := expectedRow - threshold
+		newBatchSize := expectedRow - batchSize
 
 		insertBatchSQL := fmt.Sprintf(insertBatchSQL, batchTable)
 		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQL,
@@ -861,7 +870,8 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 
 	// 5.获得新的batchID，更新正在处理的batch ID
-	if nextBatchID != "" {
+	if nextBatchID == "" {
+		// nextBatchID在此处为“”意味着本次batch没有拆分。因此下一个BatchID中不会带有'+'
 		nextBatchID, err = currentBatchIDInc(batchID) // todo，考虑生成新batch的情况，如何正确地获得下一个batch ID？
 	}
 	if err != nil {
@@ -884,7 +894,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	return nextBatchID, nil
 }
 
-func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap int64) {
+func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap, batchSize int64) {
 
 	// timeGap 单位ms，duration输入ns，应该乘上1000000
 	timer := time.NewTicker(time.Duration(timeGap * 1e6))
@@ -957,7 +967,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 		// 执行当前batch的batch sql，并获得下一要执行的batchID
 		// todo，将defaultThreshold换成batchSize? 还是说可以超过batchSize但是不超过阈值就行。
 		// todo 在batch table中添加一个字段，记录实际执行的行数
-		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, table, batchSQL, batchCountSQL, uuid, batchTable, currentBatchID, defaultThreshold)
+		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, table, batchSQL, batchCountSQL, uuid, batchTable, currentBatchID, batchSize)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
@@ -1258,10 +1268,11 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 			jobBatchTable := row["job_batch_table"].ToString()
 			uuid := row["job_uuid"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
+			batchSize, _ := row["batch_size"].ToInt64()
 
 			if status == runningStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap)
+				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize)
 			}
 
 			// 对于暂停的，不启动协程，只需要恢复内存元数据
@@ -1491,6 +1502,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 }
 
 func currentBatchIDInc(currentBatchID string) (string, error) {
+	currentBatchID = strings.Replace(currentBatchID, "+", "", -1) // 去除串中的加号
 	currentBatchIDInt64, err := strconv.ParseInt(currentBatchID, 10, 64)
 	if err != nil {
 		return "", err
