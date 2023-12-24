@@ -408,6 +408,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfShowBasic(n, parent)
 	case *ShowCreate:
 		return c.copyOnRewriteRefOfShowCreate(n, parent)
+	case *ShowDMLJob:
+		return c.copyOnRewriteRefOfShowDMLJob(n, parent)
 	case *ShowFilter:
 		return c.copyOnRewriteRefOfShowFilter(n, parent)
 	case *ShowMigrationLogs:
@@ -4864,6 +4866,18 @@ func (c *cow) copyOnRewriteRefOfShowCreate(n *ShowCreate, parent SQLNode) (out S
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfShowDMLJob(n *ShowDMLJob, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfShowFilter(n *ShowFilter, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6697,6 +6711,8 @@ func (c *cow) copyOnRewriteShowInternal(n ShowInternal, parent SQLNode) (out SQL
 		return c.copyOnRewriteRefOfShowBasic(n, parent)
 	case *ShowCreate:
 		return c.copyOnRewriteRefOfShowCreate(n, parent)
+	case *ShowDMLJob:
+		return c.copyOnRewriteRefOfShowDMLJob(n, parent)
 	case *ShowOther:
 		return c.copyOnRewriteRefOfShowOther(n, parent)
 	default:

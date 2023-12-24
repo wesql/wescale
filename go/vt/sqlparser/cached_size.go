@@ -3389,6 +3389,18 @@ func (cached *ShowCreate) CachedSize(alloc bool) int64 {
 	size += cached.Op.CachedSize(false)
 	return size
 }
+func (cached *ShowDMLJob) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(24)
+	}
+	// field UUID string
+	size += hack.RuntimeAllocSize(int64(len(cached.UUID)))
+	return size
+}
 func (cached *ShowFilter) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)

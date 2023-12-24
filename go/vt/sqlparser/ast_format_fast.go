@@ -2660,6 +2660,10 @@ func (node *ShowBasic) formatFast(buf *TrackedBuffer) {
 	node.Filter.formatFast(buf)
 }
 
+func (node *ShowDMLJob) formatFast(buf *TrackedBuffer) {
+
+}
+
 // formatFast formats the node.
 func (node *ShowCreate) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("show")

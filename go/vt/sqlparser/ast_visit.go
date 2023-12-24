@@ -408,6 +408,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfShowBasic(in, f)
 	case *ShowCreate:
 		return VisitRefOfShowCreate(in, f)
+	case *ShowDMLJob:
+		return VisitRefOfShowDMLJob(in, f)
 	case *ShowFilter:
 		return VisitRefOfShowFilter(in, f)
 	case *ShowMigrationLogs:
@@ -3283,6 +3285,15 @@ func VisitRefOfShowCreate(in *ShowCreate, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfShowDMLJob(in *ShowDMLJob, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfShowFilter(in *ShowFilter, f Visit) error {
 	if in == nil {
 		return nil
@@ -4630,6 +4641,8 @@ func VisitShowInternal(in ShowInternal, f Visit) error {
 		return VisitRefOfShowBasic(in, f)
 	case *ShowCreate:
 		return VisitRefOfShowCreate(in, f)
+	case *ShowDMLJob:
+		return VisitRefOfShowDMLJob(in, f)
 	case *ShowOther:
 		return VisitRefOfShowOther(in, f)
 	default:

@@ -326,7 +326,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 // Throttler tokens
 %token <str> VITESS_THROTTLER
 // DML JOB tokens
-%token <str> DML_JOB
+%token <str> DML_JOB DETAILS
 
 // Transaction Tokens
 %token <str> BEGIN START TRANSACTION COMMIT ROLLBACK SAVEPOINT RELEASE WORK
@@ -4414,6 +4414,14 @@ show_statement:
   {
     $$ = &Show{&ShowBasic{Command: DMLJobs, Filter: $4, DbName: $3}}
   }
+| SHOW DML_JOB STRING
+  {
+    $$ = &Show{&ShowDMLJob{UUID:$3, Detail:false}}
+  }
+| SHOW DML_JOB STRING DETAILS
+{
+  $$ = &Show{&ShowDMLJob{UUID:$3, Detail:true}}
+}
 | SHOW VITESS_MIGRATION STRING LOGS
   {
     $$ = &ShowMigrationLogs{UUID: string($3)}
@@ -8315,6 +8323,7 @@ non_reserved_keyword:
 | SCHEMA_MIGRATION
 | DML_JOB
 | DML_JOBS
+| DETAILS
 | VITESS_REPLICATION_STATUS
 | VITESS_SHARDS
 | VITESS_TABLETS

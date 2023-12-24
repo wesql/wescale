@@ -1672,6 +1672,12 @@ type (
 		Filter  *ShowFilter
 	}
 
+	ShowDMLJob struct {
+		UUID string
+		// todo newborn22，换成枚举类型支持更多
+		Detail bool
+	}
+
 	// ShowCreate is of ShowInternal type, holds SHOW CREATE queries.
 	ShowCreate struct {
 		Command ShowCommandType
@@ -1687,6 +1693,7 @@ type (
 func (*ShowBasic) isShowInternal()  {}
 func (*ShowCreate) isShowInternal() {}
 func (*ShowOther) isShowInternal()  {}
+func (*ShowDMLJob) isShowInternal() {}
 
 // InsertRows represents the rows for an INSERT statement.
 type InsertRows interface {

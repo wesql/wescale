@@ -65,6 +65,11 @@ func buildShowPlan(sql string, stmt *sqlparser.Show, _ *sqlparser.ReservedVars, 
 			if prim == nil {
 				return buildByPassDDLPlan(sql, vschema)
 			}
+		case *sqlparser.ShowDMLJob:
+			prim, err = buildShowDMLJobPlan(show, vschema)
+			if err != nil {
+				return nil, err
+			}
 		default:
 			return buildByPassDDLPlan(sql, vschema)
 		}
@@ -172,6 +177,42 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 	default:
 		return nil, nil
 	}
+}
+
+func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema) (engine.Primitive, error) {
+	dest, ks, tabletType, err := vschema.TargetDestination("")
+	if err != nil {
+		return nil, err
+	}
+	if ks == nil {
+		return nil, vterrors.VT09005()
+	}
+
+	if tabletType != topodatapb.TabletType_PRIMARY {
+		return nil, vterrors.VT09006("SHOW")
+	}
+
+	if dest == nil {
+		dest = key.DestinationAllShards{}
+	}
+
+	var sql string
+	if !show.Detail {
+		sql, err = sqlparser.ParseAndBind("SELECT * FROM mysql.big_dml_jobs_table where job_uuid = %a",
+			sqltypes.StringBindVariable(show.UUID))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		UUID := strings.Replace(show.UUID, "-", "_", -1)
+		sql = fmt.Sprintf("SELECT * FROM job_batch_table_%s", UUID)
+	}
+
+	return &engine.Send{
+		Keyspace:          ks,
+		TargetDestination: dest,
+		Query:             sql,
+	}, nil
 }
 
 func buildShowTargetPlan(vschema plancontext.VSchema) (engine.Primitive, error) {

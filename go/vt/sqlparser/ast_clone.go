@@ -409,6 +409,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfShowBasic(in)
 	case *ShowCreate:
 		return CloneRefOfShowCreate(in)
+	case *ShowDMLJob:
+		return CloneRefOfShowDMLJob(in)
 	case *ShowFilter:
 		return CloneRefOfShowFilter(in)
 	case *ShowMigrationLogs:
@@ -2573,6 +2575,15 @@ func CloneRefOfShowCreate(n *ShowCreate) *ShowCreate {
 	return &out
 }
 
+// CloneRefOfShowDMLJob creates a deep clone of the input.
+func CloneRefOfShowDMLJob(n *ShowDMLJob) *ShowDMLJob {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfShowFilter creates a deep clone of the input.
 func CloneRefOfShowFilter(n *ShowFilter) *ShowFilter {
 	if n == nil {
@@ -3758,6 +3769,8 @@ func CloneShowInternal(in ShowInternal) ShowInternal {
 		return CloneRefOfShowBasic(in)
 	case *ShowCreate:
 		return CloneRefOfShowCreate(in)
+	case *ShowDMLJob:
+		return CloneRefOfShowDMLJob(in)
 	case *ShowOther:
 		return CloneRefOfShowOther(in)
 	default:
