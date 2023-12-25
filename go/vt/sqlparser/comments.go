@@ -58,11 +58,13 @@ const (
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
 
-	DirectiveDMLCMD            = "DML_CMD"
-	DirectiveDMLTimeGap        = "DML_TIME_GAP"
-	DirectiveBATCHSIZE         = "DML_BATCH_SIZE"
-	DirectiveDMLPostponeLaunch = "DML_POSTPONE_LAUNCH"
-	DirectiveDMLAutoRetry      = "DML_AUTO_RETRY"
+	DirectiveDMLCMD             = "DML_CMD"
+	DirectiveDMLTimeGap         = "DML_TIME_GAP"
+	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
+	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
+	DirectiveDMLAutoRetry       = "DML_AUTO_RETRY"
+	DirectiveDMLTimePeriodStart = "DML_TIME_PERIOD_START"
+	DirectiveDMLTimePeriodEnd   = "DML_TIME_PERIOD_END"
 )
 
 func isNonSpace(r rune) bool {
@@ -463,16 +465,17 @@ func GetDMLJobCmd(stmt Statement) string {
 	return str
 }
 
-func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, autoRetry bool) {
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, autoRetry bool, timePeriodStart, timePeriodEnd string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
+	// todo newborn22 支持insert select
 	case *Update:
 		comments = stmt.Comments
 	case *Delete:
 		comments = stmt.Comments
 	}
 	if comments == nil {
-		return timeGapInMs, batchSize, postponeLaunch, autoRetry
+		return timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd
 	}
 
 	var err error
@@ -510,5 +513,9 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 		}
 	}
 
-	return timeGapInMs, batchSize, postponeLaunch, autoRetry
+	timePeriodStart, _ = directives.GetString(DirectiveDMLTimePeriodStart, "")
+
+	timePeriodEnd, _ = directives.GetString(DirectiveDMLTimePeriodEnd, "")
+
+	return timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd
 }

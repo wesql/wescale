@@ -134,6 +134,12 @@ const (
                                     job_uuid = %a`
 
 	sqlDMLJobDeleteJob = `delete from mysql.big_dml_jobs_table where job_uuid = %a`
+
+	sqlDMLJobUpdateTimePeriod = `update mysql.big_dml_jobs_table set 
+                                    running_time_period_start = %a, 
+                                    running_time_period_end = %a 
+                                where 
+                                    job_uuid = %a`
 )
 
 const (
@@ -221,6 +227,8 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 			return jc.ThrottleJob(jobUUID, expireString, ratioLiteral)
 		case UnthrottleJob:
 			return jc.UnthrottleJob(jobUUID)
+		case SetRunningTimePeriod:
+			return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd)
 		}
 	}
 	// todo newborn22,对返回值判断为空？
@@ -398,18 +406,17 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (
 		return emptyResult, errors.New("the job is running now, pause it first")
 	}
 	// 提交的时间段必须满足特定的格式，可以成功转换成time对象
-	_, errStartTime := time.Parse(time.TimeOnly, startTime)
-	if errStartTime != nil {
+	_, err = time.Parse(time.TimeOnly, startTime)
+	if err != nil {
 		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
 	}
-	_, errEndTime := time.Parse(time.TimeOnly, endTime)
-	if errEndTime != nil {
+	_, err = time.Parse(time.TimeOnly, endTime)
+	if err != nil {
 		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
 	}
 
 	// 往表中插入
-
-	return nil, nil
+	return jc.updateJobPeriodTime(ctx, uuid, startTime, endTime)
 }
 
 func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
@@ -592,6 +599,10 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 		if qr == nil {
+			jc.workingTablesMutex.Unlock()
+			jc.tableMutex.Unlock()
+
+			time.Sleep(3 * time.Second)
 			continue
 		}
 		for _, row := range qr.Named().Rows {
@@ -652,7 +663,14 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 		timeNow := time.Now()
 		if !(timeNow.After(*periodStartTime) && timeNow.Before(*periodEndTime)) {
 			// 更新状态
-			_, _ = jc.updateJobStatus(context.Background(), jobUUID, notInTimePeriodStatus, timeNow.Format(time.RFC3339))
+			submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
+				sqltypes.StringBindVariable(notInTimePeriodStatus),
+				sqltypes.StringBindVariable(timeNow.Format(time.RFC3339)),
+				sqltypes.StringBindVariable(jobUUID))
+			if err != nil {
+				return false
+			}
+			_, _ = jc.execQuery(context.Background(), "", submitQuery)
 			return false
 		}
 	}
@@ -1212,6 +1230,20 @@ func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, stat
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
 		sqltypes.StringBindVariable(status),
 		sqltypes.StringBindVariable(statusSetTime),
+		sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+	return jc.execQuery(ctx, "", submitQuery)
+}
+
+func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeriodStart, timePeriodEnd string) (*sqltypes.Result, error) {
+	jc.tableMutex.Lock()
+	defer jc.tableMutex.Unlock()
+
+	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateTimePeriod,
+		sqltypes.StringBindVariable(timePeriodStart),
+		sqltypes.StringBindVariable(timePeriodEnd),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return &sqltypes.Result{}, err

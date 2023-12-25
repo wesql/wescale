@@ -1133,7 +1133,7 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 	return nil
 }
 
-func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22,为什么要加锁？
 	// todo，什么时候调用？
 	conn.mu.RLock()
@@ -1142,14 +1142,16 @@ func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uui
 		return nil, tabletconn.ConnClosed
 	}
 	req := querypb.SubmitDMLJobRequest{
-		Cmd:            command,
-		Sql:            sql,
-		JobUuid:        uuid,
-		RelatedSchema:  tableSchema,
-		Timegap:        timeGapInMs,
-		BatchSize:      batchSize,
-		PostponeLaunch: postponeLaunch,
-		AutoRetry:      autoRetry,
+		Cmd:             command,
+		Sql:             sql,
+		JobUuid:         uuid,
+		RelatedSchema:   tableSchema,
+		Timegap:         timeGapInMs,
+		BatchSize:       batchSize,
+		PostponeLaunch:  postponeLaunch,
+		AutoRetry:       autoRetry,
+		TimePeriodStart: timePeriodStart,
+		TimePeriodEnd:   timePeriodEnd,
 	}
 	er, err := conn.c.SubmitDMLJob(ctx, &req)
 	if err != nil {

@@ -1161,17 +1161,19 @@ func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
 	uuid := alterDMLJob.UUID
 	switch alterDMLJob.Type {
 	case sqlparser.PauseDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid, "", "", nil, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid, "", "", "", "", nil, 0, 0, false, false)
 	case sqlparser.ResumeDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid, "", "", nil, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid, "", "", "", "", nil, 0, 0, false, false)
 	case sqlparser.LaunchDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("launch", "", uuid, "", "", nil, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("launch", "", uuid, "", "", "", "", nil, 0, 0, false, false)
 	case sqlparser.CancelDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("cancel", "", uuid, "", "", nil, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("cancel", "", uuid, "", "", "", "", nil, 0, 0, false, false)
 	case sqlparser.ThrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("throttle", "", uuid, "", alterDMLJob.Expire, alterDMLJob.Ratio, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("throttle", "", uuid, "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio, 0, 0, false, false)
 	case sqlparser.UnthrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("unthrottle", "", uuid, "", "", nil, 0, 0, false, false)
+		return qre.tsv.dmlJonController.HandleRequest("unthrottle", "", uuid, "", "", "", "", nil, 0, 0, false, false)
+	case sqlparser.SetRunningTimePeriodType:
+		return qre.tsv.dmlJonController.HandleRequest("set_running_time_period", "", uuid, "", "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, nil, 0, 0, false, false)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }

@@ -1094,6 +1094,8 @@ message SubmitDMLJobRequest{
   int64 batch_size = 7;
   bool auto_retry = 8;
   bool postpone_launch = 9;
+  string time_period_start = 10;
+  string time_period_end = 11;
 }
 message SubmitDMLJobResponse {
   QueryResult result = 1;

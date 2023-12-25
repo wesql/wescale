@@ -682,6 +682,7 @@ var keywords = []keyword{
 	{"dml_job", DML_JOB},
 	{"dml_jobs", DML_JOBS},
 	{"details", DETAILS},
+	{"time_period", TIME_PERIOD},
 	{"vitess_replication_status", VITESS_REPLICATION_STATUS},
 	{"vitess_shards", VITESS_SHARDS},
 	{"vitess_tablets", VITESS_TABLETS},

@@ -375,11 +375,11 @@ func (ws *wrappedService) SetFailPoint(ctx context.Context, command string, key 
 	})
 }
 
-func (ws *wrappedService) SubmitDMLJob(ctx context.Context, cmd, sql, uuid, tableSchema string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (qr *sqltypes.Result, err error) {
+func (ws *wrappedService) SubmitDMLJob(ctx context.Context, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (qr *sqltypes.Result, err error) {
 	err = ws.wrapper(ctx, nil, ws.impl, "SubmitDMLJob", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
 		// todo newborn22，这个地方是否要canRetry? 参考 dropschema
 		var innerErr error
-		qr, innerErr = conn.SubmitDMLJob(ctx, cmd, sql, uuid, tableSchema, timeGapInMs, batchSize, postponeLaunch, autoRetry)
+		qr, innerErr = conn.SubmitDMLJob(ctx, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timeGapInMs, batchSize, postponeLaunch, autoRetry)
 		return canRetry(ctx, innerErr), innerErr
 	})
 	return qr, err

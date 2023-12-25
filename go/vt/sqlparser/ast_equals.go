@@ -1636,6 +1636,8 @@ func (cmp *Comparator) RefOfAlterDMLJob(a, b *AlterDMLJob) bool {
 	}
 	return a.UUID == b.UUID &&
 		a.Expire == b.Expire &&
+		a.TimePeriodStart == b.TimePeriodStart &&
+		a.TimePeriodEnd == b.TimePeriodEnd &&
 		a.Type == b.Type &&
 		cmp.RefOfLiteral(a.Ratio, b.Ratio)
 }

@@ -485,10 +485,12 @@ type (
 	AlterDMLJobType int8
 
 	AlterDMLJob struct {
-		Type   AlterDMLJobType
-		UUID   string
-		Expire string
-		Ratio  *Literal
+		Type            AlterDMLJobType
+		UUID            string
+		Expire          string
+		Ratio           *Literal
+		TimePeriodStart string
+		TimePeriodEnd   string
 	}
 
 	// AlterTable represents a ALTER TABLE statement.

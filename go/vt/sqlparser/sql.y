@@ -326,7 +326,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 // Throttler tokens
 %token <str> VITESS_THROTTLER
 // DML JOB tokens
-%token <str> DML_JOB DETAILS
+%token <str> DML_JOB DETAILS TIME_PERIOD
 
 // Transaction Tokens
 %token <str> BEGIN START TRANSACTION COMMIT ROLLBACK SAVEPOINT RELEASE WORK
@@ -3502,6 +3502,15 @@ alter_statement:
     {
       $$ = &AlterDMLJob{
         Type: UnthrottleAllDMLJobType,
+      }
+    }
+ | ALTER comment_opt DML_JOB STRING TIME_PERIOD STRING STRING
+    {
+      $$ = &AlterDMLJob{
+        Type: SetRunningTimePeriodType,
+        UUID: string($4),
+        TimePeriodStart: string($6),
+        TimePeriodEnd: string($7),
       }
     }
 
@@ -8324,6 +8333,7 @@ non_reserved_keyword:
 | DML_JOB
 | DML_JOBS
 | DETAILS
+| TIME_PERIOD
 | VITESS_REPLICATION_STATUS
 | VITESS_SHARDS
 | VITESS_TABLETS

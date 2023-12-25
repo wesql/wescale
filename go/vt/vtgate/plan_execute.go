@@ -449,8 +449,8 @@ func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
 func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
 	// todo newborn22,检查是否在事务中，如果是则报错
 	if IsSubmitDMLJob(stmt) {
-		timeGapInMs, batchSize, postponeLaunch, autoRetry := sqlparser.GetDMLJobArgs(stmt)
-		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timeGapInMs, batchSize, postponeLaunch, autoRetry)
+		timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd := sqlparser.GetDMLJobArgs(stmt)
+		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timeGapInMs, batchSize, postponeLaunch, autoRetry)
 		// todo ，在这个地方把qr写回到前端
 		if qr != nil {
 			if qr.RowsAffected == 1 {

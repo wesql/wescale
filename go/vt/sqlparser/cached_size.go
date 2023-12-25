@@ -175,7 +175,7 @@ func (cached *AlterDMLJob) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(48)
+		size += int64(80)
 	}
 	// field UUID string
 	size += hack.RuntimeAllocSize(int64(len(cached.UUID)))
@@ -183,6 +183,10 @@ func (cached *AlterDMLJob) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.Expire)))
 	// field Ratio *vitess.io/vitess/go/vt/sqlparser.Literal
 	size += cached.Ratio.CachedSize(true)
+	// field TimePeriodStart string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodStart)))
+	// field TimePeriodEnd string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodEnd)))
 	return size
 }
 func (cached *AlterDatabase) CachedSize(alloc bool) int64 {

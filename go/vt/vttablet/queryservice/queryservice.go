@@ -115,7 +115,7 @@ type QueryService interface {
 
 	SetFailPoint(ctx context.Context, command string, key string, value string) error
 
-	SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error)
+	SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, subtaskRows int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error)
 
 	// HandlePanic will be called if any of the functions panic.
 	HandlePanic(err *error)

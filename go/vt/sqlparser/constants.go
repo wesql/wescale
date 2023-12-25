@@ -908,6 +908,7 @@ const (
 	ResumeDMLJobType
 	PauseAllDMLJobType
 	ResumeAllDMLJobType
+	SetRunningTimePeriodType
 )
 
 // ColumnStorage constants
