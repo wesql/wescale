@@ -41,19 +41,20 @@ const (
 )
 
 const (
-	SubmitJob         = "submit_job"
-	ShowJobs          = "show_jobs"
-	LaunchJob         = "launch"
-	LaunchAllJobs     = "launch_all"
-	PauseJob          = "pause"
-	PauseAllJobs      = "pause_all"
-	ResumeJob         = "resume"
-	ResumeAllJobs     = "resume_all"
-	ThrottleJob       = "throttle"
-	ThrottleAllJobs   = "throttle_all"
-	UnthrottleJob     = "unthrottle"
-	UnthrottleAllJobs = "unthrottle_all"
-	CancelJob         = "cancel"
+	SubmitJob            = "submit_job"
+	ShowJobs             = "show_jobs"
+	LaunchJob            = "launch"
+	LaunchAllJobs        = "launch_all"
+	PauseJob             = "pause"
+	PauseAllJobs         = "pause_all"
+	ResumeJob            = "resume"
+	ResumeAllJobs        = "resume_all"
+	ThrottleJob          = "throttle"
+	ThrottleAllJobs      = "throttle_all"
+	UnthrottleJob        = "unthrottle"
+	UnthrottleAllJobs    = "unthrottle_all"
+	CancelJob            = "cancel"
+	SetRunningTimePeriod = "set_running_time_period"
 )
 
 const (
@@ -63,14 +64,15 @@ const (
 )
 
 const (
-	postponeLaunchStatus = "postpone-launch"
-	queuedStatus         = "queued"
-	blockedStatus        = "blocked" // todo，被正在运行或者paused的任务阻塞时发条消息？
-	runningStatus        = "running"
-	pausedStatus         = "paused"
-	canceledStatus       = "canceled"
-	failedStatus         = "failed"
-	completedStatus      = "completed"
+	postponeLaunchStatus  = "postpone-launch"
+	queuedStatus          = "queued"
+	blockedStatus         = "blocked" // todo，被正在运行或者paused的任务阻塞时发条消息？
+	runningStatus         = "running"
+	pausedStatus          = "paused"
+	canceledStatus        = "canceled"
+	failedStatus          = "failed"
+	completedStatus       = "completed"
+	notInTimePeriodStatus = "not-in-time-period"
 )
 
 const (
@@ -84,7 +86,9 @@ const (
                                       timegap_in_ms,
                                       batch_size,
                                       job_status,
-                                      status_set_time) values(%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      status_set_time,
+                                      running_time_period_start,
+                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -197,12 +201,12 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 }
 
 // todo newborn22 ， 能否改写得更有通用性? 这样改写是否好？
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	// todo newborn22, if 可以删掉
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		switch command {
 		case SubmitJob:
-			return jc.SubmitJob(sql, tableSchema, timeGapInMs, usrBatchSize, postponeLaunch, autoRetry)
+			return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, autoRetry)
 		case ShowJobs:
 			return jc.ShowJobs()
 		case PauseJob:
@@ -225,7 +229,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 
 // todo newboen22 函数的可见性，封装性上的改进？
 // todo 传timegap和table_name
-func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, userBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, timeGapInMs, userBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -261,6 +265,19 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, userBat
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
 
+	// 对runningTimePeriodStart, runningTimePeriodEnd进行有效性检查，需要能够转换成time
+	// 当用户没有提交该信息时，默认两个值都为""
+	if runningTimePeriodStart != "" || runningTimePeriodEnd != "" {
+		_, err = time.Parse(time.TimeOnly, runningTimePeriodStart)
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+		_, err = time.Parse(time.TimeOnly, runningTimePeriodEnd)
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+	}
+
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
 		sqltypes.StringBindVariable(sql),
@@ -270,7 +287,9 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, userBat
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(batchSize),
 		sqltypes.StringBindVariable(jobStatus),
-		sqltypes.StringBindVariable(statusSetTime))
+		sqltypes.StringBindVariable(statusSetTime),
+		sqltypes.StringBindVariable(runningTimePeriodStart),
+		sqltypes.StringBindVariable(runningTimePeriodEnd))
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +298,6 @@ func (jc *JobController) SubmitJob(sql, tableSchema string, timeGapInMs, userBat
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	// todo 增加 recursive-split，递归拆分batch的选项
 	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
 }
 
@@ -359,11 +377,39 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	jobBatchTable := row["job_batch_table"].ToString()
 	timegap, _ := row["timegap_in_ms"].ToInt64()
 	batchSize, _ := row["batch_szie"].ToInt64()
+	runningTimePeriodStart := row["running_time_period_start"].ToString()
+	runningTimePeriodEnd := row["running_time_period_end"].ToString()
+	periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 
 	// 拉起runner协程，协程内会将状态改为running
-	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize)
+	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
 	emptyResult.RowsAffected = 1
 	return emptyResult, nil
+}
+
+func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (*sqltypes.Result, error) {
+	var emptyResult = &sqltypes.Result{}
+	ctx := context.Background()
+	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	if err != nil {
+		return emptyResult, err
+	}
+	if status == runningStatus {
+		return emptyResult, errors.New("the job is running now, pause it first")
+	}
+	// 提交的时间段必须满足特定的格式，可以成功转换成time对象
+	_, errStartTime := time.Parse(time.TimeOnly, startTime)
+	if errStartTime != nil {
+		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
+	}
+	_, errEndTime := time.Parse(time.TimeOnly, endTime)
+	if errEndTime != nil {
+		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
+	}
+
+	// 往表中插入
+
+	return nil, nil
 }
 
 func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
@@ -371,7 +417,7 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
 	if err != nil {
-		return emptyResult, nil
+		return emptyResult, err
 	}
 	if status != postponeLaunchStatus {
 		emptyResult.Info = " The job status is not postpone-launch and don't need launch"
@@ -556,10 +602,16 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 			jobBatchTable := row["job_batch_table"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
 			batchSize, _ := row["batch_size"].ToInt64()
-			if jc.checkDmlJobRunnable(status, table) {
+			runningTimePeriodStart := row["running_time_period_start"].ToString()
+			runningTimePeriodEnd := row["running_time_period_end"].ToString()
+
+			// 由于提交时已经对时间格式进行检查，因此这里不再处理错误，todo 之后可针对错误情况给job改一个Message
+			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+
+			if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
 				// todo 这里之后改成休眠的方式后要删掉， 由于外面拿锁，必须在这里就加上，不然后面的循环可能：已经启动go runner的但是还未加入到working table,导致多个表的同时启动
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize)
+				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
 			}
 		}
 
@@ -570,15 +622,41 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 	}
 }
 
+func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd string) (*time.Time, *time.Time) {
+	if runningTimePeriodStart != "" && runningTimePeriodEnd != "" {
+		periodStartTime, _ := time.Parse(time.TimeOnly, runningTimePeriodStart)
+		periodEndTime, _ := time.Parse(time.TimeOnly, runningTimePeriodEnd)
+		// 由于用户只提供了时间部分，因此需要将日期部分用当天的时间补齐。
+		currentTime := time.Now()
+		periodStartTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodStartTime.Hour(), periodStartTime.Minute(), periodStartTime.Second(), periodStartTime.Nanosecond(), currentTime.Location())
+		periodEndTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodEndTime.Hour(), periodEndTime.Minute(), periodEndTime.Second(), periodEndTime.Nanosecond(), currentTime.Location())
+		// 如果EndTime早于startTime的时间，则EndTime的日期部分用明天的日期补齐
+		if periodEndTime.Before(periodStartTime) {
+			periodEndTime = periodEndTime.Add(24 * time.Hour)
+		}
+		return &periodStartTime, &periodEndTime
+	}
+	return nil, nil
+}
+
 // 外部需要加锁
 // todo，并发数的限制
-func (jc *JobController) checkDmlJobRunnable(status, table string) bool {
-	if status != queuedStatus {
+func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
+	if status != queuedStatus && status != notInTimePeriodStatus {
 		return false
 	}
 	if _, exit := jc.workingTables[table]; exit {
 		return false
 	}
+	if periodStartTime != nil && periodEndTime != nil {
+		timeNow := time.Now()
+		if !(timeNow.After(*periodStartTime) && timeNow.Before(*periodEndTime)) {
+			// 更新状态
+			_, _ = jc.updateJobStatus(context.Background(), jobUUID, notInTimePeriodStatus, timeNow.Format(time.RFC3339))
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -894,7 +972,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	return nextBatchID, nil
 }
 
-func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap, batchSize int64) {
+func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
 
 	// timeGap 单位ms，duration输入ns，应该乘上1000000
 	timer := time.NewTicker(time.Duration(timeGap * 1e6))
@@ -951,6 +1029,18 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 		// maybe paused / canceled
 		if status != runningStatus {
 			return
+		}
+
+		// 检查是否在运维窗口内
+		if timePeriodStart != nil && timePeriodEnd != nil {
+			currentTime := time.Now()
+			if !(currentTime.After(*timePeriodStart) && currentTime.Before(*timePeriodEnd)) {
+				_, err = jc.updateJobStatus(ctx, uuid, notInTimePeriodStatus, currentTime.Format(time.RFC3339))
+				if err != nil {
+					jc.FailJob(ctx, uuid, err.Error(), table)
+				}
+				return
+			}
 		}
 
 		// 先请求throttle，若被throttle阻塞，则等待下一次timer事件
@@ -1269,10 +1359,13 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 			uuid := row["job_uuid"].ToString()
 			timegap, _ := row["timegap_in_ms"].ToInt64()
 			batchSize, _ := row["batch_size"].ToInt64()
+			runningTimePeriodStart := row["running_time_period_start"].ToString()
+			runningTimePeriodEnd := row["running_time_period_end"].ToString()
+			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 
 			if status == runningStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize)
+				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
 			}
 
 			// 对于暂停的，不启动协程，只需要恢复内存元数据
