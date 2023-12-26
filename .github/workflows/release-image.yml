@@ -32,7 +32,7 @@ jobs:
 
   release-image:
     needs: image-tag
-    uses: apecloud/apecloud-cd/.github/workflows/release-image.yml@v0.1.49
+    uses: wesql/wesql-cd/.github/workflows/release-image.yml@v0.1.0
     with:
       MAKE_OPS: "push-images"
       IMG: "apecloud/apecloud-mysql-scale"
