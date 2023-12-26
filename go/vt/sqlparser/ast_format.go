@@ -343,6 +343,8 @@ func (node *AlterDMLJob) Format(buf *TrackedBuffer) {
 		alterType = "unthrottle"
 	case UnthrottleAllDMLJobType:
 		alterType = "unthrottle all"
+	case SetRunningTimePeriodType:
+		alterType = "time_period"
 	}
 	buf.astPrintf(node, " %s", alterType)
 	if node.Expire != "" {
@@ -350,6 +352,9 @@ func (node *AlterDMLJob) Format(buf *TrackedBuffer) {
 	}
 	if node.Ratio != nil {
 		buf.astPrintf(node, " ratio %v", node.Ratio)
+	}
+	if node.Type == SetRunningTimePeriodType {
+		buf.astPrintf(node, " '%s' '%s'", node.TimePeriodStart, node.TimePeriodEnd)
 	}
 }
 

@@ -485,6 +485,10 @@ func (node *AlterDMLJob) formatFast(buf *TrackedBuffer) {
 		buf.WriteString(" ratio ")
 		node.Ratio.formatFast(buf)
 	}
+	if node.Type == SetRunningTimePeriodType {
+		buf.WriteString(" '" + node.TimePeriodStart + "'")
+		buf.WriteString(" '" + node.TimePeriodEnd + "'")
+	}
 }
 
 // formatFast formats the node.

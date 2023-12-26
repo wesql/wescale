@@ -275,6 +275,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 
 	// 对runningTimePeriodStart, runningTimePeriodEnd进行有效性检查，需要能够转换成time
 	// 当用户没有提交该信息时，默认两个值都为""
+	// 当用户用hint提交运维时间时，有可能出现一个为""，一个不为""的情况，因此这里需要用||而不是&&
 	if runningTimePeriodStart != "" || runningTimePeriodEnd != "" {
 		_, err = time.Parse(time.TimeOnly, runningTimePeriodStart)
 		if err != nil {
@@ -398,6 +399,12 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
+
+	// 如果两个时间只有一个为空，则报错
+	if (startTime == "" && endTime != "") || (startTime != "" && endTime == "") {
+		return emptyResult, errors.New("the start time and end time must be both set or not")
+	}
+
 	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
 	if err != nil {
 		return emptyResult, err
@@ -406,15 +413,16 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (
 		return emptyResult, errors.New("the job is running now, pause it first")
 	}
 	// 提交的时间段必须满足特定的格式，可以成功转换成time对象
-	_, err = time.Parse(time.TimeOnly, startTime)
-	if err != nil {
-		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
+	if startTime != "" && endTime != "" {
+		_, err = time.Parse(time.TimeOnly, startTime)
+		if err != nil {
+			return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
+		}
+		_, err = time.Parse(time.TimeOnly, endTime)
+		if err != nil {
+			return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
+		}
 	}
-	_, err = time.Parse(time.TimeOnly, endTime)
-	if err != nil {
-		return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
-	}
-
 	// 往表中插入
 	return jc.updateJobPeriodTime(ctx, uuid, startTime, endTime)
 }
@@ -616,7 +624,6 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 			runningTimePeriodStart := row["running_time_period_start"].ToString()
 			runningTimePeriodEnd := row["running_time_period_end"].ToString()
 
-			// 由于提交时已经对时间格式进行检查，因此这里不再处理错误，todo 之后可针对错误情况给job改一个Message
 			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 
 			if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
@@ -635,6 +642,7 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 
 func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd string) (*time.Time, *time.Time) {
 	if runningTimePeriodStart != "" && runningTimePeriodEnd != "" {
+		// 在submit job时或setRunningTimePeriod时，已经对格式进行了检查，因此这里不会出现错误
 		periodStartTime, _ := time.Parse(time.TimeOnly, runningTimePeriodStart)
 		periodEndTime, _ := time.Parse(time.TimeOnly, runningTimePeriodEnd)
 		// 由于用户只提供了时间部分，因此需要将日期部分用当天的时间补齐。
@@ -999,19 +1007,19 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 	var err error
 	ctx := context.Background()
 
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	// 如果currentBatchID为"",意味着这个job之前尚未运行，需要初始化currentBatchID为1
+	currentBatchID, err := jc.getDealingBatchID(ctx, uuid)
 	if err != nil {
+		jc.FailJob(ctx, uuid, err.Error(), table)
 		return
 	}
-
-	// 如果状态为queued，意味着这个job刚刚开始运行，那么将当前处理的batch id设为1。
-	// 否则，意味着这个job之前已经启动过，无需再初始化当前处理的batch id，而是直接取表中这个字段的值并接着运行。
-	if status == queuedStatus {
+	if currentBatchID == "" {
 		err = jc.updateDealingBatchID(ctx, uuid, 1)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
+		currentBatchID = "1"
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
 	_, err = jc.updateJobStatus(ctx, uuid, runningStatus, statusSetTime)
@@ -1019,12 +1027,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 		jc.FailJob(ctx, uuid, err.Error(), table)
 		return
 	}
-	currentBatchID, err := jc.getDealingBatchID(ctx, uuid)
-	if err != nil {
-		jc.FailJob(ctx, uuid, err.Error(), table)
-		return
-	}
-	// todo，当动态生成batch时，如何更新max?
+
 	maxBatchID, err := jc.getMaxBatchID(ctx, batchTable, relatedSchema)
 	if err != nil {
 		jc.FailJob(ctx, uuid, err.Error(), table)
