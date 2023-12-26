@@ -188,7 +188,7 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 		defer cancel()
 		changed, err := collector.changeTypeFunc(changeTypeCtx, collector.lastUpdate, tabletType)
 		if err != nil {
-			log.Error("change vttablet role to %s error", tabletType.String())
+			log.Errorf("change vttablet role to %s, error:%w", tabletType.String(), err)
 		}
 		if changed {
 			collector.lastUpdate = time.Now()
