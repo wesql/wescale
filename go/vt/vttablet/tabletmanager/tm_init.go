@@ -898,6 +898,7 @@ func (tm *TabletManager) syncVTTabletType(ctx context.Context, lastUpdate time.T
 	if tm.Tablet().Type == targetTabletType && within30Seconds() {
 		return false, nil
 	}
+	log.Infof("start to change vttablet role to %s", string(targetTabletType))
 	err := tm.ChangeType(ctx, targetTabletType, false)
 	if err != nil {
 		return false, err

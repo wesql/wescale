@@ -38,6 +38,7 @@ var (
 const LORRY_HTTP_PORT_ENV_NAME = "LORRY_HTTP_PORT"
 
 const Leader = "Leader"
+const Candidate = "Candidate"
 const Follower = "Follower"
 const Learner = "Learner"
 const Logger = "Logger"
@@ -47,6 +48,8 @@ func transitionRoleType(role string) topodatapb.TabletType {
 	case Leader:
 		return topodatapb.TabletType_PRIMARY
 	case Follower:
+		return topodatapb.TabletType_REPLICA
+	case Candidate:
 		return topodatapb.TabletType_REPLICA
 	case Learner:
 		return topodatapb.TabletType_RDONLY
@@ -148,7 +151,6 @@ func (collector *Listener) probeLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			{
-				log.Info("Listener: receive tick")
 				collector.reconcileLeadership(ctx)
 			}
 		}
@@ -195,6 +197,6 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 			log.Infof("change vttablet role to %s successfully", tabletType.String())
 		}
 	default:
-		log.Error("role value is not a string, role:%v", role)
+		log.Errorf("role value is not a string, role:%v", role)
 	}
 }
