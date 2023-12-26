@@ -47,6 +47,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
 
 	"vitess.io/vitess/go/internal/global"
@@ -385,16 +386,7 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		servenv.OnTerm(tm.VDiffEngine.Close)
 	}
 
-	tm.roleListener = role.NewListener(func(ctx context.Context, tabletType topodatapb.TabletType) (bool, error) {
-		if tm.Tablet().Type == tabletType {
-			return false, nil
-		}
-		err := tm.ChangeType(ctx, tabletType, false)
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	})
+	tm.roleListener = role.NewListener(tm.syncVTTabletType)
 	servenv.OnRun(tm.roleListener.Open)
 	servenv.OnTerm(tm.roleListener.Close)
 
@@ -896,4 +888,19 @@ func (tm *TabletManager) initializeReplication(ctx context.Context, tabletType t
 	}
 
 	return currentPrimary, nil
+}
+
+func (tm *TabletManager) syncVTTabletType(ctx context.Context, lastUpdate time.Time, targetTabletType topodatapb.TabletType) (bool, error) {
+	within30Seconds := func() bool {
+		return time.Since(lastUpdate) <= 30*time.Second
+	}
+
+	if tm.Tablet().Type == targetTabletType && within30Seconds() {
+		return false, nil
+	}
+	err := tm.ChangeType(ctx, targetTabletType, false)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

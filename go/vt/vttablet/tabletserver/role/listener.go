@@ -86,10 +86,12 @@ type Listener struct {
 	stateMutex     sync.Mutex
 	reconcileMutex sync.Mutex
 
-	changeTypeFunc func(ctx context.Context, tabletType topodatapb.TabletType) (bool, error)
+	lastUpdate time.Time
+
+	changeTypeFunc func(ctx context.Context, lastUpdate time.Time, targetTabletType topodatapb.TabletType) (bool, error)
 }
 
-func NewListener(changeTypeFunc func(ctx context.Context, tabletType topodatapb.TabletType) (bool, error)) *Listener {
+func NewListener(changeTypeFunc func(ctx context.Context, lastUpdate time.Time, tabletType topodatapb.TabletType) (bool, error)) *Listener {
 	l := &Listener{
 		isOpen:         0,
 		changeTypeFunc: changeTypeFunc,
@@ -184,11 +186,12 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
 		changeTypeCtx, cancel := context.WithTimeout(context.Background(), topo.RemoteOperationTimeout)
 		defer cancel()
-		changed, err := collector.changeTypeFunc(changeTypeCtx, tabletType)
+		changed, err := collector.changeTypeFunc(changeTypeCtx, collector.lastUpdate, tabletType)
 		if err != nil {
 			log.Error("change vttablet role to %s error", tabletType.String())
 		}
 		if changed {
+			collector.lastUpdate = time.Now()
 			log.Infof("change vttablet role to %s successfully", tabletType.String())
 		}
 	default:
