@@ -13,10 +13,10 @@ RUN apt-get update
 RUN apt-get install -y sudo curl vim jq default-mysql-client
 
 # Install dependencies
-COPY ./install_dependencies.sh /vt/dist/install_dependencies.sh
+COPY install_dependencies.sh /vt/dist/install_dependencies.sh
 RUN /vt/dist/install_dependencies.sh mysql80
 
-COPY ./install_local_dependencies.sh /vt/dist/install_local_dependencies.sh
+COPY install_local_dependencies.sh /vt/dist/install_local_dependencies.sh
 RUN  /vt/dist/install_local_dependencies.sh
 
 # Allows some docker builds to disable CGO
@@ -42,9 +42,9 @@ VOLUME /vt/src/mount
 VOLUME /vt/vtdataroot
 
 
-ENV VTROOT /vt/src/mount
+ENV VTROOT /vt/src/mount/wesql-scala
 ENV VTDATAROOT /vt/vtdataroot
-ENV PATH $VTROOT/bin:$PATH
+ENV PATH $VTROOT/wesql-scala/bin/_amd64:$PATH
 ENV PATH="/var/opt/etcd:${PATH}"
 
 ARG GOPROXY=https://goproxy.cn
@@ -54,7 +54,7 @@ ENV GONOSUMDB=github.com/apecloud
 ENV GOPRIVATE=github.com/apecloud
 ENV GOPROXY=${GOPROXY}
 
-EXPOSE 15306 17100 17101 17102
+EXPOSE 15306 17100 17101 17102 2379
 
 WORKDIR /vt/src/mount
 

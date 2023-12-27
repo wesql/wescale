@@ -5,10 +5,10 @@
 
 existing_image=$(docker images -q wescala-dev)
 
-# 如果镜像不存在，则构建新镜像
+# Build the 'wescala-dev' image if it doesn't exist
 if [ -z "$existing_image" ]; then
     echo "Building the 'wescala-dev' image..."
-    DOCKER_BUILDKIT=0 docker build  ../../docker/wesqlscale/developer/amd64/ -t wescala-dev
+    DOCKER_BUILDKIT=0 docker build  ../../docker/wesqlscale/local/ -t wescala-dev
 else
     echo "The 'wescala-dev' image already exists."
 fi
@@ -19,7 +19,7 @@ vtctld_port=15999
 etcd_port=12379
 container_name=""
 port_mapping=""
-# 解析命令行参数
+# Parse command line arguments
 while [ $# -gt 0 ]; do
   case "$1" in
     --vtgate-port) vtgate_port="$2"; shift;;
@@ -50,7 +50,7 @@ else
   container_name_cmd="--name wescala-dev-$random_number"
 fi
 # Run the container with the specified settings
-docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS -e PATH=$PATH:/vt/src/mount/wesql-scala/bin ${container_name_cmd} wescala-dev
+docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS -e PATH=$PATH:/vt/src/mount/wesql-scala/bin/_amd64 ${container_name_cmd} wescala-dev
 
 # 初始化集群
 docker exec ${container_name} bash -c "cd /vt/src/mount/wesql-scala/examples/wesql && ./init_cluster_docker.sh"

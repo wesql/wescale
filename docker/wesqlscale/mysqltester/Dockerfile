@@ -42,9 +42,9 @@ VOLUME /vt/src/mount
 VOLUME /vt/vtdataroot
 
 
-ENV VTROOT /vt/src/mount/wesql-scala
+ENV VTROOT /vt/src/mount
 ENV VTDATAROOT /vt/vtdataroot
-ENV PATH $VTROOT/wesql-scala/bin:$PATH
+ENV PATH $VTROOT/bin:$PATH
 ENV PATH="/var/opt/etcd:${PATH}"
 
 ARG GOPROXY=https://goproxy.cn
@@ -54,7 +54,7 @@ ENV GONOSUMDB=github.com/apecloud
 ENV GOPRIVATE=github.com/apecloud
 ENV GOPROXY=${GOPROXY}
 
-EXPOSE 15306 17100 17101 17102 2379
+EXPOSE 15306 17100 17101 17102
 
 WORKDIR /vt/src/mount
 
