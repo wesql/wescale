@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 
 # Copyright 2019 The Vitess Authors.
 # 
@@ -66,7 +71,9 @@ elif [ "${TOPO}" = "consul" ]; then
     TOPOLOGY_FLAGS="--topo_implementation consul --topo_global_server_address ${CONSUL_SERVER}:${CONSUL_HTTP_PORT} --topo_global_root vitess/global/"
     mkdir -p "${VTDATAROOT}/consul"
 else
-    ETCD_SERVER="localhost:2379"
+    if [[ -z "${ETCD_SERVER}" ]]; then
+      ETCD_SERVER="localhost:2379"
+    fi
     TOPOLOGY_FLAGS="--topo_implementation etcd2 --topo_global_server_address $ETCD_SERVER --topo_global_root /vitess/global"
 
     mkdir -p "${VTDATAROOT}/etcd"
