@@ -32,7 +32,6 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-echo $mysql_port
 port_mapping="-p $vtgate_port:15306 -p $vtctld_port:15999 -p $etcd_port:2379 "
 # Parse command line arguments
 ports=($(echo $mysql_port | tr "," "\n"))
@@ -41,7 +40,6 @@ for port in "${ports[@]}"; do
   port_mapping+="-p ${port}:${container_mysql_port[$index]} "
   index=$((index+1))
 done
-echo $port_mapping
 container_name_cmd=""
 random_number=$RANDOM
 echo random_number: $random_number
@@ -51,7 +49,6 @@ else
   container_name="wescala-dev-$random_number"
   container_name_cmd="--name wescala-dev-$random_number"
 fi
-echo ${container_name_cmd}
 # Run the container with the specified settings
 docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS -e PATH=$PATH:/vt/src/mount/wesql-scala/bin ${container_name_cmd} wescala-dev
 
