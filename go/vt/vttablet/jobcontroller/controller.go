@@ -266,6 +266,9 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
+	if jobBatchTable == "" {
+		return &sqltypes.Result{}, errors.New("this DML sql won't affect any rows")
+	}
 
 	jobStatus := queuedStatus
 	if postponeLaunch {
@@ -1571,7 +1574,6 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	currentBatchID := "1"
 	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
 
-	// todo 对结果集为0的情况进行特判
 	for _, row := range qr.Named().Rows {
 		var pkValues []interface{}
 		for _, pkInfo := range pkInfos {
