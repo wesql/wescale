@@ -165,7 +165,7 @@ func (vtconsensus *VTConsensus) RefreshCluster() {
 		ticker := time.Tick(refreshInterval)
 		for range ticker {
 			if !enableVtconsensus {
-				return
+				continue
 			}
 			ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
 			shard.RefreshTabletsInShardWithLock(ctx)
@@ -182,10 +182,10 @@ func (vtconsensus *VTConsensus) ScanAndRepair() {
 			scanInterval.Seconds(), scanAndRepairTimeout.Seconds())
 		ticker := time.Tick(scanInterval)
 		for range ticker {
+			if !enableVtconsensus {
+				continue
+			}
 			func() {
-				if !enableVtconsensus {
-					return
-				}
 				ctx, cancel := context.WithTimeout(vtconsensus.ctx, scanAndRepairTimeout)
 				defer cancel()
 				if !vtconsensus.stopped.Get() {
