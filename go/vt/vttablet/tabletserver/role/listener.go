@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,16 +51,19 @@ const (
 )
 
 func transitionRoleType(role string) topodatapb.TabletType {
+	// Convert the role to lower case for case-insensitive comparison
+	role = strings.ToLower(role)
+
 	switch role {
-	case LEADER, PRIMARY, MASTER:
+	case strings.ToLower(LEADER), strings.ToLower(PRIMARY), strings.ToLower(MASTER):
 		return topodatapb.TabletType_PRIMARY
-	case FOLLOWER, SECONDARY, SLAVE:
+	case strings.ToLower(FOLLOWER), strings.ToLower(SECONDARY), strings.ToLower(SLAVE):
 		return topodatapb.TabletType_REPLICA
-	case CANDIDATE:
+	case strings.ToLower(CANDIDATE):
 		return topodatapb.TabletType_REPLICA
-	case LEARNER:
+	case strings.ToLower(LEARNER):
 		return topodatapb.TabletType_RDONLY
-	case LOGGER:
+	case strings.ToLower(LOGGER):
 		return topodatapb.TabletType_SPARE
 	default:
 		return topodatapb.TabletType_UNKNOWN

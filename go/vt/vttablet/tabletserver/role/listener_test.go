@@ -3,6 +3,7 @@ package role
 import (
 	"os"
 	"testing"
+	"vitess.io/vitess/go/vt/proto/topodata"
 )
 
 func Test_setUpMysqlProbeServicePort(t *testing.T) {
@@ -51,6 +52,61 @@ func Test_setUpMysqlProbeServicePort(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.prepareFunc()
 			setUpMysqlProbeServicePort()
+		})
+	}
+}
+
+func Test_transitionRoleType(t *testing.T) {
+	tests := []struct {
+		role string
+		want topodata.TabletType
+	}{
+		{
+			role: "primary",
+			want: topodata.TabletType_PRIMARY,
+		},
+		{
+			role: "PriMARY",
+			want: topodata.TabletType_PRIMARY,
+		},
+		{
+			role: "secondary",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "Secondary",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "SecondarY",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "follower",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "slave",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "Slave",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "SLAVE",
+			want: topodata.TabletType_REPLICA,
+		},
+		{
+			role: "SLAVE2",
+			want: topodata.TabletType_UNKNOWN,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.role, func(t *testing.T) {
+			if got := transitionRoleType(tt.role); got != tt.want {
+				t.Errorf("transitionRoleType() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
