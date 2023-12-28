@@ -37,23 +37,29 @@ var (
 
 const LORRY_HTTP_PORT_ENV_NAME = "LORRY_HTTP_PORT"
 
-const Leader = "Leader"
-const Candidate = "Candidate"
-const Follower = "Follower"
-const Learner = "Learner"
-const Logger = "Logger"
+const (
+	PRIMARY   = "primary"
+	SECONDARY = "secondary"
+	MASTER    = "master"
+	SLAVE     = "slave"
+	LEADER    = "Leader"
+	FOLLOWER  = "Follower"
+	LEARNER   = "Learner"
+	CANDIDATE = "Candidate"
+	LOGGER    = "Logger"
+)
 
 func transitionRoleType(role string) topodatapb.TabletType {
 	switch role {
-	case Leader:
+	case LEADER, PRIMARY, MASTER:
 		return topodatapb.TabletType_PRIMARY
-	case Follower:
+	case FOLLOWER, SECONDARY, SLAVE:
 		return topodatapb.TabletType_REPLICA
-	case Candidate:
+	case CANDIDATE:
 		return topodatapb.TabletType_REPLICA
-	case Learner:
+	case LEARNER:
 		return topodatapb.TabletType_RDONLY
-	case Logger:
+	case LOGGER:
 		return topodatapb.TabletType_SPARE
 	default:
 		return topodatapb.TabletType_UNKNOWN
