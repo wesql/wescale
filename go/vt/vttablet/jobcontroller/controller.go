@@ -793,149 +793,10 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
 	if expectedRow > batchSize {
-		// todo，递归生成新的batch
-		// todo将下面的每一个小步封装在函数中
-		// 1).根据batchCountSQL生成查询pk值的select sql
-		// 1.1).获得PK信息
-		pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, table)
+		batchSQL, nextBatchID, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
 			return "", err
 		}
-		isFirstPk := true
-		pkPart := ""
-		for _, pkInfo := range pkInfos {
-			if !isFirstPk {
-				pkPart += ","
-			}
-			pkPart += pkInfo.pkName
-			isFirstPk = false
-		}
-		//1.2).生成select sql
-		batchSplitSelectSQL := strings.Replace(batchCountSQL, "count(*) as count_rows", pkPart, 1) + "order by " + pkPart
-
-		// 2).根据select sql将batch拆分，生成两个新的batch。
-		//这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
-		// 拆成多个batch需要遍历完select的全部结果，这可能会导致超时
-
-		// 2.1).计算两个batch的batchPKStart和batchPKEnd。实际上，只要获得当前batch的新的PKEnd和新的batch的PKStart
-
-		// 遍历前threshold+1条，依然使用同一个连接
-		qr, err = conn.Exec(ctx, batchSplitSelectSQL, math.MaxInt32, true)
-		if err != nil {
-			return "", err
-		}
-
-		var curBatchNewEnd []interface{}
-		var newBatchStart []interface{}
-
-		for rowCount, row := range qr.Named().Rows {
-			// 将原本batch的PKEnd设在threshold条数处
-			if int64(rowCount) == batchSize-1 {
-				for _, pkInfo := range pkInfos {
-					pkName := pkInfo.pkName
-					keyVal, err := ProcessValue(row[pkName])
-					if err != nil {
-						return "", err
-					}
-					curBatchNewEnd = append(curBatchNewEnd, keyVal)
-				}
-			}
-			// 将第threshold+1条的PK作为新PK的起点
-			if int64(rowCount) == batchSize {
-				for _, pkInfo := range pkInfos {
-					pkName := pkInfo.pkName
-					keyVal, err := ProcessValue(row[pkName])
-					if err != nil {
-						return "", err
-					}
-					newBatchStart = append(newBatchStart, keyVal)
-				}
-			}
-		}
-
-		// 2.2) 将curBatchNewEnd和newBatchStart转换成sql中where部分的<=和>=的字符串
-		curBatchLessThanPart, err := genPKsLessThanPart(pkInfos, curBatchNewEnd)
-		if err != nil {
-			return "", err
-		}
-
-		newBatchGreatThanPart, err := genPKsGreaterThanPart(pkInfos, newBatchStart)
-		if err != nil {
-			return "", err
-		}
-
-		// 2.3) 通过正则表达式，获得原先batchSQL中的great than和less than部分，作为当前batch的great than和新batch的less than部分
-		// 定义正则表达式，匹配"( (greatThanPart) AND (lessThanPart) )"
-
-		curBatchGreatThanPart := ""
-		newBatchLessThanPart := ""
-
-		regexPattern := `\(\s*\((.*)\)\s*AND\s*\((.*)\)\s*\)`
-
-		// 编译正则表达式
-		regex := regexp.MustCompile(regexPattern)
-
-		// 查找匹配项
-		matches := regex.FindAllStringSubmatch(batchSQL, -1)
-
-		// 如果有匹配项，只取最后一个匹配的结果，因为用户自己输入的where条件中也可能存在这样的格式
-		pkScopePart := ""
-		if len(matches) > 0 {
-			lastMatch := matches[len(matches)-1]
-			if len(lastMatch) == 3 {
-				pkScopePart = lastMatch[0]
-				curBatchGreatThanPart = lastMatch[1]
-				newBatchLessThanPart = lastMatch[2]
-			}
-		} else {
-			return "", errors.New("can not match greatThan and lessThan parts by regex")
-		}
-
-		// 2.4) 生成拆分后，当前batch的sql和新batch的sql
-		batchSQLCommonPart := strings.Replace(batchSQL, pkScopePart, "", 1)
-		batchCountSQLCommonPart := strings.Replace(batchCountSQL, pkScopePart, "", 1)
-		curBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", curBatchGreatThanPart, curBatchLessThanPart)
-		newBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
-		newBatchCountSQL := batchCountSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
-
-		// 2.5) 在batch表中更改旧的条目的sql，并插入新batch条目
-		// 在表中更改旧的sql
-		// todo，更改原本条目中的size为threshold
-		updateBatchSQL := fmt.Sprintf("update %s set batch_sql=%%a where batch_id=%%a", batchTable)
-		updateBatchSQLQuery, err := sqlparser.ParseAndBind(updateBatchSQL,
-			sqltypes.StringBindVariable(curBatchSQL),
-			sqltypes.StringBindVariable(batchID))
-		if err != nil {
-			return "", err
-		}
-		_, err = conn.Exec(ctx, updateBatchSQLQuery, math.MaxInt32, true)
-		if err != nil {
-			return "", err
-		}
-		batchSQL = curBatchSQL
-
-		// 生成新的table条目并插入
-		newBatchID := batchID + "+"
-		nextBatchID = newBatchID
-		newBatchSize := expectedRow - batchSize
-
-		insertBatchSQL := fmt.Sprintf(insertBatchSQL, batchTable)
-		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQL,
-			sqltypes.StringBindVariable(newBatchID),
-			sqltypes.StringBindVariable(newBatchSQL),
-			sqltypes.StringBindVariable(newBatchCountSQL),
-			sqltypes.Int64BindVariable(newBatchSize))
-		if err != nil {
-			return "", err
-		}
-		_, err = conn.Exec(ctx, insertBatchSQLQuery, math.MaxInt32, true)
-		if err != nil {
-			return "", err
-		}
-
-		hhh := fmt.Sprintf("%s %s %s %s", curBatchGreatThanPart, curBatchLessThanPart, newBatchGreatThanPart, newBatchLessThanPart)
-		fmt.Printf("%s", hhh)
-
 	}
 
 	// 3.执行batch sql
@@ -996,6 +857,149 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return "", err
 	}
 	return nextBatchID, nil
+}
+
+// 将超过batchSize的batch拆分成两个batches,其中第一个batch的大小等于batchSize
+// 拆分的基本原理是遍历原先batch的batchCountSQL的结果集，将第batchSize条record的pk作为原先batch的PKEnd，第batchSize+1条record的pk作为新batch的PKStart
+// 原先batch的PKStart和PKEnd分别成为原先batch的PKStart和新batch的PKEnd
+func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID string, conn *connpool.DBConn, batchSize, expectedRow int64) (newCurrentBatchSQL, nextBatchID string, err error) {
+	// 1.根据batchCountSQL生成查询pk值的select sql
+	// 1.1.获得PK信息
+	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, table)
+	if err != nil {
+		return "", "", err
+	}
+	isFirstPk := true
+	pkPart := ""
+	for _, pkInfo := range pkInfos {
+		if !isFirstPk {
+			pkPart += ","
+		}
+		pkPart += pkInfo.pkName
+		isFirstPk = false
+	}
+	//1.2.生成select pk的sql
+	batchSplitSelectSQL := strings.Replace(batchCountSQL, "count(*) as count_rows", pkPart, 1) + "order by " + pkPart
+
+	// 2.根据select sql将batch拆分，生成两个新的batch。
+	//这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
+	// 拆成多个batch需要遍历完select的全部结果，这可能会导致超时
+
+	// 2.1.计算两个batch的batchPKStart和batchPKEnd。实际上，只要获得当前batch的新的PKEnd和新的batch的PKStart
+
+	// 遍历前threshold+1条，依然使用同一个连接
+	qr, err := conn.Exec(ctx, batchSplitSelectSQL, math.MaxInt32, true)
+	if err != nil {
+		return "", "", err
+	}
+
+	var curBatchNewEnd []any
+	var newBatchStart []any
+
+	for rowCount, row := range qr.Named().Rows {
+		// 将原本batch的PKEnd设在threshold条数处
+		if int64(rowCount) == batchSize-1 {
+			for _, pkInfo := range pkInfos {
+				pkName := pkInfo.pkName
+				keyVal, err := ProcessValue(row[pkName])
+				if err != nil {
+					return "", "", err
+				}
+				curBatchNewEnd = append(curBatchNewEnd, keyVal)
+			}
+		}
+		// 将第threshold+1条的PK作为新PK的起点
+		if int64(rowCount) == batchSize {
+			for _, pkInfo := range pkInfos {
+				pkName := pkInfo.pkName
+				keyVal, err := ProcessValue(row[pkName])
+				if err != nil {
+					return "", "", err
+				}
+				newBatchStart = append(newBatchStart, keyVal)
+			}
+		}
+	}
+
+	// 2.2) 将curBatchNewEnd和newBatchStart转换成sql中where部分的<=和>=的字符串
+	curBatchLessThanPart, err := genPKsLessThanPart(pkInfos, curBatchNewEnd)
+	if err != nil {
+		return "", "", err
+	}
+
+	newBatchGreatThanPart, err := genPKsGreaterThanPart(pkInfos, newBatchStart)
+	if err != nil {
+		return "", "", err
+	}
+
+	// 2.3) 通过正则表达式，获得原先batchSQL中的great than和less than部分，作为当前batch的great than和新batch的less than部分
+	// 定义正则表达式，匹配"( (greatThanPart) AND (lessThanPart) )"
+	curBatchGreatThanPart := ""
+	newBatchLessThanPart := ""
+
+	// 这个正则表达式用于匹配出"( (greatThanPart) AND (lessThanPart) )"greatThanPart和lessThanPart，也就是每条batch sql中用于限定PK范围的部分
+	regexPattern := `\(\s*\((.*)\)\s*AND\s*\((.*)\)\s*\)`
+
+	// 编译正则表达式
+	regex := regexp.MustCompile(regexPattern)
+
+	// 查找匹配项
+	matches := regex.FindAllStringSubmatch(batchSQL, -1)
+
+	// 如果有匹配项，只取最后一个匹配的结果，因为用户自己输入的where条件中也可能存在这样的格式
+	pkConditionPart := ""
+	if len(matches) > 0 {
+		lastMatch := matches[len(matches)-1]
+		if len(lastMatch) == 3 {
+			pkConditionPart = lastMatch[0]
+			curBatchGreatThanPart = lastMatch[1]
+			newBatchLessThanPart = lastMatch[2]
+		}
+	} else {
+		return "", "", errors.New("can not match greatThan and lessThan parts by regex")
+	}
+
+	// 2.4) 生成拆分后，当前batch的sql和新batch的sql
+	batchSQLCommonPart := strings.Replace(batchSQL, pkConditionPart, "", 1)
+	batchCountSQLCommonPart := strings.Replace(batchCountSQL, pkConditionPart, "", 1)
+	curBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", curBatchGreatThanPart, curBatchLessThanPart)
+	newBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
+	newBatchCountSQL := batchCountSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
+
+	// 2.5) 在batch表中更改旧的条目的sql，并插入新batch条目
+	// 在表中更改旧的sql
+	updateBatchSQL := fmt.Sprintf("update %s set batch_sql=%%a where batch_id=%%a", batchTable)
+	updateBatchSQLQuery, err := sqlparser.ParseAndBind(updateBatchSQL,
+		sqltypes.StringBindVariable(curBatchSQL),
+		sqltypes.StringBindVariable(batchID))
+	if err != nil {
+		return "", "", err
+	}
+	_, err = conn.Exec(ctx, updateBatchSQLQuery, math.MaxInt32, true)
+	if err != nil {
+		return "", "", err
+	}
+	newCurrentBatchSQL = curBatchSQL
+
+	// 生成新的table条目并插入
+	newBatchID := batchID + "+"
+	nextBatchID = newBatchID
+	newBatchSize := expectedRow - batchSize
+
+	insertBatchSQL := fmt.Sprintf(insertBatchSQL, batchTable)
+	insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQL,
+		sqltypes.StringBindVariable(newBatchID),
+		sqltypes.StringBindVariable(newBatchSQL),
+		sqltypes.StringBindVariable(newBatchCountSQL),
+		sqltypes.Int64BindVariable(newBatchSize))
+	if err != nil {
+		return "", "", err
+	}
+	_, err = conn.Exec(ctx, insertBatchSQLQuery, math.MaxInt32, true)
+	if err != nil {
+		return "", "", err
+	}
+	return newCurrentBatchSQL, nextBatchID, nil
 }
 
 func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
@@ -1535,15 +1539,22 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
 	batchTableName := "job_batch_table_" + strings.Replace(jobUUID, "-", "_", -1)
+	// todo newborn22 batch_size 改成 count_size，count时的大小
+	// todo newborn22 Pending->queued, completed,
+	// todo newborn22 batch_sql batch_count_sql -> text
+	// todo newborn22 batch begin, batch end     text
+	// todo pingcap
+	// todo 2+ -> 2-1
+
 	createTableSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
 	(
 		id                              bigint unsigned  NOT NULL AUTO_INCREMENT,
-		batch_id                              varchar(1024) NOT NULL, 
+		batch_id                              varchar(256) NOT NULL, 
 		batch_sql                       varchar(1024)     NOT NULL,
     	batch_count_sql                       varchar(1024)     NOT NULL,
     	batch_size 						bigint unsigned  NOT NULL,
     	actually_affected_rows			bigint unsigned  NOT NULL DEFAULT 0,
-    	batch_status							varchar(1024)     NOT NULL DEFAULT 'Pending',
+    	batch_status							varchar(64)     NOT NULL DEFAULT 'Pending',
 		PRIMARY KEY (id)
 	) ENGINE = InnoDB`, batchTableName)
 	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
@@ -1554,8 +1565,9 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 遍历每一行的每一个PK的值，记录每一个batch的开始和结束pk值（当有多个pk列时，需要记录多个pk值，pk可能具有不同的数据类型
 	// 当遍历的行数达到一个batchSize时，即可生成一个batch所要执行的batch SQL，往batch表中插入一个条目
 	currentBatchSize := int64(0)
-	var currentBatchStart []interface{}
-	var currentBatchEnd []interface{}
+	// todo newborn22 interface{} -> any
+	var currentBatchStart []any
+	var currentBatchEnd []any
 	currentBatchID := "1"
 	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
 

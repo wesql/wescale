@@ -37,3 +37,34 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `running_time_period_end` varchar(256)     NULL   DEFAULT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
+
+
+CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table2
+(
+    `id`                              bigint unsigned  NOT NULL AUTO_INCREMENT,
+    `job_uuid`                  varchar(64)      NOT NULL UNIQUE,
+    `table_schema`                     varchar(256)     NOT NULL,
+    `table_name`                     varchar(256)     NOT NULL,
+    `batch_info_table_schema`                  varchar(256)      NOT NULL,
+    `batch_info_table_name`                  varchar(256)      NOT NULL UNIQUE,
+    `status`                varchar(128)     NOT NULL,
+    `status_set_time`           timestamp   NOT NULL,
+    `message`                   varchar(2048)     NULL   DEFAULT NULL,
+    `dml_sql`                       text    NOT NULL,
+
+
+    `batch_interval_in_ms`             bigint        NOT NULL     ,
+
+
+
+    `batch_size`              bigint        NOT NULL     ,
+    `batch_concurrency`         bigint        NOT NULL     , --todo newborn22 , 并发
+
+    `affected_rows`        bigint        NOT NULL     DEFAULT 0,
+    `throttle_ratio`        double NULL DEFAULT NULL,
+    `throttle_expire_time` varchar(256)     NULL   DEFAULT NULL,
+    `dealing_batch_id`        varchar(256) NULL DEFAULT NULL,  -- todo newborn22 , delete or no
+    `running_time_period_start` varchar(256)     NULL   DEFAULT NULL,
+    `running_time_period_end` varchar(256)     NULL   DEFAULT NULL,
+    PRIMARY KEY (`id`)
+    ) ENGINE = InnoDB
