@@ -56,6 +56,49 @@ func Test_setUpMysqlProbeServicePort(t *testing.T) {
 	}
 }
 
+func Test_setUpMysqlProbeServiceHost(t *testing.T) {
+	tests := []struct {
+		name        string
+		expectHost  string
+		prepareFunc func()
+	}{
+		{
+			"test empty LORRY_HTTP_HOST_ENV_NAME",
+			"localhost",
+			func() {
+				//do nothing
+			},
+		},
+		{
+			"test LORRY_HTTP_HOST_ENV_NAME injection",
+			"127.0.0.1",
+			func() {
+				os.Setenv(LORRY_HTTP_HOST_ENV_NAME, "127.0.0.1")
+			},
+		},
+		{
+			"test LORRY_HTTP_HOST_ENV_NAME injection incorrect value",
+			"foobar",
+			func() {
+				os.Setenv(LORRY_HTTP_HOST_ENV_NAME, "foobar")
+			},
+		},
+		{
+			"test LORRY_HTTP_HOST_ENV_NAME injection empty value",
+			"www.google.com",
+			func() {
+				os.Setenv(LORRY_HTTP_PORT_ENV_NAME, "www.google.com")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.prepareFunc()
+			setUpMysqlProbeServiceHost()
+		})
+	}
+}
+
 func Test_transitionRoleType(t *testing.T) {
 	tests := []struct {
 		role string

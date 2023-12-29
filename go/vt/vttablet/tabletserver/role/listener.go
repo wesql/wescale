@@ -37,6 +37,7 @@ var (
 )
 
 const LORRY_HTTP_PORT_ENV_NAME = "LORRY_HTTP_PORT"
+const LORRY_HTTP_HOST_ENV_NAME = "LORRY_HTTP_HOST"
 
 const (
 	PRIMARY   = "primary"
@@ -85,6 +86,14 @@ func setUpMysqlProbeServicePort() {
 		return
 	}
 	mysqlProbeServicePort = portFromEnv
+}
+
+func setUpMysqlProbeServiceHost() {
+	host, ok := os.LookupEnv(LORRY_HTTP_HOST_ENV_NAME)
+	if !ok {
+		return
+	}
+	mysqlProbeServiceHost = host
 }
 
 func registerGCFlags(fs *pflag.FlagSet) {
@@ -172,6 +181,7 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	defer collector.reconcileMutex.Unlock()
 
 	setUpMysqlProbeServicePort()
+	setUpMysqlProbeServiceHost()
 	getRoleUrl := fmt.Sprintf("http://%s:%d/v1.0/bindings/mysql?operation=getRole", mysqlProbeServiceHost, mysqlProbeServicePort)
 
 	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
