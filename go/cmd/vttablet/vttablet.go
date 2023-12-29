@@ -26,7 +26,6 @@ import (
 	"context"
 	"os"
 	"time"
-
 	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
 

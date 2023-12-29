@@ -48,6 +48,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
+
 	"vitess.io/vitess/go/internal/global"
 
 	"github.com/spf13/pflag"
@@ -156,6 +158,8 @@ type TabletManager struct {
 
 	// tmState manages the TabletManager state.
 	tmState *tmState
+	// roleListener probes mysql role, then call tmState to change vttablet's type
+	roleListener *role.Listener
 
 	// tabletAlias is saved away from tablet for read-only access
 	tabletAlias *topodatapb.TabletAlias
@@ -381,6 +385,10 @@ func (tm *TabletManager) Start(tablet *topodatapb.Tablet, healthCheckInterval ti
 		tm.VDiffEngine.InitDBConfig(tm.DBConfigs)
 		servenv.OnTerm(tm.VDiffEngine.Close)
 	}
+
+	tm.roleListener = role.NewListener(tm.syncVTTabletType)
+	servenv.OnRun(tm.roleListener.Open)
+	servenv.OnTerm(tm.roleListener.Close)
 
 	// The following initializations don't need to be done
 	// in any specific order.
@@ -880,4 +888,20 @@ func (tm *TabletManager) initializeReplication(ctx context.Context, tabletType t
 	}
 
 	return currentPrimary, nil
+}
+
+func (tm *TabletManager) syncVTTabletType(ctx context.Context, lastUpdate time.Time, targetTabletType topodatapb.TabletType) (bool, error) {
+	within30Seconds := func() bool {
+		return time.Since(lastUpdate) <= 30*time.Second
+	}
+
+	if tm.Tablet().Type == targetTabletType && within30Seconds() {
+		return false, nil
+	}
+	log.Infof("start to change vttablet role to %s", targetTabletType.String())
+	err := tm.ChangeType(ctx, targetTabletType, false)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

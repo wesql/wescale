@@ -46,6 +46,7 @@ var (
 	scanInterval          = 3 * time.Second
 	scanAndRepairTimeout  = 3 * time.Second
 	vtconsensusConfigFile string
+	enableVtconsensus     bool
 
 	localDbPort int
 )
@@ -59,6 +60,7 @@ func init() {
 		fs.DurationVar(&scanAndRepairTimeout, "scan_repair_timeout", 3*time.Second, "Time to wait for a Diagnose and repair operation.")
 		fs.StringVar(&vtconsensusConfigFile, "vtconsensus_config", "", "Config file for vtconsensus.")
 		fs.IntVar(&localDbPort, "db_port", 0, "Local mysql port, set this to enable local fast check.")
+		fs.BoolVar(&enableVtconsensus, "enable_vtconsensus", false, "enable vtconsensus")
 	})
 }
 
@@ -162,6 +164,9 @@ func (vtconsensus *VTConsensus) RefreshCluster() {
 			shard.KeyspaceShard.Keyspace, shard.KeyspaceShard.Shard, refreshInterval.Seconds())
 		ticker := time.Tick(refreshInterval)
 		for range ticker {
+			if !enableVtconsensus {
+				continue
+			}
 			ctx, cancel := context.WithTimeout(vtconsensus.ctx, refreshInterval)
 			shard.RefreshTabletsInShardWithLock(ctx)
 			cancel()
@@ -177,6 +182,9 @@ func (vtconsensus *VTConsensus) ScanAndRepair() {
 			scanInterval.Seconds(), scanAndRepairTimeout.Seconds())
 		ticker := time.Tick(scanInterval)
 		for range ticker {
+			if !enableVtconsensus {
+				continue
+			}
 			func() {
 				ctx, cancel := context.WithTimeout(vtconsensus.ctx, scanAndRepairTimeout)
 				defer cancel()
