@@ -60,9 +60,10 @@ const (
 )
 
 const (
-	defaultTimeGap   = 1000 // 1000ms
-	defaultBatchSize = 150
-	defaultThreshold = 100 // todo，通过函数来计算出threshold并传入runner中，要依据索引的个数
+	defaultTimeGap     = 1000 // 1000ms
+	defaultBatchSize   = 150
+	thresholdOfTxnRows = 10000
+	ratioOfThreshold   = 0.5
 )
 
 const (
@@ -142,6 +143,8 @@ const (
                                     running_time_period_end = %a 
                                 where 
                                     job_uuid = %a`
+
+	sqlGetIndexCount = `select count(*) as index_count from information_schema.statistics where table_schema = %a and table_name = %a`
 )
 
 const (
@@ -267,13 +270,15 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	// 取用户输入的batchSize和程序的threshold的最小值作为每个batch最终的batchSize
 	var batchSize int64
-	if userBatchSize < defaultThreshold {
+
+	if userBatchSize < thresholdOfTxnRows {
 		batchSize = userBatchSize
 	} else {
-		batchSize = defaultThreshold
+		batchSize = thresholdOfTxnRows
 	}
 
-	tableName, jobBatchTable, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
+	tableName, jobBatchTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
+
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -1477,15 +1482,27 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	}
 }
 
-func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, batchSize int64) (tableName, batchTableName string, err error) {
+func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
 	// 1.解析用户提交的DML sql，返回DML的各个部分。其中selectSQL用于确定每一个batch的pk范围，生成每一个batch所要执行的batch sql
 	selectSQL, tableName, wherePart, pkPart, pkInfos, err := jc.parseDML(sql, tableSchema)
 	if err != nil {
-		return "", "", nil
+		return "", "", 0, nil
 	}
-	// 2.利用selectSQL为该job生成batch表
+
+	// 2.利用selectSQL为该job生成batch表，在此之前生成每个batch的batchSize
+	// batchSize = min(userBatchSize, thresholdOfTxnRows / 每个表的index数量 * ratioOfThreshold)
+	indexCount, err := jc.getIndexCount(tableSchema, tableName)
+	if err != nil {
+		return "", "", 0, err
+	}
+	actualThreshold := int64(float64(thresholdOfTxnRows/indexCount) * ratioOfThreshold)
+	if userBatchSize < actualThreshold {
+		batchSize = userBatchSize
+	} else {
+		batchSize = actualThreshold
+	}
 	batchTableName, err = jc.createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, wherePart, pkPart, pkInfos, batchSize)
-	return tableName, batchTableName, err
+	return tableName, batchTableName, batchSize, err
 }
 
 func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName, wherePart, pkPart string, pkInfos []PKInfo, err error) {
@@ -1879,4 +1896,22 @@ func (jc *JobController) notifyJobScheduler() {
 	case jc.schedulerNotifyChan <- struct{}{}:
 	default:
 	}
+}
+
+func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCount int64, err error) {
+	query, err := sqlparser.ParseAndBind(sqlGetIndexCount,
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(tableName))
+	if err != nil {
+		return 0, err
+	}
+	ctx := context.Background()
+	qr, err := jc.execQuery(ctx, "", query)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return 0, err
+	}
+	return qr.Named().Rows[0]["index_count"].ToInt64()
 }
