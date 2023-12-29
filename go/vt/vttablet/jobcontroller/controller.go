@@ -34,14 +34,22 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
-// todo newborn22, 数一下连接数是不是3够用
+// config
 const (
-	databasePoolSize   = 3
-	healthCheckTimeGap = 5000 // ms
+	databasePoolSize = 5
+	defaultBatchSize = 150
 
+	healthCheckInterval         = 5000 // ms
+	defaultBatchInterval        = 1000 // 1000ms
+	tableEntryGCInterval        = 24 * time.Hour
 	jobSchedulerRunningInterval = 10 * time.Second
+	throttleCheckInterval       = 250 * time.Millisecond
+
+	batchSizeThreshold        = 10000
+	ratioOfBatchSizeThreshold = 0.5
 )
 
+// commands for DML job
 const (
 	SubmitJob            = "submit_job"
 	ShowJobs             = "show_jobs"
@@ -59,100 +67,16 @@ const (
 	SetRunningTimePeriod = "set_running_time_period"
 )
 
-const (
-	defaultTimeGap     = 1000 // 1000ms
-	defaultBatchSize   = 150
-	thresholdOfTxnRows = 10000
-	ratioOfThreshold   = 0.5
-)
-
+// possible status of DML job
 const (
 	postponeLaunchStatus  = "postpone-launch"
 	queuedStatus          = "queued"
-	blockedStatus         = "blocked" // todo，被正在运行或者paused的任务阻塞时发条消息？
 	runningStatus         = "running"
 	pausedStatus          = "paused"
 	canceledStatus        = "canceled"
 	failedStatus          = "failed"
 	completedStatus       = "completed"
 	notInTimePeriodStatus = "not-in-time-period"
-)
-
-const (
-	sqlDMLJobGetAllJobs = `select * from mysql.big_dml_jobs_table order by id;`
-	sqlDMLJobSubmit     = `insert into mysql.big_dml_jobs_table (
-                                      job_uuid,
-                                      dml_sql,
-                                      related_schema,
-                                      related_table,
-                                      job_batch_table,
-                                      timegap_in_ms,
-                                      batch_size,
-                                      job_status,
-                                      status_set_time,
-                                      running_time_period_start,
-                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
-
-	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
-                                    message = %a 
-                                where 
-                                    job_uuid = %a`
-
-	sqlDMLJobUpdateAffectedRows = `update mysql.big_dml_jobs_table set 
-                                    affected_rows = affected_rows + %a 
-                                where 
-                                    job_uuid = %a`
-
-	sqlDMLJobUpdateStatus = `update mysql.big_dml_jobs_table set 
-                                    job_status = %a,
-                                    status_set_time = %a
-                                where 
-                                    job_uuid = %a`
-
-	sqlDMLJobGetInfo = `select * from mysql.big_dml_jobs_table 
-                                where
-                                	job_uuid = %a`
-
-	sqlGetTablePk = ` SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-								WHERE 
-						    		TABLE_SCHEMA = %a
-									AND TABLE_NAME = %a
-									AND CONSTRAINT_NAME = 'PRIMARY'`
-
-	sqlGetTableColNames = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
-								WHERE 
-								    TABLE_SCHEMA = %a
-									AND TABLE_NAME = %a`
-
-	sqlDMLJobUpdateThrottleInfo = `update mysql.big_dml_jobs_table set 
-                                    throttle_ratio = %a ,
-                                    throttle_expire_time = %a
-                                where 
-                                    job_uuid = %a`
-
-	sqlDMLJobClearThrottleInfo = `update mysql.big_dml_jobs_table set 
-                                    throttle_ratio = NULL ,
-                                    throttle_expire_time = NULL
-                                where 
-                                    job_uuid = %a`
-
-	sqlDMLJobDeleteJob = `delete from mysql.big_dml_jobs_table where job_uuid = %a`
-
-	sqlDMLJobUpdateTimePeriod = `update mysql.big_dml_jobs_table set 
-                                    running_time_period_start = %a, 
-                                    running_time_period_end = %a 
-                                where 
-                                    job_uuid = %a`
-
-	sqlGetIndexCount = `select count(*) as index_count from information_schema.statistics where table_schema = %a and table_name = %a`
-)
-
-const (
-	throttleCheckDuration = 250 * time.Millisecond
-)
-
-const (
-	tableEntryGCTimeGap = 3000 * time.Second // todo 改成更长的值，为了测试只设了30s
 )
 
 type JobController struct {
@@ -263,7 +187,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	sql = rewirteSQL(sql)
 	if timeGapInMs == 0 {
-		timeGapInMs = int64(defaultTimeGap)
+		timeGapInMs = int64(defaultBatchInterval)
 	}
 	if userBatchSize == 0 {
 		userBatchSize = int64(defaultBatchSize)
@@ -271,10 +195,10 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	// 取用户输入的batchSize和程序的threshold的最小值作为每个batch最终的batchSize
 	var batchSize int64
 
-	if userBatchSize < thresholdOfTxnRows {
+	if userBatchSize < batchSizeThreshold {
 		batchSize = userBatchSize
 	} else {
-		batchSize = thresholdOfTxnRows
+		batchSize = batchSizeThreshold
 	}
 
 	tableName, jobBatchTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
@@ -546,7 +470,7 @@ var throttleInit sync.Once
 func initThrottleTicker() {
 	throttleInit.Do(func() {
 		go func() {
-			tick := time.NewTicker(throttleCheckDuration)
+			tick := time.NewTicker(throttleCheckInterval)
 			defer tick.Stop()
 			for range tick.C {
 				atomic.AddInt64(&throttleTicks, 1)
@@ -712,18 +636,11 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 	return true
 }
 
-const (
-	getDealingBatchIDSQL    = `select dealing_batch_id from mysql.big_dml_jobs_table where job_uuid = %a`
-	updateDealingBatchIDSQL = `update mysql.big_dml_jobs_table set dealing_batch_id = %a where job_uuid = %a`
-	getBatchSQLsByID        = `select batch_sql,batch_count_sql from %s where batch_id = %%a`
-	getMaxBatchID           = `select batch_id as max_batch_id from %s order by id desc limit 1`
-)
-
 func (jc *JobController) getDealingBatchID(ctx context.Context, uuid string) (string, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
-	submitQuery, err := sqlparser.ParseAndBind(getDealingBatchIDSQL,
+	submitQuery, err := sqlparser.ParseAndBind(sqlGetDealingBatchID,
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return "", err
@@ -742,7 +659,7 @@ func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, 
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
-	submitQuery, err := sqlparser.ParseAndBind(updateDealingBatchIDSQL,
+	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
 		sqltypes.Float64BindVariable(batchID),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
@@ -757,7 +674,7 @@ func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, 
 
 // todo to confirm，对于同一个job的batch表只有一个线程在访问，因此不用加锁
 func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTableName, tableSchema string) (batchSQL, batchCountSQL string, err error) {
-	getBatchSQLWithTableName := fmt.Sprintf(getBatchSQLsByID, batchTableName)
+	getBatchSQLWithTableName := fmt.Sprintf(sqlTemplateGetBatchSQLsByID, batchTableName)
 	query, err := sqlparser.ParseAndBind(getBatchSQLWithTableName,
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
@@ -776,7 +693,7 @@ func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTab
 }
 
 func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tableSchema string) (string, error) {
-	getMaxBatchIDWithTableName := fmt.Sprintf(getMaxBatchID, batchTableName)
+	getMaxBatchIDWithTableName := fmt.Sprintf(sqlTemplateGetMaxBatchID, batchTableName)
 	qr, err := jc.execQuery(ctx, tableSchema, getMaxBatchIDWithTableName)
 	if err != nil {
 		return "", err
@@ -833,7 +750,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 
 	// 4.记录batch sql已经完成，将行数增加到affected rows中
 	// 4.1在batch table中记录
-	updateBatchStatus := fmt.Sprintf("update %s set batch_status = %%a,actually_affected_rows = actually_affected_rows+%%a where batch_id = %%a", batchTable)
+	updateBatchStatus := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTable)
 	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
 		sqltypes.StringBindVariable("Done"),
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
@@ -868,7 +785,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	if err != nil {
 		return "", err
 	}
-	submitQuery, err := sqlparser.ParseAndBind(updateDealingBatchIDSQL,
+	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
 		sqltypes.StringBindVariable(nextBatchID),
 		sqltypes.StringBindVariable(uuid))
 
@@ -994,7 +911,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 
 	// 2.5) 在batch表中更改旧的条目的sql，并插入新batch条目
 	// 在表中更改旧的sql
-	updateBatchSQL := fmt.Sprintf("update %s set batch_sql=%%a where batch_id=%%a", batchTable)
+	updateBatchSQL := fmt.Sprintf(sqlTemplateUpdateBatchSQL, batchTable)
 	updateBatchSQLQuery, err := sqlparser.ParseAndBind(updateBatchSQL,
 		sqltypes.StringBindVariable(curBatchSQL),
 		sqltypes.StringBindVariable(batchID))
@@ -1367,7 +1284,7 @@ func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableN
 		pkCols += pkName
 		firstPK = false
 	}
-	selectPKCols := fmt.Sprintf("select %s from %s.%s limit 1", pkCols, tableSchema, tableName)
+	selectPKCols := fmt.Sprintf(sqlTemplateSelectPKCols, pkCols, tableSchema, tableName)
 	qr, err = jc.execQuery(ctx, "", selectPKCols)
 	if err != nil {
 		return nil, err
@@ -1463,7 +1380,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 				}
 
 				if status == canceledStatus || status == failedStatus || status == completedStatus {
-					if time.Now().After(statusSetTimeObj.Add(tableEntryGCTimeGap)) {
+					if time.Now().After(statusSetTimeObj.Add(tableEntryGCInterval)) {
 						deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
 							sqltypes.StringBindVariable(uuid))
 						if err != nil {
@@ -1471,14 +1388,14 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 						}
 						_, _ = jc.execQuery(ctx, "", deleteJobSQL)
 
-						_, _ = jc.execQuery(ctx, tableSchema, fmt.Sprintf("drop table %s", jobBatchTable))
+						_, _ = jc.execQuery(ctx, tableSchema, fmt.Sprintf(sqlTemplateDropTable, jobBatchTable))
 					}
 				}
 			}
 		}
 
 		jc.tableMutex.Unlock()
-		time.Sleep(healthCheckTimeGap * time.Millisecond)
+		time.Sleep(healthCheckInterval * time.Millisecond)
 	}
 }
 
@@ -1490,12 +1407,12 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	}
 
 	// 2.利用selectSQL为该job生成batch表，在此之前生成每个batch的batchSize
-	// batchSize = min(userBatchSize, thresholdOfTxnRows / 每个表的index数量 * ratioOfThreshold)
+	// batchSize = min(userBatchSize, batchSizeThreshold / 每个表的index数量 * ratioOfBatchSizeThreshold)
 	indexCount, err := jc.getIndexCount(tableSchema, tableName)
 	if err != nil {
 		return "", "", 0, err
 	}
-	actualThreshold := int64(float64(thresholdOfTxnRows/indexCount) * ratioOfThreshold)
+	actualThreshold := int64(float64(batchSizeThreshold/indexCount) * ratioOfBatchSizeThreshold)
 	if userBatchSize < actualThreshold {
 		batchSize = userBatchSize
 	} else {
@@ -1581,17 +1498,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// todo pingcap
 	// todo 2+ -> 2-1
 
-	createTableSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s
-	(
-		id                              bigint unsigned  NOT NULL AUTO_INCREMENT,
-		batch_id                              varchar(256) NOT NULL, 
-		batch_sql                       varchar(1024)     NOT NULL,
-    	batch_count_sql                       varchar(1024)     NOT NULL,
-    	batch_size 						bigint unsigned  NOT NULL,
-    	actually_affected_rows			bigint unsigned  NOT NULL DEFAULT 0,
-    	batch_status							varchar(64)     NOT NULL DEFAULT 'Pending',
-		PRIMARY KEY (id)
-	) ENGINE = InnoDB`, batchTableName)
+	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
 	if err != nil {
 		return "", err
