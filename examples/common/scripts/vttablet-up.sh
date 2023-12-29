@@ -31,7 +31,6 @@ jaeger_args=${JAEGER_ARGS:-''}
 
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
-tablet_hostname=''
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica

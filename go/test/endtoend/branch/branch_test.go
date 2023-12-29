@@ -269,7 +269,6 @@ func WaitForVreplicationState(t *testing.T, vtParams *mysql.ConnParams, workflow
 		sqltypes.StringBindVariable(workflow),
 	)
 	require.NoError(t, err)
-
 	statesMap := map[string]bool{}
 	for _, state := range expectStates {
 		statesMap[string(state)] = true

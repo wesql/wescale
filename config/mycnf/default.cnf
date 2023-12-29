@@ -37,5 +37,6 @@ connect_timeout = 30
 innodb_lock_wait_timeout = 20
 max_allowed_packet = 64M
 max_connections = 500
+bind-address=0.0.0.0
 
 

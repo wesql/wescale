@@ -96,7 +96,7 @@ jobs:
         run: |
           
           # build image
-          DOCKER_BUILDKIT=0 docker build docker/wesqlscale/local/ -t apecloud/mysql-tester
+          DOCKER_BUILDKIT=0 docker build docker/wesqlscale/mysqltester/ -t apecloud/mysql-tester
           
           # failpoint
           chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
