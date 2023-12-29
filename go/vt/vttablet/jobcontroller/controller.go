@@ -38,6 +38,8 @@ import (
 const (
 	databasePoolSize   = 3
 	healthCheckTimeGap = 5000 // ms
+
+	jobSchedulerRunningInterval = 10 * time.Second
 )
 
 const (
@@ -163,6 +165,8 @@ type JobController struct {
 	workingTablesMutex sync.Mutex
 
 	checkBeforeSchedule chan struct{} // 用于确保当healthCheck拉起crash的running job的runner协程后，job scheduler才开始运行
+
+	schedulerNotifyChan chan struct{} // jobScheduler每隔一段时间运行一次调度。但当它收到这个chan的消息后，会立刻开始一次调度
 }
 
 type PKInfo struct {
@@ -181,6 +185,7 @@ func (jc *JobController) Open() error {
 
 		jc.workingTables = map[string]bool{}
 		jc.checkBeforeSchedule = make(chan struct{})
+		jc.schedulerNotifyChan = make(chan struct{}, 1)
 
 		go jc.jobHealthCheck(jc.checkBeforeSchedule)
 		go jc.jobScheduler(jc.checkBeforeSchedule)
@@ -192,6 +197,12 @@ func (jc *JobController) Open() error {
 
 func (jc *JobController) Close() {
 	jc.pool.Close()
+	if jc.checkBeforeSchedule != nil {
+		close(jc.checkBeforeSchedule)
+	}
+	if jc.schedulerNotifyChan != nil {
+		close(jc.schedulerNotifyChan)
+	}
 }
 
 func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletType, env tabletenv.Env, lagThrottler *throttle.Throttler) *JobController {
@@ -310,6 +321,9 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
+
+	jc.notifyJobScheduler()
+
 	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
 }
 
@@ -467,6 +481,8 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	// 相比于pause，cancel需要删除内存中的元数据
 	jc.deleteDMLJobRunningMeta(uuid, tableName)
 
+	jc.notifyJobScheduler()
+
 	return qr, nil
 }
 
@@ -575,10 +591,16 @@ func (jc *JobController) validateThrottleParams(expireString string, ratioLitera
 func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*sqltypes.Result, error) {
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
-	delete(jc.workingTables, table)
 
 	statusSetTime := time.Now().Format(time.RFC3339)
-	return jc.updateJobStatus(ctx, uuid, completedStatus, statusSetTime)
+	qr, err := jc.updateJobStatus(ctx, uuid, completedStatus, statusSetTime)
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+
+	delete(jc.workingTables, table)
+	jc.notifyJobScheduler()
+	return qr, nil
 }
 
 // todo, 记录错误时的错误怎么处理
@@ -587,9 +609,8 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 	statusSetTime := time.Now().Format(time.RFC3339)
 	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus, statusSetTime)
 
-	jc.workingTablesMutex.Lock()
-	defer jc.workingTablesMutex.Unlock()
-	delete(jc.workingTables, tableName)
+	jc.deleteDMLJobRunningMeta(uuid, tableName)
+	jc.notifyJobScheduler()
 
 }
 
@@ -599,47 +620,44 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 	// 等待healthcare扫一遍后再进行
 
 	<-checkBeforeSchedule
-	fmt.Printf("start jobScheduler\n")
-
 	ctx := context.Background()
+	timer := time.NewTicker(time.Duration(jobSchedulerRunningInterval))
+	defer timer.Stop()
+
 	for {
-		// todo,这里拿锁存在潜在bug，因为checkDmlJobRunnable中也拿了并去变成running状态，一个job可能被启动多次，要成睡眠和唤醒的方式
-		// todo,优化这里的拿锁结构
+		select {
+		case <-timer.C:
+		case <-jc.schedulerNotifyChan:
+		}
+
 		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
 
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
-		if qr == nil {
-			jc.workingTablesMutex.Unlock()
-			jc.tableMutex.Unlock()
+		if qr != nil {
+			for _, row := range qr.Named().Rows {
+				status := row["job_status"].ToString()
+				schema := row["related_schema"].ToString()
+				table := row["related_table"].ToString()
+				uuid := row["job_uuid"].ToString()
+				jobBatchTable := row["job_batch_table"].ToString()
+				timegap, _ := row["timegap_in_ms"].ToInt64()
+				batchSize, _ := row["batch_size"].ToInt64()
+				runningTimePeriodStart := row["running_time_period_start"].ToString()
+				runningTimePeriodEnd := row["running_time_period_end"].ToString()
 
-			time.Sleep(3 * time.Second)
-			continue
-		}
-		for _, row := range qr.Named().Rows {
-			status := row["job_status"].ToString()
-			schema := row["related_schema"].ToString()
-			table := row["related_table"].ToString()
-			uuid := row["job_uuid"].ToString()
-			jobBatchTable := row["job_batch_table"].ToString()
-			timegap, _ := row["timegap_in_ms"].ToInt64()
-			batchSize, _ := row["batch_size"].ToInt64()
-			runningTimePeriodStart := row["running_time_period_start"].ToString()
-			runningTimePeriodEnd := row["running_time_period_end"].ToString()
+				periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 
-			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
-
-			if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
-				// todo 这里之后改成休眠的方式后要删掉， 由于外面拿锁，必须在这里就加上，不然后面的循环可能：已经启动go runner的但是还未加入到working table,导致多个表的同时启动
-				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
+				if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
+					// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
+					jc.initDMLJobRunningMeta(uuid, table)
+					go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
+				}
 			}
 		}
 
 		jc.workingTablesMutex.Unlock()
 		jc.tableMutex.Unlock()
-
-		time.Sleep(3 * time.Second)
 	}
 }
 
@@ -661,7 +679,7 @@ func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd string) (
 	return nil, nil
 }
 
-// 外部需要加锁
+// 调用该函数时外部必须拿tableMutex锁和workingTablesMutex锁
 // todo，并发数的限制
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
 	if status != queuedStatus && status != notInTimePeriodStatus {
@@ -1126,12 +1144,9 @@ func isAllBatchDone(currentBatchID string, maxBatchIDInt int64) (bool, error) {
 	return currentBatchIDInt > maxBatchIDInt, nil
 }
 
-// 注意在外面拿锁,   todo，换成在里面拿锁？
+// 调用该函数时，需要外部要获取相关的锁
 func (jc *JobController) initDMLJobRunningMeta(uuid, table string) {
-	//jc.workingTablesMutex.Lock()
 	jc.workingTables[table] = true
-	//jc.workingTablesMutex.Unlock()
-
 }
 
 func (jc *JobController) deleteDMLJobRunningMeta(uuid, table string) {
@@ -1850,4 +1865,18 @@ func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatch
 		batchSQL = sql + fmt.Sprintf(" AND ( (%s) AND (%s) )", greatThanPart, lessThanPart)
 	}
 	return batchSQL, nil
+}
+
+// 通知jobScheduler让它立刻开始一次调度。
+func (jc *JobController) notifyJobScheduler() {
+	if jc.schedulerNotifyChan == nil {
+		return
+	}
+
+	// Try to send. If the channel buffer is full, it means a notification is
+	// already pending, so we don't need to do anything.
+	select {
+	case jc.schedulerNotifyChan <- struct{}{}:
+	default:
+	}
 }
