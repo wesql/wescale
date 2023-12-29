@@ -20,19 +20,21 @@ const (
 )
 
 const (
-	sqlDMLJobGetAllJobs = `select * from mysql.big_dml_jobs_table order by id;`
-	sqlDMLJobSubmit     = `insert into mysql.big_dml_jobs_table (
+	sqlDMLJobGetJobsToSchedule = `select * from mysql.big_dml_jobs_table where status IN ('queued','not-in-time-period') order by id`
+	sqlDMLJobGetAllJobs        = `select * from mysql.big_dml_jobs_table order by id`
+	sqlDMLJobSubmit            = `insert into mysql.big_dml_jobs_table (
                                       job_uuid,
                                       dml_sql,
-                                      related_schema,
-                                      related_table,
-                                      job_batch_table,
-                                      timegap_in_ms,
+                                      table_schema,
+                                      table_name,
+                                      batch_info_table_schema,
+                                      batch_info_table_name,
+                                      batch_interval_in_ms,
                                       batch_size,
-                                      job_status,
+                                      status,
                                       status_set_time,
                                       running_time_period_start,
-                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 
@@ -45,7 +47,7 @@ const (
                                     job_uuid = %a`
 
 	sqlDMLJobUpdateStatus = `update mysql.big_dml_jobs_table set 
-                                    job_status = %a,
+                                    status = %a,
                                     status_set_time = %a
                                 where 
                                     job_uuid = %a`

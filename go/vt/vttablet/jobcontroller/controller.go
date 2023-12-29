@@ -201,12 +201,13 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		batchSize = batchSizeThreshold
 	}
 
-	tableName, jobBatchTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
+	tableName, batchInfoTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
+	batchInfoTableSchema := tableSchema
 
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	if jobBatchTable == "" {
+	if batchInfoTable == "" {
 		return &sqltypes.Result{}, errors.New("this DML sql won't affect any rows")
 	}
 
@@ -235,7 +236,8 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		sqltypes.StringBindVariable(sql),
 		sqltypes.StringBindVariable(tableSchema),
 		sqltypes.StringBindVariable(tableName),
-		sqltypes.StringBindVariable(jobBatchTable),
+		sqltypes.StringBindVariable(batchInfoTableSchema),
+		sqltypes.StringBindVariable(batchInfoTable),
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(batchSize),
 		sqltypes.StringBindVariable(jobStatus),
@@ -253,7 +255,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 
 	jc.notifyJobScheduler()
 
-	return jc.buildJobSubmitResult(jobUUID, jobBatchTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
+	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
 }
 
 func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch, autoRetry bool) *sqltypes.Result {
@@ -261,7 +263,7 @@ func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, tim
 	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), strconv.FormatBool(autoRetry), strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "job_batch_table", "time_gap_in_ms", "batch_size", "auto_retry", "postpone_launch"),
+		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "time_gap_in_ms", "batch_size", "auto_retry", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -281,7 +283,7 @@ func (jc *JobController) ShowJobs() (*sqltypes.Result, error) {
 func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -304,7 +306,7 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -327,17 +329,17 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, errors.New("the len of qr of querying job info by uuid is not 1")
 	}
 	row := rst.Named().Rows[0]
-	tableSchema := row["related_schema"].ToString()
-	table := row["related_table"].ToString()
-	jobBatchTable := row["job_batch_table"].ToString()
-	timegap, _ := row["timegap_in_ms"].ToInt64()
+	tableSchema := row["table_schema"].ToString()
+	table := row["table_name"].ToString()
+	jobBatchTable := row["batch_info_table_name"].ToString()
+	batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
 	batchSize, _ := row["batch_szie"].ToInt64()
 	runningTimePeriodStart := row["running_time_period_start"].ToString()
 	runningTimePeriodEnd := row["running_time_period_end"].ToString()
 	periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 
 	// 拉起runner协程，协程内会将状态改为running
-	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
+	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 	emptyResult.RowsAffected = 1
 	return emptyResult, nil
 }
@@ -351,7 +353,7 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (
 		return emptyResult, errors.New("the start time and end time must be both set or not")
 	}
 
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -376,7 +378,7 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (
 func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -391,7 +393,7 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, nil
 	}
@@ -405,7 +407,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, nil
 	}
 
-	tableName, _ := jc.GetStrJobInfo(ctx, uuid, "related_table")
+	tableName, _ := jc.GetStrJobInfo(ctx, uuid, "table_name")
 
 	// 相比于pause，cancel需要删除内存中的元数据
 	jc.deleteDMLJobRunningMeta(uuid, tableName)
@@ -561,16 +563,16 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 
 		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
-
-		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
+		// 先提交的job先执行
+		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetJobsToSchedule)
 		if qr != nil {
 			for _, row := range qr.Named().Rows {
-				status := row["job_status"].ToString()
-				schema := row["related_schema"].ToString()
-				table := row["related_table"].ToString()
+				status := row["status"].ToString()
+				schema := row["table_schema"].ToString()
+				table := row["table_name"].ToString()
 				uuid := row["job_uuid"].ToString()
-				jobBatchTable := row["job_batch_table"].ToString()
-				timegap, _ := row["timegap_in_ms"].ToInt64()
+				jobBatchTable := row["batch_info_table_name"].ToString()
+				batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
 				batchSize, _ := row["batch_size"].ToInt64()
 				runningTimePeriodStart := row["running_time_period_start"].ToString()
 				runningTimePeriodEnd := row["running_time_period_end"].ToString()
@@ -580,7 +582,7 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 				if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
 					// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
 					jc.initDMLJobRunningMeta(uuid, table)
-					go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
+					go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 				}
 			}
 		}
@@ -945,10 +947,10 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	return newCurrentBatchSQL, nextBatchID, nil
 }
 
-func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, timeGap, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
+func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, batchInterval, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
 
-	// timeGap 单位ms，duration输入ns，应该乘上1000000
-	timer := time.NewTicker(time.Duration(timeGap * 1e6))
+	// batchInterval 单位ms，duration输入ns，应该乘上1000000
+	timer := time.NewTicker(time.Duration(batchInterval * 1e6))
 	defer timer.Stop()
 
 	var err error
@@ -989,7 +991,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 	// 在一个无限循环中等待定时器触发
 	for range timer.C {
 		// 定时器触发时执行的函数
-		status, err := jc.GetStrJobInfo(ctx, uuid, "job_status")
+		status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
@@ -1331,12 +1333,12 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		jc.tableMutex.Lock() // todo，删掉？
 
 		for _, row := range qr.Named().Rows {
-			status := row["job_status"].ToString()
-			tableSchema := row["related_schema"].ToString()
-			table := row["related_table"].ToString()
-			jobBatchTable := row["job_batch_table"].ToString()
+			status := row["status"].ToString()
+			tableSchema := row["table_schema"].ToString()
+			table := row["table_name"].ToString()
+			jobBatchTable := row["batch_info_table_name"].ToString()
 			uuid := row["job_uuid"].ToString()
-			timegap, _ := row["timegap_in_ms"].ToInt64()
+			batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
 			batchSize, _ := row["batch_size"].ToInt64()
 			runningTimePeriodStart := row["running_time_period_start"].ToString()
 			runningTimePeriodEnd := row["running_time_period_end"].ToString()
@@ -1344,7 +1346,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 
 			if status == runningStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, timegap, batchSize, periodStartTimePtr, periodEndTimePtr)
+				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 			}
 
 			// 对于暂停的，不启动协程，只需要恢复内存元数据
@@ -1368,11 +1370,11 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 		if qr != nil {
 			for _, row := range qr.Named().Rows {
-				status := row["job_status"].ToString()
+				status := row["status"].ToString()
 				statusSetTime := row["status_set_time"].ToString()
 				uuid := row["job_uuid"].ToString()
-				jobBatchTable := row["job_batch_table"].ToString()
-				tableSchema := row["related_schema"].ToString()
+				jobBatchTable := row["batch_info_table_name"].ToString()
+				tableSchema := row["table_schema"].ToString()
 
 				statusSetTimeObj, err := time.Parse(time.RFC3339, statusSetTime)
 				if err != nil {
@@ -1490,7 +1492,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
-	batchTableName := "job_batch_table_" + strings.Replace(jobUUID, "-", "_", -1)
+	batchTableName := "batch_info_table_" + strings.Replace(jobUUID, "-", "_", -1)
 	// todo newborn22 batch_size 改成 count_size，count时的大小
 	// todo newborn22 Pending->queued, completed,
 	// todo newborn22 batch_sql batch_count_sql -> text
