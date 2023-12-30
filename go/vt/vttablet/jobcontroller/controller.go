@@ -37,7 +37,7 @@ import (
 // config
 const (
 	databasePoolSize = 5
-	defaultBatchSize = 150
+	defaultBatchSize = 100
 
 	healthCheckInterval         = 5000 // ms
 	defaultBatchInterval        = 1000 // 1000ms
@@ -68,6 +68,7 @@ const (
 )
 
 // possible status of DML job
+// batch is status is in ('queued', 'completed')
 const (
 	postponeLaunchStatus  = "postpone-launch"
 	queuedStatus          = "queued"
@@ -690,7 +691,7 @@ func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTab
 		return "", "", errors.New("the len of qr of getting batch sql by ID is not 1")
 	}
 	batchSQL, _ = qr.Named().Rows[0].ToString("batch_sql")
-	batchCountSQL, _ = qr.Named().Rows[0].ToString("batch_count_sql")
+	batchCountSQL, _ = qr.Named().Rows[0].ToString("batch_count_sql_when_creating_batch")
 	return batchSQL, batchCountSQL, nil
 }
 
@@ -754,7 +755,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	// 4.1在batch table中记录
 	updateBatchStatus := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTable)
 	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
-		sqltypes.StringBindVariable("Done"),
+		sqltypes.StringBindVariable(completedStatus),
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
@@ -910,12 +911,33 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	curBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", curBatchGreatThanPart, curBatchLessThanPart)
 	newBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
 	newBatchCountSQL := batchCountSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
+	// 构建当前batch新的batch begin及end字段以及新batch的begin及end字段
+	getBatchBeginAndEndSQL := fmt.Sprintf(sqlTemplateGetBatchBeginAndEnd, batchTable)
+	getBatchBeginAndEndQuery, err := sqlparser.ParseAndBind(getBatchBeginAndEndSQL, sqltypes.StringBindVariable(batchID))
+	if err != nil {
+		return "", "", err
+	}
+	qr, err = conn.Exec(ctx, getBatchBeginAndEndQuery, math.MaxInt32, true)
+	if err != nil {
+		return "", "", err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return "", "", errors.New("can not get batch begin and end")
+	}
+	currentBatchNewBeginStr := qr.Named().Rows[0]["batch_begin"].ToString()
+	newBatchEndStr := qr.Named().Rows[0]["batch_end"].ToString()
+	currentBatchNewEndStr, newBatchBegintStr, err := genBatchStartAndEndStr(curBatchNewEnd, newBatchStart, pkInfos)
+	if err != nil {
+		return "", "", err
+	}
 
 	// 2.5) 在batch表中更改旧的条目的sql，并插入新batch条目
 	// 在表中更改旧的sql
 	updateBatchSQL := fmt.Sprintf(sqlTemplateUpdateBatchSQL, batchTable)
 	updateBatchSQLQuery, err := sqlparser.ParseAndBind(updateBatchSQL,
 		sqltypes.StringBindVariable(curBatchSQL),
+		sqltypes.StringBindVariable(currentBatchNewBeginStr),
+		sqltypes.StringBindVariable(currentBatchNewEndStr),
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
 		return "", "", err
@@ -931,12 +953,14 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	nextBatchID = newBatchID
 	newBatchSize := expectedRow - batchSize
 
-	insertBatchSQL := fmt.Sprintf(insertBatchSQL, batchTable)
+	insertBatchSQL := fmt.Sprintf(sqlTemplateInsertBatchEntry, batchTable)
 	insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQL,
 		sqltypes.StringBindVariable(newBatchID),
 		sqltypes.StringBindVariable(newBatchSQL),
 		sqltypes.StringBindVariable(newBatchCountSQL),
-		sqltypes.Int64BindVariable(newBatchSize))
+		sqltypes.Int64BindVariable(newBatchSize),
+		sqltypes.StringBindVariable(newBatchBegintStr),
+		sqltypes.StringBindVariable(newBatchEndStr))
 	if err != nil {
 		return "", "", err
 	}
@@ -1493,9 +1517,6 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
 	batchTableName := "batch_info_table_" + strings.Replace(jobUUID, "-", "_", -1)
-	// todo newborn22 batch_size 改成 count_size，count时的大小
-	// todo newborn22 Pending->queued, completed,
-	// todo newborn22 batch_sql batch_count_sql -> text
 	// todo newborn22 batch begin, batch end     text
 	// todo pingcap
 	// todo 2+ -> 2-1
@@ -1509,14 +1530,14 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 遍历每一行的每一个PK的值，记录每一个batch的开始和结束pk值（当有多个pk列时，需要记录多个pk值，pk可能具有不同的数据类型
 	// 当遍历的行数达到一个batchSize时，即可生成一个batch所要执行的batch SQL，往batch表中插入一个条目
 	currentBatchSize := int64(0)
-	// todo newborn22 interface{} -> any
+	// todo newborn22 any -> any
 	var currentBatchStart []any
 	var currentBatchEnd []any
 	currentBatchID := "1"
-	insertBatchSQLWithTableName := fmt.Sprintf(insertBatchSQL, batchTableName)
+	insertBatchSQLWithTableName := fmt.Sprintf(sqlTemplateInsertBatchEntry, batchTableName)
 
 	for _, row := range qr.Named().Rows {
-		var pkValues []interface{}
+		var pkValues []any
 		for _, pkInfo := range pkInfos {
 			pkName := pkInfo.pkName
 			keyVal, err := ProcessValue(row[pkName])
@@ -1539,12 +1560,18 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 			if err != nil {
 				return "", err
 			}
+			batchStartStr, batchEndStr, err := genBatchStartAndEndStr(currentBatchStart, currentBatchEnd, pkInfos)
+			if err != nil {
+				return "", err
+			}
 			currentBatchSize = 0
 			insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
 				sqltypes.StringBindVariable(currentBatchID),
 				sqltypes.StringBindVariable(batchSQL),
 				sqltypes.StringBindVariable(countSQL),
-				sqltypes.Int64BindVariable(batchSize))
+				sqltypes.Int64BindVariable(batchSize),
+				sqltypes.StringBindVariable(batchStartStr),
+				sqltypes.StringBindVariable(batchEndStr))
 			if err != nil {
 				return "", err
 			}
@@ -1568,11 +1595,17 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 		if err != nil {
 			return "", err
 		}
+		batchStartStr, batchEndStr, err := genBatchStartAndEndStr(currentBatchStart, currentBatchEnd, pkInfos)
+		if err != nil {
+			return "", err
+		}
 		insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
 			sqltypes.StringBindVariable(currentBatchID),
 			sqltypes.StringBindVariable(batchSQL),
 			sqltypes.StringBindVariable(countSQL),
-			sqltypes.Int64BindVariable(currentBatchSize))
+			sqltypes.Int64BindVariable(currentBatchSize),
+			sqltypes.StringBindVariable(batchStartStr),
+			sqltypes.StringBindVariable(batchEndStr))
 		if err != nil {
 			return "", err
 		}
@@ -1594,7 +1627,25 @@ func currentBatchIDInc(currentBatchID string) (string, error) {
 	return strconv.FormatInt(currentBatchIDInt64, 10), nil
 }
 
-func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchStart, currentBatchEnd []interface{}, pkInfos []PKInfo) (countSQLTemplate string, err error) {
+func genBatchStartAndEndStr(currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (currentBatchStartStr string, currentBatchStartEnd string, err error) {
+	for i, pkInfo := range pkInfos {
+		placeHolder, err := genPlaceholderByType(pkInfo.pkType)
+		if err != nil {
+			return "", "", err
+		}
+		if i > 0 {
+			currentBatchStartStr += ","
+			currentBatchStartEnd += ","
+		}
+		currentBatchStartStr += placeHolder
+		currentBatchStartEnd += placeHolder
+		currentBatchStartStr = fmt.Sprintf(currentBatchStartStr, currentBatchStart[i])
+		currentBatchStartEnd = fmt.Sprintf(currentBatchStartEnd, currentBatchEnd[i])
+	}
+	return currentBatchStartStr, currentBatchStartEnd, nil
+}
+
+func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (countSQLTemplate string, err error) {
 	if len(pkInfos) == 0 {
 		return "", errors.New("the len of pkInfos is 0")
 	}
@@ -1659,7 +1710,7 @@ func genPlaceholderByType(typ querypb.Type) (string, error) {
 	}
 }
 
-func genPKsGreaterThanPart(pkInfos []PKInfo, currentBatchStart []interface{}) (string, error) {
+func genPKsGreaterThanPart(pkInfos []PKInfo, currentBatchStart []any) (string, error) {
 	curIdx := 0
 	pksNum := len(pkInfos)
 	var equalStr, rst string
@@ -1692,7 +1743,7 @@ func genPKsGreaterThanPart(pkInfos []PKInfo, currentBatchStart []interface{}) (s
 	return rst, nil
 }
 
-func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []interface{}) (string, error) {
+func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []any) (string, error) {
 	curIdx := 0
 	pksNum := len(pkInfos)
 	var equalStr, rst string
@@ -1725,16 +1776,7 @@ func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []interface{}) (string
 	return rst, nil
 }
 
-const (
-	insertBatchSQL = ` insert into %s (
-		batch_id,
-		batch_sql,
-	 	batch_count_sql,
-		batch_size
-	) values (%%a,%%a,%%a,%%a)`
-)
-
-func ProcessValue(value sqltypes.Value) (interface{}, error) {
+func ProcessValue(value sqltypes.Value) (any, error) {
 	typ := value.Type()
 
 	switch typ {
@@ -1753,7 +1795,7 @@ func ProcessValue(value sqltypes.Value) (interface{}, error) {
 	}
 }
 
-func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatchEnd []interface{}, pkInfos []PKInfo) (batchSQL string, err error) {
+func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (batchSQL string, err error) {
 	if len(pkInfos) == 1 {
 		if fmt.Sprintf("%T", currentBatchStart[0]) != fmt.Sprintf("%T", currentBatchEnd[0]) {
 			err = errors.New("the type of currentBatchStart and currentBatchEnd is different")

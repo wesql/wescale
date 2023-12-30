@@ -10,11 +10,13 @@ const (
 	(
 		id                              bigint unsigned  NOT NULL AUTO_INCREMENT,
 		batch_id                              varchar(256) NOT NULL, 
-		batch_sql                       varchar(1024)     NOT NULL,
-    	batch_count_sql                       varchar(1024)     NOT NULL,
-    	batch_size 						bigint unsigned  NOT NULL,
+		batch_status							varchar(64)     NOT NULL DEFAULT 'queued',
+    	count_size_when_creating_batch 						bigint unsigned  NOT NULL,
     	actually_affected_rows			bigint unsigned  NOT NULL DEFAULT 0,
-    	batch_status							varchar(64)     NOT NULL DEFAULT 'Pending',
+    	batch_begin                     text        NOT NULL,
+    	batch_end                       text        NOT NULL,
+   		batch_sql                       text     NOT NULL,
+    	batch_count_sql_when_creating_batch                       text     NOT NULL,
 		PRIMARY KEY (id)
 	) ENGINE = InnoDB`
 )
@@ -93,15 +95,26 @@ const (
 
 	sqlUpdateDealingBatchID = `update mysql.big_dml_jobs_table set dealing_batch_id = %a where job_uuid = %a`
 
-	sqlTemplateGetBatchSQLsByID = `select batch_sql,batch_count_sql from %s where batch_id = %%a`
+	sqlTemplateGetBatchSQLsByID = `select batch_sql,batch_count_sql_when_creating_batch from %s where batch_id = %%a`
 
 	sqlTemplateGetMaxBatchID = `select batch_id as max_batch_id from %s order by id desc limit 1`
 
 	sqlTempalteUpdateBatchStatusAndAffectedRows = `update %s set batch_status = %%a,actually_affected_rows = actually_affected_rows+%%a where batch_id = %%a`
 
-	sqlTemplateUpdateBatchSQL = `update %s set batch_sql=%%a where batch_id=%%a`
+	sqlTemplateUpdateBatchSQL = `update %s set batch_sql=%%a,batch_begin=%%a,batch_end=%%a where batch_id=%%a`
 
 	sqlTemplateSelectPKCols = `select %s from %s.%s limit 1`
 
 	sqlTemplateDropTable = `drop table if exiss %s`
+
+	sqlTemplateGetBatchBeginAndEnd = `select batch_begin,batch_end from %s where batch_id=%%a`
+
+	sqlTemplateInsertBatchEntry = ` insert into %s (
+		batch_id,
+		batch_sql,
+	 	batch_count_sql_when_creating_batch,
+		count_size_when_creating_batch,
+	 	batch_begin,
+	 	batch_end
+	) values (%%a,%%a,%%a,%%a,%%a,%%a)`
 )
