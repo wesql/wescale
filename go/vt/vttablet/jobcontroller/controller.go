@@ -717,6 +717,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
+
 	if err != nil {
 		return "", err
 	}
@@ -724,6 +725,11 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	// 1.开启事务
 	// todo，wantfield是否要设置成false
 	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, true)
+	// 确保函数意味退出时结束该事务，以释放该事务锁定的资源
+	defer func() {
+		_, _ = conn.Exec(ctx, "rollback", math.MaxInt32, true)
+	}()
+
 	if err != nil {
 		return "", err
 	}
@@ -946,16 +952,16 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", "", err
 	}
+	// 插入新batch条目
 	newCurrentBatchSQL = curBatchSQL
-
-	// 生成新的table条目并插入
-	newBatchID := batchID + "+"
-	nextBatchID = newBatchID
+	nextBatchID, err = genNewBatchID(batchID)
+	if err != nil {
+		return "", "", err
+	}
 	newBatchSize := expectedRow - batchSize
-
 	insertBatchSQL := fmt.Sprintf(sqlTemplateInsertBatchEntry, batchTable)
 	insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQL,
-		sqltypes.StringBindVariable(newBatchID),
+		sqltypes.StringBindVariable(nextBatchID),
 		sqltypes.StringBindVariable(newBatchSQL),
 		sqltypes.StringBindVariable(newBatchCountSQL),
 		sqltypes.Int64BindVariable(newBatchSize),
@@ -1076,7 +1082,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 func isAllBatchDone(currentBatchID string, maxBatchIDInt int64) (bool, error) {
 	var currentBatchIDInt int64
 	var err error
-	parts := strings.Split(currentBatchID, "+")
+	parts := strings.Split(currentBatchID, "-")
 	if len(parts) == 0 {
 		currentBatchIDInt, err = strconv.ParseInt(currentBatchID, 10, 64)
 		if err != nil {
@@ -1618,7 +1624,9 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 }
 
 func currentBatchIDInc(currentBatchID string) (string, error) {
-	currentBatchID = strings.Replace(currentBatchID, "+", "", -1) // 去除串中的加号
+	if strings.Contains(currentBatchID, "-") {
+		currentBatchID = strings.Split(currentBatchID, "-")[0]
+	}
 	currentBatchIDInt64, err := strconv.ParseInt(currentBatchID, 10, 64)
 	if err != nil {
 		return "", err
@@ -1865,4 +1873,23 @@ func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCoun
 		return 0, err
 	}
 	return qr.Named().Rows[0]["index_count"].ToInt64()
+}
+
+func genNewBatchID(batchID string) (newBatchID string, err error) {
+	// 产生新的batchID
+	if strings.Contains(batchID, "-") {
+		parts := strings.Split(batchID, "-")
+		num, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return "", err
+		}
+		newBatchID = fmt.Sprintf("%s-%d", parts[0], num+1)
+	} else {
+		num, err := strconv.ParseInt(batchID, 10, 64)
+		if err != nil {
+			return "", err
+		}
+		newBatchID = fmt.Sprintf("%d-1", num)
+	}
+	return newBatchID, nil
 }
