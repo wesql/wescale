@@ -1523,9 +1523,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
 	batchTableName := "batch_info_table_" + strings.Replace(jobUUID, "-", "_", -1)
-	// todo newborn22 batch begin, batch end     text
 	// todo pingcap
-	// todo 2+ -> 2-1
 
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
@@ -1536,7 +1534,6 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 遍历每一行的每一个PK的值，记录每一个batch的开始和结束pk值（当有多个pk列时，需要记录多个pk值，pk可能具有不同的数据类型
 	// 当遍历的行数达到一个batchSize时，即可生成一个batch所要执行的batch SQL，往batch表中插入一个条目
 	currentBatchSize := int64(0)
-	// todo newborn22 any -> any
 	var currentBatchStart []any
 	var currentBatchEnd []any
 	currentBatchID := "1"

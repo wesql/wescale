@@ -205,7 +205,7 @@ func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema
 		}
 	} else {
 		UUID := strings.Replace(show.UUID, "-", "_", -1)
-		sql = fmt.Sprintf("SELECT * FROM batch_info_table_%s", UUID)
+		sql = fmt.Sprintf("SELECT * FROM batch_info_table_%s order by CAST(SUBSTRING_INDEX(batch_id, '-', 1) AS SIGNED),id", UUID)
 	}
 
 	return &engine.Send{
