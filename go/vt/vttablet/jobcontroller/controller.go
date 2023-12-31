@@ -584,6 +584,7 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
 		// 先提交的job先执行
+
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetJobsToSchedule)
 		if qr != nil {
 			for _, row := range qr.Named().Rows {
@@ -658,31 +659,24 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 	return true
 }
 
-func (jc *JobController) getDealingBatchID(ctx context.Context, uuid string) (string, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlGetDealingBatchID,
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return "", err
-	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
+func (jc *JobController) getBatchIDToExec(ctx context.Context, batchTableSchema, batchTableName string) (string, error) {
+	getBatchIDToExecSQL := fmt.Sprintf(sqlTemplateGetBatchIDToExec, batchTableName)
+	qr, err := jc.execQuery(ctx, batchTableSchema, getBatchIDToExecSQL)
 	if err != nil {
 		return "", err
 	}
 	if len(qr.Named().Rows) != 1 {
-		return "", errors.New("the len of query result of batch ID is not one")
+		return "", nil
 	}
-	return qr.Named().Rows[0].ToString("dealing_batch_id")
+	return qr.Named().Rows[0].ToString("batch_id")
 }
 
-func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID float64) error {
+func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID string) error {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
-		sqltypes.Float64BindVariable(batchID),
+		sqltypes.StringBindVariable(batchID),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return err
@@ -726,7 +720,7 @@ func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tabl
 	return qr.Named().Rows[0].ToString("max_batch_id")
 }
 
-func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchID string, batchSize int64) (nextBatchID string, err error) {
+func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchID string, batchSize int64) (err error) {
 	defer jc.env.LogError()
 
 	var setting pools.Setting
@@ -738,7 +732,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	defer conn.Recycle()
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// 1.开启事务
@@ -750,30 +744,30 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}()
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// 2.查询batch sql预计影响的行数，如果超过阈值，则生成新的batch ID
 	batchCountSQLForShare := batchCountSQL + " FOR SHARE"
 	qr, err := conn.Exec(ctx, batchCountSQLForShare, math.MaxInt32, true)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if len(qr.Named().Rows) != 1 {
-		return "", errors.New("the len of qr of count expected batch size is not 1")
+		return errors.New("the len of qr of count expected batch size is not 1")
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
 	if expectedRow > batchSize {
-		batchSQL, nextBatchID, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
+		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
 
 	// 3.执行batch sql
 	qr, err = conn.Exec(ctx, batchSQL, math.MaxInt32, true)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// 4.记录batch sql已经完成，将行数增加到affected rows中
@@ -784,11 +778,11 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
-		return "", err
+		return err
 	}
 	_, err = conn.Exec(ctx, updateBatchStatusDoneSQL, math.MaxInt32, true)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// 4.2在job表中记录
@@ -796,49 +790,32 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
-		return "", err
+		return err
 	}
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 	_, err = conn.Exec(ctx, updateAffectedRowsSQL, math.MaxInt32, true)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	// 5.获得新的batchID，更新正在处理的batch ID
-	if nextBatchID == "" {
-		// nextBatchID在此处为“”意味着本次batch没有拆分。因此下一个BatchID中不会带有'+'
-		nextBatchID, err = currentBatchIDInc(batchID) // todo，考虑生成新batch的情况，如何正确地获得下一个batch ID？
-	}
-	if err != nil {
-		return "", err
-	}
-	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
-		sqltypes.StringBindVariable(nextBatchID),
-		sqltypes.StringBindVariable(uuid))
-
-	_, err = conn.Exec(ctx, submitQuery, math.MaxInt32, true)
-	if err != nil {
-		return "", err
-	}
-
-	// 6.提交事务
+	// 5.提交事务
 	_, err = conn.Exec(ctx, "commit", math.MaxInt32, true)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return nextBatchID, nil
+	return nil
 }
 
 // 将超过batchSize的batch拆分成两个batches,其中第一个batch的大小等于batchSize
 // 拆分的基本原理是遍历原先batch的batchCountSQL的结果集，将第batchSize条record的pk作为原先batch的PKEnd，第batchSize+1条record的pk作为新batch的PKStart
 // 原先batch的PKStart和PKEnd分别成为原先batch的PKStart和新batch的PKEnd
-func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID string, conn *connpool.DBConn, batchSize, expectedRow int64) (newCurrentBatchSQL, nextBatchID string, err error) {
+func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID string, conn *connpool.DBConn, batchSize, expectedRow int64) (newCurrentBatchSQL string, err error) {
 	// 1.根据batchCountSQL生成查询pk值的select sql
 	// 1.1.获得PK信息
 	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, table)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	isFirstPk := true
 	pkPart := ""
@@ -861,7 +838,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	// 遍历前threshold+1条，依然使用同一个连接
 	qr, err := conn.Exec(ctx, batchSplitSelectSQL, math.MaxInt32, true)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	var curBatchNewEnd []any
@@ -874,7 +851,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 				pkName := pkInfo.pkName
 				keyVal, err := ProcessValue(row[pkName])
 				if err != nil {
-					return "", "", err
+					return "", err
 				}
 				curBatchNewEnd = append(curBatchNewEnd, keyVal)
 			}
@@ -885,7 +862,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 				pkName := pkInfo.pkName
 				keyVal, err := ProcessValue(row[pkName])
 				if err != nil {
-					return "", "", err
+					return "", err
 				}
 				newBatchStart = append(newBatchStart, keyVal)
 			}
@@ -895,12 +872,12 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	// 2.2) 将curBatchNewEnd和newBatchStart转换成sql中where部分的<=和>=的字符串
 	curBatchLessThanPart, err := genPKsLessThanPart(pkInfos, curBatchNewEnd)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	newBatchGreatThanPart, err := genPKsGreaterThanPart(pkInfos, newBatchStart)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// 2.3) 通过正则表达式，获得原先batchSQL中的great than和less than部分，作为当前batch的great than和新batch的less than部分
@@ -927,7 +904,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 			newBatchLessThanPart = lastMatch[2]
 		}
 	} else {
-		return "", "", errors.New("can not match greatThan and lessThan parts by regex")
+		return "", errors.New("can not match greatThan and lessThan parts by regex")
 	}
 
 	// 2.4) 生成拆分后，当前batch的sql和新batch的sql
@@ -940,20 +917,20 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	getBatchBeginAndEndSQL := fmt.Sprintf(sqlTemplateGetBatchBeginAndEnd, batchTable)
 	getBatchBeginAndEndQuery, err := sqlparser.ParseAndBind(getBatchBeginAndEndSQL, sqltypes.StringBindVariable(batchID))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	qr, err = conn.Exec(ctx, getBatchBeginAndEndQuery, math.MaxInt32, true)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	if len(qr.Named().Rows) != 1 {
-		return "", "", errors.New("can not get batch begin and end")
+		return "", errors.New("can not get batch begin and end")
 	}
 	currentBatchNewBeginStr := qr.Named().Rows[0]["batch_begin"].ToString()
 	newBatchEndStr := qr.Named().Rows[0]["batch_end"].ToString()
 	currentBatchNewEndStr, newBatchBegintStr, err := genBatchStartAndEndStr(curBatchNewEnd, newBatchStart, pkInfos)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	// 2.5) 在batch表中更改旧的条目的sql，并插入新batch条目
@@ -965,17 +942,17 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 		sqltypes.StringBindVariable(currentBatchNewEndStr),
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	_, err = conn.Exec(ctx, updateBatchSQLQuery, math.MaxInt32, true)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	// 插入新batch条目
 	newCurrentBatchSQL = curBatchSQL
-	nextBatchID, err = genNewBatchID(batchID)
+	nextBatchID, err := genNewBatchID(batchID)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	newBatchSize := expectedRow - batchSize
 	insertBatchSQL := fmt.Sprintf(sqlTemplateInsertBatchEntry, batchTable)
@@ -987,13 +964,13 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 		sqltypes.StringBindVariable(newBatchBegintStr),
 		sqltypes.StringBindVariable(newBatchEndStr))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	_, err = conn.Exec(ctx, insertBatchSQLQuery, math.MaxInt32, true)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	return newCurrentBatchSQL, nextBatchID, nil
+	return newCurrentBatchSQL, nil
 }
 
 func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable, failPolicy string, batchInterval, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
@@ -1002,50 +979,22 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 	timer := time.NewTicker(time.Duration(batchInterval * 1e6))
 	defer timer.Stop()
 
-	var err error
 	ctx := context.Background()
 
-	// 如果currentBatchID为"",意味着这个job之前尚未运行，需要初始化currentBatchID为1
-	currentBatchID, err := jc.getDealingBatchID(ctx, uuid)
+	_, err := jc.updateJobStatus(ctx, uuid, runningStatus, time.Now().Format(time.RFC3339))
 	if err != nil {
 		jc.FailJob(ctx, uuid, err.Error(), table)
-		return
-	}
-	if currentBatchID == "" {
-		err = jc.updateDealingBatchID(ctx, uuid, 1)
-		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
-			return
-		}
-		currentBatchID = "1"
-	}
-	statusSetTime := time.Now().Format(time.RFC3339)
-	_, err = jc.updateJobStatus(ctx, uuid, runningStatus, statusSetTime)
-	if err != nil {
-		jc.FailJob(ctx, uuid, err.Error(), table)
-		return
-	}
-
-	maxBatchID, err := jc.getMaxBatchID(ctx, batchTable, tableSchema)
-	if err != nil {
-		jc.FailJob(ctx, uuid, err.Error(), table)
-		return
-	}
-	maxBatchIDInt, err := strconv.ParseInt(maxBatchID, 10, 64)
-	if err != nil {
-		jc.FailJob(ctx, uuid, err.Error(), table)
-		return
 	}
 
 	// 在一个无限循环中等待定时器触发
 	for range timer.C {
 		// 定时器触发时执行的函数
+		// 检查状态是否为running，可能为paused/canceled
 		status, err := jc.GetStrJobInfo(ctx, uuid, "status")
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
-		// maybe paused / canceled
 		if status != runningStatus {
 			return
 		}
@@ -1067,16 +1016,36 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			continue
 		}
 
-		// todo 检查id是否位空
+		// 获取本次要执行的batch的batchId
+		batchIDToExec, err := jc.getBatchIDToExec(ctx, tableSchema, batchTable)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+		if batchIDToExec == "" {
+			// 意味着所有的batch都已经执行完毕，则退出
+			_, err = jc.CompleteJob(ctx, uuid, table)
+			if err != nil {
+				jc.FailJob(ctx, uuid, err.Error(), table)
+			}
+			return
+		}
 
-		batchSQL, batchCountSQL, err := jc.getBatchSQLsByID(ctx, currentBatchID, batchTable, tableSchema)
+		// 将batchID信息记录在系统表中便于用户查看
+		err = jc.updateDealingBatchID(ctx, uuid, batchIDToExec)
+		if err != nil {
+			jc.FailJob(ctx, uuid, err.Error(), table)
+			return
+		}
+
+		batchSQL, batchCountSQL, err := jc.getBatchSQLsByID(ctx, batchIDToExec, batchTable, tableSchema)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
 
 		// 执行当前batch的batch sql，并获得下一要执行的batchID
-		currentBatchID, err = jc.execBatchAndRecord(ctx, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, currentBatchID, batchSize)
+		err = jc.execBatchAndRecord(ctx, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchIDToExec, batchSize)
 		// 如果执行batch时失败，则根据failPolicy决定处理策略
 		if err != nil {
 			switch failPolicy {
@@ -1085,48 +1054,16 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 				return
 			case failPolicySkip:
 				// todo，由于目前batch是串行执行，不存在多个协程同时访问batch表的情况，因此暂时不用加锁。
-				_ = jc.updateBatchStatus(tableSchema, batchTable, currentBatchID, failPolicySkip, err.Error())
+				_ = jc.updateBatchStatus(tableSchema, batchTable, batchIDToExec, failPolicySkip, err.Error())
 				continue
 			case failPolicyPause:
-				msg := fmt.Sprintf("batch %s failed, pause job: %s", currentBatchID, err.Error())
+				msg := fmt.Sprintf("batch %s failed, pause job: %s", batchIDToExec, err.Error())
 				_ = jc.updateJobMessage(ctx, uuid, msg)
-				_, _ = jc.updateJobStatus(ctx, uuid, pausedStatus, statusSetTime)
-				return
-			}
-		}
-		jobDone, err := isAllBatchDone(currentBatchID, maxBatchIDInt)
-		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
-			return
-		}
-		if jobDone {
-			// todo，将completeJob移动到execBatchAndRecord中，确保原子性
-			_, err = jc.CompleteJob(ctx, uuid, table)
-			if err != nil {
-				jc.FailJob(ctx, uuid, err.Error(), table)
+				_, _ = jc.updateJobStatus(ctx, uuid, pausedStatus, time.Now().Format(time.RFC3339))
 				return
 			}
 		}
 	}
-}
-
-func isAllBatchDone(currentBatchID string, maxBatchIDInt int64) (bool, error) {
-	var currentBatchIDInt int64
-	var err error
-	parts := strings.Split(currentBatchID, "-")
-	if len(parts) == 0 {
-		currentBatchIDInt, err = strconv.ParseInt(currentBatchID, 10, 64)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		currentBatchIDInt, err = strconv.ParseInt(parts[0], 10, 64)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	return currentBatchIDInt > maxBatchIDInt, nil
 }
 
 // 调用该函数时，需要外部要获取相关的锁

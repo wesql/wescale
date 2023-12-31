@@ -110,6 +110,8 @@ const (
 
 	sqlTemplateGetBatchBeginAndEnd = `select batch_begin,batch_end from %s where batch_id=%%a`
 
+	sqlTemplateGetBatchIDToExec = `SELECT batch_id FROM %s where batch_status = 'queued' order by CAST(SUBSTRING_INDEX(batch_id, '-', 1) AS SIGNED),id limit 1`
+
 	sqlTemplateInsertBatchEntry = ` insert into %s (
 		batch_id,
 		batch_sql,
