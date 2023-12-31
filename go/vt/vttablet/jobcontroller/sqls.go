@@ -35,8 +35,9 @@ const (
                                       batch_size,
                                       status,
                                       status_set_time,
+                                      fail_policy,
                                       running_time_period_start,
-                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
                                     message = %a 

@@ -67,6 +67,15 @@ const (
 	SetRunningTimePeriod = "set_running_time_period"
 )
 
+// 当batch执行失败时的策略，需要注意的时，如果Job在执行batch之外的其他地方发生了错误，则Job会直接变成failed状态，而与failPolicy无关
+const (
+	failPolicySkip  = "skip"  // 跳过当前batch，继续执行下一个batch
+	failPolicyPause = "pause" // 暂停当前job
+	failPolicyAbort = "abort" // fail当前job
+
+	defaultFailPolicy = failPolicyAbort
+)
+
 // possible status of DML job
 // batch is status is in ('queued', 'completed')
 const (
@@ -146,12 +155,12 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 }
 
 // todo newborn22 ， 能否改写得更有通用性? 这样改写是否好？
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	// todo newborn22, if 可以删掉
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		switch command {
 		case SubmitJob:
-			return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, autoRetry)
+			return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
 		case ShowJobs:
 			return jc.ShowJobs()
 		case PauseJob:
@@ -176,7 +185,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 
 // todo newboen22 函数的可见性，封装性上的改进？
 // todo 传timegap和table_name
-func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, timeGapInMs, userBatchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, timeGapInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -232,6 +241,14 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		}
 	}
 
+	if failPolicy == "" {
+		failPolicy = defaultFailPolicy
+	} else {
+		if failPolicy != failPolicyAbort && failPolicy != failPolicySkip && failPolicy != failPolicyPause {
+			return &sqltypes.Result{}, errors.New("failPolicy must be one of 'abort', 'skip' or 'pause'")
+		}
+	}
+
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
 		sqltypes.StringBindVariable(sql),
@@ -243,6 +260,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		sqltypes.Int64BindVariable(batchSize),
 		sqltypes.StringBindVariable(jobStatus),
 		sqltypes.StringBindVariable(statusSetTime),
+		sqltypes.StringBindVariable(failPolicy),
 		sqltypes.StringBindVariable(runningTimePeriodStart),
 		sqltypes.StringBindVariable(runningTimePeriodEnd))
 	if err != nil {
@@ -256,15 +274,15 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 
 	jc.notifyJobScheduler()
 
-	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, timeGapInMs, userBatchSize, postponeLaunch, autoRetry), nil
+	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, timeGapInMs, userBatchSize, postponeLaunch, failPolicy), nil
 }
 
-func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch, autoRetry bool) *sqltypes.Result {
+func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch bool, failPolicy string) *sqltypes.Result {
 	var rows []sqltypes.Row
-	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), strconv.FormatBool(autoRetry), strconv.FormatBool(postponeLaunch))
+	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), failPolicy, strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "time_gap_in_ms", "batch_size", "auto_retry", "postpone_launch"),
+		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "time_gap_in_ms", "batch_size", "fail_policy", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -338,9 +356,10 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	runningTimePeriodStart := row["running_time_period_start"].ToString()
 	runningTimePeriodEnd := row["running_time_period_end"].ToString()
 	periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+	failPolicy := row["fail_policy"].ToString()
 
 	// 拉起runner协程，协程内会将状态改为running
-	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
+	go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, failPolicy, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 	emptyResult.RowsAffected = 1
 	return emptyResult, nil
 }
@@ -577,13 +596,13 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 				batchSize, _ := row["batch_size"].ToInt64()
 				runningTimePeriodStart := row["running_time_period_start"].ToString()
 				runningTimePeriodEnd := row["running_time_period_end"].ToString()
-
 				periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+				failPolicy := row["fail_policy"].ToString()
 
 				if jc.checkDmlJobRunnable(uuid, status, table, periodStartTimePtr, periodEndTimePtr) {
 					// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
 					jc.initDMLJobRunningMeta(uuid, table)
-					go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
+					go jc.dmlJobBatchRunner(uuid, table, schema, jobBatchTable, failPolicy, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 				}
 			}
 		}
@@ -977,7 +996,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	return newCurrentBatchSQL, nextBatchID, nil
 }
 
-func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTable string, batchInterval, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
+func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable, failPolicy string, batchInterval, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
 
 	// batchInterval 单位ms，duration输入ns，应该乘上1000000
 	timer := time.NewTicker(time.Duration(batchInterval * 1e6))
@@ -1007,7 +1026,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 		return
 	}
 
-	maxBatchID, err := jc.getMaxBatchID(ctx, batchTable, relatedSchema)
+	maxBatchID, err := jc.getMaxBatchID(ctx, batchTable, tableSchema)
 	if err != nil {
 		jc.FailJob(ctx, uuid, err.Error(), table)
 		return
@@ -1048,21 +1067,33 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, relatedSchema, batchTabl
 			continue
 		}
 
-		batchSQL, batchCountSQL, err := jc.getBatchSQLsByID(ctx, currentBatchID, batchTable, relatedSchema)
+		// todo 检查id是否位空
+
+		batchSQL, batchCountSQL, err := jc.getBatchSQLsByID(ctx, currentBatchID, batchTable, tableSchema)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
 
 		// 执行当前batch的batch sql，并获得下一要执行的batchID
-		// todo，将defaultThreshold换成batchSize? 还是说可以超过batchSize但是不超过阈值就行。
-		// todo 在batch table中添加一个字段，记录实际执行的行数
-		currentBatchID, err = jc.execBatchAndRecord(ctx, relatedSchema, table, batchSQL, batchCountSQL, uuid, batchTable, currentBatchID, batchSize)
+		currentBatchID, err = jc.execBatchAndRecord(ctx, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, currentBatchID, batchSize)
+		// 如果执行batch时失败，则根据failPolicy决定处理策略
 		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
-			return
+			switch failPolicy {
+			case failPolicyAbort:
+				jc.FailJob(ctx, uuid, err.Error(), table)
+				return
+			case failPolicySkip:
+				// todo，由于目前batch是串行执行，不存在多个协程同时访问batch表的情况，因此暂时不用加锁。
+				_ = jc.updateBatchStatus(tableSchema, batchTable, currentBatchID, failPolicySkip, err.Error())
+				continue
+			case failPolicyPause:
+				msg := fmt.Sprintf("batch %s failed, pause job: %s", currentBatchID, err.Error())
+				_ = jc.updateJobMessage(ctx, uuid, msg)
+				_, _ = jc.updateJobStatus(ctx, uuid, pausedStatus, statusSetTime)
+				return
+			}
 		}
-		// todo，不能简单地字典序比较
 		jobDone, err := isAllBatchDone(currentBatchID, maxBatchIDInt)
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
@@ -1373,10 +1404,11 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 			runningTimePeriodStart := row["running_time_period_start"].ToString()
 			runningTimePeriodEnd := row["running_time_period_end"].ToString()
 			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+			failPolicy := row["fail_policy"].ToString()
 
 			if status == runningStatus {
 				jc.initDMLJobRunningMeta(uuid, table)
-				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
+				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, failPolicy, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
 			}
 
 			// 对于暂停的，不启动协程，只需要恢复内存元数据
@@ -1889,4 +1921,17 @@ func genNewBatchID(batchID string) (newBatchID string, err error) {
 		newBatchID = fmt.Sprintf("%d-1", num)
 	}
 	return newBatchID, nil
+}
+
+func (jc *JobController) updateBatchStatus(batchTableSchema, batchTableName, status, batchID, errStr string) (err error) {
+	updateBatchStatusAndAffectedRowsSQL := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTableName)
+	query, err := sqlparser.ParseAndBind(updateBatchStatusAndAffectedRowsSQL,
+		sqltypes.StringBindVariable(status+": "+errStr),
+		sqltypes.Int64BindVariable(0),
+		sqltypes.StringBindVariable(batchID))
+	if err != nil {
+		return err
+	}
+	_, err = jc.execQuery(context.Background(), batchTableSchema, query)
+	return err
 }

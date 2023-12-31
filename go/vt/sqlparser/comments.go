@@ -58,7 +58,7 @@ const (
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
 
-	DirectiveDMLCMD             = "DML_CMD"
+	DirectiveDMLCMD             = "DML_SPLIT"
 	DirectiveDMLTimeGap         = "DML_TIME_GAP"
 	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
 	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
@@ -465,7 +465,7 @@ func GetDMLJobCmd(stmt Statement) string {
 	return str
 }
 
-func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, autoRetry bool, timePeriodStart, timePeriodEnd string) {
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
 	// todo newborn22 支持insert select
@@ -475,7 +475,7 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 		comments = stmt.Comments
 	}
 	if comments == nil {
-		return timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd
+		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd
 	}
 
 	var err error
@@ -505,17 +505,11 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 		}
 	}
 
-	autoRetryStr, isSet := directives.GetString(DirectiveDMLAutoRetry, "")
-	if isSet {
-		autoRetry, err = strconv.ParseBool(autoRetryStr)
-		if err != nil {
-			autoRetry = false
-		}
-	}
+	failPolicy, _ = directives.GetString(DirectiveDMLAutoRetry, "")
 
 	timePeriodStart, _ = directives.GetString(DirectiveDMLTimePeriodStart, "")
 
 	timePeriodEnd, _ = directives.GetString(DirectiveDMLTimePeriodEnd, "")
 
-	return timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd
+	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd
 }

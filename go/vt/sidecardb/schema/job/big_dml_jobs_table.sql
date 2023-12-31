@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
     `dml_sql`                       text    NOT NULL,
     `batch_interval_in_ms`             bigint        NOT NULL     ,
     `batch_size`              bigint        NOT NULL     ,
+    `fail_policy`             varchar(64)     NOT NULL,
     `batch_concurrency`         bigint      NOT NULL DEFAULT 1     ,
     `affected_rows`        bigint        NOT NULL     DEFAULT 0,
     `throttle_ratio`        double NULL DEFAULT NULL,

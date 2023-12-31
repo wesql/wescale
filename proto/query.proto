@@ -1092,10 +1092,10 @@ message SubmitDMLJobRequest{
   string related_schema= 4;
   int64 timegap = 6;
   int64 batch_size = 7;
-  bool auto_retry = 8;
-  bool postpone_launch = 9;
-  string time_period_start = 10;
-  string time_period_end = 11;
+  bool postpone_launch = 8;
+  string time_period_start = 9;
+  string time_period_end = 10;
+  string fail_policy = 11;
 }
 message SubmitDMLJobResponse {
   QueryResult result = 1;

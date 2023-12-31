@@ -442,15 +442,15 @@ func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlp
 
 func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
 	cmd := sqlparser.GetDMLJobCmd(stmt)
-	return cmd == "submit"
+	return cmd == "true"
 }
 
 // todo newborn22，提交成功后要返回结果集
 func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
 	// todo newborn22,检查是否在事务中，如果是则报错
 	if IsSubmitDMLJob(stmt) {
-		timeGapInMs, batchSize, postponeLaunch, autoRetry, timePeriodStart, timePeriodEnd := sqlparser.GetDMLJobArgs(stmt)
-		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timeGapInMs, batchSize, postponeLaunch, autoRetry)
+		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd := sqlparser.GetDMLJobArgs(stmt)
+		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timeGapInMs, batchSize, postponeLaunch, failPolicy)
 		// todo ，在这个地方把qr写回到前端
 		if qr != nil {
 			if qr.RowsAffected == 1 {

@@ -625,7 +625,7 @@ func (sbc *SandboxConn) SetFailPoint(ctx context.Context, command string, key st
 	return err
 }
 
-func (sbc *SandboxConn) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch, autoRetry bool) (*sqltypes.Result, error) {
+func (sbc *SandboxConn) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	return nil, nil
 }
 
