@@ -44,7 +44,7 @@ VOLUME /vt/vtdataroot
 
 ENV VTROOT /vt/src/mount/wesql-scala
 ENV VTDATAROOT /vt/vtdataroot
-ENV PATH $VTROOT/wesql-scala/bin/_amd64:$PATH
+ENV PATH $VTROOT/bin/linux_amd64:$PATH
 ENV PATH="/var/opt/etcd:${PATH}"
 
 ARG GOPROXY=https://goproxy.cn
