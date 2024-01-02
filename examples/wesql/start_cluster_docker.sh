@@ -50,12 +50,11 @@ else
   container_name_cmd="--name wescala-dev-$random_number"
 fi
 # Run the container with the specified settings
-docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS -e PATH=$PATH:/vt/src/mount/wesql-scala/bin/_amd64 ${container_name_cmd} wescala-dev
+docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
 
 # 初始化集群
 docker exec ${container_name} bash -c "cd /vt/src/mount/wesql-scala/examples/wesql && ./init_cluster_docker.sh"
-
-if docker ps -a | grep -q "^${container_name}"; then
+if docker ps -a | grep -q "${container_name}"; then
     echo "${container_name} init successfully"
 else
     echo "${container_name} does not exist"
