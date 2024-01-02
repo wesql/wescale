@@ -1558,8 +1558,6 @@ func (e *Executor) SetFailPoint(command string, key string, value string) error 
 
 func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	ctx := context.Background()
-	//  todo newborn22, scatterConn or txnConn?
-	//  todo ，这个写法丑陋，要直接拿到primary
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
 	var th *discovery.TabletHealth
 	for _, tablet := range healthyTablets {

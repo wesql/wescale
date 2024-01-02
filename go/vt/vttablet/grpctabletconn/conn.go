@@ -1134,8 +1134,6 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 }
 
 func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
-	// todo newborn22,为什么要加锁？
-	// todo，什么时候调用？
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.cc == nil {

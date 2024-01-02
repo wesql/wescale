@@ -18,6 +18,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"vitess.io/vitess/go/vt/log"
+
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle"
@@ -91,7 +93,7 @@ const (
 
 type JobController struct {
 	tableName              string
-	tableMutex             sync.Mutex // todo newborn22,检查是否都上锁了
+	tableMutex             sync.Mutex
 	tabletTypeFunc         func() topodatapb.TabletType
 	env                    tabletenv.Env
 	pool                   *connpool.Pool
@@ -111,12 +113,7 @@ type PKInfo struct {
 	pkType querypb.Type
 }
 
-// todo newborn22, 初始化函数
-// 要加锁？
 func (jc *JobController) Open() error {
-	// todo newborn22 ，改成英文注释
-	// 只在primary上运行，记得在rpc那里也做处理
-	// todo newborn22, if 可以删掉
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 
@@ -154,37 +151,30 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 		lagThrottler: lagThrottler}
 }
 
-// todo newborn22 ， 能否改写得更有通用性? 这样改写是否好？
 func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
-	// todo newborn22, if 可以删掉
-	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
-		switch command {
-		case SubmitJob:
-			return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
-		case ShowJobs:
-			return jc.ShowJobs()
-		case PauseJob:
-			return jc.PauseJob(jobUUID)
-		case ResumeJob:
-			return jc.ResumeJob(jobUUID)
-		case LaunchJob:
-			return jc.LaunchJob(jobUUID)
-		case CancelJob:
-			return jc.CancelJob(jobUUID)
-		case ThrottleJob:
-			return jc.ThrottleJob(jobUUID, expireString, ratioLiteral)
-		case UnthrottleJob:
-			return jc.UnthrottleJob(jobUUID)
-		case SetRunningTimePeriod:
-			return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd)
-		}
+	switch command {
+	case SubmitJob:
+		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
+	case ShowJobs:
+		return jc.ShowJobs()
+	case PauseJob:
+		return jc.PauseJob(jobUUID)
+	case ResumeJob:
+		return jc.ResumeJob(jobUUID)
+	case LaunchJob:
+		return jc.LaunchJob(jobUUID)
+	case CancelJob:
+		return jc.CancelJob(jobUUID)
+	case ThrottleJob:
+		return jc.ThrottleJob(jobUUID, expireString, ratioLiteral)
+	case UnthrottleJob:
+		return jc.UnthrottleJob(jobUUID)
+	case SetRunningTimePeriod:
+		return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd)
 	}
-	// todo newborn22,对返回值判断为空？
-	return nil, nil
+	return &sqltypes.Result{}, fmt.Errorf("unknown command: %s", command)
 }
 
-// todo newboen22 函数的可见性，封装性上的改进？
-// todo 传timegap和table_name
 func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, timeGapInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -554,7 +544,6 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 	return qr, nil
 }
 
-// todo, 记录错误时的错误怎么处理
 func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
 	statusSetTime := time.Now().Format(time.RFC3339)
@@ -562,11 +551,8 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 
 	jc.deleteDMLJobRunningMeta(uuid, tableName)
 	jc.notifyJobScheduler()
-
 }
 
-// 注意非primary要关掉
-// todo 做成休眠和唤醒的
 func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 	// 等待healthcare扫一遍后再进行
 
@@ -631,8 +617,8 @@ func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd string) (
 	return nil, nil
 }
 
+// todo，可以增加并发Job数的限制
 // 调用该函数时外部必须拿tableMutex锁和workingTablesMutex锁
-// todo，并发数的限制
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
 	if status != queuedStatus && status != notInTimePeriodStatus {
 		return false
@@ -688,7 +674,7 @@ func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, 
 	return nil
 }
 
-// todo to confirm，对于同一个job的batch表只有一个线程在访问，因此不用加锁
+// todo，由于目前尚不支持一个job的batch并行，因此对job的batch表进行访问不用设锁
 func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTableName, tableSchema string) (batchSQL, batchCountSQL string, err error) {
 	getBatchSQLWithTableName := fmt.Sprintf(sqlTemplateGetBatchSQLsByID, batchTableName)
 	query, err := sqlparser.ParseAndBind(getBatchSQLWithTableName,
@@ -736,11 +722,10 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 
 	// 1.开启事务
-	// todo，wantfield是否要设置成false
-	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, true)
+	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, false)
 	// 确保函数意味退出时结束该事务，以释放该事务锁定的资源
 	defer func() {
-		_, _ = conn.Exec(ctx, "rollback", math.MaxInt32, true)
+		_, _ = conn.Exec(ctx, "rollback", math.MaxInt32, false)
 	}()
 
 	if err != nil {
@@ -780,7 +765,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	if err != nil {
 		return err
 	}
-	_, err = conn.Exec(ctx, updateBatchStatusDoneSQL, math.MaxInt32, true)
+	_, err = conn.Exec(ctx, updateBatchStatusDoneSQL, math.MaxInt32, false)
 	if err != nil {
 		return err
 	}
@@ -794,13 +779,13 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
-	_, err = conn.Exec(ctx, updateAffectedRowsSQL, math.MaxInt32, true)
+	_, err = conn.Exec(ctx, updateAffectedRowsSQL, math.MaxInt32, false)
 	if err != nil {
 		return err
 	}
 
 	// 5.提交事务
-	_, err = conn.Exec(ctx, "commit", math.MaxInt32, true)
+	_, err = conn.Exec(ctx, "commit", math.MaxInt32, false)
 	if err != nil {
 		return err
 	}
@@ -944,7 +929,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", err
 	}
-	_, err = conn.Exec(ctx, updateBatchSQLQuery, math.MaxInt32, true)
+	_, err = conn.Exec(ctx, updateBatchSQLQuery, math.MaxInt32, false)
 	if err != nil {
 		return "", err
 	}
@@ -966,7 +951,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", err
 	}
-	_, err = conn.Exec(ctx, insertBatchSQLQuery, math.MaxInt32, true)
+	_, err = conn.Exec(ctx, insertBatchSQLQuery, math.MaxInt32, false)
 	if err != nil {
 		return "", err
 	}
@@ -1101,14 +1086,13 @@ func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, 
 		setting.SetWithoutDBName(false)
 		setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
 	}
-	// todo ，是不是有事务专门的连接池？需要看一下代码
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
 	if err != nil {
 		return 0, err
 	}
 
-	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, true)
+	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, false)
 	if err != nil {
 		return 0, err
 	}
@@ -1121,11 +1105,11 @@ func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, 
 	recordRstSQL, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
 		sqltypes.Int64BindVariable(affectedRows),
 		sqltypes.StringBindVariable(uuid))
-	_, err = conn.Exec(ctx, recordRstSQL, math.MaxInt32, true)
+	_, err = conn.Exec(ctx, recordRstSQL, math.MaxInt32, false)
 	if err != nil {
 		return 0, err
 	}
-	_, err = conn.Exec(ctx, "commit", math.MaxInt32, true)
+	_, err = conn.Exec(ctx, "commit", math.MaxInt32, false)
 	if err != nil {
 		return 0, err
 	}
@@ -1323,12 +1307,11 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	ctx := context.Background()
 
 	// 用于crash后，重启时，先扫一遍running和paused的
-	// todo，能不能用代码手段确保下面的逻辑只运行一次
 	qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 	if qr != nil {
 
 		jc.workingTablesMutex.Lock()
-		jc.tableMutex.Lock() // todo，删掉？
+		jc.tableMutex.Lock()
 
 		for _, row := range qr.Named().Rows {
 			status := row["status"].ToString()
@@ -1359,7 +1342,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		jc.tableMutex.Unlock()
 	}
 
-	fmt.Printf("check of running and paused done \n")
+	log.Info("check of running and paused done \n")
 	checkBeforeSchedule <- struct{}{}
 
 	for {
@@ -1404,7 +1387,7 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	// 1.解析用户提交的DML sql，返回DML的各个部分。其中selectSQL用于确定每一个batch的pk范围，生成每一个batch所要执行的batch sql
 	selectSQL, tableName, wherePart, pkPart, pkInfos, err := jc.parseDML(sql, tableSchema)
 	if err != nil {
-		return "", "", 0, nil
+		return "", "", 0, err
 	}
 
 	// 2.利用selectSQL为该job生成batch表，在此之前生成每个batch的batchSize
@@ -1435,23 +1418,50 @@ func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName
 			return "", "", "", "", nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
-		// 目前暂不支持join和多表 todo
+		// todo 目前暂不支持join和多表
 		if !ok {
 			return "", "", "", "", nil, errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
+		if wherePart == "" {
+			return "", "", "", "", nil, errors.New("the sql doesn't have where condition")
+		}
+		limitPart := sqlparser.String(s.Limit)
+		if limitPart != "" {
+			return "", "", "", "", nil, errors.New("the SQL should not have limit clause")
+		}
+		orderByPart := sqlparser.String(s.OrderBy)
+		if orderByPart != "" {
+			return "", "", "", "", nil, errors.New("the SQL should not have order by clause")
+		}
+
 	case *sqlparser.Update:
 		if len(s.TableExprs) != 1 {
 			return "", "", "", "", nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
-		// 目前暂不支持join和多表 todo
+		// todo 目前暂不支持join和多表
 		if !ok {
 			return "", "", "", "", nil, errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
+		if wherePart == "" {
+			return "", "", "", "", nil, errors.New("the sql doesn't have where condition")
+		}
+		limitPart := sqlparser.String(s.Limit)
+		if limitPart != "" {
+			return "", "", "", "", nil, errors.New("the SQL should not have limit clause")
+		}
+		orderByPart := sqlparser.String(s.OrderBy)
+		if orderByPart != "" {
+			return "", "", "", "", nil, errors.New("the SQL should not have order by clause")
+		}
+
+	default:
+		// todo support select...into, replace...into
+		return "", "", "", "", nil, errors.New("the type of sql is not supported")
 	}
 
 	// 获得该DML所相关表的PK信息，将其中的PK列组成字符串pkPart，形如"PKCol1,PKCol2,PKCol3"
@@ -1492,7 +1502,6 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
 	batchTableName := "batch_info_table_" + strings.Replace(jobUUID, "-", "_", -1)
-	// todo pingcap
 
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
@@ -1619,6 +1628,9 @@ func genBatchStartAndEndStr(currentBatchStart, currentBatchEnd []any, pkInfos []
 	return currentBatchStartStr, currentBatchStartEnd, nil
 }
 
+// 拆分列所支持的类型需要满足以下条件：
+// 1.在sql中可以正确地使用between或>=,<=进行比较运算，且没有精度问题。
+// 2.可以转换成go中的int64，float64或string三种类型之一，且转换后，在golang中的比较规则和mysql中的比较规则相同
 func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (countSQLTemplate string, err error) {
 	if len(pkInfos) == 0 {
 		return "", errors.New("the len of pkInfos is 0")
@@ -1634,12 +1646,10 @@ func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchS
 				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
 
 		case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
-			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %f AND %f order by %s",
-				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
+			return "", errors.New("float type is unsupported")
 
-		// todo decimal类型能否转换成string待定
 		case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
-			querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+			querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR:
 			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%s' AND '%s' order by %s",
 				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
 
@@ -1675,12 +1685,29 @@ func genPlaceholderByType(typ querypb.Type) (string, error) {
 		return "%d", nil
 	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
 		return "%f", nil
-	// todo decimal类型能否转换成string待定
 	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
-		querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
+		querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR:
 		return "%s", nil
 	default:
 		return "", fmt.Errorf("Unsupported type: %v", typ)
+	}
+}
+
+func ProcessValue(value sqltypes.Value) (any, error) {
+	typ := value.Type()
+
+	switch typ {
+	case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
+		return value.ToInt64()
+	case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
+		return value.ToUint64()
+	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
+		return value.ToFloat64()
+	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
+		querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR:
+		return value.ToString(), nil
+	default:
+		return nil, fmt.Errorf("Unsupported type: %v", typ)
 	}
 }
 
@@ -1691,6 +1718,10 @@ func genPKsGreaterThanPart(pkInfos []PKInfo, currentBatchStart []any) (string, e
 	for curIdx < pksNum {
 		curPkName := pkInfos[curIdx].pkName
 		curPKType := pkInfos[curIdx].pkType
+		// mysql的浮点类型在比较时有精度损失，不适合作为拆分列
+		if curPKType == querypb.Type_FLOAT32 || curPKType == querypb.Type_FLOAT64 {
+			return "", fmt.Errorf("unsupported type: %v", curPKType)
+		}
 
 		placeholder, err := genPlaceholderByType(curPKType)
 		if err != nil {
@@ -1724,6 +1755,10 @@ func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []any) (string, error)
 	for curIdx < pksNum {
 		curPkName := pkInfos[curIdx].pkName
 		curPKType := pkInfos[curIdx].pkType
+		// mysql的浮点类型在比较时有精度损失，不适合作为拆分列
+		if curPKType == querypb.Type_FLOAT32 || curPKType == querypb.Type_FLOAT64 {
+			return "", fmt.Errorf("unsupported type: %v", curPKType)
+		}
 
 		placeholder, err := genPlaceholderByType(curPKType)
 		if err != nil {
@@ -1750,25 +1785,6 @@ func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []any) (string, error)
 	return rst, nil
 }
 
-func ProcessValue(value sqltypes.Value) (any, error) {
-	typ := value.Type()
-
-	switch typ {
-	case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
-		return value.ToInt64()
-	case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
-		return value.ToUint64()
-	case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
-		return value.ToFloat64()
-	// todo decimal类型能否转换成string待定
-	case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
-		querypb.Type_DECIMAL, querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR, querypb.Type_BLOB:
-		return value.ToString(), nil
-	default:
-		return nil, fmt.Errorf("Unsupported type: %v", typ)
-	}
-}
-
 func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (batchSQL string, err error) {
 	if len(pkInfos) == 1 {
 		if fmt.Sprintf("%T", currentBatchStart[0]) != fmt.Sprintf("%T", currentBatchEnd[0]) {
@@ -1782,7 +1798,7 @@ func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatch
 		case uint64:
 			batchSQL = sql + fmt.Sprintf(" AND %s between %d AND %d", pkName, currentBatchStart[0].(uint64), currentBatchEnd[0].(uint64))
 		case float64:
-			batchSQL = sql + fmt.Sprintf(" AND %s between %f AND %f", pkName, currentBatchStart[0].(float64), currentBatchEnd[0].(float64))
+			return "", errors.New("float type is unsupported")
 		case string:
 			batchSQL = sql + fmt.Sprintf(" AND %s between '%s' AND '%s'", pkName, currentBatchStart[0].(string), currentBatchEnd[0].(string))
 		default:

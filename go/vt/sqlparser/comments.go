@@ -58,7 +58,7 @@ const (
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
 
-	DirectiveDMLCMD             = "DML_SPLIT"
+	DirectiveDMLSplit           = "DML_SPLIT"
 	DirectiveDMLTimeGap         = "DML_TIME_GAP"
 	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
 	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
@@ -440,8 +440,7 @@ func GetNodeType(stmt Statement) tabletpb.TabletType {
 	return tabletpb.TabletType_UNKNOWN
 }
 
-// todo newborn22，是否换成别的命令名字
-// 改成enum?
+// todo newborn22 support insert...select, replace...select
 func GetDMLJobCmd(stmt Statement) string {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
@@ -458,7 +457,7 @@ func GetDMLJobCmd(stmt Statement) string {
 		return ""
 	}
 	directives := comments.Directives()
-	str, isSet := directives.GetString(DirectiveDMLCMD, "")
+	str, isSet := directives.GetString(DirectiveDMLSplit, "")
 	if !isSet {
 		return ""
 	}
@@ -468,7 +467,7 @@ func GetDMLJobCmd(stmt Statement) string {
 func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
-	// todo newborn22 支持insert select
+	// todo newborn22 support insert...select, replace...select
 	case *Update:
 		comments = stmt.Comments
 	case *Delete:

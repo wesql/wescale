@@ -1675,8 +1675,7 @@ type (
 	}
 
 	ShowDMLJob struct {
-		UUID string
-		// todo newborn22，换成枚举类型支持更多
+		UUID   string
 		Detail bool
 	}
 
