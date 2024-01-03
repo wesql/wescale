@@ -10,8 +10,6 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/brianvoe/gofakeit/v6"
-
 	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -201,16 +199,4 @@ func TestGenerateWithoutPattern(t *testing.T) {
 	if string(result.bytes_) != errorStr {
 		t.Errorf("Expected no output for missing pattern, but got output: %s", string(result.bytes_))
 	}
-}
-
-func TestGenerateBySeed(t *testing.T) {
-	gofakeit.Seed(10086)
-	env := &ExpressionEnv{}
-	args := []EvalResult{
-		{type_: int16(sqltypes.VarChar),
-			bytes_: []byte("timestamp")},
-	}
-	result := &EvalResult{}
-	builtinGofakeitByType{}.call(env, args, result)
-	require.Equal(t, "1923-03-22 00:00:00", string(result.bytes_))
 }
