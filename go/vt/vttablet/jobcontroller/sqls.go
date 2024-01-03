@@ -22,9 +22,9 @@ const (
 )
 
 const (
-	sqlDMLJobGetJobsToSchedule = `select * from mysql.big_dml_jobs_table where status IN ('queued','not-in-time-period') order by id`
-	sqlDMLJobGetAllJobs        = `select * from mysql.big_dml_jobs_table order by id`
-	sqlDMLJobSubmit            = `insert into mysql.big_dml_jobs_table (
+	sqlDMLJobGetJobsToSchedule = `select * from mysql.non_transactional_dml_jobs where status IN ('queued','not-in-time-period') order by id`
+	sqlDMLJobGetAllJobs        = `select * from mysql.non_transactional_dml_jobs order by id`
+	sqlDMLJobSubmit            = `insert into mysql.non_transactional_dml_jobs (
                                       job_uuid,
                                       dml_sql,
                                       table_schema,
@@ -39,23 +39,23 @@ const (
                                       running_time_period_start,
                                       running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
-	sqlDMLJobUpdateMessage = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobUpdateAffectedRows = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobUpdateAffectedRows = `update mysql.non_transactional_dml_jobs set 
                                     affected_rows = affected_rows + %a 
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobUpdateStatus = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobUpdateStatus = `update mysql.non_transactional_dml_jobs set 
                                     status = %a,
                                     status_set_time = %a
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobGetInfo = `select * from mysql.big_dml_jobs_table 
+	sqlDMLJobGetInfo = `select * from mysql.non_transactional_dml_jobs 
                                 where
                                 	job_uuid = %a`
 
@@ -70,21 +70,21 @@ const (
 								    TABLE_SCHEMA = %a
 									AND TABLE_NAME = %a`
 
-	sqlDMLJobUpdateThrottleInfo = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobUpdateThrottleInfo = `update mysql.non_transactional_dml_jobs set 
                                     throttle_ratio = %a ,
                                     throttle_expire_time = %a
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobClearThrottleInfo = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobClearThrottleInfo = `update mysql.non_transactional_dml_jobs set 
                                     throttle_ratio = NULL ,
                                     throttle_expire_time = NULL
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobDeleteJob = `delete from mysql.big_dml_jobs_table where job_uuid = %a`
+	sqlDMLJobDeleteJob = `delete from mysql.non_transactional_dml_jobs where job_uuid = %a`
 
-	sqlDMLJobUpdateTimePeriod = `update mysql.big_dml_jobs_table set 
+	sqlDMLJobUpdateTimePeriod = `update mysql.non_transactional_dml_jobs set 
                                     running_time_period_start = %a, 
                                     running_time_period_end = %a 
                                 where 
@@ -92,9 +92,9 @@ const (
 
 	sqlGetIndexCount = `select count(*) as index_count from information_schema.statistics where table_schema = %a and table_name = %a`
 
-	sqlGetDealingBatchID = `select dealing_batch_id from mysql.big_dml_jobs_table where job_uuid = %a`
+	sqlGetDealingBatchID = `select dealing_batch_id from mysql.non_transactional_dml_jobs where job_uuid = %a`
 
-	sqlUpdateDealingBatchID = `update mysql.big_dml_jobs_table set dealing_batch_id = %a where job_uuid = %a`
+	sqlUpdateDealingBatchID = `update mysql.non_transactional_dml_jobs set dealing_batch_id = %a where job_uuid = %a`
 
 	sqlTemplateGetBatchSQLsByID = `select batch_sql,batch_count_sql_when_creating_batch from %s where batch_id = %%a`
 

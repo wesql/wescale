@@ -193,6 +193,31 @@ func StripLeadingComments(sql string) string {
 	return sql
 }
 
+// StripComments trims the SQL string and removes all comments wrapped by /**/.
+func StripComments(sql string) string {
+	var output strings.Builder
+	inComment := false
+
+	for i := 0; i < len(sql); i++ {
+		if !inComment && i+1 < len(sql) && sql[i:i+2] == "/*" {
+			inComment = true
+			i++
+			continue
+		}
+
+		if inComment && i+1 < len(sql) && sql[i:i+2] == "*/" {
+			inComment = false
+			i++
+			continue
+		}
+
+		if !inComment {
+			output.WriteByte(sql[i])
+		}
+	}
+	return output.String()
+}
+
 func hasCommentPrefix(sql string) bool {
 	return len(sql) > 1 && ((sql[0] == '/' && sql[1] == '*') || (sql[0] == '-' && sql[1] == '-'))
 }

@@ -197,7 +197,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
-	tsv.dmlJonController = jobcontroller.NewJobController("big_dml_jobs_table", tabletTypeFunc, tsv, tsv.lagThrottler)
+	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
 
 	tsv.sm = &stateManager{

@@ -41,8 +41,8 @@ const (
 	databasePoolSize = 5
 	defaultBatchSize = 100
 
-	healthCheckInterval         = 5000 // ms
-	defaultBatchInterval        = 1000 // 1000ms
+	healthCheckInterval         = 5000 * time.Millisecond // ms
+	defaultBatchInterval        = 1000                    // 1000ms
 	tableEntryGCInterval        = 24 * time.Hour
 	jobSchedulerRunningInterval = 10 * time.Second
 	throttleCheckInterval       = 250 * time.Millisecond
@@ -54,7 +54,6 @@ const (
 // commands for DML job
 const (
 	SubmitJob            = "submit_job"
-	ShowJobs             = "show_jobs"
 	LaunchJob            = "launch"
 	LaunchAllJobs        = "launch_all"
 	PauseJob             = "pause"
@@ -100,6 +99,8 @@ type JobController struct {
 	lagThrottler           *throttle.Throttler
 	lastSuccessfulThrottle int64
 
+	initMutex sync.Mutex
+
 	workingTables      map[string]bool // 用于调度时检测当前任务是否和正在工作的表冲突，paused、running状态的job的表都在里面
 	workingTablesMutex sync.Mutex
 
@@ -114,6 +115,8 @@ type PKInfo struct {
 }
 
 func (jc *JobController) Open() error {
+	jc.initMutex.Lock()
+	defer jc.initMutex.Unlock()
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 
@@ -130,6 +133,8 @@ func (jc *JobController) Open() error {
 }
 
 func (jc *JobController) Close() {
+	jc.initMutex.Lock()
+	defer jc.initMutex.Unlock()
 	jc.pool.Close()
 	if jc.checkBeforeSchedule != nil {
 		close(jc.checkBeforeSchedule)
@@ -155,8 +160,6 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 	switch command {
 	case SubmitJob:
 		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
-	case ShowJobs:
-		return jc.ShowJobs()
 	case PauseJob:
 		return jc.PauseJob(jobUUID)
 	case ResumeJob:
@@ -185,7 +188,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	if err != nil {
 		return nil, err
 	}
-	sql = rewirteSQL(sql)
+	sql = sqlparser.StripComments(sql)
 	if timeGapInMs == 0 {
 		timeGapInMs = int64(defaultBatchInterval)
 	}
@@ -277,14 +280,6 @@ func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, tim
 		RowsAffected: 1,
 	}
 	return submitRst
-}
-
-func (jc *JobController) ShowJobs() (*sqltypes.Result, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-	ctx := context.Background()
-	showJobsSQL := fmt.Sprintf("select * from %s", jc.tableName)
-	return jc.execQuery(ctx, "mysql", showJobsSQL)
 }
 
 // 和cancel的区别：1.pasue不会删除元数据 2.cancel状态的job在经过一段时间后会被后台协程回收
@@ -713,6 +708,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	if tableSchema != "" {
 		setting.SetWithoutDBName(false)
 		setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
@@ -1069,13 +1065,16 @@ func (jc *JobController) execQuery(ctx context.Context, targetString, query stri
 	if targetString != "" {
 		setting.SetWithoutDBName(false)
 		setting.SetQuery(fmt.Sprintf("use %s", targetString))
+		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	if err != nil {
 		return result, err
 	}
-	defer conn.Recycle()
-	return conn.Exec(ctx, query, math.MaxInt32, true)
+	qr, err := conn.Exec(ctx, query, math.MaxInt32, true)
+	conn.Recycle()
+	return qr, err
+
 }
 
 func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, subtaskSQL, uuid string) (affectedRows int64, err error) {
@@ -1085,6 +1084,7 @@ func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, 
 	if tableSchema != "" {
 		setting.SetWithoutDBName(false)
 		setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
@@ -1115,14 +1115,6 @@ func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, 
 	}
 
 	return affectedRows, nil
-}
-
-func rewirteSQL(input string) string {
-	// 定义正则表达式匹配注释
-	re := regexp.MustCompile(`/\*.*?\*/`)
-	// 用空字符串替换匹配到的注释
-	result := re.ReplaceAllString(input, "")
-	return result
 }
 
 // 该函数拿锁
@@ -1345,7 +1337,10 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	log.Info("check of running and paused done \n")
 	checkBeforeSchedule <- struct{}{}
 
-	for {
+	timer := time.NewTicker(healthCheckInterval)
+	defer timer.Stop()
+
+	for range timer.C {
 
 		// todo, 增加对长时间未增加 rows的处理
 		jc.tableMutex.Lock()
@@ -1379,7 +1374,6 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		}
 
 		jc.tableMutex.Unlock()
-		time.Sleep(healthCheckInterval * time.Millisecond)
 	}
 }
 

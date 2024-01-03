@@ -198,7 +198,7 @@ func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema
 
 	var sql string
 	if !show.Detail {
-		sql, err = sqlparser.ParseAndBind("SELECT * FROM mysql.big_dml_jobs_table where job_uuid = %a",
+		sql, err = sqlparser.ParseAndBind("SELECT * FROM mysql.non_transactional_dml_jobs where job_uuid = %a",
 			sqltypes.StringBindVariable(show.UUID))
 		if err != nil {
 			return nil, err
@@ -381,7 +381,7 @@ func buildShowDMLJobsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema
 		dest = key.DestinationAllShards{}
 	}
 
-	sql := "SELECT * FROM mysql.big_dml_jobs_table"
+	sql := "SELECT * FROM mysql.non_transactional_dml_jobs"
 
 	if show.Filter != nil {
 		if show.Filter.Filter != nil {

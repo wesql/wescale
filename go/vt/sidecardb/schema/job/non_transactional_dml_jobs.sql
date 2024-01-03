@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-CREATE TABLE IF NOT EXISTS mysql.big_dml_jobs_table
+CREATE TABLE IF NOT EXISTS mysql.non_transactional_dml_jobs
 (
     `id`                              bigint unsigned  NOT NULL AUTO_INCREMENT,
     `job_uuid`                  varchar(64)      NOT NULL UNIQUE,
