@@ -14,6 +14,7 @@ import (
 
 const (
 	IGNORE = "IGNORE"
+	ERROR  = "ERROR"
 	EXIT   = "EXIT"
 )
 
@@ -50,6 +51,9 @@ func (v *ViperConfig) WatchConfigFile() {
 	if err != nil {
 		switch v.ConfigFileNotFoundHandling {
 		case IGNORE:
+			log.Infof("ViperConfig: %v", v)
+			log.Infof("read config file error, err: %v", err)
+		case ERROR:
 			log.Errorf("ViperConfig: %v", v)
 			log.Errorf("read config file error, err: %v", err)
 		case EXIT:
