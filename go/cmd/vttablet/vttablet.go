@@ -26,7 +26,9 @@ import (
 	"context"
 	"os"
 	"time"
+
 	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/viperutil"
 	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
 
 	"github.com/spf13/pflag"
@@ -58,7 +60,8 @@ var (
 	tabletPath                   string
 	tabletConfig                 string
 
-	tm *tabletmanager.TabletManager
+	tm                  *tabletmanager.TabletManager
+	vtTabletViperConfig = viperutil.NewViperConfig()
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -71,6 +74,14 @@ func registerFlags(fs *pflag.FlagSet) {
 	acl.RegisterFlags(fs)
 }
 
+func registerViperConfigFlags(fs *pflag.FlagSet) {
+	fs.StringSliceVar(&vtTabletViperConfig.ConfigPath, "config-path", []string{".", "/conf"}, "Paths to search for config files in.")
+	fs.StringVar(&vtTabletViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtTabletViperConfig.ConfigName, "config-name", "vttablet.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	vtTabletViperConfig.Fs = fs
+}
+
 func init() {
 	servenv.RegisterDefaultFlags()
 	servenv.RegisterFlags()
@@ -78,6 +89,7 @@ func init() {
 	servenv.RegisterGRPCServerAuthFlags()
 	servenv.RegisterServiceMapFlag()
 	servenv.OnParseFor("vttablet", registerFlags)
+	servenv.OnParseFor("vttablet", registerViperConfigFlags)
 }
 
 func main() {
@@ -86,6 +98,7 @@ func main() {
 
 	servenv.ParseFlags("vttablet")
 	servenv.Init()
+	vtTabletViperConfig.WatchConfigFile()
 
 	if tableACLMode != global.TableACLModeSimple && tableACLMode != global.TableACLModeMysqlBased {
 		log.Exit("require table-acl-config-mode")
