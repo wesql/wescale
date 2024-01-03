@@ -80,7 +80,23 @@ func (v *ViperConfig) reloadConfigs() {
 		}
 		value := viper.GetString(sectionAndKey)
 		log.Infof("%s=%s", key, value)
+
+		if keyAlias, ok := alias[key]; ok {
+			key = keyAlias
+		}
+
 		v.Fs.Set(key, value)
 	}
 	log.Infof("finish reload config file")
+}
+
+var alias = map[string]string{
+	"table_acl_config_mode":               "table-acl-config-mode",
+	"table_acl_config":                    "table-acl-config",
+	"queryserver_config_strict_table_acl": "queryserver-config-strict-table-acl",
+	"enforce_tableacl_config":             "enforce-tableacl-config",
+	"table_acl_config_reload_interval":    "table-acl-config-reload-interval",
+	"queryserver_config_pool_size":        "queryserver-config-pool-size",
+	"queryserver_config_stream_pool_size": "queryserver-config-stream-pool-size",
+	"queryserver_config_transaction_cap":  "queryserver-config-transaction-cap",
 }
