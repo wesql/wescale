@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS mysql.branch_jobs
     `update_timestamp`               timestamp        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `source_database`                varchar(256)     NOT NULL,
     `target_database`                varchar(256)     NOT NULL,
+    `external_cluster`               varchar(256)     NOT NULL,
     `workflow_name`                  varchar(64)      NOT NULL,
     `source_topo`                    varchar(256)     NOT NULL,
     `source_tablet_type`             varchar(64)      NOT NULL,
