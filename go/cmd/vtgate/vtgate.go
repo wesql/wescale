@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/viperutil"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/acl"
@@ -43,6 +45,7 @@ var (
 	cell              = ""
 	tabletTypesToWait []topodatapb.TabletType
 	plannerName       string
+	vtGateViperConfig = viperutil.NewViperConfig()
 )
 
 func registerFlags(fs *pflag.FlagSet) {
@@ -51,6 +54,14 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&plannerName, "planner-version", plannerName, "Sets the default planner to use when the session has not changed it. Valid values are: V3, Gen4, Gen4Greedy and Gen4Fallback. Gen4Fallback tries the gen4 planner and falls back to the V3 planner if the gen4 fails.")
 
 	acl.RegisterFlags(fs)
+}
+
+func registerViperConfigFlags(fs *pflag.FlagSet) {
+	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config-path", []string{".", "/conf"}, "Paths to search for config files in.")
+	fs.StringVar(&vtGateViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtGateViperConfig.ConfigName, "config-name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	vtGateViperConfig.Fs = fs
 }
 
 var resilientServer *srvtopo.ResilientServer
@@ -63,6 +74,7 @@ func init() {
 	servenv.RegisterGRPCServerAuthFlags()
 	servenv.RegisterServiceMapFlag()
 	servenv.OnParse(registerFlags)
+	servenv.OnParse(registerViperConfigFlags)
 }
 
 // CheckCellFlags will check validation of cell and cells_to_watch flag
@@ -126,6 +138,7 @@ func main() {
 
 	servenv.ParseFlags("vtgate")
 	servenv.Init()
+	vtGateViperConfig.WatchConfigFile()
 
 	ts := topo.Open()
 	defer ts.Close()
