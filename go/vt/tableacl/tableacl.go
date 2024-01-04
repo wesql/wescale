@@ -217,7 +217,6 @@ func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tabl
 	tacl.SetCallback(aclCB)
 	tacl.dbConfig = dbConfig
 	tacl.tableACLMode = tableACLMode
-	tacl.ticker = time.NewTicker(reloadACLConfigFileInterval)
 	tacl.reloadACLConfigFileInterval = reloadACLConfigFileInterval
 	if configFile == "" && tableACLMode == global.TableACLModeSimple {
 		return nil
