@@ -21,7 +21,7 @@
 
 # This is an example script that starts a single vtgate.
 
-source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-docker.sh"
+source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 cell=${CELL:-'test'}
 web_port=15001

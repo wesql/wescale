@@ -1,4 +1,9 @@
 #!/bin/bash
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 
 # Copyright 2023 The Vitess Authors.
 #
@@ -56,13 +61,13 @@ function wait_for_healthy_shard_primary() {
 	wait_secs=180
 
 	for _ in $(seq 1 ${wait_secs}); do
-                if ! vtctldclient --server=localhost:15999 GetShard "${keyspace}/${shard}" | grep -qi "${unhealthy_indicator}"; then
+                if ! vtctldclient --server=localhost:${vtctld_port} GetShard "${keyspace}/${shard}" | grep -qi "${unhealthy_indicator}"; then
 			break
 		fi
 		sleep 1
 	done;
 
-        if vtctldclient --server=localhost:15999 GetShard "${keyspace}/${shard}" | grep -qi "${unhealthy_indicator}"; then
+        if vtctldclient --server=localhost:${vtctld_port} GetShard "${keyspace}/${shard}" | grep -qi "${unhealthy_indicator}"; then
 		fail "Timed out after ${wait_secs} seconds waiting for a primary tablet to be elected and become healthy in ${keyspace}/${shard}"
 	fi
 }

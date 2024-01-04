@@ -25,7 +25,7 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 cell=${CELL:-'test'}
 uid=$TABLET_UID
-mysql_port=$[17000 + $uid]
+mysql_port=$mysql_port
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 

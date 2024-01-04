@@ -21,12 +21,12 @@
 
 # This is an example script that starts vtctld.
 
-source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-docker.sh"
+source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 cell=${CELL:-'test'}
 grpc_port=${vtctld_port}
 
-echo "Starting vtctld..."
+echo "Starting vtctld... $grpc_port"
 # shellcheck disable=SC2086
 vtctld \
  $TOPOLOGY_FLAGS \

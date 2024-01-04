@@ -3728,7 +3728,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
 	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Target keyspace")
 	defaultFilterRules := subFlags.String("default_filter_rules", "", "Add WHERE clause conditions to all tables.")
-	externalCluster := subFlags.String("extern_cluster", "", "External cluster name")
+	externalCluster := subFlags.String("external_cluster", "", "External cluster name")
 	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
 	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
 	if err := subFlags.Parse(args); err != nil {

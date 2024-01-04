@@ -22,6 +22,9 @@
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/lib/utils.sh"
 
 hostname=$(hostname -f)
+if [ -z "${vtctld_port+x}" ]; then
+    export vtctld_port=15999
+fi
 vtctld_web_port=15000
 export VTDATAROOT="${VTDATAROOT:-${PWD}/vtdataroot}"
 
@@ -86,8 +89,8 @@ mkdir -p "${VTDATAROOT}/tmp"
 # such as ~/.my.cnf
 
 alias mysql="command mysql -h 127.0.0.1 -P 15306"
-alias vtctlclient="command vtctlclient --server localhost:15999 --log_dir ${VTDATAROOT}/tmp --alsologtostderr"
-alias vtctldclient="command vtctldclient --server localhost:15999"
+alias vtctlclient="command vtctlclient --server localhost:${vtctld_port} --log_dir ${VTDATAROOT}/tmp --alsologtostderr"
+alias vtctldclient="command vtctldclient --server localhost:${vtctld_port}"
 
 # Make sure aliases are expanded in non-interactive shell
 shopt -s expand_aliases

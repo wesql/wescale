@@ -7,7 +7,7 @@ source ../common/env.sh
 CELL=zone1 ../common/scripts/docker-etcd-up.sh
 
 # start vtctld
-CELL=zone1  ../common/scripts/vtctld-up.sh
+CELL=zone1 vtctld_port=${vtctld_port}  ../common/scripts/docker-vtctld-up.sh
 
 # default jaeger args
 rate=${rate:-'0.8'}
@@ -48,7 +48,7 @@ for i in 0 1 2; do
 	JAEGER_ARGS=${args} CELL=zone1 mysql_port=${mysql_ports[$i]} vttablet_port=${vttablet_ports[$i]} grpc_port=${grpc_ports[$i]} TABLET_UID=$((i+100)) ../common/scripts/docker-vttablet-up.sh
 done
 # set the correct durability policy for the keyspace
-vtctldclient --server localhost:15999 SetKeyspaceDurabilityPolicy --durability-policy=semi_sync mysql || fail "Failed to set keyspace durability policy on the mysql keyspace"
+vtctldclient --server localhost:${vtctld_port} SetKeyspaceDurabilityPolicy --durability-policy=semi_sync mysql || fail "Failed to set keyspace durability policy on the mysql keyspace"
 
 # start vtorc
 ../common/scripts/vtorc-up.sh

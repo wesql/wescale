@@ -35,7 +35,7 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-port_mapping="-p $vtgate_port:${vtgate_port} -p $vtctld_port:15999 -p $etcd_port:${etcd_port} "
+port_mapping="-p $vtgate_port:${vtgate_port} -p $vtctld_port:$vtctld_port -p $etcd_port:${etcd_port} "
 # Parse command line arguments
 mysql_ports=($(echo $mysql_port | tr "," " "))
 index=0
@@ -71,7 +71,7 @@ fi
 # Run the container with the specified settings
 echo "docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vttablet_ports="${vttablet_port}" -e grpc_ports="${grpc_port}" -e mysql_ports="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
 "
-docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vtgate_port=$vtgate_port -e vttablet_port="${vttablet_port}" -e grpc_port="${grpc_port}" -e mysql_port="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:${etcd_port}" -e vtgate_port=${vtgate_port} -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
+docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vtgate_port=$vtgate_port -e vttablet_port="${vttablet_port}" -e grpc_port="${grpc_port}" -e mysql_port="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:${etcd_port}" -e vtgate_port=${vtgate_port} -e vtctld_port=${vtctld_port} -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
 
 # 初始化集群
 docker exec ${container_name} bash -c "cd /vt/src/mount/wesql-scala/examples/wesql && ./init_cluster_docker.sh"

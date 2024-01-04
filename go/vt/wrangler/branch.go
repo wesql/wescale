@@ -80,10 +80,10 @@ const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules wh
 const DeleteVReplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
 
 func (branchJob *BranchJob) generateInsert() (string, error) {
-	// 构建 SQL 插入语句，使用占位符
+	// build the query
 	sqlInsertTemplate := "INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, stop_after_copy, onddl, status, message,external_cluster) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
 
-	// 使用 ParseAndBind 函数来准备查询和绑定变量
+	// bind variables
 	sqlInsertQuery, err := sqlparser.ParseAndBind(sqlInsertTemplate,
 		sqltypes.StringBindVariable(branchJob.sourceDatabase),
 		sqltypes.StringBindVariable(branchJob.targetDatabase),
@@ -94,11 +94,10 @@ func (branchJob *BranchJob) generateInsert() (string, error) {
 		sqltypes.Int64BindVariable(boolToInt(branchJob.stopAfterCopy)),
 		sqltypes.StringBindVariable(branchJob.onddl),
 		sqltypes.StringBindVariable(branchJob.status),
-		sqltypes.StringBindVariable(""), // 空字符串
+		sqltypes.StringBindVariable(""), // empty message
 		sqltypes.StringBindVariable(branchJob.externalCluster),
 	)
 	if err != nil {
-		// 处理错误
 		return "", err
 	}
 
@@ -308,7 +307,6 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		return nil, fmt.Errorf("workflow:%v not exist", workflow)
 	}
 	branchJobMap := qr.Named().Row()
-
 	sourceDatabase := branchJobMap["source_database"].ToString()
 	targetDatabase := branchJobMap["target_database"].ToString()
 	sourceTopo := branchJobMap["source_topo"].ToString()
@@ -908,6 +906,14 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
+	if branchJob.externalCluster != "" {
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+		if err != nil {
+			return err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return err
@@ -933,7 +939,7 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
 	if err != nil {
 		return err
 	}
