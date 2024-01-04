@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../../common/env.sh"
 USER_COUNT=5000
 CUSTOMER_COUNT=5000
 PRODUCT_COUNT=5000
-CORDER_COUNT=10000
+CORDER_COUNT=200000
 
 mysql -h127.0.0.1 -P15306 -e 'create database if not exists branch_source'
 
