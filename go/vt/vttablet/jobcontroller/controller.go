@@ -738,6 +738,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return errors.New("the len of qr of count expected batch size is not 1")
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
+	// batchSize = 30
 	if expectedRow > batchSize {
 		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
@@ -798,17 +799,20 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", err
 	}
-	isFirstPk := true
-	pkPart := ""
-	for _, pkInfo := range pkInfos {
-		if !isFirstPk {
-			pkPart += ","
-		}
-		pkPart += pkInfo.pkName
-		isFirstPk = false
+
+	// 1.2.根据当前batch的batchCountSQL生成select sql，用于获得拆分后batch的拆分列start和end
+	// 只需要将batchCountSQL的投影部分(SelectExprs)从count(*)改为拆分列即可
+	batchCountSQLStmt, err := sqlparser.Parse(batchCountSQL)
+	if err != nil {
+		return "", err
 	}
-	//1.2.生成select pk的sql
-	batchSplitSelectSQL := strings.Replace(batchCountSQL, "count(*) as count_rows", pkPart, 1) + "order by " + pkPart
+	batchCountSQLStmtSelect, _ := batchCountSQLStmt.(*sqlparser.Select)
+	var pkExprs []sqlparser.SelectExpr
+	for _, pkInfo := range pkInfos {
+		pkExprs = append(pkExprs, &sqlparser.AliasedExpr{Expr: sqlparser.NewColName(pkInfo.pkName)})
+	}
+	batchCountSQLStmtSelect.SelectExprs = pkExprs
+	batchSplitSelectSQL := sqlparser.String(batchCountSQLStmtSelect)
 
 	// 2.根据select sql将batch拆分，生成两个新的batch。
 	//这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
@@ -1341,7 +1345,6 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	defer timer.Stop()
 
 	for range timer.C {
-
 		// todo, 增加对长时间未增加 rows的处理
 		jc.tableMutex.Lock()
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
@@ -1379,7 +1382,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 
 func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
 	// 1.解析用户提交的DML sql，返回DML的各个部分。其中selectSQL用于确定每一个batch的pk范围，生成每一个batch所要执行的batch sql
-	selectSQL, tableName, wherePart, pkPart, pkInfos, err := jc.parseDML(sql, tableSchema)
+	selectSQL, tableName, wherePart, pkPart, whereExpr, pkInfos, stmt, err := jc.parseDML(sql, tableSchema)
 	if err != nil {
 		return "", "", 0, err
 	}
@@ -1396,73 +1399,81 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	} else {
 		batchSize = actualThreshold
 	}
-	batchTableName, err = jc.createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, wherePart, pkPart, pkInfos, batchSize)
+	batchTableName, err = jc.createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, wherePart, pkPart, whereExpr, stmt, pkInfos, batchSize)
 	return tableName, batchTableName, batchSize, err
 }
 
-func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName, wherePart, pkPart string, pkInfos []PKInfo, err error) {
-	stmt, _, err := sqlparser.Parse2(sql)
+func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName, wherePart, pkPart string, whereExpr sqlparser.Expr, pkInfos []PKInfo, stmt sqlparser.Statement, err error) {
+	stmt, err = sqlparser.Parse(sql)
 	if err != nil {
-		return "", "", "", "", nil, err
+		return "", "", "", "", nil, nil, nil, err
 	}
 	// 根据stmt，分析DML SQL的各个部分，包括涉及的表，where条件
 	switch s := stmt.(type) {
 	case *sqlparser.Delete:
 		if len(s.TableExprs) != 1 {
-			return "", "", "", "", nil, errors.New("the number of table is more than one")
+			return "", "", "", "", nil, nil, nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
 		// todo 目前暂不支持join和多表
 		if !ok {
-			return "", "", "", "", nil, errors.New("don't support join table now")
+			return "", "", "", "", nil, nil, nil, errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
 		if wherePart == "" {
-			return "", "", "", "", nil, errors.New("the sql doesn't have where condition")
+			return "", "", "", "", nil, nil, nil, errors.New("the sql doesn't have where condition")
 		}
+		// 将where字符串中的"where"字符串删除，便于对真正的条件部分增加括号
+		wherePart = wherePart[strings.Index(wherePart, "where")+5:]
+		whereExpr = s.Where.Expr
+
 		limitPart := sqlparser.String(s.Limit)
 		if limitPart != "" {
-			return "", "", "", "", nil, errors.New("the SQL should not have limit clause")
+			return "", "", "", "", nil, nil, nil, errors.New("the SQL should not have limit clause")
 		}
 		orderByPart := sqlparser.String(s.OrderBy)
 		if orderByPart != "" {
-			return "", "", "", "", nil, errors.New("the SQL should not have order by clause")
+			return "", "", "", "", nil, nil, nil, errors.New("the SQL should not have order by clause")
 		}
 
 	case *sqlparser.Update:
 		if len(s.TableExprs) != 1 {
-			return "", "", "", "", nil, errors.New("the number of table is more than one")
+			return "", "", "", "", nil, nil, nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
 		// todo 目前暂不支持join和多表
 		if !ok {
-			return "", "", "", "", nil, errors.New("don't support join table now")
+			return "", "", "", "", nil, nil, nil, errors.New("don't support join table now")
 		}
 		tableName = sqlparser.String(tableExpr)
 		wherePart = sqlparser.String(s.Where)
 		if wherePart == "" {
-			return "", "", "", "", nil, errors.New("the sql doesn't have where condition")
+			return "", "", "", "", nil, nil, nil, errors.New("the sql doesn't have where condition")
 		}
+		// 将where字符串中的"where"字符串删除，便于对真正的条件部分增加括号
+		wherePart = wherePart[strings.Index(wherePart, "where")+5:]
+		whereExpr = s.Where.Expr
+
 		limitPart := sqlparser.String(s.Limit)
 		if limitPart != "" {
-			return "", "", "", "", nil, errors.New("the SQL should not have limit clause")
+			return "", "", "", "", nil, nil, nil, errors.New("the SQL should not have limit clause")
 		}
 		orderByPart := sqlparser.String(s.OrderBy)
 		if orderByPart != "" {
-			return "", "", "", "", nil, errors.New("the SQL should not have order by clause")
+			return "", "", "", "", nil, nil, nil, errors.New("the SQL should not have order by clause")
 		}
 
 	default:
 		// todo support select...into, replace...into
-		return "", "", "", "", nil, errors.New("the type of sql is not supported")
+		return "", "", "", "", nil, nil, nil, errors.New("the type of sql is not supported")
 	}
 
 	// 获得该DML所相关表的PK信息，将其中的PK列组成字符串pkPart，形如"PKCol1,PKCol2,PKCol3"
 	ctx := context.Background()
 	pkInfos, err = jc.getTablePkInfo(ctx, tableSchema, tableName)
 	if err != nil {
-		return "", "", "", "", nil, err
+		return "", "", "", "", nil, nil, nil, err
 	}
 	pkPart = ""
 	firstPK := true
@@ -1475,13 +1486,13 @@ func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName
 	}
 
 	// 将该DML的各部分信息组成batch select语句，用于生成每一个batch的pk范围
-	selectSQL = fmt.Sprintf("select %s from %s.%s %s order by %s",
+	selectSQL = fmt.Sprintf("select %s from %s.%s where %s order by %s",
 		pkPart, tableSchema, tableName, wherePart, pkPart)
 
-	return selectSQL, tableName, wherePart, pkPart, pkInfos, err
+	return selectSQL, tableName, wherePart, pkPart, whereExpr, pkInfos, stmt, err
 }
 
-func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, wherePart, pkPart string, pkInfos []PKInfo, batchSize int64) (string, error) {
+func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, wherePart, pkPart string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) (string, error) {
 	ctx := context.Background()
 
 	// 执行selectSQL，获得有序的pk值结果集，以生成每一个batch要执行的batch SQL
@@ -1527,7 +1538,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 		currentBatchEnd = pkValues
 		currentBatchSize++
 		if currentBatchSize == batchSize {
-			batchSQL, err := jc.genBatchSQL(sql, currentBatchStart, currentBatchEnd, pkInfos)
+			batchSQL, err := jc.genBatchSQL(sql, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 			if err != nil {
 				return "", err
 			}
@@ -1562,7 +1573,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	}
 	// 最后一个batch的行数不一定是batchSize，在循环结束时要将剩余的行数划分到最后一个batch中
 	if currentBatchSize != 0 {
-		batchSQL, err := jc.genBatchSQL(sql, currentBatchStart, currentBatchEnd, pkInfos)
+		batchSQL, err := jc.genBatchSQL(sql, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
 			return "", err
 		}
@@ -1632,11 +1643,11 @@ func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchS
 	if len(pkInfos) == 1 {
 		switch pkInfos[0].pkType {
 		case querypb.Type_INT8, querypb.Type_INT16, querypb.Type_INT24, querypb.Type_INT32, querypb.Type_INT64:
-			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %d AND %d order by %s",
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s where ( %s ) and ( %s between %d AND %d ) order by %s",
 				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
 
 		case querypb.Type_UINT8, querypb.Type_UINT16, querypb.Type_UINT24, querypb.Type_UINT32, querypb.Type_UINT64:
-			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between %d AND %d order by %s",
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s where ( %s ) and ( %s between %d AND %d ) order by %s",
 				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
 
 		case querypb.Type_FLOAT32, querypb.Type_FLOAT64:
@@ -1644,7 +1655,7 @@ func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchS
 
 		case querypb.Type_TIMESTAMP, querypb.Type_DATE, querypb.Type_TIME, querypb.Type_DATETIME, querypb.Type_YEAR,
 			querypb.Type_TEXT, querypb.Type_VARCHAR, querypb.Type_CHAR:
-			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND %s between '%s' AND '%s' order by %s",
+			countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s where ( %s ) and ( %s between '%s' AND '%s' ) order by %s",
 				tableSchema, tableName, wherePart, pkPart, currentBatchStart[0], currentBatchEnd[0], pkPart)
 
 		default:
@@ -1665,7 +1676,7 @@ func genCountSQL(tableSchema, tableName, wherePart, pkPart string, currentBatchS
 		}
 
 		// 3.将各部分拼接成最终的template
-		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s %s AND ( (%s) AND (%s) )",
+		countSQLTemplate = fmt.Sprintf("select count(*) as count_rows from %s.%s where ( %s ) and ( (%s) AND (%s) )",
 			tableSchema, tableName, wherePart, greatThanPart, lessThanPart)
 	}
 	return countSQLTemplate, nil
@@ -1779,7 +1790,7 @@ func genPKsLessThanPart(pkInfos []PKInfo, currentBatchEnd []any) (string, error)
 	return rst, nil
 }
 
-func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (batchSQL string, err error) {
+func (jc *JobController) genBatchSQL(sql string, stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatchStart, currentBatchEnd []any, pkInfos []PKInfo) (batchSQL string, err error) {
 	if len(pkInfos) == 1 {
 		if fmt.Sprintf("%T", currentBatchStart[0]) != fmt.Sprintf("%T", currentBatchEnd[0]) {
 			err = errors.New("the type of currentBatchStart and currentBatchEnd is different")
@@ -1813,8 +1824,17 @@ func (jc *JobController) genBatchSQL(sql string, currentBatchStart, currentBatch
 			return "", err
 		}
 
-		// 3.将各部分拼接成最终的template
-		batchSQL = sql + fmt.Sprintf(" AND ( (%s) AND (%s) )", greatThanPart, lessThanPart)
+		// 3.将pk>= and pk <= 拼接起来并生成相应的condition expr ast node
+		pkConditionExpr, err := jc.genPKConditionExpr(greatThanPart, lessThanPart)
+		if err != nil {
+			return "", err
+		}
+
+		// 4.将原本sql stmt中的where expr ast node用AND拼接上pkConditionExpr，作为batchSQL的where expr ast node
+		// 4.1先生成新的condition ast node
+		andExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: whereExpr, Right: pkConditionExpr}}
+		batchSQL = jc.genBatchSQLByReplaceWhereExprNode(stmt, andExpr)
+		//batchSQL = sql + fmt.Sprintf(" AND ( (%s) AND (%s) )", greatThanPart, lessThanPart)
 	}
 	return batchSQL, nil
 }
@@ -1881,4 +1901,31 @@ func (jc *JobController) updateBatchStatus(batchTableSchema, batchTableName, sta
 	}
 	_, err = jc.execQuery(context.Background(), batchTableSchema, query)
 	return err
+}
+
+func (jc *JobController) genPKConditionExpr(greatThanPart, lessThanPart string) (sqlparser.Expr, error) {
+	tmpSQL := fmt.Sprintf("select 1 where (%s) AND (%s)", greatThanPart, lessThanPart)
+	tmpStmt, err := sqlparser.Parse(tmpSQL)
+	if err != nil {
+		return nil, err
+	}
+	tmpStmtSelect, ok := tmpStmt.(*sqlparser.Select)
+	if !ok {
+		return nil, errors.New("genPKConditionExpr: tmpStmt is not *sqlparser.Select")
+	}
+	return tmpStmtSelect.Where.Expr, nil
+}
+
+func (jc *JobController) genBatchSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.Where) string {
+	switch s := stmt.(type) {
+	case *sqlparser.Update:
+		s.Where = &whereExpr
+		return sqlparser.String(s)
+	case *sqlparser.Delete:
+		s.Where = &whereExpr
+		return sqlparser.String(s)
+	default:
+		// the code won't reach here
+		return ""
+	}
 }
