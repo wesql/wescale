@@ -29,6 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/mysql"
@@ -1161,19 +1163,19 @@ func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
 	uuid := alterDMLJob.UUID
 	switch alterDMLJob.Type {
 	case sqlparser.PauseDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("pause", "", uuid, "", "", "", "", nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.PauseJob, "", uuid, "", "", "", "", nil, 0, 0, false, "")
 	case sqlparser.ResumeDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("resume", "", uuid, "", "", "", "", nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ResumeJob, "", uuid, "", "", "", "", nil, 0, 0, false, "")
 	case sqlparser.LaunchDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("launch", "", uuid, "", "", "", "", nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.LaunchJob, "", uuid, "", "", "", "", nil, 0, 0, false, "")
 	case sqlparser.CancelDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("cancel", "", uuid, "", "", "", "", nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.CancelJob, "", uuid, "", "", "", "", nil, 0, 0, false, "")
 	case sqlparser.ThrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("throttle", "", uuid, "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ThrottleJob, "", uuid, "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio, 0, 0, false, "")
 	case sqlparser.UnthrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest("unthrottle", "", uuid, "", "", "", "", nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.UnthrottleJob, "", uuid, "", "", "", "", nil, 0, 0, false, "")
 	case sqlparser.SetRunningTimePeriodType:
-		return qre.tsv.dmlJonController.HandleRequest("set_running_time_period", "", uuid, "", "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, nil, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.SetRunningTimePeriod, "", uuid, "", "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, nil, 0, 0, false, "")
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }
