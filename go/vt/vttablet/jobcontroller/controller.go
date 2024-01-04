@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -738,7 +737,6 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return errors.New("the len of qr of count expected batch size is not 1")
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
-	// batchSize = 30
 	if expectedRow > batchSize {
 		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
@@ -811,8 +809,11 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	for _, pkInfo := range pkInfos {
 		pkExprs = append(pkExprs, &sqlparser.AliasedExpr{Expr: sqlparser.NewColName(pkInfo.pkName)})
 	}
+	oldBatchCountSQLStmtSelectExprs := batchCountSQLStmtSelect.SelectExprs
 	batchCountSQLStmtSelect.SelectExprs = pkExprs
 	batchSplitSelectSQL := sqlparser.String(batchCountSQLStmtSelect)
+	// batchCountSQLStmt在后续生成newBatchCountSQL时还需用到，因此这里将其恢复原样
+	batchCountSQLStmtSelect.SelectExprs = oldBatchCountSQLStmtSelectExprs
 
 	// 2.根据select sql将batch拆分，生成两个新的batch。
 	//这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
@@ -859,45 +860,42 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", err
 	}
+	curBatchLessThanExpr, err := genExprNodeFromStr(curBatchLessThanPart)
+	if err != nil {
+		return "", err
+	}
 
 	newBatchGreatThanPart, err := genPKsGreaterThanPart(pkInfos, newBatchStart)
 	if err != nil {
 		return "", err
 	}
-
-	// 2.3) 通过正则表达式，获得原先batchSQL中的great than和less than部分，作为当前batch的great than和新batch的less than部分
-	// 定义正则表达式，匹配"( (greatThanPart) AND (lessThanPart) )"
-	curBatchGreatThanPart := ""
-	newBatchLessThanPart := ""
-
-	// 这个正则表达式用于匹配出"( (greatThanPart) AND (lessThanPart) )"greatThanPart和lessThanPart，也就是每条batch sql中用于限定PK范围的部分
-	regexPattern := `\(\s*\((.*)\)\s*AND\s*\((.*)\)\s*\)`
-
-	// 编译正则表达式
-	regex := regexp.MustCompile(regexPattern)
-
-	// 查找匹配项
-	matches := regex.FindAllStringSubmatch(batchSQL, -1)
-
-	// 如果有匹配项，只取最后一个匹配的结果，因为用户自己输入的where条件中也可能存在这样的格式
-	pkConditionPart := ""
-	if len(matches) > 0 {
-		lastMatch := matches[len(matches)-1]
-		if len(lastMatch) == 3 {
-			pkConditionPart = lastMatch[0]
-			curBatchGreatThanPart = lastMatch[1]
-			newBatchLessThanPart = lastMatch[2]
-		}
-	} else {
-		return "", errors.New("can not match greatThan and lessThan parts by regex")
+	newBatchGreatThanExpr, err := genExprNodeFromStr(newBatchGreatThanPart)
+	if err != nil {
+		return "", err
 	}
 
+	// 2.3) 通过parser，获得原先batchSQL的greatThan和lessThan的expr ast node
+	batchSQLStmt, err := sqlparser.Parse(batchSQL)
+	if err != nil {
+		return "", err
+	}
+	curBatchGreatThanExpr, newBatchLessThanExpr := jc.getBatchSQLGreatThanAndLessThanExprNode(batchSQLStmt)
+
 	// 2.4) 生成拆分后，当前batch的sql和新batch的sql
-	batchSQLCommonPart := strings.Replace(batchSQL, pkConditionPart, "", 1)
-	batchCountSQLCommonPart := strings.Replace(batchCountSQL, pkConditionPart, "", 1)
-	curBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", curBatchGreatThanPart, curBatchLessThanPart)
-	newBatchSQL := batchSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
-	newBatchCountSQL := batchCountSQLCommonPart + fmt.Sprintf("( (%s) AND (%s) )", newBatchGreatThanPart, newBatchLessThanPart)
+	// 2.4.1) 先获得curBatchSQL和newBatchSQL的where expr ast node，需要将用户输入的where expr与上PK Condition Expr
+	oldBatchSQLUserWhereExpr := getUserWhereExpr(batchSQLStmt)
+	curBatchPKConditionExpr := sqlparser.AndExpr{Left: curBatchGreatThanExpr, Right: curBatchLessThanExpr}
+	newBatchPKConditionExpr := sqlparser.AndExpr{Left: newBatchGreatThanExpr, Right: newBatchLessThanExpr}
+	curBatchWhereExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: oldBatchSQLUserWhereExpr, Right: &curBatchPKConditionExpr}}
+	newBatchWhereExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: oldBatchSQLUserWhereExpr, Right: &newBatchPKConditionExpr}}
+
+	// 2.4.2) 替换原先batchSQL和batchCountSQL的where expr来生成新的sql
+	curBatchSQL := jc.genSQLByReplaceWhereExprNode(batchSQLStmt, curBatchWhereExpr)
+	newBatchSQL := jc.genSQLByReplaceWhereExprNode(batchSQLStmt, newBatchWhereExpr)
+
+	// 2.4.3) 生成新batch的batchCountSQL，原理同上
+	newBatchCountSQL := jc.genSQLByReplaceWhereExprNode(batchCountSQLStmt, newBatchWhereExpr)
+
 	// 构建当前batch新的batch begin及end字段以及新batch的begin及end字段
 	getBatchBeginAndEndSQL := fmt.Sprintf(sqlTemplateGetBatchBeginAndEnd, batchTable)
 	getBatchBeginAndEndQuery, err := sqlparser.ParseAndBind(getBatchBeginAndEndSQL, sqltypes.StringBindVariable(batchID))
@@ -1825,7 +1823,7 @@ func (jc *JobController) genBatchSQL(sql string, stmt sqlparser.Statement, where
 		}
 
 		// 3.将pk>= and pk <= 拼接起来并生成相应的condition expr ast node
-		pkConditionExpr, err := jc.genPKConditionExpr(greatThanPart, lessThanPart)
+		pkConditionExpr, err := jc.genPKConditionExprByStr(greatThanPart, lessThanPart)
 		if err != nil {
 			return "", err
 		}
@@ -1833,7 +1831,7 @@ func (jc *JobController) genBatchSQL(sql string, stmt sqlparser.Statement, where
 		// 4.将原本sql stmt中的where expr ast node用AND拼接上pkConditionExpr，作为batchSQL的where expr ast node
 		// 4.1先生成新的condition ast node
 		andExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: whereExpr, Right: pkConditionExpr}}
-		batchSQL = jc.genBatchSQLByReplaceWhereExprNode(stmt, andExpr)
+		batchSQL = jc.genSQLByReplaceWhereExprNode(stmt, andExpr)
 		//batchSQL = sql + fmt.Sprintf(" AND ( (%s) AND (%s) )", greatThanPart, lessThanPart)
 	}
 	return batchSQL, nil
@@ -1903,7 +1901,7 @@ func (jc *JobController) updateBatchStatus(batchTableSchema, batchTableName, sta
 	return err
 }
 
-func (jc *JobController) genPKConditionExpr(greatThanPart, lessThanPart string) (sqlparser.Expr, error) {
+func (jc *JobController) genPKConditionExprByStr(greatThanPart, lessThanPart string) (sqlparser.Expr, error) {
 	tmpSQL := fmt.Sprintf("select 1 where (%s) AND (%s)", greatThanPart, lessThanPart)
 	tmpStmt, err := sqlparser.Parse(tmpSQL)
 	if err != nil {
@@ -1911,12 +1909,12 @@ func (jc *JobController) genPKConditionExpr(greatThanPart, lessThanPart string) 
 	}
 	tmpStmtSelect, ok := tmpStmt.(*sqlparser.Select)
 	if !ok {
-		return nil, errors.New("genPKConditionExpr: tmpStmt is not *sqlparser.Select")
+		return nil, errors.New("genPKConditionExprByStr: tmpStmt is not *sqlparser.Select")
 	}
 	return tmpStmtSelect.Where.Expr, nil
 }
 
-func (jc *JobController) genBatchSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.Where) string {
+func (jc *JobController) genSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.Where) string {
 	switch s := stmt.(type) {
 	case *sqlparser.Update:
 		s.Where = &whereExpr
@@ -1924,8 +1922,59 @@ func (jc *JobController) genBatchSQLByReplaceWhereExprNode(stmt sqlparser.Statem
 	case *sqlparser.Delete:
 		s.Where = &whereExpr
 		return sqlparser.String(s)
+	case *sqlparser.Select:
+		// 针对batchCountSQL
+		s.Where = &whereExpr
+		return sqlparser.String(s)
 	default:
 		// the code won't reach here
 		return ""
 	}
+}
+
+func getUserWhereExpr(stmt sqlparser.Statement) (expr sqlparser.Expr) {
+	switch s := stmt.(type) {
+	case *sqlparser.Update:
+		tempAndExpr, _ := s.Where.Expr.(*sqlparser.AndExpr)
+		expr = tempAndExpr.Left
+		return expr
+	case *sqlparser.Delete:
+		tempAndExpr, _ := s.Where.Expr.(*sqlparser.AndExpr)
+		expr = tempAndExpr.Left
+		return expr
+	default:
+		// the code won't reach here
+		return nil
+	}
+}
+
+func (jc *JobController) getBatchSQLGreatThanAndLessThanExprNode(stmt sqlparser.Statement) (greatThanExpr sqlparser.Expr, lessThanExpr sqlparser.Expr) {
+	switch s := stmt.(type) {
+	case *sqlparser.Update:
+		// the type switch will be ok
+		andExpr, _ := s.Where.Expr.(*sqlparser.AndExpr)
+		pkConditionExpr, _ := andExpr.Right.(*sqlparser.AndExpr)
+		greatThanExpr = pkConditionExpr.Left
+		lessThanExpr = pkConditionExpr.Right
+		return greatThanExpr, lessThanExpr
+	case *sqlparser.Delete:
+		// the type switch will be ok
+		andExpr, _ := s.Where.Expr.(*sqlparser.AndExpr)
+		pkConditionExpr, _ := andExpr.Right.(*sqlparser.AndExpr)
+		greatThanExpr = pkConditionExpr.Left
+		lessThanExpr = pkConditionExpr.Right
+		return greatThanExpr, lessThanExpr
+	}
+	// the code won't reach here
+	return nil, nil
+}
+
+func genExprNodeFromStr(condition string) (sqlparser.Expr, error) {
+	tmpSQL := fmt.Sprintf("select 1 where %s", condition)
+	tmpStmt, err := sqlparser.Parse(tmpSQL)
+	if err != nil {
+		return nil, err
+	}
+	tmpStmtSelect, _ := tmpStmt.(*sqlparser.Select)
+	return tmpStmtSelect.Where.Expr, nil
 }
