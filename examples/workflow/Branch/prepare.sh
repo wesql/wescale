@@ -8,9 +8,9 @@ CUSTOMER_COUNT=5000
 PRODUCT_COUNT=5000
 CORDER_COUNT=200000
 
-mysql -h127.0.0.1 -P15306 -e 'create database if not exists branch_source'
+mysql -h127.0.0.1 -P15307 -e 'create database if not exists branch_source'
 
-mysql -h127.0.0.1 -P15306 -e 'create table if not exists branch_source.product(
+mysql -h127.0.0.1 -P15307 -e 'create table if not exists branch_source.product(
                                 sku varchar(128),
                                 description varchar(128),
                                 price bigint,
@@ -53,7 +53,7 @@ function insert_users() {
             SQL="${SQL}${COMMA}($i, CONCAT('user', FLOOR(1 + RAND() * 999999)))"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P15306 -e "$SQL"
+        mysql -h127.0.0.1 -P15307 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -77,7 +77,7 @@ function insert_customer() {
             SQL="${SQL}${COMMA}($i, CONCAT('user', FLOOR(1 + RAND() * 999999), '@domain.com'))"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P15306 -e "$SQL"
+        mysql -h127.0.0.1 -P15307 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -101,7 +101,7 @@ function insert_product() {
             SQL="${SQL}${COMMA}(CONCAT('SKU-', $i), 'product description', $i)"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P15306 -e "$SQL"
+        mysql -h127.0.0.1 -P15307 -e "$SQL"
 
         start=$((batch_end + 1))
     done
@@ -127,7 +127,7 @@ function insert_corder() {
             SQL="${SQL}${COMMA}($i, $random_customer_id, CONCAT('SKU-', $random_sku_id), $random_sku_id)"
             COMMA=", "
         done
-        mysql -h127.0.0.1 -P15306 -e "$SQL"
+        mysql -h127.0.0.1 -P15307 -e "$SQL"
 
         start=$((batch_end + 1))
     done

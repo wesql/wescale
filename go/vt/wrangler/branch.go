@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"strings"
 
+	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
+	"vitess.io/vitess/go/vt/topo"
+	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
+
 	"vitess.io/vitess/go/vt/schemadiff"
 	"vitess.io/vitess/go/vt/sidecardb"
 
@@ -37,6 +41,7 @@ type BranchJob struct {
 	workflowName     string
 	sourceTopo       string
 	sourceTabletType string
+	externalCluster  string
 	includeTables    string
 	excludeTables    string
 	cells            string
@@ -73,10 +78,10 @@ const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules wh
 const DeleteVReplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
 
 func (branchJob *BranchJob) generateInsert() (string, error) {
-	// 构建 SQL 插入语句，使用占位符
-	sqlInsertTemplate := "INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, stop_after_copy, onddl, status, message) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
+	// build the query
+	sqlInsertTemplate := "INSERT INTO mysql.branch_jobs (source_database, target_database, workflow_name, source_topo, source_tablet_type, cells, stop_after_copy, onddl, status, message,external_cluster) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
 
-	// 使用 ParseAndBind 函数来准备查询和绑定变量
+	// bind variables
 	sqlInsertQuery, err := sqlparser.ParseAndBind(sqlInsertTemplate,
 		sqltypes.StringBindVariable(branchJob.sourceDatabase),
 		sqltypes.StringBindVariable(branchJob.targetDatabase),
@@ -87,10 +92,10 @@ func (branchJob *BranchJob) generateInsert() (string, error) {
 		sqltypes.Int64BindVariable(boolToInt(branchJob.stopAfterCopy)),
 		sqltypes.StringBindVariable(branchJob.onddl),
 		sqltypes.StringBindVariable(branchJob.status),
-		sqltypes.StringBindVariable(""), // 空字符串
+		sqltypes.StringBindVariable(""), // empty message
+		sqltypes.StringBindVariable(branchJob.externalCluster),
 	)
 	if err != nil {
-		// 处理错误
 		return "", err
 	}
 
@@ -137,7 +142,7 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
 func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
-	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool) error {
+	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool, externalCluster string) error {
 	err := wr.CreateDatabase(ctx, targetDatabase)
 	if err != nil {
 		return err
@@ -148,6 +153,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 		sourceDatabase:   sourceDatabase,
 		targetDatabase:   targetDatabase,
 		sourceTabletType: tabletTypes,
+		externalCluster:  externalCluster,
 		includeTables:    includeTables,
 		excludeTables:    excludeTables,
 		stopAfterCopy:    stopAfterCopy,
@@ -165,9 +171,26 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 	}
 	var tables []string
 	var vschema *vschemapb.Keyspace
-	vschema, err = wr.ts.GetVSchema(ctx, targetDatabase)
-	if err != nil {
-		return err
+	var externalTopo *topo.Server
+	if externalCluster != "" {
+		// when the source is an external mysql cluster mounted using the Mount command
+		externalTopo, err = wr.ts.OpenExternalVitessClusterServer(ctx, externalCluster)
+		if err != nil {
+			return err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
+	if externalCluster != "" {
+		vschema, err = wr.sourceTs.GetVSchema(ctx, sourceDatabase)
+		if err != nil {
+			return err
+		}
+	} else {
+		vschema, err = wr.ts.GetVSchema(ctx, sourceDatabase)
+		if err != nil {
+			return err
+		}
 	}
 	if vschema == nil {
 		return fmt.Errorf("no vschema found for target keyspace %s", targetDatabase)
@@ -282,13 +305,13 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		return nil, fmt.Errorf("workflow:%v not exist", workflow)
 	}
 	branchJobMap := qr.Named().Row()
-
 	sourceDatabase := branchJobMap["source_database"].ToString()
 	targetDatabase := branchJobMap["target_database"].ToString()
 	sourceTopo := branchJobMap["source_topo"].ToString()
 	sourceTabletType := branchJobMap["source_tablet_type"].ToString()
 	cells := branchJobMap["cells"].ToString()
 	stopAfterCopy, err := branchJobMap["stop_after_copy"].ToBool()
+	externalCluster := branchJobMap["external_cluster"].ToString()
 	if err != nil {
 		return nil, err
 	}
@@ -300,6 +323,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		workflowName:     workflow,
 		sourceTopo:       sourceTopo,
 		sourceTabletType: sourceTabletType,
+		externalCluster:  externalCluster,
 		stopAfterCopy:    stopAfterCopy,
 		onddl:            onddl,
 		cells:            cells,
@@ -397,7 +421,16 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		Cell:                  branchJob.cells,
 		TabletTypes:           branchJob.sourceTabletType,
 		StopAfterCopy:         true,
-		ExternalCluster:       "",
+		ExternalCluster:       branchJob.externalCluster,
+	}
+	if ms.ExternalCluster != "" {
+		// when the source is an external mysql cluster mounted using the Mount command
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, ms.ExternalCluster)
+		if err != nil {
+			return nil, err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}
 	for _, rule := range branchJob.bs.FilterTableRules {
 		removedSQL, err := removeComments(rule.FilteringRule)
@@ -615,6 +648,14 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 }
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if branchJob.externalCluster != "" {
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+		if err != nil {
+			return err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
 	if err != nil {
 		return err
 	}
@@ -640,7 +681,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 	if err != nil {
 		return err
 	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
 	if err != nil {
 		return err
 	}
@@ -734,6 +775,19 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 
 func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) error {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	var vtctld vtctlservicepb.VtctldServer
+	if branchJob.externalCluster != "" {
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+		if err != nil {
+			return err
+		}
+		wr.sourceTs = externalTopo
+		vtctld = grpcvtctldserver.NewVtctldServer(wr.sourceTs)
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
+	if vtctld == nil {
+		vtctld = wr.VtctldServer()
+	}
 	if err != nil {
 		return err
 	}
@@ -746,7 +800,7 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 	}
 	var resp *vtctldatapb.ApplySchemaResponse
 	if len(parts) != 0 {
-		resp, err = wr.VtctldServer().ApplySchema(ctx, &vtctldatapb.ApplySchemaRequest{
+		resp, err = vtctld.ApplySchema(ctx, &vtctldatapb.ApplySchemaRequest{
 			Keyspace:                branchJob.sourceDatabase,
 			AllowLongUnavailability: false,
 			DdlStrategy:             "online",
@@ -846,6 +900,14 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
+	if branchJob.externalCluster != "" {
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+		if err != nil {
+			return err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return err
@@ -871,7 +933,7 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, sourceDatabaseReqeust)
+	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
 	if err != nil {
 		return err
 	}
