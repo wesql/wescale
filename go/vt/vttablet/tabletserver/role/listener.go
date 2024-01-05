@@ -27,8 +27,9 @@ import (
 )
 
 var (
-	mysqlRoleProbeInterval = 1 * time.Second
-	mysqlRoleProbeTimeout  = 1 * time.Second
+	mysqlRoleProbeInterval    = 1 * time.Second
+	mysqlRoleProbeTimeout     = 1 * time.Second
+	mysqlRoleProbeUrlTemplate = "http://%s:%d/v1.0/getrole"
 )
 
 var (
@@ -97,8 +98,9 @@ func setUpMysqlProbeServiceHost() {
 }
 
 func registerGCFlags(fs *pflag.FlagSet) {
-	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "Interval between garbage collection checks")
-	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "Interval between garbage collection checks")
+	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "mysql role probe interval")
+	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "mysql role probe timeout")
+	fs.StringVar(&mysqlRoleProbeUrlTemplate, "mysql_role_probe_url_template", mysqlRoleProbeUrlTemplate, "mysql role probe url template")
 }
 
 type Listener struct {
@@ -182,7 +184,8 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 
 	setUpMysqlProbeServicePort()
 	setUpMysqlProbeServiceHost()
-	getRoleUrl := fmt.Sprintf("http://%s:%d/v1.0/bindings/mysql?operation=getRole", mysqlProbeServiceHost, mysqlProbeServicePort)
+	// curl -X GET -H 'Content-Type: application/json' 'http://localhost:3501/v1.0/getrole'
+	getRoleUrl := fmt.Sprintf("http://%s:%d/v1.0/getrole", mysqlProbeServiceHost, mysqlProbeServicePort)
 
 	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
@@ -219,4 +222,8 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	default:
 		log.Errorf("role value is not a string, role:%v", role)
 	}
+}
+
+func SetMysqlRoleProbeUrlTemplate(urlTemplate string) {
+	mysqlRoleProbeUrlTemplate = urlTemplate
 }

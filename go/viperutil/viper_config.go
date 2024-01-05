@@ -21,6 +21,7 @@ type ViperConfig struct {
 	mu       sync.Mutex
 	reloadMu sync.Mutex
 
+	vp                         *viper.Viper
 	ConfigPath                 []string
 	ConfigType                 string
 	ConfigName                 string
@@ -31,6 +32,7 @@ type ViperConfig struct {
 
 func NewViperConfig() *ViperConfig {
 	return &ViperConfig{
+		vp:            viper.New(),
 		ReloadHandler: NewConfigReloader(),
 	}
 }
@@ -44,12 +46,12 @@ func (v *ViperConfig) LoadAndWatchConfigFile() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	viper.SetConfigName(v.ConfigName)
-	viper.SetConfigType(v.ConfigType)
+	v.vp.SetConfigName(v.ConfigName)
+	v.vp.SetConfigType(v.ConfigType)
 	for _, p := range v.ConfigPath {
-		viper.AddConfigPath(p)
+		v.vp.AddConfigPath(p)
 	}
-	err := viper.ReadInConfig()
+	err := v.vp.ReadInConfig()
 	if err != nil {
 		switch v.ConfigFileNotFoundHandling {
 		case IGNORE:
@@ -63,17 +65,17 @@ func (v *ViperConfig) LoadAndWatchConfigFile() {
 			log.Exitf("read config file error, err: %v", err)
 		}
 	}
-	v.refreshConfigs()
+	v.loadConfigFileAtStartup()
 	v.startWatch()
 }
 
-func (v *ViperConfig) refreshConfigs() {
+func (v *ViperConfig) loadConfigFileAtStartup() {
 	v.reloadMu.Lock()
 	defer v.reloadMu.Unlock()
 	log.Infof("start refresh config file")
-	for _, sectionAndKey := range viper.AllKeys() {
+	for _, sectionAndKey := range v.vp.AllKeys() {
 		key := getRealKeyName(sectionAndKey)
-		value := viper.GetString(sectionAndKey)
+		value := v.vp.GetString(sectionAndKey)
 
 		log.Infof("%s=%s", key, value)
 		v.Fs.Set(key, value)
@@ -85,18 +87,18 @@ func (v *ViperConfig) reloadConfigs() {
 	v.reloadMu.Lock()
 	defer v.reloadMu.Unlock()
 	log.Infof("start reload config file")
-	for _, sectionAndKey := range viper.AllKeys() {
+	for _, sectionAndKey := range v.vp.AllKeys() {
 		key := getRealKeyName(sectionAndKey)
-		value := viper.GetString(sectionAndKey)
+		value := v.vp.GetString(sectionAndKey)
 
-		v.ReloadHandler.HandleConfigChange(key, value, v.Fs)
+		v.ReloadHandler.handleConfigChange(key, value, v.Fs)
 	}
 	log.Infof("finish reload config file")
 }
 
 func (v *ViperConfig) startWatch() {
-	viper.OnConfigChange(func(e fsnotify.Event) {
+	v.vp.OnConfigChange(func(e fsnotify.Event) {
 		v.reloadConfigs()
 	})
-	viper.WatchConfig()
+	v.vp.WatchConfig()
 }
