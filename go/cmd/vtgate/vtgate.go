@@ -138,7 +138,7 @@ func main() {
 
 	servenv.ParseFlags("vtgate")
 	servenv.Init()
-	vtGateViperConfig.WatchConfigFile()
+	vtGateViperConfig.LoadAndWatchConfigFile()
 
 	ts := topo.Open()
 	defer ts.Close()

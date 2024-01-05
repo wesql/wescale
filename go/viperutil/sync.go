@@ -2,7 +2,6 @@ package viperutil
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -27,10 +26,13 @@ type ViperConfig struct {
 	ConfigName                 string
 	ConfigFileNotFoundHandling string
 	Fs                         *pflag.FlagSet
+	ReloadHandler              *Reloader
 }
 
 func NewViperConfig() *ViperConfig {
-	return &ViperConfig{}
+	return &ViperConfig{
+		ReloadHandler: NewConfigReloader(),
+	}
 }
 
 func (v *ViperConfig) String() string {
@@ -38,7 +40,7 @@ func (v *ViperConfig) String() string {
 		v.ConfigPath, v.ConfigType, v.ConfigName, v.ConfigFileNotFoundHandling)
 }
 
-func (v *ViperConfig) WatchConfigFile() {
+func (v *ViperConfig) LoadAndWatchConfigFile() {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
@@ -61,11 +63,22 @@ func (v *ViperConfig) WatchConfigFile() {
 			log.Exitf("read config file error, err: %v", err)
 		}
 	}
-	v.reloadConfigs()
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		v.reloadConfigs()
-	})
-	viper.WatchConfig()
+	v.refreshConfigs()
+	v.startWatch()
+}
+
+func (v *ViperConfig) refreshConfigs() {
+	v.reloadMu.Lock()
+	defer v.reloadMu.Unlock()
+	log.Infof("start refresh config file")
+	for _, sectionAndKey := range viper.AllKeys() {
+		key := getRealKeyName(sectionAndKey)
+		value := viper.GetString(sectionAndKey)
+
+		log.Infof("%s=%s", key, value)
+		v.Fs.Set(key, value)
+	}
+	log.Infof("finish refresh config file")
 }
 
 func (v *ViperConfig) reloadConfigs() {
@@ -73,30 +86,17 @@ func (v *ViperConfig) reloadConfigs() {
 	defer v.reloadMu.Unlock()
 	log.Infof("start reload config file")
 	for _, sectionAndKey := range viper.AllKeys() {
-		key := sectionAndKey
-		if strings.Contains(sectionAndKey, ".") {
-			// remove section from key
-			key = strings.SplitN(sectionAndKey, ".", 2)[1]
-		}
+		key := getRealKeyName(sectionAndKey)
 		value := viper.GetString(sectionAndKey)
-		log.Infof("%s=%s", key, value)
 
-		if keyAlias, ok := alias[key]; ok {
-			key = keyAlias
-		}
-
-		v.Fs.Set(key, value)
+		v.ReloadHandler.HandleConfigChange(key, value, v.Fs)
 	}
 	log.Infof("finish reload config file")
 }
 
-var alias = map[string]string{
-	"table_acl_config_mode":               "table-acl-config-mode",
-	"table_acl_config":                    "table-acl-config",
-	"queryserver_config_strict_table_acl": "queryserver-config-strict-table-acl",
-	"enforce_tableacl_config":             "enforce-tableacl-config",
-	"table_acl_config_reload_interval":    "table-acl-config-reload-interval",
-	"queryserver_config_pool_size":        "queryserver-config-pool-size",
-	"queryserver_config_stream_pool_size": "queryserver-config-stream-pool-size",
-	"queryserver_config_transaction_cap":  "queryserver-config-transaction-cap",
+func (v *ViperConfig) startWatch() {
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		v.reloadConfigs()
+	})
+	viper.WatchConfig()
 }

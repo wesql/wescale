@@ -98,7 +98,7 @@ func main() {
 
 	servenv.ParseFlags("vttablet")
 	servenv.Init()
-	vtTabletViperConfig.WatchConfigFile()
+	vtTabletViperConfig.LoadAndWatchConfigFile()
 
 	if tableACLMode != global.TableACLModeSimple && tableACLMode != global.TableACLModeMysqlBased {
 		log.Exit("require table-acl-config-mode")
