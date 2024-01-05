@@ -185,7 +185,7 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	setUpMysqlProbeServicePort()
 	setUpMysqlProbeServiceHost()
 	// curl -X GET -H 'Content-Type: application/json' 'http://localhost:3501/v1.0/getrole'
-	getRoleUrl := fmt.Sprintf("http://%s:%d/v1.0/getrole", mysqlProbeServiceHost, mysqlProbeServicePort)
+	getRoleUrl := fmt.Sprintf(mysqlRoleProbeUrlTemplate, mysqlProbeServiceHost, mysqlProbeServicePort)
 
 	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
