@@ -62,6 +62,7 @@ func registerViperConfigFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&vtGateViperConfig.ConfigName, "config-name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
 	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtGateViperConfig.Fs = fs
+	viperutil.RegisterReloadHandlersForVtGate(vtGateViperConfig)
 }
 
 var resilientServer *srvtopo.ResilientServer
@@ -138,7 +139,7 @@ func main() {
 
 	servenv.ParseFlags("vtgate")
 	servenv.Init()
-	vtGateViperConfig.WatchConfigFile()
+	vtGateViperConfig.LoadAndWatchConfigFile()
 
 	ts := topo.Open()
 	defer ts.Close()
