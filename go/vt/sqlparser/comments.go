@@ -62,7 +62,7 @@ const (
 	DirectiveDMLTimeGap         = "DML_TIME_GAP"
 	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
 	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
-	DirectiveDMLAutoRetry       = "DML_AUTO_RETRY"
+	DirectiveDMLAutoRetry       = "DML_FAIL_POLICY"
 	DirectiveDMLTimePeriodStart = "DML_TIME_PERIOD_START"
 	DirectiveDMLTimePeriodEnd   = "DML_TIME_PERIOD_END"
 )
@@ -197,6 +197,7 @@ func StripLeadingComments(sql string) string {
 func StripComments(sql string) string {
 	var output strings.Builder
 	inComment := false
+	lastByte := ""
 
 	for i := 0; i < len(sql); i++ {
 		if !inComment && i+1 < len(sql) && sql[i:i+2] == "/*" {
@@ -207,12 +208,19 @@ func StripComments(sql string) string {
 
 		if inComment && i+1 < len(sql) && sql[i:i+2] == "*/" {
 			inComment = false
+			if lastByte != " " {
+				output.WriteByte(' ')
+				lastByte = " "
+			}
 			i++
 			continue
 		}
 
 		if !inComment {
-			output.WriteByte(sql[i])
+			if lastByte != " " || string(sql[i]) != " " {
+				output.WriteByte(sql[i])
+				lastByte = string(sql[i])
+			}
 		}
 	}
 	return output.String()

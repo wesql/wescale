@@ -10,22 +10,20 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net/http"
-	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"github.com/pingcap/failpoint"
+
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"vitess.io/vitess/go/vt/log"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle"
 
 	"vitess.io/vitess/go/vt/schema"
 
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/pools"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -108,7 +106,6 @@ type JobController struct {
 	schedulerNotifyChan chan struct{} // jobScheduler每隔一段时间运行一次调度。但当它收到这个chan的消息后，会立刻开始一次调度
 }
 
-// todo newborn22 删除pktype?
 type PKInfo struct {
 	pkName string
 	pkType querypb.Type
@@ -196,16 +193,14 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	// 取用户输入的batchSize和程序的threshold的最小值作为每个batch最终的batchSize
 	var batchSize int64
-
 	if userBatchSize < batchSizeThreshold {
 		batchSize = userBatchSize
 	} else {
 		batchSize = batchSizeThreshold
 	}
-
+	// 创建batchInfo表
 	tableName, batchInfoTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, batchSize)
 	batchInfoTableSchema := tableSchema
-
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -269,29 +264,17 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, timeGapInMs, userBatchSize, postponeLaunch, failPolicy), nil
 }
 
-func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch bool, failPolicy string) *sqltypes.Result {
-	var rows []sqltypes.Row
-	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), failPolicy, strconv.FormatBool(postponeLaunch))
-	rows = append(rows, row)
-	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "time_gap_in_ms", "batch_size", "fail_policy", "postpone_launch"),
-		Rows:         rows,
-		RowsAffected: 1,
-	}
-	return submitRst
-}
-
 // 和cancel的区别：1.pasue不会删除元数据 2.cancel状态的job在经过一段时间后会被后台协程回收
 // 和cancel的相同点：都停止了runner协程
 func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
+	status, err := jc.getStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
 	if status != runningStatus {
-		// todo，将info写回给vtgate，目前还不生效
+		// todo，feat 将info写回给vtgate，目前还不生效
 		emptyResult.Info = " The job status is not running and can't be paused"
 		return emptyResult, nil
 	}
@@ -309,7 +292,7 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
+	status, err := jc.getStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -348,41 +331,10 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	return emptyResult, nil
 }
 
-func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime string) (*sqltypes.Result, error) {
-	var emptyResult = &sqltypes.Result{}
-	ctx := context.Background()
-
-	// 如果两个时间只有一个为空，则报错
-	if (startTime == "" && endTime != "") || (startTime != "" && endTime == "") {
-		return emptyResult, errors.New("the start time and end time must be both set or not")
-	}
-
-	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
-	if err != nil {
-		return emptyResult, err
-	}
-	if status == runningStatus {
-		return emptyResult, errors.New("the job is running now, pause it first")
-	}
-	// 提交的时间段必须满足特定的格式，可以成功转换成time对象
-	if startTime != "" && endTime != "" {
-		_, err = time.Parse(time.TimeOnly, startTime)
-		if err != nil {
-			return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
-		}
-		_, err = time.Parse(time.TimeOnly, endTime)
-		if err != nil {
-			return emptyResult, errors.New("the start time is in error format, it should be like HH:MM:SS")
-		}
-	}
-	// 往表中插入
-	return jc.updateJobPeriodTime(ctx, uuid, startTime, endTime)
-}
-
 func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
+	status, err := jc.getStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, err
 	}
@@ -397,7 +349,7 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	ctx := context.Background()
-	status, err := jc.GetStrJobInfo(ctx, uuid, "status")
+	status, err := jc.getStrJobInfo(ctx, uuid, "status")
 	if err != nil {
 		return emptyResult, nil
 	}
@@ -411,7 +363,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, nil
 	}
 
-	tableName, _ := jc.GetStrJobInfo(ctx, uuid, "table_name")
+	tableName, _ := jc.getStrJobInfo(ctx, uuid, "table_name")
 
 	// 相比于pause，cancel需要删除内存中的元数据
 	jc.deleteDMLJobRunningMeta(uuid, tableName)
@@ -419,108 +371,6 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	jc.notifyJobScheduler()
 
 	return qr, nil
-}
-
-// 指定throttle的时长和ratio
-// ratio表示限流的比例，最大为1，即完全限流
-// 时长的格式举例：
-// "300ms" 表示 300 毫秒。
-// "-1.5h" 表示负1.5小时。
-// "2h45m" 表示2小时45分钟。
-func (jc *JobController) ThrottleJob(uuid, expireString string, ratioLiteral *sqlparser.Literal) (result *sqltypes.Result, err error) {
-	emptyResult := &sqltypes.Result{}
-	duration, ratio, err := jc.validateThrottleParams(expireString, ratioLiteral)
-	if err != nil {
-		return nil, err
-	}
-	if err := jc.lagThrottler.CheckIsReady(); err != nil {
-		return nil, err
-	}
-	expireAt := time.Now().Add(duration)
-	_ = jc.lagThrottler.ThrottleApp(uuid, expireAt, ratio)
-
-	query, err := sqlparser.ParseAndBind(sqlDMLJobUpdateThrottleInfo,
-		sqltypes.Float64BindVariable(ratio),
-		sqltypes.StringBindVariable(expireAt.String()),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return emptyResult, err
-	}
-	ctx := context.Background()
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-	return jc.execQuery(ctx, "", query)
-}
-
-func (jc *JobController) UnthrottleJob(uuid string) (result *sqltypes.Result, err error) {
-	emptyResult := &sqltypes.Result{}
-	if err := jc.lagThrottler.CheckIsReady(); err != nil {
-		return nil, err
-	}
-	_ = jc.lagThrottler.UnthrottleApp(uuid)
-
-	query, err := sqlparser.ParseAndBind(sqlDMLJobClearThrottleInfo,
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return emptyResult, err
-	}
-	ctx := context.Background()
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-	return jc.execQuery(ctx, "", query)
-}
-
-var throttleTicks int64
-var throttleInit sync.Once
-
-func initThrottleTicker() {
-	throttleInit.Do(func() {
-		go func() {
-			tick := time.NewTicker(throttleCheckInterval)
-			defer tick.Stop()
-			for range tick.C {
-				atomic.AddInt64(&throttleTicks, 1)
-			}
-		}()
-	})
-}
-
-func (jc *JobController) requestThrottle(uuid string) (throttleCheckOK bool) {
-	if jc.lastSuccessfulThrottle >= atomic.LoadInt64(&throttleTicks) {
-		// if last check was OK just very recently there is no need to check again
-		return true
-	}
-	ctx := context.Background()
-	// 请求时给每一个throttle的app名都加上了dml-job前缀，这样可以通过throttle dml-job来throttle所有的dml jobs
-	appName := "dml-job:" + uuid
-	// 这里不特别设置flag
-	throttleCheckFlags := &throttle.CheckFlags{}
-	// 由于dml job子任务需要同步到集群中的各个从节点，因此throttle也依据的是集群的复制延迟
-	checkType := throttle.ThrottleCheckPrimaryWrite
-	checkRst := jc.lagThrottler.CheckByType(ctx, appName, "", throttleCheckFlags, checkType)
-	if checkRst.StatusCode != http.StatusOK {
-		return false
-	}
-	jc.lastSuccessfulThrottle = atomic.LoadInt64(&throttleTicks)
-	return true
-}
-
-func (jc *JobController) validateThrottleParams(expireString string, ratioLiteral *sqlparser.Literal) (duration time.Duration, ratio float64, err error) {
-	duration = time.Hour * 24 * 365 * 100
-	if expireString != "" {
-		duration, err = time.ParseDuration(expireString)
-		if err != nil || duration < 0 {
-			return duration, ratio, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid EXPIRE value: %s. Try '120s', '30m', '1h', etc. Allowed units are (s)ec, (m)in, (h)hour", expireString)
-		}
-	}
-	ratio = 1.0
-	if ratioLiteral != nil {
-		ratio, err = strconv.ParseFloat(ratioLiteral.Val, 64)
-		if err != nil || ratio < 0 || ratio > 1 {
-			return duration, ratio, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid RATIO value: %s. Try any decimal number between '0.0' (no throttle) and `1.0` (fully throttled)", ratioLiteral.Val)
-		}
-	}
-	return duration, ratio, nil
 }
 
 func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*sqltypes.Result, error) {
@@ -597,25 +447,7 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 	}
 }
 
-func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd string) (*time.Time, *time.Time) {
-	if runningTimePeriodStart != "" && runningTimePeriodEnd != "" {
-		// 在submit job时或setRunningTimePeriod时，已经对格式进行了检查，因此这里不会出现错误
-		periodStartTime, _ := time.Parse(time.TimeOnly, runningTimePeriodStart)
-		periodEndTime, _ := time.Parse(time.TimeOnly, runningTimePeriodEnd)
-		// 由于用户只提供了时间部分，因此需要将日期部分用当天的时间补齐。
-		currentTime := time.Now()
-		periodStartTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodStartTime.Hour(), periodStartTime.Minute(), periodStartTime.Second(), periodStartTime.Nanosecond(), currentTime.Location())
-		periodEndTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodEndTime.Hour(), periodEndTime.Minute(), periodEndTime.Second(), periodEndTime.Nanosecond(), currentTime.Location())
-		// 如果EndTime早于startTime的时间，则EndTime的日期部分用明天的日期补齐
-		if periodEndTime.Before(periodStartTime) {
-			periodEndTime = periodEndTime.Add(24 * time.Hour)
-		}
-		return &periodStartTime, &periodEndTime
-	}
-	return nil, nil
-}
-
-// todo，可以增加并发Job数的限制
+// todo，feat 可以增加并发Job数的限制
 // 调用该函数时外部必须拿tableMutex锁和workingTablesMutex锁
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
 	if status != queuedStatus && status != notInTimePeriodStatus {
@@ -643,67 +475,6 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 	return true
 }
 
-func (jc *JobController) getBatchIDToExec(ctx context.Context, batchTableSchema, batchTableName string) (string, error) {
-	getBatchIDToExecSQL := fmt.Sprintf(sqlTemplateGetBatchIDToExec, batchTableName)
-	qr, err := jc.execQuery(ctx, batchTableSchema, getBatchIDToExecSQL)
-	if err != nil {
-		return "", err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return "", nil
-	}
-	return qr.Named().Rows[0].ToString("batch_id")
-}
-
-func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID string) error {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
-		sqltypes.StringBindVariable(batchID),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// todo，由于目前尚不支持一个job的batch并行，因此对job的batch表进行访问不用设锁
-func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTableName, tableSchema string) (batchSQL, batchCountSQL string, err error) {
-	getBatchSQLWithTableName := fmt.Sprintf(sqlTemplateGetBatchSQLsByID, batchTableName)
-	query, err := sqlparser.ParseAndBind(getBatchSQLWithTableName,
-		sqltypes.StringBindVariable(batchID))
-	if err != nil {
-		return "", "", err
-	}
-	qr, err := jc.execQuery(ctx, tableSchema, query)
-	if err != nil {
-		return "", "", err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return "", "", errors.New("the len of qr of getting batch sql by ID is not 1")
-	}
-	batchSQL, _ = qr.Named().Rows[0].ToString("batch_sql")
-	batchCountSQL, _ = qr.Named().Rows[0].ToString("batch_count_sql_when_creating_batch")
-	return batchSQL, batchCountSQL, nil
-}
-
-func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tableSchema string) (string, error) {
-	getMaxBatchIDWithTableName := fmt.Sprintf(sqlTemplateGetMaxBatchID, batchTableName)
-	qr, err := jc.execQuery(ctx, tableSchema, getMaxBatchIDWithTableName)
-	if err != nil {
-		return "", err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return "", errors.New("the len of qr of getting batch sql by ID is not 1")
-	}
-	return qr.Named().Rows[0].ToString("max_batch_id")
-}
-
 func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchID string, batchSize int64) (err error) {
 	defer jc.env.LogError()
 
@@ -715,6 +486,12 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
+	failpoint.Inject(failpointkey.CreateErrorWhenExecutingBatch.Name, func(val failpoint.Value) {
+		temp, ok := val.(bool)
+		if ok && temp {
+			err = errors.New("error created by failpoint")
+		}
+	})
 
 	if err != nil {
 		return err
@@ -769,7 +546,13 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	//batchSize = 30
+	// this failpoint is used to test splitBatchIntoTwo
+	failpoint.Inject(failpointkey.ModifyBatchSize.Name, func(val failpoint.Value) {
+		temp, ok := val.(int)
+		if ok {
+			batchSize = int64(temp)
+		}
+	})
 	if expectedRow > batchSize {
 		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
@@ -922,7 +705,6 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	}
 	// 3.2.插入新batch条目
 	newCurrentBatchSQL = curBatchSQL
-	// todo 1-1 -> 1-2开始
 	nextBatchID, err := genNewBatchID(batchID)
 	if err != nil {
 		return "", err
@@ -968,7 +750,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 
 		// 定时器触发时执行的函数
 		// 检查状态是否为running，可能为paused/canceled
-		status, err := jc.GetStrJobInfo(ctx, uuid, "status")
+		status, err := jc.getStrJobInfo(ctx, uuid, "status")
 		if err != nil {
 			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
@@ -1026,7 +808,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 				return
 			case failPolicySkip:
 				// todo，由于目前batch是串行执行，不存在多个协程同时访问batch表的情况，因此暂时不用加锁。
-				_ = jc.updateBatchStatus(tableSchema, batchTable, batchIDToExec, failPolicySkip, err.Error())
+				_ = jc.updateBatchStatus(tableSchema, batchTable, failPolicySkip, batchIDToExec, err.Error())
 				continue
 			case failPolicyPause:
 				msg := fmt.Sprintf("batch %s failed, pause job: %s", batchIDToExec, err.Error())
@@ -1047,25 +829,6 @@ func (jc *JobController) deleteDMLJobRunningMeta(uuid, table string) {
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
 	delete(jc.workingTables, table)
-}
-
-// execQuery execute sql by using connect poll,so if targetString is not empty, it will add prefix `use database` first then execute sql.
-func (jc *JobController) execQuery(ctx context.Context, targetString, query string) (result *sqltypes.Result, err error) {
-	defer jc.env.LogError()
-	var setting pools.Setting
-	if targetString != "" {
-		setting.SetWithoutDBName(false)
-		setting.SetQuery(fmt.Sprintf("use %s", targetString))
-		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
-	}
-	conn, err := jc.pool.Get(ctx, &setting)
-	if err != nil {
-		return result, err
-	}
-	qr, err := conn.Exec(ctx, query, math.MaxInt32, true)
-	conn.Recycle()
-	return qr, err
-
 }
 
 func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, subtaskSQL, uuid string) (affectedRows int64, err error) {
@@ -1108,189 +871,10 @@ func (jc *JobController) execSubtaskAndRecord(ctx context.Context, tableSchema, 
 	return affectedRows, nil
 }
 
-// 该函数拿锁
-func (jc *JobController) updateJobMessage(ctx context.Context, uuid, message string) error {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateMessage,
-		sqltypes.StringBindVariable(message),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	return err
-}
-
-func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string, affectedRows int64) error {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
-		sqltypes.Int64BindVariable(affectedRows),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	return err
-}
-
-func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, statusSetTime string) (*sqltypes.Result, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
-		sqltypes.StringBindVariable(status),
-		sqltypes.StringBindVariable(statusSetTime),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return &sqltypes.Result{}, err
-	}
-	return jc.execQuery(ctx, "", submitQuery)
-}
-
-func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeriodStart, timePeriodEnd string) (*sqltypes.Result, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateTimePeriod,
-		sqltypes.StringBindVariable(timePeriodStart),
-		sqltypes.StringBindVariable(timePeriodEnd),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return &sqltypes.Result{}, err
-	}
-	return jc.execQuery(ctx, "", submitQuery)
-}
-
-func (jc *JobController) GetIntJobInfo(ctx context.Context, uuid, fieldName string) (int64, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return 0, err
-	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return 0, err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return 0, fmt.Errorf("uuid %s has %d entrys in the table instead of 1", uuid, len(qr.Named().Rows))
-	}
-	return qr.Named().Rows[0].ToInt64(fieldName)
-}
-
-func (jc *JobController) GetStrJobInfo(ctx context.Context, uuid, fieldName string) (string, error) {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return "", err
-	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return "", err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return "", fmt.Errorf("uuid %s has %d entrys in the table instead of 1", uuid, len(qr.Named().Rows))
-	}
-	return qr.Named().Rows[0].ToString(fieldName)
-}
-
-func buildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
-
-func buildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
-}
-
-func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableName string) ([]PKInfo, error) {
-	// 1. 先获取pks 的名字
-	submitQuery, err := sqlparser.ParseAndBind(sqlGetTablePk,
-		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(tableName))
-	if err != nil {
-		return nil, err
-	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return nil, err
-	}
-	var pkNames []string
-	for _, row := range qr.Named().Rows {
-		pkNames = append(pkNames, row["COLUMN_NAME"].ToString())
-	}
-
-	// 2. 根据获得的pk列的名字，去原表中查一行数据，借助封装好的Value对象获得每个pk的类型
-	pkCols := ""
-	firstPK := true
-	for _, pkName := range pkNames {
-		if !firstPK {
-			pkCols += ","
-		}
-		pkCols += pkName
-		firstPK = false
-	}
-	selectPKCols := fmt.Sprintf(sqlTemplateSelectPKCols, pkCols, tableSchema, tableName)
-	qr, err = jc.execQuery(ctx, "", selectPKCols)
-	if err != nil {
-		return nil, err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return nil, errors.New("the len of qr of select pk cols should be 1")
-	}
-	// 获得每一列的type，并生成pkInfo切片
-	var pkInfos []PKInfo
-	for _, pkName := range pkNames {
-		pkInfos = append(pkInfos, PKInfo{pkName: pkName, pkType: qr.Named().Rows[0][pkName].Type()})
-	}
-
-	return pkInfos, nil
-}
-
-func (jc *JobController) getTableColNames(ctx context.Context, tableSchema, tableName string) ([]string, error) {
-	submitQuery, err := sqlparser.ParseAndBind(sqlGetTableColNames,
-		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(tableName))
-	if err != nil {
-		return nil, err
-	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return nil, err
-	}
-	var colNames []string
-	for _, row := range qr.Named().Rows {
-		colNames = append(colNames, row["COLUMN_NAME"].ToString())
-	}
-	return colNames, nil
-}
-
-// todo 状态机。 struct
 func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	ctx := context.Background()
 
-	// 用于crash后，重启时，先扫一遍running和paused的
+	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
 	qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 	if qr != nil {
 
@@ -1310,16 +894,13 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 			periodStartTimePtr, periodEndTimePtr := getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
 			failPolicy := row["fail_policy"].ToString()
 
-			if status == runningStatus {
+			switch status {
+			case runningStatus:
 				jc.initDMLJobRunningMeta(uuid, table)
 				go jc.dmlJobBatchRunner(uuid, table, tableSchema, jobBatchTable, failPolicy, batchInterval, batchSize, periodStartTimePtr, periodEndTimePtr)
-			}
-
-			// 对于暂停的，不启动协程，只需要恢复内存元数据
-			if status == pausedStatus {
+			case pausedStatus:
 				jc.initDMLJobRunningMeta(uuid, table)
 			}
-
 		}
 
 		jc.workingTablesMutex.Unlock()
@@ -1327,8 +908,10 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	}
 
 	log.Info("check of running and paused done \n")
+	// 内存状态恢复完毕后，唤醒Job调度协程
 	checkBeforeSchedule <- struct{}{}
 
+	// 2.每隔一段时间轮询一次，根据job的状态进行不同的处理
 	timer := time.NewTicker(healthCheckInterval)
 	defer timer.Stop()
 
@@ -1337,7 +920,7 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
 			return
 		}
-		// todo, 增加对长时间未增加 rows的处理
+
 		jc.tableMutex.Lock()
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)
 		if qr != nil {
@@ -1348,12 +931,12 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 				jobBatchTable := row["batch_info_table_name"].ToString()
 				tableSchema := row["table_schema"].ToString()
 
-				statusSetTimeObj, err := time.Parse(time.RFC3339, statusSetTime)
-				if err != nil {
-					continue
-				}
-
-				if status == canceledStatus || status == failedStatus || status == completedStatus {
+				switch status {
+				case canceledStatus, failedStatus, completedStatus:
+					statusSetTimeObj, err := time.Parse(time.RFC3339, statusSetTime)
+					if err != nil {
+						continue
+					}
 					if time.Now().After(statusSetTimeObj.Add(tableEntryGCInterval)) {
 						deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
 							sqltypes.StringBindVariable(uuid))
@@ -1361,9 +944,10 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 							continue
 						}
 						_, _ = jc.execQuery(ctx, "", deleteJobSQL)
-
 						_, _ = jc.execQuery(ctx, tableSchema, fmt.Sprintf(sqlTemplateDropTable, jobBatchTable))
 					}
+				case runningStatus:
+					// todo feat 增加对长时间未增加rows的running job的处理
 				}
 			}
 		}
@@ -1408,7 +992,7 @@ func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName
 			return "", "", "", "", nil, nil, nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
-		// todo 目前暂不支持join和多表
+		// todo feat 目前暂不支持join和多表
 		if !ok {
 			return "", "", "", "", nil, nil, nil, errors.New("don't support join table now")
 		}
@@ -1435,7 +1019,6 @@ func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName
 			return "", "", "", "", nil, nil, nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
-		// todo 目前暂不支持join和多表
 		if !ok {
 			return "", "", "", "", nil, nil, nil, errors.New("don't support join table now")
 		}
@@ -1458,13 +1041,16 @@ func (jc *JobController) parseDML(sql, tableSchema string) (selectSQL, tableName
 		}
 
 	default:
-		// todo support select...into, replace...into
+		// todo feat support select...into, replace...into
 		return "", "", "", "", nil, nil, nil, errors.New("the type of sql is not supported")
 	}
 
 	// 获得该DML所相关表的PK信息，将其中的PK列组成字符串pkPart，形如"PKCol1,PKCol2,PKCol3"
 	ctx := context.Background()
 	pkInfos, err = jc.getTablePkInfo(ctx, tableSchema, tableName)
+	if existUnSupportedPK(pkInfos) {
+		return "", "", "", "", nil, nil, nil, errors.New("the table has unsupported PK type")
+	}
 	if err != nil {
 		return "", "", "", "", nil, nil, nil, err
 	}
@@ -1499,11 +1085,9 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 
 	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
 	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
-	// todo _vt_BATCH_uuid
-	batchTableName := "batch_info_table_" + strings.Replace(jobUUID, "-", "_", -1)
+	batchTableName := "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
 
-	// todo，删除batchSQL，batchCountSQL，字段，在内存中生成具体的sql
-	// todo mysql generate col 或者 go代码实现
+	// todo feat 删除batchSQL，batchCountSQL，字段，在内存中生成具体的sql, mysql generate col 或者 go代码实现
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(ctx, tableSchema, createTableSQL)
 	if err != nil {
@@ -1591,18 +1175,6 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	return batchTableName, nil
 }
 
-func currentBatchIDInc(currentBatchID string) (string, error) {
-	if strings.Contains(currentBatchID, "-") {
-		currentBatchID = strings.Split(currentBatchID, "-")[0]
-	}
-	currentBatchIDInt64, err := strconv.ParseInt(currentBatchID, 10, 64)
-	if err != nil {
-		return "", err
-	}
-	currentBatchIDInt64++
-	return strconv.FormatInt(currentBatchIDInt64, 10), nil
-}
-
 // 通知jobScheduler让它立刻开始一次调度。
 func (jc *JobController) notifyJobScheduler() {
 	if jc.schedulerNotifyChan == nil {
@@ -1617,52 +1189,16 @@ func (jc *JobController) notifyJobScheduler() {
 	}
 }
 
-func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCount int64, err error) {
-	query, err := sqlparser.ParseAndBind(sqlGetIndexCount,
-		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(tableName))
-	if err != nil {
-		return 0, err
-	}
-	ctx := context.Background()
-	qr, err := jc.execQuery(ctx, "", query)
-	if err != nil {
-		return 0, err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return 0, err
-	}
-	return qr.Named().Rows[0]["index_count"].ToInt64()
-}
-
-func genNewBatchID(batchID string) (newBatchID string, err error) {
-	// 产生新的batchID
-	if strings.Contains(batchID, "-") {
-		parts := strings.Split(batchID, "-")
-		num, err := strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return "", err
+func existUnSupportedPK(pkInfos []PKInfo) bool {
+	for _, pk := range pkInfos {
+		switch pk.pkType {
+		case sqltypes.Float64, sqltypes.Float32, sqltypes.Decimal,
+			sqltypes.VarBinary, sqltypes.Blob, sqltypes.Binary, sqltypes.Bit,
+			sqltypes.Text, sqltypes.VarChar, sqltypes.Char,
+			sqltypes.Enum, sqltypes.Set, sqltypes.Tuple, sqltypes.Geometry, sqltypes.TypeJSON, sqltypes.Expression,
+			sqltypes.HexNum, sqltypes.HexVal, sqltypes.BitNum:
+			return true
 		}
-		newBatchID = fmt.Sprintf("%s-%d", parts[0], num+1)
-	} else {
-		num, err := strconv.ParseInt(batchID, 10, 64)
-		if err != nil {
-			return "", err
-		}
-		newBatchID = fmt.Sprintf("%d-1", num)
 	}
-	return newBatchID, nil
-}
-
-func (jc *JobController) updateBatchStatus(batchTableSchema, batchTableName, status, batchID, errStr string) (err error) {
-	updateBatchStatusAndAffectedRowsSQL := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTableName)
-	query, err := sqlparser.ParseAndBind(updateBatchStatusAndAffectedRowsSQL,
-		sqltypes.StringBindVariable(status+": "+errStr),
-		sqltypes.Int64BindVariable(0),
-		sqltypes.StringBindVariable(batchID))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(context.Background(), batchTableSchema, query)
-	return err
+	return false
 }

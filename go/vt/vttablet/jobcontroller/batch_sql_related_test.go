@@ -215,3 +215,38 @@ func TestBatchSQL(t *testing.T) {
 	assert.Equalf(t, expectedLsStr, lsStr, "getBatchSQLGreatThanAndLessThanExprNode(%v)", batchSQLStmt)
 
 }
+
+func TestStripComments(t *testing.T) {
+	tests := []struct {
+		name string
+		sql  string
+		want string
+	}{
+		{
+			name: "TestStripComments-Test1",
+			sql:  "select * from t1 where 1 = 1 /* comment */ and 2 = 2",
+			want: "select * from t1 where 1 = 1 and 2 = 2",
+		},
+		{
+			name: "TestStripComments-Test2",
+			sql:  "select/* comment */ * from t1 where 1 = 1 and 2 = 2",
+			want: "select * from t1 where 1 = 1 and 2 = 2",
+		},
+		{
+			name: "TestStripComments-Test3",
+			sql:  "update/*vt+ dml_split=true */your_table set name='brainsplit' where 1=1;",
+			want: "update your_table set name='brainsplit' where 1=1;",
+		},
+		{
+			name: "TestStripComments-Test3",
+			sql:  "update             /*vt+ dml_split=true */  your_table set name='brainsplit' where 1=1;",
+			want: "update your_table set name='brainsplit' where 1=1;",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := sqlparser.StripComments(tt.sql)
+			assert.Equalf(t, tt.want, got, "stripComments(%v)", tt.sql)
+		})
+	}
+}
