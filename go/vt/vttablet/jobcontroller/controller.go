@@ -556,6 +556,10 @@ func (jc *JobController) jobScheduler(checkBeforeSchedule chan struct{}) {
 	defer timer.Stop()
 
 	for {
+		// 防止vttablet不再是primary时该协程继续执行
+		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
+			return
+		}
 		select {
 		case <-timer.C:
 		case <-jc.schedulerNotifyChan:
@@ -728,8 +732,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 
 	// 2.查询batch sql预计影响的行数，如果超过阈值，则生成新的batch ID
-	batchCountSQLForShare := batchCountSQL + " FOR SHARE"
-	// todo 检查batch status是否为completed，脑裂问题
+	batchCountSQLForShare := batchCountSQL + " FOR UPDATE"
 	qr, err := conn.Exec(ctx, batchCountSQLForShare, math.MaxInt32, true)
 	if err != nil {
 		return err
@@ -738,6 +741,34 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return errors.New("the len of qr of count expected batch size is not 1")
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
+
+	// 检查batch status是否为completed，防止vttablet脑裂问题导致一个batch被多次执行
+	sqlGetBatchStatus := fmt.Sprintf(sqlTemplateGetBatchStatus, batchTable)
+	queryGetBatchStatus, err := sqlparser.ParseAndBind(sqlGetBatchStatus, sqltypes.StringBindVariable(batchID))
+	if err != nil {
+		return err
+	}
+	qr, err = conn.Exec(ctx, queryGetBatchStatus, math.MaxInt32, true)
+	if err != nil {
+		return err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return errors.New("the len of qr of count expected batch size is not 1")
+	}
+	batchStatus, _ := qr.Named().Rows[0].ToString("batch_status")
+	if batchStatus == completedStatus {
+		return nil
+	}
+
+	// 将batchID信息记录在系统表中便于用户查看
+	queryUpdateDealingBatchID, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
+		sqltypes.StringBindVariable(batchID),
+		sqltypes.StringBindVariable(uuid))
+	_, err = conn.Exec(ctx, queryUpdateDealingBatchID, math.MaxInt32, false)
+	if err != nil {
+		return err
+	}
+
 	//batchSize = 30
 	if expectedRow > batchSize {
 		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
@@ -930,6 +961,11 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 
 	// 在一个无限循环中等待定时器触发
 	for range timer.C {
+		// 防止vttablet不再是primary时该协程继续执行
+		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
+			return
+		}
+
 		// 定时器触发时执行的函数
 		// 检查状态是否为running，可能为paused/canceled
 		status, err := jc.GetStrJobInfo(ctx, uuid, "status")
@@ -942,6 +978,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 		}
 
 		// 检查是否在运维窗口内
+		// todo，增加时区支持，以及是否可能由于脑裂问题导致错误fail掉job?
 		if timePeriodStart != nil && timePeriodEnd != nil {
 			currentTime := time.Now()
 			if !(currentTime.After(*timePeriodStart) && currentTime.Before(*timePeriodEnd)) {
@@ -970,13 +1007,6 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			if err != nil {
 				jc.FailJob(ctx, uuid, err.Error(), table)
 			}
-			return
-		}
-
-		// 将batchID信息记录在系统表中便于用户查看
-		err = jc.updateDealingBatchID(ctx, uuid, batchIDToExec)
-		if err != nil {
-			jc.FailJob(ctx, uuid, err.Error(), table)
 			return
 		}
 
@@ -1303,6 +1333,10 @@ func (jc *JobController) jobHealthCheck(checkBeforeSchedule chan struct{}) {
 	defer timer.Stop()
 
 	for range timer.C {
+		// 防止vttablet不再是primary时该协程继续执行
+		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
+			return
+		}
 		// todo, 增加对长时间未增加 rows的处理
 		jc.tableMutex.Lock()
 		qr, _ := jc.execQuery(ctx, "", sqlDMLJobGetAllJobs)

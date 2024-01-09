@@ -111,7 +111,7 @@ func genBatchSQL(sql string, stmt sqlparser.Statement, whereExpr sqlparser.Expr,
 // 1.在sql中可以正确地使用between或>=,<=进行比较运算，且没有精度问题。
 // 2.可以转换成go中的int64，float64或string三种类型之一，且转换后，在golang中的比较规则和mysql中的比较规则相同
 func genCountSQL(tableSchema, tableName, whereExpr string) (countSQL string) {
-	countSQL = fmt.Sprintf("select count(*) as count_rows from %s.%s where %s)",
+	countSQL = fmt.Sprintf("select count(*) as count_rows from %s.%s where %s",
 		tableSchema, tableName, whereExpr)
 	return countSQL
 }
@@ -119,9 +119,9 @@ func genCountSQL(tableSchema, tableName, whereExpr string) (countSQL string) {
 func genBatchStartAndEndStr(currentBatchStart, currentBatchEnd []sqltypes.Value) (currentBatchStartStr string, currentBatchStartEnd string, err error) {
 	prefix := ""
 	for i := range currentBatchStart {
-		prefix = ","
 		currentBatchStartStr += prefix + currentBatchStart[i].ToString()
 		currentBatchStartEnd += prefix + currentBatchEnd[i].ToString()
+		prefix = ","
 	}
 	return currentBatchStartStr, currentBatchStartEnd, nil
 }
