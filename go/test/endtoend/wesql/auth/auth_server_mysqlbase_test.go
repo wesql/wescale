@@ -8,8 +8,9 @@ package auth
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"vitess.io/vitess/go/mysql"
 )
