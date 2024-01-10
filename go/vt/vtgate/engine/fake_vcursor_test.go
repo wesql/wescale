@@ -55,6 +55,10 @@ var _ SessionActions = (*noopVCursor)(nil)
 type noopVCursor struct {
 }
 
+func (t *noopVCursor) ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error) {
+	panic("implement me")
+}
+
 func (t *noopVCursor) SetEnableInterceptionForDMLWithoutWhere(ctx context.Context, b bool) error {
 	panic("implement me")
 }

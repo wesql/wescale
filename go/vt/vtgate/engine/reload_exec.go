@@ -1,7 +1,13 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package engine
 
 import (
 	"context"
+
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
