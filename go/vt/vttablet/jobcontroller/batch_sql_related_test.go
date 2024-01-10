@@ -250,3 +250,14 @@ func TestStripComments(t *testing.T) {
 		})
 	}
 }
+
+func TestGenSelectPKsSQL(t *testing.T) {
+	batchCountSQL := "select count(*) from t where 1 = 1"
+	batchCountSQLStmt, _ := sqlparser.Parse(batchCountSQL)
+	pkInfos := []PKInfo{{pkName: "pk1"}, {pkName: "pk2"}}
+	gotSQL := genSelectPKsSQL(batchCountSQLStmt, pkInfos)
+	expectedSQL := "select pk1, pk2 from t where 1 = 1"
+	assert.Equalf(t, expectedSQL, gotSQL, "genSelectPKsSQL(%v,%v)", batchCountSQLStmt, pkInfos)
+	// batchCountSQLStmt should not be changed
+	assert.Equalf(t, batchCountSQL, sqlparser.String(batchCountSQLStmt), "genSelectPKsSQL(%v,%v)", batchCountSQLStmt, pkInfos)
+}

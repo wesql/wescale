@@ -31,13 +31,13 @@ const (
                                       table_name,
                                       batch_info_table_schema,
                                       batch_info_table_name,
-                                      batch_interval_in_ms,
-                                      batch_size,
                                       status,
                                       status_set_time,
                                       fail_policy,
                                       running_time_period_start,
-                                      running_time_period_end) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      running_time_period_end,
+                                      batch_interval_in_ms,
+                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 

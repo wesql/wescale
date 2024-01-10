@@ -72,6 +72,87 @@ func (jc *JobController) execQuery(ctx context.Context, targetString, query stri
 
 }
 
+func parseDML(sql string) (tableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, err error) {
+	stmt, err = sqlparser.Parse(sql)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	// 根据stmt，分析DML SQL的各个部分，包括涉及的表，where条件
+	switch s := stmt.(type) {
+	case *sqlparser.Delete:
+		if len(s.TableExprs) != 1 {
+			return "", nil, nil, errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		// todo feat 目前暂不支持join和多表
+		if !ok {
+			return "", nil, nil, errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+		// the sql should have where clause
+		if s.Where == nil {
+			return "", nil, nil, errors.New("the SQL should have where clause")
+		}
+		whereExpr = s.Where.Expr
+		// the sql should not have limit clause and order by clause
+		limitPart := sqlparser.String(s.Limit)
+		if limitPart != "" {
+			return "", nil, nil, errors.New("the SQL should not have limit clause")
+		}
+		orderByPart := sqlparser.String(s.OrderBy)
+		if orderByPart != "" {
+			return "", nil, nil, errors.New("the SQL should not have order by clause")
+		}
+
+	case *sqlparser.Update:
+		if len(s.TableExprs) != 1 {
+			return "", nil, nil, errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		if !ok {
+			return "", nil, nil, errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+		// the sql should have where clause
+		if s.Where == nil {
+			return "", nil, nil, errors.New("the SQL should have where clause")
+		}
+		whereExpr = s.Where.Expr
+		// the sql should not have limit clause and order by clause
+		limitPart := sqlparser.String(s.Limit)
+		if limitPart != "" {
+			return "", nil, nil, errors.New("the SQL should not have limit clause")
+		}
+		orderByPart := sqlparser.String(s.OrderBy)
+		if orderByPart != "" {
+			return "", nil, nil, errors.New("the SQL should not have order by clause")
+		}
+
+	default:
+		// todo feat support select...into, replace...into
+		return "", nil, nil, errors.New("the type of sql is not supported")
+	}
+
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	return tableName, whereExpr, stmt, err
+}
+
+func getPKColsStr(pkInfos []PKInfo) string {
+	pkCols := ""
+	firstPK := true
+	for _, pkInfo := range pkInfos {
+		if !firstPK {
+			pkCols += ","
+		}
+		pkCols += pkInfo.pkName
+		firstPK = false
+	}
+	return pkCols
+}
+
 // 该函数拿锁
 func (jc *JobController) updateJobMessage(ctx context.Context, uuid, message string) error {
 	jc.tableMutex.Lock()
@@ -350,4 +431,76 @@ func (jc *JobController) updateBatchStatus(batchTableSchema, batchTableName, sta
 	}
 	_, err = jc.execQuery(context.Background(), batchTableSchema, query)
 	return err
+}
+
+func (args *JobRunnerArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
+	args.uuid = row["job_uuid"].ToString()
+	args.tableSchema = row["table_schema"].ToString()
+	args.table = row["table_name"].ToString()
+	args.batchInfoTable = row["batch_info_table_name"].ToString()
+	args.failPolicy = row["fail_policy"].ToString()
+
+	batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
+	batchSize, _ := row["batch_size"].ToInt64()
+	args.batchInterval = batchInterval
+	args.batchSize = batchSize
+
+	runningTimePeriodStart := row["running_time_period_start"].ToString()
+	runningTimePeriodEnd := row["running_time_period_end"].ToString()
+	args.timePeriodStart, args.timePeriodEnd = getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+
+}
+
+func (args *JobHealthCheckArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
+	args.uuid = row["job_uuid"].ToString()
+	args.tableSchema = row["table_schema"].ToString()
+	args.batchInfoTable = row["batch_info_table_name"].ToString()
+	args.statusSetTime = row["status_set_time"].ToString()
+}
+
+func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr string, batchSize int64) (err error) {
+	insertBatchSQLWithTableName := fmt.Sprintf(sqlTemplateInsertBatchEntry, batchTableName)
+	insertBatchSQLQuery, err := sqlparser.ParseAndBind(insertBatchSQLWithTableName,
+		sqltypes.StringBindVariable(currentBatchID),
+		sqltypes.StringBindVariable(batchSQL),
+		sqltypes.StringBindVariable(countSQL),
+		sqltypes.Int64BindVariable(batchSize),
+		sqltypes.StringBindVariable(batchStartStr),
+		sqltypes.StringBindVariable(batchEndStr))
+	if err != nil {
+		return err
+	}
+	_, err = jc.execQuery(ctx, tableSchema, insertBatchSQLQuery)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema,
+	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd string,
+	timeGapInMs, batchSize int64) (err error) {
+	ctx := context.Background()
+	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
+		sqltypes.StringBindVariable(jobUUID),
+		sqltypes.StringBindVariable(sql),
+		sqltypes.StringBindVariable(tableSchema),
+		sqltypes.StringBindVariable(tableName),
+		sqltypes.StringBindVariable(batchInfoTableSchema),
+		sqltypes.StringBindVariable(batchInfoTable),
+		sqltypes.StringBindVariable(jobStatus),
+		sqltypes.StringBindVariable(statusSetTime),
+		sqltypes.StringBindVariable(failPolicy),
+		sqltypes.StringBindVariable(runningTimePeriodStart),
+		sqltypes.StringBindVariable(runningTimePeriodEnd),
+		sqltypes.Int64BindVariable(timeGapInMs),
+		sqltypes.Int64BindVariable(batchSize))
+	if err != nil {
+		return err
+	}
+	_, err = jc.execQuery(ctx, "", submitQuery)
+	if err != nil {
+		return err
+	}
+	return nil
 }
