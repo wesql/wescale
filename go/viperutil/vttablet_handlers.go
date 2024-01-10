@@ -23,11 +23,11 @@ func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletS
 	})
 
 	v.ReloadHandler.AddReloadHandler("queryserver-config-stream-pool-size", func(key string, value string, fs *pflag.FlagSet) {
-		tsv.SetPoolSize(parseInt(key, value))
+		tsv.SetStreamPoolSize(parseInt(key, value))
 	})
 
 	v.ReloadHandler.AddReloadHandler("queryserver-config-transaction-cap", func(key string, value string, fs *pflag.FlagSet) {
-		tsv.SetPoolSize(parseInt(key, value))
+		tsv.SetTxPoolSize(parseInt(key, value))
 	})
 }
 
