@@ -199,7 +199,6 @@ func (tacl *TableACL) Close() {
 	}
 }
 func (tacl *TableACL) InitMysqlBasedACL() error {
-	//tacl.conns.Open(tacl.dbConfig, tacl.dbConfig, tacl.dbConfig)
 	return tacl.LoadFromMysql(&tableaclpb.Config{})
 }
 func (tacl *TableACL) checkSimpleACL(configFile string, config *tableaclpb.Config) error {
@@ -270,7 +269,6 @@ func InitFromProto(config *tableaclpb.Config) error {
 // For table-level privileges, 'database.table' is used directly
 func (tacl *TableACL) loadFromMysqlBase(newACL func([]string) (acl.ACL, error)) (aclEntries, error) {
 	entries := aclEntries{}
-	//
 	globalEntries, err := tacl.loadGlobalFromMysqlBase(newACL)
 	if err != nil {
 		return nil, err

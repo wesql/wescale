@@ -129,17 +129,21 @@ type vcursorImpl struct {
 // 'reload users' : load user authentication information into vtgate
 // 'reload privileges' : load user authorized information into vttablet
 func (vc *vcursorImpl) ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error) {
+	var affectNum uint64
+	var err error
 	switch command {
 	case sqlparser.ReloadUsers:
-		err := mysql.ReloadUsers()
+		affectNum, err = mysql.ReloadUsers()
 		if err != nil {
 			return nil, err
 		}
 	case sqlparser.ReloadPrivileges:
-		vc.executor.reloadExec(ctx, &command)
-		// TODO: geray using grpc send cmd to vttablet
+		err := vc.executor.reloadExec(ctx, &command)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &sqltypes.Result{}, nil
+	return &sqltypes.Result{RowsAffected: affectNum}, nil
 }
 
 // newVcursorImpl creates a vcursorImpl. Before creating this object, you have to separate out any marginComments that came with
