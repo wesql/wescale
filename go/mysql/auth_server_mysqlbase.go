@@ -193,7 +193,7 @@ func (a *AuthServerMysqlBase) reLoadUser() (uint64, error) {
 			SourceHost: host,
 		}
 		entrie.patChars, entrie.patTypes = stringutil.CompilePatternBytes(host, '\\')
-		if plugin == PluginMysqlNativePassword {
+		if plugin == PluginCachingSha2Password {
 			entrie.MysqlCachingSha2Password = authenticationString
 		}
 		if plugin == PluginMysqlNativePassword {
