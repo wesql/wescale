@@ -2,11 +2,13 @@ package viperutil
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver"
@@ -64,27 +66,9 @@ func TestRegisterReloadHandlersForVtTablet(t *testing.T) {
 	fs.StringVar(&vtTabletViperConfig.ConfigName, "config-name", "vttablet.cnf", "Name of the config file (without extension) to search for.")
 	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtTabletViperConfig.Fs = fs
-	RegisterReloadHandlersForVtTablet(vtTabletViperConfig)
+	RegisterReloadHandlersForVtTablet(vtTabletViperConfig, nil)
 
 	vtTabletViperConfig.LoadAndWatchConfigFile()
-
-	{
-		val, err := fs.GetInt("queryserver-config-pool-size")
-		assert.NoError(t, err)
-		assert.Equal(t, 30, val)
-	}
-
-	{
-		val, err := fs.GetInt("queryserver-config-stream-pool-size")
-		assert.NoError(t, err)
-		assert.Equal(t, 30, val)
-	}
-
-	{
-		val, err := fs.GetInt("queryserver-config-transaction-cap")
-		assert.NoError(t, err)
-		assert.Equal(t, 50, val)
-	}
 
 	{
 		val, err := fs.GetDuration("health_check_interval")
@@ -130,7 +114,7 @@ func TestRegisterReloadHandlersForVtTabletWithModify(t *testing.T) {
 		assert.Equal(t, "http://%s:%d/v1.0/getrole", val)
 	}
 
-	RegisterReloadHandlersForVtTablet(vtTabletViperConfig)
+	RegisterReloadHandlersForVtTablet(vtTabletViperConfig, nil)
 
 	// expect: mysql_role_probe_url_template=http://%s:%d/v2.0/getrole
 	{

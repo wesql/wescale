@@ -3,6 +3,8 @@ package viperutil
 import (
 	"sync"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"github.com/spf13/pflag"
 )
 
@@ -29,6 +31,7 @@ func (r *Reloader) handleConfigChange(key string, value string, fs *pflag.FlagSe
 	defer r.mu.Unlock()
 
 	if h, ok := r.handlerMap[key]; ok {
+		log.Infof("reloading config %s=%s", key, value)
 		h(key, value, fs)
 	}
 }

@@ -80,7 +80,6 @@ func registerViperConfigFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&vtTabletViperConfig.ConfigName, "config-name", "vttablet.cnf", "Name of the config file (without extension) to search for.")
 	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtTabletViperConfig.Fs = fs
-	viperutil.RegisterReloadHandlersForVtTablet(vtTabletViperConfig)
 }
 
 func init() {
@@ -117,6 +116,7 @@ func main() {
 
 	ts := topo.Open()
 	qsc := createTabletServer(config, ts, tabletAlias)
+	viperutil.RegisterReloadHandlersForVtTablet(vtTabletViperConfig, qsc)
 
 	mysqld := mysqlctl.NewMysqld(config.DB)
 	servenv.OnClose(mysqld.Close)
