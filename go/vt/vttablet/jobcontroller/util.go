@@ -439,6 +439,7 @@ func (args *JobRunnerArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 	args.table = row["table_name"].ToString()
 	args.batchInfoTable = row["batch_info_table_name"].ToString()
 	args.failPolicy = row["fail_policy"].ToString()
+	args.status = row["status"].ToString()
 
 	batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
 	batchSize, _ := row["batch_size"].ToInt64()
@@ -456,6 +457,7 @@ func (args *JobHealthCheckArgs) initArgsByQueryResult(row sqltypes.RowNamedValue
 	args.tableSchema = row["table_schema"].ToString()
 	args.batchInfoTable = row["batch_info_table_name"].ToString()
 	args.statusSetTime = row["status_set_time"].ToString()
+	args.status = row["status"].ToString()
 }
 
 func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr string, batchSize int64) (err error) {
