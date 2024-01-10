@@ -163,9 +163,8 @@ func TestBatchSQL(t *testing.T) {
 	currentBatchEnd := []sqltypes.Value{sqltypes.NewInt64(9)}
 	pkInfos := []PKInfo{{pkName: "pk1"}}
 	batchSQL, finalWhereStr, _ := genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
-	// Different from the 1st test case, here we enclose userWhereStr with parentheses because it has "or" operators.
-	expectedBatchSQL := fmt.Sprintf("update t set c = 1 where (%s) and %s", userWhereStr, pkConditionStr)
-	expectedWhereStr := fmt.Sprintf("(%s) and %s", userWhereStr, pkConditionStr)
+	expectedBatchSQL := fmt.Sprintf("update t set c = 1 where %s and %s", userWhereStr, pkConditionStr)
+	expectedWhereStr := fmt.Sprintf("%s and %s", userWhereStr, pkConditionStr)
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	assert.Equalf(t, expectedWhereStr, finalWhereStr, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 
@@ -187,7 +186,7 @@ func TestBatchSQL(t *testing.T) {
 
 	// repeat the same steps but with different args
 	userWhereStr = "1 = 1 and 2 = 2 or 3 > 2 and 1 > 3 or 3 > 4 and 1 = 1"
-	pkConditionStr = "((pk1 > 1 or pk1 = 1 and pk2 >= 1)  and (pk1 < 9 or pk1 = 9 and pk2 <= 9))"
+	pkConditionStr = "((pk1 > 1 or pk1 = 1 and pk2 >= 1) and (pk1 < 9 or pk1 = 9 and pk2 <= 9))"
 	sql = fmt.Sprintf("update t set c = 1 where %s", userWhereStr)
 	stmt, _ = sqlparser.Parse(sql)
 	whereExpr = stmt.(*sqlparser.Update).Where
@@ -195,8 +194,9 @@ func TestBatchSQL(t *testing.T) {
 	currentBatchEnd = []sqltypes.Value{sqltypes.NewInt64(9), sqltypes.NewInt64(9)}
 	pkInfos = []PKInfo{{pkName: "pk1"}, {pkName: "pk2"}}
 	batchSQL, finalWhereStr, _ = genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
-	expectedBatchSQL = fmt.Sprintf("update t set c = 1 where %s and %s", userWhereStr, pkConditionStr)
-	expectedWhereStr = fmt.Sprintf("%s and %s", userWhereStr, pkConditionStr)
+	// Different from the 1st test case, here we enclose userWhereStr with parentheses because it has "or" operators.
+	expectedBatchSQL = fmt.Sprintf("update t set c = 1 where (%s) and %s", userWhereStr, pkConditionStr)
+	expectedWhereStr = fmt.Sprintf("(%s) and %s", userWhereStr, pkConditionStr)
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	assert.Equalf(t, expectedWhereStr, finalWhereStr, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	batchSQLStmt, _ = sqlparser.Parse(batchSQL)
@@ -205,7 +205,6 @@ func TestBatchSQL(t *testing.T) {
 	expectedUserWhereStr = userWhereStr
 	assert.Equalf(t, expectedUserWhereStr, gotUserWhereStr, "getUserWhereExpr(%v)", stmt)
 
-	// 3. test getBatchSQLGreatThanAndLessThanExprNode base on batchSQL
 	gtNode, lsNode = getBatchSQLGreatThanAndLessThanExprNode(batchSQLStmt)
 	gtStr = sqlparser.String(gtNode)
 	lsStr = sqlparser.String(lsNode)
