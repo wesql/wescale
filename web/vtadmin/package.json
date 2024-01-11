@@ -84,7 +84,7 @@
     "msw": "^0.36.8",
     "postcss": "^8.4.6",
     "prettier": "^2.2.1",
-    "protobufjs": "^6.11.3",
+    "protobufjs": "^6.11.4",
     "react-scripts": "5.0.1",
     "serve": "^14.2.0",
     "stylelint": "^14.4.0",
