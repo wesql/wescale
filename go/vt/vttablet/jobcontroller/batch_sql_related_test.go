@@ -70,6 +70,8 @@ func TestGenPKsGreaterEqualOrLessEqual(t *testing.T) {
 	}
 }
 
+// todo 函数的参数合法性检查
+// todo 1.pk的类型 2.where not, 子查询......
 func TestGenBatchSQL(t *testing.T) {
 	sql := "update t set c = 1 where 1 = 1 or 2 = 2 and 3 = 3"
 	stmt, _ := sqlparser.Parse(sql)
@@ -77,7 +79,7 @@ func TestGenBatchSQL(t *testing.T) {
 	currentBatchStart := []sqltypes.Value{sqltypes.NewInt64(1)}
 	currentBatchEnd := []sqltypes.Value{sqltypes.NewInt64(9)}
 	pkInfos := []PKInfo{{pkName: "pk1"}}
-	batchSQL, finalWhereStr, _ := genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, _ := genBatchSQL(stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	expectedBatchSQL := "update t set c = 1 where (1 = 1 or 2 = 2 and 3 = 3) and (pk1 >= 1 and pk1 <= 9)"
 	expectedWhereStr := "(1 = 1 or 2 = 2 and 3 = 3) and (pk1 >= 1 and pk1 <= 9)"
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
@@ -89,7 +91,7 @@ func TestGenBatchSQL(t *testing.T) {
 	currentBatchStart = []sqltypes.Value{sqltypes.NewInt64(1), sqltypes.NewInt64(1)}
 	currentBatchEnd = []sqltypes.Value{sqltypes.NewInt64(9), sqltypes.NewInt64(9)}
 	pkInfos = []PKInfo{{pkName: "pk1"}, {pkName: "pk2"}}
-	batchSQL, finalWhereStr, _ = genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, _ = genBatchSQL(stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	expectedBatchSQL = "update t set c = 1 where (1 = 1 or 2 = 2) and ((pk1 > 1 or pk1 = 1 and pk2 >= 1) and (pk1 < 9 or pk1 = 9 and pk2 <= 9))"
 	expectedWhereStr = "(1 = 1 or 2 = 2) and ((pk1 > 1 or pk1 = 1 and pk2 >= 1) and (pk1 < 9 or pk1 = 9 and pk2 <= 9))"
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
@@ -101,7 +103,7 @@ func TestGenBatchSQL(t *testing.T) {
 	currentBatchStart = []sqltypes.Value{sqltypes.NewInt64(1), sqltypes.NewInt64(1), sqltypes.NewInt64(1)}
 	currentBatchEnd = []sqltypes.Value{sqltypes.NewInt64(9), sqltypes.NewInt64(9), sqltypes.NewInt64(9)}
 	pkInfos = []PKInfo{{pkName: "pk1"}, {pkName: "pk2"}, {pkName: "pk3"}}
-	batchSQL, finalWhereStr, _ = genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, _ = genBatchSQL(stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	expectedBatchSQL = "update t set c = 1 where (1 = 1 or 2 = 2) and ((pk1 > 1 or pk1 = 1 and pk2 > 1 or pk1 = 1 and pk2 = 1 and pk3 >= 1) and (pk1 < 9 or pk1 = 9 and pk2 < 9 or pk1 = 9 and pk2 = 9 and pk3 <= 9))"
 	expectedWhereStr = "(1 = 1 or 2 = 2) and ((pk1 > 1 or pk1 = 1 and pk2 > 1 or pk1 = 1 and pk2 = 1 and pk3 >= 1) and (pk1 < 9 or pk1 = 9 and pk2 < 9 or pk1 = 9 and pk2 = 9 and pk3 <= 9))"
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
@@ -162,7 +164,7 @@ func TestBatchSQL(t *testing.T) {
 	currentBatchStart := []sqltypes.Value{sqltypes.NewInt64(1)}
 	currentBatchEnd := []sqltypes.Value{sqltypes.NewInt64(9)}
 	pkInfos := []PKInfo{{pkName: "pk1"}}
-	batchSQL, finalWhereStr, _ := genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, _ := genBatchSQL(stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	expectedBatchSQL := fmt.Sprintf("update t set c = 1 where %s and %s", userWhereStr, pkConditionStr)
 	expectedWhereStr := fmt.Sprintf("%s and %s", userWhereStr, pkConditionStr)
 	assert.Equalf(t, expectedBatchSQL, batchSQL, "genBatchSQL(%v, %v, %v,%v,%v, %v)", sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
@@ -193,7 +195,7 @@ func TestBatchSQL(t *testing.T) {
 	currentBatchStart = []sqltypes.Value{sqltypes.NewInt64(1), sqltypes.NewInt64(1)}
 	currentBatchEnd = []sqltypes.Value{sqltypes.NewInt64(9), sqltypes.NewInt64(9)}
 	pkInfos = []PKInfo{{pkName: "pk1"}, {pkName: "pk2"}}
-	batchSQL, finalWhereStr, _ = genBatchSQL(sql, stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, _ = genBatchSQL(stmt, whereExpr.Expr, currentBatchStart, currentBatchEnd, pkInfos)
 	// Different from the 1st test case, here we enclose userWhereStr with parentheses because it has "or" operators.
 	expectedBatchSQL = fmt.Sprintf("update t set c = 1 where (%s) and %s", userWhereStr, pkConditionStr)
 	expectedWhereStr = fmt.Sprintf("(%s) and %s", userWhereStr, pkConditionStr)

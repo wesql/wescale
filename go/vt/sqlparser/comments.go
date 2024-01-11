@@ -59,7 +59,7 @@ const (
 	DirectiveRole = "ROLE"
 
 	DirectiveDMLSplit           = "DML_SPLIT"
-	DirectiveDMLTimeGap         = "DML_TIME_GAP"
+	DirectiveDMLTimeGap         = "DML_BATCH_INTERVAL"
 	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
 	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
 	DirectiveDMLAutoRetry       = "DML_FAIL_POLICY"

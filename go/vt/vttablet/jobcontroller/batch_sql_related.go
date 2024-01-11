@@ -81,8 +81,7 @@ func genSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.
 	}
 }
 
-// todo newborn22 对参数进行调整
-func genBatchSQL(sql string, stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatchStart, currentBatchEnd []sqltypes.Value, pkInfos []PKInfo) (batchSQL, finalWhereStr string, err error) {
+func genBatchSQL(stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatchStart, currentBatchEnd []sqltypes.Value, pkInfos []PKInfo) (batchSQL, finalWhereStr string, err error) {
 	// 1. 生成>=的部分
 	greatThanPart, err := genPKsGreaterEqualOrLessEqualStr(pkInfos, currentBatchStart, true)
 	if err != nil {
@@ -110,7 +109,6 @@ func genBatchSQL(sql string, stmt sqlparser.Statement, whereExpr sqlparser.Expr,
 	return batchSQL, finalWhereStr, nil
 }
 
-// todo newborn22 batchSQL和batchCountSQL对浮点数进行拦截，可能在获得pkInfo时就进行拦截。
 // 拆分列所支持的类型需要满足以下条件：
 // 1.在sql中可以正确地使用between或>=,<=进行比较运算，且没有精度问题。
 // 2.可以转换成go中的int64，float64或string三种类型之一，且转换后，在golang中的比较规则和mysql中的比较规则相同

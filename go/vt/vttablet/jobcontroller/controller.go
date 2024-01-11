@@ -14,6 +14,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/vt/servenv"
+
 	"github.com/pingcap/failpoint"
 
 	"vitess.io/vitess/go/vt/failpointkey"
@@ -33,20 +37,34 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
-// config
-const (
-	databasePoolSize = 5
-	defaultBatchSize = 100
-
-	healthCheckInterval         = 5000 * time.Millisecond // ms
-	defaultBatchInterval        = 1000                    // 1000ms
-	tableEntryGCInterval        = 24 * time.Hour
-	jobSchedulerRunningInterval = 10 * time.Second
-	throttleCheckInterval       = 250 * time.Millisecond
+var (
+	databasePoolSize            = 5
+	defaultBatchSize            = 1000 //
+	monitorInterval             = 5000 // ms
+	defaultBatchInterval        = 1    // ms
+	tableGCInterval             = 10   // hour
+	jobSchedulerRunningInterval = 24   // second
+	throttleCheckInterval       = 250  // ms g
 
 	batchSizeThreshold        = 10000
 	ratioOfBatchSizeThreshold = 0.5
 )
+
+func registerFlags(fs *pflag.FlagSet) {
+	fs.IntVar(&databasePoolSize, "non_transactional_dml_database_pool_size", databasePoolSize, "the number of database connection to mysql")
+	fs.IntVar(&defaultBatchSize, "non_transactional_dml_default_batch_size", defaultBatchSize, "the number of rows to be processed in one batch by default")
+	fs.IntVar(&monitorInterval, "non_transactional_dml_healthcheck_interval", monitorInterval, "the loop interval of job monitor in milliseconds")
+	fs.IntVar(&defaultBatchInterval, "non_transactional_dml_default_batch_interval", defaultBatchInterval, "the interval of batch processing in milliseconds by default")
+	fs.IntVar(&tableGCInterval, "non_transactional_dml_table_gc_interval", tableGCInterval, "the interval of table GC in hours")
+	fs.IntVar(&jobSchedulerRunningInterval, "non_transactional_dml_job_scheduler_running_interval", jobSchedulerRunningInterval, "the interval of job scheduler running in seconds")
+	fs.IntVar(&throttleCheckInterval, "non_transactional_dml_throttle_check_interval", throttleCheckInterval, "the interval of throttle check in milliseconds")
+	fs.IntVar(&batchSizeThreshold, "non_transactional_dml_batch_size_threshold", batchSizeThreshold, "the	threshold of batch size")
+	fs.Float64Var(&ratioOfBatchSizeThreshold, "non_transactional_dml_batch_size_threshold_ratio", ratioOfBatchSizeThreshold, "final threshold = table index numbers * ratio * non_transactional_dml_batch_size_threshold")
+}
+
+func init() {
+	servenv.OnParseFor("vttablet", registerFlags)
+}
 
 // commands for DML job
 const (
@@ -67,9 +85,10 @@ const (
 
 // 当batch执行失败时的策略，需要注意的时，如果Job在执行batch之外的其他地方发生了错误，则Job会直接变成failed状态，而与failPolicy无关
 const (
-	failPolicySkip  = "skip"  // 跳过当前batch，继续执行下一个batch
-	failPolicyPause = "pause" // 暂停当前job
-	failPolicyAbort = "abort" // fail当前job
+	failPolicySkip           = "skip"  // 跳过当前batch，继续执行下一个batch
+	failPolicyPause          = "pause" // 暂停当前job
+	failPolicyAbort          = "abort" // fail当前job
+	failPolicyRetryThenPause = "retry_then_pause"
 
 	defaultFailPolicy = failPolicyAbort
 )
@@ -118,8 +137,8 @@ type JobRunnerArgs struct {
 	timePeriodStart, timePeriodEnd                               *time.Time
 }
 
-type JobHealthCheckArgs struct {
-	uuid, tableSchema, batchInfoTable, statusSetTime, status string
+type JobMonitorArgs struct {
+	uuid, tableSchema, batchInfoTable, statusSetTime, status, timeZone string
 }
 
 func (jc *JobController) Open() error {
@@ -127,7 +146,7 @@ func (jc *JobController) Open() error {
 	defer jc.initMutex.Unlock()
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		jc.initJobController()
-		go jc.jobHealthCheck()
+		go jc.jobMonitor()
 	}
 	return nil
 }
@@ -186,7 +205,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 	return &sqltypes.Result{}, fmt.Errorf("unknown command: %s", command)
 }
 
-func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, timeGapInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -195,8 +214,9 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		return nil, err
 	}
 	sql = sqlparser.StripComments(sql)
-	if timeGapInMs == 0 {
-		timeGapInMs = int64(defaultBatchInterval)
+	if batchIntervalInMs == 0 {
+		// todo feat 不设置时间间隔，由throttle进行控制
+		batchIntervalInMs = int64(defaultBatchInterval)
 	}
 	if userBatchSize == 0 {
 		userBatchSize = int64(defaultBatchSize)
@@ -240,14 +260,14 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 
 	err = jc.insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema, batchInfoTable,
-		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, batchSize)
+		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, batchIntervalInMs, batchSize)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
 
 	jc.notifyJobScheduler()
 
-	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, timeGapInMs, batchSize, postponeLaunch, failPolicy), nil
+	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, batchIntervalInMs, batchSize, postponeLaunch, failPolicy), nil
 }
 
 // 和cancel的区别：1.pasue不会删除元数据 2.cancel状态的job在经过一段时间后会被后台协程回收
@@ -342,7 +362,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	tableName, _ := jc.getStrJobInfo(jc.ctx, uuid, "table_name")
 
 	// 相比于pause，cancel需要删除内存中的元数据
-	jc.deleteDMLJobRunningMeta(uuid, tableName)
+	jc.deleteDMLJobRunningMeta(tableName)
 
 	jc.notifyJobScheduler()
 
@@ -369,14 +389,14 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 	statusSetTime := time.Now().Format(time.RFC3339)
 	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus, statusSetTime)
 
-	jc.deleteDMLJobRunningMeta(uuid, tableName)
+	jc.deleteDMLJobRunningMeta(tableName)
 	jc.notifyJobScheduler()
 }
 
 func (jc *JobController) jobScheduler() {
 	// 等待healthcare扫一遍后再进行
 
-	timer := time.NewTicker(time.Duration(jobSchedulerRunningInterval))
+	timer := time.NewTicker(time.Duration(jobSchedulerRunningInterval) * time.Hour)
 	defer timer.Stop()
 
 	for {
@@ -403,7 +423,7 @@ func (jc *JobController) jobScheduler() {
 
 				if jc.checkDmlJobRunnable(runnerArgs.uuid, runnerArgs.status, runnerArgs.table, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd) {
 					// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
-					jc.initDMLJobRunningMeta(runnerArgs.uuid, runnerArgs.table)
+					jc.initDMLJobRunningMeta(runnerArgs.table)
 					go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
 				}
 			}
@@ -476,7 +496,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 
 	// 2.查询batch sql预计影响的行数，如果超过阈值，则生成新的batch ID
-	batchCountSQLForShare := batchCountSQL + " FOR UPDATE"
+	batchCountSQLForShare := batchCountSQL + " FOR SHARE"
 	qr, err := conn.Exec(ctx, batchCountSQLForShare, math.MaxInt32, true)
 	if err != nil {
 		return err
@@ -649,8 +669,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 
 func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable, failPolicy string, batchInterval, batchSize int64, timePeriodStart, timePeriodEnd *time.Time) {
 
-	// batchInterval 单位ms，duration输入ns，应该乘上1000000
-	timer := time.NewTicker(time.Duration(batchInterval * 1e6))
+	timer := time.NewTicker(time.Duration(batchInterval) * time.Millisecond)
 	defer timer.Stop()
 
 	_, err := jc.updateJobStatus(jc.ctx, uuid, runningStatus, time.Now().Format(time.RFC3339))
@@ -737,32 +756,35 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 				_ = jc.updateJobMessage(jc.ctx, uuid, msg)
 				_, _ = jc.updateJobStatus(jc.ctx, uuid, pausedStatus, time.Now().Format(time.RFC3339))
 				return
+				// todo feat 增加retryThenPause策略
+			case failPolicyRetryThenPause:
 			}
 		}
 	}
 }
 
 // 调用该函数时，需要外部要获取相关的锁
-func (jc *JobController) initDMLJobRunningMeta(uuid, table string) {
+func (jc *JobController) initDMLJobRunningMeta(table string) {
 	jc.workingTables[table] = true
 }
 
-func (jc *JobController) deleteDMLJobRunningMeta(uuid, table string) {
+func (jc *JobController) deleteDMLJobRunningMeta(table string) {
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
 	delete(jc.workingTables, table)
 }
 
-func (jc *JobController) jobHealthCheck() {
+func (jc *JobController) jobMonitor() {
 	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
 	jc.recoverJobsMetadata(jc.ctx)
 
-	log.Info("jobHealthCheck: metadata of all running and paused jobs are restored to memory\n")
+	log.Info("jobMonitor: metadata of all running and paused jobs are restored to memory\n")
 	// 内存状态恢复完毕后，唤醒Job调度协程
 	go jc.jobScheduler()
 
 	// 2.每隔一段时间轮询一次，根据job的状态进行不同的处理
-	timer := time.NewTicker(healthCheckInterval)
+
+	timer := time.NewTicker(time.Duration(monitorInterval) * time.Millisecond)
 	defer timer.Stop()
 	for {
 		select {
@@ -779,15 +801,20 @@ func (jc *JobController) jobHealthCheck() {
 		qr, _ := jc.execQuery(jc.ctx, "", sqlDMLJobGetAllJobs)
 		if qr != nil {
 			for _, row := range qr.Named().Rows {
-				args := JobHealthCheckArgs{}
+				args := JobMonitorArgs{}
 				args.initArgsByQueryResult(row)
 
 				switch args.status {
 				// 清理已经运行结束的job的表及条目
 				case canceledStatus, failedStatus, completedStatus:
-					err := jc.tableGC(jc.ctx, args.uuid, args.tableSchema, args.batchInfoTable, args.statusSetTime)
+					timeZoneOffset, err := getTimeZoneOffset(args.timeZone)
 					if err != nil {
-						log.Errorf("jobHealthCheck: tableGC failed, %s", err)
+						log.Errorf("jobMonitor: getTimeZoneOffset failed, %s", err)
+						continue
+					}
+					err = jc.tableGC(jc.ctx, args.uuid, args.tableSchema, args.batchInfoTable, args.statusSetTime, timeZoneOffset)
+					if err != nil {
+						log.Errorf("jobMonitor: tableGC failed, %s", err)
 						continue
 					}
 				case runningStatus:
@@ -814,10 +841,10 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 
 			switch status {
 			case runningStatus:
-				jc.initDMLJobRunningMeta(runnerArgs.uuid, runnerArgs.table)
+				jc.initDMLJobRunningMeta(runnerArgs.table)
 				go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
 			case pausedStatus:
-				jc.initDMLJobRunningMeta(runnerArgs.uuid, runnerArgs.table)
+				jc.initDMLJobRunningMeta(runnerArgs.table)
 			}
 		}
 
@@ -826,22 +853,48 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 	}
 }
 
-func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchInfoTable, statusSetTime string) error {
-	statusSetTimeObj, err := time.Parse(time.RFC3339, statusSetTime)
+func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchInfoTable, statusSetTime string, timeZoneOffset int) error {
+	// job表中的类型为timestamp，其中不记录时区，格式对应着time.Datetime
+	statusSetTimeObj, err := time.Parse(time.DateTime, statusSetTime)
+	// parse默认使用UTC，故需要将时区调整为表中所记录的时区
+	location := time.FixedZone("time zone", timeZoneOffset)
+	statusSetTimeObj = time.Date(statusSetTimeObj.Year(), statusSetTimeObj.Month(), statusSetTimeObj.Day(),
+		statusSetTimeObj.Hour(), statusSetTimeObj.Minute(), statusSetTimeObj.Second(), statusSetTimeObj.Nanosecond(), location)
+
 	if err != nil {
 		return err
 	}
 	// 如果Job设置结束状态的时间距离当前已经超过了一定的时间间隔，则删除该Job在表中的条目，并将其batch表删除
-	if time.Now().After(statusSetTimeObj.Add(tableEntryGCInterval)) {
+	if time.Now().After(statusSetTimeObj.Add(time.Duration(tableGCInterval) * time.Second)) {
 		deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
 			sqltypes.StringBindVariable(uuid))
 		if err != nil {
 			return err
 		}
+		// 通过sql删除job表中的条目
 		_, _ = jc.execQuery(ctx, "", deleteJobSQL)
-		_, _ = jc.execQuery(ctx, tableSchema, fmt.Sprintf(sqlTemplateDropTable, batchInfoTable))
+		// 通过table gc的方式删除batch表，将其设置为PURGE状态（由于在任务完成后已经停留了一段时间，故不再经过HOLD状态）
+		_, _ = jc.gcBatchInfoTable(ctx, tableSchema, batchInfoTable, uuid, time.Now())
 	}
 	return nil
+}
+
+// move the table to PURGE_TABLE_GC_STATE state directly
+func (jc *JobController) gcBatchInfoTable(ctx context.Context, tableSchema, artifactTable, uuid string, t time.Time) (string, error) {
+	tableExists, err := jc.tableExists(ctx, tableSchema, artifactTable)
+	if err != nil {
+		return "", err
+	}
+	if !tableExists {
+		return "", nil
+	}
+
+	renameStatement, toTableName, err := schema.GenerateRenameStatementWithUUID(tableSchema, artifactTable, schema.PurgeTableGCState, nonTransactionalDMLToGCUUID(uuid), t)
+	if err != nil {
+		return toTableName, err
+	}
+	_, err = jc.execQuery(ctx, tableSchema, renameStatement)
+	return toTableName, err
 }
 
 func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
@@ -869,7 +922,7 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	if err != nil {
 		return "", "", 0, err
 	}
-	actualThreshold := int64(float64(batchSizeThreshold/indexCount) * ratioOfBatchSizeThreshold)
+	actualThreshold := int64(float64(int64(batchSizeThreshold)/indexCount) * ratioOfBatchSizeThreshold)
 	if userBatchSize < actualThreshold {
 		batchSize = userBatchSize
 	} else {
@@ -914,7 +967,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 		currentBatchEnd = values
 		currentBatchSize++
 		if currentBatchSize == batchSize {
-			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, sql, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
+			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 			if err != nil {
 				return "", err
 			}
@@ -931,7 +984,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	}
 	// 最后一个batch的行数不一定是batchSize，在循环结束时要将剩余的行数划分到最后一个batch中
 	if currentBatchSize != 0 {
-		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, sql, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
+		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
 			return "", err
 		}
@@ -943,9 +996,9 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	return batchTableName, nil
 }
 
-func createBatchInfoTableEntry(tableSchema, tableName, sql string, sqlStmt sqlparser.Statement, whereExpr sqlparser.Expr,
+func createBatchInfoTableEntry(tableSchema, tableName string, sqlStmt sqlparser.Statement, whereExpr sqlparser.Expr,
 	currentBatchStart, currentBatchEnd []sqltypes.Value, pkInfos []PKInfo) (batchSQL, countSQL, batchStartStr, batchEndStr string, err error) {
-	batchSQL, finalWhereStr, err := genBatchSQL(sql, sqlStmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
+	batchSQL, finalWhereStr, err := genBatchSQL(sqlStmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -979,7 +1032,7 @@ func existUnSupportedPK(pkInfos []PKInfo) bool {
 		switch pk.pkType {
 		case sqltypes.Float64, sqltypes.Float32, sqltypes.Decimal,
 			sqltypes.VarBinary, sqltypes.Blob, sqltypes.Binary, sqltypes.Bit,
-			sqltypes.Text, sqltypes.VarChar, sqltypes.Char,
+			sqltypes.Text,
 			sqltypes.Enum, sqltypes.Set, sqltypes.Tuple, sqltypes.Geometry, sqltypes.TypeJSON, sqltypes.Expression,
 			sqltypes.HexNum, sqltypes.HexVal, sqltypes.BitNum:
 			return true

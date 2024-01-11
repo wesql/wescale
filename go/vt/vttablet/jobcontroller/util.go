@@ -12,6 +12,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/pools"
@@ -452,12 +453,13 @@ func (args *JobRunnerArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 
 }
 
-func (args *JobHealthCheckArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
+func (args *JobMonitorArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 	args.uuid = row["job_uuid"].ToString()
 	args.tableSchema = row["table_schema"].ToString()
 	args.batchInfoTable = row["batch_info_table_name"].ToString()
 	args.statusSetTime = row["status_set_time"].ToString()
 	args.status = row["status"].ToString()
+	args.timeZone = row["time_zone"].ToString()
 }
 
 func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr string, batchSize int64) (err error) {
@@ -483,6 +485,9 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd string,
 	timeGapInMs, batchSize int64) (err error) {
 	ctx := context.Background()
+	_, offset := time.Now().Zone()
+	timeZone := getTimeZoneStr(offset)
+
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
 		sqltypes.StringBindVariable(sql),
@@ -492,6 +497,7 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		sqltypes.StringBindVariable(batchInfoTable),
 		sqltypes.StringBindVariable(jobStatus),
 		sqltypes.StringBindVariable(statusSetTime),
+		sqltypes.StringBindVariable(timeZone),
 		sqltypes.StringBindVariable(failPolicy),
 		sqltypes.StringBindVariable(runningTimePeriodStart),
 		sqltypes.StringBindVariable(runningTimePeriodEnd),
@@ -505,4 +511,87 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		return err
 	}
 	return nil
+}
+
+func getTimeZoneStr(offset int) string {
+	if offset == 0 {
+		return "UTC"
+	}
+	timeZone := "UTC"
+	if offset > 0 {
+		timeZone = timeZone + " +"
+	} else {
+		timeZone = timeZone + " -"
+		offset = -offset
+	}
+
+	duration := time.Second * time.Duration(offset)
+	startTime := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC)
+	resultTime := startTime.Add(duration)
+	timeFormat := "15:04:05"
+	offsetStr := resultTime.Format(timeFormat)
+	timeZone += offsetStr
+	return timeZone
+}
+
+func getTimeZoneOffset(timeZoneStr string) (int, error) {
+	if timeZoneStr == "UTC" {
+		return 0, nil
+	}
+	if len(timeZoneStr) < 5 {
+		return 0, fmt.Errorf("timeZoneStr is in wrong format")
+	}
+	neg := false
+	if timeZoneStr[:4] != "UTC " {
+		return 0, fmt.Errorf("timeZoneStr is in wrong format")
+	}
+	if timeZoneStr[4] != '-' && timeZoneStr[4] != '+' {
+		return 0, fmt.Errorf("timeZoneStr is in wrong format")
+	}
+	if timeZoneStr[4] == '-' {
+		neg = true
+	}
+	timeZoneStr = timeZoneStr[5:]
+	parts := strings.Split(timeZoneStr, ":")
+	if len(parts) != 3 {
+		return 0, fmt.Errorf("timeZoneStr is in wrong format")
+	}
+
+	hour, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, err
+	}
+
+	minute, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, err
+	}
+
+	second, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, err
+	}
+
+	offset := hour*3600 + minute*60 + second
+	if neg {
+		offset = -offset
+	}
+
+	return offset, nil
+}
+
+// tableExists checks if a given table exists.
+func (jc *JobController) tableExists(ctx context.Context, tableSchema, tableName string) (bool, error) {
+	tableName = strings.ReplaceAll(tableName, `_`, `\_`)
+	parsed := sqlparser.BuildParsedQuery(sqlShowTablesLike, tableName)
+	rs, err := jc.execQuery(ctx, tableSchema, parsed.Query)
+	if err != nil {
+		return false, err
+	}
+	row := rs.Named().Row()
+	return (row != nil), nil
+}
+
+func nonTransactionalDMLToGCUUID(uuid string) string {
+	return strings.Replace(uuid, "-", "", -1)
 }

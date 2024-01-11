@@ -26,7 +26,7 @@ var throttleInit sync.Once
 func initThrottleTicker() {
 	throttleInit.Do(func() {
 		go func() {
-			tick := time.NewTicker(throttleCheckInterval)
+			tick := time.NewTicker(time.Duration(throttleCheckInterval) * time.Millisecond)
 			defer tick.Stop()
 			for range tick.C {
 				atomic.AddInt64(&throttleTicks, 1)

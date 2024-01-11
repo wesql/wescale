@@ -33,11 +33,12 @@ const (
                                       batch_info_table_name,
                                       status,
                                       status_set_time,
+									  time_zone,
                                       fail_policy,
                                       running_time_period_start,
                                       running_time_period_end,
                                       batch_interval_in_ms,
-                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 
@@ -122,4 +123,6 @@ const (
 	 	batch_begin,
 	 	batch_end
 	) values (%%a,%%a,%%a,%%a,%%a,%%a)`
+
+	sqlShowTablesLike = "SHOW TABLES LIKE '%a'"
 )

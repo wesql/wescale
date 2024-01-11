@@ -6,11 +6,13 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package jobcontroller
 
 import (
+	"errors"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"time"
 
 	"vitess.io/vitess/go/vt/sqlparser"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseDML(t *testing.T) {
@@ -55,4 +57,66 @@ func TestParseDML(t *testing.T) {
 	// error: the SQL should not have order clause
 	_, _, _, err = parseDML("delete from t1 where id=1 order by c1")
 	assert.Equalf(t, "the SQL should not have order by clause", err.Error(), "error message: %s", err.Error())
+}
+
+func TestGetTimeZoneStr(t *testing.T) {
+	tests := []struct {
+		offset int
+		want   string
+	}{
+		{0, "UTC"},
+		{60, "UTC +00:01:00"},
+		{-60, "UTC -00:01:00"},
+		{180, "UTC +00:03:00"},
+		{-180, "UTC -00:03:00"},
+		{3600, "UTC +01:00:00"},
+	}
+
+	for _, tt := range tests {
+		if got := getTimeZoneStr(tt.offset); got != tt.want {
+			t.Errorf("getTimeZoneStr(%d) = %s, want %s", tt.offset, got, tt.want)
+		}
+	}
+}
+
+func TestGetTimeZoneOffset(t *testing.T) {
+	tests := []struct {
+		timeZoneStr string
+		wantOffset  int
+		wantError   error
+	}{
+		{"UTC", 0, nil},
+		{"UTC+01:02", 3720, errors.New("timeZoneStr is in wrong format")},
+
+		{"UTC +01:02:03", 3723, nil},
+		{"UTC -01:02:03", -3723, nil},
+		{"UTC +12:11:22", 43882, nil},
+		{"UTC +23:59:59", 86399, nil},
+		{"UTC -23:59:59", -86399, nil},
+	}
+
+	for _, test := range tests {
+		gotOffset, gotError := getTimeZoneOffset(test.timeZoneStr)
+		if gotError == nil && test.wantError != nil {
+			t.Errorf("getTimeZoneOffset(%s) didn't return error but expected it", test.timeZoneStr)
+		}
+		if gotError == nil && test.wantError == nil && gotOffset != test.wantOffset {
+			t.Errorf("getTimeZoneOffset(%s) return %d but want %d", test.timeZoneStr, gotOffset, test.wantOffset)
+		}
+		if gotError != nil && test.wantError == nil {
+			assert.Equalf(t, test.wantError.Error(), gotError.Error(), "error message: %s", gotError)
+		}
+		if gotError != nil && test.wantError != nil && gotError.Error() != test.wantError.Error() {
+			t.Errorf("getTimeZoneOffset(%s) return error %s but want %s", test.timeZoneStr, gotError, test.wantError)
+		}
+
+	}
+}
+
+func TestTimeZone(t *testing.T) {
+	utc8Offset, _ := getTimeZoneOffset("UTC +08:00:00")
+	utc8 := time.FixedZone("timeZone", utc8Offset)
+	t1 := time.Date(2019, 3, 4, 5, 6, 7, 8, utc8).Unix()
+	t2 := time.Date(2019, 3, 4, 5, 6, 7, 8, time.Now().Location()).Unix()
+	assert.Equal(t, t1, t2)
 }
