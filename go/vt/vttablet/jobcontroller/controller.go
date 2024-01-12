@@ -38,14 +38,12 @@ import (
 )
 
 var (
-	databasePoolSize            = 5
-	defaultBatchSize            = 1000 //
-	monitorInterval             = 5000 // ms
-	defaultBatchInterval        = 1    // ms
-	tableGCInterval             = 10   // hour
-	jobSchedulerRunningInterval = 24   // second
-	throttleCheckInterval       = 250  // ms g
-
+	databasePoolSize          = 5
+	defaultBatchSize          = 1000 //
+	defaultBatchInterval      = 1    // ms
+	tableGCInterval           = 24   // hour   todo hour
+	jobManagerRunningInterval = 24   // second
+	throttleCheckInterval     = 250  // ms g
 	batchSizeThreshold        = 10000
 	ratioOfBatchSizeThreshold = 0.5
 )
@@ -53,10 +51,9 @@ var (
 func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&databasePoolSize, "non_transactional_dml_database_pool_size", databasePoolSize, "the number of database connection to mysql")
 	fs.IntVar(&defaultBatchSize, "non_transactional_dml_default_batch_size", defaultBatchSize, "the number of rows to be processed in one batch by default")
-	fs.IntVar(&monitorInterval, "non_transactional_dml_healthcheck_interval", monitorInterval, "the loop interval of job monitor in milliseconds")
 	fs.IntVar(&defaultBatchInterval, "non_transactional_dml_default_batch_interval", defaultBatchInterval, "the interval of batch processing in milliseconds by default")
 	fs.IntVar(&tableGCInterval, "non_transactional_dml_table_gc_interval", tableGCInterval, "the interval of table GC in hours")
-	fs.IntVar(&jobSchedulerRunningInterval, "non_transactional_dml_job_scheduler_running_interval", jobSchedulerRunningInterval, "the interval of job scheduler running in seconds")
+	fs.IntVar(&jobManagerRunningInterval, "non_transactional_dml_job_scheduler_running_interval", jobManagerRunningInterval, "the interval of job scheduler running in seconds")
 	fs.IntVar(&throttleCheckInterval, "non_transactional_dml_throttle_check_interval", throttleCheckInterval, "the interval of throttle check in milliseconds")
 	fs.IntVar(&batchSizeThreshold, "non_transactional_dml_batch_size_threshold", batchSizeThreshold, "the	threshold of batch size")
 	fs.Float64Var(&ratioOfBatchSizeThreshold, "non_transactional_dml_batch_size_threshold_ratio", ratioOfBatchSizeThreshold, "final threshold = table index numbers * ratio * non_transactional_dml_batch_size_threshold")
@@ -123,7 +120,7 @@ type JobController struct {
 	workingTables      map[string]bool // 用于调度时检测当前任务是否和正在工作的表冲突，paused、running状态的job的表都在里面
 	workingTablesMutex sync.Mutex
 
-	schedulerNotifyChan chan struct{} // jobScheduler每隔一段时间运行一次调度。但当它收到这个chan的消息后，会立刻开始一次调度
+	managerNotifyChan chan struct{} // jobManager每隔一段时间运行一次调度。但当它收到这个chan的消息后，会立刻开始一次调度
 }
 
 type PKInfo struct {
@@ -131,14 +128,10 @@ type PKInfo struct {
 	pkType querypb.Type
 }
 
-type JobRunnerArgs struct {
-	uuid, table, tableSchema, batchInfoTable, failPolicy, status string
-	batchInterval, batchSize                                     int64
-	timePeriodStart, timePeriodEnd                               *time.Time
-}
-
-type JobMonitorArgs struct {
-	uuid, tableSchema, batchInfoTable, statusSetTime, status, timeZone string
+type JobArgs struct {
+	uuid, table, tableSchema, batchInfoTable, failPolicy, status, timeZone, statusSetTime string
+	batchInterval, batchSize                                                              int64
+	timePeriodStart, timePeriodEnd                                                        *time.Time
 }
 
 func (jc *JobController) Open() error {
@@ -146,7 +139,7 @@ func (jc *JobController) Open() error {
 	defer jc.initMutex.Unlock()
 	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
 		jc.initJobController()
-		go jc.jobMonitor()
+		jc.runJobController()
 	}
 	return nil
 }
@@ -155,7 +148,7 @@ func (jc *JobController) initJobController() {
 	jc.ctx, jc.cancelOperation = context.WithCancel(context.Background())
 	jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 	jc.workingTables = map[string]bool{}
-	jc.schedulerNotifyChan = make(chan struct{}, 1)
+	jc.managerNotifyChan = make(chan struct{}, 1)
 	initThrottleTicker()
 }
 
@@ -166,8 +159,8 @@ func (jc *JobController) Close() {
 		jc.cancelOperation()
 	}
 	jc.pool.Close()
-	if jc.schedulerNotifyChan != nil {
-		close(jc.schedulerNotifyChan)
+	if jc.managerNotifyChan != nil {
+		close(jc.managerNotifyChan)
 	}
 }
 
@@ -265,7 +258,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 		return &sqltypes.Result{}, err
 	}
 
-	jc.notifyJobScheduler()
+	jc.notifyJobManager()
 
 	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, batchIntervalInMs, batchSize, postponeLaunch, failPolicy), nil
 }
@@ -320,7 +313,7 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	}
 	row := rst.Named().Rows[0]
 
-	runnerArgs := JobRunnerArgs{}
+	runnerArgs := JobArgs{}
 	runnerArgs.initArgsByQueryResult(row)
 
 	// 拉起runner协程，协程内会将状态改为running
@@ -364,7 +357,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	// 相比于pause，cancel需要删除内存中的元数据
 	jc.deleteDMLJobRunningMeta(tableName)
 
-	jc.notifyJobScheduler()
+	jc.notifyJobManager()
 
 	return qr, nil
 }
@@ -380,7 +373,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 	}
 
 	delete(jc.workingTables, table)
-	jc.notifyJobScheduler()
+	jc.notifyJobManager()
 	return qr, nil
 }
 
@@ -390,13 +383,11 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus, statusSetTime)
 
 	jc.deleteDMLJobRunningMeta(tableName)
-	jc.notifyJobScheduler()
+	jc.notifyJobManager()
 }
 
-func (jc *JobController) jobScheduler() {
-	// 等待healthcare扫一遍后再进行
-
-	timer := time.NewTicker(time.Duration(jobSchedulerRunningInterval) * time.Hour)
+func (jc *JobController) jobManager() {
+	timer := time.NewTicker(time.Duration(jobManagerRunningInterval) * time.Second)
 	defer timer.Stop()
 
 	for {
@@ -408,25 +399,44 @@ func (jc *JobController) jobScheduler() {
 		case <-jc.ctx.Done():
 			return
 		case <-timer.C:
-		case <-jc.schedulerNotifyChan:
+		case <-jc.managerNotifyChan:
 		}
 
 		jc.workingTablesMutex.Lock()
 		jc.tableMutex.Lock()
-		// 先提交的job先执行
 
-		qr, _ := jc.execQuery(jc.ctx, "", sqlDMLJobGetJobsToSchedule)
+		qr, _ := jc.execQuery(jc.ctx, "", sqlDMLJobGetAllJobs)
 		if qr != nil {
 			for _, row := range qr.Named().Rows {
-				runnerArgs := JobRunnerArgs{}
-				runnerArgs.initArgsByQueryResult(row)
-
-				if jc.checkDmlJobRunnable(runnerArgs.uuid, runnerArgs.status, runnerArgs.table, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd) {
-					// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
-					jc.initDMLJobRunningMeta(runnerArgs.table)
-					go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
+				jobArgs := JobArgs{}
+				jobArgs.initArgsByQueryResult(row)
+				switch jobArgs.status {
+				// 对处于未开始状态对job进行调度
+				case queuedStatus, notInTimePeriodStatus:
+					if jc.checkDmlJobRunnable(jobArgs.uuid, jobArgs.status, jobArgs.table, jobArgs.timePeriodStart, jobArgs.timePeriodEnd) {
+						// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
+						jc.initDMLJobRunningMeta(jobArgs.table)
+						go jc.dmlJobBatchRunner(jobArgs.uuid, jobArgs.table, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.failPolicy, jobArgs.batchInterval, jobArgs.batchSize, jobArgs.timePeriodStart, jobArgs.timePeriodEnd)
+					}
+				// 对处于完成态对job进行清理
+				case canceledStatus, failedStatus, completedStatus:
+					timeZoneOffset, err := getTimeZoneOffset(jobArgs.timeZone)
+					if err != nil {
+						log.Errorf("jobManager: getTimeZoneOffset failed, %s", err)
+						continue
+					}
+					err = jc.tableGC(jc.ctx, jobArgs.uuid, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.statusSetTime, timeZoneOffset)
+					if err != nil {
+						log.Errorf("jobManager: tableGC failed, %s", err)
+						continue
+					}
+				// 对处于运行态的job进行监控
+				case runningStatus:
+					// todo feat 增加对长时间未增加rows的running job的处理
 				}
+
 			}
+
 		}
 
 		jc.tableMutex.Unlock()
@@ -774,58 +784,14 @@ func (jc *JobController) deleteDMLJobRunningMeta(table string) {
 	delete(jc.workingTables, table)
 }
 
-func (jc *JobController) jobMonitor() {
+func (jc *JobController) runJobController() {
 	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
 	jc.recoverJobsMetadata(jc.ctx)
 
-	log.Info("jobMonitor: metadata of all running and paused jobs are restored to memory\n")
-	// 内存状态恢复完毕后，唤醒Job调度协程
-	go jc.jobScheduler()
+	log.Info("JobController: metadata of all running and paused jobs are restored to memory\n")
+	// 2.交由jobManager对job进行管理
+	go jc.jobManager()
 
-	// 2.每隔一段时间轮询一次，根据job的状态进行不同的处理
-
-	timer := time.NewTicker(time.Duration(monitorInterval) * time.Millisecond)
-	defer timer.Stop()
-	for {
-		select {
-		case <-jc.ctx.Done():
-			return
-		case <-timer.C:
-		}
-		// 防止vttablet不再是primary时该协程继续执行
-		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
-			return
-		}
-		jc.tableMutex.Lock()
-
-		qr, _ := jc.execQuery(jc.ctx, "", sqlDMLJobGetAllJobs)
-		if qr != nil {
-			for _, row := range qr.Named().Rows {
-				args := JobMonitorArgs{}
-				args.initArgsByQueryResult(row)
-
-				switch args.status {
-				// 清理已经运行结束的job的表及条目
-				case canceledStatus, failedStatus, completedStatus:
-					timeZoneOffset, err := getTimeZoneOffset(args.timeZone)
-					if err != nil {
-						log.Errorf("jobMonitor: getTimeZoneOffset failed, %s", err)
-						continue
-					}
-					err = jc.tableGC(jc.ctx, args.uuid, args.tableSchema, args.batchInfoTable, args.statusSetTime, timeZoneOffset)
-					if err != nil {
-						log.Errorf("jobMonitor: tableGC failed, %s", err)
-						continue
-					}
-				case runningStatus:
-					// todo feat 增加对长时间未增加rows的running job的处理
-				}
-			}
-		}
-
-		jc.tableMutex.Unlock()
-
-	}
 }
 
 func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
@@ -836,7 +802,7 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 
 		for _, row := range qr.Named().Rows {
 			status := row["status"].ToString()
-			runnerArgs := JobRunnerArgs{}
+			runnerArgs := JobArgs{}
 			runnerArgs.initArgsByQueryResult(row)
 
 			switch status {
@@ -1013,16 +979,16 @@ func createBatchInfoTableEntry(tableSchema, tableName string, sqlStmt sqlparser.
 	return batchSQL, countSQL, batchStartStr, batchEndStr, nil
 }
 
-// 通知jobScheduler让它立刻开始一次调度。
-func (jc *JobController) notifyJobScheduler() {
-	if jc.schedulerNotifyChan == nil {
+// 通知jobManager让它立刻开始一次调度。
+func (jc *JobController) notifyJobManager() {
+	if jc.managerNotifyChan == nil {
 		return
 	}
 
 	// Try to send. If the channel buffer is full, it means a notification is
 	// already pending, so we don't need to do anything.
 	select {
-	case jc.schedulerNotifyChan <- struct{}{}:
+	case jc.managerNotifyChan <- struct{}{}:
 	default:
 	}
 }
