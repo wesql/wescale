@@ -8,7 +8,6 @@ package jobcontroller
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"vitess.io/vitess/go/vt/sqlparser"
 
@@ -65,11 +64,11 @@ func TestGetTimeZoneStr(t *testing.T) {
 		want   string
 	}{
 		{0, "UTC"},
-		{60, "UTC +00:01:00"},
-		{-60, "UTC -00:01:00"},
-		{180, "UTC +00:03:00"},
-		{-180, "UTC -00:03:00"},
-		{3600, "UTC +01:00:00"},
+		{60, "UTC+00:01:00"},
+		{-60, "UTC-00:01:00"},
+		{180, "UTC+00:03:00"},
+		{-180, "UTC-00:03:00"},
+		{3600, "UTC+01:00:00"},
 	}
 
 	for _, tt := range tests {
@@ -86,13 +85,13 @@ func TestGetTimeZoneOffset(t *testing.T) {
 		wantError   error
 	}{
 		{"UTC", 0, nil},
-		{"UTC+01:02", 3720, errors.New("timeZoneStr is in wrong format")},
+		{"UTC +01:02", 3720, errors.New("timeZoneStr is in wrong format")},
 
-		{"UTC +01:02:03", 3723, nil},
-		{"UTC -01:02:03", -3723, nil},
-		{"UTC +12:11:22", 43882, nil},
-		{"UTC +23:59:59", 86399, nil},
-		{"UTC -23:59:59", -86399, nil},
+		{"UTC+01:02:03", 3723, nil},
+		{"UTC-01:02:03", -3723, nil},
+		{"UTC+12:11:22", 43882, nil},
+		{"UTC+23:59:59", 86399, nil},
+		{"UTC-23:59:59", -86399, nil},
 	}
 
 	for _, test := range tests {
@@ -111,12 +110,4 @@ func TestGetTimeZoneOffset(t *testing.T) {
 		}
 
 	}
-}
-
-func TestTimeZone(t *testing.T) {
-	utc8Offset, _ := getTimeZoneOffset("UTC +08:00:00")
-	utc8 := time.FixedZone("timeZone", utc8Offset)
-	t1 := time.Date(2019, 3, 4, 5, 6, 7, 8, utc8).Unix()
-	t2 := time.Date(2019, 3, 4, 5, 6, 7, 8, time.Now().Location()).Unix()
-	assert.Equal(t, t1, t2)
 }

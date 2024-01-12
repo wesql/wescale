@@ -197,13 +197,14 @@ func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, stat
 	return jc.execQuery(ctx, "", submitQuery)
 }
 
-func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeriodStart, timePeriodEnd string) (*sqltypes.Result, error) {
+func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeriodStart, timePeriodEnd, timeZone string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateTimePeriod,
 		sqltypes.StringBindVariable(timePeriodStart),
 		sqltypes.StringBindVariable(timePeriodEnd),
+		sqltypes.StringBindVariable(timeZone),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return &sqltypes.Result{}, err
@@ -451,7 +452,9 @@ func (args *JobArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 
 	runningTimePeriodStart := row["running_time_period_start"].ToString()
 	runningTimePeriodEnd := row["running_time_period_end"].ToString()
-	args.timePeriodStart, args.timePeriodEnd = getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd)
+	runningTimePeriodTimeZone := row["running_time_period_timezone"].ToString()
+
+	args.timePeriodStart, args.timePeriodEnd = getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone)
 
 }
 
@@ -475,11 +478,20 @@ func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSch
 }
 
 func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema,
-	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd string,
+	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string,
 	timeGapInMs, batchSize int64) (err error) {
-	ctx := context.Background()
+
+	if !isTimePeriodValid(runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone) {
+		return errors.New("check the format, the start and end should be like 'hh:mm:ss' and time zone should be like 'UTC[\\+\\-]\\d{2}:\\d{2}:\\d{2}'")
+	}
+	if runningTimePeriodTimeZone == "" {
+		// 如果用户没有设置时区，则使用系统默认时区
+		_, timeZoneOffset := time.Now().Zone()
+		runningTimePeriodTimeZone = getTimeZoneStr(timeZoneOffset)
+	}
+
 	_, offset := time.Now().Zone()
-	timeZone := getTimeZoneStr(offset)
+	statusSetTimeTimeZone := getTimeZoneStr(offset)
 
 	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobSubmit,
 		sqltypes.StringBindVariable(jobUUID),
@@ -490,16 +502,18 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		sqltypes.StringBindVariable(batchInfoTable),
 		sqltypes.StringBindVariable(jobStatus),
 		sqltypes.StringBindVariable(statusSetTime),
-		sqltypes.StringBindVariable(timeZone),
+		sqltypes.StringBindVariable(statusSetTimeTimeZone),
 		sqltypes.StringBindVariable(failPolicy),
 		sqltypes.StringBindVariable(runningTimePeriodStart),
 		sqltypes.StringBindVariable(runningTimePeriodEnd),
+		sqltypes.StringBindVariable(runningTimePeriodTimeZone),
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(batchSize))
+
 	if err != nil {
 		return err
 	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
+	_, err = jc.execQuery(jc.ctx, "", submitQuery)
 	if err != nil {
 		return err
 	}
@@ -512,9 +526,9 @@ func getTimeZoneStr(offset int) string {
 	}
 	timeZone := "UTC"
 	if offset > 0 {
-		timeZone = timeZone + " +"
+		timeZone = timeZone + "+"
 	} else {
-		timeZone = timeZone + " -"
+		timeZone = timeZone + "-"
 		offset = -offset
 	}
 
@@ -531,20 +545,20 @@ func getTimeZoneOffset(timeZoneStr string) (int, error) {
 	if timeZoneStr == "UTC" {
 		return 0, nil
 	}
-	if len(timeZoneStr) < 5 {
+	if len(timeZoneStr) < 4 {
 		return 0, fmt.Errorf("timeZoneStr is in wrong format")
 	}
 	neg := false
-	if timeZoneStr[:4] != "UTC " {
+	if timeZoneStr[:3] != "UTC" {
 		return 0, fmt.Errorf("timeZoneStr is in wrong format")
 	}
-	if timeZoneStr[4] != '-' && timeZoneStr[4] != '+' {
+	if timeZoneStr[3] != '-' && timeZoneStr[3] != '+' {
 		return 0, fmt.Errorf("timeZoneStr is in wrong format")
 	}
-	if timeZoneStr[4] == '-' {
+	if timeZoneStr[3] == '-' {
 		neg = true
 	}
-	timeZoneStr = timeZoneStr[5:]
+	timeZoneStr = timeZoneStr[4:]
 	parts := strings.Split(timeZoneStr, ":")
 	if len(parts) != 3 {
 		return 0, fmt.Errorf("timeZoneStr is in wrong format")
@@ -563,6 +577,10 @@ func getTimeZoneOffset(timeZoneStr string) (int, error) {
 	second, err := strconv.Atoi(parts[2])
 	if err != nil {
 		return 0, err
+	}
+
+	if hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59 {
+		return 0, fmt.Errorf("timeZoneStr is in wrong format")
 	}
 
 	offset := hour*3600 + minute*60 + second

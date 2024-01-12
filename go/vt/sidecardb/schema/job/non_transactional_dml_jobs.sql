@@ -35,8 +35,9 @@ CREATE TABLE IF NOT EXISTS mysql.non_transactional_dml_jobs
     `throttle_ratio`        double NULL DEFAULT NULL,
     `throttle_expire_time` varchar(256)     NULL   DEFAULT NULL,
     `dealing_batch_id`        varchar(256) NULL DEFAULT NULL,
-    `running_time_period_start` varchar(256)     NULL   DEFAULT NULL,
-    `running_time_period_end` varchar(256)     NULL   DEFAULT NULL,
+    `running_time_period_start` timestamp     NULL   DEFAULT NULL,
+    `running_time_period_end`   timestamp    NULL   DEFAULT NULL,
+    `running_time_period_time_zone`                 varchar(16)     NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     KEY `job_uuid_idx` (`job_uuid`),
     KEY `status_idx` (`status`)

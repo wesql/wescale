@@ -176,10 +176,10 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 		lagThrottler: lagThrottler}
 }
 
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	switch command {
 	case SubmitJob:
-		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
+		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
 	case PauseJob:
 		return jc.PauseJob(jobUUID)
 	case ResumeJob:
@@ -193,12 +193,12 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 	case UnthrottleJob:
 		return jc.UnthrottleJob(jobUUID)
 	case SetRunningTimePeriod:
-		return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd)
+		return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone)
 	}
 	return &sqltypes.Result{}, fmt.Errorf("unknown command: %s", command)
 }
 
-func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -253,7 +253,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 
 	err = jc.insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema, batchInfoTable,
-		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, batchIntervalInMs, batchSize)
+		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, batchIntervalInMs, batchSize)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -831,7 +831,7 @@ func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchIn
 		return err
 	}
 	// 如果Job设置结束状态的时间距离当前已经超过了一定的时间间隔，则删除该Job在表中的条目，并将其batch表删除
-	if time.Now().After(statusSetTimeObj.Add(time.Duration(tableGCInterval) * time.Second)) {
+	if time.Now().After(statusSetTimeObj.Add(time.Duration(tableGCInterval) * time.Hour)) {
 		deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
 			sqltypes.StringBindVariable(uuid))
 		if err != nil {
@@ -840,12 +840,12 @@ func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchIn
 		// 通过sql删除job表中的条目
 		_, _ = jc.execQuery(ctx, "", deleteJobSQL)
 		// 通过table gc的方式删除batch表，将其设置为PURGE状态（由于在任务完成后已经停留了一段时间，故不再经过HOLD状态）
-		_, _ = jc.gcBatchInfoTable(ctx, tableSchema, batchInfoTable, uuid, time.Now())
+		_, _ = jc.gcBatchInfoTable(ctx, tableSchema, batchInfoTable, uuid, time.Now().UTC())
 	}
 	return nil
 }
 
-// move the table to PURGE_TABLE_GC_STATE state directly
+// move the table to PURGE_TABLE_GC_STATE state
 func (jc *JobController) gcBatchInfoTable(ctx context.Context, tableSchema, artifactTable, uuid string, t time.Time) (string, error) {
 	tableExists, err := jc.tableExists(ctx, tableSchema, artifactTable)
 	if err != nil {

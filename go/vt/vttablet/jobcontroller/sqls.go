@@ -37,8 +37,9 @@ const (
                                       fail_policy,
                                       running_time_period_start,
                                       running_time_period_end,
+									  running_time_period_time_zone,
                                       batch_interval_in_ms,
-                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 
@@ -87,7 +88,8 @@ const (
 
 	sqlDMLJobUpdateTimePeriod = `update mysql.non_transactional_dml_jobs set 
                                     running_time_period_start = %a, 
-                                    running_time_period_end = %a 
+                                    running_time_period_end = %a,
+									running_time_period_time_zone = %a
                                 where 
                                     job_uuid = %a`
 

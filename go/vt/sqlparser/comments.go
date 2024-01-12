@@ -65,6 +65,7 @@ const (
 	DirectiveDMLAutoRetry       = "DML_FAIL_POLICY"
 	DirectiveDMLTimePeriodStart = "DML_TIME_PERIOD_START"
 	DirectiveDMLTimePeriodEnd   = "DML_TIME_PERIOD_END"
+	DirectiveDMLTimePeriod      = "DML_TIME_PERIOD_TIME_ZONE"
 )
 
 func isNonSpace(r rune) bool {
