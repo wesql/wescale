@@ -1814,7 +1814,7 @@ func (reloadType ReloadType) ToString() string {
 	case ReloadPrivileges:
 		return ReloadPrivilegesStr
 	default:
-		return "Unknown KillType"
+		return "Unknown ReloadType"
 	}
 }
 
