@@ -1806,6 +1806,18 @@ func (kt KillType) ToString() string {
 	}
 }
 
+// toString return type as a string
+func (reloadType ReloadType) ToString() string {
+	switch reloadType {
+	case ReloadUsers:
+		return ReloadUsersStr
+	case ReloadPrivileges:
+		return ReloadPrivilegesStr
+	default:
+		return "Unknown ReloadType"
+	}
+}
+
 // ToString returns the type as a string
 func (ct CheckType) ToString() string {
 	switch ct {

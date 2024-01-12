@@ -70,6 +70,15 @@ VTGate startup parameters :
 + `--mysql_server_ssl_key`: Configure the SSL key. If using caching_sha2_passwod, set this parameter.
 + `--mysql_server_ssl_cert`: Configure the SSL cert. If using caching_sha2_passwod, set this parameter.
 
+## reload command Usage
+Vtgate supports reload users and reload privileges commands. After creating a user by the primary MySQL instance or modifying a user's privileges, and wanting to use it immediately afterward, execute the `reload` command in vtgate as follows:
+```
+mysql> reload users;
+Query OK, 11 rows affected (0.00 sec)
+mysql> reload privileges;
+Query OK, 0 rows affected (0.00 sec)
+```
+Note: `reload privileges` does not show the number of rows affected. Therefore, a `Query OK` message indicates that the command worked successfully.
 # Authorization Management
 Currently, WeSQL WeScale categorizes users internally into three types:
 
@@ -103,8 +112,7 @@ VTTablet startup parameters:
       "readers": ["vtgate-user1" ],
       "writers": ["vtgate-user2"],
       "admins": ["vtgate-user3"]
-    },
-    { "... more ACLs here if necessary ..." }
+    }
   ]
 }
 ```

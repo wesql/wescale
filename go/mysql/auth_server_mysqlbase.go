@@ -8,6 +8,7 @@ package mysql
 import (
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -37,6 +38,10 @@ var (
 
 const (
 	defaultMysqlAuthServerMysqlBaseReloadInterval = 30 * time.Second
+)
+const (
+	PluginCachingSha2Password = "caching_sha2_password"
+	PluginMysqlNativePassword = "mysql_native_password"
 )
 
 // AuthServerMysqlBase implements AuthServer using a static configuration.
@@ -71,6 +76,10 @@ func GetAuthServerMysqlBase() *AuthServerMysqlBase {
 		instance = NewAuthServerMysqlBase()
 	})
 	return instance
+}
+
+func ReloadUsers() (uint64, error) {
+	return GetAuthServerMysqlBase().reLoadUser()
 }
 
 // AuthServerMysqlBaseEntry stores the values for a given user.
@@ -156,9 +165,9 @@ func isCacheExistsInEntry(user string, host string, list []*AuthServerMysqlBaseE
 }
 
 // reLoadUser load user information from mysql.user and update entries and cacheEntries
-func (a *AuthServerMysqlBase) reLoadUser() error {
+func (a *AuthServerMysqlBase) reLoadUser() (uint64, error) {
 	if a.qs == nil {
-		return nil
+		return 0, fmt.Errorf("mysql_auth_server_impl is not mysqlbased")
 	}
 	ctx := context.Background()
 	target := &querypb.Target{
@@ -169,8 +178,9 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 	// pull user from mysql.user
 	qr, err := a.qs.ExecuteInternal(ctx, target, FetchUser, nil, 0, 0, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	affectedNum := len(qr.Rows)
 	entries := make(map[string][]*AuthServerMysqlBaseEntry)
 	for _, rows := range qr.Rows {
 		user := rows[0].ToString()
@@ -183,10 +193,10 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 			SourceHost: host,
 		}
 		entrie.patChars, entrie.patTypes = stringutil.CompilePatternBytes(host, '\\')
-		if plugin == "caching_sha2_password" {
+		if plugin == PluginCachingSha2Password {
 			entrie.MysqlCachingSha2Password = authenticationString
 		}
-		if plugin == "mysql_native_password" {
+		if plugin == PluginMysqlNativePassword {
 			entrie.MysqlNativePassword = authenticationString
 		}
 		entries[user] = append(entries[user], &entrie)
@@ -218,13 +228,13 @@ func (a *AuthServerMysqlBase) reLoadUser() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.entries = entries
-	return nil
+	return uint64(affectedNum), nil
 }
 
 // SetQueryService set QueryService
 func (a *AuthServerMysqlBase) SetQueryService(conn queryservice.QueryService) {
 	a.qs = conn
-	err := a.reLoadUser()
+	_, err := a.reLoadUser()
 	if err != nil {
 		log.Println("reload fail")
 	}

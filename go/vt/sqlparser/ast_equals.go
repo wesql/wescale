@@ -1064,6 +1064,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfRelease(a, b)
+	case *Reload:
+		b, ok := inB.(*Reload)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfReload(a, b)
 	case *RenameColumn:
 		b, ok := inB.(*RenameColumn)
 		if !ok {
@@ -3640,6 +3646,17 @@ func (cmp *Comparator) RefOfRelease(a, b *Release) bool {
 		return false
 	}
 	return cmp.IdentifierCI(a.Name, b.Name)
+}
+
+// RefOfReload does deep equals between the two objects.
+func (cmp *Comparator) RefOfReload(a, b *Reload) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Type == b.Type
 }
 
 // RefOfRenameColumn does deep equals between the two objects.
@@ -6276,6 +6293,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfRelease(a, b)
+	case *Reload:
+		b, ok := inB.(*Reload)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfReload(a, b)
 	case *RenameTable:
 		b, ok := inB.(*RenameTable)
 		if !ok {

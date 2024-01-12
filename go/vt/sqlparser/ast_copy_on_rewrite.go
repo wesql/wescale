@@ -368,6 +368,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfRegexpSubstrExpr(n, parent)
 	case *Release:
 		return c.copyOnRewriteRefOfRelease(n, parent)
+	case *Reload:
+		return c.copyOnRewriteRefOfReload(n, parent)
 	case *RenameColumn:
 		return c.copyOnRewriteRefOfRenameColumn(n, parent)
 	case *RenameIndex:
@@ -4421,6 +4423,18 @@ func (c *cow) copyOnRewriteRefOfRelease(n *Release, parent SQLNode) (out SQLNode
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfReload(n *Reload, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfRenameColumn(n *RenameColumn, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6745,6 +6759,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfPrepareStmt(n, parent)
 	case *Release:
 		return c.copyOnRewriteRefOfRelease(n, parent)
+	case *Reload:
+		return c.copyOnRewriteRefOfReload(n, parent)
 	case *RenameTable:
 		return c.copyOnRewriteRefOfRenameTable(n, parent)
 	case *RevertMigration:

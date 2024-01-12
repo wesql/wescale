@@ -270,6 +270,10 @@ const (
 	QueryStr      = "query"
 	ConnectionStr = "connection"
 
+	// Reload Types
+	ReloadUsersStr      = "users"
+	ReloadPrivilegesStr = "privileges"
+
 	// Check Types
 	ForupgradeStr = "for upgrade"
 	QuickStr      = "quick"
@@ -786,6 +790,12 @@ const (
 	UnknownKillType KillType = iota
 	KillQuery
 	KillConnection
+)
+
+// ReloadType constants
+const (
+	ReloadUsers ReloadType = iota
+	ReloadPrivileges
 )
 
 // CheckType constants

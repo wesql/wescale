@@ -710,6 +710,12 @@ func (sbc *SandboxConn) getTxReservedID(txID int64) int64 {
 	return sbc.txIDToRID[txID]
 }
 
+func (sbc *SandboxConn) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+	sbc.mapMu.Lock()
+	defer sbc.mapMu.Unlock()
+	return nil
+}
+
 // StringQueries returns the queries executed as a slice of strings
 func (sbc *SandboxConn) StringQueries() []string {
 	result := make([]string, len(sbc.Queries))

@@ -2118,6 +2118,10 @@ func (node *Kill) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "kill %s %v", node.Type.ToString(), node.ConnID)
 }
 
+func (node *Reload) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "reload %s", node.Type.ToString())
+}
+
 // Format formats the UnlockTables node.
 func (node *UnlockTables) Format(buf *TrackedBuffer) {
 	buf.literal("unlock tables")

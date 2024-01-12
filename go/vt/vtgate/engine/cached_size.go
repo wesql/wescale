@@ -692,6 +692,16 @@ func (cached *PulloutSubquery) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
+func (cached *ReloadExec) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(8)
+	}
+	return size
+}
 func (cached *RenameFields) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)

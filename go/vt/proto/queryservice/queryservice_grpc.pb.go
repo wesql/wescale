@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type QueryClient interface {
+	ReloadExec(ctx context.Context, in *query.ReloadExecRequest, opts ...grpc.CallOption) (*query.ReloadExecResponse, error)
 	// Execute executes the specified SQL query in vtgate internal (might be in a
 	// transaction context, if Query.transaction_id is set).
 	ExecuteInternal(ctx context.Context, in *query.ExecuteRequest, opts ...grpc.CallOption) (*query.ExecuteResponse, error)
@@ -97,6 +98,15 @@ type queryClient struct {
 
 func NewQueryClient(cc grpc.ClientConnInterface) QueryClient {
 	return &queryClient{cc}
+}
+
+func (c *queryClient) ReloadExec(ctx context.Context, in *query.ReloadExecRequest, opts ...grpc.CallOption) (*query.ReloadExecResponse, error) {
+	out := new(query.ReloadExecResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/ReloadExec", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *queryClient) ExecuteInternal(ctx context.Context, in *query.ExecuteRequest, opts ...grpc.CallOption) (*query.ExecuteResponse, error) {
@@ -603,6 +613,7 @@ func (c *queryClient) DropSchema(ctx context.Context, in *query.DropSchemaReques
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
 type QueryServer interface {
+	ReloadExec(context.Context, *query.ReloadExecRequest) (*query.ReloadExecResponse, error)
 	// Execute executes the specified SQL query in vtgate internal (might be in a
 	// transaction context, if Query.transaction_id is set).
 	ExecuteInternal(context.Context, *query.ExecuteRequest) (*query.ExecuteResponse, error)
@@ -675,6 +686,9 @@ type QueryServer interface {
 type UnimplementedQueryServer struct {
 }
 
+func (UnimplementedQueryServer) ReloadExec(context.Context, *query.ReloadExecRequest) (*query.ReloadExecResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReloadExec not implemented")
+}
 func (UnimplementedQueryServer) ExecuteInternal(context.Context, *query.ExecuteRequest) (*query.ExecuteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteInternal not implemented")
 }
@@ -776,6 +790,24 @@ type UnsafeQueryServer interface {
 
 func RegisterQueryServer(s grpc.ServiceRegistrar, srv QueryServer) {
 	s.RegisterService(&Query_ServiceDesc, srv)
+}
+
+func _Query_ReloadExec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.ReloadExecRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ReloadExec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/queryservice.Query/ReloadExec",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ReloadExec(ctx, req.(*query.ReloadExecRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Query_ExecuteInternal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1355,6 +1387,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "queryservice.Query",
 	HandlerType: (*QueryServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ReloadExec",
+			Handler:    _Query_ReloadExec_Handler,
+		},
 		{
 			MethodName: "ExecuteInternal",
 			Handler:    _Query_ExecuteInternal_Handler,

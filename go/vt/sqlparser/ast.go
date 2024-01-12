@@ -704,6 +704,14 @@ type (
 		ConnID *Literal
 	}
 
+	// ReloadType is an enum for Reload Types
+	ReloadType int8
+
+	// Reload represents a RELOAD statement
+	Reload struct {
+		Type ReloadType
+	}
+
 	// OtherAdmin represents a misc statement that relies on ADMIN privileges,
 	// such as REPAIR, OPTIMIZE, or TRUNCATE statement.
 	// It should be used only as an indicator. It does not contain
@@ -748,6 +756,7 @@ func (*AlterView) iStatement()           {}
 func (*LockTables) iStatement()          {}
 func (*CheckTable) iStatement()          {}
 func (*Kill) iStatement()                {}
+func (*Reload) iStatement()              {}
 func (*UnlockTables) iStatement()        {}
 func (*AlterTable) iStatement()          {}
 func (*AlterVschema) iStatement()        {}

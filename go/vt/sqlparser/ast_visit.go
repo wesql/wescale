@@ -368,6 +368,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfRegexpSubstrExpr(in, f)
 	case *Release:
 		return VisitRefOfRelease(in, f)
+	case *Reload:
+		return VisitRefOfReload(in, f)
 	case *RenameColumn:
 		return VisitRefOfRenameColumn(in, f)
 	case *RenameIndex:
@@ -3000,6 +3002,15 @@ func VisitRefOfRelease(in *Release, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfReload(in *Reload, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfRenameColumn(in *RenameColumn, f Visit) error {
 	if in == nil {
 		return nil
@@ -4691,6 +4702,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfPrepareStmt(in, f)
 	case *Release:
 		return VisitRefOfRelease(in, f)
+	case *Reload:
+		return VisitRefOfReload(in, f)
 	case *RenameTable:
 		return VisitRefOfRenameTable(in, f)
 	case *RevertMigration:

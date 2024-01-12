@@ -196,6 +196,9 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return buildStreamPlan(stmt, vschema)
 	case *sqlparser.VStream:
 		return buildVStreamPlan(stmt, vschema)
+	case *sqlparser.Reload:
+		return buildReloadPlan(stmt, vschema)
+
 	case *sqlparser.CommentOnly:
 		// There is only a comment in the input.
 		// This is essentially a No-op
@@ -425,4 +428,20 @@ func newFlushStmt(stmt *sqlparser.Flush, tables sqlparser.TableNames) *sqlparser
 		WithLock:   stmt.WithLock,
 		ForExport:  stmt.ForExport,
 	}
+}
+
+func buildReloadPlan(stmt *sqlparser.Reload, vschema plancontext.VSchema) (*planResult, error) {
+	switch stmt.Type {
+	case sqlparser.ReloadUsers:
+		return newPlanResult(&engine.ReloadExec{ReloadType: stmt.Type}), nil
+	case sqlparser.ReloadPrivileges:
+		//send := &engine.Send{
+		//	TargetDestination: vschema.Destination(),
+		//	Query:             sqlparser.String(stmt),
+		//	SingleShardOnly:   false,
+		//}
+		//return newPlanResult(send), nil
+		return newPlanResult(&engine.ReloadExec{ReloadType: stmt.Type}), nil
+	}
+	return nil, vterrors.VT13001(fmt.Sprintf("unexpected statement type: %T", stmt))
 }

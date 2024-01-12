@@ -57,7 +57,6 @@ func gen4SelectStmtPlanner(
 			}
 			return newPlanResult(p, used), nil
 		}
-
 		if sel.SQLCalcFoundRows && sel.Limit != nil {
 			return gen4planSQLCalcFoundRows(vschema, sel, query, reservedVars)
 		}

@@ -90,6 +90,7 @@ type iExecute interface {
 	showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result, error)
 	// TODO: remove when resolver is gone
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
+	reloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error
 	VSchema() *vindexes.VSchema
 	SetFailPoint(command string, key string, value string) error
 }
@@ -122,6 +123,27 @@ type vcursorImpl struct {
 
 	warnings []*querypb.QueryWarning // any warnings that are accumulated during the planning phase are stored here
 	pv       plancontext.PlannerVersion
+}
+
+// ReloadExec load info from mysql into vtgate memory
+// 'reload users' : load user authentication information into vtgate
+// 'reload privileges' : load user authorized information into vttablet
+func (vc *vcursorImpl) ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error) {
+	var affectNum uint64
+	var err error
+	switch command {
+	case sqlparser.ReloadUsers:
+		affectNum, err = mysql.ReloadUsers()
+		if err != nil {
+			return nil, err
+		}
+	case sqlparser.ReloadPrivileges:
+		err := vc.executor.reloadExec(ctx, &command)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &sqltypes.Result{RowsAffected: affectNum}, nil
 }
 
 // newVcursorImpl creates a vcursorImpl. Before creating this object, you have to separate out any marginComments that came with

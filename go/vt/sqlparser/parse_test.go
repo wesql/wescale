@@ -196,8 +196,8 @@ var (
 		input:  "select * from (select 1) as x(user)",
 		output: "select * from (select 1 from dual) as x(`user`)",
 	}, {
-		input:  "select user from (select id from users ) as x(user)",
-		output: "select `user` from (select id from users) as x(`user`)",
+		input:  "select user from (select id from `users` ) as x(user)",
+		output: "select `user` from (select id from `users`) as x(`user`)",
 	}, {
 		input: "select n, d from something",
 	}, {
@@ -206,8 +206,8 @@ var (
 		string into an introducer expression, so the vttablet will never see a NChar string */
 		ignoreNormalizerTest: true,
 	}, {
-		input:  "select name, numbers from (select * from users) as x(name, numbers)",
-		output: "select `name`, numbers from (select * from users) as x(`name`, numbers)",
+		input:  "select name, numbers from (select * from `users`) as x(name, numbers)",
+		output: "select `name`, numbers from (select * from `users`) as x(`name`, numbers)",
 	}, {
 		input:  "select 0b010, 0b0111, b'0111', b'011'",
 		output: "select B'010', B'0111', B'0111', B'011' from dual",
@@ -1830,6 +1830,12 @@ var (
 	}, {
 		input:  "kill connection 9",
 		output: "kill connection 9",
+	}, {
+		input:  "reload users",
+		output: "reload users",
+	}, {
+		input:  "reload privileges",
+		output: "reload privileges",
 	},
 		{
 			input: "flush tables",
