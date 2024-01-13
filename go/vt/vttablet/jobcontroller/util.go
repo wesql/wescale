@@ -141,7 +141,7 @@ func parseDML(sql string) (tableName string, whereExpr sqlparser.Expr, stmt sqlp
 	return tableName, whereExpr, stmt, err
 }
 
-func getPKColsStr(pkInfos []PKInfo) string {
+func sprintfSelectPksSQL(tableName, whereStr string, pkInfos []PKInfo) string {
 	pkCols := ""
 	firstPK := true
 	for _, pkInfo := range pkInfos {
@@ -151,7 +151,9 @@ func getPKColsStr(pkInfos []PKInfo) string {
 		pkCols += pkInfo.pkName
 		firstPK = false
 	}
-	return pkCols
+	selectPksSQL := fmt.Sprintf("select %s from %s where %s order by %s",
+		pkCols, tableName, whereStr, pkCols)
+	return selectPksSQL
 }
 
 // 该函数拿锁

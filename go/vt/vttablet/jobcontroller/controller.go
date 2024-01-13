@@ -618,7 +618,7 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 	if err != nil {
 		return "", err
 	}
-	selectPKsSQL := genSelectPKsSQL(batchCountSQLStmt, pkInfos)
+	selectPKsSQL := genSelectPKsSQLByBatchCountSQL(batchCountSQLStmt, pkInfos)
 
 	// 2.根据select sql将batch拆分，生成两个新的batch。
 	// 这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
@@ -877,10 +877,8 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	if existUnSupportedPK(pkInfos) {
 		return "", "", 0, errors.New("the table has unsupported PK type")
 	}
-	// 3.拼接生成selectSQL，用于生成batch表
-	pkCols := getPKColsStr(pkInfos)
-	selectSQL := fmt.Sprintf("select %s from %s.%s where %s order by %s",
-		pkCols, tableSchema, tableName, sqlparser.String(whereExpr), pkCols)
+	// 3.拼接生成selectPksSQL，用于生成batch表
+	selectPksSQL := sprintfSelectPksSQL(tableName, sqlparser.String(whereExpr), pkInfos)
 
 	// 4.计算每个batch的batchSize
 	// batchSize = min(userBatchSize, batchSizeThreshold / 每个表的index数量 * ratioOfBatchSizeThreshold)
@@ -894,8 +892,8 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	} else {
 		batchSize = actualThreshold
 	}
-	// 5.基于selectSQL生成batch表
-	batchTableName, err = jc.createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName, whereExpr, stmt, pkInfos, batchSize)
+	// 5.基于selectPksSQL生成batch表
+	batchTableName, err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, sql, tableName, whereExpr, stmt, pkInfos, batchSize)
 	return tableName, batchTableName, batchSize, err
 }
 
@@ -933,7 +931,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 		currentBatchEnd = values
 		currentBatchSize++
 		if currentBatchSize == batchSize {
-			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
+			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 			if err != nil {
 				return "", err
 			}
@@ -950,7 +948,7 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	}
 	// 最后一个batch的行数不一定是batchSize，在循环结束时要将剩余的行数划分到最后一个batch中
 	if currentBatchSize != 0 {
-		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableSchema, tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
+		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
 			return "", err
 		}
@@ -962,13 +960,13 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, 
 	return batchTableName, nil
 }
 
-func createBatchInfoTableEntry(tableSchema, tableName string, sqlStmt sqlparser.Statement, whereExpr sqlparser.Expr,
+func createBatchInfoTableEntry(tableName string, sqlStmt sqlparser.Statement, whereExpr sqlparser.Expr,
 	currentBatchStart, currentBatchEnd []sqltypes.Value, pkInfos []PKInfo) (batchSQL, countSQL, batchStartStr, batchEndStr string, err error) {
 	batchSQL, finalWhereStr, err := genBatchSQL(sqlStmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 	if err != nil {
 		return "", "", "", "", err
 	}
-	countSQL = genCountSQL(tableSchema, tableName, finalWhereStr)
+	countSQL = genCountSQL(tableName, finalWhereStr)
 	if err != nil {
 		return "", "", "", "", err
 	}

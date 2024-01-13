@@ -82,6 +82,10 @@ func genSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.
 }
 
 func genBatchSQL(stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatchStart, currentBatchEnd []sqltypes.Value, pkInfos []PKInfo) (batchSQL, finalWhereStr string, err error) {
+	if stmt == nil {
+		return "", "", errors.New("genBatchSQL: stmt is nil")
+	}
+
 	// 1. 生成>=的部分
 	greatThanPart, err := genPKsGreaterEqualOrLessEqualStr(pkInfos, currentBatchStart, true)
 	if err != nil {
@@ -112,9 +116,9 @@ func genBatchSQL(stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatc
 // 拆分列所支持的类型需要满足以下条件：
 // 1.在sql中可以正确地使用between或>=,<=进行比较运算，且没有精度问题。
 // 2.可以转换成go中的int64，float64或string三种类型之一，且转换后，在golang中的比较规则和mysql中的比较规则相同
-func genCountSQL(tableSchema, tableName, whereExpr string) (countSQL string) {
-	countSQL = fmt.Sprintf("select count(*) as count_rows from %s.%s where %s",
-		tableSchema, tableName, whereExpr)
+func genCountSQL(tableName, whereExpr string) (countSQL string) {
+	countSQL = fmt.Sprintf("select count(*) as count_rows from %s where %s",
+		tableName, whereExpr)
 	return countSQL
 }
 
@@ -216,7 +220,7 @@ func genNewBatchSQLsAndCountSQLsWhenSplittingBatch(batchSQLStmt, batchCountSQLSt
 
 // replace selectExprs in batchCountSQLStmt with PK cols to generate selectPKsSQL
 // the function will not change the original batchCountSQLStmt
-func genSelectPKsSQL(batchCountSQLStmt sqlparser.Statement, pkInfos []PKInfo) string {
+func genSelectPKsSQLByBatchCountSQL(batchCountSQLStmt sqlparser.Statement, pkInfos []PKInfo) string {
 	batchCountSQLStmtSelect, _ := batchCountSQLStmt.(*sqlparser.Select)
 	// 根据pk信息生成select exprs
 	var pkExprs []sqlparser.SelectExpr
