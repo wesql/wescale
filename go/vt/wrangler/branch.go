@@ -420,7 +420,7 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		TargetKeyspace:        branchJob.targetDatabase,
 		Cell:                  branchJob.cells,
 		TabletTypes:           branchJob.sourceTabletType,
-		StopAfterCopy:         true,
+		StopAfterCopy:         branchJob.stopAfterCopy,
 		ExternalCluster:       branchJob.externalCluster,
 	}
 	if ms.ExternalCluster != "" {
