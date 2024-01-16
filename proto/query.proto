@@ -1095,7 +1095,8 @@ message SubmitDMLJobRequest{
   bool postpone_launch = 8;
   string time_period_start = 9;
   string time_period_end = 10;
-  string fail_policy = 11;
+  string time_period_time_zone = 11;
+  string fail_policy = 12;
 }
 message SubmitDMLJobResponse {
   QueryResult result = 1;

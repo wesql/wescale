@@ -354,7 +354,7 @@ func (node *AlterDMLJob) Format(buf *TrackedBuffer) {
 		buf.astPrintf(node, " ratio %v", node.Ratio)
 	}
 	if node.Type == SetRunningTimePeriodType {
-		buf.astPrintf(node, " '%s' '%s'", node.TimePeriodStart, node.TimePeriodEnd)
+		buf.astPrintf(node, " '%s' '%s' '%s'", node.TimePeriodStart, node.TimePeriodEnd, node.TimePeriodTimeZone)
 	}
 }
 

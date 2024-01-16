@@ -43,6 +43,7 @@ func isTimePeriodValid(startTime, endTime, timeZone string) bool {
 	}
 	// 分别检查其内容的合法性
 	if startTime != "" && endTime != "" {
+		// 如果用户提交的字符串为"'hh:mm:ss'"，则将'字符去掉
 		_, err := time.Parse(time.TimeOnly, startTime)
 		if err != nil {
 			return false
@@ -55,6 +56,7 @@ func isTimePeriodValid(startTime, endTime, timeZone string) bool {
 
 	if timeZone != "" {
 		// 如果用户设置了时区，则检查是否是合法的时区
+		// 如果用户提交的字符串为包含了多余的''，则将'字符去掉
 		_, err := getTimeZoneOffset(timeZone)
 		if err != nil {
 			return false
@@ -87,5 +89,7 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime, timeZone
 	}
 
 	// 往表中插入
-	return jc.updateJobPeriodTime(jc.ctx, uuid, startTime, endTime, timeZone)
+	qr, err := jc.updateJobPeriodTime(jc.ctx, uuid, startTime, endTime, timeZone)
+	jc.notifyJobManager()
+	return qr, err
 }

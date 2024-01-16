@@ -175,7 +175,7 @@ func (cached *AlterDMLJob) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(80)
+		size += int64(96)
 	}
 	// field UUID string
 	size += hack.RuntimeAllocSize(int64(len(cached.UUID)))
@@ -187,6 +187,8 @@ func (cached *AlterDMLJob) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodStart)))
 	// field TimePeriodEnd string
 	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodEnd)))
+	// field TimePeriodTimeZone string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodTimeZone)))
 	return size
 }
 func (cached *AlterDatabase) CachedSize(alloc bool) int64 {

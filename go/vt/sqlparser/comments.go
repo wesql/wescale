@@ -58,14 +58,14 @@ const (
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
 
-	DirectiveDMLSplit           = "DML_SPLIT"
-	DirectiveDMLTimeGap         = "DML_BATCH_INTERVAL"
-	DirectiveBATCHSIZE          = "DML_BATCH_SIZE"
-	DirectiveDMLPostponeLaunch  = "DML_POSTPONE_LAUNCH"
-	DirectiveDMLAutoRetry       = "DML_FAIL_POLICY"
-	DirectiveDMLTimePeriodStart = "DML_TIME_PERIOD_START"
-	DirectiveDMLTimePeriodEnd   = "DML_TIME_PERIOD_END"
-	DirectiveDMLTimePeriod      = "DML_TIME_PERIOD_TIME_ZONE"
+	DirectiveDMLSplit              = "DML_SPLIT"
+	DirectiveDMLTimeGap            = "DML_BATCH_INTERVAL"
+	DirectiveBATCHSIZE             = "DML_BATCH_SIZE"
+	DirectiveDMLPostponeLaunch     = "DML_POSTPONE_LAUNCH"
+	DirectiveDMLAutoRetry          = "DML_FAIL_POLICY"
+	DirectiveDMLTimePeriodStart    = "DML_TIME_PERIOD_START"
+	DirectiveDMLTimePeriodEnd      = "DML_TIME_PERIOD_END"
+	DirectiveDMLTimePeriodTimeZone = "DML_TIME_PERIOD_TIME_ZONE"
 )
 
 func isNonSpace(r rune) bool {
@@ -498,7 +498,7 @@ func GetDMLJobCmd(stmt Statement) string {
 	return str
 }
 
-func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd string) {
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
 	// todo newborn22 support insert...select, replace...select
@@ -508,7 +508,7 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 		comments = stmt.Comments
 	}
 	if comments == nil {
-		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd
+		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
 	}
 
 	var err error
@@ -544,5 +544,7 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 
 	timePeriodEnd, _ = directives.GetString(DirectiveDMLTimePeriodEnd, "")
 
-	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd
+	timePeriodTimeZone, _ = directives.GetString(DirectiveDMLTimePeriodTimeZone, "")
+
+	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
 }

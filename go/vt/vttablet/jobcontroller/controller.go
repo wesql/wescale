@@ -230,20 +230,6 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
 
-	// 对runningTimePeriodStart, runningTimePeriodEnd进行有效性检查，需要能够转换成time
-	// 当用户没有提交该信息时，默认两个值都为""
-	// 当用户用hint提交运维时间时，有可能出现一个为""，一个不为""的情况，因此这里需要用||而不是&&
-	if runningTimePeriodStart != "" || runningTimePeriodEnd != "" {
-		_, err = time.Parse(time.TimeOnly, runningTimePeriodStart)
-		if err != nil {
-			return &sqltypes.Result{}, err
-		}
-		_, err = time.Parse(time.TimeOnly, runningTimePeriodEnd)
-		if err != nil {
-			return &sqltypes.Result{}, err
-		}
-	}
-
 	if failPolicy == "" {
 		failPolicy = defaultFailPolicy
 	} else {
@@ -893,13 +879,13 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 		batchSize = actualThreshold
 	}
 	// 5.基于selectPksSQL生成batch表
-	batchTableName, err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, sql, tableName, whereExpr, stmt, pkInfos, batchSize)
+	batchTableName, err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, tableName, whereExpr, stmt, pkInfos, batchSize)
 	return tableName, batchTableName, batchSize, err
 }
 
-func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, sql, tableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) (string, error) {
+func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, tableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) (string, error) {
 	// 执行selectSQL，获得有序的pk值结果集，以生成每一个batch要执行的batch SQL
-	qr, err := jc.execQuery(jc.ctx, "", selectSQL)
+	qr, err := jc.execQuery(jc.ctx, tableSchema, selectSQL)
 	if err != nil {
 		return "", err
 	}

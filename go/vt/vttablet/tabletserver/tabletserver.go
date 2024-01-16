@@ -1496,8 +1496,8 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 	return err
 }
 
-func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
-	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", timePeriodStart, timePeriodEnd, nil, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", timePeriodStart, timePeriodEnd, timePeriodTimeZone, nil, timeGapInMs, batchSize, postponeLaunch, failPolicy)
 }
 
 // execRequest performs verifications, sets up the necessary environments

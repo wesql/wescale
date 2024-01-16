@@ -1638,6 +1638,7 @@ func (cmp *Comparator) RefOfAlterDMLJob(a, b *AlterDMLJob) bool {
 		a.Expire == b.Expire &&
 		a.TimePeriodStart == b.TimePeriodStart &&
 		a.TimePeriodEnd == b.TimePeriodEnd &&
+		a.TimePeriodTimeZone == b.TimePeriodTimeZone &&
 		a.Type == b.Type &&
 		cmp.RefOfLiteral(a.Ratio, b.Ratio)
 }

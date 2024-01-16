@@ -454,7 +454,7 @@ func (args *JobArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 
 	runningTimePeriodStart := row["running_time_period_start"].ToString()
 	runningTimePeriodEnd := row["running_time_period_end"].ToString()
-	runningTimePeriodTimeZone := row["running_time_period_timezone"].ToString()
+	runningTimePeriodTimeZone := row["running_time_period_time_zone"].ToString()
 
 	args.timePeriodStart, args.timePeriodEnd = getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone)
 
@@ -483,6 +483,9 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string,
 	timeGapInMs, batchSize int64) (err error) {
 
+	runningTimePeriodStart = stripApostrophe(runningTimePeriodStart)
+	runningTimePeriodEnd = stripApostrophe(runningTimePeriodEnd)
+	runningTimePeriodTimeZone = stripApostrophe(runningTimePeriodTimeZone)
 	if !isTimePeriodValid(runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone) {
 		return errors.New("check the format, the start and end should be like 'hh:mm:ss' and time zone should be like 'UTC[\\+\\-]\\d{2}:\\d{2}:\\d{2}'")
 	}
@@ -520,6 +523,13 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		return err
 	}
 	return nil
+}
+
+func stripApostrophe(s string) string {
+	if len(s) > 1 && s[0] == '\'' && s[len(s)-1] == '\'' {
+		return s[1 : len(s)-1]
+	}
+	return s
 }
 
 func getTimeZoneStr(offset int) string {

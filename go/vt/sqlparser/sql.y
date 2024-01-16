@@ -3514,6 +3514,17 @@ alter_statement:
       }
     }
 
+ | ALTER comment_opt DML_JOB STRING TIME_PERIOD STRING STRING STRING
+    {
+      $$ = &AlterDMLJob{
+        Type: SetRunningTimePeriodType,
+        UUID: string($4),
+        TimePeriodStart: string($6),
+        TimePeriodEnd: string($7),
+        TimePeriodTimeZone: string($8),
+      }
+    }
+
 
 
 | ALTER comment_opt SCHEMA_MIGRATION STRING RETRY

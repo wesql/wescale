@@ -4712,6 +4712,13 @@ func (m *SubmitDMLJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.FailPolicy)
 		i = encodeVarint(dAtA, i, uint64(len(m.FailPolicy)))
 		i--
+		dAtA[i] = 0x62
+	}
+	if len(m.TimePeriodTimeZone) > 0 {
+		i -= len(m.TimePeriodTimeZone)
+		copy(dAtA[i:], m.TimePeriodTimeZone)
+		i = encodeVarint(dAtA, i, uint64(len(m.TimePeriodTimeZone)))
+		i--
 		dAtA[i] = 0x5a
 	}
 	if len(m.TimePeriodEnd) > 0 {
@@ -6674,6 +6681,10 @@ func (m *SubmitDMLJobRequest) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	l = len(m.TimePeriodEnd)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.TimePeriodTimeZone)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -19005,6 +19016,38 @@ func (m *SubmitDMLJobRequest) UnmarshalVT(dAtA []byte) error {
 			m.TimePeriodEnd = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TimePeriodTimeZone", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TimePeriodTimeZone = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FailPolicy", wireType)
 			}

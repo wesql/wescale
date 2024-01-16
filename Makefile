@@ -211,6 +211,9 @@ e2e_test: build
 e2e_test_scheduler: build
 	tools/wesql_onlineddl_scheduler.sh
 
+e2e_test_jobcontroller: build
+	tools/wesql_jobcontroller.sh
+
 e2e_test_branch: build
 	tools/wesql_branch.sh
 

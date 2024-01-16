@@ -375,10 +375,10 @@ func (ws *wrappedService) SetFailPoint(ctx context.Context, command string, key 
 	})
 }
 
-func (ws *wrappedService) SubmitDMLJob(ctx context.Context, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (qr *sqltypes.Result, err error) {
+func (ws *wrappedService) SubmitDMLJob(ctx context.Context, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (qr *sqltypes.Result, err error) {
 	err = ws.wrapper(ctx, nil, ws.impl, "SubmitDMLJob", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
 		var innerErr error
-		qr, innerErr = conn.SubmitDMLJob(ctx, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+		qr, innerErr = conn.SubmitDMLJob(ctx, cmd, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy)
 		return canRetry(ctx, innerErr), innerErr
 	})
 	return qr, err
