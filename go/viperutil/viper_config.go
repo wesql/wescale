@@ -78,6 +78,9 @@ func (v *ViperConfig) loadConfigFileAtStartup() {
 		value := v.vp.GetString(sectionAndKey)
 
 		log.Infof("%s=%s", key, value)
+		if v.Fs == nil {
+			log.Exit("v.Fs is nil")
+		}
 		v.Fs.Set(key, value)
 	}
 	log.Infof("finish refresh config file")

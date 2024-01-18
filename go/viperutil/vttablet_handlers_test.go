@@ -61,10 +61,10 @@ func TestRegisterReloadHandlersForVtTablet(t *testing.T) {
 
 	vtTabletViperConfig := NewViperConfig()
 	fs := servenv.GetFlagSetFor("vttablet")
-	fs.StringSliceVar(&vtTabletViperConfig.ConfigPath, "config-path", []string{"./test"}, "Paths to search for config files in.")
-	fs.StringVar(&vtTabletViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
-	fs.StringVar(&vtTabletViperConfig.ConfigName, "config-name", "vttablet.cnf", "Name of the config file (without extension) to search for.")
-	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	fs.StringSliceVar(&vtTabletViperConfig.ConfigPath, "config_path", []string{"./test"}, "Paths to search for config files in.")
+	fs.StringVar(&vtTabletViperConfig.ConfigType, "config_type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtTabletViperConfig.ConfigName, "config_name", "vttablet.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config_file_not_found_handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtTabletViperConfig.Fs = fs
 	RegisterReloadHandlersForVtTablet(vtTabletViperConfig, nil)
 
@@ -86,10 +86,10 @@ func TestRegisterReloadHandlersForVtTabletWithModify(t *testing.T) {
 
 	vtTabletViperConfig := NewViperConfig()
 	fs := servenv.GetFlagSetFor("vttablet")
-	fs.StringSliceVar(&vtTabletViperConfig.ConfigPath, "config-path", []string{"./test"}, "Paths to search for config files in.")
-	fs.StringVar(&vtTabletViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
-	fs.StringVar(&vtTabletViperConfig.ConfigName, "config-name", "vttablet_test_modify.cnf", "Name of the config file (without extension) to search for.")
-	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	fs.StringSliceVar(&vtTabletViperConfig.ConfigPath, "config_path", []string{"./test"}, "Paths to search for config files in.")
+	fs.StringVar(&vtTabletViperConfig.ConfigType, "config_type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtTabletViperConfig.ConfigName, "config_name", "vttablet_test_modify.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtTabletViperConfig.ConfigFileNotFoundHandling, "config_file_not_found_handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtTabletViperConfig.Fs = fs
 
 	vtTabletViperConfig.LoadAndWatchConfigFile()
