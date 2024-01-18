@@ -57,10 +57,10 @@ func registerFlags(fs *pflag.FlagSet) {
 }
 
 func registerViperConfigFlags(fs *pflag.FlagSet) {
-	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config-path", []string{".", "/conf"}, "Paths to search for config files in.")
-	fs.StringVar(&vtGateViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
-	fs.StringVar(&vtGateViperConfig.ConfigName, "config-name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
-	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config_path", []string{".", "/conf"}, "Paths to search for config files in.")
+	fs.StringVar(&vtGateViperConfig.ConfigType, "config_type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtGateViperConfig.ConfigName, "config_name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config_file_not_found_handling", viperutil.IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtGateViperConfig.Fs = fs
 	viperutil.RegisterReloadHandlersForVtGate(vtGateViperConfig)
 }

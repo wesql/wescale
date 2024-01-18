@@ -2,12 +2,14 @@ package viperutil
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/ini.v1"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/ini.v1"
+
 	"vitess.io/vitess/go/vt/servenv"
 )
 
@@ -57,10 +59,10 @@ func TestRegisterReloadHandlersForVtGate(t *testing.T) {
 
 	vtGateViperConfig := NewViperConfig()
 	fs := servenv.GetFlagSetFor("vtgate")
-	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config-path", []string{"./test"}, "Paths to search for config files in.")
-	fs.StringVar(&vtGateViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
-	fs.StringVar(&vtGateViperConfig.ConfigName, "config-name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
-	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config_path", []string{"./test"}, "Paths to search for config files in.")
+	fs.StringVar(&vtGateViperConfig.ConfigType, "config_type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtGateViperConfig.ConfigName, "config_name", "vtgate.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config_file_not_found_handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtGateViperConfig.Fs = fs
 	RegisterReloadHandlersForVtGate(vtGateViperConfig)
 
@@ -103,10 +105,10 @@ func TestRegisterReloadHandlersForVtGateWithModify(t *testing.T) {
 
 	vtGateViperConfig := NewViperConfig()
 	fs := servenv.GetFlagSetFor("vtgate")
-	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config-path", []string{"./test"}, "Paths to search for config files in.")
-	fs.StringVar(&vtGateViperConfig.ConfigType, "config-type", "ini", "Config file type (omit to infer config type from file extension).")
-	fs.StringVar(&vtGateViperConfig.ConfigName, "config-name", "vtgate_test_modify.cnf", "Name of the config file (without extension) to search for.")
-	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config-file-not-found-handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
+	fs.StringSliceVar(&vtGateViperConfig.ConfigPath, "config_path", []string{"./test"}, "Paths to search for config files in.")
+	fs.StringVar(&vtGateViperConfig.ConfigType, "config_type", "ini", "Config file type (omit to infer config type from file extension).")
+	fs.StringVar(&vtGateViperConfig.ConfigName, "config_name", "vtgate_test_modify.cnf", "Name of the config file (without extension) to search for.")
+	fs.StringVar(&vtGateViperConfig.ConfigFileNotFoundHandling, "config_file_not_found_handling", IGNORE, "Behavior when a config file is not found. (Options: IGNORE, ERROR, EXIT)")
 	vtGateViperConfig.Fs = fs
 
 	vtGateViperConfig.LoadAndWatchConfigFile()
