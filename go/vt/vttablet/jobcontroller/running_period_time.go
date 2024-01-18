@@ -84,7 +84,7 @@ func (jc *JobController) SetRunningTimePeriod(uuid, startTime, endTime, timeZone
 	if err != nil {
 		return emptyResult, err
 	}
-	if status == runningStatus {
+	if status == RunningStatus {
 		return emptyResult, errors.New("the job is running now, pause it first")
 	}
 

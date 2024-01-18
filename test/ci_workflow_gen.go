@@ -128,6 +128,7 @@ var (
 		"topo_connection_cache",
 		"vtgate_partial_keyspace",
 		"vttablet_prscomplex",
+		"jobcontroller",
 	}
 
 	clusterSelfHostedList       = []string{}
@@ -179,6 +180,8 @@ func clusterMySQLVersions(clusterName string) mysqlVersions {
 	case clusterName == "xb_backup":
 		return allMySQLVersions
 	case clusterName == "xb_recovery":
+		return allMySQLVersions
+	case clusterName == "jobcontroller":
 		return allMySQLVersions
 	default:
 		return defaultMySQLVersions

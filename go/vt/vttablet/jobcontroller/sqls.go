@@ -61,11 +61,7 @@ const (
                                 where
                                 	job_uuid = %a`
 
-	sqlGetTablePk = ` SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-								WHERE 
-						    		TABLE_SCHEMA = %a
-									AND TABLE_NAME = %a
-									AND CONSTRAINT_NAME = 'PRIMARY'`
+	sqlGetTablePk = ` show index from %s where key_name = 'primary'`
 
 	sqlGetTableColNames = `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
 								WHERE 
@@ -93,7 +89,7 @@ const (
                                 where 
                                     job_uuid = %a`
 
-	sqlGetIndexCount = `select count(*) as index_count from information_schema.statistics where table_schema = %a and table_name = %a`
+	sqlGetIndexCount = `show index from %s`
 
 	sqlGetDealingBatchID = `select dealing_batch_id from mysql.non_transactional_dml_jobs where job_uuid = %a`
 

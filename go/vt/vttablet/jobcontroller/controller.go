@@ -93,14 +93,14 @@ const (
 // possible status of DML job
 // batch is status is in ('queued', 'completed')
 const (
-	postponeLaunchStatus  = "postpone-launch"
-	queuedStatus          = "queued"
-	runningStatus         = "running"
-	pausedStatus          = "paused"
-	canceledStatus        = "canceled"
-	failedStatus          = "failed"
-	completedStatus       = "completed"
-	notInTimePeriodStatus = "not-in-time-period"
+	PostponeLaunchStatus  = "postpone-launch"
+	QueuedStatus          = "queued"
+	RunningStatus         = "running"
+	PausedStatus          = "paused"
+	CanceledStatus        = "canceled"
+	FailedStatus          = "failed"
+	CompletedStatus       = "completed"
+	NotInTimePeriodStatus = "not-in-time-period"
 )
 
 type JobController struct {
@@ -137,10 +137,9 @@ type JobArgs struct {
 func (jc *JobController) Open() error {
 	jc.initMutex.Lock()
 	defer jc.initMutex.Unlock()
-	if jc.tabletTypeFunc() == topodatapb.TabletType_PRIMARY {
-		jc.initJobController()
-		jc.runJobController()
-	}
+	jc.initJobController()
+	jc.runJobController()
+
 	return nil
 }
 
@@ -204,7 +203,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 
 	jobUUID, err := schema.CreateUUIDWithDelimiter("-")
 	if err != nil {
-		return nil, err
+		return &sqltypes.Result{}, err
 	}
 	sql = sqlparser.StripComments(sql)
 	if batchIntervalInMs == 0 {
@@ -224,9 +223,9 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	batchInfoTableSchema := tableSchema
 
-	jobStatus := queuedStatus
+	jobStatus := QueuedStatus
 	if postponeLaunch {
-		jobStatus = postponeLaunchStatus
+		jobStatus = PostponeLaunchStatus
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
 
@@ -237,7 +236,6 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 			return &sqltypes.Result{}, errors.New("failPolicy must be one of 'abort', 'skip' or 'pause'")
 		}
 	}
-
 	err = jc.insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema, batchInfoTable,
 		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, batchIntervalInMs, batchSize)
 	if err != nil {
@@ -257,7 +255,7 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	if err != nil {
 		return emptyResult, err
 	}
-	if status != runningStatus {
+	if status != RunningStatus {
 		// todo，feat 将info写回给vtgate，目前还不生效
 		emptyResult.Info = " The job status is not running and can't be paused"
 		return emptyResult, nil
@@ -266,7 +264,7 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	// 将job在表中的状态改为paused，runner在运行时如果检测到状态不是running，就会退出。
 	// pause虽然终止了runner协程，但是
 	statusSetTime := time.Now().Format(time.RFC3339)
-	qr, err := jc.updateJobStatus(jc.ctx, uuid, pausedStatus, statusSetTime)
+	qr, err := jc.updateJobStatus(jc.ctx, uuid, PausedStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, err
 	}
@@ -279,7 +277,7 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	if err != nil {
 		return emptyResult, err
 	}
-	if status != pausedStatus {
+	if status != PausedStatus {
 		emptyResult.Info = " The job status is not paused and don't need resume"
 		return emptyResult, nil
 	}
@@ -314,12 +312,12 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 	if err != nil {
 		return emptyResult, err
 	}
-	if status != postponeLaunchStatus {
+	if status != PostponeLaunchStatus {
 		emptyResult.Info = " The job status is not postpone-launch and don't need launch"
 		return emptyResult, nil
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
-	return jc.updateJobStatus(jc.ctx, uuid, queuedStatus, statusSetTime)
+	return jc.updateJobStatus(jc.ctx, uuid, QueuedStatus, statusSetTime)
 }
 
 func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
@@ -328,12 +326,12 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	if err != nil {
 		return emptyResult, nil
 	}
-	if status == canceledStatus || status == failedStatus || status == completedStatus {
+	if status == CanceledStatus || status == FailedStatus || status == CompletedStatus {
 		emptyResult.Info = fmt.Sprintf(" The job status is %s and can't canceld", status)
 		return emptyResult, nil
 	}
 	statusSetTime := time.Now().Format(time.RFC3339)
-	qr, err := jc.updateJobStatus(jc.ctx, uuid, canceledStatus, statusSetTime)
+	qr, err := jc.updateJobStatus(jc.ctx, uuid, CanceledStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, nil
 	}
@@ -353,7 +351,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 	defer jc.workingTablesMutex.Unlock()
 
 	statusSetTime := time.Now().Format(time.RFC3339)
-	qr, err := jc.updateJobStatus(ctx, uuid, completedStatus, statusSetTime)
+	qr, err := jc.updateJobStatus(ctx, uuid, CompletedStatus, statusSetTime)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -366,7 +364,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
 	statusSetTime := time.Now().Format(time.RFC3339)
-	_, _ = jc.updateJobStatus(ctx, uuid, failedStatus, statusSetTime)
+	_, _ = jc.updateJobStatus(ctx, uuid, FailedStatus, statusSetTime)
 
 	jc.deleteDMLJobRunningMeta(tableName)
 	jc.notifyJobManager()
@@ -377,10 +375,6 @@ func (jc *JobController) jobManager() {
 	defer timer.Stop()
 
 	for {
-		// 防止vttablet不再是primary时该协程继续执行
-		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
-			return
-		}
 		select {
 		case <-jc.ctx.Done():
 			return
@@ -398,14 +392,14 @@ func (jc *JobController) jobManager() {
 				jobArgs.initArgsByQueryResult(row)
 				switch jobArgs.status {
 				// 对处于未开始状态对job进行调度
-				case queuedStatus, notInTimePeriodStatus:
+				case QueuedStatus, NotInTimePeriodStatus:
 					if jc.checkDmlJobRunnable(jobArgs.uuid, jobArgs.status, jobArgs.table, jobArgs.timePeriodStart, jobArgs.timePeriodEnd) {
 						// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
 						jc.initDMLJobRunningMeta(jobArgs.table)
 						go jc.dmlJobBatchRunner(jobArgs.uuid, jobArgs.table, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.failPolicy, jobArgs.batchInterval, jobArgs.batchSize, jobArgs.timePeriodStart, jobArgs.timePeriodEnd)
 					}
 				// 对处于完成态对job进行清理
-				case canceledStatus, failedStatus, completedStatus:
+				case CanceledStatus, FailedStatus, CompletedStatus:
 					timeZoneOffset, err := getTimeZoneOffset(jobArgs.timeZone)
 					if err != nil {
 						log.Errorf("jobManager: getTimeZoneOffset failed, %s", err)
@@ -417,7 +411,7 @@ func (jc *JobController) jobManager() {
 						continue
 					}
 				// 对处于运行态的job进行监控
-				case runningStatus:
+				case RunningStatus:
 					// todo feat 增加对长时间未增加rows的running job的处理
 				}
 
@@ -433,7 +427,7 @@ func (jc *JobController) jobManager() {
 // todo，feat 可以增加并发Job数的限制
 // 调用该函数时外部必须拿tableMutex锁和workingTablesMutex锁
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
-	if status != queuedStatus && status != notInTimePeriodStatus {
+	if status != QueuedStatus && status != NotInTimePeriodStatus {
 		return false
 	}
 	if _, exit := jc.workingTables[table]; exit {
@@ -444,7 +438,7 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 		if !(timeNow.After(*periodStartTime) && timeNow.Before(*periodEndTime)) {
 			// 更新状态
 			submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
-				sqltypes.StringBindVariable(notInTimePeriodStatus),
+				sqltypes.StringBindVariable(NotInTimePeriodStatus),
 				sqltypes.StringBindVariable(timeNow.Format(time.RFC3339)),
 				sqltypes.StringBindVariable(jobUUID))
 			if err != nil {
@@ -516,7 +510,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return errors.New("the len of qr of count expected batch size is not 1")
 	}
 	batchStatus, _ := qr.Named().Rows[0].ToString("batch_status")
-	if batchStatus == completedStatus {
+	if batchStatus == CompletedStatus {
 		return nil
 	}
 
@@ -553,7 +547,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	// 4.1在batch table中记录
 	updateBatchStatus := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTable)
 	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
-		sqltypes.StringBindVariable(completedStatus),
+		sqltypes.StringBindVariable(CompletedStatus),
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
 		sqltypes.StringBindVariable(batchID))
 	if err != nil {
@@ -668,7 +662,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 	timer := time.NewTicker(time.Duration(batchInterval) * time.Millisecond)
 	defer timer.Stop()
 
-	_, err := jc.updateJobStatus(jc.ctx, uuid, runningStatus, time.Now().Format(time.RFC3339))
+	_, err := jc.updateJobStatus(jc.ctx, uuid, RunningStatus, time.Now().Format(time.RFC3339))
 	if err != nil {
 		jc.FailJob(jc.ctx, uuid, err.Error(), table)
 	}
@@ -680,11 +674,6 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			return
 		case <-timer.C:
 		}
-		// 防止vttablet不再是primary时该协程继续执行
-		if jc.tabletTypeFunc() != topodatapb.TabletType_PRIMARY {
-			return
-		}
-
 		// 定时器触发时执行的函数
 		// 检查状态是否为running，可能为paused/canceled
 		status, err := jc.getStrJobInfo(jc.ctx, uuid, "status")
@@ -692,7 +681,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			jc.FailJob(jc.ctx, uuid, err.Error(), table)
 			return
 		}
-		if status != runningStatus {
+		if status != RunningStatus {
 			return
 		}
 
@@ -701,7 +690,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 		if timePeriodStart != nil && timePeriodEnd != nil {
 			currentTime := time.Now()
 			if !(currentTime.After(*timePeriodStart) && currentTime.Before(*timePeriodEnd)) {
-				_, err = jc.updateJobStatus(jc.ctx, uuid, notInTimePeriodStatus, currentTime.Format(time.RFC3339))
+				_, err = jc.updateJobStatus(jc.ctx, uuid, NotInTimePeriodStatus, currentTime.Format(time.RFC3339))
 				if err != nil {
 					jc.FailJob(jc.ctx, uuid, err.Error(), table)
 				}
@@ -750,7 +739,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			case failPolicyPause:
 				msg := fmt.Sprintf("batch %s failed, pause job: %s", batchIDToExec, err.Error())
 				_ = jc.updateJobMessage(jc.ctx, uuid, msg)
-				_, _ = jc.updateJobStatus(jc.ctx, uuid, pausedStatus, time.Now().Format(time.RFC3339))
+				_, _ = jc.updateJobStatus(jc.ctx, uuid, PausedStatus, time.Now().Format(time.RFC3339))
 				return
 				// todo feat 增加retryThenPause策略
 			case failPolicyRetryThenPause:
@@ -792,10 +781,10 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 			runnerArgs.initArgsByQueryResult(row)
 
 			switch status {
-			case runningStatus:
+			case RunningStatus:
 				jc.initDMLJobRunningMeta(runnerArgs.table)
 				go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
-			case pausedStatus:
+			case PausedStatus:
 				jc.initDMLJobRunningMeta(runnerArgs.table)
 			}
 		}
@@ -872,7 +861,7 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	if err != nil {
 		return "", "", 0, err
 	}
-	actualThreshold := int64(float64(int64(batchSizeThreshold)/indexCount) * ratioOfBatchSizeThreshold)
+	actualThreshold := int64(float64(batchSizeThreshold/indexCount) * ratioOfBatchSizeThreshold)
 	if userBatchSize < actualThreshold {
 		batchSize = userBatchSize
 	} else {

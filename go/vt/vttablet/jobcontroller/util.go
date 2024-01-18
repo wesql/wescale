@@ -47,7 +47,7 @@ func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, tim
 	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), failPolicy, strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "time_gap_in_ms", "batch_size", "fail_policy", "postpone_launch"),
+		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "batch_interval_in_ms", "batch_size", "fail_policy", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -64,11 +64,11 @@ func (jc *JobController) execQuery(ctx context.Context, targetString, query stri
 		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
+	defer conn.Recycle()
 	if err != nil {
 		return result, err
 	}
 	qr, err := conn.Exec(ctx, query, math.MaxInt32, true)
-	conn.Recycle()
 	return qr, err
 
 }
@@ -315,19 +315,17 @@ func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tabl
 
 func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableName string) ([]PKInfo, error) {
 	// 1. 先获取pks 的名字
-	submitQuery, err := sqlparser.ParseAndBind(sqlGetTablePk,
-		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(tableName))
+	submitQuery := fmt.Sprintf(sqlGetTablePk, tableName)
+	qr, err := jc.execQuery(ctx, tableSchema, submitQuery)
 	if err != nil {
 		return nil, err
 	}
-	qr, err := jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return nil, err
+	if len(qr.Named().Rows) == 0 {
+		return nil, errors.New("the len of qr of getting pk info is 0")
 	}
 	var pkNames []string
 	for _, row := range qr.Named().Rows {
-		pkNames = append(pkNames, row["COLUMN_NAME"].ToString())
+		pkNames = append(pkNames, row["Column_name"].ToString())
 	}
 
 	// 2. 根据获得的pk列的名字，去原表中查一行数据，借助封装好的Value对象获得每个pk的类型
@@ -387,22 +385,19 @@ func currentBatchIDInc(currentBatchID string) (string, error) {
 	return strconv.FormatInt(currentBatchIDInt64, 10), nil
 }
 
-func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCount int64, err error) {
-	query, err := sqlparser.ParseAndBind(sqlGetIndexCount,
-		sqltypes.StringBindVariable(tableSchema),
-		sqltypes.StringBindVariable(tableName))
-	if err != nil {
-		return 0, err
-	}
+func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCount int, err error) {
+	query := fmt.Sprintf(sqlGetIndexCount, tableName)
+
 	ctx := context.Background()
-	qr, err := jc.execQuery(ctx, "", query)
+	qr, err := jc.execQuery(ctx, tableSchema, query)
 	if err != nil {
 		return 0, err
 	}
-	if len(qr.Named().Rows) != 1 {
-		return 0, err
+	indexCount = len(qr.Named().Rows)
+	if indexCount == 0 {
+		return 0, errors.New("index count is 0")
 	}
-	return qr.Named().Rows[0]["index_count"].ToInt64()
+	return indexCount, nil
 }
 
 func genNewBatchID(batchID string) (newBatchID string, err error) {
