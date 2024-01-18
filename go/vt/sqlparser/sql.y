@@ -3421,7 +3421,6 @@ alter_statement:
 
 
 
-
   | ALTER comment_opt DML_JOB STRING LAUNCH
     {
       $$ = &AlterDMLJob{
