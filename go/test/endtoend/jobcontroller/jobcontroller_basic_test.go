@@ -31,7 +31,7 @@ func createUserDB(t *testing.T) {
 		Port: clusterInstance.VtgateMySQLPort,
 	}
 
-	_, err := VtgateExecQuery(t, &vtParams, fmt.Sprintf(CreateSchemaSQL, UserTableSchema))
+	_, err := VtgateExecQuery(t, &vtParams, fmt.Sprintf("create database if not exists %s", UserTableSchema))
 	require.Nil(t, err)
 }
 
@@ -51,12 +51,17 @@ func singleIntPK(t *testing.T) {
 
 	// create table
 	tableName := "mytable"
-	_, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(SingleIntPKCreatTeableSQL, tableName))
+	_, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(
+		`create table if not exists %s (
+					id int auto_increment primary key,
+					name varchar(256) not null,
+					age int
+	)`, tableName))
 	require.Nil(t, err)
 	require.Equal(t, true, CheckTableExist(t, &vtParams, tableName))
 
 	// insert some data into table
-	insertDataSQLTemplate := fmt.Sprintf(SingleIntPKInsertDataSQL, tableName)
+	insertDataSQLTemplate := fmt.Sprintf(`insert into %s (name, age) values (%%a, %%a);`, tableName)
 	totalRows := 10000
 	for i := 0; i < totalRows; i++ {
 		insertDataSQL, err := sqlparser.ParseAndBind(insertDataSQLTemplate,
@@ -74,22 +79,22 @@ func singleIntPK(t *testing.T) {
 	fmt.Printf("row inserted is %d\n", row)
 
 	// submit a DML job
-	query, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(SingleIntPKDMLSQL, tableName))
+	query, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("update /*vt+ dml_split=true */ %s set name='123' where age > 50;", tableName))
 	require.Nil(t, err)
-	jobUUID := query.Named().Rows[0]["jobUUID"].ToString()
+	jobUUID := query.Named().Rows[0]["job_uuid"].ToString()
 	fmt.Printf("job %s submitted", jobUUID)
 
 	// wait for job to complete
 	require.Equal(t, jobcontroller.CompletedStatus, WaitForJobStatus(t, &vtParams, jobUUID, 10*time.Minute, jobcontroller.CompletedStatus))
 
 	// verify that all the table rows satisfy the where condition have been updated
-	query, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(SingleIntPKVerifySQL, tableName))
+	query, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(`select count(*) as cnt from %s where name!='123' and age > 50;`, tableName))
 	require.Nil(t, err)
 	rowsNotUpdated, _ := query.Named().Rows[0]["cnt"].ToInt64()
 	fmt.Printf("row not updated is %d\n", rowsNotUpdated)
 	require.Equal(t, int64(0), rowsNotUpdated)
 
 	// drop table
-	_, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf(DropTableSQL, UserTableSchema, tableName))
+	_, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("drop table if exists %s.%s", UserTableSchema, tableName))
 	require.Nil(t, err)
 }

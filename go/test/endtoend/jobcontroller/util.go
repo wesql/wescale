@@ -23,17 +23,7 @@ import (
 )
 
 const (
-	UserTableSchema           = "testdb666"
-	CreateSchemaSQL           = "create database if not exists %s"
-	SingleIntPKCreatTeableSQL = ` create table if not exists %s (
-     	id int auto_increment primary key,
-     	name varchar(256) not null,
-     	age int
- 	);`
-	SingleIntPKInsertDataSQL = `insert into %s (name, age) values (%%a, %%a);`
-	SingleIntPKDMLSQL        = `update /*vt+ dml_split=true */ %s set name='123' where age>50;`
-	SingleIntPKVerifySQL     = `select count(*) as cnt from %s where name!='123' and age > 50;`
-	DropTableSQL             = "drop table if exists %s.%s"
+	UserTableSchema = "testdb666"
 )
 
 // WaitForJobStatus waits for a job to reach either provided statuses (returns immediately), or eventually time out
