@@ -138,7 +138,7 @@ func (jc *JobController) Open() error {
 	jc.initMutex.Lock()
 	defer jc.initMutex.Unlock()
 	jc.initJobController()
-	jc.runJobController()
+	go jc.jobManager()
 
 	return nil
 }
@@ -371,6 +371,11 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 }
 
 func (jc *JobController) jobManager() {
+	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
+	jc.recoverJobsMetadata(jc.ctx)
+	log.Info("JobController: metadata of all running and paused jobs are restored to memory\n")
+
+	// 2.交由jobManager对job进行管理
 	timer := time.NewTicker(time.Duration(jobManagerRunningInterval) * time.Second)
 	defer timer.Stop()
 
@@ -757,16 +762,6 @@ func (jc *JobController) deleteDMLJobRunningMeta(table string) {
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
 	delete(jc.workingTables, table)
-}
-
-func (jc *JobController) runJobController() {
-	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
-	jc.recoverJobsMetadata(jc.ctx)
-
-	log.Info("JobController: metadata of all running and paused jobs are restored to memory\n")
-	// 2.交由jobManager对job进行管理
-	go jc.jobManager()
-
 }
 
 func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
