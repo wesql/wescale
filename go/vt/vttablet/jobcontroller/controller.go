@@ -227,7 +227,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	if postponeLaunch {
 		jobStatus = PostponeLaunchStatus
 	}
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 
 	if failPolicy == "" {
 		failPolicy = defaultFailPolicy
@@ -263,7 +263,7 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 
 	// 将job在表中的状态改为paused，runner在运行时如果检测到状态不是running，就会退出。
 	// pause虽然终止了runner协程，但是
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 	qr, err := jc.updateJobStatus(jc.ctx, uuid, PausedStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, err
@@ -316,7 +316,7 @@ func (jc *JobController) LaunchJob(uuid string) (*sqltypes.Result, error) {
 		emptyResult.Info = " The job status is not postpone-launch and don't need launch"
 		return emptyResult, nil
 	}
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 	return jc.updateJobStatus(jc.ctx, uuid, QueuedStatus, statusSetTime)
 }
 
@@ -330,7 +330,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 		emptyResult.Info = fmt.Sprintf(" The job status is %s and can't canceld", status)
 		return emptyResult, nil
 	}
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 	qr, err := jc.updateJobStatus(jc.ctx, uuid, CanceledStatus, statusSetTime)
 	if err != nil {
 		return emptyResult, nil
@@ -350,7 +350,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 	jc.workingTablesMutex.Lock()
 	defer jc.workingTablesMutex.Unlock()
 
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 	qr, err := jc.updateJobStatus(ctx, uuid, CompletedStatus, statusSetTime)
 	if err != nil {
 		return &sqltypes.Result{}, err
@@ -363,7 +363,7 @@ func (jc *JobController) CompleteJob(ctx context.Context, uuid, table string) (*
 
 func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName string) {
 	_ = jc.updateJobMessage(ctx, uuid, message)
-	statusSetTime := time.Now().Format(time.RFC3339)
+	statusSetTime := time.Now().Format(time.DateTime)
 	_, _ = jc.updateJobStatus(ctx, uuid, FailedStatus, statusSetTime)
 
 	jc.deleteDMLJobRunningMeta(tableName)
@@ -444,7 +444,7 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 			// 更新状态
 			submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
 				sqltypes.StringBindVariable(NotInTimePeriodStatus),
-				sqltypes.StringBindVariable(timeNow.Format(time.RFC3339)),
+				sqltypes.StringBindVariable(timeNow.Format(time.DateTime)),
 				sqltypes.StringBindVariable(jobUUID))
 			if err != nil {
 				return false
@@ -667,7 +667,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 	timer := time.NewTicker(time.Duration(batchInterval) * time.Millisecond)
 	defer timer.Stop()
 
-	_, err := jc.updateJobStatus(jc.ctx, uuid, RunningStatus, time.Now().Format(time.RFC3339))
+	_, err := jc.updateJobStatus(jc.ctx, uuid, RunningStatus, time.Now().Format(time.DateTime))
 	if err != nil {
 		jc.FailJob(jc.ctx, uuid, err.Error(), table)
 	}
@@ -695,7 +695,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 		if timePeriodStart != nil && timePeriodEnd != nil {
 			currentTime := time.Now()
 			if !(currentTime.After(*timePeriodStart) && currentTime.Before(*timePeriodEnd)) {
-				_, err = jc.updateJobStatus(jc.ctx, uuid, NotInTimePeriodStatus, currentTime.Format(time.RFC3339))
+				_, err = jc.updateJobStatus(jc.ctx, uuid, NotInTimePeriodStatus, currentTime.Format(time.DateTime))
 				if err != nil {
 					jc.FailJob(jc.ctx, uuid, err.Error(), table)
 				}
@@ -744,7 +744,7 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			case failPolicyPause:
 				msg := fmt.Sprintf("batch %s failed, pause job: %s", batchIDToExec, err.Error())
 				_ = jc.updateJobMessage(jc.ctx, uuid, msg)
-				_, _ = jc.updateJobStatus(jc.ctx, uuid, PausedStatus, time.Now().Format(time.RFC3339))
+				_, _ = jc.updateJobStatus(jc.ctx, uuid, PausedStatus, time.Now().Format(time.DateTime))
 				return
 				// todo feat 增加retryThenPause策略
 			case failPolicyRetryThenPause:
