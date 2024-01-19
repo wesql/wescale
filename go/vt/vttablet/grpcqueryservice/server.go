@@ -528,6 +528,11 @@ func (q *query) SetFailPoint(ctx context.Context, request *querypb.SetFailPointR
 	return nil, q.server.SetFailPoint(ctx, request.Command, request.Key, request.Value)
 }
 
+func (q *query) SubmitDMLJob(ctx context.Context, request *querypb.SubmitDMLJobRequest) (*querypb.SubmitDMLJobResponse, error) {
+	rst, err := q.server.SubmitDMLJob(ctx, request.Cmd, request.Sql, request.JobUuid, request.RelatedSchema, request.TimePeriodStart, request.TimePeriodEnd, request.TimePeriodTimeZone, request.Timegap, request.BatchSize, request.PostponeLaunch, request.FailPolicy)
+	return &querypb.SubmitDMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
+}
+
 // Register registers the implementation on the provide gRPC Server.
 func Register(s *grpc.Server, server queryservice.QueryService) {
 	queryservicepb.RegisterQueryServer(s, &query{server: server})

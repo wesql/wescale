@@ -482,6 +482,18 @@ type (
 		Shards string
 	}
 
+	AlterDMLJobType int8
+
+	AlterDMLJob struct {
+		Type               AlterDMLJobType
+		UUID               string
+		Expire             string
+		Ratio              *Literal
+		TimePeriodStart    string
+		TimePeriodEnd      string
+		TimePeriodTimeZone string
+	}
+
 	// AlterTable represents a ALTER TABLE statement.
 	AlterTable struct {
 		Table           TableName
@@ -761,6 +773,7 @@ func (*UnlockTables) iStatement()        {}
 func (*AlterTable) iStatement()          {}
 func (*AlterVschema) iStatement()        {}
 func (*AlterMigration) iStatement()      {}
+func (*AlterDMLJob) iStatement()         {}
 func (*RevertMigration) iStatement()     {}
 func (*ShowMigrationLogs) iStatement()   {}
 func (*ShowThrottledApps) iStatement()   {}
@@ -1662,6 +1675,11 @@ type (
 		Filter  *ShowFilter
 	}
 
+	ShowDMLJob struct {
+		UUID   string
+		Detail bool
+	}
+
 	// ShowCreate is of ShowInternal type, holds SHOW CREATE queries.
 	ShowCreate struct {
 		Command ShowCommandType
@@ -1677,6 +1695,7 @@ type (
 func (*ShowBasic) isShowInternal()  {}
 func (*ShowCreate) isShowInternal() {}
 func (*ShowOther) isShowInternal()  {}
+func (*ShowDMLJob) isShowInternal() {}
 
 // InsertRows represents the rows for an INSERT statement.
 type InsertRows interface {

@@ -1133,6 +1133,32 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 	return nil
 }
 
+func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return nil, tabletconn.ConnClosed
+	}
+	req := querypb.SubmitDMLJobRequest{
+		Cmd:                command,
+		Sql:                sql,
+		JobUuid:            uuid,
+		RelatedSchema:      tableSchema,
+		Timegap:            timeGapInMs,
+		BatchSize:          batchSize,
+		PostponeLaunch:     postponeLaunch,
+		FailPolicy:         failPolicy,
+		TimePeriodStart:    timePeriodStart,
+		TimePeriodEnd:      timePeriodEnd,
+		TimePeriodTimeZone: timePeriodTimeZone,
+	}
+	er, err := conn.c.SubmitDMLJob(ctx, &req)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(err)
+	}
+	return sqltypes.Proto3ToResult(er.Result), nil
+}
+
 // Close closes underlying gRPC channel.
 func (conn *gRPCQueryClient) Close(ctx context.Context) error {
 	conn.mu.Lock()

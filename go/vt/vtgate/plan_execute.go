@@ -95,6 +95,14 @@ func (e *Executor) newExecute(
 		return err
 	}
 
+	rst, err := HandleDMLJobSubmit(stmt, vcursor, sql)
+	if err != nil {
+		return err
+	}
+	if rst != nil {
+		return recResult(plan.Type, rst)
+	}
+
 	if plan.Type != sqlparser.StmtShow {
 		safeSession.ClearWarnings()
 	}
@@ -428,4 +436,30 @@ func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlp
 	}
 	vcursor.tabletType = safeSession.ResolverOptions.SuggestedTabletType
 	return nil
+}
+
+func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
+	cmd := sqlparser.GetDMLJobCmd(stmt)
+	return cmd == "true"
+}
+
+func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
+	if IsSubmitDMLJob(stmt) {
+		// if in transaction, return error
+		if vcursor.InTransaction() {
+			return nil, errors.New("cannot submit DML job in transaction")
+		}
+
+		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone := sqlparser.GetDMLJobArgs(stmt)
+		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+		if qr != nil {
+			if qr.RowsAffected == 1 {
+				qr.Info = "job submitted successfully"
+			} else {
+				qr.Info = "job submitted failed"
+			}
+		}
+		return qr, err
+	}
+	return nil, nil
 }

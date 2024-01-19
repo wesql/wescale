@@ -29,6 +29,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+
 	"google.golang.org/protobuf/proto"
 
 	"vitess.io/vitess/go/mysql"
@@ -201,6 +203,8 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		return qre.execCallProc()
 	case p.PlanAlterMigration:
 		return qre.execAlterMigration()
+	case p.PlanAlterDMLJob:
+		return qre.execAlterDMLJob()
 	case p.PlanRevertMigration:
 		return qre.execRevertMigration()
 	case p.PlanShowMigrationLogs:
@@ -1149,6 +1153,31 @@ func (qre *QueryExecutor) execAlterMigration() (*sqltypes.Result, error) {
 		return qre.tsv.onlineDDLExecutor.ResumeAllMigrations(qre.ctx)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER VITESS_MIGRATION not implemented")
+}
+
+func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
+	alterDMLJob, ok := qre.plan.FullStmt.(*sqlparser.AlterDMLJob)
+	if !ok {
+		return nil, vterrors.New(vtrpcpb.Code_INTERNAL, "Expecting ALTER DML_JOB plan")
+	}
+	uuid := alterDMLJob.UUID
+	switch alterDMLJob.Type {
+	case sqlparser.PauseDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.PauseJob, "", uuid, "", "", "", "", "", nil, 0, 0, false, "")
+	case sqlparser.ResumeDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ResumeJob, "", uuid, "", "", "", "", "", nil, 0, 0, false, "")
+	case sqlparser.LaunchDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.LaunchJob, "", uuid, "", "", "", "", "", nil, 0, 0, false, "")
+	case sqlparser.CancelDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.CancelJob, "", uuid, "", "", "", "", "", nil, 0, 0, false, "")
+	case sqlparser.ThrottleDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ThrottleJob, "", uuid, "", "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio, 0, 0, false, "")
+	case sqlparser.UnthrottleDMLJobType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.UnthrottleJob, "", uuid, "", "", "", "", "", nil, 0, 0, false, "")
+	case sqlparser.SetRunningTimePeriodType:
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.SetRunningTimePeriod, "", uuid, "", "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, alterDMLJob.TimePeriodTimeZone, nil, 0, 0, false, "")
+	}
+	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }
 
 func (qre *QueryExecutor) execRevertMigration() (*sqltypes.Result, error) {

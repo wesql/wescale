@@ -57,6 +57,15 @@ const (
 	DirectiveConsolidator = "CONSOLIDATOR"
 	// DirectiveRole specifies the node type for the query. possible values are: PRIMARY/REPLICA/RDONLY
 	DirectiveRole = "ROLE"
+
+	DirectiveDMLSplit              = "DML_SPLIT"
+	DirectiveDMLTimeGap            = "DML_BATCH_INTERVAL"
+	DirectiveBATCHSIZE             = "DML_BATCH_SIZE"
+	DirectiveDMLPostponeLaunch     = "DML_POSTPONE_LAUNCH"
+	DirectiveDMLAutoRetry          = "DML_FAIL_POLICY"
+	DirectiveDMLTimePeriodStart    = "DML_TIME_PERIOD_START"
+	DirectiveDMLTimePeriodEnd      = "DML_TIME_PERIOD_END"
+	DirectiveDMLTimePeriodTimeZone = "DML_TIME_PERIOD_TIME_ZONE"
 )
 
 func isNonSpace(r rune) bool {
@@ -183,6 +192,39 @@ func StripLeadingComments(sql string) string {
 	}
 
 	return sql
+}
+
+// StripComments trims the SQL string and removes all comments wrapped by /**/.
+func StripComments(sql string) string {
+	var output strings.Builder
+	inComment := false
+	lastByte := ""
+
+	for i := 0; i < len(sql); i++ {
+		if !inComment && i+1 < len(sql) && sql[i:i+2] == "/*" {
+			inComment = true
+			i++
+			continue
+		}
+
+		if inComment && i+1 < len(sql) && sql[i:i+2] == "*/" {
+			inComment = false
+			if lastByte != " " {
+				output.WriteByte(' ')
+				lastByte = " "
+			}
+			i++
+			continue
+		}
+
+		if !inComment {
+			if lastByte != " " || string(sql[i]) != " " {
+				output.WriteByte(sql[i])
+				lastByte = string(sql[i])
+			}
+		}
+	}
+	return output.String()
 }
 
 func hasCommentPrefix(sql string) bool {
@@ -430,4 +472,79 @@ func GetNodeType(stmt Statement) tabletpb.TabletType {
 		return tabletpb.TabletType(i32v)
 	}
 	return tabletpb.TabletType_UNKNOWN
+}
+
+// todo newborn22 support insert...select, replace...select
+func GetDMLJobCmd(stmt Statement) string {
+	var comments *ParsedComments
+	switch stmt := stmt.(type) {
+	case *Select:
+		return ""
+	case *Insert:
+		return ""
+	case *Update:
+		comments = stmt.Comments
+	case *Delete:
+		comments = stmt.Comments
+	}
+	if comments == nil {
+		return ""
+	}
+	directives := comments.Directives()
+	str, isSet := directives.GetString(DirectiveDMLSplit, "")
+	if !isSet {
+		return ""
+	}
+	return str
+}
+
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone string) {
+	var comments *ParsedComments
+	switch stmt := stmt.(type) {
+	// todo newborn22 support insert...select, replace...select
+	case *Update:
+		comments = stmt.Comments
+	case *Delete:
+		comments = stmt.Comments
+	}
+	if comments == nil {
+		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
+	}
+
+	var err error
+	directives := comments.Directives()
+
+	timeGapInMsStr, isSet := directives.GetString(DirectiveDMLTimeGap, "")
+	if isSet {
+		timeGapInMs, err = strconv.ParseInt(timeGapInMsStr, 10, 64)
+		if err != nil {
+			timeGapInMs = 0
+		}
+	}
+
+	subTaskRowsStr, isSet := directives.GetString(DirectiveBATCHSIZE, "")
+	if isSet {
+		batchSize, err = strconv.ParseInt(subTaskRowsStr, 10, 64)
+		if err != nil {
+			batchSize = 0
+		}
+	}
+
+	postponeLaunchStr, isSet := directives.GetString(DirectiveDMLPostponeLaunch, "")
+	if isSet {
+		postponeLaunch, err = strconv.ParseBool(postponeLaunchStr)
+		if err != nil {
+			postponeLaunch = false
+		}
+	}
+
+	failPolicy, _ = directives.GetString(DirectiveDMLAutoRetry, "")
+
+	timePeriodStart, _ = directives.GetString(DirectiveDMLTimePeriodStart, "")
+
+	timePeriodEnd, _ = directives.GetString(DirectiveDMLTimePeriodEnd, "")
+
+	timePeriodTimeZone, _ = directives.GetString(DirectiveDMLTimePeriodTimeZone, "")
+
+	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
 }

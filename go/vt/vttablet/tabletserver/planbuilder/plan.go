@@ -80,6 +80,7 @@ const (
 	PlanUnlockTables
 	PlanCallProc
 	PlanAlterMigration
+	PlanAlterDMLJob
 	PlanRevertMigration
 	PlanShowMigrationLogs
 	PlanShowThrottledApps
@@ -116,6 +117,7 @@ var planName = []string{
 	"UnlockTables",
 	"CallProcedure",
 	"AlterMigration",
+	"AlterDMLJob",
 	"RevertMigration",
 	"ShowMigrationLogs",
 	"ShowThrottledApps",
@@ -230,6 +232,8 @@ func Build(statement sqlparser.Statement, tables map[string]*schema.Table, dbNam
 		plan, err = analyzeDBDDL(stmt)
 	case *sqlparser.AlterMigration:
 		plan, err = &Plan{PlanID: PlanAlterMigration, FullStmt: stmt}, nil
+	case *sqlparser.AlterDMLJob:
+		plan, err = &Plan{PlanID: PlanAlterDMLJob, FullStmt: stmt}, nil
 	case *sqlparser.RevertMigration:
 		plan, err = &Plan{PlanID: PlanRevertMigration, FullStmt: stmt}, nil
 	case *sqlparser.ShowMigrationLogs:

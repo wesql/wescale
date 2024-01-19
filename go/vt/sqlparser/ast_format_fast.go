@@ -24,7 +24,6 @@ package sqlparser
 
 import (
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -436,6 +435,63 @@ func (node *AlterMigration) formatFast(buf *TrackedBuffer) {
 	if node.Shards != "" {
 		buf.WriteString(" vitess_shards '")
 		buf.WriteString(node.Shards)
+		buf.WriteByte('\'')
+	}
+}
+
+// formatFast formats the node.
+func (node *AlterDMLJob) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("alter dml_job")
+	if node.UUID != "" {
+		buf.WriteString(" '")
+		buf.WriteString(node.UUID)
+		buf.WriteByte('\'')
+	}
+	var alterType string
+	switch node.Type {
+	case LaunchDMLJobType:
+		alterType = "launch"
+	case LaunchAllDMLJobType:
+		alterType = "launch all"
+	case CancelDMLJobType:
+		alterType = "cancel"
+	case CancelAllDMLJobType:
+		alterType = "cancel all"
+	case PauseDMLJobType:
+		alterType = "pause"
+	case PauseAllDMLJobType:
+		alterType = "pause all"
+	case ResumeDMLJobType:
+		alterType = "resume"
+	case ResumeAllDMLJobType:
+		alterType = "resume all"
+	case ThrottleDMLJobType:
+		alterType = "throttle"
+	case ThrottleAllDMLJobType:
+		alterType = "throttle all"
+	case UnthrottleDMLJobType:
+		alterType = "unthrottle"
+	case UnthrottleAllDMLJobType:
+		alterType = "unthrottle all"
+	}
+	buf.WriteByte(' ')
+	buf.WriteString(alterType)
+	if node.Expire != "" {
+		buf.WriteString(" expire '")
+		buf.WriteString(node.Expire)
+		buf.WriteByte('\'')
+	}
+	if node.Ratio != nil {
+		buf.WriteString(" ratio ")
+		node.Ratio.formatFast(buf)
+	}
+	if node.Type == SetRunningTimePeriodType {
+		buf.WriteString(" '")
+		buf.WriteString(node.TimePeriodStart)
+		buf.WriteString("' '")
+		buf.WriteString(node.TimePeriodEnd)
+		buf.WriteString("' '")
+		buf.WriteString(node.TimePeriodTimeZone)
 		buf.WriteByte('\'')
 	}
 }
@@ -2611,6 +2667,10 @@ func (node *ShowBasic) formatFast(buf *TrackedBuffer) {
 		node.DbName.formatFast(buf)
 	}
 	node.Filter.formatFast(buf)
+}
+
+func (node *ShowDMLJob) formatFast(buf *TrackedBuffer) {
+
 }
 
 // formatFast formats the node.

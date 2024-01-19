@@ -40,6 +40,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfAlterCheck(in, f)
 	case *AlterColumn:
 		return VisitRefOfAlterColumn(in, f)
+	case *AlterDMLJob:
+		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
 	case *AlterIndex:
@@ -406,6 +408,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfShowBasic(in, f)
 	case *ShowCreate:
 		return VisitRefOfShowCreate(in, f)
+	case *ShowDMLJob:
+		return VisitRefOfShowDMLJob(in, f)
 	case *ShowFilter:
 		return VisitRefOfShowFilter(in, f)
 	case *ShowMigrationLogs:
@@ -633,6 +637,18 @@ func VisitRefOfAlterColumn(in *AlterColumn, f Visit) error {
 		return err
 	}
 	if err := VisitExpr(in.DefaultVal, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfAlterDMLJob(in *AlterDMLJob, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfLiteral(in.Ratio, f); err != nil {
 		return err
 	}
 	return nil
@@ -3269,6 +3285,15 @@ func VisitRefOfShowCreate(in *ShowCreate, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfShowDMLJob(in *ShowDMLJob, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfShowFilter(in *ShowFilter, f Visit) error {
 	if in == nil {
 		return nil
@@ -4616,6 +4641,8 @@ func VisitShowInternal(in ShowInternal, f Visit) error {
 		return VisitRefOfShowBasic(in, f)
 	case *ShowCreate:
 		return VisitRefOfShowCreate(in, f)
+	case *ShowDMLJob:
+		return VisitRefOfShowDMLJob(in, f)
 	case *ShowOther:
 		return VisitRefOfShowOther(in, f)
 	default:
@@ -4642,6 +4669,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return nil
 	}
 	switch in := in.(type) {
+	case *AlterDMLJob:
+		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
 	case *AlterMigration:

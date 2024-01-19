@@ -855,6 +855,7 @@ const (
 	LastSeenGTID
 	FailPoints
 	SchemaMigration
+	DMLJobs
 )
 
 // DropKeyType constants
@@ -891,6 +892,23 @@ const (
 	ResumeMigrationType
 	PauseAllMigrationType
 	ResumeAllMigrationType
+)
+
+// AlterDMLJobType constants
+const (
+	LaunchDMLJobType AlterDMLJobType = iota
+	LaunchAllDMLJobType
+	CancelDMLJobType
+	CancelAllDMLJobType
+	ThrottleDMLJobType
+	ThrottleAllDMLJobType
+	UnthrottleDMLJobType
+	UnthrottleAllDMLJobType
+	PauseDMLJobType
+	ResumeDMLJobType
+	PauseAllDMLJobType
+	ResumeAllDMLJobType
+	SetRunningTimePeriodType
 )
 
 // ColumnStorage constants

@@ -41,6 +41,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterCheck(in)
 	case *AlterColumn:
 		return CloneRefOfAlterColumn(in)
+	case *AlterDMLJob:
+		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
 	case *AlterIndex:
@@ -407,6 +409,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfShowBasic(in)
 	case *ShowCreate:
 		return CloneRefOfShowCreate(in)
+	case *ShowDMLJob:
+		return CloneRefOfShowDMLJob(in)
 	case *ShowFilter:
 		return CloneRefOfShowFilter(in)
 	case *ShowMigrationLogs:
@@ -607,6 +611,16 @@ func CloneRefOfAlterColumn(n *AlterColumn) *AlterColumn {
 	out.Column = CloneRefOfColName(n.Column)
 	out.DefaultVal = CloneExpr(n.DefaultVal)
 	out.Invisible = CloneRefOfBool(n.Invisible)
+	return &out
+}
+
+// CloneRefOfAlterDMLJob creates a deep clone of the input.
+func CloneRefOfAlterDMLJob(n *AlterDMLJob) *AlterDMLJob {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Ratio = CloneRefOfLiteral(n.Ratio)
 	return &out
 }
 
@@ -2561,6 +2575,15 @@ func CloneRefOfShowCreate(n *ShowCreate) *ShowCreate {
 	return &out
 }
 
+// CloneRefOfShowDMLJob creates a deep clone of the input.
+func CloneRefOfShowDMLJob(n *ShowDMLJob) *ShowDMLJob {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfShowFilter creates a deep clone of the input.
 func CloneRefOfShowFilter(n *ShowFilter) *ShowFilter {
 	if n == nil {
@@ -3746,6 +3769,8 @@ func CloneShowInternal(in ShowInternal) ShowInternal {
 		return CloneRefOfShowBasic(in)
 	case *ShowCreate:
 		return CloneRefOfShowCreate(in)
+	case *ShowDMLJob:
+		return CloneRefOfShowDMLJob(in)
 	case *ShowOther:
 		return CloneRefOfShowOther(in)
 	default:
@@ -3776,6 +3801,8 @@ func CloneStatement(in Statement) Statement {
 		return nil
 	}
 	switch in := in.(type) {
+	case *AlterDMLJob:
+		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
 	case *AlterMigration:

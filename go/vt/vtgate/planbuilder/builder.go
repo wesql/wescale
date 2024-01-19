@@ -152,6 +152,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return buildGeneralDDLPlan(query, stmt, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	case *sqlparser.AlterMigration:
 		return buildAlterMigrationPlan(query, vschema, enableOnlineDDL)
+	case *sqlparser.AlterDMLJob:
+		return buildAlterDMLJobPlan(query, vschema)
 	case *sqlparser.RevertMigration:
 		return buildRevertMigrationPlan(query, stmt, vschema, enableOnlineDDL)
 	case *sqlparser.ShowMigrationLogs:

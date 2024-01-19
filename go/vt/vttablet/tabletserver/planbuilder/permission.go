@@ -76,6 +76,7 @@ func BuildPermissions(stmt sqlparser.Statement, dbName string) []Permission {
 		}
 	case
 		*sqlparser.AlterMigration,
+		*sqlparser.AlterDMLJob,
 		*sqlparser.RevertMigration,
 		*sqlparser.ShowMigrationLogs,
 		*sqlparser.ShowThrottledApps,

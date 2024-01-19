@@ -169,6 +169,28 @@ func (cached *AlterColumn) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(1))
 	return size
 }
+func (cached *AlterDMLJob) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(96)
+	}
+	// field UUID string
+	size += hack.RuntimeAllocSize(int64(len(cached.UUID)))
+	// field Expire string
+	size += hack.RuntimeAllocSize(int64(len(cached.Expire)))
+	// field Ratio *vitess.io/vitess/go/vt/sqlparser.Literal
+	size += cached.Ratio.CachedSize(true)
+	// field TimePeriodStart string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodStart)))
+	// field TimePeriodEnd string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodEnd)))
+	// field TimePeriodTimeZone string
+	size += hack.RuntimeAllocSize(int64(len(cached.TimePeriodTimeZone)))
+	return size
+}
 func (cached *AlterDatabase) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -3371,6 +3393,18 @@ func (cached *ShowCreate) CachedSize(alloc bool) int64 {
 	}
 	// field Op vitess.io/vitess/go/vt/sqlparser.TableName
 	size += cached.Op.CachedSize(false)
+	return size
+}
+func (cached *ShowDMLJob) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(24)
+	}
+	// field UUID string
+	size += hack.RuntimeAllocSize(int64(len(cached.UUID)))
 	return size
 }
 func (cached *ShowFilter) CachedSize(alloc bool) int64 {

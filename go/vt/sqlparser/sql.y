@@ -325,6 +325,8 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME SCHEMA_MIGRATION
 // Throttler tokens
 %token <str> VITESS_THROTTLER
+// DML JOB tokens
+%token <str> DML_JOB DETAILS TIME_PERIOD
 
 // Transaction Tokens
 %token <str> BEGIN START TRANSACTION COMMIT ROLLBACK SAVEPOINT RELEASE WORK
@@ -347,6 +349,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> CODE COLLATION COLUMNS DATABASES ENGINES EVENT EXTENDED FIELDS FULL FUNCTION GTID_EXECUTED
 %token <str> KEYSPACES OPEN PLUGINS PRIVILEGES PROCESSLIST SCHEMAS TABLES TRIGGERS USER
 %token <str> VGTID_EXECUTED VITESS_KEYSPACES VITESS_METADATA VITESS_MIGRATIONS VITESS_REPLICATION_STATUS VITESS_SHARDS VITESS_TABLETS VITESS_TARGET VSCHEMA VITESS_THROTTLED_APPS WORKLOAD LASTSEENGTID FAILPOINTS
+%token <str> DML_JOBS
 
 // SET tokens
 %token <str> NAMES GLOBAL SESSION ISOLATION LEVEL READ WRITE ONLY REPEATABLE COMMITTED UNCOMMITTED SERIALIZABLE
@@ -3408,6 +3411,121 @@ alter_statement:
       Type: UnthrottleAllMigrationType,
     }
   }
+
+
+
+
+
+
+
+
+
+
+  | ALTER comment_opt DML_JOB STRING LAUNCH
+    {
+      $$ = &AlterDMLJob{
+        Type: LaunchDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB LAUNCH ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: LaunchAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING CANCEL
+    {
+      $$ = &AlterDMLJob{
+        Type: CancelDMLJobType,
+        UUID: string($4),
+      }
+    }
+  |  ALTER comment_opt DML_JOB STRING PAUSE
+    {
+      $$ = &AlterDMLJob{
+        Type: PauseDMLJobType,
+        UUID: string($4),
+      }
+    }
+  |  ALTER comment_opt DML_JOB STRING RESUME
+    {
+      $$ = &AlterDMLJob{
+        Type: ResumeDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB CANCEL ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: CancelAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB PAUSE ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: PauseAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB RESUME ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: ResumeAllDMLJobType,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING THROTTLE expire_opt ratio_opt
+    {
+      $$ = &AlterDMLJob{
+        Type: ThrottleDMLJobType,
+        UUID: string($4),
+        Expire: $6,
+        Ratio: $7,
+      }
+    }
+  | ALTER comment_opt DML_JOB THROTTLE ALL expire_opt ratio_opt
+    {
+      $$ = &AlterDMLJob{
+        Type: ThrottleAllDMLJobType,
+        Expire: $6,
+        Ratio: $7,
+      }
+    }
+  | ALTER comment_opt DML_JOB STRING UNTHROTTLE
+    {
+      $$ = &AlterDMLJob{
+        Type: UnthrottleDMLJobType,
+        UUID: string($4),
+      }
+    }
+  | ALTER comment_opt DML_JOB UNTHROTTLE ALL
+    {
+      $$ = &AlterDMLJob{
+        Type: UnthrottleAllDMLJobType,
+      }
+    }
+ | ALTER comment_opt DML_JOB STRING TIME_PERIOD STRING STRING
+    {
+      $$ = &AlterDMLJob{
+        Type: SetRunningTimePeriodType,
+        UUID: string($4),
+        TimePeriodStart: string($6),
+        TimePeriodEnd: string($7),
+      }
+    }
+
+ | ALTER comment_opt DML_JOB STRING TIME_PERIOD STRING STRING STRING
+    {
+      $$ = &AlterDMLJob{
+        Type: SetRunningTimePeriodType,
+        UUID: string($4),
+        TimePeriodStart: string($6),
+        TimePeriodEnd: string($7),
+        TimePeriodTimeZone: string($8),
+      }
+    }
+
+
+
 | ALTER comment_opt SCHEMA_MIGRATION STRING RETRY
     {
       $$ = &AlterMigration{
@@ -4311,6 +4429,18 @@ show_statement:
   {
     $$ = &Show{&ShowBasic{Command: VitessMigrations, Filter: $4, DbName: $3}}
   }
+| SHOW DML_JOBS from_database_opt like_or_where_opt
+  {
+    $$ = &Show{&ShowBasic{Command: DMLJobs, Filter: $4, DbName: $3}}
+  }
+| SHOW DML_JOB STRING
+  {
+    $$ = &Show{&ShowDMLJob{UUID:$3, Detail:false}}
+  }
+| SHOW DML_JOB STRING DETAILS
+{
+  $$ = &Show{&ShowDMLJob{UUID:$3, Detail:true}}
+}
 | SHOW VITESS_MIGRATION STRING LOGS
   {
     $$ = &ShowMigrationLogs{UUID: string($3)}
@@ -8210,6 +8340,10 @@ non_reserved_keyword:
 | VITESS_MIGRATION
 | VITESS_MIGRATIONS
 | SCHEMA_MIGRATION
+| DML_JOB
+| DML_JOBS
+| DETAILS
+| TIME_PERIOD
 | VITESS_REPLICATION_STATUS
 | VITESS_SHARDS
 | VITESS_TABLETS

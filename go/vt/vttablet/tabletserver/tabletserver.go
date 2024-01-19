@@ -34,6 +34,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+
 	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
 
@@ -128,6 +130,7 @@ type TabletServer struct {
 	// sm manages state transitions.
 	sm                *stateManager
 	onlineDDLExecutor *onlineddl.Executor
+	dmlJonController  *jobcontroller.JobController
 
 	// alias is used for identifying this tabletserver in healthcheck responses.
 	alias *topodatapb.TabletAlias
@@ -194,27 +197,29 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
+	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
 
 	tsv.sm = &stateManager{
-		statelessql: tsv.statelessql,
-		statefulql:  tsv.statefulql,
-		olapql:      tsv.olapql,
-		hs:          tsv.hs,
-		se:          tsv.se,
-		rt:          tsv.rt,
-		vstreamer:   tsv.vstreamer,
-		tracker:     tsv.tracker,
-		watcher:     tsv.watcher,
-		branchWatch: tsv.branchWatch,
-		qe:          tsv.qe,
-		txThrottler: tsv.txThrottler,
-		te:          tsv.te,
-		messager:    tsv.messager,
-		ddle:        tsv.onlineDDLExecutor,
-		throttler:   tsv.lagThrottler,
-		tableGC:     tsv.tableGC,
-		tableACL:    tableacl.GetCurrentACL(),
+		statelessql:      tsv.statelessql,
+		statefulql:       tsv.statefulql,
+		olapql:           tsv.olapql,
+		hs:               tsv.hs,
+		se:               tsv.se,
+		rt:               tsv.rt,
+		vstreamer:        tsv.vstreamer,
+		tracker:          tsv.tracker,
+		watcher:          tsv.watcher,
+		branchWatch:      tsv.branchWatch,
+		qe:               tsv.qe,
+		txThrottler:      tsv.txThrottler,
+		te:               tsv.te,
+		messager:         tsv.messager,
+		dmlJobController: tsv.dmlJonController,
+		ddle:             tsv.onlineDDLExecutor,
+		throttler:        tsv.lagThrottler,
+		tableGC:          tsv.tableGC,
+		tableACL:         tableacl.GetCurrentACL(),
 	}
 
 	tsv.exporter.NewGaugeFunc("TabletState", "Tablet server state", func() int64 { return int64(tsv.sm.State()) })
@@ -1489,6 +1494,10 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 		err = failpoint.Disable(key)
 	}
 	return err
+}
+
+func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", timePeriodStart, timePeriodEnd, timePeriodTimeZone, nil, timeGapInMs, batchSize, postponeLaunch, failPolicy)
 }
 
 // execRequest performs verifications, sets up the necessary environments

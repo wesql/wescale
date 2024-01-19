@@ -46,6 +46,16 @@ var (
 		Name:       "AssertRoutingTabletType",
 		ExampleStr: "return(\"primary\")",
 	}
+	ModifyBatchSize = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vttablet/jobcontroller/ModifyBatchSize",
+		Name:       "ModifyBatchSize",
+		ExampleStr: "return(30)",
+	}
+	CreateErrorWhenExecutingBatch = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vttablet/jobcontroller/CreateErrorWhenExecutingBatch",
+		Name:       "CreateErrorWhenExecutingBatch",
+		ExampleStr: "return(true)",
+	}
 )
 
 func init() {
@@ -60,4 +70,6 @@ func init() {
 	FailpointTable[WaitJustBeforeStopVreplication.FullName] = WaitJustBeforeStopVreplication
 	FailpointTable[WaitJustAfterStopVreplication.FullName] = WaitJustAfterStopVreplication
 	FailpointTable[AssertRoutingTabletType.FullName] = AssertRoutingTabletType
+	FailpointTable[ModifyBatchSize.FullName] = ModifyBatchSize
+	FailpointTable[CreateErrorWhenExecutingBatch.FullName] = CreateErrorWhenExecutingBatch
 }

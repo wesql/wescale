@@ -80,6 +80,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterColumn(a, b)
+	case *AlterDMLJob:
+		b, ok := inB.(*AlterDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterDMLJob(a, b)
 	case *AlterDatabase:
 		b, ok := inB.(*AlterDatabase)
 		if !ok {
@@ -1178,6 +1184,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfShowCreate(a, b)
+	case *ShowDMLJob:
+		b, ok := inB.(*ShowDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowDMLJob(a, b)
 	case *ShowFilter:
 		b, ok := inB.(*ShowFilter)
 		if !ok {
@@ -1612,6 +1624,23 @@ func (cmp *Comparator) RefOfAlterColumn(a, b *AlterColumn) bool {
 		cmp.RefOfColName(a.Column, b.Column) &&
 		cmp.Expr(a.DefaultVal, b.DefaultVal) &&
 		cmp.RefOfBool(a.Invisible, b.Invisible)
+}
+
+// RefOfAlterDMLJob does deep equals between the two objects.
+func (cmp *Comparator) RefOfAlterDMLJob(a, b *AlterDMLJob) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.UUID == b.UUID &&
+		a.Expire == b.Expire &&
+		a.TimePeriodStart == b.TimePeriodStart &&
+		a.TimePeriodEnd == b.TimePeriodEnd &&
+		a.TimePeriodTimeZone == b.TimePeriodTimeZone &&
+		a.Type == b.Type &&
+		cmp.RefOfLiteral(a.Ratio, b.Ratio)
 }
 
 // RefOfAlterDatabase does deep equals between the two objects.
@@ -3886,6 +3915,18 @@ func (cmp *Comparator) RefOfShowCreate(a, b *ShowCreate) bool {
 		cmp.TableName(a.Op, b.Op)
 }
 
+// RefOfShowDMLJob does deep equals between the two objects.
+func (cmp *Comparator) RefOfShowDMLJob(a, b *ShowDMLJob) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.UUID == b.UUID &&
+		a.Detail == b.Detail
+}
+
 // RefOfShowFilter does deep equals between the two objects.
 func (cmp *Comparator) RefOfShowFilter(a, b *ShowFilter) bool {
 	if a == b {
@@ -6065,6 +6106,12 @@ func (cmp *Comparator) ShowInternal(inA, inB ShowInternal) bool {
 			return false
 		}
 		return cmp.RefOfShowCreate(a, b)
+	case *ShowDMLJob:
+		b, ok := inB.(*ShowDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowDMLJob(a, b)
 	case *ShowOther:
 		b, ok := inB.(*ShowOther)
 		if !ok {
@@ -6113,6 +6160,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 		return false
 	}
 	switch a := inA.(type) {
+	case *AlterDMLJob:
+		b, ok := inB.(*AlterDMLJob)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterDMLJob(a, b)
 	case *AlterDatabase:
 		b, ok := inB.(*AlterDatabase)
 		if !ok {

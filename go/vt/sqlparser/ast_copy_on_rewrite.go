@@ -40,6 +40,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfAlterCheck(n, parent)
 	case *AlterColumn:
 		return c.copyOnRewriteRefOfAlterColumn(n, parent)
+	case *AlterDMLJob:
+		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
 	case *AlterIndex:
@@ -406,6 +408,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfShowBasic(n, parent)
 	case *ShowCreate:
 		return c.copyOnRewriteRefOfShowCreate(n, parent)
+	case *ShowDMLJob:
+		return c.copyOnRewriteRefOfShowDMLJob(n, parent)
 	case *ShowFilter:
 		return c.copyOnRewriteRefOfShowFilter(n, parent)
 	case *ShowMigrationLogs:
@@ -697,6 +701,28 @@ func (c *cow) copyOnRewriteRefOfAlterColumn(n *AlterColumn, parent SQLNode) (out
 			res := *n
 			res.Column, _ = _Column.(*ColName)
 			res.DefaultVal, _ = _DefaultVal.(Expr)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfAlterDMLJob(n *AlterDMLJob, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Ratio, changedRatio := c.copyOnRewriteRefOfLiteral(n.Ratio, n)
+		if changedRatio {
+			res := *n
+			res.Ratio, _ = _Ratio.(*Literal)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -4840,6 +4866,18 @@ func (c *cow) copyOnRewriteRefOfShowCreate(n *ShowCreate, parent SQLNode) (out S
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfShowDMLJob(n *ShowDMLJob, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfShowFilter(n *ShowFilter, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6673,6 +6711,8 @@ func (c *cow) copyOnRewriteShowInternal(n ShowInternal, parent SQLNode) (out SQL
 		return c.copyOnRewriteRefOfShowBasic(n, parent)
 	case *ShowCreate:
 		return c.copyOnRewriteRefOfShowCreate(n, parent)
+	case *ShowDMLJob:
+		return c.copyOnRewriteRefOfShowDMLJob(n, parent)
 	case *ShowOther:
 		return c.copyOnRewriteRefOfShowOther(n, parent)
 	default:
@@ -6699,6 +6739,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return n, false
 	}
 	switch n := n.(type) {
+	case *AlterDMLJob:
+		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
 	case *AlterMigration:
