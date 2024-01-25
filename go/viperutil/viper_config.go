@@ -86,9 +86,13 @@ func (v *ViperConfig) loadConfigFileAtStartup() {
 		if v.Fs == nil {
 			log.Exit("v.Fs is nil")
 		}
+<<<<<<< HEAD
 		if err := v.Fs.Set(key, value); err != nil {
 			log.Errorf("fail to set config %s=%s, err: %v", key, value, err)
 		}
+=======
+		_ = v.Fs.Set(key, value)
+>>>>>>> 0f5daf4b17 (fix: add_viper_handlers_for_some_feature_param)
 	}
 	log.Infof("finish refresh config file")
 }

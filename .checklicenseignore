@@ -47,3 +47,5 @@ go/vt/vttablet/tabletserver/planbuilder/cached_size.go
 docker/*
 docker/bootstrap/*
 docker/lite/Dockerfile.*
+
+go/viperutil/test/

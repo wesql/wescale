@@ -1,26 +1,23 @@
-# Copyright ApeCloud, Inc.
-# Licensed under the Apache v2(found in the LICENSE file in the root directory).
-
-
-
 [vtgate]
-gateway_initial_tablet_timeout        = 30s
-healthcheck_timeout                   = 2s
-srv_topo_timeout                      = 1s
-grpc_keepalive_time                   = 10s
-grpc_keepalive_timeout                = 10s
-tablet_refresh_interval               = 1m
-read_write_splitting_policy           = least_rt
-read_write_splitting_ratio            = 54
-read_after_write_consistency          = GLOBAL
-read_after_write_timeout              = 66.66
-enable_buffer                         = true
-buffer_size                           = 10000
-buffer_window                         = 30s
-buffer_max_failover_duration          = 60s
-buffer_min_time_between_failovers     = 60s
-mysql_auth_server_impl                = none
-mysql_server_require_secure_transport = false
-mysql_auth_server_static_file         = foobar
-mysql_server_ssl_key                  = 
-mysql_server_ssl_cert                 = 
+gateway_initial_tablet_timeout            = 30s
+healthcheck_timeout                       = 2s
+srv_topo_timeout                          = 1s
+grpc_keepalive_time                       = 10s
+grpc_keepalive_timeout                    = 10s
+tablet_refresh_interval                   = 1m
+read_write_splitting_policy               = least_rt
+read_write_splitting_ratio                = 54
+read_after_write_consistency              = GLOBAL
+read_after_write_timeout                  = 66.66
+enable_buffer                             = true
+buffer_size                               = 10000
+buffer_window                             = 30s
+buffer_max_failover_duration              = 60s
+buffer_min_time_between_failovers         = 60s
+mysql_auth_server_impl                    = none
+mysql_server_require_secure_transport     = false
+mysql_auth_server_static_file             = 
+mysql_server_ssl_key                      = 
+mysql_server_ssl_cert                     = foobar
+enable_display_sql_execution_vttablets    = true
+enable_read_write_split_for_read_only_txn = false

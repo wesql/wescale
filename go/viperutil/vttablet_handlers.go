@@ -8,6 +8,8 @@ package viperutil
 import (
 	"strconv"
 
+	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/log"
@@ -27,22 +29,102 @@ func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletS
 	})
 
 	v.ReloadHandler.AddReloadHandler("queryserver-config-pool-size", func(key string, value string, fs *pflag.FlagSet) {
-		tsv.SetPoolSize(parseInt(key, value))
+		i, err := parseInt(key, value)
+		if err == nil {
+			tsv.SetPoolSize(i)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
 	})
 
 	v.ReloadHandler.AddReloadHandler("queryserver-config-stream-pool-size", func(key string, value string, fs *pflag.FlagSet) {
-		tsv.SetStreamPoolSize(parseInt(key, value))
+		i, err := parseInt(key, value)
+		if err == nil {
+			tsv.SetStreamPoolSize(i)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
 	})
 
 	v.ReloadHandler.AddReloadHandler("queryserver-config-transaction-cap", func(key string, value string, fs *pflag.FlagSet) {
-		tsv.SetTxPoolSize(parseInt(key, value))
+		i, err := parseInt(key, value)
+		if err == nil {
+			tsv.SetTxPoolSize(i)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_database_pool_size", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetDatabasePoolSize(value); err == nil {
+			_ = fs.Set("non_transactional_dml_database_pool_size", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_default_batch_size", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetDefaultBatchSize(value); err == nil {
+			_ = fs.Set("non_transactional_dml_default_batch_size", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_default_batch_interval", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetDefaultBatchInterval(value); err == nil {
+			_ = fs.Set("non_transactional_dml_default_batch_interval", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_table_gc_interval", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetTableGCInterval(value); err == nil {
+			_ = fs.Set("non_transactional_dml_table_gc_interval", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_job_manager_running_interval", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetJobManagerRunningInterval(value); err == nil {
+			_ = fs.Set("non_transactional_dml_job_manager_running_interval", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_throttle_check_interval", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetThrottleCheckInterval(value); err == nil {
+			_ = fs.Set("non_transactional_dml_throttle_check_interval", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_batch_size_threshold", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetBatchSizeThreshold(value); err == nil {
+			_ = fs.Set("non_transactional_dml_batch_size_threshold", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("non_transactional_dml_batch_size_threshold_ratio", func(key string, value string, fs *pflag.FlagSet) {
+		if err := jobcontroller.SetRatioOfBatchSizeThreshold(value); err == nil {
+			_ = fs.Set("non_transactional_dml_batch_size_threshold_ratio", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
 	})
 }
 
-func parseInt(key, value string) int {
+func parseInt(key, value string) (int, error) {
 	i, err := strconv.Atoi(value)
 	if err != nil {
 		log.Errorf("cannot parse %s=%s as int", key, value)
+		return 0, err
 	}
-	return i
+	return i, nil
 }

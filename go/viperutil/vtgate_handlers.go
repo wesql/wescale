@@ -61,7 +61,25 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 			return
 		}
-		if err := fs.Set("ddl_strategy", value); err != nil {
+		if err := fs.Set("ddl_strategy", value); err == nil {
+			_ = fs.Set("ddl_strategy", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("enable_display_sql_execution_vttablets", func(key string, value string, fs *pflag.FlagSet) {
+		if err := vtgate.SetDefaultEnableDisplaySQLExecutionVTTablet(value); err == nil {
+			_ = fs.Set("enable_display_sql_execution_vttablets", value)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("enable_read_write_split_for_read_only_txn", func(key string, value string, fs *pflag.FlagSet) {
+		if err := vtgate.SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value); err == nil {
+			_ = fs.Set("enable_read_write_split_for_read_only_txn", value)
+		} else {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
 	})
