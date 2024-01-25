@@ -419,6 +419,21 @@ var mysqlUnixListener *mysql.Listener
 var sigChan chan os.Signal
 var vtgateHandle *vtgateHandler
 
+func ReloadTLSConfig(mysqlSslCert, mysqlSslKey string, mysqlServerRequireSecureTransport bool) {
+	if mysqlListener != nil {
+		tlsVersion, err := vttls.TLSVersionToNumber(mysqlTLSMinVersion)
+		if err != nil {
+			log.Errorf("mysql.NewListener failed: %v", err)
+		}
+		mysqlListener.RequireSecureTransport = mysqlServerRequireSecureTransport
+		serverConfig, err := vttls.ServerConfig(mysqlSslCert, mysqlSslKey, mysqlSslCa, mysqlSslCrl, mysqlSslServerCA, tlsVersion)
+		if err != nil {
+			log.Errorf("grpcutils.TLSServerConfig failed: %v", err)
+		}
+		mysqlListener.TLSConfig.Store(serverConfig)
+	}
+}
+
 // initTLSConfig inits tls config for the given mysql listener
 func initTLSConfig(mysqlListener *mysql.Listener, mysqlSslCert, mysqlSslKey, mysqlSslCa, mysqlSslCrl, mysqlSslServerCA string, mysqlServerRequireSecureTransport bool, mysqlMinTLSVersion uint16) error {
 	serverConfig, err := vttls.ServerConfig(mysqlSslCert, mysqlSslKey, mysqlSslCa, mysqlSslCrl, mysqlSslServerCA, mysqlMinTLSVersion)

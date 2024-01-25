@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package viperutil
 
 import (
@@ -81,7 +86,7 @@ func TestRegisterReloadHandlersForVtGate(t *testing.T) {
 	}
 
 	{
-		fs.Set("read_write_splitting_ratio", "28")
+		_ = fs.Set("read_write_splitting_ratio", "28")
 		val, err := fs.GetInt("read_write_splitting_ratio")
 		assert.NoError(t, err)
 		assert.Equal(t, 28, val)

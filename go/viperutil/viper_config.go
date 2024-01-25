@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package viperutil
 
 import (
@@ -81,7 +86,7 @@ func (v *ViperConfig) loadConfigFileAtStartup() {
 		if v.Fs == nil {
 			log.Exit("v.Fs is nil")
 		}
-		v.Fs.Set(key, value)
+		_ = v.Fs.Set(key, value)
 	}
 	log.Infof("finish refresh config file")
 }
