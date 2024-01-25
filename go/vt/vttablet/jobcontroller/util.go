@@ -395,7 +395,10 @@ func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCoun
 	}
 	indexCount = len(qr.Named().Rows)
 	if indexCount == 0 {
-		return 0, errors.New("index count is 0")
+		// mysql allows no primary key is defined when creating a table,
+		// but it will create a hidden one which we can't get by "show index from table",
+		// so we just set indexCount to 1
+		return 1, nil
 	}
 	return indexCount, nil
 }
