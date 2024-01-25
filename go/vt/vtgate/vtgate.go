@@ -182,6 +182,8 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&defaultReadWriteSplittingRatio, "read_write_splitting_ratio", defaultReadWriteSplittingRatio, "read write splitting ratio to replica")
 	fs.BoolVar(&defaultRewriteTableNameWithDbNamePrefix, "rewrite_tablename_with_dbname_prefix", defaultRewriteTableNameWithDbNamePrefix, "Automatically add databases to the vschema when they are created")
 	fs.BoolVar(&defaultEnableInterceptionForDMLWithoutWhere, "enable_interception_for_dml_without_where", defaultEnableInterceptionForDMLWithoutWhere, "Enable interception for DELETE and UPDATE DMLs that are without WHERE condition")
+	fs.BoolVar(&defaultEnableDisplaySQLExecutionVTTablet, "enable_display_sql_execution_vttablets", defaultEnableDisplaySQLExecutionVTTablet, "Enable the function of displaying SQL execution vttablets")
+	fs.BoolVar(&defaultReadWriteSplitForReadOnlyTxnUserInput, "enable_read_write_split_for_read_only_txn", defaultReadWriteSplitForReadOnlyTxnUserInput, "Enable the function of read write splitting for read only txn")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
