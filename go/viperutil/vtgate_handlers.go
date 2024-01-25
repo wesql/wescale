@@ -18,8 +18,7 @@ import (
 func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {
-			err = fs.Set("read_write_splitting_policy", value)
-			if err != nil {
+			if err = fs.Set("read_write_splitting_policy", value); err != nil {
 				log.Errorf("fail to set config read_write_splitting_policy=%s, err: %v", value, err)
 			}
 		} else {
@@ -29,8 +28,7 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_ratio", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingRatio(value); err == nil {
-			err = fs.Set("read_write_splitting_ratio", value)
-			if err != nil {
+			if err = fs.Set("read_write_splitting_ratio", value); err != nil {
 				log.Errorf("fail to set config read_write_splitting_ratio=%s, err: %v", value, err)
 			}
 		} else {
@@ -40,8 +38,7 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 
 	v.ReloadHandler.AddReloadHandler("read_after_write_consistency", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadAfterWriteConsistency(value); err == nil {
-			err = fs.Set("read_after_write_consistency", value)
-			if err != nil {
+			if err = fs.Set("read_after_write_consistency", value); err != nil {
 				log.Errorf("fail to set config read_after_write_consistency=%s, err: %v", value, err)
 			}
 		} else {
@@ -51,8 +48,7 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 
 	v.ReloadHandler.AddReloadHandler("read_after_write_timeout", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadAfterWriteTimeout(value); err == nil {
-			err = fs.Set("read_after_write_timeout", value)
-			if err != nil {
+			if err = fs.Set("read_after_write_timeout", value); err != nil {
 				log.Errorf("fail to set config read_after_write_timeout=%s, err: %v", value, err)
 			}
 		} else {

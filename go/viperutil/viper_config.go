@@ -86,7 +86,9 @@ func (v *ViperConfig) loadConfigFileAtStartup() {
 		if v.Fs == nil {
 			log.Exit("v.Fs is nil")
 		}
-		_ = v.Fs.Set(key, value)
+		if err := v.Fs.Set(key, value); err != nil {
+			log.Errorf("fail to set config %s=%s, err: %v", key, value, err)
+		}
 	}
 	log.Infof("finish refresh config file")
 }
