@@ -38,6 +38,7 @@ provided in the documentation.
 * [Transparent Failover.md](doc%2Ftoturial%2F05-Transparent%20Failover.md)
 * [Authentication & Authorization.md](doc%2Ftoturial%2F06-Authentication%26Authorization.md)
 * [OnlineDDL User Guide](doc%2Ftoturial%2F07-OnlineDDL-User-Guide.md)
+* [Branch Tutorial](doc%2Ftoturial%2F08-Branch.md)
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
