@@ -66,40 +66,28 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 		}
 	})
 
-	resolveTLS := func(fs *pflag.FlagSet) {
-		mysqlSslKey, err := fs.GetString("mysql_server_ssl_key")
-		if err != nil {
-			log.Errorf("fail to get mysql_server_ssl_key, err: %v", err)
-		}
-		mysqlSslCert, err := fs.GetString("mysql_server_ssl_cert")
-		if err != nil {
-			log.Errorf("fail to get mysql_server_ssl_cert, err: %v", err)
-		}
-		requireSecure, err := fs.GetBool("mysql_server_require_secure_transport")
-		if err != nil {
-			log.Errorf("fail to get requireSecure, err: %v", err)
-		}
-		if mysqlSslCert != "" && mysqlSslKey != "" {
-			vtgate.ReloadTLSConfig(mysqlSslCert, mysqlSslKey, requireSecure)
-		}
-	}
-
 	v.ReloadHandler.AddReloadHandler("mysql_server_ssl_key", func(key string, value string, fs *pflag.FlagSet) {
 		if err := fs.Set("mysql_server_ssl_key", value); err != nil {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
-		resolveTLS(fs)
+		vtgate.ReloadTLSConfig()
 	})
 	v.ReloadHandler.AddReloadHandler("mysql_server_ssl_cert", func(key string, value string, fs *pflag.FlagSet) {
 		if err := fs.Set("mysql_server_ssl_cert", value); err != nil {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
-		resolveTLS(fs)
+		vtgate.ReloadTLSConfig()
 	})
 	v.ReloadHandler.AddReloadHandler("mysql_server_require_secure_transport", func(key string, value string, fs *pflag.FlagSet) {
 		if err := fs.Set("mysql_server_require_secure_transport", value); err != nil {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
-		resolveTLS(fs)
+		vtgate.ReloadTLSConfig()
+	})
+	v.ReloadHandler.AddReloadHandler("mysql_server_ssl_ca", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("mysql_server_ssl_ca", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+		vtgate.ReloadTLSConfig()
 	})
 }

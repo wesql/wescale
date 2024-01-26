@@ -419,8 +419,8 @@ var mysqlUnixListener *mysql.Listener
 var sigChan chan os.Signal
 var vtgateHandle *vtgateHandler
 
-func ReloadTLSConfig(mysqlSslCert, mysqlSslKey string, mysqlServerRequireSecureTransport bool) {
-	if mysqlListener != nil {
+func ReloadTLSConfig() {
+	if mysqlSslCert != "" && mysqlSslKey != "" && mysqlListener != nil {
 		tlsVersion, err := vttls.TLSVersionToNumber(mysqlTLSMinVersion)
 		if err != nil {
 			log.Errorf("mysql.NewListener failed: %v", err)
