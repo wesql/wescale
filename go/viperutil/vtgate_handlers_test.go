@@ -48,6 +48,8 @@ mysql_server_require_secure_transport = false
 mysql_auth_server_static_file         = 
 mysql_server_ssl_key                  = 
 mysql_server_ssl_cert                 = 
+enable_display_sql_execution_vttablets    = true
+enable_read_write_split_for_read_only_txn = true
 `
 
 	// Write the content to the file
@@ -103,6 +105,18 @@ func TestRegisterReloadHandlersForVtGate(t *testing.T) {
 		val, err := fs.GetFloat64("read_after_write_timeout")
 		assert.NoError(t, err)
 		assert.Equal(t, 30.1, val)
+	}
+
+	{
+		val, err := fs.GetBool("enable_display_sql_execution_vttablets")
+		assert.NoError(t, err)
+		assert.Equal(t, true, val)
+	}
+
+	{
+		val, err := fs.GetBool("enable_read_write_split_for_read_only_txn")
+		assert.NoError(t, err)
+		assert.Equal(t, true, val)
 	}
 }
 
@@ -163,6 +177,62 @@ func TestRegisterReloadHandlersForVtGateWithModify(t *testing.T) {
 		val, err := fs.GetFloat64("read_after_write_timeout")
 		assert.NoError(t, err)
 		assert.Equal(t, 66.66, val)
+	}
+
+	// expect: enable_display_sql_execution_vttablets=true
+	// viper will reload config, and call reload handler to set 'enable_display_sql_execution_vttablets'
+	{
+		configFileName := "./test/vtgate_test_modify.cnf"
+		section := "vtgate"
+		key := "enable_display_sql_execution_vttablets"
+		value := "true"
+		SaveConfigTo(t, configFileName, section, key, value)
+
+		val, err := fs.GetBool("enable_display_sql_execution_vttablets")
+		assert.NoError(t, err)
+		assert.Equal(t, true, val)
+	}
+
+	// expect: enable_read_write_split_for_read_only_txn=true
+	// viper will reload config, and call reload handler to set 'enable_read_write_split_for_read_only_txn'
+	{
+		configFileName := "./test/vtgate_test_modify.cnf"
+		section := "vtgate"
+		key := "enable_read_write_split_for_read_only_txn"
+		value := "true"
+		SaveConfigTo(t, configFileName, section, key, value)
+
+		val, err := fs.GetBool("enable_read_write_split_for_read_only_txn")
+		assert.NoError(t, err)
+		assert.Equal(t, true, val)
+	}
+
+	// expect: enable_read_write_split_for_read_only_txn=true(old value), because the new value is in wrong type
+	// viper will reload config, and call reload handler to set 'enable_read_write_split_for_read_only_txn', but it will fail type check
+	{
+		configFileName := "./test/vtgate_test_modify.cnf"
+		section := "vtgate"
+		key := "enable_read_write_split_for_read_only_txn"
+		value := "i am not a boolean value"
+		SaveConfigTo(t, configFileName, section, key, value)
+
+		val, err := fs.GetBool("enable_read_write_split_for_read_only_txn")
+		assert.NoError(t, err)
+		assert.Equal(t, true, val)
+	}
+
+	// expect: enable_read_write_split_for_read_only_txn=false
+	// viper will reload config, and call reload handler to set 'enable_read_write_split_for_read_only_txn'
+	{
+		configFileName := "./test/vtgate_test_modify.cnf"
+		section := "vtgate"
+		key := "enable_read_write_split_for_read_only_txn"
+		value := "false"
+		SaveConfigTo(t, configFileName, section, key, value)
+
+		val, err := fs.GetBool("enable_read_write_split_for_read_only_txn")
+		assert.NoError(t, err)
+		assert.Equal(t, false, val)
 	}
 
 	// expect: mysql_server_ssl_cert=

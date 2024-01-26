@@ -38,8 +38,8 @@ import (
 )
 
 var (
-	databasePoolSize          = 5
-	defaultBatchSize          = 1000 //
+	databasePoolSize          = 3
+	defaultBatchSize          = 2000 //
 	defaultBatchInterval      = 1    // ms
 	tableGCInterval           = 24   // hour
 	jobManagerRunningInterval = 24   // second
@@ -53,10 +53,10 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&defaultBatchSize, "non_transactional_dml_default_batch_size", defaultBatchSize, "the number of rows to be processed in one batch by default")
 	fs.IntVar(&defaultBatchInterval, "non_transactional_dml_default_batch_interval", defaultBatchInterval, "the interval of batch processing in milliseconds by default")
 	fs.IntVar(&tableGCInterval, "non_transactional_dml_table_gc_interval", tableGCInterval, "the interval of table GC in hours")
-	fs.IntVar(&jobManagerRunningInterval, "non_transactional_dml_job_scheduler_running_interval", jobManagerRunningInterval, "the interval of job scheduler running in seconds")
+	fs.IntVar(&jobManagerRunningInterval, "non_transactional_dml_job_manager_running_interval", jobManagerRunningInterval, "the interval of job scheduler running in seconds")
 	fs.IntVar(&throttleCheckInterval, "non_transactional_dml_throttle_check_interval", throttleCheckInterval, "the interval of throttle check in milliseconds")
 	fs.IntVar(&batchSizeThreshold, "non_transactional_dml_batch_size_threshold", batchSizeThreshold, "the	threshold of batch size")
-	fs.Float64Var(&ratioOfBatchSizeThreshold, "non_transactional_dml_batch_size_threshold_ratio", ratioOfBatchSizeThreshold, "final threshold = table index numbers * ratio * non_transactional_dml_batch_size_threshold")
+	fs.Float64Var(&ratioOfBatchSizeThreshold, "non_transactional_dml_batch_size_threshold_ratio", ratioOfBatchSizeThreshold, "final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers")
 }
 
 func init() {
