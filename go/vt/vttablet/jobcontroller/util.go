@@ -78,7 +78,6 @@ func parseDML(sql string) (tableName string, whereExpr sqlparser.Expr, stmt sqlp
 	if err != nil {
 		return "", nil, nil, err
 	}
-	// 根据stmt，分析DML SQL的各个部分，包括涉及的表，where条件
 	switch s := stmt.(type) {
 	case *sqlparser.Delete:
 		if len(s.TableExprs) != 1 {
@@ -130,7 +129,7 @@ func parseDML(sql string) (tableName string, whereExpr sqlparser.Expr, stmt sqlp
 		}
 
 	default:
-		// todo feat support select...into, replace...into
+		// todo feat: support select...into and replace...into
 		return "", nil, nil, errors.New("the type of sql is not supported")
 	}
 
@@ -156,7 +155,7 @@ func sprintfSelectPksSQL(tableName, whereStr string, pkInfos []PKInfo) string {
 	return selectPksSQL
 }
 
-// 该函数拿锁
+// the caller don't need to acquire any mutex
 func (jc *JobController) updateJobMessage(ctx context.Context, uuid, message string) error {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -171,6 +170,7 @@ func (jc *JobController) updateJobMessage(ctx context.Context, uuid, message str
 	return err
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string, affectedRows int64) error {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -185,6 +185,7 @@ func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string,
 	return err
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, statusSetTime string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -199,6 +200,7 @@ func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, stat
 	return jc.execQuery(ctx, "", submitQuery)
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeriodStart, timePeriodEnd, timeZone string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -214,6 +216,7 @@ func (jc *JobController) updateJobPeriodTime(ctx context.Context, uuid, timePeri
 	return jc.execQuery(ctx, "", submitQuery)
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) getIntJobInfo(ctx context.Context, uuid, fieldName string) (int64, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -233,6 +236,7 @@ func (jc *JobController) getIntJobInfo(ctx context.Context, uuid, fieldName stri
 	return qr.Named().Rows[0].ToInt64(fieldName)
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) getStrJobInfo(ctx context.Context, uuid, fieldName string) (string, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -252,6 +256,7 @@ func (jc *JobController) getStrJobInfo(ctx context.Context, uuid, fieldName stri
 	return qr.Named().Rows[0].ToString(fieldName)
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) getBatchIDToExec(ctx context.Context, batchTableSchema, batchTableName string) (string, error) {
 	getBatchIDToExecSQL := fmt.Sprintf(sqlTemplateGetBatchIDToExec, batchTableName)
 	qr, err := jc.execQuery(ctx, batchTableSchema, getBatchIDToExecSQL)
@@ -264,6 +269,7 @@ func (jc *JobController) getBatchIDToExec(ctx context.Context, batchTableSchema,
 	return qr.Named().Rows[0].ToString("batch_id")
 }
 
+// the caller don't need to acquire any mutex
 func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID string) error {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -281,7 +287,7 @@ func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, 
 	return nil
 }
 
-// todo feat batch的并行执行，注意对batch表的操作
+// todo feat: support concurrency in batch level, pay attention to the operations on batch info table
 func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTableName, tableSchema string) (batchSQL, batchCountSQL string, err error) {
 	getBatchSQLWithTableName := fmt.Sprintf(sqlTemplateGetBatchSQLsByID, batchTableName)
 	query, err := sqlparser.ParseAndBind(getBatchSQLWithTableName,
@@ -314,7 +320,7 @@ func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tabl
 }
 
 func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableName string) ([]PKInfo, error) {
-	// 1. 先获取pks 的名字
+	// 1. get names of PK column
 	submitQuery := fmt.Sprintf(sqlGetTablePk, tableName)
 	qr, err := jc.execQuery(ctx, tableSchema, submitQuery)
 	if err != nil {
@@ -328,7 +334,7 @@ func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableN
 		pkNames = append(pkNames, row["Column_name"].ToString())
 	}
 
-	// 2. 根据获得的pk列的名字，去原表中查一行数据，借助封装好的Value对象获得每个pk的类型
+	// 2. get types of PK by select one row values of PK
 	pkCols := ""
 	firstPK := true
 	for _, pkName := range pkNames {
@@ -344,9 +350,9 @@ func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableN
 		return nil, err
 	}
 	if len(qr.Named().Rows) != 1 {
-		return nil, errors.New("the len of qr of select pk cols should be 1")
+		return nil, errors.New("the table is empty")
 	}
-	// 获得每一列的type，并生成pkInfo切片
+
 	var pkInfos []PKInfo
 	for _, pkName := range pkNames {
 		pkInfos = append(pkInfos, PKInfo{pkName: pkName, pkType: qr.Named().Rows[0][pkName].Type()})
@@ -401,7 +407,6 @@ func (jc *JobController) getIndexCount(tableSchema, tableName string) (indexCoun
 }
 
 func genNewBatchID(batchID string) (newBatchID string, err error) {
-	// 产生新的batchID
 	if strings.Contains(batchID, "-") {
 		parts := strings.Split(batchID, "-")
 		num, err := strconv.ParseInt(parts[1], 10, 64)
@@ -485,7 +490,7 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		return errors.New("check the format, the start and end should be like 'hh:mm:ss' and time zone should be like 'UTC[\\+\\-]\\d{2}:\\d{2}:\\d{2}'")
 	}
 	if runningTimePeriodTimeZone == "" {
-		// 如果用户没有设置时区，则使用系统默认时区
+		// use system time zone if user didn't set it.
 		_, timeZoneOffset := time.Now().Zone()
 		runningTimePeriodTimeZone = getTimeZoneStr(timeZoneOffset)
 	}

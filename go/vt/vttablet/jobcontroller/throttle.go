@@ -35,12 +35,8 @@ func initThrottleTicker() {
 	})
 }
 
-// 指定throttle的时长和ratio
-// ratio表示限流的比例，最大为1，即完全限流
-// 时长的格式举例：
-// "300ms" 表示 300 毫秒。
-// "-1.5h" 表示负1.5小时。
-// "2h45m" 表示2小时45分钟。
+// ratio: 1 means totally throttled
+// expireString example: "300ms", "-1.5h", "2h45m"
 func (jc *JobController) ThrottleJob(uuid, expireString string, ratioLiteral *sqlparser.Literal) (result *sqltypes.Result, err error) {
 	emptyResult := &sqltypes.Result{}
 	duration, ratio, err := jc.validateThrottleParams(expireString, ratioLiteral)
@@ -90,11 +86,10 @@ func (jc *JobController) requestThrottle(uuid string) (throttleCheckOK bool) {
 		return true
 	}
 	ctx := context.Background()
-	// 请求时给每一个throttle的app名都加上了dml-job前缀，这样可以通过throttle dml-job来throttle所有的dml jobs
+	// dml-job" prefix is added to the app name.
+	// This allows throttling all DML jobs by throttle "dml-job" app
 	appName := "dml-job:" + uuid
-	// 这里不特别设置flag
 	throttleCheckFlags := &throttle.CheckFlags{}
-	// 由于dml job子任务需要同步到集群中的各个从节点，因此throttle也依据的是集群的复制延迟
 	checkType := throttle.ThrottleCheckPrimaryWrite
 	checkRst := jc.lagThrottler.CheckByType(ctx, appName, "", throttleCheckFlags, checkType)
 	if checkRst.StatusCode != http.StatusOK {
