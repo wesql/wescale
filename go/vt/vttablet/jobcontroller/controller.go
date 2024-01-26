@@ -41,7 +41,7 @@ var (
 	databasePoolSize          = 5
 	defaultBatchSize          = 1000 //
 	defaultBatchInterval      = 1    // ms
-	tableGCInterval           = 24   // hour   todo hour
+	tableGCInterval           = 24   // hour
 	jobManagerRunningInterval = 24   // second
 	throttleCheckInterval     = 250  // ms g
 	batchSizeThreshold        = 10000
@@ -80,11 +80,13 @@ const (
 	SetRunningTimePeriod = "set_running_time_period"
 )
 
-// 当batch执行失败时的策略，需要注意的时，如果Job在执行batch之外的其他地方发生了错误，则Job会直接变成failed状态，而与failPolicy无关
+// These are strategies when a batch execution fails.
+// It's important to note that if a Job encounters an error outside of  batch execution,
+// the Job will directly change to failed state, regardless of the failPolicy.
 const (
-	failPolicySkip           = "skip"  // 跳过当前batch，继续执行下一个batch
-	failPolicyPause          = "pause" // 暂停当前job
-	failPolicyAbort          = "abort" // fail当前job
+	failPolicySkip           = "skip"  // skip current batch, continue to execute the next one
+	failPolicyPause          = "pause" // pause the job util user resume it
+	failPolicyAbort          = "abort" // fail the current job
 	failPolicyRetryThenPause = "retry_then_pause"
 
 	defaultFailPolicy = failPolicyAbort
@@ -117,10 +119,15 @@ type JobController struct {
 	ctx             context.Context
 	cancelOperation context.CancelFunc
 
-	workingTables      map[string]bool // 用于调度时检测当前任务是否和正在工作的表冲突，paused、running状态的job的表都在里面
+	// Used to check the job conflicts when scheduling.
+	// The table of jobs which are in the paused or running states will be record.
+	workingTables map[string]bool
+
 	workingTablesMutex sync.Mutex
 
-	managerNotifyChan chan struct{} // jobManager每隔一段时间运行一次调度。但当它收到这个chan的消息后，会立刻开始一次调度
+	// The jobManager runs a job schedule every jobManagerRunningInterval seconds.
+	// However, when it receives a message from this channel, it will immediately start a schedule.
+	managerNotifyChan chan struct{}
 }
 
 type PKInfo struct {
@@ -207,13 +214,12 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 	sql = sqlparser.StripComments(sql)
 	if batchIntervalInMs == 0 {
-		// todo feat 不设置时间间隔，由throttle进行控制
+		// todo feat: maybe batches can run without interval, just let throttler to decide whether to run
 		batchIntervalInMs = int64(defaultBatchInterval)
 	}
 	if userBatchSize == 0 {
 		userBatchSize = int64(defaultBatchSize)
 	}
-	// 创建batchInfo表
 	tableName, batchInfoTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, userBatchSize)
 	if err != nil {
 		return &sqltypes.Result{}, err
@@ -247,8 +253,11 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	return jc.buildJobSubmitResult(jobUUID, batchInfoTable, batchIntervalInMs, batchSize, postponeLaunch, failPolicy), nil
 }
 
-// 和cancel的区别：1.pasue不会删除元数据 2.cancel状态的job在经过一段时间后会被后台协程回收
-// 和cancel的相同点：都停止了runner协程
+// The difference between pause and cancel:
+// 1. Pause will keep job metadata but cancel won't.
+// 2. Jobs in cancel status will get in tableGC but pause won't.
+// The similarities between pause and cancel:
+// 1. Both stop the runner coroutine.
 func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	status, err := jc.getStrJobInfo(jc.ctx, uuid, "status")
@@ -256,13 +265,11 @@ func (jc *JobController) PauseJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, err
 	}
 	if status != RunningStatus {
-		// todo，feat 将info写回给vtgate，目前还不生效
+		// todo，feat: send qr.info to vtgate so user can see it
 		emptyResult.Info = " The job status is not running and can't be paused"
 		return emptyResult, nil
 	}
 
-	// 将job在表中的状态改为paused，runner在运行时如果检测到状态不是running，就会退出。
-	// pause虽然终止了runner协程，但是
 	statusSetTime := time.Now().Format(time.DateTime)
 	qr, err := jc.updateJobStatus(jc.ctx, uuid, PausedStatus, statusSetTime)
 	if err != nil {
@@ -282,7 +289,6 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 		return emptyResult, nil
 	}
 
-	// 准备拉起runner协程的参数
 	query, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo,
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
@@ -300,7 +306,7 @@ func (jc *JobController) ResumeJob(uuid string) (*sqltypes.Result, error) {
 	runnerArgs := JobArgs{}
 	runnerArgs.initArgsByQueryResult(row)
 
-	// 拉起runner协程，协程内会将状态改为running
+	// dmlJobBatchRunner will set the job status to running
 	go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
 	emptyResult.RowsAffected = 1
 	return emptyResult, nil
@@ -338,7 +344,7 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 
 	tableName, _ := jc.getStrJobInfo(jc.ctx, uuid, "table_name")
 
-	// 相比于pause，cancel需要删除内存中的元数据
+	// compared with pause，cancel need to delete job metadata
 	jc.deleteDMLJobRunningMeta(tableName)
 
 	jc.notifyJobManager()
@@ -371,11 +377,12 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 }
 
 func (jc *JobController) jobManager() {
-	// 1.启动时，先检查是否有处于"running"或"paused"的job，并恢复它们在内存的状态
+	// Before jobManager get in infinite loop,
+	// it should check whether there are jobs already in 'paused' or 'running' status
+	// and recover their metadata.
 	jc.recoverJobsMetadata(jc.ctx)
 	log.Info("JobController: metadata of all running and paused jobs are restored to memory\n")
 
-	// 2.交由jobManager对job进行管理
 	timer := time.NewTicker(time.Duration(jobManagerRunningInterval) * time.Second)
 	defer timer.Stop()
 
@@ -396,14 +403,13 @@ func (jc *JobController) jobManager() {
 				jobArgs := JobArgs{}
 				jobArgs.initArgsByQueryResult(row)
 				switch jobArgs.status {
-				// 对处于未开始状态对job进行调度
 				case QueuedStatus, NotInTimePeriodStatus:
 					if jc.checkDmlJobRunnable(jobArgs.uuid, jobArgs.status, jobArgs.table, jobArgs.timePeriodStart, jobArgs.timePeriodEnd) {
-						// 初始化Job在内存中的元数据，防止在dmlJobBatchRunner修改表中的状态前，scheduler多次启动同一个job
+						// init metadata before start dmlJobBatchRunner,
+						// otherwise a job maybe scheduled to run more than once
 						jc.initDMLJobRunningMeta(jobArgs.table)
 						go jc.dmlJobBatchRunner(jobArgs.uuid, jobArgs.table, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.failPolicy, jobArgs.batchInterval, jobArgs.batchSize, jobArgs.timePeriodStart, jobArgs.timePeriodEnd)
 					}
-				// 对处于完成态对job进行清理
 				case CanceledStatus, FailedStatus, CompletedStatus:
 					timeZoneOffset, err := getTimeZoneOffset(jobArgs.timeZone)
 					if err != nil {
@@ -415,9 +421,8 @@ func (jc *JobController) jobManager() {
 						log.Errorf("jobManager: tableGC failed, %s", err)
 						continue
 					}
-				// 对处于运行态的job进行监控
 				case RunningStatus:
-					// todo feat 增加对长时间未增加rows的running job的处理
+					// todo feat: we can do something on Jobs that affect no rows for a long time but in running status
 				}
 
 			}
@@ -429,8 +434,8 @@ func (jc *JobController) jobManager() {
 	}
 }
 
-// todo，feat 可以增加并发Job数的限制
-// 调用该函数时外部必须拿tableMutex锁和workingTablesMutex锁
+// todo feat: we can limit the number of job running concurrently
+// acquire 	jc.workingTablesMutex and jc.tableMutex before calling this function
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
 	if status != QueuedStatus && status != NotInTimePeriodStatus {
 		return false
@@ -441,7 +446,7 @@ func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, peri
 	if periodStartTime != nil && periodEndTime != nil {
 		timeNow := time.Now()
 		if !(timeNow.After(*periodStartTime) && timeNow.Before(*periodEndTime)) {
-			// 更新状态
+			// if current time is not in running time period, we set the job status as "not-in-time-period"
 			submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateStatus,
 				sqltypes.StringBindVariable(NotInTimePeriodStatus),
 				sqltypes.StringBindVariable(timeNow.Format(time.DateTime)),
@@ -479,9 +484,9 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	// 1.开启事务
+	// 1. start a transaction
 	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, false)
-	// 确保函数意味退出时结束该事务，以释放该事务锁定的资源
+	// ensure the resource acquired by the transaction is released when the function exits
 	defer func() {
 		_, _ = conn.Exec(ctx, "rollback", math.MaxInt32, false)
 	}()
@@ -490,7 +495,9 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	// 2.查询batch sql预计影响的行数，如果超过阈值，则生成新的batch ID
+	// 2. Query the number of rows that is going to be affected by this batch SQL.
+	// If it exceeds the threshold, we should split it.
+	// Here we use "FOR SHARE" to prevent users from modifying rows related to this batch.
 	batchCountSQLForShare := batchCountSQL + " FOR SHARE"
 	qr, err := conn.Exec(ctx, batchCountSQLForShare, math.MaxInt32, true)
 	if err != nil {
@@ -501,7 +508,8 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	expectedRow, _ := qr.Named().Rows[0].ToInt64("count_rows")
 
-	// 检查batch status是否为completed，防止vttablet脑裂问题导致一个batch被多次执行
+	// Check if the batch status is "completed" to prevent potential issues caused by vttablet brain split,
+	// ensuring a batch is not executed multiple times.
 	sqlGetBatchStatus := fmt.Sprintf(sqlTemplateGetBatchStatus, batchTable)
 	queryGetBatchStatus, err := sqlparser.ParseAndBind(sqlGetBatchStatus, sqltypes.StringBindVariable(batchID))
 	if err != nil {
@@ -519,7 +527,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return nil
 	}
 
-	// 将batchID信息记录在系统表中便于用户查看
+	// Record the batch ID information in the non_transactional_dml_jobs table for user reference.
 	queryUpdateDealingBatchID, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
 		sqltypes.StringBindVariable(batchID),
 		sqltypes.StringBindVariable(uuid))
@@ -542,14 +550,14 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		}
 	}
 
-	// 3.执行batch sql
+	// 3.Execute the batch SQL.
 	qr, err = conn.Exec(ctx, batchSQL, math.MaxInt32, true)
 	if err != nil {
 		return err
 	}
 
-	// 4.记录batch sql已经完成，将行数增加到affected rows中
-	// 4.1在batch table中记录
+	// 4.Record the executing result, adding the row count to the affected rows.
+	// 4.1 Record in the batch table.
 	updateBatchStatus := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTable)
 	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
 		sqltypes.StringBindVariable(CompletedStatus),
@@ -563,7 +571,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	// 4.2在job表中记录
+	// 4.2 Record in the job table.
 	updateAffectedRowsSQL, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
 		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
 		sqltypes.StringBindVariable(uuid))
@@ -577,7 +585,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	// 5.提交事务
+	// 5.Commit the transaction.
 	_, err = conn.Exec(ctx, "commit", math.MaxInt32, false)
 	if err != nil {
 		return err
@@ -585,9 +593,10 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	return nil
 }
 
-// 将超过batchSize的batch拆分成两个batches,其中第一个batch的大小等于batchSize
-// 拆分的基本原理是遍历原先batch的batchCountSQL的结果集，将第batchSize条record的pk作为原先batch的PKEnd，第batchSize+1条record的pk作为新batch的PKStart
-// 原先batch的PKStart和PKEnd分别成为原先batch的PKStart和新batch的PKEnd
+// Split batches that larger than batchSize into two batches, with the first batch having a size equal to batchSize.
+// The basic principle of the splitting is to iterate through the query result set of batchCountSQL of the original batch.
+// Take the primary key (pk) of the batchSize-th record as the original batch's PKEnd and the primary key of the (batchSize+1)-th record as the PKStart for the new batch.
+// The original batch's PKStart becomes the PKStart for the original batch, and the PKEnd becomes the PKEnd for the new batch.
 func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID string, conn *connpool.DBConn, batchSize, expectedRow int64) (newCurrentBatchSQL string, err error) {
 	batchSQLStmt, err := sqlparser.Parse(batchSQL)
 	if err != nil {
@@ -598,19 +607,20 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 		return "", err
 	}
 
-	// 1.根据batchCountSQL生成select PKs SQL
+	// 1. Generate SQL to select primary keys based on batchCountSQL.
 	pkInfos, err := jc.getTablePkInfo(ctx, tableSchema, table)
 	if err != nil {
 		return "", err
 	}
 	selectPKsSQL := genSelectPKsSQLByBatchCountSQL(batchCountSQLStmt, pkInfos)
 
-	// 2.根据select sql将batch拆分，生成两个新的batch。
-	// 这里每次只将超过threshold的batch拆成两个batch而不是多个小于等于threshold的batch的原因是：
-	// 拆成多个batch需要遍历完select的全部结果，这可能会导致超时
+	// 2. Split the batch into two new batches using the select SQL.
+	// The reason for splitting batches exceeding the threshold into only two batches is that:
+	// splitting into multiple batches requires iterating through the entire result set of the select sql,
+	// which could lead to timeouts.
 
-	// 2.1.计算两个batch的batchPKStart和batchPKEnd。实际上，只要获得当前batch的新的PKEnd和新的batch的PKStart
-	// 遍历前threshold+1条，依然使用同一个连接
+	// 2.1. Calculate batchPKStart and batchPKEnd for the two batches.
+	// Actually, only need to obtain the new PKEnd for the current batch and the PKStart for the new batch.
 	var curBatchNewEnd []sqltypes.Value
 	var newBatchStart []sqltypes.Value
 
@@ -619,35 +629,36 @@ func (jc *JobController) splitBatchIntoTwo(ctx context.Context, tableSchema, tab
 		return "", err
 	}
 	for rowCount, row := range qr.Rows {
-		// 将原本batch的PKEnd设在threshold条数处
+		// Take pk of the batchSize-th record as the original batch's PKEnd
 		if int64(rowCount) == batchSize-1 {
 			curBatchNewEnd = row
 		}
-		// 将第threshold+1条的PK作为新PK的起点
+		// Take pk of the (batchSize+1)-th record as the PKStart for the new batch.
 		if int64(rowCount) == batchSize {
 			newBatchStart = row
 			break
 		}
 	}
-	// 2.2.生成新的batchSQL和新的batchCountSQL
+	// 2.2. Generate new batchSQL and new batchCountSQL.
 	curBatchSQL, newBatchSQL, newBatchCountSQL, err := genNewBatchSQLsAndCountSQLsWhenSplittingBatch(batchSQLStmt, batchCountSQLStmt, curBatchNewEnd, newBatchStart, pkInfos)
 	if err != nil {
 		return "", err
 	}
 
-	// 2.3.计算两个batch的batch start和end字段
+	// 2.3. Calculate the batch start and end fields for the two batches.
 	currentBatchNewBeginStr, currentBatchNewEndStr, newBatchBeginStr, newBatchEndStr, err := getNewBatchesBeginAndEndStr(ctx, conn, batchTable, batchID, curBatchNewEnd, newBatchStart)
 	if err != nil {
 		return "", err
 	}
 
-	// 3 将结果记录在表中：在batch表中更改原本batch的条目的sql，并插入新batch条目
-	// 更改原本batch条目
+	// 3. Record the results in the table:
+	// Update the SQL for the original batch entries in the batch table and insert a new entry for the new batch.
+	// 3.1 Update the entries for the original batch.
 	err = updateBatchInfoTableEntry(ctx, conn, batchTable, curBatchSQL, currentBatchNewBeginStr, currentBatchNewEndStr, batchID)
 	if err != nil {
 		return "", err
 	}
-	// 插入新batch条目
+	// 3.2 Insert a new entry for the new batch.
 	nextBatchID, err := genNewBatchID(batchID)
 	if err != nil {
 		return "", err
@@ -672,26 +683,23 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 		jc.FailJob(jc.ctx, uuid, err.Error(), table)
 	}
 
-	// 在一个无限循环中等待定时器触发
 	for {
 		select {
 		case <-jc.ctx.Done():
 			return
 		case <-timer.C:
 		}
-		// 定时器触发时执行的函数
-		// 检查状态是否为running，可能为paused/canceled
 		status, err := jc.getStrJobInfo(jc.ctx, uuid, "status")
 		if err != nil {
 			jc.FailJob(jc.ctx, uuid, err.Error(), table)
 			return
 		}
+		// if the job is paused or canceled by user, just return
 		if status != RunningStatus {
 			return
 		}
 
-		// 检查是否在运维窗口内
-		// todo feat 增加时区支持，以及是否可能由于脑裂问题导致错误fail掉job?
+		// check whether current time is in running time period
 		if timePeriodStart != nil && timePeriodEnd != nil {
 			currentTime := time.Now()
 			if !(currentTime.After(*timePeriodStart) && currentTime.Before(*timePeriodEnd)) {
@@ -703,19 +711,19 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			}
 		}
 
-		// 先请求throttle，若被throttle阻塞，则等待下一次timer事件
+		// request throttler
 		if !jc.requestThrottle(uuid) {
 			continue
 		}
 
-		// 获取本次要执行的batch的batchId
+		// get batchID of batch to execute now
 		batchIDToExec, err := jc.getBatchIDToExec(jc.ctx, tableSchema, batchTable)
 		if err != nil {
 			jc.FailJob(jc.ctx, uuid, err.Error(), table)
 			return
 		}
 		if batchIDToExec == "" {
-			// 意味着所有的batch都已经执行完毕，则退出
+			// it means that all batches are finished, so we can complete the job
 			_, err = jc.CompleteJob(jc.ctx, uuid, table)
 			if err != nil {
 				jc.FailJob(jc.ctx, uuid, err.Error(), table)
@@ -729,11 +737,11 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 			return
 		}
 
-		// 执行当前batch的batch sql，并获得下一要执行的batchID
+		// execute the batchSQL and record the result in a transaction
 		err = jc.execBatchAndRecord(jc.ctx, tableSchema, table, batchSQL, batchCountSQL, uuid, batchTable, batchIDToExec, batchSize)
-		// 如果执行batch时失败，则根据failPolicy决定处理策略
+		// if the batch fails, do something according to the failPolicy
 		if err != nil {
-			// todo feat 支持batch并行时需要重新考虑逻辑
+			// todo feat: if we support concurrency in batch level, we should redesign the code logic here
 			switch failPolicy {
 			case failPolicyAbort:
 				jc.FailJob(jc.ctx, uuid, err.Error(), table)
@@ -746,14 +754,14 @@ func (jc *JobController) dmlJobBatchRunner(uuid, table, tableSchema, batchTable,
 				_ = jc.updateJobMessage(jc.ctx, uuid, msg)
 				_, _ = jc.updateJobStatus(jc.ctx, uuid, PausedStatus, time.Now().Format(time.DateTime))
 				return
-				// todo feat 增加retryThenPause策略
+				// todo feat: we can retry a certain times before pausing the job
 			case failPolicyRetryThenPause:
 			}
 		}
 	}
 }
 
-// 调用该函数时，需要外部要获取相关的锁
+// acquire jc.workingTablesMutex before calling this function
 func (jc *JobController) initDMLJobRunningMeta(table string) {
 	jc.workingTables[table] = true
 }
@@ -790,9 +798,8 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 }
 
 func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchInfoTable, statusSetTime string, timeZoneOffset int) error {
-	// job表中的类型为timestamp，其中不记录时区，格式对应着time.Datetime
+	// Because we recode both datetime and timezone in job table, so we can recover the time data correctly
 	statusSetTimeObj, err := time.Parse(time.DateTime, statusSetTime)
-	// parse默认使用UTC，故需要将时区调整为表中所记录的时区
 	location := time.FixedZone("time zone", timeZoneOffset)
 	statusSetTimeObj = time.Date(statusSetTimeObj.Year(), statusSetTimeObj.Month(), statusSetTimeObj.Day(),
 		statusSetTimeObj.Hour(), statusSetTimeObj.Minute(), statusSetTimeObj.Second(), statusSetTimeObj.Nanosecond(), location)
@@ -800,16 +807,16 @@ func (jc *JobController) tableGC(ctx context.Context, uuid, tableSchema, batchIn
 	if err != nil {
 		return err
 	}
-	// 如果Job设置结束状态的时间距离当前已经超过了一定的时间间隔，则删除该Job在表中的条目，并将其batch表删除
+	// we delete job entry and drop batch table (by table gc) of the jobs that have been finished for a while
 	if time.Now().After(statusSetTimeObj.Add(time.Duration(tableGCInterval) * time.Hour)) {
 		deleteJobSQL, err := sqlparser.ParseAndBind(sqlDMLJobDeleteJob,
 			sqltypes.StringBindVariable(uuid))
 		if err != nil {
 			return err
 		}
-		// 通过sql删除job表中的条目
+		// delete job entry by SQL
 		_, _ = jc.execQuery(ctx, "", deleteJobSQL)
-		// 通过table gc的方式删除batch表，将其设置为PURGE状态（由于在任务完成后已经停留了一段时间，故不再经过HOLD状态）
+		// delete batch table by table gc: set the table as "PURGE" status
 		_, _ = jc.gcBatchInfoTable(ctx, tableSchema, batchInfoTable, uuid, time.Now().UTC())
 	}
 	return nil
@@ -834,12 +841,12 @@ func (jc *JobController) gcBatchInfoTable(ctx context.Context, tableSchema, arti
 }
 
 func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
-	// 1.对用户提交的DML sql进行合法性检验和解析
+	// 1.Validate and parse the DML SQL submitted by the user.
 	tableName, whereExpr, stmt, err := parseDML(sql)
 	if err != nil {
 		return "", "", 0, err
 	}
-	// 2.检查PK列类型的合法性
+	// 2.Validate the PK columns types.
 	pkInfos, err := jc.getTablePkInfo(jc.ctx, tableSchema, tableName)
 	if err != nil {
 		return "", "", 0, err
@@ -847,10 +854,10 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	if existUnSupportedPK(pkInfos) {
 		return "", "", 0, errors.New("the table has unsupported PK type")
 	}
-	// 3.拼接生成selectPksSQL，用于生成batch表
+	// 3.Generate selectPksSQL which are used for creating the batch table.
 	selectPksSQL := sprintfSelectPksSQL(tableName, sqlparser.String(whereExpr), pkInfos)
 
-	// 4.计算每个batch的batchSize
+	// 4.Calculate the batchSize for each batch.
 	// batchSize = min(userBatchSize, batchSizeThreshold / 每个表的index数量 * ratioOfBatchSizeThreshold)
 	indexCount, err := jc.getIndexCount(tableSchema, tableName)
 	if err != nil {
@@ -862,13 +869,14 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	} else {
 		batchSize = actualThreshold
 	}
-	// 5.基于selectPksSQL生成batch表
+	// 5.Generate the batch table based on the selectPksSQL.
 	batchTableName, err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, tableName, whereExpr, stmt, pkInfos, batchSize)
 	return tableName, batchTableName, batchSize, err
 }
 
 func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, tableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) (string, error) {
-	// 执行selectSQL，获得有序的pk值结果集，以生成每一个batch要执行的batch SQL
+	// Execute selectSQL to obtain an ordered result set of PK values
+	// which are used to generate batch SQL for each batch.
 	qr, err := jc.execQuery(jc.ctx, tableSchema, selectSQL)
 	if err != nil {
 		return "", err
@@ -877,9 +885,9 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 		return "", nil
 	}
 
-	// todo feat 删除batchSQL，batchCountSQL，字段，在内存中生成具体的sql, mysql generate col 或者 go代码实现
-	// 为每一个DML job创建一张batch表，保存着该job被拆分成batches的具体信息。
-	// healthCheck协程会定时对处于结束状态(completed,canceled,failed)的job的batch表进行回收
+	// todo feat: maybe we don't need to store batchSQL and batchCountSQL in system table, just generate them during user query, by Go or Mysql
+
+	// For each DML job, create a batch info table records specific information about how the job is divided into batches.
 	batchTableName := "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(jc.ctx, tableSchema, createTableSQL)
@@ -887,8 +895,8 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 		return "", err
 	}
 
-	// 遍历每一行的每一个PK的值，记录每一个batch的开始和结束pk值（当有多个pk列时，需要记录多个pk值，pk可能具有不同的数据类型
-	// 当遍历的行数达到一个batchSize时，即可生成一个batch所要执行的batch SQL，往batch表中插入一个条目
+	// Iterate through each row and each PK value,
+	// recording the start and end PK values for each batch (maybe more than one PK columns and types).
 	currentBatchSize := int64(0)
 	var currentBatchStart []sqltypes.Value
 	var currentBatchEnd []sqltypes.Value
@@ -900,6 +908,8 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 		}
 		currentBatchEnd = values
 		currentBatchSize++
+		// When the number of rows reaches a batchSize,
+		// generate a batch SQL to be executed for this batch, and insert an entry into the batch table.
 		if currentBatchSize == batchSize {
 			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 			if err != nil {
@@ -916,7 +926,8 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 			currentBatchSize = 0
 		}
 	}
-	// 最后一个batch的行数不一定是batchSize，在循环结束时要将剩余的行数划分到最后一个batch中
+	// The number of rows in the last batch may less than batchSize:
+	// any remaining rows should be allocated to the last batch at the end of the loop.
 	if currentBatchSize != 0 {
 		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
@@ -947,7 +958,7 @@ func createBatchInfoTableEntry(tableName string, sqlStmt sqlparser.Statement, wh
 	return batchSQL, countSQL, batchStartStr, batchEndStr, nil
 }
 
-// 通知jobManager让它立刻开始一次调度。
+// notify jobManager to run schedule immediately
 func (jc *JobController) notifyJobManager() {
 	if jc.managerNotifyChan == nil {
 		return

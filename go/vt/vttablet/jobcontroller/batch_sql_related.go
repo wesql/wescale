@@ -72,7 +72,7 @@ func genSQLByReplaceWhereExprNode(stmt sqlparser.Statement, whereExpr sqlparser.
 		s.Where = &whereExpr
 		return sqlparser.String(s)
 	case *sqlparser.Select:
-		// 针对batchCountSQL
+		// select case is for batch count SQL
 		s.Where = &whereExpr
 		return sqlparser.String(s)
 	default:
@@ -86,26 +86,25 @@ func genBatchSQL(stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatc
 		return "", "", errors.New("genBatchSQL: stmt is nil")
 	}
 
-	// 1. 生成>=的部分
+	// 1. generate PK condition part of >=
 	greatThanPart, err := genPKsGreaterEqualOrLessEqualStr(pkInfos, currentBatchStart, true)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 2.生成<=的部分
+	// 2.generate generate PK condition part of <=
 	lessThanPart, err := genPKsGreaterEqualOrLessEqualStr(pkInfos, currentBatchEnd, false)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 3.将pk>= and pk <= 拼接起来并生成相应的condition expr ast node
+	// 3.Concatenate pk condition part of >= and <= to generate pk condition expr ast node
 	pkConditionExpr, err := genPKConditionExprByStr(greatThanPart, lessThanPart)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 4.将原本sql stmt中的where expr ast node用AND拼接上pkConditionExpr，作为batchSQL的where expr ast node
-	// 4.1先生成新的condition ast node
+	// 4.Concatenate the where expr ast node of the original SQL with pkConditionExpr using AND to get the where expr of batchSQL.
 	andExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: whereExpr, Right: pkConditionExpr}}
 	batchSQL = genSQLByReplaceWhereExprNode(stmt, andExpr)
 	finalWhereStr = sqlparser.String(andExpr.Expr)
@@ -113,9 +112,6 @@ func genBatchSQL(stmt sqlparser.Statement, whereExpr sqlparser.Expr, currentBatc
 	return batchSQL, finalWhereStr, nil
 }
 
-// 拆分列所支持的类型需要满足以下条件：
-// 1.在sql中可以正确地使用between或>=,<=进行比较运算，且没有精度问题。
-// 2.可以转换成go中的int64，float64或string三种类型之一，且转换后，在golang中的比较规则和mysql中的比较规则相同
 func genCountSQL(tableName, whereExpr string) (countSQL string) {
 	countSQL = fmt.Sprintf("select count(*) as count_rows from %s where %s",
 		tableName, whereExpr)
@@ -179,7 +175,7 @@ func getUserWhereExpr(stmt sqlparser.Statement) (expr sqlparser.Expr) {
 }
 
 func genNewBatchSQLsAndCountSQLsWhenSplittingBatch(batchSQLStmt, batchCountSQLStmt sqlparser.Statement, curBatchNewEnd, newBatchStart []sqltypes.Value, pkInfos []PKInfo) (curBatchSQL, newBatchSQL, newBatchCountSQL string, err error) {
-	// 1) 将curBatchNewEnd和newBatchStart转换成<=和>=的字符串，然后将字符串转成expr ast node
+	// 1）Convert curBatchNewEnd and newBatchStart to greatThan and lessThan expr ast nodes
 	curBatchLessThanPart, err := genPKsGreaterEqualOrLessEqualStr(pkInfos, curBatchNewEnd, false)
 	if err != nil {
 		return "", "", "", err
@@ -198,22 +194,24 @@ func genNewBatchSQLsAndCountSQLsWhenSplittingBatch(batchSQLStmt, batchCountSQLSt
 		return "", "", "", err
 	}
 
-	// 2) 通过parser，获得原先batchSQL的greatThan和lessThan的expr ast node
+	// 2) Get the original batchSQL's greatThan and lessThan expr ast nodes,
+	// They are respectively the greatThan part of the current batch, and the lessThan part of the new batch.
 	curBatchGreatThanExpr, newBatchLessThanExpr := getBatchSQLGreatThanAndLessThanExprNode(batchSQLStmt)
 
-	// 3) 生成拆batchSQL和batchCountSQL
-	// 3.1) 先构建curBatchSQL和newBatchSQL的where expr ast node：将用户输入的where expr与上PK Condition Expr
+	// 3) Generate batchSQL and batchCountSQL after splitting
+	// 3.1) First construct the where expr ast nodes of curBatchSQL and newBatchSQL by
+	// concatenating the user input where expr with PK Condition Expr with AND
 	userWhereExpr := getUserWhereExpr(batchSQLStmt)
 	curBatchPKConditionExpr := sqlparser.AndExpr{Left: curBatchGreatThanExpr, Right: curBatchLessThanExpr}
 	newBatchPKConditionExpr := sqlparser.AndExpr{Left: newBatchGreatThanExpr, Right: newBatchLessThanExpr}
 	curBatchWhereExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: userWhereExpr, Right: &curBatchPKConditionExpr}}
 	newBatchWhereExpr := sqlparser.Where{Expr: &sqlparser.AndExpr{Left: userWhereExpr, Right: &newBatchPKConditionExpr}}
 
-	// 3.2) 替换原先batchSQL的where expr来生成batchSQL
+	// 3.2) Generate batchSQL by replacing the original where expr
 	curBatchSQL = genSQLByReplaceWhereExprNode(batchSQLStmt, curBatchWhereExpr)
 	newBatchSQL = genSQLByReplaceWhereExprNode(batchSQLStmt, newBatchWhereExpr)
 
-	// 3.3) 同理生成batchCountSQL
+	// 3.3) Similarly generate batchCountSQL
 	newBatchCountSQL = genSQLByReplaceWhereExprNode(batchCountSQLStmt, newBatchWhereExpr)
 	return curBatchSQL, newBatchSQL, newBatchCountSQL, nil
 }
