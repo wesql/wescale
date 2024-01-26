@@ -1,9 +1,15 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package viperutil
 
 import (
+	"testing"
+
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNewConfigReloader(t *testing.T) {

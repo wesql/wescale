@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package viperutil
 
 import (
@@ -81,7 +86,8 @@ func TestRegisterReloadHandlersForVtGate(t *testing.T) {
 	}
 
 	{
-		fs.Set("read_write_splitting_ratio", "28")
+		err := fs.Set("read_write_splitting_ratio", "28")
+		assert.Nil(t, err)
 		val, err := fs.GetInt("read_write_splitting_ratio")
 		assert.NoError(t, err)
 		assert.Equal(t, 28, val)
@@ -166,11 +172,11 @@ func TestRegisterReloadHandlersForVtGateWithModify(t *testing.T) {
 	{
 		configFileName := "./test/vtgate_test_modify.cnf"
 		section := "vtgate"
-		key := "mysql_server_ssl_cert"
+		key := "mysql_auth_server_static_file"
 		value := "foobar"
 		SaveConfigTo(t, configFileName, section, key, value)
 
-		val, err := fs.GetString("mysql_server_ssl_cert")
+		val, err := fs.GetString("mysql_auth_server_static_file")
 		assert.NoError(t, err)
 		assert.Equal(t, "", val)
 	}

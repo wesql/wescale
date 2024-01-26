@@ -1,3 +1,8 @@
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 [vtgate]
 gateway_initial_tablet_timeout        = 30s
 healthcheck_timeout                   = 2s
@@ -16,6 +21,6 @@ buffer_max_failover_duration          = 60s
 buffer_min_time_between_failovers     = 60s
 mysql_auth_server_impl                = none
 mysql_server_require_secure_transport = false
-mysql_auth_server_static_file         = 
+mysql_auth_server_static_file         = foobar
 mysql_server_ssl_key                  = 
-mysql_server_ssl_cert                 = foobar
+mysql_server_ssl_cert                 = 
