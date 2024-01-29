@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
@@ -71,7 +72,7 @@ func (f *FakeQueryService) SetFailPoint(ctx context.Context, command string, key
 	return nil
 }
 
-func (f *FakeQueryService) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (f *FakeQueryService) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
 	panic("implement me")
 }
 

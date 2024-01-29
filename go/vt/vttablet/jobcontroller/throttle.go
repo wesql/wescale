@@ -35,23 +35,33 @@ func initThrottleTicker() {
 	})
 }
 
-// ratio: 1 means totally throttled
-// expireString example: "300ms", "-1.5h", "2h45m"
-func (jc *JobController) ThrottleJob(uuid, expireString string, ratioLiteral *sqlparser.Literal) (result *sqltypes.Result, err error) {
-	emptyResult := &sqltypes.Result{}
+func (jc *JobController) ThrottleApp(uuid, expireString string, ratioLiteral *sqlparser.Literal) (expireAtStr string, ratio float64, err error) {
 	duration, ratio, err := jc.validateThrottleParams(expireString, ratioLiteral)
 	if err != nil {
-		return nil, err
+		return "", 0, err
 	}
 	if err := jc.lagThrottler.CheckIsReady(); err != nil {
-		return nil, err
+		return "", 0, err
 	}
 	expireAt := time.Now().Add(duration)
 	_ = jc.lagThrottler.ThrottleApp(uuid, expireAt, ratio)
+	expireAtStr = expireAt.String()
+	return expireAtStr, ratio, err
+}
+
+// ratio: 1 means totally throttled
+// expireString example: "300ms", "-1.5h", "2h45m"
+func (jc *JobController) ThrottleJob(uuid, throttleDuration, throttleRatio string) (result *sqltypes.Result, err error) {
+	ratioLiteral := sqlparser.NewDecimalLiteral(throttleRatio)
+	emptyResult := &sqltypes.Result{}
+	expireAtStr, ratio, err := jc.ThrottleApp(uuid, throttleDuration, ratioLiteral)
+	if err != nil {
+		return emptyResult, err
+	}
 
 	query, err := sqlparser.ParseAndBind(sqlDMLJobUpdateThrottleInfo,
 		sqltypes.Float64BindVariable(ratio),
-		sqltypes.StringBindVariable(expireAt.String()),
+		sqltypes.StringBindVariable(expireAtStr),
 		sqltypes.StringBindVariable(uuid))
 	if err != nil {
 		return emptyResult, err
@@ -115,4 +125,14 @@ func (jc *JobController) validateThrottleParams(expireString string, ratioLitera
 		}
 	}
 	return duration, ratio, nil
+}
+
+func setDefaultValForThrottleParam(throttleDuration, throttleRatio string) (string, string) {
+	if throttleDuration[0] == '\'' && throttleDuration[len(throttleDuration)-1] == '\'' {
+		throttleDuration = throttleDuration[1 : len(throttleDuration)-1]
+	}
+	if throttleRatio == "" {
+		throttleRatio = "1"
+	}
+	return throttleDuration, throttleRatio
 }

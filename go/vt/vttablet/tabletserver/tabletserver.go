@@ -25,7 +25,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -1496,8 +1495,8 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 	return err
 }
 
-func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
-	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, "", timePeriodStart, timePeriodEnd, timePeriodTimeZone, nil, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio, timeGapInMs, batchSize, postponeLaunch, failPolicy)
 }
 
 // execRequest performs verifications, sets up the necessary environments
@@ -2110,7 +2109,7 @@ func (tsv *TabletServer) ReloadExec(ctx context.Context, reloadType *sqlparser.R
 	case sqlparser.ReloadPrivileges:
 		return tableacl.ReloadACLFromMysql()
 	default:
-		return errors.New(fmt.Sprintf("no match reloadType : %v", reloadType))
+		return fmt.Errorf("no match reloadType : %v", reloadType)
 	}
 }
 

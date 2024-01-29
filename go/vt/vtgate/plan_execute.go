@@ -450,8 +450,8 @@ func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql stri
 			return nil, errors.New("cannot submit DML job in transaction")
 		}
 
-		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone := sqlparser.GetDMLJobArgs(stmt)
-		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio := sqlparser.GetDMLJobArgs(stmt)
+		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 		if qr != nil {
 			if qr.RowsAffected == 1 {
 				qr.Info = "job submitted successfully"

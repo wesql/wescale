@@ -1097,6 +1097,8 @@ message SubmitDMLJobRequest{
   string time_period_end = 10;
   string time_period_time_zone = 11;
   string fail_policy = 12;
+  string throttle_duration=13;
+  string throttle_ratio=14;
 }
 message SubmitDMLJobResponse {
   QueryResult result = 1;

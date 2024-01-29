@@ -66,6 +66,8 @@ const (
 	DirectiveDMLTimePeriodStart    = "DML_TIME_PERIOD_START"
 	DirectiveDMLTimePeriodEnd      = "DML_TIME_PERIOD_END"
 	DirectiveDMLTimePeriodTimeZone = "DML_TIME_PERIOD_TIME_ZONE"
+	DirectiveDMLThrottleDuration   = "DML_THROTTLE_DURATION"
+	DirectiveDMLThrottleRatio      = "DML_THROTTLE_RATIO"
 )
 
 func isNonSpace(r rune) bool {
@@ -498,7 +500,7 @@ func GetDMLJobCmd(stmt Statement) string {
 	return str
 }
 
-func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone string) {
+func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
 	// todo newborn22 support insert...select, replace...select
@@ -508,7 +510,7 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 		comments = stmt.Comments
 	}
 	if comments == nil {
-		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
+		return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio
 	}
 
 	var err error
@@ -546,5 +548,9 @@ func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postpone
 
 	timePeriodTimeZone, _ = directives.GetString(DirectiveDMLTimePeriodTimeZone, "")
 
-	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone
+	throttleDuration, _ = directives.GetString(DirectiveDMLThrottleDuration, "")
+
+	throttleRatio, _ = directives.GetString(DirectiveDMLThrottleRatio, "")
+
+	return timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio
 }

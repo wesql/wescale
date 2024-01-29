@@ -1556,7 +1556,7 @@ func (e *Executor) SetFailPoint(command string, key string, value string) error 
 	return nil
 }
 
-func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
 	var th *discovery.TabletHealth
@@ -1566,7 +1566,7 @@ func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart
 			break
 		}
 	}
-	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {
