@@ -19,9 +19,10 @@ func getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd, runningT
 		periodEndTime, _ := time.Parse(time.TimeOnly, runningTimePeriodEnd)
 		timeZoneOffset, _ := getTimeZoneOffset(runningTimePeriodEndTimeZone)
 		timeZone := time.FixedZone(runningTimePeriodEndTimeZone, timeZoneOffset)
-		currentTime := time.Now()
-		periodStartTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodStartTime.Hour(), periodStartTime.Minute(), periodStartTime.Second(), periodStartTime.Nanosecond(), timeZone)
-		periodEndTime = time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), periodEndTime.Hour(), periodEndTime.Minute(), periodEndTime.Second(), periodEndTime.Nanosecond(), timeZone)
+		// we should get year, month and day in correct timeZone
+		currentTimeInTimeZone := time.Now().In(timeZone)
+		periodStartTime = time.Date(currentTimeInTimeZone.Year(), currentTimeInTimeZone.Month(), currentTimeInTimeZone.Day(), periodStartTime.Hour(), periodStartTime.Minute(), periodStartTime.Second(), periodStartTime.Nanosecond(), timeZone)
+		periodEndTime = time.Date(currentTimeInTimeZone.Year(), currentTimeInTimeZone.Month(), currentTimeInTimeZone.Day(), periodEndTime.Hour(), periodEndTime.Minute(), periodEndTime.Second(), periodEndTime.Nanosecond(), timeZone)
 		// if EndTime is earlier than startTime, we add 24 hour s to EndTime
 		if periodEndTime.Before(periodStartTime) {
 			periodEndTime = periodEndTime.Add(24 * time.Hour)

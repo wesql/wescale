@@ -480,8 +480,9 @@ func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSch
 }
 
 func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema,
-	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string,
-	timeGapInMs, batchSize int64) (err error) {
+	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleExpireAt string,
+	timeGapInMs, batchSize int64,
+	throttleRatio float64) (err error) {
 
 	runningTimePeriodStart = stripApostrophe(runningTimePeriodStart)
 	runningTimePeriodEnd = stripApostrophe(runningTimePeriodEnd)
@@ -513,7 +514,9 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		sqltypes.StringBindVariable(runningTimePeriodEnd),
 		sqltypes.StringBindVariable(runningTimePeriodTimeZone),
 		sqltypes.Int64BindVariable(timeGapInMs),
-		sqltypes.Int64BindVariable(batchSize))
+		sqltypes.Int64BindVariable(batchSize),
+		sqltypes.StringBindVariable(throttleExpireAt),
+		sqltypes.Float64BindVariable(throttleRatio))
 
 	if err != nil {
 		return err

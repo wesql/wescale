@@ -89,7 +89,7 @@ const (
 	failPolicyAbort          = "abort" // fail the current job
 	failPolicyRetryThenPause = "retry_then_pause"
 
-	defaultFailPolicy = failPolicyAbort
+	defaultFailPolicy = failPolicyPause
 )
 
 // possible status of DML job
@@ -182,10 +182,10 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 		lagThrottler: lagThrottler}
 }
 
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expireString, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, ratioLiteral *sqlparser.Literal, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleDuration, throttleRatio string, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
 	switch command {
 	case SubmitJob:
-		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy)
+		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 	case PauseJob:
 		return jc.PauseJob(jobUUID)
 	case ResumeJob:
@@ -195,7 +195,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 	case CancelJob:
 		return jc.CancelJob(jobUUID)
 	case ThrottleJob:
-		return jc.ThrottleJob(jobUUID, expireString, ratioLiteral)
+		return jc.ThrottleJob(jobUUID, throttleDuration, throttleRatio)
 	case UnthrottleJob:
 		return jc.UnthrottleJob(jobUUID)
 	case SetRunningTimePeriod:
@@ -204,7 +204,7 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, expir
 	return &sqltypes.Result{}, fmt.Errorf("unknown command: %s", command)
 }
 
-func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
 
@@ -242,8 +242,20 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 			return &sqltypes.Result{}, errors.New("failPolicy must be one of 'abort', 'skip' or 'pause'")
 		}
 	}
+
+	var throttleExpireAt string
+	var throttleRatioFloat64 float64
+	if throttleDuration != "" || throttleRatio != "" {
+		throttleDuration, throttleRatio = setDefaultValForThrottleParam(throttleDuration, throttleRatio)
+		ratioLiteral := sqlparser.NewDecimalLiteral(throttleRatio)
+		throttleExpireAt, throttleRatioFloat64, err = jc.ThrottleApp(jobUUID, throttleDuration, ratioLiteral)
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+	}
+
 	err = jc.insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema, batchInfoTable,
-		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, batchIntervalInMs, batchSize)
+		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleExpireAt, batchIntervalInMs, batchSize, throttleRatioFloat64)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}

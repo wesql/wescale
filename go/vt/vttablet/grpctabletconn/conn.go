@@ -25,6 +25,7 @@ import (
 	"context"
 	"io"
 	"sync"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/spf13/pflag"
@@ -1133,7 +1134,7 @@ func (conn *gRPCQueryClient) SetFailPoint(ctx context.Context, command string, k
 	return nil
 }
 
-func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
 	conn.mu.RLock()
 	defer conn.mu.RUnlock()
 	if conn.cc == nil {
@@ -1151,6 +1152,8 @@ func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uui
 		TimePeriodStart:    timePeriodStart,
 		TimePeriodEnd:      timePeriodEnd,
 		TimePeriodTimeZone: timePeriodTimeZone,
+		ThrottleDuration:   throttleDuration,
+		ThrottleRatio:      throttleRatio,
 	}
 	er, err := conn.c.SubmitDMLJob(ctx, &req)
 	if err != nil {

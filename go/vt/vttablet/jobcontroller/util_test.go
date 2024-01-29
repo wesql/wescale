@@ -241,6 +241,5 @@ func TestGetTimeZoneOffset(t *testing.T) {
 		if gotError != nil && test.wantError != nil && gotError.Error() != test.wantError.Error() {
 			t.Errorf("getTimeZoneOffset(%s) return error %s but want %s", test.timeZoneStr, gotError, test.wantError)
 		}
-
 	}
 }

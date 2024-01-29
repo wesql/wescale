@@ -39,7 +39,9 @@ const (
                                       running_time_period_end,
 									  running_time_period_time_zone,
                                       batch_interval_in_ms,
-                                      batch_size) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      batch_size,
+                                      throttle_expire_time,
+                                      throttle_ratio) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 

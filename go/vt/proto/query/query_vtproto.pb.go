@@ -4707,6 +4707,20 @@ func (m *SubmitDMLJobRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.ThrottleRatio) > 0 {
+		i -= len(m.ThrottleRatio)
+		copy(dAtA[i:], m.ThrottleRatio)
+		i = encodeVarint(dAtA, i, uint64(len(m.ThrottleRatio)))
+		i--
+		dAtA[i] = 0x72
+	}
+	if len(m.ThrottleDuration) > 0 {
+		i -= len(m.ThrottleDuration)
+		copy(dAtA[i:], m.ThrottleDuration)
+		i = encodeVarint(dAtA, i, uint64(len(m.ThrottleDuration)))
+		i--
+		dAtA[i] = 0x6a
+	}
 	if len(m.FailPolicy) > 0 {
 		i -= len(m.FailPolicy)
 		copy(dAtA[i:], m.FailPolicy)
@@ -6689,6 +6703,14 @@ func (m *SubmitDMLJobRequest) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	l = len(m.FailPolicy)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.ThrottleDuration)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.ThrottleRatio)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -19078,6 +19100,70 @@ func (m *SubmitDMLJobRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.FailPolicy = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ThrottleDuration", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ThrottleDuration = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ThrottleRatio", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ThrottleRatio = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
