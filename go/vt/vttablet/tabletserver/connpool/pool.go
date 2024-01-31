@@ -65,6 +65,7 @@ type Pool struct {
 	mu                 sync.Mutex
 	connections        pools.IResourcePool
 	capacity           int
+	maxCapacity        int
 	prefillParallelism int
 	timeout            time.Duration
 	idleTimeout        time.Duration
@@ -82,10 +83,17 @@ type Pool struct {
 func NewPool(env tabletenv.Env, name string, cfg tabletenv.ConnPoolConfig) *Pool {
 	idleTimeout := cfg.IdleTimeoutSeconds.Get()
 	maxLifetime := cfg.MaxLifetimeSeconds.Get()
+	max := func(a, b int) int {
+		if a > b {
+			return a
+		}
+		return b
+	}
 	cp := &Pool{
 		env:                env,
 		name:               name,
 		capacity:           cfg.Size,
+		maxCapacity:        max(cfg.Size, cfg.MaxSize),
 		prefillParallelism: cfg.PrefillParallelism,
 		timeout:            cfg.TimeoutSeconds.Get(),
 		idleTimeout:        idleTimeout,
@@ -143,7 +151,7 @@ func (cp *Pool) Open(appParams, dbaParams, appDebugParams dbconfigs.Connector) {
 		refreshCheck = netutil.DNSTracker(appParams.Host())
 	}
 
-	cp.connections = pools.NewResourcePool(f, cp.capacity, cp.capacity, cp.idleTimeout, cp.maxLifetime, cp.getLogWaitCallback(), refreshCheck, mysqlctl.PoolDynamicHostnameResolution)
+	cp.connections = pools.NewResourcePool(f, cp.capacity, cp.maxCapacity, cp.idleTimeout, cp.maxLifetime, cp.getLogWaitCallback(), refreshCheck, mysqlctl.PoolDynamicHostnameResolution)
 	cp.appDebugParams = appDebugParams
 
 	cp.dbaPool.Open(dbaParams)
