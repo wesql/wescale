@@ -178,6 +178,24 @@ func TestConnPoolPutWhilePoolIsClosed(t *testing.T) {
 	connPool.Put(nil)
 }
 
+func TestConnPollSetLimitMaxCapacity(t *testing.T) {
+	db := fakesqldb.New(t)
+	defer db.Close()
+	connPool := newPoolWithMaxCapacity(30, 500)
+	connPool.Open(db.ConnParams(), db.ConnParams(), db.ConnParams())
+	defer connPool.Close()
+	err := connPool.SetCapacity(-10)
+	if err == nil {
+		t.Fatalf("set capacity should return error for negative capacity")
+	}
+	err = connPool.SetCapacity(501)
+	require.NotNil(t, err)
+	require.True(t, 30 == connPool.Capacity())
+	err = connPool.SetCapacity(499)
+	require.Nil(t, err)
+	require.True(t, 499 == connPool.Capacity())
+}
+
 func TestConnPoolSetCapacity(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
@@ -557,6 +575,13 @@ func newPool() *Pool {
 func newPoolWithCapacity(capacity int) *Pool {
 	return NewPool(tabletenv.NewEnv(nil, "PoolTest"), "TestPool", tabletenv.ConnPoolConfig{
 		Size:               capacity,
+		IdleTimeoutSeconds: 10,
+	})
+}
+func newPoolWithMaxCapacity(capacity int, maxCapacity int) *Pool {
+	return NewPool(tabletenv.NewEnv(nil, "PoolTest"), "TestPool", tabletenv.ConnPoolConfig{
+		Size:               capacity,
+		MaxSize:            maxCapacity,
 		IdleTimeoutSeconds: 10,
 	})
 }
