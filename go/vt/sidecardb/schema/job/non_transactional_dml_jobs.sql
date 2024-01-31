@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS mysql.non_transactional_dml_jobs
     `table_name`                     varchar(256)     NOT NULL,
     `batch_info_table_schema`                  varchar(256)      NOT NULL,
     `batch_info_table_name`                  varchar(256)      NOT NULL UNIQUE,
+    `postpone_launch`       tinyint unsigned NOT NULL DEFAULT '0',
     `status`                varchar(128)     NOT NULL,
     `status_set_time`           timestamp   NOT NULL,
     `time_zone`                 varchar(16)     NOT NULL,

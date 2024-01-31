@@ -307,18 +307,6 @@ func (jc *JobController) getBatchSQLsByID(ctx context.Context, batchID, batchTab
 	return batchSQL, batchCountSQL, nil
 }
 
-func (jc *JobController) getMaxBatchID(ctx context.Context, batchTableName, tableSchema string) (string, error) {
-	getMaxBatchIDWithTableName := fmt.Sprintf(sqlTemplateGetMaxBatchID, batchTableName)
-	qr, err := jc.execQuery(ctx, tableSchema, getMaxBatchIDWithTableName)
-	if err != nil {
-		return "", err
-	}
-	if len(qr.Named().Rows) != 1 {
-		return "", errors.New("the len of qr of getting batch sql by ID is not 1")
-	}
-	return qr.Named().Rows[0].ToString("max_batch_id")
-}
-
 func (jc *JobController) getTablePkInfo(ctx context.Context, tableSchema, tableName string) ([]PKInfo, error) {
 	// 1. get names of PK column
 	submitQuery := fmt.Sprintf(sqlGetTablePk, tableName)
@@ -446,6 +434,7 @@ func (args *JobArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 	args.status = row["status"].ToString()
 	args.statusSetTime = row["status_set_time"].ToString()
 	args.timeZone = row["time_zone"].ToString()
+	args.dmlSQL = row["dml_sql"].ToString()
 
 	batchInterval, _ := row["batch_interval_in_ms"].ToInt64()
 	batchSize, _ := row["batch_size"].ToInt64()
@@ -458,6 +447,8 @@ func (args *JobArgs) initArgsByQueryResult(row sqltypes.RowNamedValues) {
 
 	args.timePeriodStart, args.timePeriodEnd = getRunningPeriodTime(runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone)
 
+	postponeLaunch, _ := row["postpone_launch"].ToInt64()
+	args.postponeLaunch = postponeLaunch == 1
 }
 
 func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr string, batchSize int64) (err error) {
@@ -482,7 +473,8 @@ func (jc *JobController) insertBatchInfoTableEntry(ctx context.Context, tableSch
 func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema,
 	batchInfoTable, jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleExpireAt string,
 	timeGapInMs, batchSize int64,
-	throttleRatio float64) (err error) {
+	throttleRatio float64,
+	postponeLaunch bool) (err error) {
 
 	runningTimePeriodStart = stripApostrophe(runningTimePeriodStart)
 	runningTimePeriodEnd = stripApostrophe(runningTimePeriodEnd)
@@ -516,7 +508,9 @@ func (jc *JobController) insertJobEntry(jobUUID, sql, tableSchema, tableName, ba
 		sqltypes.Int64BindVariable(timeGapInMs),
 		sqltypes.Int64BindVariable(batchSize),
 		sqltypes.StringBindVariable(throttleExpireAt),
-		sqltypes.Float64BindVariable(throttleRatio))
+		sqltypes.Float64BindVariable(throttleRatio),
+		sqltypes.BoolBindVariable(postponeLaunch),
+	)
 
 	if err != nil {
 		return err
@@ -620,4 +614,39 @@ func (jc *JobController) tableExists(ctx context.Context, tableSchema, tableName
 
 func nonTransactionalDMLToGCUUID(uuid string) string {
 	return strings.Replace(uuid, "-", "", -1)
+}
+
+func getTabletAliasName(sql string) (tableName string, err error) {
+	stmt, err := sqlparser.Parse(sql)
+	if err != nil {
+		return "", err
+	}
+	switch s := stmt.(type) {
+	case *sqlparser.Delete:
+		if len(s.TableExprs) != 1 {
+			return "", errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		// todo feat 目前暂不支持join和多表
+		if !ok {
+			return "", errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+
+	case *sqlparser.Update:
+		if len(s.TableExprs) != 1 {
+			return "", errors.New("the number of table is more than one")
+		}
+		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
+		if !ok {
+			return "", errors.New("don't support join table now")
+		}
+		tableName = sqlparser.String(tableExpr)
+
+	default:
+		// todo feat: support select...into and replace...into
+		return "", errors.New("the type of sql is not supported")
+	}
+
+	return tableName, err
 }
