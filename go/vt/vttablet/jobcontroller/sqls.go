@@ -41,7 +41,8 @@ const (
                                       batch_interval_in_ms,
                                       batch_size,
                                       throttle_expire_time,
-                                      throttle_ratio) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
+                                      throttle_ratio,
+                                      postpone_launch) values(%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a,%a)`
 
 	sqlDMLJobUpdateMessage = `update mysql.non_transactional_dml_jobs set 
                                     message = %a 
@@ -123,6 +124,8 @@ const (
 	 	batch_begin,
 	 	batch_end
 	) values (%%a,%%a,%%a,%%a,%%a,%%a)`
+
+	sqlTemplateDropBatchTable = `drop table %s`
 
 	sqlShowTablesLike = "SHOW TABLES LIKE '%a'"
 )

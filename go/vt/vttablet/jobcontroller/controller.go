@@ -95,8 +95,10 @@ const (
 // possible status of DML job
 // batch is status is in ('queued', 'completed')
 const (
-	PostponeLaunchStatus  = "postpone-launch"
+	SubmittedStatus       = "submitted"
+	PreparingStatus       = "preparing"
 	QueuedStatus          = "queued"
+	PostponeLaunchStatus  = "postpone-launch"
 	RunningStatus         = "running"
 	PausedStatus          = "paused"
 	CanceledStatus        = "canceled"
@@ -136,9 +138,10 @@ type PKInfo struct {
 }
 
 type JobArgs struct {
-	uuid, table, tableSchema, batchInfoTable, failPolicy, status, timeZone, statusSetTime string
-	batchInterval, batchSize                                                              int64
-	timePeriodStart, timePeriodEnd                                                        *time.Time
+	uuid, table, tableSchema, batchInfoTable, failPolicy, status, timeZone, statusSetTime, dmlSQL string
+	batchInterval, batchSize                                                                      int64
+	timePeriodStart, timePeriodEnd                                                                *time.Time
+	postponeLaunch                                                                                bool
 }
 
 func (jc *JobController) Open() error {
@@ -220,19 +223,15 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	if userBatchSize == 0 {
 		userBatchSize = int64(defaultBatchSize)
 	}
-	tableName, batchInfoTable, batchSize, err := jc.createJobBatches(jobUUID, sql, tableSchema, userBatchSize)
+	tableName, batchInfoTable, batchSize, err := jc.initJobBatches(jobUUID, sql, tableSchema, userBatchSize)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
-	if batchInfoTable == "" {
-		return &sqltypes.Result{}, errors.New("this DML sql won't affect any rows")
-	}
+
 	batchInfoTableSchema := tableSchema
 
-	jobStatus := QueuedStatus
-	if postponeLaunch {
-		jobStatus = PostponeLaunchStatus
-	}
+	jobStatus := SubmittedStatus
+
 	statusSetTime := time.Now().Format(time.DateTime)
 
 	if failPolicy == "" {
@@ -255,7 +254,7 @@ func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, run
 	}
 
 	err = jc.insertJobEntry(jobUUID, sql, tableSchema, tableName, batchInfoTableSchema, batchInfoTable,
-		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleExpireAt, batchIntervalInMs, batchSize, throttleRatioFloat64)
+		jobStatus, statusSetTime, failPolicy, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleExpireAt, batchIntervalInMs, batchSize, throttleRatioFloat64, postponeLaunch)
 	if err != nil {
 		return &sqltypes.Result{}, err
 	}
@@ -342,16 +341,15 @@ func (jc *JobController) CancelJob(uuid string) (*sqltypes.Result, error) {
 	var emptyResult = &sqltypes.Result{}
 	status, err := jc.getStrJobInfo(jc.ctx, uuid, "status")
 	if err != nil {
-		return emptyResult, nil
+		return emptyResult, err
 	}
 	if status == CanceledStatus || status == FailedStatus || status == CompletedStatus {
-		emptyResult.Info = fmt.Sprintf(" The job status is %s and can't canceld", status)
-		return emptyResult, nil
+		return emptyResult, fmt.Errorf(" The job status is %s and can't canceld", status)
 	}
 	statusSetTime := time.Now().Format(time.DateTime)
 	qr, err := jc.updateJobStatus(jc.ctx, uuid, CanceledStatus, statusSetTime)
 	if err != nil {
-		return emptyResult, nil
+		return emptyResult, err
 	}
 
 	tableName, _ := jc.getStrJobInfo(jc.ctx, uuid, "table_name")
@@ -390,7 +388,7 @@ func (jc *JobController) FailJob(ctx context.Context, uuid, message, tableName s
 
 func (jc *JobController) jobManager() {
 	// Before jobManager get in infinite loop,
-	// it should check whether there are jobs already in 'paused' or 'running' status
+	// it should check whether there are jobs already in 'queued' or 'postpone-launch' or 'paused' or 'running' status
 	// and recover their metadata.
 	jc.recoverJobsMetadata(jc.ctx)
 	log.Info("JobController: metadata of all running and paused jobs are restored to memory\n")
@@ -415,11 +413,15 @@ func (jc *JobController) jobManager() {
 				jobArgs := JobArgs{}
 				jobArgs.initArgsByQueryResult(row)
 				switch jobArgs.status {
+				case SubmittedStatus:
+					if jc.checkIfDmlJobCanPrepare(jobArgs.uuid, jobArgs.status, jobArgs.table, jobArgs.timePeriodStart, jobArgs.timePeriodEnd) {
+						// init metadata to prevent two jobs with same table preparing at the same time
+						jc.initDMLJobRunningMeta(jobArgs.table)
+						// prepare the dml job: init batch info table
+						go jc.prepareDMLJob(jobArgs.uuid, jobArgs.dmlSQL, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.batchSize, jobArgs.postponeLaunch)
+					}
 				case QueuedStatus, NotInTimePeriodStatus:
 					if jc.checkDmlJobRunnable(jobArgs.uuid, jobArgs.status, jobArgs.table, jobArgs.timePeriodStart, jobArgs.timePeriodEnd) {
-						// init metadata before start dmlJobBatchRunner,
-						// otherwise a job maybe scheduled to run more than once
-						jc.initDMLJobRunningMeta(jobArgs.table)
 						go jc.dmlJobBatchRunner(jobArgs.uuid, jobArgs.table, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.failPolicy, jobArgs.batchInterval, jobArgs.batchSize, jobArgs.timePeriodStart, jobArgs.timePeriodEnd)
 					}
 				case CanceledStatus, FailedStatus, CompletedStatus:
@@ -446,13 +448,20 @@ func (jc *JobController) jobManager() {
 	}
 }
 
+func (jc *JobController) checkIfDmlJobCanPrepare(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
+	if status != SubmittedStatus {
+		return false
+	}
+	if _, exit := jc.workingTables[table]; exit {
+		return false
+	}
+	return true
+}
+
 // todo feat: we can limit the number of job running concurrently
 // acquire 	jc.workingTablesMutex and jc.tableMutex before calling this function
 func (jc *JobController) checkDmlJobRunnable(jobUUID, status, table string, periodStartTime, periodEndTime *time.Time) bool {
 	if status != QueuedStatus && status != NotInTimePeriodStatus {
-		return false
-	}
-	if _, exit := jc.workingTables[table]; exit {
 		return false
 	}
 	if periodStartTime != nil && periodEndTime != nil {
@@ -792,15 +801,18 @@ func (jc *JobController) recoverJobsMetadata(ctx context.Context) {
 
 		for _, row := range qr.Named().Rows {
 			status := row["status"].ToString()
-			runnerArgs := JobArgs{}
-			runnerArgs.initArgsByQueryResult(row)
+			jobArgs := JobArgs{}
+			jobArgs.initArgsByQueryResult(row)
 
 			switch status {
+			case PreparingStatus:
+				jc.initDMLJobRunningMeta(jobArgs.table)
+				go jc.prepareDMLJob(jobArgs.uuid, jobArgs.dmlSQL, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.batchSize, jobArgs.postponeLaunch)
+			case QueuedStatus, NotInTimePeriodStatus, PausedStatus:
+				jc.initDMLJobRunningMeta(jobArgs.table)
 			case RunningStatus:
-				jc.initDMLJobRunningMeta(runnerArgs.table)
-				go jc.dmlJobBatchRunner(runnerArgs.uuid, runnerArgs.table, runnerArgs.tableSchema, runnerArgs.batchInfoTable, runnerArgs.failPolicy, runnerArgs.batchInterval, runnerArgs.batchSize, runnerArgs.timePeriodStart, runnerArgs.timePeriodEnd)
-			case PausedStatus:
-				jc.initDMLJobRunningMeta(runnerArgs.table)
+				jc.initDMLJobRunningMeta(jobArgs.table)
+				go jc.dmlJobBatchRunner(jobArgs.uuid, jobArgs.table, jobArgs.tableSchema, jobArgs.batchInfoTable, jobArgs.failPolicy, jobArgs.batchInterval, jobArgs.batchSize, jobArgs.timePeriodStart, jobArgs.timePeriodEnd)
 			}
 		}
 
@@ -852,24 +864,55 @@ func (jc *JobController) gcBatchInfoTable(ctx context.Context, tableSchema, arti
 	return toTableName, err
 }
 
-func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
+func (jc *JobController) prepareDMLJob(jobUUID, sql, tableSchema, batchTableName string, batchSize int64, postponeLaunch bool) {
 	// 1.Validate and parse the DML SQL submitted by the user.
 	tableName, whereExpr, stmt, err := parseDML(sql)
 	if err != nil {
-		return "", "", 0, err
+		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
 	}
 	// 2.Validate the PK columns types.
 	pkInfos, err := jc.getTablePkInfo(jc.ctx, tableSchema, tableName)
 	if err != nil {
-		return "", "", 0, err
+		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
 	}
 	if existUnSupportedPK(pkInfos) {
-		return "", "", 0, errors.New("the table has unsupported PK type")
+		jc.FailJob(jc.ctx, jobUUID, "the table has unsupported PK type", tableName)
 	}
-	// 3.Generate selectPksSQL which are used for creating the batch table.
+
+	// 3.All validation are done, set job status to "preparing"
+	_, err = jc.updateJobStatus(jc.ctx, jobUUID, PreparingStatus, time.Now().Format(time.DateTime))
+	if err != nil {
+		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
+	}
+
+	// 4.Generate selectPksSQL which are used for creating the batch table.
 	selectPksSQL := sprintfSelectPksSQL(tableName, sqlparser.String(whereExpr), pkInfos)
 
-	// 4.Calculate the batchSize for each batch.
+	// 5.Generate the batch table based on the selectPksSQL.
+	err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, tableName, batchTableName, whereExpr, stmt, pkInfos, batchSize)
+	if err != nil {
+		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
+	}
+	// 6.Set job status to "queued" or "postpone launch"
+	if postponeLaunch {
+		_, err = jc.updateJobStatus(jc.ctx, jobUUID, PostponeLaunchStatus, time.Now().Format(time.DateTime))
+	} else {
+		_, err = jc.updateJobStatus(jc.ctx, jobUUID, QueuedStatus, time.Now().Format(time.DateTime))
+	}
+	if err != nil {
+		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
+	}
+	jc.notifyJobManager()
+}
+
+func (jc *JobController) initJobBatches(jobUUID, sql, tableSchema string, userBatchSize int64) (tableName, batchTableName string, batchSize int64, err error) {
+	// 1.Validate and parse the DML SQL submitted by the user.
+	tableName, _, _, err = parseDML(sql)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	// 2.Calculate the batchSize for each batch.
 	// batchSize = min(userBatchSize, batchSizeThreshold / 每个表的index数量 * ratioOfBatchSizeThreshold)
 	indexCount, err := jc.getIndexCount(tableSchema, tableName)
 	if err != nil {
@@ -881,30 +924,33 @@ func (jc *JobController) createJobBatches(jobUUID, sql, tableSchema string, user
 	} else {
 		batchSize = actualThreshold
 	}
-	// 5.Generate the batch table based on the selectPksSQL.
-	batchTableName, err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, tableName, whereExpr, stmt, pkInfos, batchSize)
+	// 3.Generate the batch table name
+	batchTableName = "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
 	return tableName, batchTableName, batchSize, err
 }
 
-func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, tableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) (string, error) {
+func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, tableName, batchTableName string, whereExpr sqlparser.Expr, stmt sqlparser.Statement, pkInfos []PKInfo, batchSize int64) error {
 	// Execute selectSQL to obtain an ordered result set of PK values
 	// which are used to generate batch SQL for each batch.
 	qr, err := jc.execQuery(jc.ctx, tableSchema, selectSQL)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if len(qr.Named().Rows) == 0 {
-		return "", nil
+		return errors.New("this DML sql won't affect any rows")
 	}
 
 	// todo feat: maybe we don't need to store batchSQL and batchCountSQL in system table, just generate them during user query, by Go or Mysql
 
 	// For each DML job, create a batch info table records specific information about how the job is divided into batches.
-	batchTableName := "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
+	// Drop table before creating to make sure that this function is reentrant
+	DropTableSQL := fmt.Sprintf(sqlTemplateDropBatchTable, batchTableName)
+	_, _ = jc.execQuery(jc.ctx, tableSchema, DropTableSQL)
+
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(jc.ctx, tableSchema, createTableSQL)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// Iterate through each row and each PK value,
@@ -914,7 +960,14 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 	var currentBatchEnd []sqltypes.Value
 	currentBatchID := "1"
 
-	for _, values := range qr.Rows {
+	i := 0
+	for i < len(qr.Rows) {
+		if !jc.requestThrottle(jobUUID) {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+
+		values := qr.Rows[i]
 		if currentBatchSize == 0 {
 			currentBatchStart = values
 		}
@@ -925,32 +978,33 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 		if currentBatchSize == batchSize {
 			batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 			if err != nil {
-				return "", err
+				return err
 			}
 			err = jc.insertBatchInfoTableEntry(jc.ctx, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr, currentBatchSize)
 			if err != nil {
-				return "", err
+				return err
 			}
 			currentBatchID, err = currentBatchIDInc(currentBatchID)
 			if err != nil {
-				return "", err
+				return err
 			}
 			currentBatchSize = 0
 		}
+		i++
 	}
 	// The number of rows in the last batch may less than batchSize:
 	// any remaining rows should be allocated to the last batch at the end of the loop.
 	if currentBatchSize != 0 {
 		batchSQL, countSQL, batchStartStr, batchEndStr, err := createBatchInfoTableEntry(tableName, stmt, whereExpr, currentBatchStart, currentBatchEnd, pkInfos)
 		if err != nil {
-			return "", err
+			return err
 		}
 		err = jc.insertBatchInfoTableEntry(jc.ctx, tableSchema, batchTableName, currentBatchID, batchSQL, countSQL, batchStartStr, batchEndStr, currentBatchSize)
 		if err != nil {
-			return "", err
+			return err
 		}
 	}
-	return batchTableName, nil
+	return nil
 }
 
 func createBatchInfoTableEntry(tableName string, sqlStmt sqlparser.Statement, whereExpr sqlparser.Expr,
