@@ -99,12 +99,15 @@ func registerTabletEnvFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&txLogHandler, "transaction-log-stream-handler", txLogHandler, "URL handler for streaming transactions log")
 
 	fs.IntVar(&currentConfig.OltpReadPool.Size, "queryserver-config-pool-size", defaultConfig.OltpReadPool.Size, "query server read pool size, connection pool is used by regular queries (non streaming, not in a transaction)")
+	fs.IntVar(&currentConfig.OltpReadPool.MaxSize, "queryserver-config-pool-maxsize", defaultConfig.OltpReadPool.MaxSize, "query server read pool max size, connection pool is used by regular queries (non streaming, not in a transaction)")
 	fs.IntVar(&currentConfig.OltpReadPool.PrefillParallelism, "queryserver-config-pool-prefill-parallelism", defaultConfig.OltpReadPool.PrefillParallelism, "Query server read pool prefill parallelism, a non-zero value will prefill the pool using the specified parallism.")
 	_ = fs.MarkDeprecated("queryserver-config-pool-prefill-parallelism", "it will be removed in a future release.")
 	fs.IntVar(&currentConfig.OlapReadPool.Size, "queryserver-config-stream-pool-size", defaultConfig.OlapReadPool.Size, "query server stream connection pool size, stream pool is used by stream queries: queries that return results to client in a streaming fashion")
+	fs.IntVar(&currentConfig.OlapReadPool.MaxSize, "queryserver-config-stream-pool-maxsize", defaultConfig.OlapReadPool.MaxSize, "query server stream connection pool max size, stream pool is used by stream queries: queries that return results to client in a streaming fashion")
 	fs.IntVar(&currentConfig.OlapReadPool.PrefillParallelism, "queryserver-config-stream-pool-prefill-parallelism", defaultConfig.OlapReadPool.PrefillParallelism, "Query server stream pool prefill parallelism, a non-zero value will prefill the pool using the specified parallelism")
 	_ = fs.MarkDeprecated("queryserver-config-stream-pool-prefill-parallelism", "it will be removed in a future release.")
 	fs.IntVar(&currentConfig.TxPool.Size, "queryserver-config-transaction-cap", defaultConfig.TxPool.Size, "query server transaction cap is the maximum number of transactions allowed to happen at any given point of a time for a single vttablet. E.g. by setting transaction cap to 100, there are at most 100 transactions will be processed by a vttablet and the 101th transaction will be blocked (and fail if it cannot get connection within specified timeout)")
+	fs.IntVar(&currentConfig.TxPool.MaxSize, "queryserver-config-max-transaction-size", defaultConfig.TxPool.MaxSize, "query server max transaction size defines the maximum size of a transaction in bytes. This is used to prevent excessively large transactions which can lead to performance degradation or instability. For example, setting max transaction size to 1048576 will limit the size of a transaction to 1MB, and any transaction exceeding this size will be rejected or truncated.")
 	fs.IntVar(&currentConfig.TxPool.PrefillParallelism, "queryserver-config-transaction-prefill-parallelism", defaultConfig.TxPool.PrefillParallelism, "Query server transaction prefill parallelism, a non-zero value will prefill the pool using the specified parallism.")
 	_ = fs.MarkDeprecated("queryserver-config-transaction-prefill-parallelism", "it will be removed in a future release.")
 	fs.IntVar(&currentConfig.MessagePostponeParallelism, "queryserver-config-message-postpone-cap", defaultConfig.MessagePostponeParallelism, "query server message postpone cap is the maximum number of messages that can be postponed at any given time. Set this number to substantially lower than transaction cap, so that the transaction pool isn't exhausted by the message subsystem.")
@@ -340,6 +343,7 @@ type ConnPoolConfig struct {
 	MaxLifetimeSeconds Seconds `json:"maxLifetimeSeconds,omitempty"`
 	PrefillParallelism int     `json:"prefillParallelism,omitempty"`
 	MaxWaiters         int     `json:"maxWaiters,omitempty"`
+	MaxSize            int     `json:"maxSize,omitempty"`
 }
 
 // OlapConfig contains the config for olap settings.
@@ -504,15 +508,18 @@ func (c *TabletConfig) verifyTransactionLimitConfig() error {
 var defaultConfig = TabletConfig{
 	OltpReadPool: ConnPoolConfig{
 		Size:               30,
+		MaxSize:            500,
 		IdleTimeoutSeconds: 30 * 60,
 		MaxWaiters:         5000,
 	},
 	OlapReadPool: ConnPoolConfig{
 		Size:               30,
+		MaxSize:            500,
 		IdleTimeoutSeconds: 30 * 60,
 	},
 	TxPool: ConnPoolConfig{
 		Size:               50,
+		MaxSize:            500,
 		TimeoutSeconds:     1,
 		IdleTimeoutSeconds: 30 * 60,
 		MaxWaiters:         5000,
