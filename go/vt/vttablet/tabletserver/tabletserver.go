@@ -1496,7 +1496,11 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 }
 
 func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
-	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio, timeGapInMs, batchSize, postponeLaunch, failPolicy)
+	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio, timeGapInMs, batchSize, postponeLaunch, failPolicy, false)
+}
+
+func (tsv *TabletServer) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
+	return tsv.dmlJonController.HandleRequest(jobcontroller.ShowJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", true)
 }
 
 // execRequest performs verifications, sets up the necessary environments

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/pools"
 	"vitess.io/vitess/go/sqltypes"
@@ -171,21 +173,6 @@ func (jc *JobController) updateJobMessage(ctx context.Context, uuid, message str
 }
 
 // the caller don't need to acquire any mutex
-func (jc *JobController) updateJobAffectedRows(ctx context.Context, uuid string, affectedRows int64) error {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
-		sqltypes.Int64BindVariable(affectedRows),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	return err
-}
-
-// the caller don't need to acquire any mutex
 func (jc *JobController) updateJobStatus(ctx context.Context, uuid, status, statusSetTime string) (*sqltypes.Result, error) {
 	jc.tableMutex.Lock()
 	defer jc.tableMutex.Unlock()
@@ -267,24 +254,6 @@ func (jc *JobController) getBatchIDToExec(ctx context.Context, batchTableSchema,
 		return "", nil
 	}
 	return qr.Named().Rows[0].ToString("batch_id")
-}
-
-// the caller don't need to acquire any mutex
-func (jc *JobController) updateDealingBatchID(ctx context.Context, uuid string, batchID string) error {
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-
-	submitQuery, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
-		sqltypes.StringBindVariable(batchID),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	_, err = jc.execQuery(ctx, "", submitQuery)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // todo feat: support concurrency in batch level, pay attention to the operations on batch info table
@@ -649,4 +618,110 @@ func getTabletAliasName(sql string) (tableName string, err error) {
 	}
 
 	return tableName, err
+}
+
+func genBatchTableName(jobUUID string) string {
+	return "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
+}
+
+func (jc *JobController) genJobAffectedRows(batchInfoTableSchema, batchTableName, uuid string) (int64, error) {
+	jobStatus, err := jc.getStrJobInfo(jc.ctx, uuid, "status")
+	if err != nil {
+		return 0, err
+	}
+	// if job is in "submitted" status, the batch table is not created yet
+	if jobStatus == SubmittedStatus {
+		return 0, nil
+	}
+
+	// select sum(actual_affected_rows) from batch_table
+	queryGenAffectedRows := fmt.Sprintf(sqlTemplateGenAffectedRows, batchTableName)
+
+	qr, err := jc.execQuery(jc.ctx, batchInfoTableSchema, queryGenAffectedRows)
+	if err != nil {
+		return 0, err
+	}
+	if len(qr.Rows) != 1 {
+		return 0, fmt.Errorf("the len of query result of queryGenAffectedRows is not 1 but %d", len(qr.Rows))
+	}
+	floatNum, err := qr.Named().Rows[0]["affected_rows"].ToFloat64()
+	return int64(floatNum), err
+}
+
+func (jc *JobController) ShowAllDMLJobs() (*sqltypes.Result, error) {
+	qr, err := jc.execQuery(jc.ctx, "", sqlDMLJobGetAllJobs)
+	for i := range qr.Rows {
+		uuid := qr.Rows[i][1].ToString()
+
+		batchInfoTableSchema, err := jc.getStrJobInfo(jc.ctx, uuid, "batch_info_table_schema")
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+		batchTableName := genBatchTableName(uuid)
+
+		// add affected rows
+		affectedRows, err := jc.genJobAffectedRows(batchInfoTableSchema, batchTableName, uuid)
+		if err != nil {
+			// todo newborn22 not const index, instead of dynamic calculating
+			qr.Rows[i][16] = sqltypes.NewInt64(0)
+			log.Errorf(err.Error())
+		} else {
+			qr.Rows[i][16] = sqltypes.NewInt64(affectedRows)
+		}
+		// add dealing batch id
+		dealingBatchID, err := jc.getBatchIDToExec(jc.ctx, batchInfoTableSchema, batchTableName)
+		if err != nil {
+			qr.Rows[i][19] = sqltypes.NewVarChar("-1")
+			log.Errorf(err.Error())
+		} else {
+			qr.Rows[i][19] = sqltypes.NewVarChar(dealingBatchID)
+		}
+	}
+	return qr, err
+}
+
+func (jc *JobController) ShowSingleDMLJob(uuid string, showDetails bool) (qr *sqltypes.Result, err error) {
+	batchInfoTableSchema, err := jc.getStrJobInfo(jc.ctx, uuid, "batch_info_table_schema")
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+	batchTableName := genBatchTableName(uuid)
+
+	if showDetails {
+		query := fmt.Sprintf(sqlTemplateShowBatchTable, batchTableName)
+		return jc.execQuery(jc.ctx, batchInfoTableSchema, query)
+	}
+	query, err := sqlparser.ParseAndBind(sqlDMLJobGetInfo, sqltypes.StringBindVariable(uuid))
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+	qr, err = jc.execQuery(jc.ctx, "", query)
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
+
+	if len(qr.Rows) != 1 {
+		return &sqltypes.Result{}, fmt.Errorf("the len of query result of select dml job is not 1 but %d", len(qr.Rows))
+	}
+
+	// add affected rows
+	affectedRows, err := jc.genJobAffectedRows(batchInfoTableSchema, batchTableName, uuid)
+	if err != nil {
+		// todo newborn22 not const index, instead of dynamic calculating
+		qr.Rows[0][16] = sqltypes.NewInt64(0)
+		log.Errorf(err.Error())
+	} else {
+		qr.Rows[0][16] = sqltypes.NewInt64(affectedRows)
+	}
+	// add dealing batch id
+	dealingBatchID, err := jc.getBatchIDToExec(jc.ctx, batchInfoTableSchema, batchTableName)
+	if err != nil {
+		qr.Rows[0][19] = sqltypes.NewVarChar("-1")
+		log.Errorf(err.Error())
+	} else {
+		qr.Rows[0][19] = sqltypes.NewVarChar(dealingBatchID)
+	}
+
+	return qr, nil
+
 }

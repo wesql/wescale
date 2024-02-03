@@ -49,11 +49,6 @@ const (
                                 where 
                                     job_uuid = %a`
 
-	sqlDMLJobUpdateAffectedRows = `update mysql.non_transactional_dml_jobs set 
-                                    affected_rows = affected_rows + %a 
-                                where 
-                                    job_uuid = %a`
-
 	sqlDMLJobUpdateStatus = `update mysql.non_transactional_dml_jobs set 
                                     status = %a,
                                     status_set_time = %a
@@ -94,10 +89,6 @@ const (
 
 	sqlGetIndexCount = `show index from %s`
 
-	sqlGetDealingBatchID = `select dealing_batch_id from mysql.non_transactional_dml_jobs where job_uuid = %a`
-
-	sqlUpdateDealingBatchID = `update mysql.non_transactional_dml_jobs set dealing_batch_id = %a where job_uuid = %a`
-
 	sqlTemplateGetBatchSQLsByID = `select batch_sql,batch_count_sql_when_creating_batch from %s where batch_id = %%a`
 
 	sqlTemplateGetMaxBatchID = `select batch_id as max_batch_id from %s order by id desc limit 1`
@@ -128,4 +119,15 @@ const (
 	sqlTemplateDropBatchTable = `drop table %s`
 
 	sqlShowTablesLike = "SHOW TABLES LIKE '%a'"
+
+	sqlTemplateGenAffectedRows = `SELECT SUM(actually_affected_rows) AS affected_rows FROM %s WHERE batch_status='completed';`
+
+	sqlTemplateShowBatchTable = `SELECT * FROM %s order by CAST(SUBSTRING_INDEX(batch_id, '-', 1) AS SIGNED),id`
+
+	sqlGetJobTableColNames = `
+		SELECT COLUMN_NAME 
+		FROM INFORMATION_SCHEMA.COLUMNS 
+		WHERE TABLE_SCHEMA='mysql' 
+		AND TABLE_NAME='non_transactional_dml_jobs';
+		`
 )

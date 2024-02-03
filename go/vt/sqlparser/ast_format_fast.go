@@ -24,6 +24,7 @@ package sqlparser
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -473,6 +474,8 @@ func (node *AlterDMLJob) formatFast(buf *TrackedBuffer) {
 		alterType = "unthrottle"
 	case UnthrottleAllDMLJobType:
 		alterType = "unthrottle all"
+	case SetRunningTimePeriodType:
+		alterType = "time_period"
 	}
 	buf.WriteByte(' ')
 	buf.WriteString(alterType)

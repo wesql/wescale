@@ -1103,3 +1103,11 @@ message SubmitDMLJobRequest{
 message SubmitDMLJobResponse {
   QueryResult result = 1;
 }
+
+message ShowDMLJobRequest{
+  string job_uuid = 1;
+  bool show_details = 2;
+}
+message ShowDMLJobResponse {
+  QueryResult result = 1;
+}

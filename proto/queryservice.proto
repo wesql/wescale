@@ -129,4 +129,6 @@ service Query {
   rpc DropSchema(query.DropSchemaRequest) returns (query.DropSchemaResponse) {};
 
   rpc SubmitDMLJob(query.SubmitDMLJobRequest) returns (query.SubmitDMLJobResponse) {};
+
+  rpc ShowDMLJob(query.ShowDMLJobRequest) returns (query.ShowDMLJobResponse) {};
 }

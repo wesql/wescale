@@ -629,6 +629,10 @@ func (sbc *SandboxConn) SubmitDMLJob(ctx context.Context, command, sql, uuid, ta
 	return nil, nil
 }
 
+func (sbc *SandboxConn) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
+	return nil, nil
+}
+
 // Close does not change ExecCount
 func (sbc *SandboxConn) Close(ctx context.Context) error {
 	return nil

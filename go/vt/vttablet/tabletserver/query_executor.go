@@ -1163,19 +1163,19 @@ func (qre *QueryExecutor) execAlterDMLJob() (*sqltypes.Result, error) {
 	uuid := alterDMLJob.UUID
 	switch alterDMLJob.Type {
 	case sqlparser.PauseDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.PauseJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.PauseJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", false)
 	case sqlparser.ResumeDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ResumeJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ResumeJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", false)
 	case sqlparser.LaunchDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.LaunchJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.LaunchJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", false)
 	case sqlparser.CancelDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.CancelJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.CancelJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", false)
 	case sqlparser.ThrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ThrottleJob, "", uuid, "", "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio.Val, 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.ThrottleJob, "", uuid, "", "", "", "", alterDMLJob.Expire, alterDMLJob.Ratio.Val, 0, 0, false, "", false)
 	case sqlparser.UnthrottleDMLJobType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.UnthrottleJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.UnthrottleJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", false)
 	case sqlparser.SetRunningTimePeriodType:
-		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.SetRunningTimePeriod, "", uuid, "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, alterDMLJob.TimePeriodTimeZone, "", "", 0, 0, false, "")
+		return qre.tsv.dmlJonController.HandleRequest(jobcontroller.SetRunningTimePeriod, "", uuid, "", alterDMLJob.TimePeriodStart, alterDMLJob.TimePeriodEnd, alterDMLJob.TimePeriodTimeZone, "", "", 0, 0, false, "", false)
 	}
 	return nil, vterrors.New(vtrpcpb.Code_UNIMPLEMENTED, "ALTER DML_JOB not implemented")
 }

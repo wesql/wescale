@@ -159,8 +159,6 @@ func buildShowVitessPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema)
 		return buildDBPlan(show, vschema)
 	case sqlparser.VitessMigrations, sqlparser.SchemaMigration:
 		return buildShowVMigrationsPlan(show, vschema)
-	case sqlparser.DMLJobs:
-		return buildShowDMLJobsPlan(show, vschema)
 	case sqlparser.GtidExecGlobal:
 		return buildShowGtidPlan(show, vschema)
 	case sqlparser.VitessReplicationStatus, sqlparser.VitessShards, sqlparser.VitessTablets, sqlparser.VitessVariables, sqlparser.Workload, sqlparser.LastSeenGTID, sqlparser.FailPoints:
@@ -196,22 +194,11 @@ func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema
 		dest = key.DestinationAllShards{}
 	}
 
-	var sql string
-	if !show.Detail {
-		sql, err = sqlparser.ParseAndBind("SELECT * FROM mysql.non_transactional_dml_jobs where job_uuid = %a",
-			sqltypes.StringBindVariable(show.UUID))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		UUID := strings.Replace(show.UUID, "-", "_", -1)
-		sql = fmt.Sprintf("SELECT * FROM _vt_BATCH_%s order by CAST(SUBSTRING_INDEX(batch_id, '-', 1) AS SIGNED),id", UUID)
-	}
-
+	// Here we don't do any queries, we do queries in func ShowJob of JobController in controller.go
 	return &engine.Send{
 		Keyspace:          ks,
 		TargetDestination: dest,
-		Query:             sql,
+		Query:             "",
 	}, nil
 }
 
@@ -348,40 +335,6 @@ func buildShowVMigrationsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 	}
 
 	sql := "SELECT * FROM mysql.schema_migrations"
-
-	if show.Filter != nil {
-		if show.Filter.Filter != nil {
-			sql += fmt.Sprintf(" where %s", sqlparser.String(show.Filter.Filter))
-		} else if show.Filter.Like != "" {
-			lit := sqlparser.String(sqlparser.NewStrLiteral(show.Filter.Like))
-			sql += fmt.Sprintf(" where migration_uuid LIKE %s OR migration_context LIKE %s OR migration_status LIKE %s", lit, lit, lit)
-		}
-	}
-	return &engine.Send{
-		Keyspace:          ks,
-		TargetDestination: dest,
-		Query:             sql,
-	}, nil
-}
-
-func buildShowDMLJobsPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
-	dest, ks, tabletType, err := vschema.TargetDestination(show.DbName.String())
-	if err != nil {
-		return nil, err
-	}
-	if ks == nil {
-		return nil, vterrors.VT09005()
-	}
-
-	if tabletType != topodatapb.TabletType_PRIMARY {
-		return nil, vterrors.VT09006("SHOW")
-	}
-
-	if dest == nil {
-		dest = key.DestinationAllShards{}
-	}
-
-	sql := "SELECT * FROM mysql.non_transactional_dml_jobs"
 
 	if show.Filter != nil {
 		if show.Filter.Filter != nil {

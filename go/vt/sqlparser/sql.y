@@ -4431,7 +4431,7 @@ show_statement:
   }
 | SHOW DML_JOBS from_database_opt like_or_where_opt
   {
-    $$ = &Show{&ShowBasic{Command: DMLJobs, Filter: $4, DbName: $3}}
+    $$ = &Show{&ShowDMLJob{UUID: "*", Detail:false}}
   }
 | SHOW DML_JOB STRING
   {
