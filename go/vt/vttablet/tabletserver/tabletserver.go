@@ -1500,7 +1500,7 @@ func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID
 }
 
 func (tsv *TabletServer) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
-	return tsv.dmlJonController.HandleRequest(jobcontroller.ShowJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", true)
+	return tsv.dmlJonController.HandleRequest(jobcontroller.ShowJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", showDetails)
 }
 
 // execRequest performs verifications, sets up the necessary environments

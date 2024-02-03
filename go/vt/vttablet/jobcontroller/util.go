@@ -648,8 +648,12 @@ func (jc *JobController) genJobAffectedRows(batchInfoTableSchema, batchTableName
 	return int64(floatNum), err
 }
 
+// ShowAllDMLJobs we add affected_rows and dealing_batch_id cols to job table query result
 func (jc *JobController) ShowAllDMLJobs() (*sqltypes.Result, error) {
 	qr, err := jc.execQuery(jc.ctx, "", sqlDMLJobGetAllJobs)
+	if err != nil {
+		return &sqltypes.Result{}, err
+	}
 	for i := range qr.Rows {
 		uuid := qr.Rows[i][1].ToString()
 
@@ -659,25 +663,30 @@ func (jc *JobController) ShowAllDMLJobs() (*sqltypes.Result, error) {
 		}
 		batchTableName := genBatchTableName(uuid)
 
-		// add affected rows
+		// add affected_rows value to current row
 		affectedRows, err := jc.genJobAffectedRows(batchInfoTableSchema, batchTableName, uuid)
 		if err != nil {
-			// todo newborn22 not const index, instead of dynamic calculating
-			qr.Rows[i][16] = sqltypes.NewInt64(0)
-			log.Errorf(err.Error())
+			// perhaps the error is just because there is no any rows or no batches in batch table
+			qr.Rows[i] = append(qr.Rows[i], sqltypes.NewInt64(0))
+			log.Infof(err.Error())
 		} else {
-			qr.Rows[i][16] = sqltypes.NewInt64(affectedRows)
+			qr.Rows[i] = append(qr.Rows[i], sqltypes.NewInt64(affectedRows))
 		}
-		// add dealing batch id
+
+		// add dealing_batch_id value to current row
 		dealingBatchID, err := jc.getBatchIDToExec(jc.ctx, batchInfoTableSchema, batchTableName)
 		if err != nil {
-			qr.Rows[i][19] = sqltypes.NewVarChar("-1")
-			log.Errorf(err.Error())
+			// perhaps the error is just because there is no any rows in batch table
+			qr.Rows[i] = append(qr.Rows[i], sqltypes.NewVarChar(""))
+			log.Infof(err.Error())
 		} else {
-			qr.Rows[i][19] = sqltypes.NewVarChar(dealingBatchID)
+			qr.Rows[i] = append(qr.Rows[i], sqltypes.NewVarChar(dealingBatchID))
 		}
+
 	}
-	return qr, err
+
+	qr.Fields = append(qr.Fields, buildVarCharFields("affected_rows", "dealing_batch_id")...)
+	return qr, nil
 }
 
 func (jc *JobController) ShowSingleDMLJob(uuid string, showDetails bool) (qr *sqltypes.Result, err error) {
@@ -707,21 +716,23 @@ func (jc *JobController) ShowSingleDMLJob(uuid string, showDetails bool) (qr *sq
 	// add affected rows
 	affectedRows, err := jc.genJobAffectedRows(batchInfoTableSchema, batchTableName, uuid)
 	if err != nil {
-		// todo newborn22 not const index, instead of dynamic calculating
-		qr.Rows[0][16] = sqltypes.NewInt64(0)
-		log.Errorf(err.Error())
+		// perhaps the error is just because there is no any rows or no batches in batch table
+		qr.Rows[0] = append(qr.Rows[0], sqltypes.NewInt64(0))
+		log.Infof(err.Error())
 	} else {
-		qr.Rows[0][16] = sqltypes.NewInt64(affectedRows)
+		qr.Rows[0] = append(qr.Rows[0], sqltypes.NewInt64(affectedRows))
 	}
 	// add dealing batch id
 	dealingBatchID, err := jc.getBatchIDToExec(jc.ctx, batchInfoTableSchema, batchTableName)
 	if err != nil {
-		qr.Rows[0][19] = sqltypes.NewVarChar("-1")
-		log.Errorf(err.Error())
+		// perhaps the error is just because there is no any rows in batch table
+		qr.Rows[0] = append(qr.Rows[0], sqltypes.NewVarChar(""))
+		log.Infof(err.Error())
 	} else {
-		qr.Rows[0][19] = sqltypes.NewVarChar(dealingBatchID)
+		qr.Rows[0] = append(qr.Rows[0], sqltypes.NewVarChar(dealingBatchID))
 	}
 
+	qr.Fields = append(qr.Fields, buildVarCharFields("affected_rows", "dealing_batch_id")...)
 	return qr, nil
 
 }
