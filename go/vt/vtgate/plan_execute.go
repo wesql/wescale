@@ -453,11 +453,6 @@ func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
 }
 
 func HandleDMLJobRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
-	// if in transaction, return error
-	if vcursor.InTransaction() {
-		return nil, errors.New("cannot handle DML job request in transaction")
-	}
-
 	if IsShowDMLJob(stmt) {
 		showDMLJob, _ := stmt.(*sqlparser.Show).Internal.(*sqlparser.ShowDMLJob)
 		qr, err := vcursor.executor.ShowDMLJob(showDMLJob.UUID, showDMLJob.Detail)
@@ -465,6 +460,10 @@ func HandleDMLJobRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql str
 	}
 
 	if IsSubmitDMLJob(stmt) {
+		// if in transaction, return error
+		if vcursor.InTransaction() {
+			return nil, errors.New("cannot handle DML job request in transaction")
+		}
 		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio := sqlparser.GetDMLJobArgs(stmt)
 		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 		if qr != nil {
