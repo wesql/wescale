@@ -533,6 +533,11 @@ func (q *query) SubmitDMLJob(ctx context.Context, request *querypb.SubmitDMLJobR
 	return &querypb.SubmitDMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
 }
 
+func (q *query) ShowDMLJob(ctx context.Context, request *querypb.ShowDMLJobRequest) (*querypb.ShowDMLJobResponse, error) {
+	rst, err := q.server.ShowDMLJob(ctx, request.JobUuid, request.ShowDetails)
+	return &querypb.ShowDMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
+}
+
 // Register registers the implementation on the provide gRPC Server.
 func Register(s *grpc.Server, server queryservice.QueryService) {
 	queryservicepb.RegisterQueryServer(s, &query{server: server})

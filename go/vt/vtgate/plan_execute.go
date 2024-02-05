@@ -95,7 +95,7 @@ func (e *Executor) newExecute(
 		return err
 	}
 
-	rst, err := HandleDMLJobSubmit(stmt, vcursor, sql)
+	rst, err := HandleDMLJobRequest(stmt, vcursor, sql)
 	if err != nil {
 		return err
 	}
@@ -438,18 +438,32 @@ func ResolveTabletType(safeSession *SafeSession, vcursor *vcursorImpl, stmt sqlp
 	return nil
 }
 
+func IsShowDMLJob(stmt sqlparser.Statement) bool {
+	show, ok := stmt.(*sqlparser.Show)
+	if !ok {
+		return false
+	}
+	_, ok = show.Internal.(*sqlparser.ShowDMLJob)
+	return ok
+}
+
 func IsSubmitDMLJob(stmt sqlparser.Statement) bool {
 	cmd := sqlparser.GetDMLJobCmd(stmt)
 	return cmd == "true"
 }
 
-func HandleDMLJobSubmit(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
+func HandleDMLJobRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
+	if IsShowDMLJob(stmt) {
+		showDMLJob, _ := stmt.(*sqlparser.Show).Internal.(*sqlparser.ShowDMLJob)
+		qr, err := vcursor.executor.ShowDMLJob(showDMLJob.UUID, showDMLJob.Detail)
+		return qr, err
+	}
+
 	if IsSubmitDMLJob(stmt) {
 		// if in transaction, return error
 		if vcursor.InTransaction() {
-			return nil, errors.New("cannot submit DML job in transaction")
+			return nil, errors.New("cannot handle DML job request in transaction")
 		}
-
 		timeGapInMs, batchSize, postponeLaunch, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio := sqlparser.GetDMLJobArgs(stmt)
 		qr, err := vcursor.executor.SubmitDMLJob("submit_job", sql, "", vcursor.keyspace, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 		if qr != nil {

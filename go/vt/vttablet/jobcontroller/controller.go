@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"sync"
 	"time"
 
@@ -78,6 +77,7 @@ const (
 	UnthrottleAllJobs    = "unthrottle_all"
 	CancelJob            = "cancel"
 	SetRunningTimePeriod = "set_running_time_period"
+	ShowJob              = "show_job"
 )
 
 // These are strategies when a batch execution fails.
@@ -185,7 +185,7 @@ func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletT
 		lagThrottler: lagThrottler}
 }
 
-func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleDuration, throttleRatio string, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string) (*sqltypes.Result, error) {
+func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleDuration, throttleRatio string, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string, showDetails bool) (*sqltypes.Result, error) {
 	switch command {
 	case SubmitJob:
 		return jc.SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, timeGapInMs, usrBatchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
@@ -203,8 +203,19 @@ func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, runni
 		return jc.UnthrottleJob(jobUUID)
 	case SetRunningTimePeriod:
 		return jc.SetRunningTimePeriod(jobUUID, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone)
+	case ShowJob:
+		return jc.ShowJob(jobUUID, showDetails)
 	}
+
 	return &sqltypes.Result{}, fmt.Errorf("unknown command: %s", command)
+}
+
+func (jc *JobController) ShowJob(uuid string, showDetails bool) (*sqltypes.Result, error) {
+
+	if uuid == "*" {
+		return jc.ShowAllDMLJobs()
+	}
+	return jc.ShowSingleDMLJob(uuid, showDetails)
 }
 
 func (jc *JobController) SubmitJob(sql, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone string, batchIntervalInMs, userBatchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
@@ -548,15 +559,6 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return nil
 	}
 
-	// Record the batch ID information in the non_transactional_dml_jobs table for user reference.
-	queryUpdateDealingBatchID, err := sqlparser.ParseAndBind(sqlUpdateDealingBatchID,
-		sqltypes.StringBindVariable(batchID),
-		sqltypes.StringBindVariable(uuid))
-	_, err = conn.Exec(ctx, queryUpdateDealingBatchID, math.MaxInt32, false)
-	if err != nil {
-		return err
-	}
-
 	// this failpoint is used to test splitBatchIntoTwo
 	failpoint.Inject(failpointkey.ModifyBatchSize.Name, func(val failpoint.Value) {
 		temp, ok := val.(int)
@@ -577,8 +579,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 
-	// 4.Record the executing result, adding the row count to the affected rows.
-	// 4.1 Record in the batch table.
+	// 4.Record the executing result in the batch table.
 	updateBatchStatus := fmt.Sprintf(sqlTempalteUpdateBatchStatusAndAffectedRows, batchTable)
 	updateBatchStatusDoneSQL, err := sqlparser.ParseAndBind(updateBatchStatus,
 		sqltypes.StringBindVariable(CompletedStatus),
@@ -588,20 +589,6 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		return err
 	}
 	_, err = conn.Exec(ctx, updateBatchStatusDoneSQL, math.MaxInt32, false)
-	if err != nil {
-		return err
-	}
-
-	// 4.2 Record in the job table.
-	updateAffectedRowsSQL, err := sqlparser.ParseAndBind(sqlDMLJobUpdateAffectedRows,
-		sqltypes.Int64BindVariable(int64(qr.RowsAffected)),
-		sqltypes.StringBindVariable(uuid))
-	if err != nil {
-		return err
-	}
-	jc.tableMutex.Lock()
-	defer jc.tableMutex.Unlock()
-	_, err = conn.Exec(ctx, updateAffectedRowsSQL, math.MaxInt32, false)
 	if err != nil {
 		return err
 	}
@@ -879,21 +866,16 @@ func (jc *JobController) prepareDMLJob(jobUUID, sql, tableSchema, batchTableName
 		jc.FailJob(jc.ctx, jobUUID, "the table has unsupported PK type", tableName)
 	}
 
-	// 3.All validation are done, set job status to "preparing"
-	_, err = jc.updateJobStatus(jc.ctx, jobUUID, PreparingStatus, time.Now().Format(time.DateTime))
-	if err != nil {
-		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
-	}
-
-	// 4.Generate selectPksSQL which are used for creating the batch table.
+	// 3.Generate selectPksSQL which are used for creating the batch table.
 	selectPksSQL := sprintfSelectPksSQL(tableName, sqlparser.String(whereExpr), pkInfos)
 
-	// 5.Generate the batch table based on the selectPksSQL.
+	// 4.Generate the batch table based on the selectPksSQL.
+	// after creating batch table, we set the job status to "preparing"
 	err = jc.createBatchTable(jobUUID, selectPksSQL, tableSchema, tableName, batchTableName, whereExpr, stmt, pkInfos, batchSize)
 	if err != nil {
 		jc.FailJob(jc.ctx, jobUUID, err.Error(), tableName)
 	}
-	// 6.Set job status to "queued" or "postpone launch"
+	// 5.Set job status to "queued" or "postpone launch"
 	if postponeLaunch {
 		_, err = jc.updateJobStatus(jc.ctx, jobUUID, PostponeLaunchStatus, time.Now().Format(time.DateTime))
 	} else {
@@ -925,7 +907,7 @@ func (jc *JobController) initJobBatches(jobUUID, sql, tableSchema string, userBa
 		batchSize = actualThreshold
 	}
 	// 3.Generate the batch table name
-	batchTableName = "_vt_BATCH_" + strings.Replace(jobUUID, "-", "_", -1)
+	batchTableName = genBatchTableName(jobUUID)
 	return tableName, batchTableName, batchSize, err
 }
 
@@ -949,6 +931,12 @@ func (jc *JobController) createBatchTable(jobUUID, selectSQL, tableSchema, table
 
 	createTableSQL := fmt.Sprintf(sqlTemplateCreateBatchTable, batchTableName)
 	_, err = jc.execQuery(jc.ctx, tableSchema, createTableSQL)
+	if err != nil {
+		return err
+	}
+
+	// set job status to "preparing" after creating table
+	_, err = jc.updateJobStatus(jc.ctx, jobUUID, PreparingStatus, time.Now().Format(time.DateTime))
 	if err != nil {
 		return err
 	}

@@ -117,6 +117,8 @@ type QueryService interface {
 
 	SubmitDMLJob(ctx context.Context, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, subtaskRows int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error)
 
+	ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error)
+
 	// HandlePanic will be called if any of the functions panic.
 	HandlePanic(err *error)
 

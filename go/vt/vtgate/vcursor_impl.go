@@ -94,6 +94,7 @@ type iExecute interface {
 	VSchema() *vindexes.VSchema
 	SetFailPoint(command string, key string, value string) error
 	SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error)
+	ShowDMLJob(uuid string, showDetail bool) (*sqltypes.Result, error)
 }
 
 // VSchemaOperator is an interface to Vschema Operations

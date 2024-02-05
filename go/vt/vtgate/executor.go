@@ -1569,6 +1569,19 @@ func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart
 	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 }
 
+func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, error) {
+	ctx := context.Background()
+	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
+	var th *discovery.TabletHealth
+	for _, tablet := range healthyTablets {
+		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
+			th = tablet
+			break
+		}
+	}
+	return th.Conn.ShowDMLJob(ctx, uuid, showDetails)
+}
+
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {
 	if e.allowScatter || plan.Instructions == nil || sqlparser.AllowScatterDirective(stmt) {
 		return nil

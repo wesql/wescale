@@ -384,3 +384,12 @@ func (ws *wrappedService) SubmitDMLJob(ctx context.Context, cmd, sql, uuid, tabl
 	})
 	return qr, err
 }
+
+func (ws *wrappedService) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (qr *sqltypes.Result, err error) {
+	err = ws.wrapper(ctx, nil, ws.impl, "ShowDMLJob", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
+		var innerErr error
+		qr, innerErr = conn.ShowDMLJob(ctx, uuid, showDetails)
+		return canRetry(ctx, innerErr), innerErr
+	})
+	return qr, err
+}

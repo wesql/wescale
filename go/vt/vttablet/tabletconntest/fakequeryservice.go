@@ -76,6 +76,10 @@ func (f *FakeQueryService) SubmitDMLJob(ctx context.Context, command, sql, uuid,
 	panic("implement me")
 }
 
+func (f *FakeQueryService) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
+	panic("implement me")
+}
+
 var _ queryservice.QueryService = (*FakeQueryService)(nil)
 
 // Close is a no-op.

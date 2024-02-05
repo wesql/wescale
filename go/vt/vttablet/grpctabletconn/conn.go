@@ -1162,6 +1162,23 @@ func (conn *gRPCQueryClient) SubmitDMLJob(ctx context.Context, command, sql, uui
 	return sqltypes.Proto3ToResult(er.Result), nil
 }
 
+func (conn *gRPCQueryClient) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return nil, tabletconn.ConnClosed
+	}
+	req := querypb.ShowDMLJobRequest{
+		JobUuid:     uuid,
+		ShowDetails: showDetails,
+	}
+	er, err := conn.c.ShowDMLJob(ctx, &req)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(err)
+	}
+	return sqltypes.Proto3ToResult(er.Result), nil
+}
+
 // Close closes underlying gRPC channel.
 func (conn *gRPCQueryClient) Close(ctx context.Context) error {
 	conn.mu.Lock()

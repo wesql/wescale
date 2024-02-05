@@ -15119,7 +15119,7 @@ yydefault:
 		var yyLOCAL Statement
 //line sql.y:4433
 		{
-			yyLOCAL = &Show{&ShowBasic{Command: DMLJobs, Filter: yyDollar[4].showFilterUnion(), DbName: yyDollar[3].identifierCS}}
+			yyLOCAL = &Show{&ShowDMLJob{UUID: "*", Detail: false}}
 		}
 		yyVAL.union = yyLOCAL
 	case 798:
