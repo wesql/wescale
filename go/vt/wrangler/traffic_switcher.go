@@ -756,9 +756,8 @@ func (wr *Wrangler) finalizeMigrateWorkflow(ctx context.Context, targetKeyspace,
 	return sw.logs(), nil
 }
 
-//todo earayu: should use real cell
 func (wr *Wrangler) GetPrimaryTabletAlias(ctx context.Context, cell string) (*topodatapb.TabletAlias, error) {
-	tabletAliases, err := wr.TopoServer().GetTabletAliasesByCell(ctx, "zone1")
+	tabletAliases, err := wr.TopoServer().GetTabletAliasesByCell(ctx, cell)
 	if err != nil {
 		return nil, err
 	}
