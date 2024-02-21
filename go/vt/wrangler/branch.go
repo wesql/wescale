@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
 	"vitess.io/vitess/go/vt/topo"
 	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
@@ -401,6 +403,7 @@ func removeComments(sql string) (string, error) {
 }
 
 func (wr *Wrangler) ExecuteQueryByPrimary(ctx context.Context, sql string, disableBinlog, reloadSchema bool) (*querypb.QueryResult, error) {
+	//todo earayu: should not use sidecardb.DefaultCellName here
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return nil, err
@@ -473,6 +476,10 @@ func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 	}
 	if !exist {
 		mz, err = wr.prepareMaterializerStreams(ctx, ms)
+		if err != nil {
+			return err
+		}
+		err = wr.storeSchemaSnapshot(ctx, workflow, mz)
 		if err != nil {
 			return err
 		}
@@ -945,4 +952,35 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
 		wr.Logger().Printf("%v\n", record.Report())
 	}
 	return nil
+}
+
+func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz *materializer) error {
+	allTables := []string{"/.*/"}
+	targetDbName := mz.targetShards[0].Keyspace()
+	return mz.forAllTargets(func(target *topo.ShardInfo) error {
+		req := &tabletmanagerdatapb.GetSchemaRequest{Tables: allTables, DbName: targetDbName}
+		targetSchema, err := schematools.GetSchema(ctx, mz.wr.ts, mz.wr.tmc, target.PrimaryAlias, req)
+		if err != nil {
+			return err
+		}
+
+		schemaBlob, err := proto.Marshal(targetSchema)
+		if err != nil {
+			return err
+		}
+
+		sqlTemplate := "insert into mysql.branch_snapshots (workflow_name, schema_snapshot) values (%a, %a);"
+		sql, err := sqlparser.ParseAndBind(sqlTemplate,
+			sqltypes.StringBindVariable(workflow),
+			sqltypes.StringBindVariable(string(schemaBlob)))
+		if err != nil {
+			return err
+		}
+
+		_, err = wr.ExecuteQueryByPrimary(ctx, sql, true, false)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
