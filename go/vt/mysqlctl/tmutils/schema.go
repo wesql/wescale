@@ -108,22 +108,22 @@ func (s *SchemaDiffElement) Report() string {
 		if s.extraViewDatabase != s.leftDatabase {
 			extraSchema = s.right
 		}
-		buf.WriteString(fmt.Sprintf("%v has extra view %v\n:%v", s.extraViewDatabase, s.extraViewName, FindTableDefinitionFromSchema(extraSchema, s.extraViewName)))
+		buf.WriteString(fmt.Sprintf("%v has extra view %v\n:%v", s.extraViewDatabase, s.extraViewName, FindTableDefinitionFromSchema(extraSchema, s.extraViewName).Schema))
 	case ExtraTable:
 		extraSchema := s.left
 		if s.extraViewDatabase != s.leftDatabase {
 			extraSchema = s.right
 		}
-		buf.WriteString(fmt.Sprintf("%v has extra table %v\n:%v", s.extraTableDatabase, s.extraTableName, FindTableDefinitionFromSchema(extraSchema, s.extraTableName)))
+		buf.WriteString(fmt.Sprintf("%v has extra table %v\n:%v", s.extraTableDatabase, s.extraTableName, FindTableDefinitionFromSchema(extraSchema, s.extraTableName).Schema))
 	case SchemasDiffDetail:
 	case TableTypeDiff:
 		buf.WriteString(fmt.Sprintf("table %v is diff\n", s.diffTypeTableName))
-		buf.WriteString(fmt.Sprintf("%v:%v\n", s.leftDatabase, FindTableDefinitionFromSchema(s.left, s.diffTypeTableName)))
-		buf.WriteString(fmt.Sprintf("%v:%v\n", s.rightDatabase, FindTableDefinitionFromSchema(s.right, s.diffTypeTableName)))
+		buf.WriteString(fmt.Sprintf("%v:%v\n", s.leftDatabase, FindTableDefinitionFromSchema(s.left, s.diffTypeTableName).Schema))
+		buf.WriteString(fmt.Sprintf("%v:%v\n", s.rightDatabase, FindTableDefinitionFromSchema(s.right, s.diffTypeTableName).Schema))
 	case TableSchemaDiff:
 		buf.WriteString(fmt.Sprintf("table %v is diff\n", s.diffSchemaTableName))
-		buf.WriteString(fmt.Sprintf("%v:%v\n", s.leftDatabase, FindTableDefinitionFromSchema(s.left, s.diffSchemaTableName)))
-		buf.WriteString(fmt.Sprintf("%v:%v\n", s.rightDatabase, FindTableDefinitionFromSchema(s.right, s.diffSchemaTableName)))
+		buf.WriteString(fmt.Sprintf("%v:%v\n", s.leftDatabase, FindTableDefinitionFromSchema(s.left, s.diffSchemaTableName).Schema))
+		buf.WriteString(fmt.Sprintf("%v:%v\n", s.rightDatabase, FindTableDefinitionFromSchema(s.right, s.diffSchemaTableName).Schema))
 	}
 	return buf.String()
 }

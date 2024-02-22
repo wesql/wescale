@@ -3730,6 +3730,8 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	defaultFilterRules := subFlags.String("default_filter_rules", "", "Add WHERE clause conditions to all tables.")
 	externalCluster := subFlags.String("external_cluster", "", "External cluster name")
 	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
+	outputType := subFlags.String("output_type", wrangler.OutputTypeCreateTable, "specify the type of output")
+	compareObjects := subFlags.String("compare_objects", wrangler.CompareObjectsSourceTarget, "specify objects for comparing schema diff")
 	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
 	if err := subFlags.Parse(args); err != nil {
 		return err
@@ -3753,7 +3755,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	case vBranchWorkflowActionCleanup:
 		err = wr.CleanupBranch(ctx, *workflowName)
 	case vBranchWorkflowActionSchemeDiff:
-		err = wr.SchemaDiff(ctx, *workflowName)
+		err = wr.SchemaDiff(ctx, *workflowName, *outputType, *compareObjects)
 	default:
 		return fmt.Errorf("%v action is not support in Branch", action)
 	}

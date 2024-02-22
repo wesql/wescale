@@ -7,6 +7,7 @@ package wrangler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -57,6 +58,20 @@ const (
 	BranchStatusOfPrePare = "Prepare"
 	BranchStatusOfRunning = "Running"
 )
+
+const (
+	OutputTypeCreateTable = "create_table"
+	OutputTypeDDL         = "ddl"
+	OutputTypeConflict    = "conflict"
+
+	CompareObjectsSourceTarget   = "source_target"
+	CompareObjectsTargetSource   = "target_source"
+	CompareObjectsSourceSnapshot = "source_snapshot"
+	CompareObjectsSnapshotSource = "snapshot_source"
+	CompareObjectsTargetSnapshot = "target_snapshot"
+	CompareObjectsSnapshotTarget = "snapshot_target"
+)
+
 const InsertTableRulesTemplate = "INSERT INTO mysql.branch_table_rules " +
 	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) " +
 	"VALUES (%a, %a, %a, %a, %a, %a);"
@@ -902,56 +917,23 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	// delete from branch_table_rules
 }
 
-func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow string) error {
-	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, compareObjectsFlag string) error {
+	targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, err := wr.getSchemas(ctx, workflow)
 	if err != nil {
 		return err
 	}
-	if branchJob.externalCluster != "" {
-		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
-		if err != nil {
-			return err
-		}
-		wr.sourceTs = externalTopo
-		log.Infof("Successfully opened external topo: %+v", externalTopo)
-	}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return err
-	}
-	var tables []string
-	for _, tableRules := range branchJob.bs.FilterTableRules {
-		tables = append(tables, tableRules.TargetTable)
-	}
-	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		Tables:          tables,
-		TableSchemaOnly: true,
-		DbName:          branchJob.sourceDatabase,
-	}
-	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		//Tables:          tables,
-		TableSchemaOnly: true,
-		DbName:          branchJob.targetDatabase,
-	}
-	er := concurrency.AllErrorRecorder{}
 
-	// analyze Schema diff between sourceDatabase and targetDatabase
-	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
-	if err != nil {
-		return err
+	switch outputTypeFlag {
+	case OutputTypeCreateTable:
+		return wr.analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+	case OutputTypeDDL:
+		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+	case OutputTypeConflict:
+		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+	default:
+		return fmt.Errorf("%v is incvalid output_type flag, should be one of %v, %v, %v",
+			outputTypeFlag, OutputTypeCreateTable, OutputTypeDDL, OutputTypeConflict)
 	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
-	if err != nil {
-		return err
-	}
-	records := tmutils.DiffSchema(targetDatabaseReqeust.DbName, targetSchema, sourceDatabaseReqeust.DbName, sourceSchema, &er)
-	if len(records) == 0 {
-		wr.Logger().Printf("schema is same")
-	}
-	for _, record := range records {
-		wr.Logger().Printf("%v\n", record.Report())
-	}
-	return nil
 }
 
 func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz *materializer) error {
@@ -983,4 +965,156 @@ func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz
 		}
 		return nil
 	})
+}
+
+func (wr *Wrangler) restoreSchemaSnapshot(ctx context.Context, workflow string) (*tabletmanagerdatapb.SchemaDefinition, error) {
+	sqlTemplate := "select schema_snapshot from mysql.branch_snapshots where workflow_name = %a;"
+	sql, err := sqlparser.ParseAndBind(sqlTemplate,
+		sqltypes.StringBindVariable(workflow))
+	if err != nil {
+		return nil, err
+	}
+
+	qr, err := wr.ExecuteQueryByPrimary(ctx, sql, true, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(qr.Rows) != 1 {
+		return nil, fmt.Errorf("the len of query result of snapshot is not 1 but %v", len(qr.Rows))
+	}
+
+	schemaSnapshot := &tabletmanagerdatapb.SchemaDefinition{}
+	proto.Unmarshal(qr.Rows[0].Values, schemaSnapshot)
+	return schemaSnapshot, nil
+}
+
+func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase string, err error) {
+	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+	if err != nil {
+		return nil, nil, nil, "", "", err
+	}
+	if branchJob.externalCluster != "" {
+		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+		if err != nil {
+			return nil, nil, nil, "", "", err
+		}
+		wr.sourceTs = externalTopo
+		log.Infof("Successfully opened external topo: %+v", externalTopo)
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
+	if err != nil {
+		return nil, nil, nil, "", "", err
+	}
+	var tables []string
+	for _, tableRules := range branchJob.bs.FilterTableRules {
+		tables = append(tables, tableRules.TargetTable)
+	}
+	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.sourceDatabase,
+	}
+	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+		//Tables:          tables,
+		TableSchemaOnly: true,
+		DbName:          branchJob.targetDatabase,
+	}
+
+	targetSchema, err = schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	if err != nil {
+		return nil, nil, nil, "", "", err
+	}
+	sourceSchema, err = schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
+	if err != nil {
+		return nil, nil, nil, "", "", err
+	}
+	snapshotSchema, err = wr.restoreSchemaSnapshot(ctx, workflow)
+	if err != nil {
+		return nil, nil, nil, "", "", err
+	}
+	return targetSchema, sourceSchema, snapshotSchema, branchJob.targetDatabase, branchJob.sourceDatabase, nil
+}
+
+func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+	er := concurrency.AllErrorRecorder{}
+	var records []tmutils.SchemaDiffElement
+	// analyze Schema diff between sourceDatabase and targetDatabase
+
+	switch compareObjectsFlag {
+	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
+		wr.Logger().Printf("schema diff between sourceDatabase and targetDatabase:\n")
+		records = tmutils.DiffSchema(sourceDatabase, sourceSchema, targetDatabase, targetSchema, &er)
+		if len(records) == 0 {
+			wr.Logger().Printf("schema is same\n")
+		}
+		for _, record := range records {
+			wr.Logger().Printf("%v\n", record.Report())
+		}
+		return nil
+	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
+		// analyze Schema diff between targetDatabase and snapshot
+		wr.Logger().Printf("schema diff between targetDatabase and snapshot:\n")
+		records = tmutils.DiffSchema(targetDatabase, targetSchema, "snapshot", snapshotSchema, &er)
+		if len(records) == 0 {
+			wr.Logger().Printf("schema is same\n")
+		}
+		for _, record := range records {
+			wr.Logger().Printf("%v\n", record.Report())
+		}
+		return nil
+	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+		// analyze Schema diff between sourceDatabase and snapshot
+		wr.Logger().Printf("schema diff between sourceDatabase and snapshot:\n")
+		records = tmutils.DiffSchema(sourceDatabase, sourceSchema, "snapshot", snapshotSchema, &er)
+		if len(records) == 0 {
+			wr.Logger().Printf("schema is same\n")
+		}
+		for _, record := range records {
+			wr.Logger().Printf("%v\n", record.Report())
+		}
+		return nil
+	default:
+		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
+			compareObjectsFlag,
+			CompareObjectsSourceTarget, CompareObjectsTargetSource,
+			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
+			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
+	}
+}
+
+func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+	switch compareObjectsFlag {
+	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
+
+	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
+
+	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+
+	default:
+		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
+			compareObjectsFlag,
+			CompareObjectsSourceTarget, CompareObjectsTargetSource,
+			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
+			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
+	}
+	return errors.New("not implement yet")
+}
+
+func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+	switch compareObjectsFlag {
+	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
+
+	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
+
+	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+
+	default:
+		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
+			compareObjectsFlag,
+			CompareObjectsSourceTarget, CompareObjectsTargetSource,
+			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
+			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
+	}
+	return errors.New("not implement yet")
 }
