@@ -931,7 +931,7 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, co
 	case OutputTypeConflict:
 		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
 	default:
-		return fmt.Errorf("%v is incvalid output_type flag, should be one of %v, %v, %v",
+		return fmt.Errorf("%v is invalid output_type flag, should be one of %v, %v, %v",
 			outputTypeFlag, OutputTypeCreateTable, OutputTypeDDL, OutputTypeConflict)
 	}
 }
@@ -1046,7 +1046,7 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSc
 		wr.Logger().Printf("schema diff between sourceDatabase and targetDatabase:\n")
 		records = tmutils.DiffSchema(sourceDatabase, sourceSchema, targetDatabase, targetSchema, &er)
 		if len(records) == 0 {
-			wr.Logger().Printf("schema is same\n")
+			wr.Logger().Printf("schemas are the same\n")
 		}
 		for _, record := range records {
 			wr.Logger().Printf("%v\n", record.Report())
@@ -1057,7 +1057,7 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSc
 		wr.Logger().Printf("schema diff between targetDatabase and snapshot:\n")
 		records = tmutils.DiffSchema(targetDatabase, targetSchema, "snapshot", snapshotSchema, &er)
 		if len(records) == 0 {
-			wr.Logger().Printf("schema is same\n")
+			wr.Logger().Printf("schemas are the same\n")
 		}
 		for _, record := range records {
 			wr.Logger().Printf("%v\n", record.Report())
@@ -1068,7 +1068,7 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSc
 		wr.Logger().Printf("schema diff between sourceDatabase and snapshot:\n")
 		records = tmutils.DiffSchema(sourceDatabase, sourceSchema, "snapshot", snapshotSchema, &er)
 		if len(records) == 0 {
-			wr.Logger().Printf("schema is same\n")
+			wr.Logger().Printf("schemas are the same\n")
 		}
 		for _, record := range records {
 			wr.Logger().Printf("%v\n", record.Report())
