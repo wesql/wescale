@@ -7,9 +7,10 @@ package wrangler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
+
+	"vitess.io/vitess/go/vt/schema"
 
 	"google.golang.org/protobuf/proto"
 
@@ -922,14 +923,17 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, co
 	if err != nil {
 		return err
 	}
+	targetSchema = filterSchemaRelatedOnlineDDLArtifact(targetSchema)
+	sourceSchema = filterSchemaRelatedOnlineDDLArtifact(sourceSchema)
+	snapshotSchema = filterSchemaRelatedOnlineDDLArtifact(snapshotSchema)
 
 	switch outputTypeFlag {
 	case OutputTypeCreateTable:
 		return wr.analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
 	case OutputTypeDDL:
-		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, compareObjectsFlag)
 	case OutputTypeConflict:
-		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, compareObjectsFlag)
 	default:
 		return fmt.Errorf("%v is invalid output_type flag, should be one of %v, %v, %v",
 			outputTypeFlag, OutputTypeCreateTable, OutputTypeDDL, OutputTypeConflict)
@@ -1083,14 +1087,46 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSc
 	}
 }
 
-func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, compareObjectsFlag string) error {
+	var entityDiffs []schemadiff.EntityDiff
+	var err error
 	switch compareObjectsFlag {
-	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
-
-	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
-
-	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
-
+	case CompareObjectsSourceTarget:
+		wr.Logger().Printf("The DDLs required to transform from the source schema to the target schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(sourceSchema, targetSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsTargetSource:
+		wr.Logger().Printf("The DDLs required to transform from the target schema to the source schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(targetSchema, sourceSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsTargetSnapshot:
+		wr.Logger().Printf("The DDLs required to transform from the target schema to the snapshot schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(targetSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSnapshotTarget:
+		wr.Logger().Printf("The DDLs required to transform from the snapshot schema to the target schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(snapshotSchema, targetSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSnapshotSource:
+		wr.Logger().Printf("The DDLs required to transform from the snapshot schema to the source schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(snapshotSchema, sourceSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSourceSnapshot:
+		wr.Logger().Printf("The DDLs required to transform from the source schema to the snapshot schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(sourceSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
 			compareObjectsFlag,
@@ -1098,16 +1134,32 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, sn
 			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
 			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
 	}
-	return errors.New("not implement yet")
+	if len(entityDiffs) == 0 {
+		wr.Logger().Printf("the schemas are the same\n")
+	} else {
+		for _, entityDiff := range entityDiffs {
+			wr.Logger().Printf("entity %v\n", entityDiff.StatementString())
+		}
+	}
+	return nil
 }
 
-func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, compareObjectsFlag string) error {
 	switch compareObjectsFlag {
 	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
-
-	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
-
-	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+		conflict, conflictMessage, err := wr.schemasConflict(sourceSchema, targetSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
+		if conflict {
+			wr.Logger().Printf("the source and target schema conflict:\n%v", conflictMessage)
+		} else {
+			wr.Logger().Printf("the source and target schema are not in conflict\n")
+		}
+		return nil
+	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget, CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+		wr.Logger().Printf("the source and target are both derived from snapshot, so there is no conflicts\n")
+		return nil
 
 	default:
 		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
@@ -1116,5 +1168,78 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchem
 			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
 			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
 	}
-	return errors.New("not implement yet")
+}
+
+// this function check if the schema1 and schema2 ( which are both derived from the snapshot schema) conflict using "three-way merge algorithm",
+// the algorithm is described as follows:
+// 1. Calculate the difference between main and schema1, view diff1 as a function: diff1(main) => schema1.
+// 2. Calculate the difference between main and schema2, diff2: diff2(main) => schema2.
+// 3. Apply diff1 on diff2(main), i.e., diff1(diff2(main)). If it's invalid, there's a conflict.
+// 4. Apply diff2 on diff1(main), i.e., diff2(diff1(main)). If it's invalid, there's a conflict.
+// 5. If both are valid but diff1(diff2(main)) is not equal to diff2(diff1(main)), there's a conflict.
+// 6. If both transformations are valid, and diff1(diff2(main)) equals diff2(diff1(main)), it signifies there's no conflict.
+func (wr *Wrangler) schemasConflict(schema1, schema2, snapshotSchema *tabletmanagerdatapb.SchemaDefinition) (bool, string, error) {
+	diffFromSnapshotToSchema1, err := analyzeDiffSchema(snapshotSchema, schema1)
+	if err != nil {
+		return true, "", err
+	}
+
+	diffFromSnapshotToSchema2, err := analyzeDiffSchema(snapshotSchema, schema2)
+	if err != nil {
+		return true, "", err
+	}
+
+	// transform schema1 from *tabletmanagerdatapb.SchemaDefinition to *schemadiff.Schema
+	var schema1Queries []string
+	for _, table := range schema1.TableDefinitions {
+		schema1Queries = append(schema1Queries, table.Schema)
+	}
+	newSchema1, err := schemadiff.NewSchemaFromQueries(schema1Queries)
+	if err != nil {
+		return true, "", err
+	}
+
+	// transform schema2 from *tabletmanagerdatapb.SchemaDefinition to *schemadiff.Schema
+	var schema2Queries []string
+	for _, table := range schema2.TableDefinitions {
+		schema2Queries = append(schema2Queries, table.Schema)
+	}
+	newSchema2, err := schemadiff.NewSchemaFromQueries(schema2Queries)
+	if err != nil {
+		return true, "", err
+	}
+
+	// apply diffFromSnapshotToSchema2 on schema1, check whether is valid
+	diffFromSnapshotToSchema2OnSchema1, err := newSchema1.Apply(diffFromSnapshotToSchema2)
+	if err != nil {
+		// we don't care about the content of error, it means we can't apply diffFromSnapshotToSchema2 on schema1
+		return true, err.Error(), nil
+	}
+
+	// apply diffFromSnapshotToSchema1 on schema2, check whether is valid
+	diffFromSnapshotToSchema1OnSchema2, err := newSchema2.Apply(diffFromSnapshotToSchema1)
+	if err != nil {
+		// we don't care about the content of error, it means we can't apply diffFromSnapshotToSchema1 on schema2
+		return true, err.Error(), nil
+	}
+
+	if diffFromSnapshotToSchema1OnSchema2.ToSQL() != diffFromSnapshotToSchema2OnSchema1.ToSQL() {
+		return true,
+			fmt.Sprintf("diff1(diff2(snapshot)) != diff2(diff1(snapshot)):\n--------------\n%s--------------\ndosn't equals to\n--------------\n%s--------------\n", diffFromSnapshotToSchema1OnSchema2.ToSQL(), diffFromSnapshotToSchema2OnSchema1.ToSQL()),
+			nil
+	}
+
+	return false, "", nil
+}
+
+func filterSchemaRelatedOnlineDDLArtifact(originalSchema *tabletmanagerdatapb.SchemaDefinition) *tabletmanagerdatapb.SchemaDefinition {
+	var filteredSchemaTableDefinition []*tabletmanagerdatapb.TableDefinition
+	for _, table := range originalSchema.TableDefinitions {
+		if schema.IsOnlineDDLTableName(table.Name) {
+			continue
+		}
+		filteredSchemaTableDefinition = append(filteredSchemaTableDefinition, table)
+	}
+	originalSchema.TableDefinitions = filteredSchemaTableDefinition
+	return originalSchema
 }
