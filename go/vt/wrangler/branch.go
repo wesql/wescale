@@ -946,6 +946,8 @@ func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz
 			return err
 		}
 
+		targetSchema = filterSchemaRelatedOnlineDDLArtifact(targetSchema)
+
 		schemaBlob, err := proto.Marshal(targetSchema)
 		if err != nil {
 			return err
