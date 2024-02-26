@@ -3724,7 +3724,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	skipCopyPhase := subFlags.Bool("skip_copy_phase", true, "Branch will skip copy data phase.")
 	tabletTypes := subFlags.String("tablet_types", "in_order:REPLICA,PRIMARY", "Source tablet types to replicate from (e.g. PRIMARY, REPLICA, RDONLY). Defaults to --vreplication_tablet_type parameter value for the tablet, which has the default value of in_order:REPLICA,PRIMARY. Note: SwitchTraffic overrides this default and uses in_order:RDONLY,REPLICA,PRIMARY to switch all traffic by default.")
 	include := subFlags.String("include", "", "MoveTables only. A table spec or a list of tables. Either table_specs or --all needs to be specified.")
-	excludes := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
+	exclude := subFlags.String("exclude", "", "MoveTables only. Tables to exclude (comma-separated) if --all is specified")
 	sourceDatabase := subFlags.String("source_database", "", "MoveTables only. Source keyspace")
 	targetDatabase := subFlags.String("target_database", "", "MoveTables only. Target keyspace")
 	defaultFilterRules := subFlags.String("default_filter_rules", "", "Add WHERE clause conditions to all tables.")
@@ -3732,6 +3732,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	workflowName := subFlags.String("workflow_name", "", "WorkflowName will be the only identification for each branch jobs")
 	outputType := subFlags.String("output_type", wrangler.OutputTypeCreateTable, "specify the type of output")
 	compareObjects := subFlags.String("compare_objects", wrangler.CompareObjectsSourceTarget, "specify objects for comparing schema diff")
+	mergeOption := subFlags.String("merge_option", wrangler.MergeOptionOverride, "specify the behavior of merging schemas, should be one of: override, diff")
 	//sourceTopoUrl := subFlags.String("source_topo_url", "", "source_topo_url will point to source topology server")
 	if err := subFlags.Parse(args); err != nil {
 		return err
@@ -3744,18 +3745,18 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	switch action {
 	case vBranchWorkflowActionPrepare:
 		if *include != "" {
-			return errors.New("--include is not supportted now")
+			return errors.New("--include is not supported now")
 		}
-		if *excludes != "" {
-			return errors.New("--excludes is not supportted now")
+		if *exclude != "" {
+			return errors.New("--exclude is not supported now")
 		}
-		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy, *defaultFilterRules, *skipCopyPhase, *externalCluster)
+		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *exclude, *stopAfterCopy, *defaultFilterRules, *skipCopyPhase, *externalCluster)
 	case vBranchWorkflowActionStart:
 		err = wr.StartBranch(ctx, *workflowName)
 	case vBranchWorkflowActionStop:
 		err = wr.StopBranch(ctx, *workflowName)
 	case vBranchWorkflowActionPrepareMergeBack:
-		err = wr.PrepareMergeBackBranch(ctx, *workflowName)
+		err = wr.PrepareMergeBackBranch(ctx, *workflowName, *mergeOption)
 	case vBranchWorkflowActionStartMergeBack:
 		err = wr.StartMergeBackBranch(ctx, *workflowName)
 	case vBranchWorkflowActionCleanup:

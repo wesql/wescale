@@ -71,6 +71,9 @@ const (
 	CompareObjectsSnapshotSource = "snapshot_source"
 	CompareObjectsTargetSnapshot = "target_snapshot"
 	CompareObjectsSnapshotTarget = "snapshot_target"
+
+	MergeOptionOverride = "override"
+	MergeOptionDiff     = "diff"
 )
 
 const InsertTableRulesTemplate = "INSERT INTO mysql.branch_table_rules " +
@@ -665,46 +668,51 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 	}
 	return "", fmt.Errorf("unsupport diffType in GenerateUpdateOrInsertNewTable")
 }
-func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
-	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
-	if branchJob.externalCluster != "" {
-		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
+func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string, mergeOption string) error {
+	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+	if err != nil {
+		return err
+	}
+
+	var schemasConflictErr error
+	var analyseAndStoreDiffErr error
+	if mergeOption == MergeOptionOverride {
+		analyseAndStoreDiffErr = wr.analyseAndStoreDiff(ctx, branchJob, sourceSchema, targetSchema)
+	} else if mergeOption == MergeOptionDiff {
+		sourceSchemaForConflict, err := transformSchemaDefinitionToSchema(sourceSchema)
 		if err != nil {
 			return err
 		}
-		wr.sourceTs = externalTopo
-		log.Infof("Successfully opened external topo: %+v", externalTopo)
+		targetSchemaForConflict, err := transformSchemaDefinitionToSchema(targetSchema)
+		if err != nil {
+			return err
+		}
+		snapshotSchemaForConflict, err := transformSchemaDefinitionToSchema(snapshotSchema)
+		if err != nil {
+			return err
+		}
+
+		conflict, conflictMessage, schemasConflictErr := SchemasConflict(sourceSchemaForConflict, targetSchemaForConflict, snapshotSchemaForConflict)
+		if schemasConflictErr == nil && !conflict {
+			analyseAndStoreDiffErr = wr.analyseAndStoreDiff(ctx, branchJob, snapshotSchema, sourceSchema)
+		} else if schemasConflictErr == nil && conflict {
+			wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v conflict:\n", mergeOption, workflow)
+			wr.Logger().Printf("%s", conflictMessage)
+		}
+	} else {
+		return fmt.Errorf("invalid merge_option %s", mergeOption)
 	}
-	if err != nil {
+
+	if schemasConflictErr != nil || analyseAndStoreDiffErr != nil {
 		return err
 	}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
-	if err != nil {
-		return err
-	}
-	var tables []string
-	for _, tableRules := range branchJob.bs.FilterTableRules {
-		tables = append(tables, tableRules.TargetTable)
-	}
-	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		Tables:          tables,
-		TableSchemaOnly: true,
-		DbName:          branchJob.sourceDatabase,
-	}
-	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		TableSchemaOnly: true,
-		DbName:          branchJob.targetDatabase,
-	}
-	// analyze Schema diff between sourceDatabase and targetDatabase
-	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
-	if err != nil {
-		return err
-	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
-	if err != nil {
-		return err
-	}
-	diffEntries, err := analyzeDiffSchema(sourceSchema, targetSchema)
+	wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v successfully \n", mergeOption, workflow)
+	return nil
+}
+
+// diff(schema1) == schema2
+func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJob, schema1, schema2 *tabletmanagerdatapb.SchemaDefinition) error {
+	diffEntries, err := analyzeDiffSchema(schema1, schema2)
 	if err != nil {
 		return err
 	}
@@ -776,7 +784,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 			return fmt.Errorf("unsupport diff entry %v", entry)
 		}
 	}
-	alias, err = wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
+	alias, err := wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
 	if err != nil {
 		return err
 	}
@@ -787,7 +795,6 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 			return err
 		}
 	}
-	wr.Logger().Printf("PrepareMergeBack %v successfully \n", workflow)
 	wr.Logger().Printf("%v", logBuf.String())
 	return nil
 }
@@ -915,7 +922,9 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 }
 
 func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, compareObjectsFlag string) error {
-	targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, err := wr.getSchemas(ctx, workflow)
+	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+	sourceDatabase := branchJob.sourceDatabase
+	targetDatabase := branchJob.targetDatabase
 	if err != nil {
 		return err
 	}
@@ -991,51 +1000,60 @@ func (wr *Wrangler) restoreSchemaSnapshot(ctx context.Context, workflow string) 
 	return schemaSnapshot, nil
 }
 
-func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase string, err error) {
-	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+func (wr *Wrangler) getSourceAndTargetSchema(ctx context.Context, workflow string) (sourceSchema, targetSchema *tabletmanagerdatapb.SchemaDefinition, branchJob *BranchJob, err error) {
+	branchJob, err = GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 	if branchJob.externalCluster != "" {
 		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
 		if err != nil {
-			return nil, nil, nil, "", "", err
+			return nil, nil, nil, err
 		}
 		wr.sourceTs = externalTopo
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 	var tables []string
 	for _, tableRules := range branchJob.bs.FilterTableRules {
 		tables = append(tables, tableRules.TargetTable)
 	}
-	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+	sourceDatabaseRequest := &tabletmanagerdatapb.GetSchemaRequest{
 		Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.sourceDatabase,
 	}
-	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+	targetDatabaseRequest := &tabletmanagerdatapb.GetSchemaRequest{
 		//Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.targetDatabase,
 	}
 
-	targetSchema, err = schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	sourceSchema, err = schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseRequest)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
-	sourceSchema, err = schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
+	targetSchema, err = schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseRequest)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
+	}
+
+	return sourceSchema, targetSchema, branchJob, nil
+}
+
+func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (sourceSchema, targetSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, branchJob *BranchJob, err error) {
+	sourceSchema, targetSchema, branchJob, err = wr.getSourceAndTargetSchema(ctx, workflow)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 	snapshotSchema, err = wr.restoreSchemaSnapshot(ctx, workflow)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, nil, err
 	}
-	return targetSchema, sourceSchema, snapshotSchema, branchJob.targetDatabase, branchJob.sourceDatabase, nil
+	return sourceSchema, targetSchema, snapshotSchema, branchJob, nil
 }
 
 func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
