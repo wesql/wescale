@@ -3743,6 +3743,12 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	action = strings.ToLower(action)
 	switch action {
 	case vBranchWorkflowActionPrepare:
+		if *include != "" {
+			return errors.New("--include is not supportted now")
+		}
+		if *excludes != "" {
+			return errors.New("--excludes is not supportted now")
+		}
 		err = wr.PrepareBranch(ctx, *workflowName, *sourceDatabase, *targetDatabase, *cells, *tabletTypes, *include, *excludes, *stopAfterCopy, *defaultFilterRules, *skipCopyPhase, *externalCluster)
 	case vBranchWorkflowActionStart:
 		err = wr.StartBranch(ctx, *workflowName)
