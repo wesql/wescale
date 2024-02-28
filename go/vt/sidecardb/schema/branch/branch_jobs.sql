@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS mysql.branch_jobs
     `onddl`                          varchar(256),
     `status`                         varchar(64)      NOT NULL,
     `message`                        varchar(256),
+    `merge_timestamp`                timestamp        DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY(`workflow_name`)
     ) ENGINE = InnoDB;

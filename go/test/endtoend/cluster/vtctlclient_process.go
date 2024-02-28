@@ -184,7 +184,7 @@ func (vtctlclient *VtctlClientProcess) StopBranch(workflow string) (string, erro
 	args = append(args, "Stop")
 	return vtctlclient.ExecuteCommandWithOutput(args...)
 }
-func (vtctlclient *VtctlClientProcess) BranchPrepareMergeBack(workflow string) (string, error) {
+func (vtctlclient *VtctlClientProcess) BranchPrepareMergeBackOverride(workflow string) (string, error) {
 	args := []string{"Branch", "--"}
 	if workflow != "" {
 		args = append(args, "--workflow_name", workflow)
@@ -192,6 +192,17 @@ func (vtctlclient *VtctlClientProcess) BranchPrepareMergeBack(workflow string) (
 	args = append(args, "PrepareMergeBack")
 	return vtctlclient.ExecuteCommandWithOutput(args...)
 }
+
+func (vtctlclient *VtctlClientProcess) BranchPrepareMergeBackDiff(workflow string) (string, error) {
+	args := []string{"Branch", "--"}
+	if workflow != "" {
+		args = append(args, "--workflow_name", workflow)
+	}
+	args = append(args, "--merge_option", "diff")
+	args = append(args, "PrepareMergeBack")
+	return vtctlclient.ExecuteCommandWithOutput(args...)
+}
+
 func (vtctlclient *VtctlClientProcess) BranchStartMergeBack(workflow string) (string, error) {
 	args := []string{"Branch", "--"}
 	if workflow != "" {

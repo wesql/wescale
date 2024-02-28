@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"vitess.io/vitess/go/vt/schema"
 
@@ -53,6 +54,7 @@ type BranchJob struct {
 	stopAfterCopy    bool
 	onddl            string
 	status           string
+	mergeTimestamp   string
 }
 
 const (
@@ -77,10 +79,14 @@ const (
 )
 
 const InsertTableRulesTemplate = "INSERT INTO mysql.branch_table_rules " +
-	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) " +
-	"VALUES (%a, %a, %a, %a, %a, %a);"
+	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl, need_merge_back) " +
+	"VALUES (%a, %a, %a, %a, %a, %a,1);"
 
-const UpdateMergeDDLTemplate = "UPDATE mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and target_table_name=%a;"
+const UpdateMergeDDLTemplate = "UPDATE mysql.branch_table_rules set merge_ddl=%a, need_merge_back=1 where workflow_name=%a and target_table_name=%a;"
+
+const UpdateWorkflowNeedMergeBackFalse = "UPDATE mysql.branch_table_rules set need_merge_back=0 where workflow_name=%a;"
+
+const UpdateWorkflowMergeTimestamp = "UPDATE mysql.branch_jobs set merge_timestamp=%a where workflow_name=%a;"
 
 const SelectBranchJobByWorkflow = "select * from mysql.branch_jobs where workflow_name = '%s'"
 
@@ -88,9 +94,9 @@ const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules 
 
 const SelectBranchTableRuleByWorkflowAndTableName = "select * from mysql.branch_table_rules where workflow_name=%a and source_table_name=%a and target_table_name=%a"
 
-const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and source_table_name=%a and target_table_name=%a"
+const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a, need_merge_back=1 where workflow_name=%a and source_table_name=%a and target_table_name=%a"
 
-const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS %a"
+const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS `%s`"
 
 const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
 
@@ -338,6 +344,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 	}
 	onddl := branchJobMap["onddl"].ToString()
 	status := branchJobMap["status"].ToString()
+	mergeTimestamp := branchJobMap["merge_timestamp"].ToString()
 	branchJob := &BranchJob{
 		sourceDatabase:   sourceDatabase,
 		targetDatabase:   targetDatabase,
@@ -349,6 +356,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		onddl:            onddl,
 		cells:            cells,
 		status:           status,
+		mergeTimestamp:   mergeTimestamp,
 	}
 	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
 	if err != nil {
@@ -634,11 +642,7 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 				return "", err
 			}
 			var sqlInsertQuery string
-			dropQuery, err := sqlparser.ParseAndBind(DropTableAndDropViewTemplate,
-				sqltypes.StringBindVariable(tableName))
-			if err != nil {
-				return "", err
-			}
+			dropQuery := fmt.Sprintf(DropTableAndDropViewTemplate, tableName)
 			if len(qr.Rows) != 0 {
 				sqlInsertQuery, err = sqlparser.ParseAndBind(UpdateMergeDDLByWorkFlowAndTableName,
 					sqltypes.StringBindVariable(dropQuery),
@@ -670,14 +674,39 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 }
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string, mergeOption string) error {
 	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+
+	if branchJob.mergeTimestamp != "" {
+		wr.Logger().Printf("branch workflow %s has been merged back at %s, can not be merged again\n",
+			workflow, branchJob.mergeTimestamp)
+		return nil
+	}
+
 	if err != nil {
 		return err
 	}
 
-	var schemasConflictErr error
-	var analyseAndStoreDiffErr error
+	// we set all table entries' need_merge_back field of this workflow to false,
+	// so that if user run PrepareMergeBackBranch more than once,
+	// it can still work correctly with latest schema.
+	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
+	if err != nil {
+		return err
+	}
+	sqlUpdateWorkflowNeedMergeBackFalse, err := sqlparser.ParseAndBind(UpdateWorkflowNeedMergeBackFalse,
+		sqltypes.StringBindVariable(branchJob.workflowName))
+	if err != nil {
+		return err
+	}
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowNeedMergeBackFalse, 1, false, false)
+	if err != nil {
+		return err
+	}
+
 	if mergeOption == MergeOptionOverride {
-		analyseAndStoreDiffErr = wr.analyseAndStoreDiff(ctx, branchJob, sourceSchema, targetSchema)
+		analyseAndStoreDiffErr := wr.analyseAndStoreDiff(ctx, branchJob, sourceSchema, targetSchema)
+		if analyseAndStoreDiffErr != nil {
+			return err
+		}
 	} else if mergeOption == MergeOptionDiff {
 		sourceSchemaForConflict, err := transformSchemaDefinitionToSchema(sourceSchema)
 		if err != nil {
@@ -693,24 +722,31 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string,
 		}
 
 		conflict, conflictMessage, schemasConflictErr := SchemasConflict(sourceSchemaForConflict, targetSchemaForConflict, snapshotSchemaForConflict)
-		if schemasConflictErr == nil && !conflict {
-			analyseAndStoreDiffErr = wr.analyseAndStoreDiff(ctx, branchJob, snapshotSchema, sourceSchema)
-		} else if schemasConflictErr == nil && conflict {
+		if schemasConflictErr != nil {
+			return schemasConflictErr
+		}
+		if !conflict {
+			// start merge back branch will apply diff on sourceSchema,
+			// so here we should calculate diff which diff(snapshotSchema) == targetSchema, so diff(sourceSchema) == mergedSchema
+			analyseAndStoreDiffErr := wr.analyseAndStoreDiff(ctx, branchJob, snapshotSchema, targetSchema)
+			if analyseAndStoreDiffErr != nil {
+				return err
+			}
+		} else {
 			wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v conflict:\n", mergeOption, workflow)
 			wr.Logger().Printf("%s", conflictMessage)
+			return nil
 		}
 	} else {
 		return fmt.Errorf("invalid merge_option %s", mergeOption)
 	}
 
-	if schemasConflictErr != nil || analyseAndStoreDiffErr != nil {
-		return err
-	}
 	wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v successfully \n", mergeOption, workflow)
 	return nil
 }
 
 // diff(schema1) == schema2
+// merge_ddl will be stored with need_merge_back = 1
 func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJob, schema1, schema2 *tabletmanagerdatapb.SchemaDefinition) error {
 	diffEntries, err := analyzeDiffSchema(schema1, schema2)
 	if err != nil {
@@ -860,6 +896,27 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 			}
 			index++
 		}
+
+		sqlUpdateWorkflowNeedMergeBackFalse, err := sqlparser.ParseAndBind(UpdateWorkflowNeedMergeBackFalse,
+			sqltypes.StringBindVariable(branchJob.workflowName))
+		if err != nil {
+			return err
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowNeedMergeBackFalse, 1, false, false)
+		if err != nil {
+			return err
+		}
+
+		sqlUpdateWorkflowMergeTimestamp, err := sqlparser.ParseAndBind(UpdateWorkflowMergeTimestamp,
+			sqltypes.StringBindVariable(time.Now().Format(time.RFC3339)),
+			sqltypes.StringBindVariable(branchJob.workflowName))
+		if err != nil {
+			return err
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowMergeTimestamp, 1, false, false)
+		if err != nil {
+			return err
+		}
 		_, err = wr.ExecuteFetchAsDba(ctx, alias, "COMMIT", 1, false, false)
 		if err != nil {
 			return err
@@ -928,9 +985,6 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, co
 	if err != nil {
 		return err
 	}
-	targetSchema = filterSchemaRelatedOnlineDDLArtifact(targetSchema)
-	sourceSchema = filterSchemaRelatedOnlineDDLArtifact(sourceSchema)
-	snapshotSchema = filterSchemaRelatedOnlineDDLArtifact(snapshotSchema)
 
 	switch outputTypeFlag {
 	case OutputTypeCreateTable:
@@ -955,7 +1009,7 @@ func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz
 			return err
 		}
 
-		targetSchema = filterSchemaRelatedOnlineDDLArtifact(targetSchema)
+		targetSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(targetSchema)
 
 		schemaBlob, err := proto.Marshal(targetSchema)
 		if err != nil {
@@ -1017,12 +1071,13 @@ func (wr *Wrangler) getSourceAndTargetSchema(ctx context.Context, workflow strin
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	var tables []string
-	for _, tableRules := range branchJob.bs.FilterTableRules {
-		tables = append(tables, tableRules.TargetTable)
-	}
+	// todo: we don't support blacklist and white list now, so we just get all tables from source and target database
+	//var tables []string
+	//for _, tableRules := range branchJob.bs.FilterTableRules {
+	//	tables = append(tables, tableRules.TargetTable)
+	//}
 	sourceDatabaseRequest := &tabletmanagerdatapb.GetSchemaRequest{
-		Tables:          tables,
+		//Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.sourceDatabase,
 	}
@@ -1053,6 +1108,11 @@ func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (sourceSche
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
+
+	targetSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(targetSchema)
+	sourceSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(sourceSchema)
+	snapshotSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(snapshotSchema)
+
 	return sourceSchema, targetSchema, snapshotSchema, branchJob, nil
 }
 
@@ -1249,10 +1309,10 @@ func SchemasConflict(schema1, schema2, snapshotSchema *schemadiff.Schema) (bool,
 	return false, "", nil
 }
 
-func filterSchemaRelatedOnlineDDLArtifact(originalSchema *tabletmanagerdatapb.SchemaDefinition) *tabletmanagerdatapb.SchemaDefinition {
+func filterSchemaRelatedOnlineDDLAndGCTableArtifact(originalSchema *tabletmanagerdatapb.SchemaDefinition) *tabletmanagerdatapb.SchemaDefinition {
 	var filteredSchemaTableDefinition []*tabletmanagerdatapb.TableDefinition
 	for _, table := range originalSchema.TableDefinitions {
-		if schema.IsOnlineDDLTableName(table.Name) {
+		if schema.IsOnlineDDLTableName(table.Name) || schema.IsGCTableName(table.Name) {
 			continue
 		}
 		filteredSchemaTableDefinition = append(filteredSchemaTableDefinition, table)

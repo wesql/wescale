@@ -477,8 +477,8 @@ func TestBranchGoFakeitFunction(t *testing.T) {
 	}()
 }
 
-func TestBranchMergeBack(t *testing.T) {
-	workflowName := "TestBranchMergeBack"
+func TestBranchMergeBackOverride(t *testing.T) {
+	workflowName := "TestBranchMergeBackOverride"
 	defer func() {
 		ctx := context.Background()
 		branchSourceParams := mysql.ConnParams{
@@ -542,7 +542,7 @@ func TestBranchMergeBack(t *testing.T) {
 		VtgateExecQuery(t, &vtParamsTmp, "create table new_table(v1 int,v2 int)", "")
 	})
 	t.Run("PrepareMergeBack", func(t *testing.T) {
-		output, err := clusterInstance.VtctlclientProcess.BranchPrepareMergeBack(workflowName)
+		output, err := clusterInstance.VtctlclientProcess.BranchPrepareMergeBackOverride(workflowName)
 		require.Nil(t, err)
 		require.True(t, strings.Contains(output, "successfully"))
 		t.Logf("output : %v", output)
@@ -634,5 +634,177 @@ func TestBranchWatcher(t *testing.T) {
 		WaitForVreplicationState(t, &vtParams, workflowName, 5*time.Second, "Stopped")
 		time.Sleep(3 * time.Second)
 		CheckBranchStatus(t, &vtParams, workflowName, BranchStateOfCompleted)
+	})
+}
+
+func ExecuteOnlineDDLAndWaitSuccess(t *testing.T, vtParams *mysql.ConnParams, query string) {
+	var uuid string
+	result := onlineddl.VtgateExecDDL(t, vtParams, "vitess", query, "")
+	require.NotNil(t, result)
+	row := result.Named().Row()
+	require.NotNil(t, row)
+	uuid = row.AsString("uuid", "")
+	assert.Equal(t, schema.OnlineDDLStatusComplete, onlineddl.WaitForMigrationStatus(t, vtParams, clusterInstance.Keyspaces[0].Shards, uuid, 5*time.Minute, schema.OnlineDDLStatusComplete))
+}
+
+// getCreateTableStatement returns the CREATE TABLE statement for a given table
+func getCreateTableStatement(t *testing.T, tablet *cluster.Vttablet, dbName, tableName string) (statement string) {
+	queryResult, err := tablet.VttabletProcess.QueryTablet(fmt.Sprintf("show create table %s;", tableName), dbName, true)
+	require.Nil(t, err)
+
+	assert.Equal(t, len(queryResult.Rows), 1)
+	assert.GreaterOrEqual(t, len(queryResult.Rows[0]), 2) // table name, create statement, and if it's a view then additional columns
+	statement = queryResult.Rows[0][1].ToString()
+	return statement
+}
+
+func checkTableColExist(t *testing.T, dbName, tableName, expectColumn string) {
+	for i := range clusterInstance.Keyspaces[0].Shards {
+		createStatement := getCreateTableStatement(t, clusterInstance.Keyspaces[0].Shards[i].Vttablets[0], dbName, tableName)
+		fmt.Printf("table create statement is %s\n", createStatement)
+		assert.Contains(t, createStatement, expectColumn)
+	}
+}
+
+func checkTableColNotExist(t *testing.T, dbName, tableName, expectColumn string) {
+	for i := range clusterInstance.Keyspaces[0].Shards {
+		createStatement := getCreateTableStatement(t, clusterInstance.Keyspaces[0].Shards[i].Vttablets[0], dbName, tableName)
+		fmt.Printf("table create statement is %s\n", createStatement)
+		assert.NotContains(t, createStatement, expectColumn)
+	}
+}
+
+func TestBranchMergeBackDiff(t *testing.T) {
+	workflowName := "TestBranchMergeBackDiff"
+	sourceDatabase := "diff_source"
+	targetDatabase := "diff_target"
+
+	ctx := context.Background()
+	conn, err := mysql.Connect(ctx, &vtParams)
+	vtParamsSource := mysql.ConnParams{
+		Host:   clusterInstance.Hostname,
+		Port:   clusterInstance.VtgateMySQLPort,
+		DbName: sourceDatabase,
+	}
+	vtParamsTarget := mysql.ConnParams{
+		Host:   clusterInstance.Hostname,
+		Port:   clusterInstance.VtgateMySQLPort,
+		DbName: targetDatabase,
+	}
+
+	// create a new database diff_source as sourceSchema
+	t.Run("create source schema", func(t *testing.T) {
+		_, err = conn.ExecuteFetch(fmt.Sprintf("create database %s", sourceDatabase), -1, false)
+		require.Nil(t, err)
+
+		sourceSchemaStr := `CREATE TABLE foo (
+						id INT NOT NULL,
+						col1 INT NOT NULL,
+						col2 VARCHAR(255) NOT NULL,
+						PRIMARY KEY(id),
+						KEY col1_index(col1)
+				        )`
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsSource, sourceSchemaStr)
+		qr := VtgateExecQuery(t, &vtParamsSource, "show tables like 'foo'", "")
+		t.Logf("%v", qr.Rows)
+		require.Equal(t, len(qr.Rows[0]), 1)
+		require.Equal(t, qr.Rows[0][0].ToString(), "foo")
+	})
+
+	t.Run("prepare branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.PrepareBranch(workflowName, sourceDatabase, targetDatabase, "", "", "", "", false, "", false)
+		require.Nil(t, err)
+		require.True(t, strings.HasPrefix(output, "successfully"))
+	})
+
+	t.Run("start branch", func(t *testing.T) {
+		output, err := clusterInstance.VtctlclientProcess.StartBranch(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.HasSuffix(output, "successfully."))
+		RequireVRplicationExist(t, workflowName)
+		WaitForVreplicationState(t, &vtParams, workflowName, 5*time.Second, "Stopped")
+	})
+
+	t.Run("change schemas: add colSource on sourceSchema, add colTarget on targetSchema, then PrepareMergeBack", func(t *testing.T) {
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsSource, "alter table foo add colSource int")
+		checkTableColExist(t, sourceDatabase, "foo", "colSource")
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsTarget, "alter table foo add colBranch int")
+		checkTableColExist(t, targetDatabase, "foo", "colBranch")
+
+		// PrepareMergeBack but not start
+		output, err := clusterInstance.VtctlclientProcess.BranchPrepareMergeBackDiff(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.Contains(output, "conflict"))
+
+		// then drop col we add just now, make source and target schemas equals to snapshot schema
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsSource, "alter table foo drop colSource")
+		checkTableColNotExist(t, sourceDatabase, "foo", "colSource")
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsTarget, "alter table foo drop colBranch")
+		checkTableColNotExist(t, targetDatabase, "foo", "colBranch")
+	})
+
+	t.Run("change schemas: col1 on sourceSchema, add col3 on targetSchema", func(t *testing.T) {
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsSource, "alter table foo drop col1")
+		checkTableColNotExist(t, sourceDatabase, "foo", "col1")
+		ExecuteOnlineDDLAndWaitSuccess(t, &vtParamsTarget, "alter table foo add col3 int")
+		checkTableColExist(t, targetDatabase, "foo", "col3")
+	})
+
+	t.Run("merge back and check: merge successfully, source has col3, but doesn't have col1; target has col3 and col1", func(t *testing.T) {
+		// Although we has called prepareMergeBack just now, it doesn't matter,
+		// because prepareMergeBack is idempotent, it will not keep schema diffs computed before
+		output, err := clusterInstance.VtctlclientProcess.BranchPrepareMergeBackDiff(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.Contains(output, "successfully"))
+		t.Logf("output : %v", output)
+
+		output, err = clusterInstance.VtctlclientProcess.BranchStartMergeBack(workflowName)
+		require.Nil(t, err)
+		require.True(t, strings.Contains(output, "successfully."))
+		uuids := ExtractUUIDs(output)
+		for _, uuid := range uuids {
+			WaitForMigrationStatus(t, &vtParams, clusterInstance.Keyspaces[0].Shards, uuid, 30*time.Second, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
+		}
+
+		// source has col3, but doesn't have col1;
+		checkTableColExist(t, sourceDatabase, "foo", "col3")
+		checkTableColNotExist(t, sourceDatabase, "foo", "col1")
+
+		// target has col3 and col1
+		checkTableColExist(t, targetDatabase, "foo", "col3")
+		checkTableColExist(t, targetDatabase, "foo", "col1")
+	})
+
+	// we can not merge back a branch again
+	t.Run("can not merge back again", func(t *testing.T) {
+		// if run start merge back directly, it will not execute nothing,
+		// because all need_merge_back has been set as false
+		output, err := clusterInstance.VtctlclientProcess.BranchStartMergeBack(workflowName)
+		require.Nil(t, err)
+		uuids := ExtractUUIDs(output)
+		require.Equal(t, int(0), len(uuids))
+
+		// if run prepareMerge back, it will say "has been merged back"
+		output, err = clusterInstance.VtctlclientProcess.BranchPrepareMergeBackDiff(workflowName)
+		require.Nil(t, err)
+		t.Logf("output : %v", output)
+		require.True(t, strings.Contains(output, "has been merged back"))
+
+	})
+
+	// clean database and table entries
+	t.Run("clean up", func(t *testing.T) {
+		_, err = clusterInstance.VtctlclientProcess.Cleanupbranch(workflowName)
+		require.Nil(t, err)
+		_, err = conn.ExecuteFetch(fmt.Sprintf("drop database if exists %s", sourceDatabase), -1, false)
+		require.Nil(t, err)
+		_, err = conn.ExecuteFetch(fmt.Sprintf("drop database if exists %s", targetDatabase), -1, false)
+		require.Nil(t, err)
+		_, err = conn.ExecuteFetch("delete from mysql.vreplication where 1=1", -1, false)
+		require.Nil(t, err)
+		_, err = conn.ExecuteFetch("delete from mysql.branch_jobs where 1=1", -1, false)
+		require.Nil(t, err)
+		_, err = conn.ExecuteFetch("delete from mysql.branch_table_rules where 1=1", -1, false)
+		require.Nil(t, err)
 	})
 }

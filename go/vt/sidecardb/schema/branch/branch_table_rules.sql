@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS mysql.branch_table_rules
     `create_ddl`                        text,
     `merge_ddl`                         text,
     `skip_copy_phase`                   tinyint unsigned NOT NULL DEFAULT '1',
-    `need_merge_back`                   tinyint unsigned NOT NULL DEFAULT '1',
+    `need_merge_back`                   tinyint unsigned NOT NULL DEFAULT '0',
     `merge_ddl_uuid`                    varchar(128),
     `default_filter_rules`              text,
     PRIMARY KEY (`id`),
