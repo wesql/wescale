@@ -7,9 +7,11 @@ package wrangler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	"vitess.io/vitess/go/vt/schema"
 
 	"google.golang.org/protobuf/proto"
 
@@ -52,6 +54,7 @@ type BranchJob struct {
 	stopAfterCopy    bool
 	onddl            string
 	status           string
+	mergeTimestamp   string
 }
 
 const (
@@ -70,13 +73,20 @@ const (
 	CompareObjectsSnapshotSource = "snapshot_source"
 	CompareObjectsTargetSnapshot = "target_snapshot"
 	CompareObjectsSnapshotTarget = "snapshot_target"
+
+	MergeOptionOverride = "override"
+	MergeOptionDiff     = "diff"
 )
 
 const InsertTableRulesTemplate = "INSERT INTO mysql.branch_table_rules " +
-	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl) " +
-	"VALUES (%a, %a, %a, %a, %a, %a);"
+	"(workflow_name, source_table_name, target_table_name, filtering_rule, create_ddl, merge_ddl, need_merge_back) " +
+	"VALUES (%a, %a, %a, %a, %a, %a,1);"
 
-const UpdateMergeDDLTemplate = "UPDATE mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and target_table_name=%a;"
+const UpdateMergeDDLTemplate = "UPDATE mysql.branch_table_rules set merge_ddl=%a, need_merge_back=1 where workflow_name=%a and target_table_name=%a;"
+
+const UpdateWorkflowNeedMergeBackFalse = "UPDATE mysql.branch_table_rules set need_merge_back=0 where workflow_name=%a;"
+
+const UpdateWorkflowMergeTimestamp = "UPDATE mysql.branch_jobs set merge_timestamp=%a where workflow_name=%a;"
 
 const SelectBranchJobByWorkflow = "select * from mysql.branch_jobs where workflow_name = '%s'"
 
@@ -84,9 +94,9 @@ const SelectBranchTableRuleByWorkflow = "select * from mysql.branch_table_rules 
 
 const SelectBranchTableRuleByWorkflowAndTableName = "select * from mysql.branch_table_rules where workflow_name=%a and source_table_name=%a and target_table_name=%a"
 
-const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a where workflow_name=%a and source_table_name=%a and target_table_name=%a"
+const UpdateMergeDDLByWorkFlowAndTableName = "update mysql.branch_table_rules set merge_ddl=%a, need_merge_back=1 where workflow_name=%a and source_table_name=%a and target_table_name=%a"
 
-const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS %a"
+const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS `%s`"
 
 const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
 
@@ -334,6 +344,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 	}
 	onddl := branchJobMap["onddl"].ToString()
 	status := branchJobMap["status"].ToString()
+	mergeTimestamp := branchJobMap["merge_timestamp"].ToString()
 	branchJob := &BranchJob{
 		sourceDatabase:   sourceDatabase,
 		targetDatabase:   targetDatabase,
@@ -345,6 +356,7 @@ func GetBranchJobByWorkflow(ctx context.Context, workflow string, wr *Wrangler) 
 		onddl:            onddl,
 		cells:            cells,
 		status:           status,
+		mergeTimestamp:   mergeTimestamp,
 	}
 	branchJob.bs, err = GetBranchTableRulesByWorkflow(ctx, workflow, wr)
 	if err != nil {
@@ -541,37 +553,33 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 	return nil
 }
 func analyzeDiffSchema(source *tabletmanagerdatapb.SchemaDefinition, target *tabletmanagerdatapb.SchemaDefinition) ([]schemadiff.EntityDiff, error) {
-	var sourceQueries []string
-	var targetQueries []string
-	for _, table := range source.TableDefinitions {
-		sourceQueries = append(sourceQueries, table.Schema)
-	}
-	for _, table := range target.TableDefinitions {
-		targetQueries = append(targetQueries, table.Schema)
-	}
-	sourceSchema, err := schemadiff.NewSchemaFromQueries(sourceQueries)
+	sourceSchema, err := transformSchemaDefinitionToSchema(source)
 	if err != nil {
 		return nil, err
 	}
-	targetSchema, err := schemadiff.NewSchemaFromQueries(targetQueries)
+	targetSchema, err := transformSchemaDefinitionToSchema(target)
 	if err != nil {
 		return nil, err
 	}
+	return getSchemaDiff(sourceSchema, targetSchema)
+}
 
+func getSchemaDiff(sourceSchema *schemadiff.Schema, targetSchema *schemadiff.Schema) ([]schemadiff.EntityDiff, error) {
 	hint := schemadiff.DiffHints{}
 	diffEntries, err := sourceSchema.Diff(targetSchema, &hint)
 	if err != nil {
 		return nil, err
 	}
-	newTartgetSchema, err := sourceSchema.Apply(diffEntries)
+	newTargetSchema, err := sourceSchema.Apply(diffEntries)
 	if err != nil {
 		return nil, err
 	}
-	if targetSchema.ToSQL() != newTartgetSchema.ToSQL() {
+	if targetSchema.ToSQL() != newTargetSchema.ToSQL() {
 		return nil, fmt.Errorf("analyze diff error")
 	}
 	return diffEntries, nil
 }
+
 func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntry schemadiff.EntityDiff, branchJob *BranchJob) (string, error) {
 	switch entry := diffEntry.Statement().(type) {
 	case *sqlparser.CreateTable, *sqlparser.CreateView:
@@ -634,11 +642,7 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 				return "", err
 			}
 			var sqlInsertQuery string
-			dropQuery, err := sqlparser.ParseAndBind(DropTableAndDropViewTemplate,
-				sqltypes.StringBindVariable(tableName))
-			if err != nil {
-				return "", err
-			}
+			dropQuery := fmt.Sprintf(DropTableAndDropViewTemplate, tableName)
 			if len(qr.Rows) != 0 {
 				sqlInsertQuery, err = sqlparser.ParseAndBind(UpdateMergeDDLByWorkFlowAndTableName,
 					sqltypes.StringBindVariable(dropQuery),
@@ -668,46 +672,83 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 	}
 	return "", fmt.Errorf("unsupport diffType in GenerateUpdateOrInsertNewTable")
 }
-func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string) error {
-	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
-	if branchJob.externalCluster != "" {
-		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
-		if err != nil {
-			return err
-		}
-		wr.sourceTs = externalTopo
-		log.Infof("Successfully opened external topo: %+v", externalTopo)
+func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string, mergeOption string) error {
+	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+
+	if branchJob.mergeTimestamp != "" {
+		wr.Logger().Printf("branch workflow %s has been merged back at %s, can not be merged again\n",
+			workflow, branchJob.mergeTimestamp)
+		return nil
 	}
+
 	if err != nil {
 		return err
 	}
+
+	// we set all table entries' need_merge_back field of this workflow to false,
+	// so that if user run PrepareMergeBackBranch more than once,
+	// it can still work correctly with latest schema.
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
 		return err
 	}
-	var tables []string
-	for _, tableRules := range branchJob.bs.FilterTableRules {
-		tables = append(tables, tableRules.TargetTable)
-	}
-	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		Tables:          tables,
-		TableSchemaOnly: true,
-		DbName:          branchJob.sourceDatabase,
-	}
-	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		TableSchemaOnly: true,
-		DbName:          branchJob.targetDatabase,
-	}
-	// analyze Schema diff between sourceDatabase and targetDatabase
-	targetSchema, err := schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	sqlUpdateWorkflowNeedMergeBackFalse, err := sqlparser.ParseAndBind(UpdateWorkflowNeedMergeBackFalse,
+		sqltypes.StringBindVariable(branchJob.workflowName))
 	if err != nil {
 		return err
 	}
-	sourceSchema, err := schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowNeedMergeBackFalse, 1, false, false)
 	if err != nil {
 		return err
 	}
-	diffEntries, err := analyzeDiffSchema(sourceSchema, targetSchema)
+
+	if mergeOption == MergeOptionOverride {
+		analyseAndStoreDiffErr := wr.analyseAndStoreDiff(ctx, branchJob, sourceSchema, targetSchema)
+		if analyseAndStoreDiffErr != nil {
+			return err
+		}
+	} else if mergeOption == MergeOptionDiff {
+		sourceSchemaForConflict, err := transformSchemaDefinitionToSchema(sourceSchema)
+		if err != nil {
+			return err
+		}
+		targetSchemaForConflict, err := transformSchemaDefinitionToSchema(targetSchema)
+		if err != nil {
+			return err
+		}
+		snapshotSchemaForConflict, err := transformSchemaDefinitionToSchema(snapshotSchema)
+		if err != nil {
+			return err
+		}
+
+		conflict, conflictMessage, schemasConflictErr := SchemasConflict(sourceSchemaForConflict, targetSchemaForConflict, snapshotSchemaForConflict)
+		if schemasConflictErr != nil {
+			return schemasConflictErr
+		}
+		if !conflict {
+			// start merge back branch will apply diff on sourceSchema,
+			// so here we should calculate diff which diff(snapshotSchema) == targetSchema, so diff(sourceSchema) == mergedSchema
+			analyseAndStoreDiffErr := wr.analyseAndStoreDiff(ctx, branchJob, snapshotSchema, targetSchema)
+			if analyseAndStoreDiffErr != nil {
+				return err
+			}
+		} else {
+			wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v conflict:\n", mergeOption, workflow)
+			wr.Logger().Printf("%s", conflictMessage)
+			return nil
+		}
+	} else {
+		return fmt.Errorf("invalid merge_option %s", mergeOption)
+	}
+
+	wr.Logger().Printf("PrepareMergeBack (mergeOption=%s) %v successfully \n", mergeOption, workflow)
+	return nil
+}
+
+// diff(schema1) == schema2
+// merge_ddl will be stored with need_merge_back = 1
+func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJob, schema1, schema2 *tabletmanagerdatapb.SchemaDefinition) error {
+	diffEntries, err := analyzeDiffSchema(schema1, schema2)
 	if err != nil {
 		return err
 	}
@@ -779,7 +820,7 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 			return fmt.Errorf("unsupport diff entry %v", entry)
 		}
 	}
-	alias, err = wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
+	alias, err := wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
 	if err != nil {
 		return err
 	}
@@ -790,7 +831,6 @@ func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string)
 			return err
 		}
 	}
-	wr.Logger().Printf("PrepareMergeBack %v successfully \n", workflow)
 	wr.Logger().Printf("%v", logBuf.String())
 	return nil
 }
@@ -856,6 +896,27 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 			}
 			index++
 		}
+
+		sqlUpdateWorkflowNeedMergeBackFalse, err := sqlparser.ParseAndBind(UpdateWorkflowNeedMergeBackFalse,
+			sqltypes.StringBindVariable(branchJob.workflowName))
+		if err != nil {
+			return err
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowNeedMergeBackFalse, 1, false, false)
+		if err != nil {
+			return err
+		}
+
+		sqlUpdateWorkflowMergeTimestamp, err := sqlparser.ParseAndBind(UpdateWorkflowMergeTimestamp,
+			sqltypes.StringBindVariable(time.Now().Format(time.RFC3339)),
+			sqltypes.StringBindVariable(branchJob.workflowName))
+		if err != nil {
+			return err
+		}
+		_, err = wr.ExecuteFetchAsDba(ctx, alias, sqlUpdateWorkflowMergeTimestamp, 1, false, false)
+		if err != nil {
+			return err
+		}
 		_, err = wr.ExecuteFetchAsDba(ctx, alias, "COMMIT", 1, false, false)
 		if err != nil {
 			return err
@@ -918,7 +979,9 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 }
 
 func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, compareObjectsFlag string) error {
-	targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, err := wr.getSchemas(ctx, workflow)
+	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+	sourceDatabase := branchJob.sourceDatabase
+	targetDatabase := branchJob.targetDatabase
 	if err != nil {
 		return err
 	}
@@ -927,9 +990,9 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, co
 	case OutputTypeCreateTable:
 		return wr.analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
 	case OutputTypeDDL:
-		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, compareObjectsFlag)
 	case OutputTypeConflict:
-		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
+		return wr.analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema, compareObjectsFlag)
 	default:
 		return fmt.Errorf("%v is invalid output_type flag, should be one of %v, %v, %v",
 			outputTypeFlag, OutputTypeCreateTable, OutputTypeDDL, OutputTypeConflict)
@@ -945,6 +1008,8 @@ func (wr *Wrangler) storeSchemaSnapshot(ctx context.Context, workflow string, mz
 		if err != nil {
 			return err
 		}
+
+		targetSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(targetSchema)
 
 		schemaBlob, err := proto.Marshal(targetSchema)
 		if err != nil {
@@ -989,51 +1054,66 @@ func (wr *Wrangler) restoreSchemaSnapshot(ctx context.Context, workflow string) 
 	return schemaSnapshot, nil
 }
 
-func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase string, err error) {
-	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
+func (wr *Wrangler) getSourceAndTargetSchema(ctx context.Context, workflow string) (sourceSchema, targetSchema *tabletmanagerdatapb.SchemaDefinition, branchJob *BranchJob, err error) {
+	branchJob, err = GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
 	if branchJob.externalCluster != "" {
 		externalTopo, err := wr.ts.OpenExternalVitessClusterServer(ctx, branchJob.externalCluster)
 		if err != nil {
-			return nil, nil, nil, "", "", err
+			return nil, nil, nil, err
 		}
 		wr.sourceTs = externalTopo
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}
 	alias, err := wr.GetPrimaryTabletAlias(ctx, sidecardb.DefaultCellName)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
-	var tables []string
-	for _, tableRules := range branchJob.bs.FilterTableRules {
-		tables = append(tables, tableRules.TargetTable)
-	}
-	sourceDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
-		Tables:          tables,
+	// todo: we don't support blacklist and white list now, so we just get all tables from source and target database
+	//var tables []string
+	//for _, tableRules := range branchJob.bs.FilterTableRules {
+	//	tables = append(tables, tableRules.TargetTable)
+	//}
+	sourceDatabaseRequest := &tabletmanagerdatapb.GetSchemaRequest{
+		//Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.sourceDatabase,
 	}
-	targetDatabaseReqeust := &tabletmanagerdatapb.GetSchemaRequest{
+	targetDatabaseRequest := &tabletmanagerdatapb.GetSchemaRequest{
 		//Tables:          tables,
 		TableSchemaOnly: true,
 		DbName:          branchJob.targetDatabase,
 	}
 
-	targetSchema, err = schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseReqeust)
+	sourceSchema, err = schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseRequest)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
 	}
-	sourceSchema, err = schematools.GetSchema(ctx, wr.sourceTs, wr.tmc, alias, sourceDatabaseReqeust)
+	targetSchema, err = schematools.GetSchema(ctx, wr.TopoServer(), wr.tmc, alias, targetDatabaseRequest)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, err
+	}
+
+	return sourceSchema, targetSchema, branchJob, nil
+}
+
+func (wr *Wrangler) getSchemas(ctx context.Context, workflow string) (sourceSchema, targetSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, branchJob *BranchJob, err error) {
+	sourceSchema, targetSchema, branchJob, err = wr.getSourceAndTargetSchema(ctx, workflow)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 	snapshotSchema, err = wr.restoreSchemaSnapshot(ctx, workflow)
 	if err != nil {
-		return nil, nil, nil, "", "", err
+		return nil, nil, nil, nil, err
 	}
-	return targetSchema, sourceSchema, snapshotSchema, branchJob.targetDatabase, branchJob.sourceDatabase, nil
+
+	targetSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(targetSchema)
+	sourceSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(sourceSchema)
+	snapshotSchema = filterSchemaRelatedOnlineDDLAndGCTableArtifact(snapshotSchema)
+
+	return sourceSchema, targetSchema, snapshotSchema, branchJob, nil
 }
 
 func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
@@ -1083,14 +1163,46 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSc
 	}
 }
 
-func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, compareObjectsFlag string) error {
+	var entityDiffs []schemadiff.EntityDiff
+	var err error
 	switch compareObjectsFlag {
-	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
-
-	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
-
-	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
-
+	case CompareObjectsSourceTarget:
+		wr.Logger().Printf("The DDLs required to transform from the source schema to the target schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(sourceSchema, targetSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsTargetSource:
+		wr.Logger().Printf("The DDLs required to transform from the target schema to the source schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(targetSchema, sourceSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsTargetSnapshot:
+		wr.Logger().Printf("The DDLs required to transform from the target schema to the snapshot schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(targetSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSnapshotTarget:
+		wr.Logger().Printf("The DDLs required to transform from the snapshot schema to the target schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(snapshotSchema, targetSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSnapshotSource:
+		wr.Logger().Printf("The DDLs required to transform from the snapshot schema to the source schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(snapshotSchema, sourceSchema)
+		if err != nil {
+			return err
+		}
+	case CompareObjectsSourceSnapshot:
+		wr.Logger().Printf("The DDLs required to transform from the source schema to the snapshot schema are as follows:\n")
+		entityDiffs, err = analyzeDiffSchema(sourceSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
 			compareObjectsFlag,
@@ -1098,16 +1210,45 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, sn
 			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
 			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
 	}
-	return errors.New("not implement yet")
+	if len(entityDiffs) == 0 {
+		wr.Logger().Printf("the schemas are the same\n")
+	} else {
+		for _, entityDiff := range entityDiffs {
+			wr.Logger().Printf("entity %v\n", entityDiff.StatementString())
+		}
+	}
+	return nil
 }
 
-func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchema, snapshotSchema *tabletmanagerdatapb.SchemaDefinition, targetDatabase, sourceDatabase, compareObjectsFlag string) error {
+func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchemaDefinition, sourceSchemaDefinition, snapshotSchemaDefinition *tabletmanagerdatapb.SchemaDefinition, compareObjectsFlag string) error {
 	switch compareObjectsFlag {
 	case CompareObjectsSourceTarget, CompareObjectsTargetSource:
+		sourceSchema, err := transformSchemaDefinitionToSchema(sourceSchemaDefinition)
+		if err != nil {
+			return err
+		}
+		targetSchema, err := transformSchemaDefinitionToSchema(targetSchemaDefinition)
+		if err != nil {
+			return err
+		}
+		snapshotSchema, err := transformSchemaDefinitionToSchema(snapshotSchemaDefinition)
+		if err != nil {
+			return err
+		}
 
-	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget:
-
-	case CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+		conflict, conflictMessage, err := SchemasConflict(sourceSchema, targetSchema, snapshotSchema)
+		if err != nil {
+			return err
+		}
+		if conflict {
+			wr.Logger().Printf("the source and target schema conflict:\n%v", conflictMessage)
+		} else {
+			wr.Logger().Printf("the source and target schema are not in conflict\n")
+		}
+		return nil
+	case CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget, CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot:
+		wr.Logger().Printf("the source and target are both derived from snapshot, so there is no conflicts\n")
+		return nil
 
 	default:
 		return fmt.Errorf("%v is invalid compare_objects flag, should be one of %v, %v, %v, %v, %v, %v",
@@ -1116,5 +1257,78 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputConflict(targetSchema, sourceSchem
 			CompareObjectsTargetSnapshot, CompareObjectsSnapshotTarget,
 			CompareObjectsSnapshotSource, CompareObjectsSourceSnapshot)
 	}
-	return errors.New("not implement yet")
+}
+
+// this function check if the schema1Str and schema2 ( which are both derived from the snapshot schema) conflict using "three-way merge algorithm",
+// the algorithm is described as follows:
+// 1. Calculate the difference between main and schema1Str, view diff1 as a function: diff1(main) => schema1Str.
+// 2. Calculate the difference between main and schema2, diff2: diff2(main) => schema2.
+// 3. Apply diff1 on diff2(main), i.e., diff1(diff2(main)). If it's invalid, there's a conflict.
+// 4. Apply diff2 on diff1(main), i.e., diff2(diff1(main)). If it's invalid, there's a conflict.
+// 5. If both are valid but diff1(diff2(main)) is not equal to diff2(diff1(main)), there's a conflict.
+// 6. If both transformations are valid, and diff1(diff2(main)) equals diff2(diff1(main)), it signifies there's no conflict.
+func SchemasConflict(schema1, schema2, snapshotSchema *schemadiff.Schema) (bool, string, error) {
+	diffFromSnapshotToSchema1, err := getSchemaDiff(snapshotSchema, schema1)
+	if err != nil {
+		return true, "", err
+	}
+
+	diffFromSnapshotToSchema2, err := getSchemaDiff(snapshotSchema, schema2)
+	if err != nil {
+		return true, "", err
+	}
+
+	// apply diffFromSnapshotToSchema2 on schema1Str, check whether is valid
+	diffFromSnapshotToSchema2OnSchema1, err := schema1.Apply(diffFromSnapshotToSchema2)
+	if err != nil {
+		// we don't care about the content of error, it means we can't apply diffFromSnapshotToSchema2 on schema1Str
+		ddlStr := ""
+		for _, ddl := range diffFromSnapshotToSchema2 {
+			ddlStr += fmt.Sprintf("%s\n", ddl.StatementString())
+		}
+		return true, err.Error() + fmt.Sprintf(" when apply\n%son\n%s", ddlStr, schema1.ToSQL()), nil
+	}
+
+	// apply diffFromSnapshotToSchema1 on schema2, check whether is valid
+	diffFromSnapshotToSchema1OnSchema2, err := schema2.Apply(diffFromSnapshotToSchema1)
+	if err != nil {
+		// we don't care about the content of error, it means we can't apply diffFromSnapshotToSchema1 on schema2
+		ddlStr := ""
+		for _, ddl := range diffFromSnapshotToSchema1 {
+			ddlStr += fmt.Sprintf("%s\n", ddl.StatementString())
+		}
+		return true, err.Error() + fmt.Sprintf(" when apply\n%son\n%s", ddlStr, schema2.ToSQL()), nil
+	}
+
+	if diffFromSnapshotToSchema1OnSchema2.ToSQL() != diffFromSnapshotToSchema2OnSchema1.ToSQL() {
+		return true,
+			fmt.Sprintf("diff1(diff2(snapshot)) != diff2(diff1(snapshot)):\n--------------\n%s--------------\ndosn't equals to\n--------------\n%s--------------\n", diffFromSnapshotToSchema1OnSchema2.ToSQL(), diffFromSnapshotToSchema2OnSchema1.ToSQL()),
+			nil
+	}
+
+	return false, "", nil
+}
+
+func filterSchemaRelatedOnlineDDLAndGCTableArtifact(originalSchema *tabletmanagerdatapb.SchemaDefinition) *tabletmanagerdatapb.SchemaDefinition {
+	var filteredSchemaTableDefinition []*tabletmanagerdatapb.TableDefinition
+	for _, table := range originalSchema.TableDefinitions {
+		if schema.IsOnlineDDLTableName(table.Name) || schema.IsGCTableName(table.Name) {
+			continue
+		}
+		filteredSchemaTableDefinition = append(filteredSchemaTableDefinition, table)
+	}
+	originalSchema.TableDefinitions = filteredSchemaTableDefinition
+	return originalSchema
+}
+
+func transformSchemaDefinitionToSchema(schemaDefinition *tabletmanagerdatapb.SchemaDefinition) (*schemadiff.Schema, error) {
+	var schemaQueries []string
+	for _, table := range schemaDefinition.TableDefinitions {
+		schemaQueries = append(schemaQueries, table.Schema)
+	}
+	schema, err := schemadiff.NewSchemaFromQueries(schemaQueries)
+	if err != nil {
+		return nil, err
+	}
+	return schema, nil
 }
