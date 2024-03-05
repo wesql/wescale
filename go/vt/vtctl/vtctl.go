@@ -2076,6 +2076,7 @@ func commandMoveTables(ctx context.Context, wr *wrangler.Wrangler, subFlags *pfl
 type VReplicationWorkflowAction string
 
 const (
+	vBranchWorkflowActionCreate              = "create"
 	vBranchWorkflowActionPrepare             = "prepare"
 	vBranchWorkflowActionStart               = "start"
 	vBranchWorkflowActionStop                = "stop"
@@ -3743,7 +3744,7 @@ func commandBranch(ctx context.Context, wr *wrangler.Wrangler, subFlags *pflag.F
 	action := subFlags.Arg(0)
 	action = strings.ToLower(action)
 	switch action {
-	case vBranchWorkflowActionPrepare:
+	case vBranchWorkflowActionCreate, vBranchWorkflowActionPrepare:
 		if *include != "" {
 			return errors.New("--include is not supported now")
 		}
