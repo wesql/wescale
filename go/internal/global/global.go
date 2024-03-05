@@ -5,6 +5,8 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
 package global
 
+import "time"
+
 // Keyspace
 const (
 	DefaultKeyspace = "mysql"
@@ -35,9 +37,11 @@ const (
 	AuthServerNone       = "none"
 )
 
+// ACL
 const (
-	TableACLModeMysqlBased = MysqlBased
-	TableACLModeSimple     = "simple"
+	TableACLModeMysqlBased   = MysqlBased
+	TableACLModeSimple       = "simple"
+	DefaultACLReloadInterval = 5 * time.Second
 )
 
 const (
