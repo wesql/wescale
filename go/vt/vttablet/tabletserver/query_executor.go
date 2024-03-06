@@ -1002,10 +1002,10 @@ func (qre *QueryExecutor) txFetch(conn *StatefulConnection, record bool) (*sqlty
 	if err != nil {
 		return nil, err
 	}
-	//waitGtidPrefixAdded := false
-	//if qre.plan.PlanID == p.PlanSelect {
-	//	sql, waitGtidPrefixAdded = qre.addPrefixWaitGtid(sql)
-	//}
+	waitGtidPrefixAdded := false
+	if qre.plan.PlanID == p.PlanSelect {
+		sql, waitGtidPrefixAdded = qre.addPrefixWaitGtid(sql)
+	}
 	qr, err := qre.execStatefulConn(conn, sql, true)
 	if err != nil {
 		return nil, err
@@ -1014,12 +1014,12 @@ func (qre *QueryExecutor) txFetch(conn *StatefulConnection, record bool) (*sqlty
 	if record {
 		conn.TxProperties().RecordQuery(sql)
 	}
-	//if waitGtidPrefixAdded {
-	//	qr, err = qre.discardWaitGtidResponse(qr, err, conn.UnderlyingDBConn(), true)
-	//}
-	//if err != nil {
-	//	return nil, err
-	//}
+	if waitGtidPrefixAdded {
+		qr, err = qre.discardWaitGtidResponse(qr, err, conn.UnderlyingDBConn(), true)
+	}
+	if err != nil {
+		return nil, err
+	}
 	return qr, nil
 }
 
