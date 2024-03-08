@@ -22,7 +22,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/go-sql-driver/mysql v1.7.1
-	github.com/golang/glog v1.1.0
+	github.com/golang/glog v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
 	github.com/golang/snappy v0.0.4
