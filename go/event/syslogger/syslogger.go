@@ -52,6 +52,7 @@ import (
 	"fmt"
 	"log/syslog"
 	"os"
+	"runtime"
 
 	"vitess.io/vitess/go/event"
 	"vitess.io/vitess/go/vt/log"
@@ -147,8 +148,15 @@ func init() {
 	writer, err = syslog.New(syslog.LOG_INFO|syslog.LOG_USER, os.Args[0])
 	if err != nil {
 		log.Errorf("can't connect to syslog")
+		logStackTrace()
 		writer = nil
 	}
 
 	event.AddListener(listener)
+}
+
+func logStackTrace() {
+	var buf [4096]byte
+	n := runtime.Stack(buf[:], false)
+	log.Errorf("Stack Trace:\n%s\n", string(buf[:n]))
 }
