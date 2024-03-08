@@ -18,27 +18,51 @@ import (
 )
 
 func TestReadAfterWrite_Session(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", false, false, false)
+	runReadAfterWriteTest(t, true, "SESSION", false, false, false, false)
 }
 
 func TestReadAfterWrite_Session_Transaction(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", false, true, false)
+	runReadAfterWriteTest(t, true, "SESSION", false, true, false, false)
 }
 
 func TestReadAfterWrite_Session_Transaction_OLAP(t *testing.T) {
-	runReadAfterWriteTest(t, true, "SESSION", false, true, true)
+	runReadAfterWriteTest(t, true, "SESSION", false, true, true, false)
 }
 
 func TestReadAfterWrite_Instance(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", true, false, false)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, false, false, false)
 }
 
 func TestReadAfterWrite_Instance_Transaction(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", true, true, false)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, false, false)
 }
 
 func TestReadAfterWrite_Instance_Transaction_OLAP(t *testing.T) {
-	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true)
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true, false)
+}
+
+func TestReadAfterWrite_Session_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "SESSION", false, false, false, true)
+}
+
+func TestReadAfterWrite_Session_Transaction_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "SESSION", false, true, false, true)
+}
+
+func TestReadAfterWrite_Session_Transaction_OLAP_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "SESSION", false, true, true, true)
+}
+
+func TestReadAfterWrite_Instance_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "INSTANCE", true, false, false, true)
+}
+
+func TestReadAfterWrite_Instance_Transaction_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, false, true)
+}
+
+func TestReadAfterWrite_Instance_Transaction_OLAP_WithTimeZone(t *testing.T) {
+	runReadAfterWriteTest(t, true, "INSTANCE", true, true, true, true)
 }
 
 func TestReadAfterWrite_Global(t *testing.T) {
@@ -65,12 +89,16 @@ func TestReadAfterWrite_Session_Transaction_OLAP_CrossVTGate_And_Except_Failure(
 	runReadAfterWriteCrossVTGateTest(t, true, "SESSION", true, true)
 }
 
-func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
+func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool, setTimeZone bool) {
 	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
 		roConn := rwConn
 		if separateConn {
 			roConn = getConn()
+		}
+		if setTimeZone {
+			utils.Exec(t, rwConn, "set time_zone='+04:00'")
+			utils.Exec(t, roConn, "set time_zone='+04:00'")
 		}
 		execMulti(t, rwConn, "create table t1(c1 int primary key auto_increment, c2 int);insert into t1(c1, c2) values(null, 1)")
 

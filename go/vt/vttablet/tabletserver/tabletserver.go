@@ -1484,7 +1484,7 @@ func (tsv *TabletServer) DropSchema(ctx context.Context, target *querypb.Target,
 	return
 }
 
-func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key string, value string) error {
+func (tsv *TabletServer) SetFailPoint(_ context.Context, command string, key string, value string) error {
 	var err error
 	switch command {
 	case global.PutFailPoint:
@@ -1495,11 +1495,11 @@ func (tsv *TabletServer) SetFailPoint(ctx context.Context, command string, key s
 	return err
 }
 
-func (tsv *TabletServer) SubmitDMLJob(ctx context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
+func (tsv *TabletServer) SubmitDMLJob(_ context.Context, command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
 	return tsv.dmlJonController.HandleRequest(command, sql, jobUUID, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio, timeGapInMs, batchSize, postponeLaunch, failPolicy, false)
 }
 
-func (tsv *TabletServer) ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
+func (tsv *TabletServer) ShowDMLJob(_ context.Context, uuid string, showDetails bool) (*sqltypes.Result, error) {
 	return tsv.dmlJonController.HandleRequest(jobcontroller.ShowJob, "", uuid, "", "", "", "", "", "", 0, 0, false, "", showDetails)
 }
 
@@ -2108,7 +2108,7 @@ func (tsv *TabletServer) ConsolidatorMode() string {
 	return tsv.qe.consolidatorMode.Get()
 }
 
-func (tsv *TabletServer) ReloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error {
+func (tsv *TabletServer) ReloadExec(_ context.Context, reloadType *sqlparser.ReloadType) error {
 	switch *reloadType {
 	case sqlparser.ReloadPrivileges:
 		return tableacl.ReloadACLFromMysql()
