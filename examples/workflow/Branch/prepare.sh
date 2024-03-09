@@ -3,10 +3,10 @@
 # Licensed under the Apache v2(found in the LICENSE file in the root directory).
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../../common/env.sh"
 
-USER_COUNT=5000
-CUSTOMER_COUNT=5000
-PRODUCT_COUNT=5000
-CORDER_COUNT=200000
+USER_COUNT=50
+CUSTOMER_COUNT=50
+PRODUCT_COUNT=50
+CORDER_COUNT=200
 
 mysql -h127.0.0.1 -P15307 -e 'create database if not exists branch_source'
 
