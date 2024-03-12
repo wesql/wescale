@@ -31,25 +31,34 @@ echo "mount release cluster on dev cluster
 "
 vtctlclient Mount --server localhost:17999  --  --type vitess  --topo_type etcd2 --topo_server 172.20.0.2:12379 --topo_root /vitess/global release_cluster
 
-echo "prepare branch
+echo "prepare branch for master_db on dev cluster
 "
 vtctlclient --server localhost:17999 Branch --  --external_cluster release_cluster --source_database release_db --target_database master_db --skip_copy_phase=false --stop_after_copy=false --workflow_name release_master Prepare
 
-echo "prepare branch start
+echo "start branch for master_db on dev cluster
 "
 vtctlclient --server localhost:17999 Branch --  --workflow_name release_master Start
 
-
-echo "alter table schema on dev cluster
+echo "prepare branch for dev_db on dev cluster
 "
-mysql -h127.0.0.1 -P15308 -e "alter table master_db.corder add column col1 int;"
+vtctlclient --server localhost:17999 Branch --  --source_database master_db --target_database dev_db --skip_copy_phase=false --stop_after_copy=false --workflow_name master_dev Prepare
 
-sleep 3
-
-echo "prepare merge back
+echo "start branch for master_db on dev cluster
 "
-vtctlclient --server localhost:17999 Branch --  --workflow_name release_master prepareMergeBack
+vtctlclient --server localhost:17999 Branch --  --workflow_name master_dev Start
 
-echo "start merge back
+echo "prepare branch for feature1_db on dev cluster
 "
-vtctlclient --server localhost:17999 Branch --  --workflow_name release_master startMergeBack
+vtctlclient --server localhost:17999 Branch --  --source_database dev_db --target_database feature1_db --skip_copy_phase=false --stop_after_copy=false --workflow_name dev_feature1 Prepare
+
+echo "start branch for feature1_db on dev cluster
+"
+vtctlclient --server localhost:17999 Branch --  --workflow_name dev_feature1 Start
+
+echo "prepare branch for feature2_db on dev cluster
+"
+vtctlclient --server localhost:17999 Branch --  --source_database dev_db --target_database feature2_db --skip_copy_phase=false --stop_after_copy=false --workflow_name dev_feature2 Prepare
+
+echo "start branch for feature2_db on dev cluster
+"
+vtctlclient --server localhost:17999 Branch --  --workflow_name dev_feature2 Start
