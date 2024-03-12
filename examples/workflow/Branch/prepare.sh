@@ -8,27 +8,27 @@ CUSTOMER_COUNT=50
 PRODUCT_COUNT=50
 CORDER_COUNT=200
 
-mysql -h127.0.0.1 -P15307 -e 'create database if not exists branch_source'
+mysql -h127.0.0.1 -P15307 -e 'create database if not exists release_db'
 
-mysql -h127.0.0.1 -P15307 -e 'create table if not exists branch_source.product(
+mysql -h127.0.0.1 -P15307 -e 'create table if not exists release_db.product(
                                 sku varchar(128),
                                 description varchar(128),
                                 price bigint,
                                 primary key(sku)
                               ) ENGINE=InnoDB;
-                              create table if not exists branch_source.customer(
+                              create table if not exists release_db.customer(
                                 customer_id bigint not null auto_increment,
                                 email varchar(128),
                                 primary key(customer_id)
                               ) ENGINE=InnoDB;
-                              create table if not exists branch_source.corder(
+                              create table if not exists release_db.corder(
                                 order_id bigint not null auto_increment,
                                 customer_id bigint,
                                 sku varchar(128),
                                 price bigint,
                                 primary key(order_id)
                               ) ENGINE=InnoDB;
-                              CREATE TABLE if not exists branch_source.user (
+                              CREATE TABLE if not exists release_db.user (
                                   id INT AUTO_INCREMENT PRIMARY KEY auto_increment,
                                   name VARCHAR(255) NOT NULL
                               ) ENGINE=InnoDB;'
@@ -46,7 +46,7 @@ function insert_users() {
             batch_end=$end
         fi
 
-        SQL="INSERT INTO branch_source.user (id, name) VALUES "
+        SQL="INSERT INTO release_db.user (id, name) VALUES "
         COMMA=""
         for i in $(seq $start $batch_end)
         do
@@ -70,7 +70,7 @@ function insert_customer() {
             batch_end=$end
         fi
 
-        SQL="INSERT INTO branch_source.customer (customer_id, email) VALUES "
+        SQL="INSERT INTO release_db.customer (customer_id, email) VALUES "
         COMMA=""
         for i in $(seq $start $batch_end)
         do
@@ -94,7 +94,7 @@ function insert_product() {
             batch_end=$end
         fi
 
-        SQL="INSERT INTO branch_source.product (sku, description, price) VALUES "
+        SQL="INSERT INTO release_db.product (sku, description, price) VALUES "
         COMMA=""
         for i in $(seq $start $batch_end)
         do
@@ -118,7 +118,7 @@ function insert_corder() {
             batch_end=$end
         fi
 
-        SQL="INSERT INTO branch_source.corder (order_id, customer_id, sku, price) VALUES "
+        SQL="INSERT INTO release_db.corder (order_id, customer_id, sku, price) VALUES "
         COMMA=""
         for i in $(seq $start $batch_end)
         do

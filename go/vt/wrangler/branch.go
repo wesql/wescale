@@ -205,6 +205,11 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 		if err != nil {
 			return err
 		}
+		sourceClusterIP, err := wr.ts.GetExternalClusterIP(ctx, externalCluster)
+		if err != nil {
+			return err
+		}
+		externalTopo.Address = sourceClusterIP
 		wr.sourceTs = externalTopo
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}
@@ -459,6 +464,11 @@ func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow str
 		if err != nil {
 			return nil, err
 		}
+		sourceClusterIP, err := wr.ts.GetExternalClusterIP(ctx, ms.ExternalCluster)
+		if err != nil {
+			return nil, err
+		}
+		externalTopo.Address = sourceClusterIP
 		wr.sourceTs = externalTopo
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}
@@ -674,15 +684,14 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 }
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string, mergeOption string) error {
 	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+	if err != nil {
+		return err
+	}
 
 	if branchJob.mergeTimestamp != "" {
 		wr.Logger().Printf("branch workflow %s has been merged back at %s, can not be merged again\n",
 			workflow, branchJob.mergeTimestamp)
 		return nil
-	}
-
-	if err != nil {
-		return err
 	}
 
 	// we set all table entries' need_merge_back field of this workflow to false,
@@ -843,6 +852,11 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 		if err != nil {
 			return err
 		}
+		sourceClusterIP, err := wr.ts.GetExternalClusterIP(ctx, branchJob.externalCluster)
+		if err != nil {
+			return err
+		}
+		externalTopo.Address = sourceClusterIP
 		wr.sourceTs = externalTopo
 		vtctld = grpcvtctldserver.NewVtctldServer(wr.sourceTs)
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
@@ -908,7 +922,7 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 		}
 
 		sqlUpdateWorkflowMergeTimestamp, err := sqlparser.ParseAndBind(UpdateWorkflowMergeTimestamp,
-			sqltypes.StringBindVariable(time.Now().Format(time.RFC3339)),
+			sqltypes.StringBindVariable(time.Now().Format(time.DateTime)),
 			sqltypes.StringBindVariable(branchJob.workflowName))
 		if err != nil {
 			return err
@@ -1064,6 +1078,11 @@ func (wr *Wrangler) getSourceAndTargetSchema(ctx context.Context, workflow strin
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		sourceClusterIP, err := wr.ts.GetExternalClusterIP(ctx, branchJob.externalCluster)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		externalTopo.Address = sourceClusterIP
 		wr.sourceTs = externalTopo
 		log.Infof("Successfully opened external topo: %+v", externalTopo)
 	}

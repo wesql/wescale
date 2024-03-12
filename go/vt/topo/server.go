@@ -50,6 +50,7 @@ package topo
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/spf13/pflag"
@@ -146,6 +147,8 @@ type Server struct {
 	// will read the list of addresses for that cell from the
 	// global cluster and create clients as needed.
 	cellConns map[string]cellConn
+
+	Address string
 }
 
 type cellConn struct {
@@ -422,4 +425,19 @@ func (ts *Server) IsReadOnly() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// GetExternalClusterIP returns the etcd IP of an external cluster,
+// we assume that etcd use the same IP with other cluster components, e.g. vttablet, vtctld, vtgate.
+func (ts *Server) GetExternalClusterIP(ctx context.Context, externalCluster string) (string, error) {
+	vc, err := ts.GetExternalVitessCluster(ctx, externalCluster)
+	if err != nil {
+		return "", err
+	}
+	externalClusterTOPOService := vc.GetTopoConfig().Server
+	tmp := strings.Split(externalClusterTOPOService, ":")
+	if len(tmp) != 2 {
+		return "", fmt.Errorf("external cluster %s is not in the format of host:port", externalClusterTOPOService)
+	}
+	return tmp[0], nil
 }

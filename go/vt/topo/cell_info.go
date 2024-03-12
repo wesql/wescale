@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +23,7 @@ package topo
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strings"
 
@@ -76,6 +82,13 @@ func (ts *Server) GetCellInfo(ctx context.Context, cell string, strongRead bool)
 	ci := &topodatapb.CellInfo{}
 	if err := proto.Unmarshal(contents, ci); err != nil {
 		return nil, err
+	}
+	if ts.Address != "" {
+		tmp := strings.Split(ci.ServerAddress, ":")
+		if len(tmp) != 2 {
+			return nil, fmt.Errorf("invalid ServerAddress: %v", ci.ServerAddress)
+		}
+		ci.ServerAddress = ts.Address + ":" + tmp[1]
 	}
 	return ci, nil
 }

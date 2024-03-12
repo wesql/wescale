@@ -141,6 +141,11 @@ func newController(ctx context.Context, params map[string]string, dbClientFactor
 			if err != nil {
 				return nil, err
 			}
+			sourceClusterIP, err := ts.GetExternalClusterIP(ctx, ct.source.ExternalCluster)
+			if err != nil {
+				return nil, err
+			}
+			sourceTopo.Address = sourceClusterIP
 		}
 		tp, err := vre.tabletPickerFactory(sourceTopo, cells, ct.sourceDbName, ct.source.Shard, tabletTypesStr)
 		if err != nil {
