@@ -662,3 +662,21 @@ func TestPlanPoolUnsafe(t *testing.T) {
 		})
 	}
 }
+
+func TestXXHash(t *testing.T) {
+
+	tests := []struct {
+		content string
+		want    string
+	}{
+		{
+			content: "SELECT * FROM users WHERE id = ?",
+			want:    "6f540be5",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.content, func(t *testing.T) {
+			assert.Equalf(t, tt.want, GenerateSQLHash(tt.content), "XXHash(%v)", tt.content)
+		})
+	}
+}

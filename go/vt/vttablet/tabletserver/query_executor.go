@@ -147,6 +147,10 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		qre.tsv.Stats().ResultHistogram.Add(int64(len(reply.Rows)))
 	}(time.Now())
 
+	if err := qre.executeDatabaseProxyFilter(); err != nil {
+		return nil, err
+	}
+
 	if err = qre.checkPermissions(); err != nil {
 		return nil, err
 	}
@@ -535,6 +539,48 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 		return err
 	}
 	<-done
+	return nil
+}
+
+func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
+	// Check if the query relates to a table that is in the denylist.
+	remoteAddr := ""
+	username := ""
+	ci, ok := callinfo.FromContext(qre.ctx)
+	if ok {
+		remoteAddr = ci.RemoteAddr()
+		username = ci.Username()
+	}
+
+	bufferingTimeoutCtx, cancel := context.WithTimeout(qre.ctx, maxQueryBufferDuration)
+	defer cancel()
+
+	filterActionList := qre.plan.Rules.GetActionList(remoteAddr, username, qre.bindVars, qre.marginComments)
+	for _, filterAction := range filterActionList {
+		ruleCancelCtx := filterAction.Rule.GetCancelCtx()
+		desc := filterAction.Rule.Description
+		switch filterAction.Action {
+		case rules.QRFail:
+			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", desc)
+		case rules.QRFailRetry:
+			return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", desc)
+		case rules.QRBuffer:
+			if ruleCancelCtx != nil {
+				// We buffer up to some timeout. The timeout is determined by ctx.Done().
+				// If we're not at timeout yet, we fail the query
+				select {
+				case <-ruleCancelCtx.Done():
+					// good! We have buffered the query, and buffering is completed
+				case <-bufferingTimeoutCtx.Done():
+					// Sorry, timeout while waiting for buffering to complete
+					return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "buffer timeout in rule: %s", desc)
+				}
+			}
+		default:
+			// no rules against this query. Good to proceed
+		}
+	}
+
 	return nil
 }
 
