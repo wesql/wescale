@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -172,6 +177,7 @@ func (qrs *Rules) FilterByPlan(query string, planid planbuilder.PlanType, tableN
 }
 
 // GetAction runs the input against the rules engine and returns the action to be performed.
+// todo earayu: deprecate this function
 func (qrs *Rules) GetAction(
 	ip,
 	user string,
@@ -184,6 +190,24 @@ func (qrs *Rules) GetAction(
 		}
 	}
 	return QRContinue, nil, ""
+}
+
+// GetActionList runs the input against the rules engine and returns the action list to be performed.
+func (qrs *Rules) GetActionList(
+	ip,
+	user string,
+	bindVars map[string]*querypb.BindVariable,
+	marginComments sqlparser.MarginComments,
+) (action []*FilterAction) {
+	var actionList []*FilterAction
+	for _, qr := range qrs.rules {
+		act := qr.GetAction(ip, user, bindVars, marginComments)
+		actionList = append(actionList, &FilterAction{Action: act, Rule: qr})
+	}
+	if len(actionList) == 0 {
+		actionList = append(actionList, EmptyFilterAction)
+	}
+	return actionList
 }
 
 //-----------------------------------------------
@@ -199,26 +223,29 @@ func (qrs *Rules) GetAction(
 type Rule struct {
 	Description string
 	Name        string
+	Priority    int
+
+	// a rule can be dynamically cancelled. This function determines whether it is cancelled
+	cancelCtx context.Context
 
 	// All defined conditions must match for the rule to fire (AND).
 
-	// Regexp conditions. nil conditions are ignored (TRUE).
-	requestIP, user, query, leadingComment, trailingComment namedRegexp
-
+	//===============Plan Specific Conditions================
 	// Any matched plan will make this condition true (OR)
 	plans []planbuilder.PlanType
-
 	// Any matched tableNames will make this condition true (OR)
 	tableNames []string
+	// Regexp conditions. nil conditions are ignored (TRUE).
+	query namedRegexp
 
+	//===============Execution Specific Conditions================
+	// Regexp conditions. nil conditions are ignored (TRUE).
+	requestIP, user, leadingComment, trailingComment namedRegexp
 	// All BindVar conditions have to be fulfilled to make this true (AND)
 	bindVarConds []BindVarCond
 
 	// Action to be performed on trigger
 	act Action
-
-	// a rule can be dynamically cancelled. This function determines whether it is cancelled
-	cancelCtx context.Context
 }
 
 type namedRegexp struct {
@@ -258,6 +285,7 @@ func (qr *Rule) Equal(other *Rule) bool {
 	}
 	return (qr.Description == other.Description &&
 		qr.Name == other.Name &&
+		qr.Priority == other.Priority &&
 		qr.requestIP.Equal(other.requestIP) &&
 		qr.user.Equal(other.user) &&
 		qr.query.Equal(other.query) &&
@@ -274,6 +302,7 @@ func (qr *Rule) Copy() (newqr *Rule) {
 	newqr = &Rule{
 		Description:     qr.Description,
 		Name:            qr.Name,
+		Priority:        qr.Priority,
 		requestIP:       qr.requestIP,
 		user:            qr.user,
 		query:           qr.query,
@@ -302,6 +331,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	b := bytes.NewBuffer(nil)
 	safeEncode(b, `{"Description":`, qr.Description)
 	safeEncode(b, `,"Name":`, qr.Name)
+	safeEncode(b, `,"Priority":`, qr.Priority)
 	if qr.requestIP.Regexp != nil {
 		safeEncode(b, `,"RequestIP":`, qr.requestIP)
 	}
@@ -471,6 +501,7 @@ func (qr *Rule) FilterByPlan(query string, planid planbuilder.PlanType, tableNam
 }
 
 // GetAction returns the action for a single rule.
+// todo earayu: Not have to return an Action
 func (qr *Rule) GetAction(
 	ip,
 	user string,
@@ -487,16 +518,16 @@ func (qr *Rule) GetAction(
 			// proceed to evaluate rules
 		}
 	}
-	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
-		return QRContinue
-	}
-	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
+	if !reMatch(qr.user.Regexp, user) {
 		return QRContinue
 	}
 	if !reMatch(qr.requestIP.Regexp, ip) {
 		return QRContinue
 	}
-	if !reMatch(qr.user.Regexp, user) {
+	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
+		return QRContinue
+	}
+	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
 		return QRContinue
 	}
 	for _, bvcond := range qr.bindVarConds {
@@ -863,6 +894,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 	qr = NewQueryRule("", "", QRFail)
 	for k, v := range ruleInfo {
 		var sv string
+		var iv int
 		var lv []any
 		var ok bool
 		switch k {
@@ -870,6 +902,11 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			sv, ok = v.(string)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for %s", k)
+			}
+		case "Priority":
+			iv, ok = v.(int)
+			if !ok {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
 			}
 		case "Plans", "BindVarConds", "TableNames":
 			lv, ok = v.([]any)
@@ -882,6 +919,9 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		switch k {
 		case "Name":
 			qr.Name = sv
+		case "Priority":
+			//todo earayu: add testcase
+			qr.Priority = iv
 		case "Description":
 			qr.Description = sv
 		case "RequestIP":
@@ -1054,4 +1094,9 @@ func safeEncode(b *bytes.Buffer, prefix string, v any) {
 	if err := enc.Encode(v); err != nil {
 		_ = enc.Encode(err.Error())
 	}
+}
+
+// GetCancelCtx returns the cancel context for the rule
+func (qr *Rule) GetCancelCtx() context.Context {
+	return qr.cancelCtx
 }
