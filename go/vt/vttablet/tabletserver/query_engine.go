@@ -24,6 +24,8 @@ package tabletserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -63,9 +65,10 @@ import (
 // and track stats.
 type TabletPlan struct {
 	*planbuilder.Plan
-	Original   string
-	Rules      *rules.Rules
-	Authorized [][]*tableacl.ACLResult
+	Original        string
+	QueryTemplateID string
+	Rules           *rules.Rules
+	Authorized      [][]*tableacl.ACLResult
 
 	QueryCount   uint64
 	Time         uint64
@@ -362,7 +365,7 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql}
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
 	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableNames()...)
 	plan.buildAuthorized()
 	if plan.PlanID == planbuilder.PlanDDL || plan.PlanID == planbuilder.PlanSet {
@@ -383,7 +386,7 @@ func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, er
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql}
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
 	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName().String())
 	plan.buildAuthorized()
 	return plan, nil
@@ -551,6 +554,7 @@ func (qe *QueryEngine) handleHTTPQueryPlans(response http.ResponseWriter, reques
 	qe.plans.ForEach(func(value any) bool {
 		plan := value.(*TabletPlan)
 		response.Write([]byte(fmt.Sprintf("%#v\n", sqlparser.TruncateForUI(plan.Original))))
+		response.Write([]byte(fmt.Sprintf("%#v\n", plan.QueryTemplateID)))
 		if b, err := json.MarshalIndent(plan.Plan, "", "  "); err != nil {
 			response.Write([]byte(err.Error()))
 		} else {
@@ -719,4 +723,11 @@ func unicoded(in string) (out string) {
 // InUse returns the sum of InUse connections across managed various Pool
 func (qe *QueryEngine) InUse() int64 {
 	return qe.conns.InUse() + qe.streamConns.InUse() + qe.streamWithoutDBConns.InUse() + qe.withoutDBConns.InUse()
+}
+
+func GenerateSQLHash(sqlTemplate string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(sqlTemplate))
+	fullHash := hex.EncodeToString(hasher.Sum(nil))
+	return fullHash[:8]
 }
