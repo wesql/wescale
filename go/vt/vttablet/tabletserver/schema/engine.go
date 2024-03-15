@@ -410,7 +410,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 	} else {
 		showTablesQuery = conn.BaseShowTables()
 	}
-	tableData, err := conn.Exec(ctx, showTablesQuery, maxTableCount, false)
+	tableData, err := conn.Exec(ctx, showTablesQuery, maxTableCount, true)
 	if err != nil {
 		return vterrors.Wrapf(err, "in Engine.reload(), reading tables")
 	}
@@ -550,7 +550,7 @@ func (se *Engine) mysqlTime(ctx context.Context, conn *connpool.DBConn) (int64, 
 
 // populatePrimaryKeys populates the PKColumns for the specified tables.
 func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn, tables map[string]*Table) error {
-	pkData, err := conn.Exec(ctx, mysql.BaseShowPrimaryAllTables, maxTableCount, false)
+	pkData, err := conn.Exec(ctx, mysql.BaseShowPrimary, maxTableCount, false)
 	if err != nil {
 		return vterrors.Errorf(vtrpcpb.Code_UNKNOWN, "could not get table primary key info: %v", err)
 	}

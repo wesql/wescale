@@ -66,10 +66,10 @@ func (jc *JobController) execQuery(ctx context.Context, targetString, query stri
 		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
-	defer conn.Recycle()
 	if err != nil {
 		return result, err
 	}
+	defer conn.Recycle()
 	qr, err := conn.Exec(ctx, query, math.MaxInt32, true)
 	return qr, err
 
