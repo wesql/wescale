@@ -432,6 +432,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 		curTables[tableName] = true
 		createTime, _ := evalengine.ToInt64(row[2])
 		var fileSize, allocatedSize uint64
+		tableSchema := row[6].ToString()
 
 		if includeStats {
 			fileSize, _ = evalengine.ToUint64(row[4])
@@ -461,7 +462,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 		}
 
 		log.V(2).Infof("Reading schema for table: %s", tableName)
-		table, err := LoadTable(conn, se.cp.DBName(), tableName, row[3].ToString())
+		table, err := LoadTable(conn, tableSchema, tableName, row[3].ToString())
 		if err != nil {
 			rec.RecordError(vterrors.Wrapf(err, "in Engine.reload(), reading table %s", tableName))
 			continue
@@ -549,7 +550,7 @@ func (se *Engine) mysqlTime(ctx context.Context, conn *connpool.DBConn) (int64, 
 
 // populatePrimaryKeys populates the PKColumns for the specified tables.
 func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn, tables map[string]*Table) error {
-	pkData, err := conn.Exec(ctx, mysql.BaseShowPrimary, maxTableCount, false)
+	pkData, err := conn.Exec(ctx, mysql.BaseShowPrimaryAllTables, maxTableCount, false)
 	if err != nil {
 		return vterrors.Errorf(vtrpcpb.Code_UNKNOWN, "could not get table primary key info: %v", err)
 	}
@@ -562,7 +563,8 @@ func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn
 		colName := row[1].ToString()
 		index := table.FindColumn(sqlparser.NewIdentifierCI(colName))
 		if index < 0 {
-			return vterrors.Errorf(vtrpcpb.Code_INTERNAL, "column %v is listed as primary key, but not present in table %v", colName, tableName)
+			delete(tables, tableName)
+			continue
 		}
 		table.PKColumns = append(table.PKColumns, index)
 	}

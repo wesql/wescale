@@ -1,3 +1,8 @@
+# Copyright ApeCloud, Inc.
+# Licensed under the Apache v2(found in the LICENSE file in the root directory).
+
+
+
 [vtgate]
 gateway_initial_tablet_timeout        = 30s
 healthcheck_timeout                   = 2s
@@ -5,9 +10,9 @@ srv_topo_timeout                      = 1s
 grpc_keepalive_time                   = 10s
 grpc_keepalive_timeout                = 10s
 tablet_refresh_interval               = 1m
-read_write_splitting_policy           = least_rt
-read_write_splitting_ratio            = 54
-read_after_write_consistency          = GLOBAL
+read_write_splitting_policy           = random
+read_write_splitting_ratio            = 100
+read_after_write_consistency          = INSTANCE
 read_after_write_timeout              = 30.1
 enable_buffer                         = true
 buffer_size                           = 10000

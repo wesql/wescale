@@ -37,6 +37,11 @@ const (
 		FROM information_schema.STATISTICS
 		WHERE TABLE_SCHEMA = DATABASE() AND LOWER(INDEX_NAME) = 'primary'
 		ORDER BY table_name, SEQ_IN_INDEX`
+	BaseShowPrimaryAllTables = `
+		SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name
+		FROM information_schema.STATISTICS
+		WHERE LOWER(INDEX_NAME) = 'primary'
+		ORDER BY table_name, SEQ_IN_INDEX`
 	// BaseShowPrimaryOfTable is the base query for fetching primary key info.
 	BaseShowPrimaryOfTable = `
 		SELECT COLUMN_NAME as column_name
