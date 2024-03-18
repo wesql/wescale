@@ -246,7 +246,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 		logWant:    "RELEASE savepoint a",
 		inTxWant:   "RELEASE savepoint a",
 	}, {
-		input: "show create database db_name",
+		input: "show create database ks",
 		dbResponses: []dbResponse{{
 			query:  "show create database ks",
 			result: emptyResult,
@@ -288,7 +288,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 			tsv.SetPassthroughDMLs(tcase.passThrough)
 
 			// Test outside a transaction.
-			qre := newTestQueryExecutor(ctx, tsv, tcase.input, 0)
+			qre := newTestQueryExecutorByDbName(ctx, tsv, tsv.config.DB.DBName, tcase.input, 0)
 			got, err := qre.Execute()
 			require.NoError(t, err, tcase.input)
 			assert.Equal(t, tcase.resultWant, got, tcase.input)
@@ -1079,7 +1079,7 @@ func TestQueryExecutorTableAclDryRun(t *testing.T) {
 
 	tableACLStatsKey := strings.Join([]string{
 		"test_table",
-		"group02",
+		"EmptyGroupName",
 		planbuilder.PlanSelect.String(),
 		username,
 	}, ".")
@@ -1496,6 +1496,23 @@ func newTransaction(tsv *TabletServer, options *querypb.ExecuteOptions) int64 {
 		panic(vterrors.Wrap(err, "failed to start a transaction"))
 	}
 	return state.TransactionID
+}
+
+func newTestQueryExecutorByDbName(ctx context.Context, tsv *TabletServer, dbName, sql string, txID int64) *QueryExecutor {
+	logStats := tabletenv.NewLogStats(ctx, "TestQueryExecutor")
+	plan, err := tsv.qe.GetPlan(ctx, logStats, dbName, sql, false)
+	if err != nil {
+		panic(err)
+	}
+	return &QueryExecutor{
+		ctx:      ctx,
+		query:    sql,
+		bindVars: make(map[string]*querypb.BindVariable),
+		connID:   txID,
+		plan:     plan,
+		logStats: logStats,
+		tsv:      tsv,
+	}
 }
 
 func newTestQueryExecutor(ctx context.Context, tsv *TabletServer, sql string, txID int64) *QueryExecutor {
