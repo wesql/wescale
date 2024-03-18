@@ -246,7 +246,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 		logWant:    "RELEASE savepoint a",
 		inTxWant:   "RELEASE savepoint a",
 	}, {
-		input: "show create database db_name",
+		input: "show create database ks",
 		dbResponses: []dbResponse{{
 			query:  "show create database ks",
 			result: emptyResult,

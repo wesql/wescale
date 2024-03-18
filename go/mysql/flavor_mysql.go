@@ -315,7 +315,7 @@ func (mysqlFlavor) disableBinlogPlaybackCommand() string {
 
 // baseShowTables is part of the Flavor interface.
 func (mysqlFlavor) baseShowTables() string {
-	return "SELECT table_name, table_type, unix_timestamp(create_time), table_comment FROM information_schema.tables"
+	return "SELECT table_name, table_type, unix_timestamp(create_time),SUM(data_length + index_length),SUM(data_length + index_length), table_comment FROM information_schema.tables"
 }
 
 // TablesWithSize56 is a query to select table along with size for mysql 5.6
@@ -366,8 +366,8 @@ const TablesWithSize80 = `SELECT t.table_name,
 	UNIX_TIMESTAMP(t.create_time),
 	t.table_comment,
 	SUM(i.file_size),
-	SUM(i.allocated_size)
-    t.table_schema,
+	SUM(i.allocated_size),
+    t.table_schema
 FROM information_schema.tables t
 INNER JOIN information_schema.innodb_tablespaces i
 	ON (i.name = CONCAT(t.table_schema, '/', t.table_name) OR i.name LIKE CONCAT(t.table_schema, '/', t.table_name, '#p#%'))
