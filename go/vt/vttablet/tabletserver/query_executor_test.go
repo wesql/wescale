@@ -89,13 +89,13 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}{{
 		input: "select * from t",
 		dbResponses: []dbResponse{{
-			query:  "select * from t limit 10001",
+			query:  "select * from t limit 100001",
 			result: selectResult,
 		}},
 		resultWant: selectResult,
 		planWant:   "Select",
-		logWant:    "select * from t limit 10001",
-		inTxWant:   "select * from t limit 10001",
+		logWant:    "select * from t limit 100001",
+		inTxWant:   "select * from t limit 100001",
 	}, {
 		input: "select * from t limit 1",
 		dbResponses: []dbResponse{{
@@ -145,7 +145,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}, {
 		input: "update test_table set a=1",
 		dbResponses: []dbResponse{{
-			query:  "update test_table set a = 1 limit 10001",
+			query:  "update test_table set a = 1 limit 100001",
 			result: dmlResult,
 		}},
 		resultWant: dmlResult,
@@ -153,7 +153,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 		// The UpdateLimit query will not use autocommit because
 		// it needs to roll back on failure.
 		logWant:  "begin; update test_table set a = 1 limit 10001; commit",
-		inTxWant: "update test_table set a = 1 limit 10001",
+		inTxWant: "update test_table set a = 1 limit 100001",
 	}, {
 		input:       "update test_table set a=1",
 		passThrough: true,
@@ -167,14 +167,14 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}, {
 		input: "delete from test_table",
 		dbResponses: []dbResponse{{
-			query:  "delete from test_table limit 10001",
+			query:  "delete from test_table limit 100001",
 			result: dmlResult,
 		}},
 		resultWant: dmlResult,
 		planWant:   "DeleteLimit",
 		// The DeleteLimit query will not use autocommit because
 		// it needs to roll back on failure.
-		logWant:  "begin; delete from test_table limit 10001; commit",
+		logWant:  "begin; delete from test_table limit 100001; commit",
 		inTxWant: "delete from test_table limit 10001",
 	}, {
 		input:       "delete from test_table",

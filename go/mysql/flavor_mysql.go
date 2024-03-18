@@ -361,16 +361,17 @@ GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment,t.table_sche
 // We join with a subquery that materializes the data from `information_schema.innodb_sys_tablespaces`
 // early for performance reasons. This effectively causes only a single read of `information_schema.innodb_tablespaces`
 // per query.
-const TablesWithSize80 = `SELECT 
+const TablesWithSize80 = `SELECT t.table_name,
 	t.table_type,
 	UNIX_TIMESTAMP(t.create_time),
 	t.table_comment,
 	SUM(i.file_size),
 	SUM(i.allocated_size)
+    t.table_schema,
 FROM information_schema.tables t
 INNER JOIN information_schema.innodb_tablespaces i
 	ON (i.name = CONCAT(t.table_schema, '/', t.table_name) OR i.name LIKE CONCAT(t.table_schema, '/', t.table_name, '#p#%'))
-GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment`
+GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment,t.table_schema`
 
 // baseShowTablesWithSizes is part of the Flavor interface.
 func (mysqlFlavor56) baseShowTablesWithSizes() string {
