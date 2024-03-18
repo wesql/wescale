@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -1055,32 +1060,13 @@ func deleteTopDir(dir string) (removalErr error) {
 // executeMysqlScript executes a .sql script from an io.Reader with the mysql
 // command line tool. It uses the connParams as is, not adding credentials.
 func (mysqld *Mysqld) executeMysqlScript(connParams *mysql.ConnParams, sql io.Reader) error {
-	dir, err := vtenv.VtMysqlRoot()
+	data, err := io.ReadAll(sql)
 	if err != nil {
 		return err
 	}
-	name, err := binaryPath(dir, "mysql")
-	if err != nil {
-		return err
-	}
-	cnf, err := mysqld.defaultsExtraFile(connParams)
-	if err != nil {
-		return err
-	}
-	defer os.Remove(cnf)
-	args := []string{
-		"--defaults-extra-file=" + cnf,
-		"--batch",
-	}
-	env, err := buildLdPaths()
-	if err != nil {
-		return err
-	}
-	_, _, err = execCmd(name, args, env, dir, sql)
-	if err != nil {
-		return err
-	}
-	return nil
+	sqlStr := string(data)
+	_, err = mysqld.FetchSuperQuery(context.Background(), sqlStr)
+	return err
 }
 
 // defaultsExtraFile returns the filename for a temporary config file
