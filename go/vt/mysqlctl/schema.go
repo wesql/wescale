@@ -40,15 +40,12 @@ import (
 
 var autoIncr = regexp.MustCompile(` AUTO_INCREMENT=\d+`)
 
-// executeSchemaCommands executes some SQL commands, using the mysql
-// command line tool. It uses the dba connection parameters, with credentials.
+// executeSchemaCommands executes some SQL commands,
+// In Old version, it use the mysql command line tool to execute sql.
+// But when deployed in Ape-cloud mysql cluster, which vttablet pod don't have mysqld binary, it will cause error.
+// So we use super mysql connection to execute SQL commands Now.
 func (mysqld *Mysqld) executeSchemaCommands(sql string) error {
-	params, err := mysqld.dbcfgs.DbaConnector().MysqlParams()
-	if err != nil {
-		return err
-	}
-
-	return mysqld.executeMysqlScript(params, strings.NewReader(sql))
+	return mysqld.ExecuteSuperQuery(context.Background(), sql)
 }
 
 func encodeTableName(tableName string) string {
