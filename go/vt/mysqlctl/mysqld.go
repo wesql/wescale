@@ -1060,13 +1060,32 @@ func deleteTopDir(dir string) (removalErr error) {
 // executeMysqlScript executes a .sql script from an io.Reader with the mysql
 // command line tool. It uses the connParams as is, not adding credentials.
 func (mysqld *Mysqld) executeMysqlScript(connParams *mysql.ConnParams, sql io.Reader) error {
-	data, err := io.ReadAll(sql)
+	dir, err := vtenv.VtMysqlRoot()
 	if err != nil {
 		return err
 	}
-	sqlStr := string(data)
-	_, err = mysqld.FetchSuperQuery(context.Background(), sqlStr)
-	return err
+	name, err := binaryPath(dir, "mysql")
+	if err != nil {
+		return err
+	}
+	cnf, err := mysqld.defaultsExtraFile(connParams)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(cnf)
+	args := []string{
+		"--defaults-extra-file=" + cnf,
+		"--batch",
+	}
+	env, err := buildLdPaths()
+	if err != nil {
+		return err
+	}
+	_, _, err = execCmd(name, args, env, dir, sql)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // defaultsExtraFile returns the filename for a temporary config file
