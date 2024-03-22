@@ -3,6 +3,7 @@ package plugin
 import (
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
@@ -13,16 +14,12 @@ type NoOpPlugin struct {
 	Action rules.Action
 }
 
-func (p *NoOpPlugin) BeforeExecution() error {
+func (p *NoOpPlugin) BeforeExecution(qre *tabletserver.QueryExecutor) error {
 	return nil
 }
 
-func (p *NoOpPlugin) AfterExecution() error {
-	return nil
-}
-
-func (p *NoOpPlugin) GetPriority() int {
-	return defaultPriority
+func (p *NoOpPlugin) GetRule() *rules.Rule {
+	return p.Rule
 }
 
 type FailPlugin struct {
@@ -32,16 +29,12 @@ type FailPlugin struct {
 	Action rules.Action
 }
 
-func (p *FailPlugin) BeforeExecution() error {
+func (p *FailPlugin) BeforeExecution(qre *tabletserver.QueryExecutor) error {
 	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailPlugin) AfterExecution() error {
-	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description)
-}
-
-func (p *FailPlugin) GetPriority() int {
-	return defaultPriority
+func (p *FailPlugin) GetRule() *rules.Rule {
+	return p.Rule
 }
 
 type FailRetryPlugin struct {
@@ -51,14 +44,10 @@ type FailRetryPlugin struct {
 	Action rules.Action
 }
 
-func (p *FailRetryPlugin) BeforeExecution() error {
+func (p *FailRetryPlugin) BeforeExecution(qre *tabletserver.QueryExecutor) error {
 	return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailRetryPlugin) AfterExecution() error {
-	return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description)
-}
-
-func (p *FailRetryPlugin) GetPriority() int {
-	return defaultPriority
+func (p *FailRetryPlugin) GetRule() *rules.Rule {
+	return p.Rule
 }

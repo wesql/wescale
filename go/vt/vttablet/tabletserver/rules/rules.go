@@ -206,16 +206,16 @@ func (qrs *Rules) GetPluginList(
 		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
 		p, err := plugin.CreatePlugin(act, qr)
 		if err != nil {
-			actionList = append(actionList, &plugin.NoOpPlugin{Rule: qr})
+			actionList = append(actionList, plugin.CreateNoOpPlugin())
 			continue
 		}
 		actionList = append(actionList, p)
 	}
 	if len(actionList) == 0 {
-		actionList = append(actionList, &plugin.NoOpPlugin{})
+		actionList = append(actionList, plugin.CreateNoOpPlugin())
 	}
 	sort.SliceStable(actionList, func(i, j int) bool {
-		return actionList[i].GetPriority() < actionList[j].GetPriority()
+		return actionList[i].GetRule().Priority < actionList[j].GetRule().Priority
 	})
 	return actionList
 }
