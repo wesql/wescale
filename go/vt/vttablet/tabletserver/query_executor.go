@@ -542,7 +542,6 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 }
 
 func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
-	// Check if the query relates to a table that is in the denylist.
 	remoteAddr := ""
 	username := ""
 	ci, ok := callinfo.FromContext(qre.ctx)
@@ -553,7 +552,7 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 
 	pluginList := qre.plan.Rules.GetPluginList(remoteAddr, username, qre.bindVars, qre.marginComments)
 	for _, plugin := range pluginList {
-		err := plugin.BeforeExecution()
+		err := plugin.BeforeExecution(qre)
 		if err != nil {
 			return err
 		}

@@ -20,3 +20,7 @@ func CreatePlugin(action rules.Action, rule *rules.Rule) (PluginInterface, error
 		return nil, fmt.Errorf("unknown action: %v", action)
 	}
 }
+
+func CreateNoOpPlugin() PluginInterface {
+	return &NoOpPlugin{Rule: &rules.Rule{Name: "noop", Priority: defaultPriority}, Action: rules.QRContinue}
+}
