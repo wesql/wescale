@@ -91,6 +91,7 @@ for pkg in $flaky_tests; do
       echo "ERROR: Flaky Go unit tests in package $pkg failed too often (after $max_attempts retries). Please reduce the flakiness."
       # Mark that at least one test has exceeded the maximum retry attempts
       all_tests_passed=false
+      break
     fi
   done
 done
