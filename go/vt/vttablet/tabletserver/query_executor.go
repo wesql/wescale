@@ -1002,9 +1002,19 @@ func (qre *QueryExecutor) txFetch(conn *StatefulConnection, record bool) (*sqlty
 	if err != nil {
 		return nil, err
 	}
+	waitGtidPrefixAdded := false
+	if qre.plan.PlanID == p.PlanSelect {
+		sql, waitGtidPrefixAdded = qre.addPrefixWaitGtid(sql)
+	}
 	// Only record successful queries.
 	if record {
 		conn.TxProperties().RecordQuery(sql)
+	}
+	if waitGtidPrefixAdded {
+		qr, err = qre.discardWaitGtidResponse(qr, err, conn.UnderlyingDBConn(), true)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return qr, nil
 }
