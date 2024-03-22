@@ -28,7 +28,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 
 	"google.golang.org/protobuf/proto"
@@ -552,32 +551,11 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 		username = ci.Username()
 	}
 
-	bufferingTimeoutCtx, cancel := context.WithTimeout(qre.ctx, maxQueryBufferDuration)
-	defer cancel()
-
-	filterActionList := qre.plan.Rules.GetActionList(remoteAddr, username, qre.bindVars, qre.marginComments)
-	for _, filterAction := range filterActionList {
-		ruleCancelCtx := filterAction.Rule.GetCancelCtx()
-		desc := filterAction.Rule.Description
-		switch filterAction.Action {
-		case rules.QRFail:
-			return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", desc)
-		case rules.QRFailRetry:
-			return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", desc)
-		case rules.QRBuffer:
-			if ruleCancelCtx != nil {
-				// We buffer up to some timeout. The timeout is determined by ctx.Done().
-				// If we're not at timeout yet, we fail the query
-				select {
-				case <-ruleCancelCtx.Done():
-					// good! We have buffered the query, and buffering is completed
-				case <-bufferingTimeoutCtx.Done():
-					// Sorry, timeout while waiting for buffering to complete
-					return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "buffer timeout in rule: %s", desc)
-				}
-			}
-		default:
-			// no rules against this query. Good to proceed
+	pluginList := qre.plan.Rules.GetPluginList(remoteAddr, username, qre.bindVars, qre.marginComments)
+	for _, plugin := range pluginList {
+		err := plugin.BeforeExecution()
+		if err != nil {
+			return err
 		}
 	}
 
