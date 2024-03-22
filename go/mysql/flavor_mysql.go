@@ -315,7 +315,7 @@ func (mysqlFlavor) disableBinlogPlaybackCommand() string {
 
 // baseShowTables is part of the Flavor interface.
 func (mysqlFlavor) baseShowTables() string {
-	return "SELECT table_name, table_type, unix_timestamp(create_time),SUM(data_length + index_length),SUM(data_length + index_length), table_comment FROM information_schema.tables"
+	return "SELECT table_name, table_type, unix_timestamp(create_time),SUM(data_length + index_length),SUM(data_length + index_length), table_comment,table_schema FROM information_schema.tables"
 }
 
 // TablesWithSize56 is a query to select table along with size for mysql 5.6

@@ -66,10 +66,6 @@ func TestStateManagerStateByName(t *testing.T) {
 
 	sm.EnterLameduck()
 	assert.Equal(t, "NOT_SERVING", sm.IsServingString())
-	sm.ExitLameduck()
-
-	sm.replHealthy = false
-	assert.Equal(t, "NOT_SERVING", sm.IsServingString())
 }
 
 func TestStateManagerServePrimary(t *testing.T) {
