@@ -709,22 +709,25 @@ func newTestStateManager(t *testing.T) *stateManager {
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "StateManagerTest")
 	sm := &stateManager{
-		statelessql: NewQueryList("stateless"),
-		statefulql:  NewQueryList("stateful"),
-		olapql:      NewQueryList("olap"),
-		hs:          newHealthStreamer(env, &topodatapb.TabletAlias{}),
-		se:          &testSchemaEngine{},
-		rt:          &testReplTracker{lag: 1 * time.Second},
-		vstreamer:   &testSubcomponent{},
-		tracker:     &testSubcomponent{},
-		watcher:     &testSubcomponent{},
-		qe:          &testQueryEngine{},
-		txThrottler: &testTxThrottler{},
-		te:          &testTxEngine{},
-		messager:    &testSubcomponent{},
-		ddle:        &testOnlineDDLExecutor{},
-		throttler:   &testLagThrottler{},
-		tableGC:     &testTableGC{},
+		statelessql:      NewQueryList("stateless"),
+		statefulql:       NewQueryList("stateful"),
+		olapql:           NewQueryList("olap"),
+		hs:               newHealthStreamer(env, &topodatapb.TabletAlias{}),
+		se:               &testSchemaEngine{},
+		rt:               &testReplTracker{lag: 1 * time.Second},
+		vstreamer:        &testSubcomponent{},
+		tracker:          &testSubcomponent{},
+		watcher:          &testSubcomponent{},
+		qe:               &testQueryEngine{},
+		txThrottler:      &testTxThrottler{},
+		te:               &testTxEngine{},
+		messager:         &testSubcomponent{},
+		ddle:             &testSubcomponentWithError{},
+		throttler:        &testLagThrottler{},
+		tableGC:          &testTableGC{},
+		dmlJobController: &testSubcomponentWithError{},
+		tableACL:         &testSubcomponentWithError{},
+		branchWatch:      &testSubcomponent{},
 	}
 	sm.Init(env, &querypb.Target{})
 	sm.hs.InitDBConfig(&querypb.Target{}, fakesqldb.New(t).ConnParams())
@@ -916,17 +919,17 @@ func (te *testTxThrottler) Close() {
 	te.state = testStateClosed
 }
 
-type testOnlineDDLExecutor struct {
+type testSubcomponentWithError struct {
 	testOrderState
 }
 
-func (te *testOnlineDDLExecutor) Open() error {
+func (te *testSubcomponentWithError) Open() error {
 	te.order = order.Add(1)
 	te.state = testStateOpen
 	return nil
 }
 
-func (te *testOnlineDDLExecutor) Close() {
+func (te *testSubcomponentWithError) Close() {
 	te.order = order.Add(1)
 	te.state = testStateClosed
 }
