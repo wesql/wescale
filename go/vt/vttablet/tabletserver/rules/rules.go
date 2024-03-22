@@ -28,7 +28,9 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules/plugin"
 
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
@@ -192,21 +194,29 @@ func (qrs *Rules) GetAction(
 	return QRContinue, nil, ""
 }
 
-// GetActionList runs the input against the rules engine and returns the action list to be performed.
-func (qrs *Rules) GetActionList(
+// GetPluginList runs the input against the rules engine and returns the action list to be performed.
+func (qrs *Rules) GetPluginList(
 	ip,
 	user string,
 	bindVars map[string]*querypb.BindVariable,
 	marginComments sqlparser.MarginComments,
-) (action []*FilterAction) {
-	var actionList []*FilterAction
+) (action []plugin.PluginInterface) {
+	var actionList []plugin.PluginInterface
 	for _, qr := range qrs.rules {
-		act := qr.GetAction(ip, user, bindVars, marginComments)
-		actionList = append(actionList, &FilterAction{Action: act, Rule: qr})
+		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
+		p, err := plugin.CreatePlugin(act, qr)
+		if err != nil {
+			actionList = append(actionList, &plugin.NoOpPlugin{Rule: qr})
+			continue
+		}
+		actionList = append(actionList, p)
 	}
 	if len(actionList) == 0 {
-		actionList = append(actionList, EmptyFilterAction)
+		actionList = append(actionList, &plugin.NoOpPlugin{})
 	}
+	sort.SliceStable(actionList, func(i, j int) bool {
+		return actionList[i].GetPriority() < actionList[j].GetPriority()
+	})
 	return actionList
 }
 
@@ -501,7 +511,6 @@ func (qr *Rule) FilterByPlan(query string, planid planbuilder.PlanType, tableNam
 }
 
 // GetAction returns the action for a single rule.
-// todo earayu: Not have to return an Action
 func (qr *Rule) GetAction(
 	ip,
 	user string,
@@ -518,6 +527,32 @@ func (qr *Rule) GetAction(
 			// proceed to evaluate rules
 		}
 	}
+	if !reMatch(qr.user.Regexp, user) {
+		return QRContinue
+	}
+	if !reMatch(qr.requestIP.Regexp, ip) {
+		return QRContinue
+	}
+	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
+		return QRContinue
+	}
+	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
+		return QRContinue
+	}
+	for _, bvcond := range qr.bindVarConds {
+		if !bvMatch(bvcond, bindVars) {
+			return QRContinue
+		}
+	}
+	return qr.act
+}
+
+func (qr *Rule) FilterByExecutionInfo(
+	ip,
+	user string,
+	bindVars map[string]*querypb.BindVariable,
+	marginComments sqlparser.MarginComments,
+) Action {
 	if !reMatch(qr.user.Regexp, user) {
 		return QRContinue
 	}
@@ -594,6 +629,7 @@ const (
 	QRFail
 	QRFailRetry
 	QRBuffer
+	QRPlugin
 )
 
 // MarshalJSON marshals to JSON.
@@ -607,6 +643,8 @@ func (act Action) MarshalJSON() ([]byte, error) {
 		str = "FAIL_RETRY"
 	case QRBuffer:
 		str = "BUFFER"
+	case QRPlugin:
+		str = "PLUGIN"
 	default:
 		str = "INVALID"
 	}
@@ -988,6 +1026,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				qr.act = QRFailRetry
 			case "BUFFER":
 				qr.act = QRBuffer
+			case "PLUGIN":
+				qr.act = QRPlugin
 			default:
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", sv)
 			}
