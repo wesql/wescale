@@ -59,28 +59,28 @@ func TestActivePoolClientRowsFound(t *testing.T) {
 
 	conn2, err := pool.NewConn(ctx, &querypb.ExecuteOptions{ClientFoundRows: true}, nil)
 	require.NoError(t, err)
-	assert.Equal(t, startFoundRowsSize-1, pool.conns.Available(), "foundRows pool not used")
+	assert.Equal(t, startFoundRowsSize-1, pool.foundRowsPool.Available(), "foundRows pool not used")
 
 	// no database
 	conn3, err := pool.NewConn(ctx, &querypb.ExecuteOptions{}, setting)
 	require.NoError(t, err)
-	assert.Equal(t, startNormalSizeWithoutDB-1, pool.conns.Available(), "default pool not used")
+	assert.Equal(t, startNormalSizeWithoutDB-1, pool.connsWithoutDB.Available(), "default pool not used")
 
 	conn4, err := pool.NewConn(ctx, &querypb.ExecuteOptions{ClientFoundRows: true}, setting)
 	require.NoError(t, err)
-	assert.Equal(t, startFoundRowsWithoutDB-1, pool.conns.Available(), "foundRows pool not used")
+	assert.Equal(t, startFoundRowsWithoutDB-1, pool.foundRowsWithoutDBPool.Available(), "foundRows pool not used")
 
 	conn1.Release(tx.TxClose)
 	assert.Equal(t, startNormalSize, pool.conns.Available(), "default pool not restored after release")
 
 	conn2.Release(tx.TxClose)
-	assert.Equal(t, startFoundRowsSize, pool.conns.Available(), "default pool not restored after release")
+	assert.Equal(t, startFoundRowsSize, pool.foundRowsPool.Available(), "default pool not restored after release")
 
 	conn3.Release(tx.TxClose)
-	assert.Equal(t, startNormalSizeWithoutDB, pool.conns.Available(), "default pool not restored after release")
+	assert.Equal(t, startNormalSizeWithoutDB, pool.connsWithoutDB.Available(), "default pool not restored after release")
 
 	conn4.Release(tx.TxClose)
-	assert.Equal(t, startFoundRowsWithoutDB, pool.conns.Available(), "default pool not restored after release")
+	assert.Equal(t, startFoundRowsWithoutDB, pool.foundRowsWithoutDBPool.Available(), "default pool not restored after release")
 
 }
 

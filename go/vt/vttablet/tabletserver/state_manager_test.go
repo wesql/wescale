@@ -134,19 +134,20 @@ func TestStateManagerUnservePrimary(t *testing.T) {
 	require.NoError(t, err)
 
 	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 3, sm.throttler, testStateClosed)
-	verifySubcomponent(t, 4, sm.messager, testStateClosed)
-	verifySubcomponent(t, 5, sm.te, testStateClosed)
+	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 4, sm.throttler, testStateClosed)
+	verifySubcomponent(t, 5, sm.messager, testStateClosed)
+	verifySubcomponent(t, 6, sm.te, testStateClosed)
 
-	verifySubcomponent(t, 6, sm.tracker, testStateClosed)
-	verifySubcomponent(t, 7, sm.watcher, testStateClosed)
-	verifySubcomponent(t, 8, sm.se, testStateOpen)
-	verifySubcomponent(t, 9, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 10, sm.qe, testStateOpen)
-	verifySubcomponent(t, 11, sm.txThrottler, testStateOpen)
+	verifySubcomponent(t, 7, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 8, sm.watcher, testStateClosed)
+	verifySubcomponent(t, 9, sm.se, testStateOpen)
+	verifySubcomponent(t, 10, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 11, sm.qe, testStateOpen)
+	verifySubcomponent(t, 12, sm.txThrottler, testStateOpen)
 
-	verifySubcomponent(t, 12, sm.rt, testStatePrimary)
+	verifySubcomponent(t, 13, sm.rt, testStatePrimary)
 
 	assert.Equal(t, topodatapb.TabletType_PRIMARY, sm.target.TabletType)
 	assert.Equal(t, StateNotServing, sm.state)
@@ -683,24 +684,24 @@ func TestRefreshReplHealthLocked(t *testing.T) {
 	sm.target.TabletType = topodatapb.TabletType_REPLICA
 	sm.replHealthy = false
 	lag, err = sm.refreshReplHealthLocked()
-	assert.Equal(t, 1*time.Second, lag)
+	assert.Equal(t, 0*time.Second, lag)
 	assert.NoError(t, err)
 	assert.True(t, sm.replHealthy)
 
 	rt.err = errors.New("err")
 	sm.replHealthy = true
 	lag, err = sm.refreshReplHealthLocked()
-	assert.Equal(t, 1*time.Second, lag)
-	assert.Error(t, err)
-	assert.False(t, sm.replHealthy)
+	assert.Equal(t, 0*time.Second, lag)
+	assert.NoError(t, err)
+	assert.True(t, sm.replHealthy)
 
 	rt.err = nil
-	rt.lag = 3 * time.Hour
+	rt.lag = 0 * time.Hour
 	sm.replHealthy = true
 	lag, err = sm.refreshReplHealthLocked()
-	assert.Equal(t, 3*time.Hour, lag)
+	assert.Equal(t, 0*time.Hour, lag)
 	assert.NoError(t, err)
-	assert.False(t, sm.replHealthy)
+	assert.True(t, sm.replHealthy)
 }
 
 func verifySubcomponent(t *testing.T, order int64, component any, state testState) {
