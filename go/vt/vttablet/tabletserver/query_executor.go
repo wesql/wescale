@@ -550,7 +550,7 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 		username = ci.Username()
 	}
 
-	pluginList := qre.plan.Rules.GetPluginList(remoteAddr, username, qre.bindVars, qre.marginComments)
+	pluginList := GetPluginList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
 	for _, plugin := range pluginList {
 		err := plugin.BeforeExecution(qre)
 		if err != nil {
