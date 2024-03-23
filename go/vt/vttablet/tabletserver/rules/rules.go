@@ -28,15 +28,11 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules/plugin"
-
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
-
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vtgate/evalengine"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -52,6 +48,12 @@ const (
 // Rules is used to store and execute rules for the tabletserver.
 type Rules struct {
 	rules []*Rule
+}
+
+func (rules *Rules) ForEachRule(f func(rule *Rule)) {
+	for _, rule := range rules.rules {
+		f(rule)
+	}
 }
 
 // New creates a new Rules.
@@ -192,32 +194,6 @@ func (qrs *Rules) GetAction(
 		}
 	}
 	return QRContinue, nil, ""
-}
-
-// GetPluginList runs the input against the rules engine and returns the action list to be performed.
-func (qrs *Rules) GetPluginList(
-	ip,
-	user string,
-	bindVars map[string]*querypb.BindVariable,
-	marginComments sqlparser.MarginComments,
-) (action []plugin.PluginInterface) {
-	var actionList []plugin.PluginInterface
-	for _, qr := range qrs.rules {
-		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
-		p, err := plugin.CreatePlugin(act, qr)
-		if err != nil {
-			actionList = append(actionList, plugin.CreateNoOpPlugin())
-			continue
-		}
-		actionList = append(actionList, p)
-	}
-	if len(actionList) == 0 {
-		actionList = append(actionList, plugin.CreateNoOpPlugin())
-	}
-	sort.SliceStable(actionList, func(i, j int) bool {
-		return actionList[i].GetRule().Priority < actionList[j].GetRule().Priority
-	})
-	return actionList
 }
 
 //-----------------------------------------------
