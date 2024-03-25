@@ -24,6 +24,7 @@ package repltracker
 import (
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/proto/query"
 
 	"vitess.io/vitess/go/mysql"
@@ -79,7 +80,9 @@ func (p *poller) Status() (time.Duration, error) {
 func (p *poller) GtidExecuted() (mysql.Position, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
+	if p.mysqld == nil {
+		return mysql.Position{}, nil
+	}
 	position, err := p.mysqld.PrimaryPosition()
 	if err != nil {
 		return mysql.Position{}, err

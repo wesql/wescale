@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +71,6 @@ func TestOpenAndReload(t *testing.T) {
 			SessionStateChanges: "",
 			StatusFlags:         0,
 		})
-
 	// advance to one second after the default 1427325875.
 	db.AddQuery("select unix_timestamp()", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"t",
@@ -83,7 +87,6 @@ func TestOpenAndReload(t *testing.T) {
 	mustMatch(t, want, se.GetSchema())
 	assert.Equal(t, int64(100), se.tableFileSizeGauge.Counts()["msg"])
 	assert.Equal(t, int64(150), se.tableAllocatedSizeGauge.Counts()["msg"])
-
 	// Advance time some more.
 	db.AddQuery("select unix_timestamp()", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"t",
@@ -107,6 +110,7 @@ func TestOpenAndReload(t *testing.T) {
 				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),              // table_comment
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("128")),             // file_size
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("256")),             // allocated_size
+				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),              // table_schema
 			},
 			// test_table_04 will in spite of older timestamp because it doesn't exist yet.
 			mysql.BaseShowTablesRow("test_table_04", false, ""),
@@ -292,6 +296,7 @@ func TestReloadWithSwappedTables(t *testing.T) {
 				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("128")), // file_size
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("256")), // allocated_size
+				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),  //table_schema
 			},
 			mysql.BaseShowTablesRow("seq", false, "vitess_sequence"),
 			mysql.BaseShowTablesRow("msg", false, "vitess_message,vt_ack_wait=30,vt_purge_after=120,vt_batch_size=1,vt_cache_size=10,vt_poller_interval=30"),
@@ -349,6 +354,7 @@ func TestReloadWithSwappedTables(t *testing.T) {
 				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("128")), // file_size
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("256")), // allocated_size
+				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),  //table_schema
 			},
 			mysql.BaseShowTablesRow("test_table_04", false, ""),
 			mysql.BaseShowTablesRow("seq", false, "vitess_sequence"),

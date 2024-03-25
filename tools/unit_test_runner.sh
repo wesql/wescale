@@ -77,6 +77,9 @@ echo "$all_except_flaky_tests" | xargs go test $VT_GO_PARALLEL -v -count=1
 echo '# Flaky tests (3 attempts permitted)'
 echo "$flaky_tests"
 
+# Initialize a flag to false indicating all tests passed initially
+all_tests_passed=true
+
 # Run flaky tests sequentially. Retry when necessary.
 for pkg in $flaky_tests; do
   max_attempts=3
@@ -86,8 +89,15 @@ for pkg in $flaky_tests; do
     echo "FAILED (try $attempt/$max_attempts) in $pkg (return code $?). See above for errors."
     if [ $((++attempt)) -gt $max_attempts ]; then
       echo "ERROR: Flaky Go unit tests in package $pkg failed too often (after $max_attempts retries). Please reduce the flakiness."
-#      exit 1
+      # Mark that at least one test has exceeded the maximum retry attempts
+      all_tests_passed=false
       break
     fi
   done
 done
+
+# Check the flag at the end of all tests. Exit with 1 if any test failed after maximum attempts.
+if [ "$all_tests_passed" = false ]; then
+  echo "Some tests failed after the maximum number of retries. Exiting with error."
+  exit 1
+fi

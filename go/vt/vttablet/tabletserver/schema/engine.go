@@ -410,7 +410,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 	} else {
 		showTablesQuery = conn.BaseShowTables()
 	}
-	tableData, err := conn.Exec(ctx, showTablesQuery, maxTableCount, false)
+	tableData, err := conn.Exec(ctx, showTablesQuery, maxTableCount, true)
 	if err != nil {
 		return vterrors.Wrapf(err, "in Engine.reload(), reading tables")
 	}
@@ -432,6 +432,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 		curTables[tableName] = true
 		createTime, _ := evalengine.ToInt64(row[2])
 		var fileSize, allocatedSize uint64
+		tableSchema := row[6].ToString()
 
 		if includeStats {
 			fileSize, _ = evalengine.ToUint64(row[4])
@@ -461,7 +462,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 		}
 
 		log.V(2).Infof("Reading schema for table: %s", tableName)
-		table, err := LoadTable(conn, se.cp.DBName(), tableName, row[3].ToString())
+		table, err := LoadTable(conn, tableSchema, tableName, row[3].ToString())
 		if err != nil {
 			rec.RecordError(vterrors.Wrapf(err, "in Engine.reload(), reading table %s", tableName))
 			continue
@@ -562,7 +563,8 @@ func (se *Engine) populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn
 		colName := row[1].ToString()
 		index := table.FindColumn(sqlparser.NewIdentifierCI(colName))
 		if index < 0 {
-			return vterrors.Errorf(vtrpcpb.Code_INTERNAL, "column %v is listed as primary key, but not present in table %v", colName, tableName)
+			delete(tables, tableName)
+			continue
 		}
 		table.PKColumns = append(table.PKColumns, index)
 	}

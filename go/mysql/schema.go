@@ -32,10 +32,15 @@ import (
 
 const (
 	// BaseShowPrimary is the base query for fetching primary key info.
+	//BaseShowPrimary = `
+	//	SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name
+	//	FROM information_schema.STATISTICS
+	//	WHERE TABLE_SCHEMA = DATABASE() AND LOWER(INDEX_NAME) = 'primary'
+	//	ORDER BY table_name, SEQ_IN_INDEX`
 	BaseShowPrimary = `
 		SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name
 		FROM information_schema.STATISTICS
-		WHERE TABLE_SCHEMA = DATABASE() AND LOWER(INDEX_NAME) = 'primary'
+		WHERE LOWER(INDEX_NAME) = 'primary'
 		ORDER BY table_name, SEQ_IN_INDEX`
 	// BaseShowPrimaryOfTable is the base query for fetching primary key info.
 	BaseShowPrimaryOfTable = `
@@ -209,7 +214,18 @@ var BaseShowTablesFields = []*querypb.Field{{
 	ColumnLength: 11,
 	Charset:      collations.CollationBinaryID,
 	Flags:        uint32(querypb.MySqlFlag_BINARY_FLAG | querypb.MySqlFlag_NUM_FLAG),
-}}
+}, {
+	Name:         "t.table_schema",
+	Type:         querypb.Type_VARCHAR,
+	Table:        "tables",
+	OrgTable:     "TABLES",
+	Database:     "information_schema",
+	OrgName:      "TABLE_TYPE",
+	ColumnLength: 192,
+	Charset:      collations.CollationUtf8ID,
+	Flags:        uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
+},
+}
 
 // BaseShowTablesRow returns the fields from a BaseShowTables or
 // BaseShowTablesForTable command.
@@ -225,6 +241,7 @@ func BaseShowTablesRow(tableName string, isView bool, comment string) []sqltypes
 		sqltypes.MakeTrusted(sqltypes.VarChar, []byte(comment)),
 		sqltypes.MakeTrusted(sqltypes.Int64, []byte("100")), // file_size
 		sqltypes.MakeTrusted(sqltypes.Int64, []byte("150")), // allocated_size
+		sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),
 	}
 }
 

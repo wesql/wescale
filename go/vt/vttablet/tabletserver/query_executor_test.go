@@ -89,13 +89,13 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}{{
 		input: "select * from t",
 		dbResponses: []dbResponse{{
-			query:  "select * from t limit 10001",
+			query:  "select * from t limit 100001",
 			result: selectResult,
 		}},
 		resultWant: selectResult,
 		planWant:   "Select",
-		logWant:    "select * from t limit 10001",
-		inTxWant:   "select * from t limit 10001",
+		logWant:    "select * from t limit 100001",
+		inTxWant:   "select * from t limit 100001",
 	}, {
 		input: "select * from t limit 1",
 		dbResponses: []dbResponse{{
@@ -145,15 +145,15 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}, {
 		input: "update test_table set a=1",
 		dbResponses: []dbResponse{{
-			query:  "update test_table set a = 1 limit 10001",
+			query:  "update test_table set a = 1 limit 100001",
 			result: dmlResult,
 		}},
 		resultWant: dmlResult,
 		planWant:   "UpdateLimit",
 		// The UpdateLimit query will not use autocommit because
 		// it needs to roll back on failure.
-		logWant:  "begin; update test_table set a = 1 limit 10001; commit",
-		inTxWant: "update test_table set a = 1 limit 10001",
+		logWant:  "begin; update test_table set a = 1 limit 100001; commit",
+		inTxWant: "update test_table set a = 1 limit 100001",
 	}, {
 		input:       "update test_table set a=1",
 		passThrough: true,
@@ -167,15 +167,15 @@ func TestQueryExecutorPlans(t *testing.T) {
 	}, {
 		input: "delete from test_table",
 		dbResponses: []dbResponse{{
-			query:  "delete from test_table limit 10001",
+			query:  "delete from test_table limit 100001",
 			result: dmlResult,
 		}},
 		resultWant: dmlResult,
 		planWant:   "DeleteLimit",
 		// The DeleteLimit query will not use autocommit because
 		// it needs to roll back on failure.
-		logWant:  "begin; delete from test_table limit 10001; commit",
-		inTxWant: "delete from test_table limit 10001",
+		logWant:  "begin; delete from test_table limit 100001; commit",
+		inTxWant: "delete from test_table limit 100001",
 	}, {
 		input:       "delete from test_table",
 		passThrough: true,
@@ -246,7 +246,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 		logWant:    "RELEASE savepoint a",
 		inTxWant:   "RELEASE savepoint a",
 	}, {
-		input: "show create database db_name",
+		input: "show create database ks",
 		dbResponses: []dbResponse{{
 			query:  "show create database ks",
 			result: emptyResult,
@@ -288,7 +288,7 @@ func TestQueryExecutorPlans(t *testing.T) {
 			tsv.SetPassthroughDMLs(tcase.passThrough)
 
 			// Test outside a transaction.
-			qre := newTestQueryExecutor(ctx, tsv, tcase.input, 0)
+			qre := newTestQueryExecutorByDbName(ctx, tsv, tsv.config.DB.DBName, tcase.input, 0)
 			got, err := qre.Execute()
 			require.NoError(t, err, tcase.input)
 			assert.Equal(t, tcase.resultWant, got, tcase.input)
@@ -347,16 +347,16 @@ func TestQueryExecutorQueryAnnotation(t *testing.T) {
 	}{{
 		input: "select * from t",
 		dbResponses: []dbResponse{{
-			query:  "select * from t limit 10001",
+			query:  "select * from t limit 100001",
 			result: selectResult,
 		}, {
-			query:  "/* u1@PRIMARY */ select * from t limit 10001",
+			query:  "/* u1@PRIMARY */ select * from t limit 100001",
 			result: selectResult,
 		}},
 		resultWant: selectResult,
 		planWant:   "Select",
-		logWant:    "/* u1@PRIMARY */ select * from t limit 10001",
-		inTxWant:   "/* u1@PRIMARY */ select * from t limit 10001",
+		logWant:    "/* u1@PRIMARY */ select * from t limit 100001",
+		inTxWant:   "/* u1@PRIMARY */ select * from t limit 100001",
 	}}
 	for _, tcase := range testcases {
 		t.Run(tcase.input, func(t *testing.T) {
@@ -430,13 +430,13 @@ func TestQueryExecutorSelectImpossible(t *testing.T) {
 	}{{
 		input: "select * from t where 1 != 1",
 		dbResponses: []dbResponse{{
-			query:  "select * from t where 1 != 1 limit 10001",
+			query:  "select * from t where 1 != 1 limit 100001",
 			result: fieldResult,
 		}},
 		resultWant: fieldResult,
 		planWant:   "SelectImpossible",
-		logWant:    "select * from t where 1 != 1 limit 10001",
-		inTxWant:   "select * from t where 1 != 1 limit 10001",
+		logWant:    "select * from t where 1 != 1 limit 100001",
+		inTxWant:   "select * from t where 1 != 1 limit 100001",
 	}}
 	for _, tcase := range testcases {
 		func() {
@@ -626,7 +626,7 @@ func TestQueryExecutorPlanPassSelectWithLockOutsideATransaction(t *testing.T) {
 		Rows:   [][]sqltypes.Value{},
 	}
 	db.AddQuery(query, want)
-	db.AddQuery("select * from test_table limit 10001 for update", &sqltypes.Result{
+	db.AddQuery("select * from test_table limit 100001 for update", &sqltypes.Result{
 		Fields: getTestTableFields(),
 	})
 	ctx := context.Background()
@@ -1079,7 +1079,7 @@ func TestQueryExecutorTableAclDryRun(t *testing.T) {
 
 	tableACLStatsKey := strings.Join([]string{
 		"test_table",
-		"group02",
+		"EmptyGroupName",
 		planbuilder.PlanSelect.String(),
 		username,
 	}, ".")
@@ -1217,7 +1217,7 @@ func TestReplaceSchemaName(t *testing.T) {
 	wantQuery := fmt.Sprintf(queryFmt, fmt.Sprintf(
 		"'%s' limit %d",
 		db.Name(),
-		10001,
+		100001,
 	))
 	wantQueryStream := fmt.Sprintf(queryFmt, fmt.Sprintf(
 		"'%s'",
@@ -1291,14 +1291,14 @@ func TestQueryExecutorShouldConsolidate(t *testing.T) {
 			querypb.ExecuteOptions_CONSOLIDATOR_ENABLED,
 		},
 		queries: []string{
-			"select * from t limit 10001",
+			"select * from t limit 100001",
 			// The previous query isn't passed to the query consolidator,
 			// so the next query can't consolidate into it.
-			"select * from t limit 10001",
-			"select * from t limit 10001",
+			"select * from t limit 100001",
+			"select * from t limit 100001",
 			// This query should consolidate into the previous query
 			// that was passed to the consolidator.
-			"select * from t limit 10001",
+			"select * from t limit 100001",
 		},
 	}, {
 		consolidates: []bool{
@@ -1318,13 +1318,13 @@ func TestQueryExecutorShouldConsolidate(t *testing.T) {
 			querypb.ExecuteOptions_CONSOLIDATOR_DISABLED,
 		},
 		queries: []string{
-			"select * from t limit 10001",
-			"select * from t limit 10001",
+			"select * from t limit 100001",
+			"select * from t limit 100001",
 			// This query shouldn't be passed to the consolidator.
-			"select * from t limit 10001",
-			"select * from t limit 10001",
+			"select * from t limit 100001",
+			"select * from t limit 100001",
 			// This query shouldn't be passed to the consolidator.
-			"select * from t limit 10001",
+			"select * from t limit 100001",
 		},
 	}}
 	for _, tcase := range testcases {
@@ -1498,6 +1498,23 @@ func newTransaction(tsv *TabletServer, options *querypb.ExecuteOptions) int64 {
 	return state.TransactionID
 }
 
+func newTestQueryExecutorByDbName(ctx context.Context, tsv *TabletServer, dbName, sql string, txID int64) *QueryExecutor {
+	logStats := tabletenv.NewLogStats(ctx, "TestQueryExecutor")
+	plan, err := tsv.qe.GetPlan(ctx, logStats, dbName, sql, false)
+	if err != nil {
+		panic(err)
+	}
+	return &QueryExecutor{
+		ctx:      ctx,
+		query:    sql,
+		bindVars: make(map[string]*querypb.BindVariable),
+		connID:   txID,
+		plan:     plan,
+		logStats: logStats,
+		tsv:      tsv,
+	}
+}
+
 func newTestQueryExecutor(ctx context.Context, tsv *TabletServer, sql string, txID int64) *QueryExecutor {
 	logStats := tabletenv.NewLogStats(ctx, "TestQueryExecutor")
 	plan, err := tsv.qe.GetPlan(ctx, logStats, "", sql, false)
@@ -1620,13 +1637,13 @@ func addQueryExecutorSupportedQueries(db *fakesqldb.DB) {
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"select 0 as x from dual where 1 != 1 union select 1 as y from dual where 1 != 1 limit 10001": {
+		"select 0 as x from dual where 1 != 1 union select 1 as y from dual where 1 != 1 limit 100001": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}},
 			Rows: [][]sqltypes.Value{},
 		},
-		"select * from t where 1 != 1 limit 10001": {
+		"select * from t where 1 != 1 limit 100001": {
 			Fields: []*querypb.Field{{
 				Type: sqltypes.Uint64,
 			}, {

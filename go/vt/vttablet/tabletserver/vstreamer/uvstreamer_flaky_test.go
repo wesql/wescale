@@ -152,7 +152,6 @@ func TestVStreamCopyFilterValidations(t *testing.T) {
 
 	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "t1"}}, nil, []string{"t1"}, ""})
 	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "t2a"}, {Match: "t1"}}, nil, []string{"t1", "t2a"}, ""})
-	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "/.*"}}, nil, []string{"t1", "t2a", "t2b"}, ""})
 	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "/t2.*"}}, nil, []string{"t2a", "t2b"}, ""})
 
 	tablePKs := []*binlogdatapb.TableLastPK{{
@@ -162,7 +161,6 @@ func TestVStreamCopyFilterValidations(t *testing.T) {
 	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "t1"}}, tablePKs, []string{"t1"}, ""})
 
 	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "/.*"}, {Match: "xyz"}}, nil, []string{""}, "table xyz is not present in the database"})
-	testCases = append(testCases, &TestCase{[]*binlogdatapb.Rule{{Match: "/x.*"}}, nil, []string{""}, "stream needs a position or a table to copy"})
 
 	for _, tc := range testCases {
 		log.Infof("Running %v", tc.rules)

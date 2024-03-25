@@ -315,7 +315,7 @@ func (mysqlFlavor) disableBinlogPlaybackCommand() string {
 
 // baseShowTables is part of the Flavor interface.
 func (mysqlFlavor) baseShowTables() string {
-	return "SELECT table_name, table_type, unix_timestamp(create_time), table_comment FROM information_schema.tables WHERE table_schema = database()"
+	return "SELECT table_name, table_type, unix_timestamp(create_time),SUM(data_length + index_length),SUM(data_length + index_length), table_comment,table_schema FROM information_schema.tables"
 }
 
 // TablesWithSize56 is a query to select table along with size for mysql 5.6
@@ -324,13 +324,14 @@ const TablesWithSize56 = `SELECT table_name,
 	UNIX_TIMESTAMP(create_time) AS uts_create_time,
 	table_comment,
 	SUM(data_length + index_length),
-	SUM(data_length + index_length)
+	SUM(data_length + index_length),
+	table_schema
 FROM information_schema.tables
-WHERE table_schema = database()
 GROUP BY table_name,
 	table_type,
 	uts_create_time,
-	table_comment`
+	table_comment,
+	table_schema`
 
 // TablesWithSize57 is a query to select table along with size for mysql 5.7.
 //
@@ -346,15 +347,14 @@ const TablesWithSize57 = `SELECT t.table_name,
 	t.table_comment,
 	IFNULL(SUM(i.file_size), SUM(t.data_length + t.index_length)),
 	IFNULL(SUM(i.allocated_size), SUM(t.data_length + t.index_length))
+	t.table_schema,
 FROM information_schema.tables t
 LEFT OUTER JOIN (
 	SELECT space, file_size, allocated_size, name
 	FROM information_schema.innodb_sys_tablespaces
-	WHERE name LIKE CONCAT(database(), '/%')
 	GROUP BY space, file_size, allocated_size, name
 ) i ON i.name = CONCAT(t.table_schema, '/', t.table_name) or i.name LIKE CONCAT(t.table_schema, '/', t.table_name, '#p#%')
-WHERE t.table_schema = database()
-GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment`
+GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment,t.table_schema`
 
 // TablesWithSize80 is a query to select table along with size for mysql 8.0
 //
@@ -366,12 +366,12 @@ const TablesWithSize80 = `SELECT t.table_name,
 	UNIX_TIMESTAMP(t.create_time),
 	t.table_comment,
 	SUM(i.file_size),
-	SUM(i.allocated_size)
+	SUM(i.allocated_size),
+    t.table_schema
 FROM information_schema.tables t
 INNER JOIN information_schema.innodb_tablespaces i
-	ON i.name LIKE CONCAT(database(), '/%') AND (i.name = CONCAT(t.table_schema, '/', t.table_name) OR i.name LIKE CONCAT(t.table_schema, '/', t.table_name, '#p#%'))
-WHERE t.table_schema = database()
-GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment`
+	ON (i.name = CONCAT(t.table_schema, '/', t.table_name) OR i.name LIKE CONCAT(t.table_schema, '/', t.table_name, '#p#%'))
+GROUP BY t.table_name, t.table_type, t.create_time, t.table_comment,t.table_schema`
 
 // baseShowTablesWithSizes is part of the Flavor interface.
 func (mysqlFlavor56) baseShowTablesWithSizes() string {
