@@ -220,9 +220,12 @@ type Rule struct {
 	// Any matched plan will make this condition true (OR)
 	plans []planbuilder.PlanType
 	// Any matched tableNames will make this condition true (OR)
+	// todo filter: shoule be able to match database name & table names with wildcards. e.g.  db1.* , db1.table1 , *.t1 or *.*
 	tableNames []string
 	// Regexp conditions. nil conditions are ignored (TRUE).
 	query namedRegexp
+	// todo filter: need to add a field to support query template matching. e.g. select * from t1 where id = ?
+	// the field name may be "queryTemplate" and the value may be "select * from t1 where id = ?"
 
 	//===============Execution Specific Conditions================
 	// Regexp conditions. nil conditions are ignored (TRUE).
@@ -608,23 +611,48 @@ const (
 	QRPlugin
 )
 
+func ParseStringToAction(s string) (Action, error) {
+	switch s {
+	case "CONTINUE":
+		return QRContinue, nil
+	case "FAIL":
+		return QRFail, nil
+	case "FAIL_RETRY":
+		return QRFailRetry, nil
+	case "BUFFER":
+		return QRBuffer, nil
+	case "PLUGIN":
+		return QRPlugin, nil
+	default:
+		return QRContinue, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", s)
+	}
+}
+
+func (act Action) ToString() string {
+	switch act {
+	case QRContinue:
+		return "CONTINUE"
+	case QRFail:
+		return "FAIL"
+	case QRFailRetry:
+		return "FAIL_RETRY"
+	case QRBuffer:
+		return "BUFFER"
+	case QRPlugin:
+		return "PLUGIN"
+	default:
+		return "INVALID"
+	}
+}
+
+func (act Action) String() string {
+	return act.ToString()
+}
+
 // MarshalJSON marshals to JSON.
 func (act Action) MarshalJSON() ([]byte, error) {
 	// If we add more actions, we'll need to use a map.
-	var str string
-	switch act {
-	case QRFail:
-		str = "FAIL"
-	case QRFailRetry:
-		str = "FAIL_RETRY"
-	case QRBuffer:
-		str = "BUFFER"
-	case QRPlugin:
-		str = "PLUGIN"
-	default:
-		str = "INVALID"
-	}
-	return json.Marshal(str)
+	return json.Marshal(act.ToString())
 }
 
 // BindVarCond represents a bind var condition.
@@ -995,20 +1023,11 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 			}
 		case "Action":
-			switch sv {
-			case "CONTINUE":
-				qr.act = QRContinue
-			case "FAIL":
-				qr.act = QRFail
-			case "FAIL_RETRY":
-				qr.act = QRFailRetry
-			case "BUFFER":
-				qr.act = QRBuffer
-			case "PLUGIN":
-				qr.act = QRPlugin
-			default:
-				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", sv)
+			act, err := ParseStringToAction(sv)
+			if err != nil {
+				return nil, err
 			}
+			qr.act = act
 		}
 	}
 	return qr, nil
