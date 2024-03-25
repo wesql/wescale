@@ -1982,18 +1982,10 @@ func (tsv *TabletServer) registerDebugEnvHandler() {
 func (tsv *TabletServer) registerDebugConfigHandler() {
 	tsv.exporter.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
 
-		rstMap := make(map[string]struct {
-			Value pflag.Value
-			Usage string
-			Type  string
-		})
+		rstMap := make(map[string]pflag.Value)
 		tabletFlagSet := servenv.GetFlagSetFor("vttablet")
 		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
-			rstMap[flag.Name] = struct {
-				Value pflag.Value
-				Usage string
-				Type  string
-			}{Value: flag.Value, Usage: flag.Usage, Type: flag.Value.Type()}
+			rstMap[flag.Name] = flag.Value
 		})
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")

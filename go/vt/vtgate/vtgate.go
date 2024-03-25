@@ -448,18 +448,11 @@ func (vtg *VTGate) registerDebugEnvHandler() {
 func (vtg *VTGate) registerDebugConfigHandler() {
 	http.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
 
-		rstMap := make(map[string]struct {
-			Value pflag.Value
-			Usage string
-			Type  string
-		})
+		rstMap := make(map[string]pflag.Value)
+
 		tabletFlagSet := servenv.GetFlagSetFor("vtgate")
 		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
-			rstMap[flag.Name] = struct {
-				Value pflag.Value
-				Usage string
-				Type  string
-			}{Value: flag.Value, Usage: flag.Usage, Type: flag.Value.Type()}
+			rstMap[flag.Name] = flag.Value
 		})
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
