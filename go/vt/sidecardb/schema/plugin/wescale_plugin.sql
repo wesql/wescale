@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS mysql.wescale_plugin
 
     `name`                           varchar(256) NOT NULL,
     `description`                    text,
-    `priority`                       int NOT NULL,
+    `priority`                       int NOT NULL DEFAULT 1000,
+    `status`                         varchar(64) NOT NULL comment 'ACTIVE, INACTIVE, DRY_RUN',
 
     `plans`                          text,
     `tableNames`                     varchar(1024),
@@ -22,3 +23,5 @@ CREATE TABLE IF NOT EXISTS mysql.wescale_plugin
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
 ) ENGINE = InnoDB;
+
+# todo earayu: fix all table names to be uncapitalized
