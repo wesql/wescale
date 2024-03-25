@@ -2,6 +2,7 @@ package topocustomrule
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -21,14 +22,14 @@ var (
 	databaseCustomRuleEnable         = true
 	databaseCustomRuleDbName         = sidecardb.SidecarDBName
 	databaseCustomRuleTableName      = "wescale_plugin"
-	databaseCustomRuleReloadInterval = 60 * time.Second
+	databaseCustomRuleReloadInterval = 1 * time.Second
 )
 
 func registerFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(&databaseCustomRuleEnable, "database_custom_rule_enable", true, "enable database custom rule")
-	fs.StringVar(&databaseCustomRuleDbName, "database_custom_rule_db_name", sidecardb.SidecarDBName, "sidecar db name for customrules file. default is mysql")
-	fs.StringVar(&databaseCustomRuleTableName, "database_custom_rule_table_name", "wescale_plugin", "table name for customrules file. default is wescale_plugin")
-	fs.DurationVar(&databaseCustomRuleReloadInterval, "database_custom_rule_reload_interval", 60*time.Second, "reload interval for customrules file. default is 60s")
+	fs.BoolVar(&databaseCustomRuleEnable, "database_custom_rule_enable", databaseCustomRuleEnable, "enable database custom rule")
+	fs.StringVar(&databaseCustomRuleDbName, "database_custom_rule_db_name", databaseCustomRuleDbName, "sidecar db name for customrules file. default is mysql")
+	fs.StringVar(&databaseCustomRuleTableName, "database_custom_rule_table_name", databaseCustomRuleTableName, "table name for customrules file. default is wescale_plugin")
+	fs.DurationVar(&databaseCustomRuleReloadInterval, "database_custom_rule_reload_interval", databaseCustomRuleReloadInterval, "reload interval for customrules file. default is 60s")
 }
 
 func init() {
@@ -82,18 +83,51 @@ func (cr *databaseCustomRule) apply(qr *sqltypes.Result) error {
 	qrs := rules.New()
 	for _, row := range qr.Named().Rows {
 		ruleInfo := make(map[string]any)
-		ruleInfo["name"] = row.AsString("name", "")
-		ruleInfo["description"] = row.AsString("description", "")
-		ruleInfo["priority"] = row.AsInt64("priority", 1000)
-		ruleInfo["plans"] = row.AsString("plans", "")
-		ruleInfo["tableNames"] = row.AsString("tableNames", "")
-		ruleInfo["sql_regex"] = row.AsString("sql_regex", "")
-		ruleInfo["request_ip_regex"] = row.AsString("request_ip_regex", "")
-		ruleInfo["user_regex"] = row.AsString("user_regex", "")
-		ruleInfo["leadingComment_regex"] = row.AsString("leadingComment_regex", "")
-		ruleInfo["trailingComment_regex"] = row.AsString("trailingComment_regex", "")
-		ruleInfo["bindVarConds"] = row.AsString("bindVarConds", "")
-		ruleInfo["action"] = row.AsString("action", "")
+		ruleInfo["Name"] = row.AsString("name", "")
+		ruleInfo["Description"] = row.AsString("description", "")
+		ruleInfo["Priority"] = int(row.AsInt64("priority", 1000))
+		//ruleInfo["status"] = row.AsString("status", "")
+
+		// parse Plans
+		plansStringData := row.AsString("plans", "")
+		if plansStringData != "" {
+			plans, err := unmarshalArray(plansStringData)
+			if err != nil {
+				log.Errorf("Failed to unmarshal plans: %v", err)
+				continue
+			}
+			ruleInfo["Plans"] = plans
+		}
+
+		// parse TableNames
+		tableNamesData := row.AsString("tableNames", "")
+		if tableNamesData != "" {
+			tables, err := unmarshalArray(tableNamesData)
+			if err != nil {
+				log.Errorf("Failed to unmarshal plans: %v", err)
+				continue
+			}
+			ruleInfo["TableNames"] = tables
+		}
+
+		ruleInfo["Query"] = row.AsString("sql_regex", "")
+		ruleInfo["RequestIP"] = row.AsString("request_ip_regex", "")
+		ruleInfo["User"] = row.AsString("user_regex", "")
+		ruleInfo["LeadingComment"] = row.AsString("leadingComment_regex", "")
+		ruleInfo["TrailingComment"] = row.AsString("trailingComment_regex", "")
+
+		// parse BindVarConds
+		bindVarCondsData := row.AsString("bindVarConds", "")
+		if bindVarCondsData != "" {
+			bindVarConds, err := unmarshalArray(bindVarCondsData)
+			if err != nil {
+				log.Errorf("Failed to unmarshal plans: %v", err)
+				continue
+			}
+			ruleInfo["BindVarConds"] = bindVarConds
+		}
+
+		ruleInfo["Action"] = row.AsString("action", "")
 		rule, err := rules.BuildQueryRule(ruleInfo)
 		if err != nil {
 			log.Errorf("Failed to build rule: %v", err)
@@ -137,6 +171,12 @@ func (cr *databaseCustomRule) reloadFromDatabase() error {
 
 func (cr *databaseCustomRule) getReloadSql() string {
 	return fmt.Sprintf("SELECT * FROM %s.%s", databaseCustomRuleDbName, databaseCustomRuleTableName)
+}
+
+func unmarshalArray(rawData string) ([]any, error) {
+	result := make([]any, 0)
+	err := json.Unmarshal([]byte(rawData), &result)
+	return result, err
 }
 
 // activateTopoCustomRules activates database dynamic custom rule mechanism.
