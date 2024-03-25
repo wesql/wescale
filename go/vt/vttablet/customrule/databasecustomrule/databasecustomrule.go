@@ -60,7 +60,7 @@ func newDatabaseCustomRule(qsc tabletserver.Controller) (*databaseCustomRule, er
 func (cr *databaseCustomRule) start() {
 	go func() {
 		for {
-			if err := cr.reloadFromDatabase(); err != nil {
+			if err := cr.reloadRulesFromDatabase(); err != nil {
 				log.Warningf("Background watch of database custom rule failed: %v", err)
 			}
 
@@ -78,7 +78,7 @@ func (cr *databaseCustomRule) stop() {
 	cr.stopped.CompareAndSwap(false, true)
 }
 
-func (cr *databaseCustomRule) apply(qr *sqltypes.Result) error {
+func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 	qrs := rules.New()
 	for _, row := range qr.Named().Rows {
 		if cr.stopped.Load() {
@@ -148,7 +148,7 @@ func (cr *databaseCustomRule) apply(qr *sqltypes.Result) error {
 	return nil
 }
 
-func (cr *databaseCustomRule) reloadFromDatabase() error {
+func (cr *databaseCustomRule) reloadRulesFromDatabase() error {
 	conn, err := cr.controller.SchemaEngine().GetConnection(context.Background())
 	if err != nil {
 		return fmt.Errorf("databaseCustomRule failed to get mysql connection: %v", err)
@@ -160,9 +160,9 @@ func (cr *databaseCustomRule) reloadFromDatabase() error {
 	if err != nil {
 		return fmt.Errorf("databaseCustomRule failed to get custom rules: %v", err)
 	}
-	// iterate over the rows and apply the rules
-	if err := cr.apply(qr); err != nil {
-		return fmt.Errorf("databaseCustomRule failed to apply custom rules: %v", err)
+	// iterate over the rows and applyRules the rules
+	if err := cr.applyRules(qr); err != nil {
+		return fmt.Errorf("databaseCustomRule failed to applyRules custom rules: %v", err)
 	}
 
 	return nil
