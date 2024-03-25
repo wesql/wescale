@@ -25,6 +25,7 @@ package vtgate
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -389,6 +390,8 @@ func Init(
 	})
 	rpcVTGate.registerDebugHealthHandler()
 	rpcVTGate.registerDebugEnvHandler()
+	rpcVTGate.registerDebugConfigHandler()
+
 	err := initQueryLogger(rpcVTGate)
 	if err != nil {
 		log.Fatalf("error initializing query logger: %v", err)
@@ -439,6 +442,30 @@ func resolveAndLoadKeyspace(ctx context.Context, srvResolver *srvtopo.Resolver, 
 func (vtg *VTGate) registerDebugEnvHandler() {
 	http.HandleFunc("/debug/env", func(w http.ResponseWriter, r *http.Request) {
 		debugEnvHandler(vtg, w, r)
+	})
+}
+
+func (vtg *VTGate) registerDebugConfigHandler() {
+	http.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
+
+		rstMap := make(map[string]struct {
+			Value pflag.Value
+			Usage string
+			Type  string
+		})
+		tabletFlagSet := servenv.GetFlagSetFor("vtgate")
+		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
+			rstMap[flag.Name] = struct {
+				Value pflag.Value
+				Usage string
+				Type  string
+			}{Value: flag.Value, Usage: flag.Usage, Type: flag.Value.Type()}
+		})
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		data, _ := json.Marshal(rstMap)
+		w.Write(data)
 	})
 }
 

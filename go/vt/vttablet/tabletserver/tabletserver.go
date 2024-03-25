@@ -33,6 +33,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 
 	"github.com/pingcap/failpoint"
@@ -240,6 +242,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.registerMigrationStatusHandler()
 	tsv.registerThrottlerHandlers()
 	tsv.registerDebugEnvHandler()
+	tsv.registerDebugConfigHandler()
 
 	return tsv
 }
@@ -1973,6 +1976,30 @@ func (tsv *TabletServer) registerThrottlerHandlers() {
 func (tsv *TabletServer) registerDebugEnvHandler() {
 	tsv.exporter.HandleFunc("/debug/env", func(w http.ResponseWriter, r *http.Request) {
 		debugEnvHandler(tsv, w, r)
+	})
+}
+
+func (tsv *TabletServer) registerDebugConfigHandler() {
+	tsv.exporter.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
+
+		rstMap := make(map[string]struct {
+			Value pflag.Value
+			Usage string
+			Type  string
+		})
+		tabletFlagSet := servenv.GetFlagSetFor("vttablet")
+		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
+			rstMap[flag.Name] = struct {
+				Value pflag.Value
+				Usage string
+				Type  string
+			}{Value: flag.Value, Usage: flag.Usage, Type: flag.Value.Type()}
+		})
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		data, _ := json.Marshal(rstMap)
+		w.Write(data)
 	})
 }
 
