@@ -386,7 +386,7 @@ func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, er
 		return nil, err
 	}
 	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
-	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName().String())
+	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName())
 	plan.buildAuthorized()
 	return plan, nil
 }
@@ -400,7 +400,7 @@ func (qe *QueryEngine) GetMessageStreamPlan(name string) (*TabletPlan, error) {
 		return nil, err
 	}
 	plan := &TabletPlan{Plan: splan}
-	plan.Rules = qe.queryRuleSources.FilterByPlan("stream from "+name, plan.PlanID, plan.TableName().String())
+	plan.Rules = qe.queryRuleSources.FilterByPlan("stream from "+name, plan.PlanID, plan.TableName())
 	plan.buildAuthorized()
 	return plan, nil
 }
@@ -576,7 +576,7 @@ func (qe *QueryEngine) handleHTTPQueryStats(response http.ResponseWriter, reques
 
 		var pqstats perQueryStats
 		pqstats.Query = unicoded(sqlparser.TruncateForUI(plan.Original))
-		pqstats.Table = plan.TableName().String()
+		pqstats.Table = plan.TableName()
 		pqstats.Plan = plan.PlanID
 		pqstats.QueryCount, pqstats.Time, pqstats.MysqlTime, pqstats.RowsAffected, pqstats.RowsReturned, pqstats.ErrorCount = plan.Stats()
 

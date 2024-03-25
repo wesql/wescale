@@ -23,6 +23,7 @@ package planbuilder
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
@@ -188,22 +189,17 @@ type Plan struct {
 }
 
 // TableName returns the table name for the plan.
-func (plan *Plan) TableName() sqlparser.IdentifierCS {
-	var tableName sqlparser.IdentifierCS
-	if plan.Table != nil {
-		tableName = plan.Table.Name
+func (plan *Plan) TableName() string {
+	for _, permission := range plan.Permissions {
+		return fmt.Sprintf("%s.%s", permission.Database, permission.TableName)
 	}
-	return tableName
+	return "dual"
 }
 
 // TableNames returns the table names for all tables in the plan.
 func (plan *Plan) TableNames() (names []string) {
-	if len(plan.AllTables) == 0 {
-		tableName := plan.TableName()
-		return []string{tableName.String()}
-	}
-	for _, table := range plan.AllTables {
-		names = append(names, table.Name.String())
+	for _, permission := range plan.Permissions {
+		names = append(names, fmt.Sprintf("%s.%s", permission.Database, permission.TableName))
 	}
 	return names
 }
