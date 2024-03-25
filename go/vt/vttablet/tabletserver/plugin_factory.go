@@ -52,5 +52,5 @@ func CreatePlugin(action rules.Action, rule *rules.Rule) (PluginInterface, error
 }
 
 func CreateNoOpPlugin() PluginInterface {
-	return &NoOpPlugin{Rule: &rules.Rule{Name: "noop", Priority: defaultPriority}, Action: rules.QRContinue}
+	return &NoOpPlugin{Rule: &rules.Rule{Name: "noop", Priority: DefaultPriority}, Action: rules.QRContinue}
 }
