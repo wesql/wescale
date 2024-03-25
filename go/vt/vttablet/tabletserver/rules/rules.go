@@ -467,14 +467,14 @@ Error:
 // The new Rule will contain all the original constraints other
 // than the plan and query. If the plan and query don't match the Rule,
 // then it returns nil.
-func (qr *Rule) FilterByPlan(query string, planid planbuilder.PlanType, tableNames []string) (newqr *Rule) {
-	if !reMatch(qr.query.Regexp, query) {
-		return nil
-	}
-	if !planMatch(qr.plans, planid) {
+func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableNames []string) (newqr *Rule) {
+	if !planMatch(qr.plans, planType) {
 		return nil
 	}
 	if !tableMatch(qr.tableNames, tableNames) {
+		return nil
+	}
+	if !reMatch(qr.query.Regexp, query) {
 		return nil
 	}
 	newqr = qr.Copy()
