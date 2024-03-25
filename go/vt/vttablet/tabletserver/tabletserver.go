@@ -1044,7 +1044,7 @@ func (tsv *TabletServer) computeTxSerializerKey(ctx context.Context, logStats *t
 	}
 
 	tableName := plan.TableName()
-	if tableName.IsEmpty() || plan.WhereClause == nil {
+	if tableName == "" || plan.WhereClause == nil {
 		// Do not serialize any queries without table name or where clause
 		return "", ""
 	}
@@ -1057,7 +1057,7 @@ func (tsv *TabletServer) computeTxSerializerKey(ctx context.Context, logStats *t
 
 	// Example: table1 where id = 1 and sub_id = 2
 	key := fmt.Sprintf("%s%s", tableName, where)
-	return key, tableName.String()
+	return key, tableName
 }
 
 // MessageStream streams messages from the requested table.
