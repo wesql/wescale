@@ -69,7 +69,6 @@ func (cr *databaseCustomRule) start() {
 				return
 			}
 
-			log.Warningf("Sleeping for %v before trying again", databaseCustomRuleReloadInterval)
 			time.Sleep(databaseCustomRuleReloadInterval)
 		}
 	}()
@@ -82,6 +81,10 @@ func (cr *databaseCustomRule) stop() {
 func (cr *databaseCustomRule) apply(qr *sqltypes.Result) error {
 	qrs := rules.New()
 	for _, row := range qr.Named().Rows {
+		if cr.stopped.Load() {
+			// We're not interested in the result any more.
+			return nil
+		}
 		ruleInfo := make(map[string]any)
 		ruleInfo["Name"] = row.AsString("name", "")
 		ruleInfo["Description"] = row.AsString("description", "")
@@ -150,11 +153,7 @@ func (cr *databaseCustomRule) reloadFromDatabase() error {
 	if err != nil {
 		return fmt.Errorf("databaseCustomRule failed to get mysql connection: %v", err)
 	}
-
-	if cr.stopped.Load() {
-		// We're not interested in the result any more.
-		return nil
-	}
+	defer conn.Recycle()
 
 	// Fetch the custom rules from the database.
 	qr, err := conn.ExecOnce(context.Background(), cr.getReloadSql(), 10000, true)

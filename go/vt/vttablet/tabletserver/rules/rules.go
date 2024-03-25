@@ -996,6 +996,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			}
 		case "Action":
 			switch sv {
+			case "CONTINUE":
+				qr.act = QRContinue
 			case "FAIL":
 				qr.act = QRFail
 			case "FAIL_RETRY":
