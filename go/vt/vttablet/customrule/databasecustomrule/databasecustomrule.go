@@ -133,7 +133,7 @@ func (cr *databaseCustomRule) apply(qr *sqltypes.Result) error {
 			log.Errorf("Failed to build rule: %v", err)
 			continue
 		}
-		cr.qrs.Add(rule)
+		qrs.Add(rule)
 	}
 
 	if !reflect.DeepEqual(cr.qrs, qrs) {
