@@ -210,6 +210,7 @@ type Rule struct {
 	Description string
 	Name        string
 	Priority    int
+	Status      string
 
 	// a rule can be dynamically cancelled. This function determines whether it is cancelled
 	cancelCtx context.Context
@@ -292,6 +293,7 @@ func (qr *Rule) Copy() (newqr *Rule) {
 		Description:     qr.Description,
 		Name:            qr.Name,
 		Priority:        qr.Priority,
+		Status:          qr.Status,
 		requestIP:       qr.requestIP,
 		user:            qr.user,
 		query:           qr.query,
@@ -321,6 +323,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	safeEncode(b, `{"Description":`, qr.Description)
 	safeEncode(b, `,"Name":`, qr.Name)
 	safeEncode(b, `,"Priority":`, qr.Priority)
+	safeEncode(b, `,"Status":`, qr.Status)
 	if qr.requestIP.Regexp != nil {
 		safeEncode(b, `,"RequestIP":`, qr.requestIP)
 	}
@@ -471,6 +474,9 @@ Error:
 // than the plan and query. If the plan and query don't match the Rule,
 // then it returns nil.
 func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableNames []string) (newqr *Rule) {
+	if qr.Status == InActive {
+		return nil
+	}
 	if !planMatch(qr.plans, planType) {
 		return nil
 	}
@@ -653,6 +659,20 @@ func (act Action) String() string {
 func (act Action) MarshalJSON() ([]byte, error) {
 	// If we add more actions, we'll need to use a map.
 	return json.Marshal(act.ToString())
+}
+
+const (
+	Active   = "ACTIVE"
+	InActive = "INACTIVE"
+	DryRun   = "DRY_RUN"
+)
+
+func StatusIsValid(status string) bool {
+	switch status {
+	case Active, InActive, DryRun:
+		return true
+	}
+	return false
 }
 
 // BindVarCond represents a bind var condition.
@@ -940,7 +960,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		var lv []any
 		var ok bool
 		switch k {
-		case "Name", "Description", "RequestIP", "User", "Query", "Action", "LeadingComment", "TrailingComment":
+		case "Name", "Description", "RequestIP", "User", "Query", "Action", "LeadingComment", "TrailingComment", "Status":
 			sv, ok = v.(string)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for %s", k)
@@ -964,6 +984,12 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		case "Priority":
 			//todo earayu: add testcase
 			qr.Priority = iv
+		case "Status":
+			//todo earayu: add testcase
+			if !StatusIsValid(sv) {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid status: %s", sv)
+			}
+			qr.Status = sv
 		case "Description":
 			qr.Description = sv
 		case "RequestIP":

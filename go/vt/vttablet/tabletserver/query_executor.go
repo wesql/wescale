@@ -552,6 +552,10 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 
 	pluginList := GetPluginList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
 	for _, plugin := range pluginList {
+		if plugin.GetRule().Status == rules.DryRun {
+			log.Infof("Dry run: %s", plugin.GetRule().Name)
+			continue
+		}
 		err := plugin.BeforeExecution(qre)
 		if err != nil {
 			return err
