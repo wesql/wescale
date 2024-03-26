@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	databaseCustomRuleEnable         = true
-	databaseCustomRuleDbName         = sidecardb.SidecarDBName
-	databaseCustomRuleTableName      = "wescale_plugin"
+	databaseCustomRuleEnable    = true
+	databaseCustomRuleDbName    = sidecardb.SidecarDBName
+	databaseCustomRuleTableName = "wescale_plugin"
+	//todo filter: change the reload interval to 60s
 	databaseCustomRuleReloadInterval = 1 * time.Second
 )
 
@@ -89,7 +90,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		ruleInfo["Name"] = row.AsString("name", "")
 		ruleInfo["Description"] = row.AsString("description", "")
 		ruleInfo["Priority"] = int(row.AsInt64("priority", 1000))
-		//ruleInfo["status"] = row.AsString("status", "")
+		ruleInfo["Status"] = row.AsString("status", "")
 
 		// parse Plans
 		plansStringData := row.AsString("plans", "")
