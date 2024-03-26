@@ -108,7 +108,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		if tableNamesData != "" {
 			tables, err := unmarshalArray(tableNamesData)
 			if err != nil {
-				log.Errorf("Failed to unmarshal plans: %v", err)
+				log.Errorf("Failed to unmarshal fully_qualified_table_names: %v", err)
 				continue
 			}
 			ruleInfo["fullyQualifiedTableNames"] = tables
@@ -126,7 +126,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		if bindVarCondsData != "" {
 			bindVarConds, err := unmarshalArray(bindVarCondsData)
 			if err != nil {
-				log.Errorf("Failed to unmarshal plans: %v", err)
+				log.Errorf("Failed to unmarshal bind_var_conds: %v", err)
 				continue
 			}
 			ruleInfo["BindVarConds"] = bindVarConds
