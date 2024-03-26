@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS mysql.wescale_plugin
     `plans`                  text,
     `table_names`            text,
     `query_regex`            text,
+    `query_template`         text,
 
     `request_ip_regex`       varchar(64),
     `user_regex`             varchar(64),

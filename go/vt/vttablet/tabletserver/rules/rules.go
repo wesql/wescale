@@ -225,8 +225,8 @@ type Rule struct {
 	tableNames []string
 	// Regexp conditions. nil conditions are ignored (TRUE).
 	query namedRegexp
-	// todo filter: need to add a field to support query template matching. e.g. select * from t1 where id = ?
-	// the field name may be "queryTemplate" and the value may be "select * from t1 where id = ?"
+	// queryTemplate is the query template that will be used to match against the query
+	queryTemplate string
 
 	//===============Execution Specific Conditions================
 	// Regexp conditions. nil conditions are ignored (TRUE).
@@ -236,6 +236,8 @@ type Rule struct {
 
 	// Action to be performed on trigger
 	act Action
+
+	actionArgs string
 }
 
 type namedRegexp struct {
@@ -276,15 +278,18 @@ func (qr *Rule) Equal(other *Rule) bool {
 	return (qr.Description == other.Description &&
 		qr.Name == other.Name &&
 		qr.Priority == other.Priority &&
+		qr.Status == other.Status &&
 		qr.requestIP.Equal(other.requestIP) &&
 		qr.user.Equal(other.user) &&
 		qr.query.Equal(other.query) &&
+		qr.queryTemplate == other.queryTemplate &&
 		qr.leadingComment.Equal(other.leadingComment) &&
 		qr.trailingComment.Equal(other.trailingComment) &&
 		reflect.DeepEqual(qr.plans, other.plans) &&
 		reflect.DeepEqual(qr.tableNames, other.tableNames) &&
 		reflect.DeepEqual(qr.bindVarConds, other.bindVarConds) &&
-		qr.act == other.act)
+		qr.act == other.act &&
+		qr.actionArgs == other.actionArgs)
 }
 
 // Copy performs a deep copy of a Rule.
@@ -297,9 +302,11 @@ func (qr *Rule) Copy() (newqr *Rule) {
 		requestIP:       qr.requestIP,
 		user:            qr.user,
 		query:           qr.query,
+		queryTemplate:   qr.queryTemplate,
 		leadingComment:  qr.leadingComment,
 		trailingComment: qr.trailingComment,
 		act:             qr.act,
+		actionArgs:      qr.actionArgs,
 		cancelCtx:       qr.cancelCtx,
 	}
 	if qr.plans != nil {
@@ -333,6 +340,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.query.Regexp != nil {
 		safeEncode(b, `,"Query":`, qr.query)
 	}
+	safeEncode(b, `,"QueryTemplate":`, qr.queryTemplate)
 	if qr.leadingComment.Regexp != nil {
 		safeEncode(b, `,"LeadingComment":`, qr.leadingComment)
 	}
@@ -351,6 +359,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.act != QRContinue {
 		safeEncode(b, `,"Action":`, qr.act)
 	}
+	safeEncode(b, `,"ActionArgs":`, qr.actionArgs)
 	_, _ = b.WriteString("}")
 	return b.Bytes(), nil
 }
@@ -960,7 +969,9 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		var lv []any
 		var ok bool
 		switch k {
-		case "Name", "Description", "RequestIP", "User", "Query", "Action", "LeadingComment", "TrailingComment", "Status":
+		case "Name", "Description", "RequestIP", "User", "Query",
+			"Action", "LeadingComment", "TrailingComment", "Status",
+			"QueryTemplate", "ActionArgs":
 			sv, ok = v.(string)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for %s", k)
@@ -1007,6 +1018,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			if err != nil {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "could not set Query condition: %v", sv)
 			}
+		case "QueryTemplate":
+			qr.queryTemplate = sv
 		case "LeadingComment":
 			err = qr.SetLeadingCommentCond(sv)
 			if err != nil {
@@ -1054,6 +1067,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				return nil, err
 			}
 			qr.act = act
+		case "ActionArgs":
+			qr.actionArgs = sv
 		}
 	}
 	return qr, nil
