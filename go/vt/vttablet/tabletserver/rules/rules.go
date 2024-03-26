@@ -29,6 +29,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -169,7 +170,7 @@ func (qrs *Rules) MarshalJSON() ([]byte, error) {
 
 // FilterByPlan creates a new Rules by prefiltering on the query and planId. This allows
 // us to create query plan specific Rules out of the original Rules. In the new rules,
-// query, plans and tableNames predicates are empty.
+// query, plans and fullyQualifiedTableNames predicates are empty.
 func (qrs *Rules) FilterByPlan(query string, planid planbuilder.PlanType, tableNames ...string) (newqrs *Rules) {
 	var newrules []*Rule
 	for _, qr := range qrs.rules {
@@ -220,9 +221,9 @@ type Rule struct {
 	//===============Plan Specific Conditions================
 	// Any matched plan will make this condition true (OR)
 	plans []planbuilder.PlanType
-	// Any matched tableNames will make this condition true (OR)
+	// Any matched fullyQualifiedTableNames will make this condition true (OR)
 	// todo filter: shoule be able to match database name & table names with wildcards. e.g.  db1.* , db1.table1 , *.t1 or *.*
-	tableNames []string
+	fullyQualifiedTableNames []string
 	// Regexp conditions. nil conditions are ignored (TRUE).
 	query namedRegexp
 	// queryTemplate is the query template that will be used to match against the query
@@ -267,7 +268,7 @@ func NewQueryRule(description, name string, act Action) (qr *Rule) {
 // NewBufferedTableQueryRule creates a new buffer Rule.
 func NewBufferedTableQueryRule(cancelCtx context.Context, tableName string, description string) (qr *Rule) {
 	// We ignore act because there's only one action right now
-	return &Rule{cancelCtx: cancelCtx, Description: description, Name: bufferedTableRuleName, tableNames: []string{tableName}, act: QRBuffer}
+	return &Rule{cancelCtx: cancelCtx, Description: description, Name: bufferedTableRuleName, fullyQualifiedTableNames: []string{tableName}, act: QRBuffer}
 }
 
 // Equal returns true if other is equal to this Rule, otherwise false.
@@ -286,7 +287,7 @@ func (qr *Rule) Equal(other *Rule) bool {
 		qr.leadingComment.Equal(other.leadingComment) &&
 		qr.trailingComment.Equal(other.trailingComment) &&
 		reflect.DeepEqual(qr.plans, other.plans) &&
-		reflect.DeepEqual(qr.tableNames, other.tableNames) &&
+		reflect.DeepEqual(qr.fullyQualifiedTableNames, other.fullyQualifiedTableNames) &&
 		reflect.DeepEqual(qr.bindVarConds, other.bindVarConds) &&
 		qr.act == other.act &&
 		qr.actionArgs == other.actionArgs)
@@ -313,9 +314,9 @@ func (qr *Rule) Copy() (newqr *Rule) {
 		newqr.plans = make([]planbuilder.PlanType, len(qr.plans))
 		copy(newqr.plans, qr.plans)
 	}
-	if qr.tableNames != nil {
-		newqr.tableNames = make([]string, len(qr.tableNames))
-		copy(newqr.tableNames, qr.tableNames)
+	if qr.fullyQualifiedTableNames != nil {
+		newqr.fullyQualifiedTableNames = make([]string, len(qr.fullyQualifiedTableNames))
+		copy(newqr.fullyQualifiedTableNames, qr.fullyQualifiedTableNames)
 	}
 	if qr.bindVarConds != nil {
 		newqr.bindVarConds = make([]BindVarCond, len(qr.bindVarConds))
@@ -350,8 +351,8 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.plans != nil {
 		safeEncode(b, `,"Plans":`, qr.plans)
 	}
-	if qr.tableNames != nil {
-		safeEncode(b, `,"TableNames":`, qr.tableNames)
+	if qr.fullyQualifiedTableNames != nil {
+		safeEncode(b, `,"TableNames":`, qr.fullyQualifiedTableNames)
 	}
 	if qr.bindVarConds != nil {
 		safeEncode(b, `,"BindVarConds":`, qr.bindVarConds)
@@ -387,11 +388,11 @@ func (qr *Rule) AddPlanCond(planType planbuilder.PlanType) {
 	qr.plans = append(qr.plans, planType)
 }
 
-// AddTableCond adds to the list of tableNames that can be matched for
+// AddTableCond adds to the list of fullyQualifiedTableNames that can be matched for
 // the rule to fire.
 // This function acts as an OR: Any tableName match is considered a match.
 func (qr *Rule) AddTableCond(tableName string) {
-	qr.tableNames = append(qr.tableNames, tableName)
+	qr.fullyQualifiedTableNames = append(qr.fullyQualifiedTableNames, tableName)
 }
 
 // SetQueryCond adds a regular expression condition for the query.
@@ -489,7 +490,7 @@ func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableN
 	if !planMatch(qr.plans, planType) {
 		return nil
 	}
-	if !tableMatch(qr.tableNames, tableNames) {
+	if !tableMatch(qr.fullyQualifiedTableNames, tableNames) {
 		return nil
 	}
 	if !reMatch(qr.query.Regexp, query) {
@@ -500,7 +501,7 @@ func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableN
 	// Note we explicitly don't remove the leading/trailing comments as they
 	// must be evaluated at execution time.
 	newqr.plans = nil
-	newqr.tableNames = nil
+	newqr.fullyQualifiedTableNames = nil
 	return newqr
 }
 
@@ -682,6 +683,14 @@ func StatusIsValid(status string) bool {
 		return true
 	}
 	return false
+}
+
+func IsValidFullyQualifiedTableName(tableName string) bool {
+	parts := strings.Split(tableName, ".")
+	if len(parts) != 2 {
+		return false
+	}
+	return true
 }
 
 // BindVarCond represents a bind var condition.
@@ -981,7 +990,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
 			}
-		case "Plans", "BindVarConds", "TableNames":
+		case "Plans", "BindVarConds", "fullyQualifiedTableNames":
 			lv, ok = v.([]any)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want list for %s", k)
@@ -1042,13 +1051,16 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 				qr.AddPlanCond(pt)
 			}
-		case "TableNames":
+		case "fullyQualifiedTableNames":
 			for _, t := range lv {
-				tableName, ok := t.(string)
+				fullyQualifiedTableName, ok := t.(string)
 				if !ok {
-					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for TableNames")
+					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for fullyQualifiedTableName")
 				}
-				qr.AddTableCond(tableName)
+				if !IsValidFullyQualifiedTableName(fullyQualifiedTableName) {
+					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "fullyQualifiedTableName %v is not in correct format, should be databaseName.tableName", fullyQualifiedTableName)
+				}
+				qr.AddTableCond(fullyQualifiedTableName)
 			}
 		case "BindVarConds":
 			for _, bvc := range lv {

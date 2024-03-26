@@ -308,8 +308,8 @@ func TestQueryRule(t *testing.T) {
 	}
 
 	qr.AddTableCond("a")
-	if qr.tableNames[0] != "a" {
-		t.Errorf("want a, got %s", qr.tableNames[0])
+	if qr.fullyQualifiedTableNames[0] != "a" {
+		t.Errorf("want a, got %s", qr.fullyQualifiedTableNames[0])
 	}
 }
 

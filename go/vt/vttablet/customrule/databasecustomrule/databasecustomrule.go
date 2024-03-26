@@ -104,14 +104,14 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		}
 
 		// parse TableNames
-		tableNamesData := row.AsString("table_names", "")
+		tableNamesData := row.AsString("fully_qualified_table_names", "")
 		if tableNamesData != "" {
 			tables, err := unmarshalArray(tableNamesData)
 			if err != nil {
 				log.Errorf("Failed to unmarshal plans: %v", err)
 				continue
 			}
-			ruleInfo["TableNames"] = tables
+			ruleInfo["fullyQualifiedTableNames"] = tables
 		}
 
 		ruleInfo["Query"] = row.AsString("query_regex", "")

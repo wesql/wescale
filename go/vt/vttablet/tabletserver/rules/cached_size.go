@@ -62,10 +62,10 @@ func (cached *Rule) CachedSize(alloc bool) int64 {
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.plans)) * int64(8))
 	}
-	// field tableNames []string
+	// field fullyQualifiedTableNames []string
 	{
-		size += hack.RuntimeAllocSize(int64(cap(cached.tableNames)) * int64(16))
-		for _, elem := range cached.tableNames {
+		size += hack.RuntimeAllocSize(int64(cap(cached.fullyQualifiedTableNames)) * int64(16))
+		for _, elem := range cached.fullyQualifiedTableNames {
 			size += hack.RuntimeAllocSize(int64(len(elem)))
 		}
 	}
