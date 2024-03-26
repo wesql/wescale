@@ -998,13 +998,13 @@ func (qre *QueryExecutor) txFetch(conn *StatefulConnection, record bool) (*sqlty
 	if err != nil {
 		return nil, err
 	}
-	qr, err := qre.execStatefulConn(conn, sql, true)
-	if err != nil {
-		return nil, err
-	}
 	waitGtidPrefixAdded := false
 	if qre.plan.PlanID == p.PlanSelect {
 		sql, waitGtidPrefixAdded = qre.addPrefixWaitGtid(sql)
+	}
+	qr, err := qre.execStatefulConn(conn, sql, true)
+	if err != nil {
+		return nil, err
 	}
 	// Only record successful queries.
 	if record {
