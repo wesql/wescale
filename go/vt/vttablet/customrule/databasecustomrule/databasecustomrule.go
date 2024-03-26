@@ -115,6 +115,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		}
 
 		ruleInfo["Query"] = row.AsString("query_regex", "")
+		ruleInfo["QueryTemplate"] = row.AsString("query_template", "")
 		ruleInfo["RequestIP"] = row.AsString("request_ip_regex", "")
 		ruleInfo["User"] = row.AsString("user_regex", "")
 		ruleInfo["LeadingComment"] = row.AsString("leading_comment_regex", "")
@@ -132,6 +133,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		}
 
 		ruleInfo["Action"] = row.AsString("action", "")
+		ruleInfo["ActionArgs"] = row.AsString("action_args", "")
 		rule, err := rules.BuildQueryRule(ruleInfo)
 		if err != nil {
 			log.Errorf("Failed to build rule: %v", err)
