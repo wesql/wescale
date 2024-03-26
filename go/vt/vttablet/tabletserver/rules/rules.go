@@ -30,6 +30,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"vitess.io/vitess/go/vt/log"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -490,7 +492,7 @@ func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableN
 	if !planMatch(qr.plans, planType) {
 		return nil
 	}
-	if !tableMatch(qr.fullyQualifiedTableNames, tableNames) {
+	if !fullyQualifiedTableNameRegexMatch(qr.fullyQualifiedTableNames, tableNames) {
 		return nil
 	}
 	if !reMatch(qr.query.Regexp, query) {
@@ -584,17 +586,44 @@ func planMatch(plans []planbuilder.PlanType, plan planbuilder.PlanType) bool {
 	return false
 }
 
-func tableMatch(tableNames []string, otherNames []string) bool {
-	if tableNames == nil {
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	regexPattern := strings.Replace(pattern, ".", "\\.", -1)
+	regexPattern = strings.Replace(regexPattern, "*", ".*", -1)
+
+	re, err := regexp.Compile("^" + regexPattern + "$")
+	if err != nil {
+		log.Errorf("Invalid pattern %v, err is %v", pattern, err)
+		return nil, err
+	}
+	return re, nil
+}
+
+// expectedFullyQualifiedTableNames is a list of fully qualified table names that consist of regex.
+// fullyQualifiedTableNames is a list of real table name.
+// the caller should guarantee that regex CAN NOT CONTAIN '.', or it will be confounded with the '.' between database name and table name.
+func fullyQualifiedTableNameRegexMatch(expectedFullyQualifiedTableNames []string, fullyQualifiedTableNames []string) bool {
+	if expectedFullyQualifiedTableNames == nil {
 		return true
 	}
-	otherNamesMap := map[string]bool{}
-	for _, name := range otherNames {
-		otherNamesMap[name] = true
-	}
-	for _, name := range tableNames {
-		if otherNamesMap[name] {
-			return true
+
+	for _, expected := range expectedFullyQualifiedTableNames {
+		expectedParts := strings.Split(expected, ".")
+		if len(expectedParts) != 2 {
+			return false
+		}
+		databaseNameRegex, err1 := compileRegex(expectedParts[0])
+		tableNameRegex, err2 := compileRegex(expectedParts[1])
+		if err1 != nil || err2 != nil {
+			log.Errorf("err of compileRegex is not nil, err1:%v, err2:%v", err1, err2)
+			return false
+		}
+		for _, actual := range fullyQualifiedTableNames {
+			actualParts := strings.Split(actual, ".")
+			databaseMatched := databaseNameRegex.MatchString(actualParts[0])
+			tableMatched := tableNameRegex.MatchString(actualParts[1])
+			if databaseMatched && tableMatched {
+				return true
+			}
 		}
 	}
 	return false
