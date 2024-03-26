@@ -103,7 +103,7 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		}
 
 		// parse TableNames
-		tableNamesData := row.AsString("tableNames", "")
+		tableNamesData := row.AsString("table_names", "")
 		if tableNamesData != "" {
 			tables, err := unmarshalArray(tableNamesData)
 			if err != nil {
@@ -113,14 +113,14 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 			ruleInfo["TableNames"] = tables
 		}
 
-		ruleInfo["Query"] = row.AsString("sql_regex", "")
+		ruleInfo["Query"] = row.AsString("query_regex", "")
 		ruleInfo["RequestIP"] = row.AsString("request_ip_regex", "")
 		ruleInfo["User"] = row.AsString("user_regex", "")
-		ruleInfo["LeadingComment"] = row.AsString("leadingComment_regex", "")
-		ruleInfo["TrailingComment"] = row.AsString("trailingComment_regex", "")
+		ruleInfo["LeadingComment"] = row.AsString("leading_comment_regex", "")
+		ruleInfo["TrailingComment"] = row.AsString("trailing_comment_regex", "")
 
 		// parse BindVarConds
-		bindVarCondsData := row.AsString("bindVarConds", "")
+		bindVarCondsData := row.AsString("bind_var_conds", "")
 		if bindVarCondsData != "" {
 			bindVarConds, err := unmarshalArray(bindVarCondsData)
 			if err != nil {
