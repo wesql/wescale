@@ -809,3 +809,75 @@ func marshalled(in any) string {
 	}
 	return string(b)
 }
+
+func TestFullyQualifiedTableNameRegexMatch(t *testing.T) {
+	testcases := []struct {
+		name                             string
+		expectedFullyQualifiedTableNames []string
+		actualFullyQualifiedTableNames   []string
+		expected                         bool
+	}{
+		{
+			name:                             "testcase1",
+			expectedFullyQualifiedTableNames: []string{"d1.t1", "d1.t2"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1", "d1.t3"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase2",
+			expectedFullyQualifiedTableNames: []string{"*.t1"},
+			actualFullyQualifiedTableNames:   []string{"d2.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase3",
+			expectedFullyQualifiedTableNames: []string{"d1.*"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase4",
+			expectedFullyQualifiedTableNames: []string{"*.*"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase5",
+			expectedFullyQualifiedTableNames: []string{"my*.t1"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase6",
+			expectedFullyQualifiedTableNames: []string{"mysql.t*"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase7",
+			expectedFullyQualifiedTableNames: []string{"mysql.t*"},
+			actualFullyQualifiedTableNames:   []string{"mysql.d"},
+			expected:                         false,
+		},
+		{
+			name:                             "testcase8",
+			expectedFullyQualifiedTableNames: []string{"mysql.t[1-9]"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t2"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase9",
+			expectedFullyQualifiedTableNames: []string{"mysql.t[1-9]"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t22"},
+			expected:                         false,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fullyQualifiedTableNameRegexMatch(tt.expectedFullyQualifiedTableNames, tt.actualFullyQualifiedTableNames)
+			assert.Equalf(t, tt.expected, got, "fullyQualifiedTableNameRegexMatch(%s, %s)", tt.expectedFullyQualifiedTableNames, tt.actualFullyQualifiedTableNames)
+		})
+	}
+
+}
