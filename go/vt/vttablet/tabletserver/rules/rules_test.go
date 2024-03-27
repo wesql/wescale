@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -880,4 +885,46 @@ func TestFullyQualifiedTableNameRegexMatch(t *testing.T) {
 		})
 	}
 
+}
+
+func Test_queryTemplateMatch(t *testing.T) {
+	type args struct {
+		expect string
+		actual string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "match",
+			args: args{
+				expect: "select * from t1 where id = :id",
+				actual: "select * from t1 where id = :id",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				expect: "",
+				actual: "select * from t1 where id = :id",
+			},
+			want: true,
+		},
+		{
+			name: "not match",
+			args: args{
+				expect: "select * from t1 where id = :id",
+				actual: "select * from t1 where id = :id and name = :name",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, queryTemplateMatch(tt.args.expect, tt.args.actual), "queryTemplateMatch(%v, %v)", tt.args.expect, tt.args.actual)
+		})
+	}
 }

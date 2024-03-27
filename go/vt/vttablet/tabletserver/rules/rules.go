@@ -30,6 +30,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
 	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -53,8 +54,8 @@ type Rules struct {
 	rules []*Rule
 }
 
-func (rules *Rules) ForEachRule(f func(rule *Rule)) {
-	for _, rule := range rules.rules {
+func (qrs *Rules) ForEachRule(f func(rule *Rule)) {
+	for _, rule := range qrs.rules {
 		f(rule)
 	}
 }
@@ -498,6 +499,9 @@ func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableN
 	if !reMatch(qr.query.Regexp, query) {
 		return nil
 	}
+	if !queryTemplateMatch(qr.queryTemplate, query) {
+		return nil
+	}
 	newqr = qr.Copy()
 	newqr.query = namedRegexp{}
 	// Note we explicitly don't remove the leading/trailing comments as they
@@ -572,6 +576,10 @@ func (qr *Rule) FilterByExecutionInfo(
 
 func reMatch(re *regexp.Regexp, val string) bool {
 	return re == nil || re.MatchString(val)
+}
+
+func queryTemplateMatch(expect string, actual string) bool {
+	return expect == "" || expect == actual
 }
 
 func planMatch(plans []planbuilder.PlanType, plan planbuilder.PlanType) bool {
@@ -716,10 +724,7 @@ func StatusIsValid(status string) bool {
 
 func IsValidFullyQualifiedTableName(tableName string) bool {
 	parts := strings.Split(tableName, ".")
-	if len(parts) != 2 {
-		return false
-	}
-	return true
+	return len(parts) == 2
 }
 
 // BindVarCond represents a bind var condition.
