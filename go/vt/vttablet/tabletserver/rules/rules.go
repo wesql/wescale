@@ -368,6 +368,74 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// ToBindVariable returns a BindVariable representation of the Rule.
+func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
+	bindVars := map[string]*querypb.BindVariable{
+		"name":                   sqltypes.StringBindVariable(qr.Name),
+		"description":            sqltypes.StringBindVariable(qr.Description),
+		"priority":               sqltypes.Int64BindVariable(int64(qr.Priority)),
+		"status":                 sqltypes.StringBindVariable(qr.Status),
+		"query_regex":            sqltypes.StringBindVariable(qr.query.String()),
+		"query_template":         sqltypes.StringBindVariable(qr.queryTemplate),
+		"request_ip_regex":       sqltypes.StringBindVariable(qr.requestIP.String()),
+		"user_regex":             sqltypes.StringBindVariable(qr.user.String()),
+		"leading_comment_regex":  sqltypes.StringBindVariable(qr.leadingComment.String()),
+		"trailing_comment_regex": sqltypes.StringBindVariable(qr.trailingComment.String()),
+		"action":                 sqltypes.StringBindVariable(qr.act.String()),
+		"action_args":            sqltypes.StringBindVariable(qr.actionArgs),
+	}
+	if qr.plans != nil {
+		planStrings, err := json.Marshal(qr.plans)
+		if err != nil {
+			log.Errorf("Failed to marshal plans: %v", err)
+			return nil, err
+		}
+		bindVars["plans"] = sqltypes.StringBindVariable(string(planStrings))
+	}
+	if qr.fullyQualifiedTableNames != nil {
+		tableNames, err := json.Marshal(qr.fullyQualifiedTableNames)
+		if err != nil {
+			log.Errorf("Failed to marshal fully_qualified_table_names: %v", err)
+			return nil, err
+		}
+		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
+	}
+	if qr.bindVarConds != nil {
+		bindVarConds, err := json.Marshal(qr.bindVarConds)
+		if err != nil {
+			log.Errorf("Failed to marshal bind_var_conds: %v", err)
+			return nil, err
+		}
+		bindVars["bind_var_conds"] = sqltypes.StringBindVariable(string(bindVarConds))
+	}
+	return bindVars, nil
+}
+
+// SetPriority sets the priority of the rule.
+func (qr *Rule) SetPriority(priority int) {
+	qr.Priority = priority
+}
+
+// SetStatus sets the status of the rule.
+func (qr *Rule) SetStatus(status string) {
+	qr.Status = status
+}
+
+// SetQueryTemplate sets the query template of the rule.
+func (qr *Rule) SetQueryTemplate(queryTemplate string) {
+	qr.queryTemplate = queryTemplate
+}
+
+// SetAction sets the action of the rule.
+func (qr *Rule) SetAction(act Action) {
+	qr.act = act
+}
+
+// SetActionArgs sets the action arguments of the rule.
+func (qr *Rule) SetActionArgs(actionArgs string) {
+	qr.actionArgs = actionArgs
+}
+
 // SetIPCond adds a regular expression condition for the client IP.
 // It has to be a full match (not substring).
 func (qr *Rule) SetIPCond(pattern string) (err error) {
