@@ -1,4 +1,9 @@
-package topocustomrule
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+package databasecustomrule
 
 import (
 	"context"
@@ -7,6 +12,7 @@ import (
 	"reflect"
 	"sync/atomic"
 	"time"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sidecardb"
 
@@ -159,7 +165,7 @@ func (cr *databaseCustomRule) reloadRulesFromDatabase() error {
 	defer conn.Recycle()
 
 	// Fetch the custom rules from the database.
-	qr, err := conn.ExecOnce(context.Background(), cr.getReloadSql(), 10000, true)
+	qr, err := conn.ExecOnce(context.Background(), cr.getReloadSQL(), 10000, true)
 	if err != nil {
 		return fmt.Errorf("databaseCustomRule failed to get custom rules: %v", err)
 	}
@@ -171,7 +177,7 @@ func (cr *databaseCustomRule) reloadRulesFromDatabase() error {
 	return nil
 }
 
-func (cr *databaseCustomRule) getReloadSql() string {
+func (cr *databaseCustomRule) getReloadSQL() string {
 	return fmt.Sprintf("SELECT * FROM %s.%s", databaseCustomRuleDbName, databaseCustomRuleTableName)
 }
 
