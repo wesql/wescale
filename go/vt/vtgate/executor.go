@@ -38,9 +38,10 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/failpointkey"
-
 	"github.com/pingcap/failpoint"
+
+	"vitess.io/vitess/go/vt/failpointkey"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver"
 
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
@@ -982,6 +983,67 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("Cell", "Keyspace", "Shard", "TabletType", "State", "Alias", "Hostname", "PrimaryTermStartTime"),
+		Rows:   rows,
+	}, nil
+}
+
+func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+
+	rows := [][]sqltypes.Value{}
+	for _, tabletStatusList := range e.scatterConn.GetHealthCheckCacheStatus() {
+		for _, tabletStatus := range tabletStatusList.TabletsStats {
+			err := func() error {
+				// use anonymous function to release httpResp.Body immediately
+				url := fmt.Sprintf("http://%s/debug/tablet_plans_json", tabletStatus.GetTabletHostPort())
+				httpResp, err := http.Get(url)
+				if err != nil {
+					return err
+				}
+				defer httpResp.Body.Close()
+				body, err := io.ReadAll(httpResp.Body)
+				if err != nil {
+					return err
+				}
+
+				var tabletPlans []tabletserver.TabletsPlans
+				err = json.Unmarshal(body, &tabletPlans)
+				if err != nil {
+					return err
+				}
+
+				for _, plan := range tabletPlans {
+					tablesStr := ""
+					isFirst := true
+					for _, table := range plan.Tables {
+						if !isFirst {
+							tablesStr += ","
+						}
+						isFirst = false
+						tablesStr += table
+					}
+					rows = append(rows, buildVarCharRow(
+						tabletStatus.Tablet.Alias.String(),
+						plan.TemplateID,
+						plan.PlanType,
+						tablesStr,
+						strconv.FormatUint(plan.QueryCount, 10),
+						plan.Time.String(),
+						plan.MysqlTime.String(),
+						strconv.FormatUint(plan.RowsAffected, 10),
+						strconv.FormatUint(plan.RowsReturned, 10),
+						strconv.FormatUint(plan.ErrorCount, 10),
+					))
+				}
+				return nil
+			}()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("tablet_alias", "template_ID", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }
