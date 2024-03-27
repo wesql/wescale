@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"vitess.io/vitess/go/vt/sqlparser"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sidecardb"
 
@@ -179,6 +181,39 @@ func (cr *databaseCustomRule) reloadRulesFromDatabase() error {
 
 func (cr *databaseCustomRule) getReloadSQL() string {
 	return fmt.Sprintf("SELECT * FROM %s.%s", databaseCustomRuleDbName, databaseCustomRuleTableName)
+}
+
+func (cr *databaseCustomRule) getInsertSQLTemplate() string {
+	tableSchemaName := fmt.Sprintf("`%s`.`%s`", databaseCustomRuleDbName, databaseCustomRuleTableName)
+	return "INSERT INTO " + tableSchemaName + " (`name`, `description`, `priority`, `status`, `plans`, `fully_qualified_table_names`, `query_regex`, `query_template`, `request_ip_regex`, `user_regex`, `leading_comment_regex`, `trailing_comment_regex`, `bind_var_conds`, `action`, `action_args`) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
+}
+
+// GenerateInsertStatement returns the SQL statement to insert the rule into the database.
+func (cr *databaseCustomRule) GenerateInsertStatement(qr *rules.Rule) (string, error) {
+	insertTemplate := cr.getInsertSQLTemplate()
+	parsed := sqlparser.BuildParsedQuery(insertTemplate,
+		":name",
+		":description",
+		":priority",
+		":status",
+		":plans",
+		":fully_qualified_table_names",
+		":query_regex",
+		":query_template",
+		":request_ip_regex",
+		":user_regex",
+		":leading_comment_regex",
+		":trailing_comment_regex",
+		":bind_var_conds",
+		":action",
+		":action_args",
+	)
+	bindVars, err := qr.ToBindVariable()
+	if err != nil {
+		return "", err
+	}
+	bound, err := parsed.GenerateQuery(bindVars, nil)
+	return bound, err
 }
 
 func unmarshalArray(rawData string) ([]any, error) {
