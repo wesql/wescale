@@ -274,6 +274,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 
 	env.Exporter().HandleFunc("/debug/hotrows", qe.txSerializer.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/tablet_plans", qe.handleHTTPQueryPlans)
+	env.Exporter().HandleFunc("/debug/tablet_plans_json", qe.handleHTTPTabletPlansJSON)
 	env.Exporter().HandleFunc("/debug/query_stats", qe.handleHTTPQueryStats)
 	env.Exporter().HandleFunc("/debug/query_rules", qe.handleHTTPQueryRules)
 	env.Exporter().HandleFunc("/debug/consolidations", qe.handleHTTPConsolidations)
@@ -558,6 +559,60 @@ func (qe *QueryEngine) handleHTTPQueryPlans(response http.ResponseWriter, reques
 		response.Write(([]byte)("\n\n"))
 		return true
 	})
+}
+
+type TabletsPlans struct {
+	TemplateID   string
+	PlanType     string
+	Tables       []string
+	QueryCount   uint64
+	Time         time.Duration
+	MysqlTime    time.Duration
+	RowsAffected uint64
+	RowsReturned uint64
+	ErrorCount   uint64
+}
+
+func (qe *QueryEngine) handleHTTPTabletPlansJSON(response http.ResponseWriter, request *http.Request) {
+	if err := acl.CheckAccessHTTP(request, acl.DEBUGGING); err != nil {
+		acl.SendError(response, err)
+		return
+	}
+
+	response.Header().Set("Content-Type", "application/json; charset=utf-8")
+	var tabletsPlanArray []TabletsPlans
+
+	qe.plans.ForEach(func(value any) bool {
+		plan := value.(*TabletPlan)
+
+		var tables []string
+		for _, p := range plan.Plan.Permissions {
+			tables = append(tables, fmt.Sprintf("%v.%v", p.Database, p.TableName))
+		}
+
+		var pqstats perQueryStats
+		pqstats.QueryCount, pqstats.Time, pqstats.MysqlTime, pqstats.RowsAffected, pqstats.RowsReturned, pqstats.ErrorCount = plan.Stats()
+
+		tabletsPlan := TabletsPlans{
+			TemplateID:   sqlparser.TruncateForUI(plan.Original),
+			PlanType:     plan.PlanID.String(),
+			Tables:       tables,
+			QueryCount:   pqstats.QueryCount,
+			Time:         pqstats.Time,
+			MysqlTime:    pqstats.MysqlTime,
+			RowsAffected: pqstats.RowsAffected,
+			RowsReturned: pqstats.RowsReturned,
+			ErrorCount:   pqstats.ErrorCount,
+		}
+		tabletsPlanArray = append(tabletsPlanArray, tabletsPlan)
+		return true
+	})
+
+	if b, err := json.MarshalIndent(tabletsPlanArray, "", "  "); err != nil {
+		response.Write([]byte(err.Error()))
+	} else {
+		response.Write(b)
+	}
 }
 
 func (qe *QueryEngine) handleHTTPQueryStats(response http.ResponseWriter, request *http.Request) {

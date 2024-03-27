@@ -845,6 +845,7 @@ const (
 	VitessReplicationStatus
 	VitessShards
 	VitessTablets
+	TabletsPlans
 	VitessTarget
 	VitessVariables
 	VschemaTables
