@@ -29,6 +29,10 @@ func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Resu
 	}
 }
 
+func (p *ContinueAction) SetParams(stringParams string) error {
+	return nil
+}
+
 func (p *ContinueAction) GetRule() *rules.Rule {
 	return p.Rule
 }
@@ -52,6 +56,10 @@ func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, 
 	}
 }
 
+func (p *FailAction) SetParams(stringParams string) error {
+	return nil
+}
+
 func (p *FailAction) GetRule() *rules.Rule {
 	return p.Rule
 }
@@ -73,6 +81,10 @@ func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Res
 		Reply:    reply,
 		Err:      err,
 	}
+}
+
+func (p *FailRetryAction) SetParams(stringParams string) error {
+	return nil
 }
 
 func (p *FailRetryAction) GetRule() *rules.Rule {
@@ -108,6 +120,10 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 		Reply:    reply,
 		Err:      err,
 	}
+}
+
+func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
+	return nil
 }
 
 func (p *ConcurrencyControlAction) GetRule() *rules.Rule {

@@ -17,6 +17,8 @@ type ActionInterface interface {
 
 	AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse
 
+	SetParams(stringParams string) error
+
 	GetRule() *rules.Rule
 }
 
