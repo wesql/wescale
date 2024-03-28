@@ -987,11 +987,52 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}, nil
 }
 
-func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+func formatTabletAlias(alias *topodatapb.TabletAlias) string {
+	return fmt.Sprintf("%v-%v", alias.Cell, alias.Uid)
+}
 
+// where clause is not fully supported,
+// only support "alias = xxx" or "tablet_alias = xxx",
+// other cases will be ignored and return true.
+func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) bool {
+	if filter == nil {
+		return true
+	}
+	if filter.Like != "" {
+		tabletRegexp := sqlparser.LikeToRegexp(filter.Like)
+		return tabletRegexp.MatchString(alias)
+	}
+	cmp, ok := filter.Filter.(*sqlparser.ComparisonExpr)
+	if !ok {
+		return true
+	}
+	if cmp.Operator == sqlparser.EqualOp {
+		colName, ok := cmp.Left.(*sqlparser.ColName)
+		if !ok {
+			return true
+		}
+		colNameLower := strings.ToLower(colName.Name.String())
+		if colNameLower != "alias" && colNameLower != "tablet_alias" {
+			return true
+		}
+		val := sqlparser.String(cmp.Right)
+		val = strings.ReplaceAll(val, "'", "")
+		val = strings.ReplaceAll(val, " ", "")
+		return val == alias
+	}
+	return true
+}
+
+func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	for _, tabletStatusList := range e.scatterConn.GetHealthCheckCacheStatus() {
 		for _, tabletStatus := range tabletStatusList.TabletsStats {
+
+			tabletAlias := formatTabletAlias(tabletStatus.Tablet.Alias)
+			if !matchTabletByAlias(filter, tabletAlias) {
+				continue
+			}
+
 			err := func() error {
 				// use anonymous function to release httpResp.Body immediately
 				url := fmt.Sprintf("http://%s/debug/tablet_plans_json", tabletStatus.GetTabletHostPort())
@@ -1022,7 +1063,7 @@ func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Res
 						tablesStr += table
 					}
 					rows = append(rows, buildVarCharRow(
-						tabletStatus.Tablet.Alias.String(),
+						tabletAlias,
 						plan.TemplateID,
 						plan.PlanType,
 						tablesStr,
@@ -1043,7 +1084,7 @@ func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Res
 	}
 
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("tablet_alias", "template_ID", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
+		Fields: buildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }
