@@ -68,6 +68,7 @@ type QueryExecutor struct {
 	tsv            *TabletServer
 	tabletType     topodatapb.TabletType
 	setting        *pools.Setting
+	actionList     []ActionInterface
 }
 
 const (
@@ -146,9 +147,8 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		qre.tsv.Stats().ResultHistogram.Add(int64(len(reply.Rows)))
 	}(time.Now())
 
-	if err := qre.executeDatabaseProxyFilter(); err != nil {
-		return nil, err
-	}
+	qre.initDatabaseProxyFilter()
+	qre.runActionListBeforeExecution()
 
 	if err = qre.checkPermissions(); err != nil {
 		return nil, err
@@ -541,7 +541,7 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 	return nil
 }
 
-func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
+func (qre *QueryExecutor) initDatabaseProxyFilter() {
 	remoteAddr := ""
 	username := ""
 	ci, ok := callinfo.FromContext(qre.ctx)
@@ -551,17 +551,37 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 	}
 
 	pluginList := GetActionList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
-	for _, plugin := range pluginList {
-		if plugin.GetRule().Status == rules.DryRun {
-			log.Infof("Dry run: %s", plugin.GetRule().Name)
+	qre.actionList = pluginList
+}
+
+// runActionListBeforeExecution runs the action list and returns the first error it encounters.
+func (qre *QueryExecutor) runActionListBeforeExecution() error {
+	for _, a := range qre.actionList {
+		if a.GetRule().Status == rules.DryRun {
+			log.Infof("Dry run: %s", a.GetRule().Name)
 			continue
 		}
-		err := plugin.BeforeExecution(qre)
+		err := a.BeforeExecution(qre)
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
 
+// runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) error {
+	for i := len(qre.actionList) - 1; i >= 0; i-- {
+		a := qre.actionList[i]
+		if a.GetRule().Status == rules.DryRun {
+			continue
+		}
+		result := a.AfterExecution(reply, err)
+		reply, err = result.Reply, result.Err
+		if !result.FireNext {
+			break
+		}
+	}
 	return nil
 }
 
