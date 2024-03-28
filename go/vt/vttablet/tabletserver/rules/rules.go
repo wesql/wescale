@@ -394,7 +394,10 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 			return nil, err
 		}
 		bindVars["plans"] = sqltypes.StringBindVariable(string(planStrings))
+	} else {
+		bindVars["plans"] = sqltypes.StringBindVariable("")
 	}
+
 	if qr.fullyQualifiedTableNames != nil {
 		tableNames, err := json.Marshal(qr.fullyQualifiedTableNames)
 		if err != nil {
@@ -402,6 +405,8 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 			return nil, err
 		}
 		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
+	} else {
+		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable("")
 	}
 	if qr.bindVarConds != nil {
 		bindVarConds, err := json.Marshal(qr.bindVarConds)
@@ -410,6 +415,8 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 			return nil, err
 		}
 		bindVars["bind_var_conds"] = sqltypes.StringBindVariable(string(bindVarConds))
+	} else {
+		bindVars["bind_var_conds"] = sqltypes.StringBindVariable("")
 	}
 	return bindVars, nil
 }
@@ -732,6 +739,7 @@ const (
 	QRFail
 	QRFailRetry
 	QRBuffer
+	QRConcurrencyControl
 	QRPlugin
 )
 
@@ -745,6 +753,8 @@ func ParseStringToAction(s string) (Action, error) {
 		return QRFailRetry, nil
 	case "BUFFER":
 		return QRBuffer, nil
+	case "CONCURRENCY_CONTROL":
+		return QRConcurrencyControl, nil
 	case "PLUGIN":
 		return QRPlugin, nil
 	default:
@@ -762,6 +772,8 @@ func (act Action) ToString() string {
 		return "FAIL_RETRY"
 	case QRBuffer:
 		return "BUFFER"
+	case QRConcurrencyControl:
+		return "CONCURRENCY_CONTROL"
 	case QRPlugin:
 		return "PLUGIN"
 	default:
