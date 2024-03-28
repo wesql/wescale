@@ -33,6 +33,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/ccl"
 
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -163,7 +164,8 @@ type QueryEngine struct {
 	// Such queries would be serialized by MySQL anyway. This serializer prevents
 	// that we start more than one transaction per hot row (range).
 	// For implementation details, please see BeginExecute() in tabletserver.go.
-	txSerializer *txserializer.TxSerializer
+	txSerializer          *txserializer.TxSerializer
+	concurrencyController *ccl.ConcurrencyController
 
 	// Vars
 	maxResultSize    sync2.AtomicInt64
@@ -233,6 +235,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 		log.Info("Stream consolidator is not enabled.")
 	}
 	qe.txSerializer = txserializer.New(env)
+	qe.concurrencyController = ccl.New(env.Exporter())
 
 	qe.strictTableACL = config.StrictTableACL
 	qe.enableTableACLDryRun = config.EnableTableACLDryRun
@@ -275,6 +278,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 	qe.queryRowsReturned = env.Exporter().NewCountersWithMultiLabels("QueryRowsReturned", "query rows returned", []string{"Table", "Plan"})
 	qe.queryErrorCounts = env.Exporter().NewCountersWithMultiLabels("QueryErrorCounts", "query error counts", []string{"Table", "Plan"})
 
+	env.Exporter().HandleFunc("/debug/ccl", qe.concurrencyController.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/hotrows", qe.txSerializer.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/tablet_plans", qe.handleHTTPQueryPlans)
 	env.Exporter().HandleFunc("/debug/tablet_plans_json", qe.handleHTTPTabletPlansJSON)
