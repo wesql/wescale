@@ -225,7 +225,6 @@ type Rule struct {
 	// Any matched plan will make this condition true (OR)
 	plans []planbuilder.PlanType
 	// Any matched fullyQualifiedTableNames will make this condition true (OR)
-	// todo filter: shoule be able to match database name & table names with wildcards. e.g.  db1.* , db1.table1 , *.t1 or *.*
 	fullyQualifiedTableNames []string
 	// Regexp conditions. nil conditions are ignored (TRUE).
 	query namedRegexp
@@ -260,6 +259,10 @@ func (nr namedRegexp) Equal(other namedRegexp) bool {
 		return nr.Regexp == nil && other.Regexp == nil && nr.name == other.name
 	}
 	return nr.name == other.name && nr.String() == other.String()
+}
+
+func (nr namedRegexp) String() string {
+	return nr.name
 }
 
 // NewQueryRule creates a new Rule.
@@ -1092,7 +1095,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
 			}
-		case "Plans", "BindVarConds", "fullyQualifiedTableNames":
+		case "Plans", "BindVarConds", "FullyQualifiedTableNames":
 			lv, ok = v.([]any)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want list for %s", k)
@@ -1153,7 +1156,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 				qr.AddPlanCond(pt)
 			}
-		case "fullyQualifiedTableNames":
+		case "FullyQualifiedTableNames":
 			for _, t := range lv {
 				fullyQualifiedTableName, ok := t.(string)
 				if !ok {

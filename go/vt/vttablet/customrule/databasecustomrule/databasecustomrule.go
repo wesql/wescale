@@ -114,7 +114,7 @@ func queryResultToRule(row sqltypes.RowNamedValues) (*rules.Rule, error) {
 			log.Errorf("Failed to unmarshal fully_qualified_table_names: %v", err)
 			return nil, err
 		}
-		ruleInfo["fullyQualifiedTableNames"] = tables
+		ruleInfo["FullyQualifiedTableNames"] = tables
 	}
 
 	ruleInfo["Query"] = row.AsString("query_regex", "")
