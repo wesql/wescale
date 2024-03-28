@@ -45,7 +45,7 @@ func resetVariables(txs *ConcurrencyController) {
 
 func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool) *ConcurrencyController {
 	config := tabletenv.NewDefaultConfig()
-	env := tabletenv.NewEnv(config, "TxSerializerTest")
+	env := tabletenv.NewEnv(config, "ConcurrencyControllerTest")
 	concurrencyControllerMaxQueueSize = maxQueueSize
 	concurrencyControllerMaxGlobalQueueSize = maxGlobalQueueSize
 	concurrencyControllerMaxConcurrency = maxConcurrency
@@ -55,7 +55,7 @@ func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurr
 	return txs
 }
 
-func TestTxSerializer_NoHotRow(t *testing.T) {
+func TestConcurrencyController_NoHotRow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 	resetVariables(txs)
 
@@ -78,7 +78,7 @@ func TestTxSerializer_NoHotRow(t *testing.T) {
 	}
 }
 
-func TestTxSerializerRedactDebugUI(t *testing.T) {
+func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 	streamlog.SetRedactDebugUIQueries(true)
 	defer func() {
 		streamlog.SetRedactDebugUIQueries(false)
@@ -106,7 +106,7 @@ func TestTxSerializerRedactDebugUI(t *testing.T) {
 	}
 }
 
-func TestTxSerializer(t *testing.T) {
+func TestConcurrencyController(t *testing.T) {
 	config := tabletenv.NewDefaultConfig()
 	config.HotRowProtection.MaxQueueSize = 2
 	config.HotRowProtection.MaxGlobalQueueSize = 3
@@ -178,7 +178,7 @@ func TestTxSerializer(t *testing.T) {
 	}
 }
 
-func TestTxSerializer_ConcurrentTransactions(t *testing.T) {
+func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	// Allow up to 2 concurrent transactions per hot row.
 	txs := NewConcurrentControllerForTest(3, 3, 2, false)
 	resetVariables(txs)
@@ -295,10 +295,10 @@ func testHTTPHandler(txs *ConcurrencyController, count int, redacted bool) error
 	return nil
 }
 
-// TestTxSerializerCancel runs 4 pending transactions.
+// TestConcurrencyControllerCancel runs 4 pending transactions.
 // tx1 and tx2 are allowed to run concurrently while tx3 and tx4 are queued.
 // tx3 will get canceled and tx4 will be unblocked once tx1 is done.
-func TestTxSerializerCancel(t *testing.T) {
+func TestConcurrencyControllerCancel(t *testing.T) {
 	txs := NewConcurrentControllerForTest(4, 4, 2, false)
 	resetVariables(txs)
 
@@ -392,9 +392,9 @@ func TestTxSerializerCancel(t *testing.T) {
 	}
 }
 
-// TestTxSerializerDryRun verifies that the dry-run mode does not serialize
+// TestConcurrencyControllerDryRun verifies that the dry-run mode does not serialize
 // the two concurrent transactions for the same key.
-func TestTxSerializerDryRun(t *testing.T) {
+func TestConcurrencyControllerDryRun(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 2, 1, true)
 	resetVariables(txs)
 
@@ -454,13 +454,13 @@ func TestTxSerializerDryRun(t *testing.T) {
 	}
 }
 
-// TestTxSerializerGlobalQueueOverflow shows that the global queue can exceed
+// TestConcurrencyControllerGlobalQueueOverflow shows that the global queue can exceed
 // its limit without rejecting errors. This is the case when all transactions
 // are the first one for their row range.
 // This is done on purpose to avoid that a too low global queue limit would
 // reject transactions although they may succeed within the txpool constraints
 // and RPC deadline.
-func TestTxSerializerGlobalQueueOverflow(t *testing.T) {
+func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 1, false)
 
 	// tx1.
@@ -497,14 +497,14 @@ func TestTxSerializerGlobalQueueOverflow(t *testing.T) {
 	done2()
 }
 
-func TestTxSerializerPending(t *testing.T) {
+func TestConcurrencyControllerPending(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 1, false)
 	if got, want := txs.Pending("t1 where1"), 0; got != want {
 		t.Errorf("there should be no pending transaction: got = %v, want = %v", got, want)
 	}
 }
 
-func BenchmarkTxSerializer_NoHotRow(b *testing.B) {
+func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 
 	b.ResetTimer()
