@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,12 +29,14 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vtgate/evalengine"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -45,6 +52,12 @@ const (
 // Rules is used to store and execute rules for the tabletserver.
 type Rules struct {
 	rules []*Rule
+}
+
+func (qrs *Rules) ForEachRule(f func(rule *Rule)) {
+	for _, rule := range qrs.rules {
+		f(rule)
+	}
 }
 
 // New creates a new Rules.
@@ -160,7 +173,7 @@ func (qrs *Rules) MarshalJSON() ([]byte, error) {
 
 // FilterByPlan creates a new Rules by prefiltering on the query and planId. This allows
 // us to create query plan specific Rules out of the original Rules. In the new rules,
-// query, plans and tableNames predicates are empty.
+// query, plans and fullyQualifiedTableNames predicates are empty.
 func (qrs *Rules) FilterByPlan(query string, planid planbuilder.PlanType, tableNames ...string) (newqrs *Rules) {
 	var newrules []*Rule
 	for _, qr := range qrs.rules {
@@ -172,6 +185,7 @@ func (qrs *Rules) FilterByPlan(query string, planid planbuilder.PlanType, tableN
 }
 
 // GetAction runs the input against the rules engine and returns the action to be performed.
+// todo earayu: deprecate this function
 func (qrs *Rules) GetAction(
 	ip,
 	user string,
@@ -199,26 +213,34 @@ func (qrs *Rules) GetAction(
 type Rule struct {
 	Description string
 	Name        string
+	Priority    int
+	Status      string
+
+	// a rule can be dynamically cancelled. This function determines whether it is cancelled
+	cancelCtx context.Context
 
 	// All defined conditions must match for the rule to fire (AND).
 
-	// Regexp conditions. nil conditions are ignored (TRUE).
-	requestIP, user, query, leadingComment, trailingComment namedRegexp
-
+	//===============Plan Specific Conditions================
 	// Any matched plan will make this condition true (OR)
 	plans []planbuilder.PlanType
+	// Any matched fullyQualifiedTableNames will make this condition true (OR)
+	fullyQualifiedTableNames []string
+	// Regexp conditions. nil conditions are ignored (TRUE).
+	query namedRegexp
+	// queryTemplate is the query template that will be used to match against the query
+	queryTemplate string
 
-	// Any matched tableNames will make this condition true (OR)
-	tableNames []string
-
+	//===============Execution Specific Conditions================
+	// Regexp conditions. nil conditions are ignored (TRUE).
+	requestIP, user, leadingComment, trailingComment namedRegexp
 	// All BindVar conditions have to be fulfilled to make this true (AND)
 	bindVarConds []BindVarCond
 
 	// Action to be performed on trigger
 	act Action
 
-	// a rule can be dynamically cancelled. This function determines whether it is cancelled
-	cancelCtx context.Context
+	actionArgs string
 }
 
 type namedRegexp struct {
@@ -239,6 +261,10 @@ func (nr namedRegexp) Equal(other namedRegexp) bool {
 	return nr.name == other.name && nr.String() == other.String()
 }
 
+func (nr namedRegexp) String() string {
+	return nr.name
+}
+
 // NewQueryRule creates a new Rule.
 func NewQueryRule(description, name string, act Action) (qr *Rule) {
 	// We ignore act because there's only one action right now
@@ -248,7 +274,7 @@ func NewQueryRule(description, name string, act Action) (qr *Rule) {
 // NewBufferedTableQueryRule creates a new buffer Rule.
 func NewBufferedTableQueryRule(cancelCtx context.Context, tableName string, description string) (qr *Rule) {
 	// We ignore act because there's only one action right now
-	return &Rule{cancelCtx: cancelCtx, Description: description, Name: bufferedTableRuleName, tableNames: []string{tableName}, act: QRBuffer}
+	return &Rule{cancelCtx: cancelCtx, Description: description, Name: bufferedTableRuleName, fullyQualifiedTableNames: []string{tableName}, act: QRBuffer}
 }
 
 // Equal returns true if other is equal to this Rule, otherwise false.
@@ -258,15 +284,19 @@ func (qr *Rule) Equal(other *Rule) bool {
 	}
 	return (qr.Description == other.Description &&
 		qr.Name == other.Name &&
+		qr.Priority == other.Priority &&
+		qr.Status == other.Status &&
 		qr.requestIP.Equal(other.requestIP) &&
 		qr.user.Equal(other.user) &&
 		qr.query.Equal(other.query) &&
+		qr.queryTemplate == other.queryTemplate &&
 		qr.leadingComment.Equal(other.leadingComment) &&
 		qr.trailingComment.Equal(other.trailingComment) &&
 		reflect.DeepEqual(qr.plans, other.plans) &&
-		reflect.DeepEqual(qr.tableNames, other.tableNames) &&
+		reflect.DeepEqual(qr.fullyQualifiedTableNames, other.fullyQualifiedTableNames) &&
 		reflect.DeepEqual(qr.bindVarConds, other.bindVarConds) &&
-		qr.act == other.act)
+		qr.act == other.act &&
+		qr.actionArgs == other.actionArgs)
 }
 
 // Copy performs a deep copy of a Rule.
@@ -274,21 +304,25 @@ func (qr *Rule) Copy() (newqr *Rule) {
 	newqr = &Rule{
 		Description:     qr.Description,
 		Name:            qr.Name,
+		Priority:        qr.Priority,
+		Status:          qr.Status,
 		requestIP:       qr.requestIP,
 		user:            qr.user,
 		query:           qr.query,
+		queryTemplate:   qr.queryTemplate,
 		leadingComment:  qr.leadingComment,
 		trailingComment: qr.trailingComment,
 		act:             qr.act,
+		actionArgs:      qr.actionArgs,
 		cancelCtx:       qr.cancelCtx,
 	}
 	if qr.plans != nil {
 		newqr.plans = make([]planbuilder.PlanType, len(qr.plans))
 		copy(newqr.plans, qr.plans)
 	}
-	if qr.tableNames != nil {
-		newqr.tableNames = make([]string, len(qr.tableNames))
-		copy(newqr.tableNames, qr.tableNames)
+	if qr.fullyQualifiedTableNames != nil {
+		newqr.fullyQualifiedTableNames = make([]string, len(qr.fullyQualifiedTableNames))
+		copy(newqr.fullyQualifiedTableNames, qr.fullyQualifiedTableNames)
 	}
 	if qr.bindVarConds != nil {
 		newqr.bindVarConds = make([]BindVarCond, len(qr.bindVarConds))
@@ -302,6 +336,8 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	b := bytes.NewBuffer(nil)
 	safeEncode(b, `{"Description":`, qr.Description)
 	safeEncode(b, `,"Name":`, qr.Name)
+	safeEncode(b, `,"Priority":`, qr.Priority)
+	safeEncode(b, `,"Status":`, qr.Status)
 	if qr.requestIP.Regexp != nil {
 		safeEncode(b, `,"RequestIP":`, qr.requestIP)
 	}
@@ -311,6 +347,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.query.Regexp != nil {
 		safeEncode(b, `,"Query":`, qr.query)
 	}
+	safeEncode(b, `,"QueryTemplate":`, qr.queryTemplate)
 	if qr.leadingComment.Regexp != nil {
 		safeEncode(b, `,"LeadingComment":`, qr.leadingComment)
 	}
@@ -320,8 +357,8 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.plans != nil {
 		safeEncode(b, `,"Plans":`, qr.plans)
 	}
-	if qr.tableNames != nil {
-		safeEncode(b, `,"TableNames":`, qr.tableNames)
+	if qr.fullyQualifiedTableNames != nil {
+		safeEncode(b, `,"FullyQualifiedTableNames":`, qr.fullyQualifiedTableNames)
 	}
 	if qr.bindVarConds != nil {
 		safeEncode(b, `,"BindVarConds":`, qr.bindVarConds)
@@ -329,8 +366,84 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	if qr.act != QRContinue {
 		safeEncode(b, `,"Action":`, qr.act)
 	}
+	safeEncode(b, `,"ActionArgs":`, qr.actionArgs)
 	_, _ = b.WriteString("}")
 	return b.Bytes(), nil
+}
+
+// ToBindVariable returns a BindVariable representation of the Rule.
+func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
+	bindVars := map[string]*querypb.BindVariable{
+		"name":                   sqltypes.StringBindVariable(qr.Name),
+		"description":            sqltypes.StringBindVariable(qr.Description),
+		"priority":               sqltypes.Int64BindVariable(int64(qr.Priority)),
+		"status":                 sqltypes.StringBindVariable(qr.Status),
+		"query_regex":            sqltypes.StringBindVariable(qr.query.String()),
+		"query_template":         sqltypes.StringBindVariable(qr.queryTemplate),
+		"request_ip_regex":       sqltypes.StringBindVariable(qr.requestIP.String()),
+		"user_regex":             sqltypes.StringBindVariable(qr.user.String()),
+		"leading_comment_regex":  sqltypes.StringBindVariable(qr.leadingComment.String()),
+		"trailing_comment_regex": sqltypes.StringBindVariable(qr.trailingComment.String()),
+		"action":                 sqltypes.StringBindVariable(qr.act.String()),
+		"action_args":            sqltypes.StringBindVariable(qr.actionArgs),
+	}
+	if qr.plans != nil {
+		planStrings, err := json.Marshal(qr.plans)
+		if err != nil {
+			log.Errorf("Failed to marshal plans: %v", err)
+			return nil, err
+		}
+		bindVars["plans"] = sqltypes.StringBindVariable(string(planStrings))
+	} else {
+		bindVars["plans"] = sqltypes.StringBindVariable("")
+	}
+
+	if qr.fullyQualifiedTableNames != nil {
+		tableNames, err := json.Marshal(qr.fullyQualifiedTableNames)
+		if err != nil {
+			log.Errorf("Failed to marshal fully_qualified_table_names: %v", err)
+			return nil, err
+		}
+		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
+	} else {
+		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable("")
+	}
+	if qr.bindVarConds != nil {
+		bindVarConds, err := json.Marshal(qr.bindVarConds)
+		if err != nil {
+			log.Errorf("Failed to marshal bind_var_conds: %v", err)
+			return nil, err
+		}
+		bindVars["bind_var_conds"] = sqltypes.StringBindVariable(string(bindVarConds))
+	} else {
+		bindVars["bind_var_conds"] = sqltypes.StringBindVariable("")
+	}
+	return bindVars, nil
+}
+
+// SetPriority sets the priority of the rule.
+func (qr *Rule) SetPriority(priority int) {
+	qr.Priority = priority
+}
+
+// SetStatus sets the status of the rule.
+func (qr *Rule) SetStatus(status string) {
+	qr.Status = status
+}
+
+// SetQueryTemplate sets the query template of the rule.
+func (qr *Rule) SetQueryTemplate(queryTemplate string) {
+	qr.queryTemplate = queryTemplate
+}
+
+// SetAction sets the action of the rule.
+func (qr *Rule) SetAction(act Action) {
+	qr.act = act
+}
+
+// SetActionArgs sets the action arguments of the rule.
+func (qr *Rule) SetActionArgs(actionArgs string) {
+	qr.actionArgs = actionArgs
 }
 
 // SetIPCond adds a regular expression condition for the client IP.
@@ -356,11 +469,11 @@ func (qr *Rule) AddPlanCond(planType planbuilder.PlanType) {
 	qr.plans = append(qr.plans, planType)
 }
 
-// AddTableCond adds to the list of tableNames that can be matched for
+// AddTableCond adds to the list of fullyQualifiedTableNames that can be matched for
 // the rule to fire.
 // This function acts as an OR: Any tableName match is considered a match.
 func (qr *Rule) AddTableCond(tableName string) {
-	qr.tableNames = append(qr.tableNames, tableName)
+	qr.fullyQualifiedTableNames = append(qr.fullyQualifiedTableNames, tableName)
 }
 
 // SetQueryCond adds a regular expression condition for the query.
@@ -451,14 +564,20 @@ Error:
 // The new Rule will contain all the original constraints other
 // than the plan and query. If the plan and query don't match the Rule,
 // then it returns nil.
-func (qr *Rule) FilterByPlan(query string, planid planbuilder.PlanType, tableNames []string) (newqr *Rule) {
+func (qr *Rule) FilterByPlan(query string, planType planbuilder.PlanType, tableNames []string) (newqr *Rule) {
+	if qr.Status == InActive {
+		return nil
+	}
+	if !planMatch(qr.plans, planType) {
+		return nil
+	}
+	if !fullyQualifiedTableNameRegexMatch(qr.fullyQualifiedTableNames, tableNames) {
+		return nil
+	}
 	if !reMatch(qr.query.Regexp, query) {
 		return nil
 	}
-	if !planMatch(qr.plans, planid) {
-		return nil
-	}
-	if !tableMatch(qr.tableNames, tableNames) {
+	if !queryTemplateMatch(qr.queryTemplate, query) {
 		return nil
 	}
 	newqr = qr.Copy()
@@ -466,7 +585,7 @@ func (qr *Rule) FilterByPlan(query string, planid planbuilder.PlanType, tableNam
 	// Note we explicitly don't remove the leading/trailing comments as they
 	// must be evaluated at execution time.
 	newqr.plans = nil
-	newqr.tableNames = nil
+	newqr.fullyQualifiedTableNames = nil
 	return newqr
 }
 
@@ -487,16 +606,42 @@ func (qr *Rule) GetAction(
 			// proceed to evaluate rules
 		}
 	}
+	if !reMatch(qr.user.Regexp, user) {
+		return QRContinue
+	}
+	if !reMatch(qr.requestIP.Regexp, ip) {
+		return QRContinue
+	}
 	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
 		return QRContinue
 	}
 	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
 		return QRContinue
 	}
+	for _, bvcond := range qr.bindVarConds {
+		if !bvMatch(bvcond, bindVars) {
+			return QRContinue
+		}
+	}
+	return qr.act
+}
+
+func (qr *Rule) FilterByExecutionInfo(
+	ip,
+	user string,
+	bindVars map[string]*querypb.BindVariable,
+	marginComments sqlparser.MarginComments,
+) Action {
+	if !reMatch(qr.user.Regexp, user) {
+		return QRContinue
+	}
 	if !reMatch(qr.requestIP.Regexp, ip) {
 		return QRContinue
 	}
-	if !reMatch(qr.user.Regexp, user) {
+	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
+		return QRContinue
+	}
+	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
 		return QRContinue
 	}
 	for _, bvcond := range qr.bindVarConds {
@@ -511,6 +656,10 @@ func reMatch(re *regexp.Regexp, val string) bool {
 	return re == nil || re.MatchString(val)
 }
 
+func queryTemplateMatch(expect string, actual string) bool {
+	return expect == "" || expect == actual
+}
+
 func planMatch(plans []planbuilder.PlanType, plan planbuilder.PlanType) bool {
 	if plans == nil {
 		return true
@@ -523,17 +672,44 @@ func planMatch(plans []planbuilder.PlanType, plan planbuilder.PlanType) bool {
 	return false
 }
 
-func tableMatch(tableNames []string, otherNames []string) bool {
-	if tableNames == nil {
+func compileRegex(pattern string) (*regexp.Regexp, error) {
+	regexPattern := strings.Replace(pattern, ".", "\\.", -1)
+	regexPattern = strings.Replace(regexPattern, "*", ".*", -1)
+
+	re, err := regexp.Compile("^" + regexPattern + "$")
+	if err != nil {
+		log.Errorf("Invalid pattern %v, err is %v", pattern, err)
+		return nil, err
+	}
+	return re, nil
+}
+
+// expectedFullyQualifiedTableNames is a list of fully qualified table names that consist of regex.
+// fullyQualifiedTableNames is a list of real table name.
+// the caller should guarantee that regex CAN NOT CONTAIN '.', or it will be confounded with the '.' between database name and table name.
+func fullyQualifiedTableNameRegexMatch(expectedFullyQualifiedTableNames []string, fullyQualifiedTableNames []string) bool {
+	if expectedFullyQualifiedTableNames == nil {
 		return true
 	}
-	otherNamesMap := map[string]bool{}
-	for _, name := range otherNames {
-		otherNamesMap[name] = true
-	}
-	for _, name := range tableNames {
-		if otherNamesMap[name] {
-			return true
+
+	for _, expected := range expectedFullyQualifiedTableNames {
+		expectedParts := strings.Split(expected, ".")
+		if len(expectedParts) != 2 {
+			return false
+		}
+		databaseNameRegex, err1 := compileRegex(expectedParts[0])
+		tableNameRegex, err2 := compileRegex(expectedParts[1])
+		if err1 != nil || err2 != nil {
+			log.Errorf("err of compileRegex is not nil, err1:%v, err2:%v", err1, err2)
+			return false
+		}
+		for _, actual := range fullyQualifiedTableNames {
+			actualParts := strings.Split(actual, ".")
+			databaseMatched := databaseNameRegex.MatchString(actualParts[0])
+			tableMatched := tableNameRegex.MatchString(actualParts[1])
+			if databaseMatched && tableMatched {
+				return true
+			}
 		}
 	}
 	return false
@@ -563,23 +739,75 @@ const (
 	QRFail
 	QRFailRetry
 	QRBuffer
+	QRConcurrencyControl
+	QRPlugin
 )
+
+func ParseStringToAction(s string) (Action, error) {
+	switch s {
+	case "CONTINUE":
+		return QRContinue, nil
+	case "FAIL":
+		return QRFail, nil
+	case "FAIL_RETRY":
+		return QRFailRetry, nil
+	case "BUFFER":
+		return QRBuffer, nil
+	case "CONCURRENCY_CONTROL":
+		return QRConcurrencyControl, nil
+	case "PLUGIN":
+		return QRPlugin, nil
+	default:
+		return QRContinue, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", s)
+	}
+}
+
+func (act Action) ToString() string {
+	switch act {
+	case QRContinue:
+		return "CONTINUE"
+	case QRFail:
+		return "FAIL"
+	case QRFailRetry:
+		return "FAIL_RETRY"
+	case QRBuffer:
+		return "BUFFER"
+	case QRConcurrencyControl:
+		return "CONCURRENCY_CONTROL"
+	case QRPlugin:
+		return "PLUGIN"
+	default:
+		return "INVALID"
+	}
+}
+
+func (act Action) String() string {
+	return act.ToString()
+}
 
 // MarshalJSON marshals to JSON.
 func (act Action) MarshalJSON() ([]byte, error) {
 	// If we add more actions, we'll need to use a map.
-	var str string
-	switch act {
-	case QRFail:
-		str = "FAIL"
-	case QRFailRetry:
-		str = "FAIL_RETRY"
-	case QRBuffer:
-		str = "BUFFER"
-	default:
-		str = "INVALID"
+	return json.Marshal(act.ToString())
+}
+
+const (
+	Active   = "ACTIVE"
+	InActive = "INACTIVE"
+	DryRun   = "DRY_RUN"
+)
+
+func StatusIsValid(status string) bool {
+	switch status {
+	case Active, InActive, DryRun:
+		return true
 	}
-	return json.Marshal(str)
+	return false
+}
+
+func IsValidFullyQualifiedTableName(tableName string) bool {
+	parts := strings.Split(tableName, ".")
+	return len(parts) == 2
 }
 
 // BindVarCond represents a bind var condition.
@@ -863,15 +1091,23 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 	qr = NewQueryRule("", "", QRFail)
 	for k, v := range ruleInfo {
 		var sv string
+		var iv int
 		var lv []any
 		var ok bool
 		switch k {
-		case "Name", "Description", "RequestIP", "User", "Query", "Action", "LeadingComment", "TrailingComment":
+		case "Name", "Description", "RequestIP", "User", "Query",
+			"Action", "LeadingComment", "TrailingComment", "Status",
+			"QueryTemplate", "ActionArgs":
 			sv, ok = v.(string)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for %s", k)
 			}
-		case "Plans", "BindVarConds", "TableNames":
+		case "Priority":
+			iv, ok = v.(int)
+			if !ok {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
+			}
+		case "Plans", "BindVarConds", "FullyQualifiedTableNames":
 			lv, ok = v.([]any)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want list for %s", k)
@@ -882,6 +1118,15 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		switch k {
 		case "Name":
 			qr.Name = sv
+		case "Priority":
+			//todo earayu: add testcase
+			qr.Priority = iv
+		case "Status":
+			//todo earayu: add testcase
+			if !StatusIsValid(sv) {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid status: %s", sv)
+			}
+			qr.Status = sv
 		case "Description":
 			qr.Description = sv
 		case "RequestIP":
@@ -899,6 +1144,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			if err != nil {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "could not set Query condition: %v", sv)
 			}
+		case "QueryTemplate":
+			qr.queryTemplate = sv
 		case "LeadingComment":
 			err = qr.SetLeadingCommentCond(sv)
 			if err != nil {
@@ -921,13 +1168,16 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 				qr.AddPlanCond(pt)
 			}
-		case "TableNames":
+		case "FullyQualifiedTableNames":
 			for _, t := range lv {
-				tableName, ok := t.(string)
+				fullyQualifiedTableName, ok := t.(string)
 				if !ok {
-					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for TableNames")
+					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for fullyQualifiedTableName")
 				}
-				qr.AddTableCond(tableName)
+				if !IsValidFullyQualifiedTableName(fullyQualifiedTableName) {
+					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "fullyQualifiedTableName %v is not in correct format, should be databaseName.tableName", fullyQualifiedTableName)
+				}
+				qr.AddTableCond(fullyQualifiedTableName)
 			}
 		case "BindVarConds":
 			for _, bvc := range lv {
@@ -941,16 +1191,13 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 			}
 		case "Action":
-			switch sv {
-			case "FAIL":
-				qr.act = QRFail
-			case "FAIL_RETRY":
-				qr.act = QRFailRetry
-			case "BUFFER":
-				qr.act = QRBuffer
-			default:
-				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", sv)
+			act, err := ParseStringToAction(sv)
+			if err != nil {
+				return nil, err
 			}
+			qr.act = act
+		case "ActionArgs":
+			qr.actionArgs = sv
 		}
 	}
 	return qr, nil
@@ -1054,4 +1301,14 @@ func safeEncode(b *bytes.Buffer, prefix string, v any) {
 	if err := enc.Encode(v); err != nil {
 		_ = enc.Encode(err.Error())
 	}
+}
+
+// GetCancelCtx returns the cancel context for the rule
+func (qr *Rule) GetCancelCtx() context.Context {
+	return qr.cancelCtx
+}
+
+// GetActionArgs
+func (qr *Rule) GetActionArgs() string {
+	return qr.actionArgs
 }

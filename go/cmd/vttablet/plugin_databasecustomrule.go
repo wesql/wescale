@@ -16,8 +16,8 @@ limitations under the License.
 
 package main
 
-// Imports and register the file custom rule source
+// Imports and register the topo custom rule source
 
 import (
-	_ "vitess.io/vitess/go/vt/vttablet/customrule/filecustomrule"
+	_ "vitess.io/vitess/go/vt/vttablet/customrule/databasecustomrule"
 )

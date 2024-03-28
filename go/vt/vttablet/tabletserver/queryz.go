@@ -158,7 +158,7 @@ func queryzHandler(qe *QueryEngine, w http.ResponseWriter, r *http.Request) {
 		}
 		Value := &queryzRow{
 			Query: logz.Wrappable(sqlparser.TruncateForUI(plan.Original)),
-			Table: plan.TableName().String(),
+			Table: plan.TableName(),
 			Plan:  plan.PlanID,
 		}
 		Value.Count, Value.tm, Value.mysqlTime, Value.RowsAffected, Value.RowsReturned, Value.Errors = plan.Stats()

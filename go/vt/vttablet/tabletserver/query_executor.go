@@ -28,7 +28,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 
 	"google.golang.org/protobuf/proto"
@@ -69,6 +68,7 @@ type QueryExecutor struct {
 	tsv            *TabletServer
 	tabletType     topodatapb.TabletType
 	setting        *pools.Setting
+	actionList     []ActionInterface
 }
 
 const (
@@ -130,7 +130,7 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		qre.recordUserQuery("Execute", int64(duration))
 
 		mysqlTime := qre.logStats.MysqlResponseTime
-		tableName := qre.plan.TableName().String()
+		tableName := qre.plan.TableName()
 		if tableName == "" {
 			tableName = "Join"
 		}
@@ -146,6 +146,10 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		qre.logStats.Rows = reply.Rows
 		qre.tsv.Stats().ResultHistogram.Add(int64(len(reply.Rows)))
 	}(time.Now())
+
+	qre.initDatabaseProxyFilter()
+	qre.runActionListBeforeExecution()
+	defer qre.runActionListAfterExecution(reply, err)
 
 	if err = qre.checkPermissions(); err != nil {
 		return nil, err
@@ -523,7 +527,7 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 		return err
 	}
 
-	done, err := qre.tsv.messager.Subscribe(qre.ctx, qre.plan.TableName().String(), func(r *sqltypes.Result) error {
+	done, err := qre.tsv.messager.Subscribe(qre.ctx, qre.plan.TableName(), func(r *sqltypes.Result) error {
 		select {
 		case <-qre.ctx.Done():
 			return io.EOF
@@ -536,6 +540,49 @@ func (qre *QueryExecutor) MessageStream(callback StreamCallback) error {
 	}
 	<-done
 	return nil
+}
+
+func (qre *QueryExecutor) initDatabaseProxyFilter() {
+	remoteAddr := ""
+	username := ""
+	ci, ok := callinfo.FromContext(qre.ctx)
+	if ok {
+		remoteAddr = ci.RemoteAddr()
+		username = ci.Username()
+	}
+
+	pluginList := GetActionList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
+	qre.actionList = pluginList
+}
+
+// runActionListBeforeExecution runs the action list and returns the first error it encounters.
+func (qre *QueryExecutor) runActionListBeforeExecution() error {
+	for _, a := range qre.actionList {
+		if a.GetRule().Status == rules.DryRun {
+			log.Infof("Dry run: %s", a.GetRule().Name)
+			continue
+		}
+		err := a.BeforeExecution(qre)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
+	for i := len(qre.actionList) - 1; i >= 0; i-- {
+		a := qre.actionList[i]
+		if a.GetRule().Status == rules.DryRun {
+			continue
+		}
+		result := a.AfterExecution(qre, reply, err)
+		if !result.FireNext {
+			break
+		}
+	}
+	//todo filter: support modify the reply and err
 }
 
 // checkPermissions returns an error if the query does not pass all checks
@@ -580,7 +627,7 @@ func (qre *QueryExecutor) checkPermissions() error {
 		// no rules against this query. Good to proceed
 	}
 	// Skip ACL check for queries against the dummy dual table
-	if qre.plan.TableName().String() == "dual" {
+	if qre.plan.TableName() == "dual" {
 		return nil
 	}
 
@@ -746,7 +793,7 @@ func (qre *QueryExecutor) execNextval() (*sqltypes.Result, error) {
 	defer t.SequenceInfo.Unlock()
 	if t.SequenceInfo.NextVal == 0 || t.SequenceInfo.NextVal+inc > t.SequenceInfo.LastVal {
 		_, err := qre.execAsTransaction(func(conn *StatefulConnection) (*sqltypes.Result, error) {
-			query := fmt.Sprintf("select next_id, cache from %s where id = 0 for update", sqlparser.String(tableName))
+			query := fmt.Sprintf("select next_id, cache from %s where id = 0 for update", tableName)
 			qr, err := qre.execStatefulConn(conn, query, false)
 			if err != nil {
 				return nil, err
@@ -780,7 +827,7 @@ func (qre *QueryExecutor) execNextval() (*sqltypes.Result, error) {
 			for newLast < t.SequenceInfo.NextVal+inc {
 				newLast += cache
 			}
-			query = fmt.Sprintf("update %s set next_id = %d where id = 0", sqlparser.String(tableName), newLast)
+			query = fmt.Sprintf("update %s set next_id = %d where id = 0", tableName, newLast)
 			conn.TxProperties().RecordQuery(query)
 			_, err = qre.execStatefulConn(conn, query, false)
 			if err != nil {
@@ -1352,7 +1399,7 @@ func (qre *QueryExecutor) recordUserQuery(queryType string, duration int64) {
 	if username == "" {
 		username = callerid.GetUsername(callerid.ImmediateCallerIDFromContext(qre.ctx))
 	}
-	tableName := qre.plan.TableName().String()
+	tableName := qre.plan.TableName()
 	qre.tsv.Stats().UserTableQueryCount.Add([]string{tableName, username, queryType}, 1)
 	qre.tsv.Stats().UserTableQueryTimesNs.Add([]string{tableName, username, queryType}, duration)
 }

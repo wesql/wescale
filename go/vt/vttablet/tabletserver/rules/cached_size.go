@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,27 +56,29 @@ func (cached *Rule) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
 	// field Name string
 	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
-	// field requestIP vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
-	size += cached.requestIP.CachedSize(false)
-	// field user vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
-	size += cached.user.CachedSize(false)
-	// field query vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
-	size += cached.query.CachedSize(false)
-	// field leadingComment vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
-	size += cached.leadingComment.CachedSize(false)
-	// field trailingComment vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
-	size += cached.trailingComment.CachedSize(false)
+	//todo earayu: where is Priority?
+
 	// field plans []vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder.PlanType
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.plans)) * int64(8))
 	}
-	// field tableNames []string
+	// field fullyQualifiedTableNames []string
 	{
-		size += hack.RuntimeAllocSize(int64(cap(cached.tableNames)) * int64(16))
-		for _, elem := range cached.tableNames {
+		size += hack.RuntimeAllocSize(int64(cap(cached.fullyQualifiedTableNames)) * int64(16))
+		for _, elem := range cached.fullyQualifiedTableNames {
 			size += hack.RuntimeAllocSize(int64(len(elem)))
 		}
 	}
+	// field query vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
+	size += cached.query.CachedSize(false)
+	// field requestIP vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
+	size += cached.requestIP.CachedSize(false)
+	// field user vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
+	size += cached.user.CachedSize(false)
+	// field leadingComment vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
+	size += cached.leadingComment.CachedSize(false)
+	// field trailingComment vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
+	size += cached.trailingComment.CachedSize(false)
 	// field bindVarConds []vitess.io/vitess/go/vt/vttablet/tabletserver/rules.BindVarCond
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.bindVarConds)) * int64(48))

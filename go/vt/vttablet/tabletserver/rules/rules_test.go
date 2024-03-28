@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -308,8 +313,8 @@ func TestQueryRule(t *testing.T) {
 	}
 
 	qr.AddTableCond("a")
-	if qr.tableNames[0] != "a" {
-		t.Errorf("want a, got %s", qr.tableNames[0])
+	if qr.fullyQualifiedTableNames[0] != "a" {
+		t.Errorf("want a, got %s", qr.fullyQualifiedTableNames[0])
 	}
 }
 
@@ -592,7 +597,7 @@ func TestImport(t *testing.T) {
 		"User": "user",
 		"Query": "query",
 		"Plans": ["Select", "Insert"],
-		"TableNames":["a", "b"],
+		"FullyQualifiedTableNames":["a", "b"],
 		"BindVarConds": [{
 			"Name": "bvname1",
 			"OnAbsent": true,
@@ -704,14 +709,14 @@ var invalidjsons = []InvalidJSONCase{
 	{`[{"User": 1 }]`, "want string for User"},
 	{`[{"Query": 1 }]`, "want string for Query"},
 	{`[{"Plans": 1 }]`, "want list for Plans"},
-	{`[{"TableNames": 1 }]`, "want list for TableNames"},
+	{`[{"FullyQualifiedTableNames": 1 }]`, "want list for TableNames"},
 	{`[{"BindVarConds": 1 }]`, "want list for BindVarConds"},
 	{`[{"RequestIP": "[" }]`, "could not set IP condition: ["},
 	{`[{"User": "[" }]`, "could not set User condition: ["},
 	{`[{"Query": "[" }]`, "could not set Query condition: ["},
 	{`[{"Plans": [1] }]`, "want string for Plans"},
 	{`[{"Plans": ["invalid"] }]`, "invalid plan name: invalid"},
-	{`[{"TableNames": [1] }]`, "want string for TableNames"},
+	{`[{"FullyQualifiedTableNames": [1] }]`, "want string for TableNames"},
 	{`[{"BindVarConds": [1] }]`, "want json object for bind var conditions"},
 	{`[{"BindVarConds": [{}] }]`, "Name missing in BindVarConds"},
 	{`[{"BindVarConds": [{"Name": 1}] }]`, "want string for Name in BindVarConds"},
@@ -808,4 +813,118 @@ func marshalled(in any) string {
 		panic(err)
 	}
 	return string(b)
+}
+
+func TestFullyQualifiedTableNameRegexMatch(t *testing.T) {
+	testcases := []struct {
+		name                             string
+		expectedFullyQualifiedTableNames []string
+		actualFullyQualifiedTableNames   []string
+		expected                         bool
+	}{
+		{
+			name:                             "testcase1",
+			expectedFullyQualifiedTableNames: []string{"d1.t1", "d1.t2"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1", "d1.t3"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase2",
+			expectedFullyQualifiedTableNames: []string{"*.t1"},
+			actualFullyQualifiedTableNames:   []string{"d2.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase3",
+			expectedFullyQualifiedTableNames: []string{"d1.*"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase4",
+			expectedFullyQualifiedTableNames: []string{"*.*"},
+			actualFullyQualifiedTableNames:   []string{"d1.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase5",
+			expectedFullyQualifiedTableNames: []string{"my*.t1"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase6",
+			expectedFullyQualifiedTableNames: []string{"mysql.t*"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t1"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase7",
+			expectedFullyQualifiedTableNames: []string{"mysql.t*"},
+			actualFullyQualifiedTableNames:   []string{"mysql.d"},
+			expected:                         false,
+		},
+		{
+			name:                             "testcase8",
+			expectedFullyQualifiedTableNames: []string{"mysql.t[1-9]"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t2"},
+			expected:                         true,
+		},
+		{
+			name:                             "testcase9",
+			expectedFullyQualifiedTableNames: []string{"mysql.t[1-9]"},
+			actualFullyQualifiedTableNames:   []string{"mysql.t22"},
+			expected:                         false,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fullyQualifiedTableNameRegexMatch(tt.expectedFullyQualifiedTableNames, tt.actualFullyQualifiedTableNames)
+			assert.Equalf(t, tt.expected, got, "fullyQualifiedTableNameRegexMatch(%s, %s)", tt.expectedFullyQualifiedTableNames, tt.actualFullyQualifiedTableNames)
+		})
+	}
+
+}
+
+func Test_queryTemplateMatch(t *testing.T) {
+	type args struct {
+		expect string
+		actual string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "match",
+			args: args{
+				expect: "select * from t1 where id = :id",
+				actual: "select * from t1 where id = :id",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				expect: "",
+				actual: "select * from t1 where id = :id",
+			},
+			want: true,
+		},
+		{
+			name: "not match",
+			args: args{
+				expect: "select * from t1 where id = :id",
+				actual: "select * from t1 where id = :id and name = :name",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, queryTemplateMatch(tt.args.expect, tt.args.actual), "queryTemplateMatch(%v, %v)", tt.args.expect, tt.args.actual)
+		})
+	}
 }

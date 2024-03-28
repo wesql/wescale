@@ -24,6 +24,8 @@ package tabletserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,6 +33,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/ccl"
 
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -63,9 +66,10 @@ import (
 // and track stats.
 type TabletPlan struct {
 	*planbuilder.Plan
-	Original   string
-	Rules      *rules.Rules
-	Authorized [][]*tableacl.ACLResult
+	Original        string
+	QueryTemplateID string
+	Rules           *rules.Rules
+	Authorized      [][]*tableacl.ACLResult
 
 	QueryCount   uint64
 	Time         uint64
@@ -160,7 +164,8 @@ type QueryEngine struct {
 	// Such queries would be serialized by MySQL anyway. This serializer prevents
 	// that we start more than one transaction per hot row (range).
 	// For implementation details, please see BeginExecute() in tabletserver.go.
-	txSerializer *txserializer.TxSerializer
+	txSerializer          *txserializer.TxSerializer
+	concurrencyController *ccl.ConcurrencyController
 
 	// Vars
 	maxResultSize    sync2.AtomicInt64
@@ -230,6 +235,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 		log.Info("Stream consolidator is not enabled.")
 	}
 	qe.txSerializer = txserializer.New(env)
+	qe.concurrencyController = ccl.New(env.Exporter())
 
 	qe.strictTableACL = config.StrictTableACL
 	qe.enableTableACLDryRun = config.EnableTableACLDryRun
@@ -272,6 +278,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 	qe.queryRowsReturned = env.Exporter().NewCountersWithMultiLabels("QueryRowsReturned", "query rows returned", []string{"Table", "Plan"})
 	qe.queryErrorCounts = env.Exporter().NewCountersWithMultiLabels("QueryErrorCounts", "query error counts", []string{"Table", "Plan"})
 
+	env.Exporter().HandleFunc("/debug/ccl", qe.concurrencyController.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/hotrows", qe.txSerializer.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/tablet_plans", qe.handleHTTPQueryPlans)
 	env.Exporter().HandleFunc("/debug/query_stats", qe.handleHTTPQueryStats)
@@ -361,7 +368,7 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql}
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
 	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableNames()...)
 	plan.buildAuthorized()
 	if plan.PlanID == planbuilder.PlanDDL || plan.PlanID == planbuilder.PlanSet {
@@ -382,8 +389,8 @@ func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, er
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql}
-	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName().String())
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
+	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName())
 	plan.buildAuthorized()
 	return plan, nil
 }
@@ -397,7 +404,7 @@ func (qe *QueryEngine) GetMessageStreamPlan(name string) (*TabletPlan, error) {
 		return nil, err
 	}
 	plan := &TabletPlan{Plan: splan}
-	plan.Rules = qe.queryRuleSources.FilterByPlan("stream from "+name, plan.PlanID, plan.TableName().String())
+	plan.Rules = qe.queryRuleSources.FilterByPlan("stream from "+name, plan.PlanID, plan.TableName())
 	plan.buildAuthorized()
 	return plan, nil
 }
@@ -550,6 +557,7 @@ func (qe *QueryEngine) handleHTTPQueryPlans(response http.ResponseWriter, reques
 	qe.plans.ForEach(func(value any) bool {
 		plan := value.(*TabletPlan)
 		response.Write([]byte(fmt.Sprintf("%#v\n", sqlparser.TruncateForUI(plan.Original))))
+		response.Write([]byte(fmt.Sprintf("%#v\n", plan.QueryTemplateID)))
 		if b, err := json.MarshalIndent(plan.Plan, "", "  "); err != nil {
 			response.Write([]byte(err.Error()))
 		} else {
@@ -572,7 +580,7 @@ func (qe *QueryEngine) handleHTTPQueryStats(response http.ResponseWriter, reques
 
 		var pqstats perQueryStats
 		pqstats.Query = unicoded(sqlparser.TruncateForUI(plan.Original))
-		pqstats.Table = plan.TableName().String()
+		pqstats.Table = plan.TableName()
 		pqstats.Plan = plan.PlanID
 		pqstats.QueryCount, pqstats.Time, pqstats.MysqlTime, pqstats.RowsAffected, pqstats.RowsReturned, pqstats.ErrorCount = plan.Stats()
 
@@ -664,4 +672,11 @@ func unicoded(in string) (out string) {
 // InUse returns the sum of InUse connections across managed various Pool
 func (qe *QueryEngine) InUse() int64 {
 	return qe.conns.InUse() + qe.streamConns.InUse() + qe.streamWithoutDBConns.InUse() + qe.withoutDBConns.InUse()
+}
+
+func GenerateSQLHash(sqlTemplate string) string {
+	hasher := sha256.New()
+	hasher.Write([]byte(sqlTemplate))
+	fullHash := hex.EncodeToString(hasher.Sum(nil))
+	return fullHash[:8]
 }
