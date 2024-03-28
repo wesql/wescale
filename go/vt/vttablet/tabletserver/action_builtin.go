@@ -96,6 +96,8 @@ type ConcurrencyControlAction struct {
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
+
+	maxConcurrency int `json:"max_concurrency"`
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
