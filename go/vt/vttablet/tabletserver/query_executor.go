@@ -576,7 +576,7 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 		if a.GetRule().Status == rules.DryRun {
 			continue
 		}
-		result := a.AfterExecution(reply, err)
+		result := a.AfterExecution(qre, reply, err)
 		reply, err = result.Reply, result.Err
 		if !result.FireNext {
 			break
