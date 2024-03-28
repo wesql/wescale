@@ -548,7 +548,7 @@ var defaultConfig = TabletConfig{
 		MaxGlobalQueueSize: 1000,
 		// Allow more than 1 transaction for the same hot row through to have enough
 		// of them ready in MySQL and profit from a pipelining effect.
-		MaxConcurrency: 1,
+		MaxConcurrency: 5,
 	},
 	Consolidator:                Disable,
 	ConsolidatorStreamTotalSize: 128 * 1024 * 1024,
