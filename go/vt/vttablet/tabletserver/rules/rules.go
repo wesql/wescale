@@ -358,7 +358,7 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 		safeEncode(b, `,"Plans":`, qr.plans)
 	}
 	if qr.fullyQualifiedTableNames != nil {
-		safeEncode(b, `,"TableNames":`, qr.fullyQualifiedTableNames)
+		safeEncode(b, `,"FullyQualifiedTableNames":`, qr.fullyQualifiedTableNames)
 	}
 	if qr.bindVarConds != nil {
 		safeEncode(b, `,"BindVarConds":`, qr.bindVarConds)
@@ -401,7 +401,7 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 			log.Errorf("Failed to marshal fully_qualified_table_names: %v", err)
 			return nil, err
 		}
-		bindVars["Fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
+		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
 	}
 	if qr.bindVarConds != nil {
 		bindVarConds, err := json.Marshal(qr.bindVarConds)

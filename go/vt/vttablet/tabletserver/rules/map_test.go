@@ -215,14 +215,14 @@ func TestMapJSON(t *testing.T) {
 		"CUSTOM_QUERY_RULES":[{
 			"Description":"sample custom rule",
 			"Name":"customrule_ban_bindvar",
-			"TableNames":["t_customer"],
+			"FullyQualifiedTableNames":["t_customer"],
 			"BindVarConds":[{"Name":"bindvar1","OnAbsent":true,"Operator":""}],
 			"Action":"FAIL"
 		}],
 		"DENYLIST_QUERY_RULES":[{
 			"Description":"enforce denied tables",
 			"Name":"denied_table",
-			"TableNames":["bannedtable1","bannedtable2","bannedtable3"],
+			"FullyQualifiedTableNames":["bannedtable1","bannedtable2","bannedtable3"],
 			"Action":"FAIL_RETRY"
 		}]
 	}`)

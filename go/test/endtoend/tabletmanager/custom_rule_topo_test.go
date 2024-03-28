@@ -95,7 +95,7 @@ func TestTopoCustomRule(t *testing.T) {
 	data = []byte(`[{
 		"Name": "rule1",
 		"Description": "disallow select on table t1",
-		"TableNames" : ["t1"],
+		"FullyQualifiedTableNames" : ["t1"],
 		"Query" : "(select)|(SELECT)"
 	  }]`)
 	err = os.WriteFile(topoCustomRuleFile, data, 0777)
