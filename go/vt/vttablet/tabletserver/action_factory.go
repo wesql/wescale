@@ -37,20 +37,25 @@ func GetActionList(
 }
 
 func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterface, error) {
+	var actInst ActionInterface
+	var err error
 	switch action {
 	case rules.QRContinue:
-		return &ContinueAction{Rule: rule, Action: action}, nil
+		actInst, err = &ContinueAction{Rule: rule, Action: action}, nil
 	case rules.QRFail:
-		return &FailAction{Rule: rule, Action: action}, nil
+		actInst, err = &FailAction{Rule: rule, Action: action}, nil
 	case rules.QRFailRetry:
-		return &FailRetryAction{Rule: rule, Action: action}, nil
+		actInst, err = &FailRetryAction{Rule: rule, Action: action}, nil
 	case rules.QRConcurrencyControl:
-		return &ConcurrencyControlAction{Rule: rule, Action: action}, nil
+		actInst, err = &ConcurrencyControlAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
 		//todo earayu: maybe we should use 'vterrors.Errorf' here
-		return nil, fmt.Errorf("unknown action: %v", action)
+		actInst, err = nil, fmt.Errorf("unknown action: %v", action)
 	}
+
+	actInst.SetParams(rule.GetActionArgs())
+	return actInst, err
 }
 
 func CreateContinueAction() ActionInterface {

@@ -1307,3 +1307,8 @@ func safeEncode(b *bytes.Buffer, prefix string, v any) {
 func (qr *Rule) GetCancelCtx() context.Context {
 	return qr.cancelCtx
 }
+
+// GetActionArgs
+func (qr *Rule) GetActionArgs() string {
+	return qr.actionArgs
+}
