@@ -1,10 +1,13 @@
 package tabletserver
 
 import (
+	"context"
+	"time"
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/txserializer"
 )
 
 type ContinueAction struct {
@@ -84,11 +87,22 @@ type ConcurrencyControlAction struct {
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
-	qre.tsv.qe.txSerializer.Wait(qre.ctx, "foo", "t1")
+	doneFunc, waited, err := qre.tsv.qe.txSerializer.Wait(qre.ctx, "foo", "t1")
+
+	if waited {
+		qre.tsv.stats.WaitTimings.Record("TxSerializer", time.Now())
+	}
+	if err != nil {
+		return err
+	}
+	qre.ctx = context.WithValue(qre.ctx, "txSerializerDoneFunc", doneFunc)
+
 	return nil
 }
 
 func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+	doneFunc := qre.ctx.Value("txSerializerDoneFunc").(txserializer.DoneFunc)
+	doneFunc()
 	return &ActionExecutionResponse{
 		FireNext: true,
 		Reply:    reply,
