@@ -149,6 +149,7 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 
 	qre.initDatabaseProxyFilter()
 	qre.runActionListBeforeExecution()
+	defer qre.runActionListAfterExecution(reply, err)
 
 	if err = qre.checkPermissions(); err != nil {
 		return nil, err
@@ -570,19 +571,18 @@ func (qre *QueryExecutor) runActionListBeforeExecution() error {
 }
 
 // runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
-func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) error {
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
 	for i := len(qre.actionList) - 1; i >= 0; i-- {
 		a := qre.actionList[i]
 		if a.GetRule().Status == rules.DryRun {
 			continue
 		}
 		result := a.AfterExecution(qre, reply, err)
-		reply, err = result.Reply, result.Err
 		if !result.FireNext {
 			break
 		}
 	}
-	return nil
+	//todo filter: support modify the reply and err
 }
 
 // checkPermissions returns an error if the query does not pass all checks
