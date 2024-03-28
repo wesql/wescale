@@ -11,7 +11,7 @@ import (
 
 const DefaultPriority = 1000
 
-type PluginInterface interface {
+type ActionInterface interface {
 	BeforeExecution(qre *QueryExecutor) error
 
 	GetRule() *rules.Rule

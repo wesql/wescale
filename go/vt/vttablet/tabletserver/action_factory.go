@@ -9,26 +9,26 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
-// GetPluginList runs the input against the rules engine and returns the action list to be performed.
-func GetPluginList(
+// GetActionList runs the input against the rules engine and returns the action list to be performed.
+func GetActionList(
 	qrs *rules.Rules,
 	ip,
 	user string,
 	bindVars map[string]*querypb.BindVariable,
 	marginComments sqlparser.MarginComments,
-) (action []PluginInterface) {
-	var actionList []PluginInterface
+) (action []ActionInterface) {
+	var actionList []ActionInterface
 	qrs.ForEachRule(func(qr *rules.Rule) {
 		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
-		p, err := CreatePlugin(act, qr)
+		p, err := CreateActionInstance(act, qr)
 		if err != nil {
-			actionList = append(actionList, CreateNoOpPlugin())
+			actionList = append(actionList, CreateContinueAction())
 			return
 		}
 		actionList = append(actionList, p)
 	})
 	if len(actionList) == 0 {
-		actionList = append(actionList, CreateNoOpPlugin())
+		actionList = append(actionList, CreateContinueAction())
 	}
 	sort.SliceStable(actionList, func(i, j int) bool {
 		return actionList[i].GetRule().Priority < actionList[j].GetRule().Priority
@@ -36,14 +36,14 @@ func GetPluginList(
 	return actionList
 }
 
-func CreatePlugin(action rules.Action, rule *rules.Rule) (PluginInterface, error) {
+func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterface, error) {
 	switch action {
 	case rules.QRContinue:
-		return &NoOpPlugin{Rule: rule, Action: action}, nil
+		return &ContinueAction{Rule: rule, Action: action}, nil
 	case rules.QRFail:
-		return &FailPlugin{Rule: rule, Action: action}, nil
+		return &FailAction{Rule: rule, Action: action}, nil
 	case rules.QRFailRetry:
-		return &FailRetryPlugin{Rule: rule, Action: action}, nil
+		return &FailRetryAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
 		//todo earayu: maybe we should use 'vterrors.Errorf' here
@@ -51,6 +51,6 @@ func CreatePlugin(action rules.Action, rule *rules.Rule) (PluginInterface, error
 	}
 }
 
-func CreateNoOpPlugin() PluginInterface {
-	return &NoOpPlugin{Rule: &rules.Rule{Name: "noop", Priority: DefaultPriority}, Action: rules.QRContinue}
+func CreateContinueAction() ActionInterface {
+	return &ContinueAction{Rule: &rules.Rule{Name: "noop", Priority: DefaultPriority}, Action: rules.QRContinue}
 }

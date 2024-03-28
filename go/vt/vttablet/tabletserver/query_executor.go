@@ -550,7 +550,7 @@ func (qre *QueryExecutor) executeDatabaseProxyFilter() error {
 		username = ci.Username()
 	}
 
-	pluginList := GetPluginList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
+	pluginList := GetActionList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
 	for _, plugin := range pluginList {
 		if plugin.GetRule().Status == rules.DryRun {
 			log.Infof("Dry run: %s", plugin.GetRule().Name)

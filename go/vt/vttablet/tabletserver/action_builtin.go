@@ -6,47 +6,47 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
-type NoOpPlugin struct {
+type ContinueAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
 }
 
-func (p *NoOpPlugin) BeforeExecution(qre *QueryExecutor) error {
+func (p *ContinueAction) BeforeExecution(qre *QueryExecutor) error {
 	return nil
 }
 
-func (p *NoOpPlugin) GetRule() *rules.Rule {
+func (p *ContinueAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-type FailPlugin struct {
+type FailAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
 }
 
-func (p *FailPlugin) BeforeExecution(qre *QueryExecutor) error {
+func (p *FailAction) BeforeExecution(qre *QueryExecutor) error {
 	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailPlugin) GetRule() *rules.Rule {
+func (p *FailAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-type FailRetryPlugin struct {
+type FailRetryAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
 }
 
-func (p *FailRetryPlugin) BeforeExecution(qre *QueryExecutor) error {
+func (p *FailRetryAction) BeforeExecution(qre *QueryExecutor) error {
 	return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailRetryPlugin) GetRule() *rules.Rule {
+func (p *FailRetryAction) GetRule() *rules.Rule {
 	return p.Rule
 }
