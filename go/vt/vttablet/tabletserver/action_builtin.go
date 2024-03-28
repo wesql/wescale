@@ -87,7 +87,7 @@ type ConcurrencyControlAction struct {
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
-	doneFunc, waited, err := qre.tsv.qe.txSerializer.Wait(qre.ctx, "foo", "t1")
+	doneFunc, waited, err := qre.tsv.qe.txSerializer.Wait(qre.ctx, qre.plan.QueryTemplateID, "t1")
 
 	if waited {
 		qre.tsv.stats.WaitTimings.Record("TxSerializer", time.Now())
