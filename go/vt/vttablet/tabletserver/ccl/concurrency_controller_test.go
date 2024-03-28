@@ -46,7 +46,11 @@ func resetVariables(txs *ConcurrencyController) {
 func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool) *ConcurrencyController {
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "TxSerializerTest")
-	txs := New(maxQueueSize, maxGlobalQueueSize, maxConcurrency, dryRun, env.Exporter())
+	concurrencyControllerMaxQueueSize = maxQueueSize
+	concurrencyControllerMaxGlobalQueueSize = maxGlobalQueueSize
+	concurrencyControllerMaxConcurrency = maxConcurrency
+	concurrencyControllerDryRun = dryRun
+	txs := New(env.Exporter())
 	resetVariables(txs)
 	return txs
 }

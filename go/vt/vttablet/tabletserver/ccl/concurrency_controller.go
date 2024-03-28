@@ -18,6 +18,7 @@ package ccl
 
 import (
 	"fmt"
+	"github.com/spf13/pflag"
 	"net/http"
 	"sync"
 	"time"
@@ -33,6 +34,24 @@ import (
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 )
+
+var (
+	concurrencyControllerMaxQueueSize       = 1
+	concurrencyControllerMaxGlobalQueueSize = 1
+	concurrencyControllerMaxConcurrency     = 1
+	concurrencyControllerDryRun             = false
+)
+
+func registerCclFlags(fs *pflag.FlagSet) {
+	fs.IntVar(&concurrencyControllerMaxQueueSize, "concurrency_controller_max_queue_size", concurrencyControllerMaxQueueSize, "Maximum number of transactions that can be queued")
+	fs.IntVar(&concurrencyControllerMaxGlobalQueueSize, "concurrency_controller_max_global_queue_size", concurrencyControllerMaxGlobalQueueSize, "Maximum number of transactions that can be queued globally")
+	fs.IntVar(&concurrencyControllerMaxConcurrency, "concurrency_controller_max_concurrency", concurrencyControllerMaxConcurrency, "Maximum number of transactions that can be executed concurrently")
+	fs.BoolVar(&concurrencyControllerDryRun, "concurrency_controller_dry_run", concurrencyControllerDryRun, "Dry run mode for the concurrency controller")
+}
+
+func init() {
+	servenv.OnParseFor("vttablet", registerCclFlags)
+}
 
 // ConcurrencyController serializes incoming transactions which target the same row range
 // Additional transactions are queued and woken up in arrival order.
@@ -87,13 +106,13 @@ type ConcurrencyController struct {
 }
 
 // New returns a ConcurrencyController object.
-func New(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool, exporter *servenv.Exporter) *ConcurrencyController {
+func New(exporter *servenv.Exporter) *ConcurrencyController {
 	return &ConcurrencyController{
 		ConsolidatorCache:  sync2.NewConsolidatorCache(1000),
-		dryRun:             dryRun,
-		maxQueueSize:       maxQueueSize,
-		maxGlobalQueueSize: maxGlobalQueueSize,
-		maxConcurrency:     maxConcurrency,
+		dryRun:             concurrencyControllerDryRun,
+		maxQueueSize:       concurrencyControllerMaxQueueSize,
+		maxGlobalQueueSize: concurrencyControllerMaxGlobalQueueSize,
+		maxConcurrency:     concurrencyControllerMaxConcurrency,
 		waits: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerWaits",
 			"Number of times a transaction was queued because another transaction was already in flight for the same row range",
@@ -116,11 +135,11 @@ func New(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool, expo
 		globalQueueExceededDryRun: exporter.NewCounter(
 			"ConcurrencyControllerGlobalQueueExceededDryRun",
 			"Dry-run stats for ConcurrencyControllerGlobalQueueExceeded"),
-		log:                          logutil.NewThrottledLogger("HotRowProtection", 5*time.Second),
-		logDryRun:                    logutil.NewThrottledLogger("HotRowProtection DryRun", 5*time.Second),
-		logWaitsDryRun:               logutil.NewThrottledLogger("HotRowProtection Waits DryRun", 5*time.Second),
-		logQueueExceededDryRun:       logutil.NewThrottledLogger("HotRowProtection QueueExceeded DryRun", 5*time.Second),
-		logGlobalQueueExceededDryRun: logutil.NewThrottledLogger("HotRowProtection GlobalQueueExceeded DryRun", 5*time.Second),
+		log:                          logutil.NewThrottledLogger("ConcurrencyController", 5*time.Second),
+		logDryRun:                    logutil.NewThrottledLogger("ConcurrencyController DryRun", 5*time.Second),
+		logWaitsDryRun:               logutil.NewThrottledLogger("ConcurrencyController Waits DryRun", 5*time.Second),
+		logQueueExceededDryRun:       logutil.NewThrottledLogger("ConcurrencyController QueueExceeded DryRun", 5*time.Second),
+		logGlobalQueueExceededDryRun: logutil.NewThrottledLogger("ConcurrencyController GlobalQueueExceeded DryRun", 5*time.Second),
 		queues:                       make(map[string]*queue),
 	}
 
