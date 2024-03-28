@@ -401,7 +401,7 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 			log.Errorf("Failed to marshal fully_qualified_table_names: %v", err)
 			return nil, err
 		}
-		bindVars["fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
+		bindVars["Fully_qualified_table_names"] = sqltypes.StringBindVariable(string(tableNames))
 	}
 	if qr.bindVarConds != nil {
 		bindVarConds, err := json.Marshal(qr.bindVarConds)
