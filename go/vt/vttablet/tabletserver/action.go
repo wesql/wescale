@@ -15,7 +15,7 @@ const DefaultPriority = 1000
 type ActionInterface interface {
 	BeforeExecution(qre *QueryExecutor) error
 
-	AfterExecution(reply *sqltypes.Result, err error) *ActionExecutionResponse
+	AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse
 
 	GetRule() *rules.Rule
 }
