@@ -44,6 +44,8 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		return &FailAction{Rule: rule, Action: action}, nil
 	case rules.QRFailRetry:
 		return &FailRetryAction{Rule: rule, Action: action}, nil
+	case rules.QRConcurrencyControl:
+		return &ConcurrencyControlAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
 		//todo earayu: maybe we should use 'vterrors.Errorf' here
