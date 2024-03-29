@@ -44,13 +44,11 @@ func resetVariables(txs *ConcurrencyController) {
 	txs.globalQueueExceededDryRun.Reset()
 }
 
-func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool) *ConcurrencyController {
+func NewConcurrentControllerForTest(maxGlobalQueueSize int, dryRun bool) *ConcurrencyController {
 	//todo filter: remove maxQueueSize & maxConcurrency
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "ConcurrencyControllerTest")
-	concurrencyControllerMaxQueueSize = maxQueueSize
 	concurrencyControllerMaxGlobalQueueSize = maxGlobalQueueSize
-	concurrencyControllerMaxConcurrency = maxConcurrency
 	concurrencyControllerDryRun = dryRun
 	txs := New(env.Exporter())
 	resetVariables(txs)
@@ -58,7 +56,7 @@ func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurr
 }
 
 func TestConcurrencyController_NoHotRow(t *testing.T) {
-	txs := NewConcurrentControllerForTest(1, 1, 5, false)
+	txs := NewConcurrentControllerForTest(1, false)
 	resetVariables(txs)
 
 	q := txs.GetOrCreateQueue("t1 where1", 1, 5)
@@ -90,7 +88,7 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 		streamlog.SetRedactDebugUIQueries(false)
 	}()
 
-	txs := NewConcurrentControllerForTest(1, 1, 5, false)
+	txs := NewConcurrentControllerForTest(1, false)
 	resetVariables(txs)
 	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	done, waited, err := q.Wait(context.Background(), []string{"t1"})
@@ -113,7 +111,7 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 }
 
 func TestConcurrencyController(t *testing.T) {
-	txs := NewConcurrentControllerForTest(2, 3, 1, false)
+	txs := NewConcurrentControllerForTest(3, false)
 	resetVariables(txs)
 
 	// tx1.
@@ -183,7 +181,7 @@ func TestConcurrencyController(t *testing.T) {
 
 func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	// Allow up to 2 concurrent transactions per concurrency control.
-	txs := NewConcurrentControllerForTest(3, 3, 2, false)
+	txs := NewConcurrentControllerForTest(3, false)
 	resetVariables(txs)
 
 	// tx1.
@@ -303,12 +301,12 @@ func testHTTPHandler(txs *ConcurrencyController, count int, redacted bool) error
 // tx1 and tx2 are allowed to run concurrently while tx3 and tx4 are queued.
 // tx3 will get canceled and tx4 will be unblocked once tx1 is done.
 func TestConcurrencyControllerCancel(t *testing.T) {
-	txs := NewConcurrentControllerForTest(4, 4, 2, false)
+	txs := NewConcurrentControllerForTest(4, false)
 	resetVariables(txs)
 
 	// tx3 and tx4 will record their number once they're done waiting.
 	txDone := make(chan int)
-	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
+	q := txs.GetOrCreateQueue("t1 where1", 4, 2)
 	// tx1.
 	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
@@ -399,7 +397,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 // TestConcurrencyControllerDryRun verifies that the dry-run mode does not serialize
 // the two concurrent transactions for the same key.
 func TestConcurrencyControllerDryRun(t *testing.T) {
-	txs := NewConcurrentControllerForTest(1, 2, 1, true)
+	txs := NewConcurrentControllerForTest(2, true)
 	resetVariables(txs)
 	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	// tx1.
@@ -465,7 +463,7 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 // reject transactions although they may succeed within the txpool constraints
 // and RPC deadline.
 func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
-	txs := NewConcurrentControllerForTest(1, 1, 1, false)
+	txs := NewConcurrentControllerForTest(1, false)
 
 	// tx1.
 	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
@@ -502,15 +500,15 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 }
 
 func TestConcurrencyControllerPending(t *testing.T) {
-	txs := NewConcurrentControllerForTest(1, 1, 1, false)
+	txs := NewConcurrentControllerForTest(1, false)
 	if got, want := txs.Pending("t1 where1"), 0; got != want {
 		t.Errorf("there should be no pending transaction: got = %v, want = %v", got, want)
 	}
 }
 
 func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
-	txs := NewConcurrentControllerForTest(1, 1, 5, false)
-	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
+	txs := NewConcurrentControllerForTest(1, false)
+	q := txs.GetOrCreateQueue("t1 where1", 1, 5)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -526,7 +524,7 @@ func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 }
 
 func TestConcurrencyController_DenyAll(t *testing.T) {
-	txs := NewConcurrentControllerForTest(1, 0, 1, false)
+	txs := NewConcurrentControllerForTest(0, false)
 	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	done, waited, err := q.Wait(context.Background(), []string{"t1"})
 	if err == nil {
