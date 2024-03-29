@@ -134,7 +134,6 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 		logGlobalQueueExceededDryRun: logutil.NewThrottledLogger("ConcurrencyController GlobalQueueExceeded DryRun", 5*time.Second),
 		queues:                       make(map[string]*Queue),
 	}
-
 }
 
 // DoneFunc is returned by Wait() and must be called by the caller.
@@ -159,34 +158,26 @@ func (txs *ConcurrencyController) GetOrCreateQueue(key string, maxQueueSize, max
 // "waited" is true if Wait() had to wait for other transactions.
 // "err" is not nil if a) the context is done or b) a Queue limit was reached.
 func (q *Queue) Wait(ctx context.Context, tables []string) (done DoneFunc, waited bool, err error) {
-	txs := q.txs
-	//todo filter: remove txs variable and use q.txs instead
-	txs.mu.Lock()
-	defer txs.mu.Unlock()
+	q.txs.mu.Lock()
+	defer q.txs.mu.Unlock()
 
-	waited, err = txs.lockLocked(ctx, q.key, tables)
+	waited, err = q.lockLocked(ctx, q.key, tables)
 	if err != nil {
 		if waited {
 			// Waiting failed early e.g. due a canceled context and we did NOT get the
 			// slot. Call "done" now because we don'txs return it to the caller.
-			txs.unlockLocked(q.key, false /* returnSlot */)
+			q.unlockLocked(q.key, false /* returnSlot */)
 		}
 		return nil, waited, err
 	}
-	return func() { txs.unlock(q.key) }, waited, nil
+	return func() { q.unlock(q.key) }, waited, nil
 }
 
 // lockLocked queues this transaction. It will unblock immediately if this
 // transaction is the first in the Queue or when it acquired a slot.
 // The method has the suffix "Locked" to clarify that "txs.mu" must be locked.
-func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, tables []string) (bool, error) {
-	q, ok := txs.queues[key]
-	if !ok {
-		// First transaction in the Queue i.e. we don't wait and return immediately.
-		txs.queues[key] = newQueueForFirstTransaction()
-		txs.currentGlobalSize++
-		return false, nil
-	}
+func (q *Queue) lockLocked(ctx context.Context, key string, tables []string) (bool, error) {
+	txs := q.txs
 
 	if txs.currentGlobalSize >= txs.maxGlobalQueueSize {
 		if txs.dryRun {
@@ -269,15 +260,15 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 	}
 }
 
-func (txs *ConcurrencyController) unlock(key string) {
-	txs.mu.Lock()
-	defer txs.mu.Unlock()
+func (q *Queue) unlock(key string) {
+	q.txs.mu.Lock()
+	defer q.txs.mu.Unlock()
 
-	txs.unlockLocked(key, true)
+	q.unlockLocked(key, true)
 }
 
-func (txs *ConcurrencyController) unlockLocked(key string, returnSlot bool) {
-	q := txs.queues[key]
+func (q *Queue) unlockLocked(key string, returnSlot bool) {
+	txs := q.txs
 	q.size--
 	txs.currentGlobalSize--
 
@@ -409,13 +400,5 @@ func newQueue(key string, txs *ConcurrencyController, maxQueueSize, maxConcurren
 		count:          0,
 		max:            0,
 		txs:            txs,
-	}
-}
-
-func newQueueForFirstTransaction() *Queue {
-	return &Queue{
-		size:  1,
-		count: 1,
-		max:   1,
 	}
 }
