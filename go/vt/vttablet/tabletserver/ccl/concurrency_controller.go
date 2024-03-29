@@ -38,15 +38,11 @@ import (
 var (
 	concurrencyControllerDryRun             = false
 	concurrencyControllerMaxGlobalQueueSize = 1
-	concurrencyControllerMaxQueueSize       = 1
-	concurrencyControllerMaxConcurrency     = 1
 )
 
 func registerCclFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&concurrencyControllerDryRun, "concurrency_controller_dry_run", concurrencyControllerDryRun, "Dry run mode for the concurrency controller")
 	fs.IntVar(&concurrencyControllerMaxGlobalQueueSize, "concurrency_controller_max_global_queue_size", concurrencyControllerMaxGlobalQueueSize, "Maximum number of transactions that can be queued globally")
-	fs.IntVar(&concurrencyControllerMaxQueueSize, "concurrency_controller_max_queue_size", concurrencyControllerMaxQueueSize, "Maximum number of transactions that can be queued")
-	fs.IntVar(&concurrencyControllerMaxConcurrency, "concurrency_controller_max_concurrency", concurrencyControllerMaxConcurrency, "Maximum number of transactions that can be executed concurrently")
 }
 
 func init() {
@@ -72,9 +68,7 @@ type ConcurrencyController struct {
 
 	// Immutable fields.
 	dryRun             bool
-	maxQueueSize       int
 	maxGlobalQueueSize int
-	maxConcurrency     int
 
 	// waits stores how many times a transaction was queued because another
 	// transaction was already in flight for the same row (range).
@@ -110,9 +104,7 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 	return &ConcurrencyController{
 		ConsolidatorCache:  sync2.NewConsolidatorCache(1000),
 		dryRun:             concurrencyControllerDryRun,
-		maxQueueSize:       concurrencyControllerMaxQueueSize,
 		maxGlobalQueueSize: concurrencyControllerMaxGlobalQueueSize,
-		maxConcurrency:     concurrencyControllerMaxConcurrency,
 		waits: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerWaits",
 			"Number of times a transaction was queued because another transaction was already in flight for the same row range",
@@ -207,18 +199,18 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 		}
 	}
 
-	if q.size >= txs.maxQueueSize {
+	if q.size >= q.maxQueueSize {
 		if txs.dryRun {
 			for _, table := range tables {
 				txs.queueExceededDryRun.Add(table, 1)
 			}
-			txs.logQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
+			txs.logQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, q.maxQueueSize, key)
 		} else {
 			for _, table := range tables {
 				txs.queueExceeded.Add(table, 1)
 			}
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"concurrency control protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
+				"concurrency control protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, q.maxQueueSize, key)
 		}
 	}
 
@@ -227,7 +219,7 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 		// first time.
 
 		// As an optimization, we deferred the creation of the channel until now.
-		q.availableSlots = make(chan struct{}, txs.maxConcurrency)
+		q.availableSlots = make(chan struct{}, q.maxConcurrency)
 		//q.availableSlots <- struct{}{}
 
 		// Include first transaction in the count at /debug/hotrows. (It was not
