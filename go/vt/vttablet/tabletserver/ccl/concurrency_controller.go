@@ -63,7 +63,7 @@ func init() {
 //     has finished.
 //   - Waiting transactions are woken up in FIFO order.
 //   - Waiting transactions are unblocked if their context is done.
-//   - Both the local queue (per row range) and global queue (whole process) are
+//   - Both the local Queue (per row range) and global Queue (whole process) are
 //     limited to avoid that queued transactions can consume the full capacity
 //     of vttablet. This is important if the capaciy is finite. For example, the
 //     number of RPCs in flight could be limited by the RPC subsystem.
@@ -85,12 +85,12 @@ type ConcurrencyController struct {
 	// The key of the map is the table name and WHERE clause.
 	//
 	// queueExceeded counts per table how many transactions were rejected because
-	// the max queue size per row (range) was exceeded.
+	// the max Queue size per row (range) was exceeded.
 	//
 	// queueExceededDryRun counts in dry-run mode how many transactions would have
-	// been rejected due to exceeding the max queue size per row (range).
+	// been rejected due to exceeding the max Queue size per row (range).
 	//
-	// globalQueueExceeded is the same as queueExceeded but for the global queue.
+	// globalQueueExceeded is the same as queueExceeded but for the global Queue.
 	waits, waitsDryRun, queueExceeded, queueExceededDryRun *stats.CountersWithSingleLabel
 	globalQueueExceeded, globalQueueExceededDryRun         *stats.Counter
 
@@ -100,9 +100,9 @@ type ConcurrencyController struct {
 	logQueueExceededDryRun       *logutil.ThrottledLogger
 	logGlobalQueueExceededDryRun *logutil.ThrottledLogger
 
-	mu         sync.Mutex
-	queues     map[string]*queue
-	globalSize int
+	mu                sync.Mutex
+	queues            map[string]*Queue
+	currentGlobalSize int
 }
 
 // New returns a ConcurrencyController object.
@@ -123,15 +123,15 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 			"table_name"),
 		queueExceeded: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerQueueExceeded",
-			"Number of transactions that were rejected because the max queue size per row range was exceeded",
+			"Number of transactions that were rejected because the max Queue size per row range was exceeded",
 			"table_name"),
 		queueExceededDryRun: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerQueueExceededDryRun",
-			"Dry-run Number of transactions that were rejected because the max queue size was exceeded",
+			"Dry-run Number of transactions that were rejected because the max Queue size was exceeded",
 			"table_name"),
 		globalQueueExceeded: exporter.NewCounter(
 			"ConcurrencyControllerGlobalQueueExceeded",
-			"Number of transactions that were rejected on the global queue because of exceeding the max queue size per row range"),
+			"Number of transactions that were rejected on the global Queue because of exceeding the max Queue size per row range"),
 		globalQueueExceededDryRun: exporter.NewCounter(
 			"ConcurrencyControllerGlobalQueueExceededDryRun",
 			"Dry-run stats for ConcurrencyControllerGlobalQueueExceeded"),
@@ -140,7 +140,7 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 		logWaitsDryRun:               logutil.NewThrottledLogger("ConcurrencyController Waits DryRun", 5*time.Second),
 		logQueueExceededDryRun:       logutil.NewThrottledLogger("ConcurrencyController QueueExceeded DryRun", 5*time.Second),
 		logGlobalQueueExceededDryRun: logutil.NewThrottledLogger("ConcurrencyController GlobalQueueExceeded DryRun", 5*time.Second),
-		queues:                       make(map[string]*queue),
+		queues:                       make(map[string]*Queue),
 	}
 
 }
@@ -148,48 +148,62 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 // DoneFunc is returned by Wait() and must be called by the caller.
 type DoneFunc func()
 
+// GetOrCreateQueue creates a new Queue for the given key if it does not exist.
+func (txs *ConcurrencyController) GetOrCreateQueue(key string, maxQueueSize, maxConcurrency int) *Queue {
+	txs.mu.Lock()
+	defer txs.mu.Unlock()
+
+	_, ok := txs.queues[key]
+	if !ok {
+		txs.queues[key] = newQueue(key, txs, maxQueueSize, maxConcurrency)
+	}
+	return txs.queues[key]
+}
+
 // Wait blocks if another transaction for the same range is already in flight.
 // It returns when this transaction has its turn.
 // "done" is != nil if err == nil and must be called once the transaction is
 // done and the next waiting transaction can be unblocked.
 // "waited" is true if Wait() had to wait for other transactions.
-// "err" is not nil if a) the context is done or b) a queue limit was reached.
-func (txs *ConcurrencyController) Wait(ctx context.Context, key string, tables []string) (done DoneFunc, waited bool, err error) {
+// "err" is not nil if a) the context is done or b) a Queue limit was reached.
+func (q *Queue) Wait(ctx context.Context, tables []string) (done DoneFunc, waited bool, err error) {
+	txs := q.txs
+	//todo filter: remove txs variable and use q.txs instead
 	txs.mu.Lock()
 	defer txs.mu.Unlock()
 
-	waited, err = txs.lockLocked(ctx, key, tables)
+	waited, err = txs.lockLocked(ctx, q.key, tables)
 	if err != nil {
 		if waited {
 			// Waiting failed early e.g. due a canceled context and we did NOT get the
 			// slot. Call "done" now because we don'txs return it to the caller.
-			txs.unlockLocked(key, false /* returnSlot */)
+			txs.unlockLocked(q.key, false /* returnSlot */)
 		}
 		return nil, waited, err
 	}
-	return func() { txs.unlock(key) }, waited, nil
+	return func() { txs.unlock(q.key) }, waited, nil
 }
 
 // lockLocked queues this transaction. It will unblock immediately if this
-// transaction is the first in the queue or when it acquired a slot.
+// transaction is the first in the Queue or when it acquired a slot.
 // The method has the suffix "Locked" to clarify that "txs.mu" must be locked.
 func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, tables []string) (bool, error) {
 	q, ok := txs.queues[key]
 	if !ok {
-		// First transaction in the queue i.e. we don't wait and return immediately.
+		// First transaction in the Queue i.e. we don't wait and return immediately.
 		txs.queues[key] = newQueueForFirstTransaction()
-		txs.globalSize++
+		txs.currentGlobalSize++
 		return false, nil
 	}
 
-	if txs.globalSize >= txs.maxGlobalQueueSize {
+	if txs.currentGlobalSize >= txs.maxGlobalQueueSize {
 		if txs.dryRun {
 			txs.globalQueueExceededDryRun.Add(1)
-			txs.logGlobalQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d)", txs.globalSize, txs.maxGlobalQueueSize)
+			txs.logGlobalQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d)", txs.currentGlobalSize, txs.maxGlobalQueueSize)
 		} else {
 			txs.globalQueueExceeded.Add(1)
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"concurrency control protection: too many queued transactions (%d >= %d)", txs.globalSize, txs.maxGlobalQueueSize)
+				"concurrency control protection: too many queued transactions (%d >= %d)", txs.currentGlobalSize, txs.maxGlobalQueueSize)
 		}
 	}
 
@@ -214,14 +228,14 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 
 		// As an optimization, we deferred the creation of the channel until now.
 		q.availableSlots = make(chan struct{}, txs.maxConcurrency)
-		q.availableSlots <- struct{}{}
+		//q.availableSlots <- struct{}{}
 
 		// Include first transaction in the count at /debug/hotrows. (It was not
 		// recorded on purpose because it did not wait.)
-		txs.Record(key)
+		//txs.Record(key)
 	}
 
-	txs.globalSize++
+	txs.currentGlobalSize++
 	q.size++
 	q.count++
 	if q.size > q.max {
@@ -273,7 +287,7 @@ func (txs *ConcurrencyController) unlock(key string) {
 func (txs *ConcurrencyController) unlockLocked(key string, returnSlot bool) {
 	q := txs.queues[key]
 	q.size--
-	txs.globalSize--
+	txs.currentGlobalSize--
 
 	if q.size == 0 {
 		// This is the last transaction in flight.
@@ -289,7 +303,7 @@ func (txs *ConcurrencyController) unlockLocked(key string, returnSlot bool) {
 			}
 		}
 
-		// Return early because the queue "q" for this "key" will not be used any
+		// Return early because the Queue "q" for this "key" will not be used any
 		// more.
 		// We intentionally skip returning the last slot and closing the
 		// "availableSlots" channel because it is not required by Go.
@@ -334,7 +348,7 @@ func (txs *ConcurrencyController) ServeHTTP(response http.ResponseWriter, reques
 	<html>
 	<body>
 	<h1>Redacted</h1>
-	<p>/debug/hotrows has been redacted for your protection</p>
+	<p>/debug/ccl has been redacted for your protection</p>
 	</body>
 	</html>
 		`))
@@ -357,16 +371,22 @@ func (txs *ConcurrencyController) ServeHTTP(response http.ResponseWriter, reques
 	}
 }
 
-// queue represents the local queue for a particular row (range).
+// Queue represents the local Queue for a particular row (range).
 //
-// Note that we don't use a dedicated queue structure for all waiting
+// Note that we don't use a dedicated Queue structure for all waiting
 // transactions. Instead, we leverage that Go routines waiting for a channel
 // are woken up in the order they are queued up. The "availableSlots" field is
 // said channel which has n free slots (for the number of concurrent
 // transactions which can access the tx pool). All queued transactions are
 // competing for these slots and try to add themselves to the channel.
-type queue struct {
+type Queue struct {
 	// NOTE: The following fields are guarded by ConcurrencyController.mu.
+	key string
+	// maxQueueSize is the maximum number of transactions which can be queued, including the ones that are in flight.
+	maxQueueSize int
+	// maxConcurrency is the maximum number of transactions which can be executed concurrently.
+	maxConcurrency int
+
 	// size counts how many transactions are currently queued/in flight (includes
 	// the transactions which are not waiting.)
 	size int
@@ -384,10 +404,24 @@ type queue struct {
 	// NOTE: As an optimization, we defer the creation of the channel until
 	// a second transaction for the same concurrency control is running.
 	availableSlots chan struct{}
+
+	txs *ConcurrencyController
 }
 
-func newQueueForFirstTransaction() *queue {
-	return &queue{
+func newQueue(key string, txs *ConcurrencyController, maxQueueSize, maxConcurrency int) *Queue {
+	return &Queue{
+		key:            key,
+		maxQueueSize:   maxQueueSize,
+		maxConcurrency: maxConcurrency,
+		size:           0,
+		count:          0,
+		max:            0,
+		txs:            txs,
+	}
+}
+
+func newQueueForFirstTransaction() *Queue {
+	return &Queue{
 		size:  1,
 		count: 1,
 		max:   1,

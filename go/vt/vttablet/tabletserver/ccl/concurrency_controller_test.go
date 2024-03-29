@@ -18,6 +18,7 @@ package ccl
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,6 +45,7 @@ func resetVariables(txs *ConcurrencyController) {
 }
 
 func NewConcurrentControllerForTest(maxQueueSize, maxGlobalQueueSize, maxConcurrency int, dryRun bool) *ConcurrencyController {
+	//todo filter: remove maxQueueSize & maxConcurrency
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "ConcurrencyControllerTest")
 	concurrencyControllerMaxQueueSize = maxQueueSize
@@ -59,7 +61,11 @@ func TestConcurrencyController_NoHotRow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 	resetVariables(txs)
 
-	done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	q := txs.GetOrCreateQueue("t1 where1", 1, 5)
+	//fmt.Println(q)
+	//done, waited, err := q.Wait(context.Background(), []string{"t1"})
+	done, waited, err := q.Wait(context.Background(), []string{"t1"})
+	//done, waited, err := q.Wait(context.Background(), []string{"t1"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -69,7 +75,7 @@ func TestConcurrencyController_NoHotRow(t *testing.T) {
 	done()
 
 	// No concurrency control was recoded.
-	if err := testHTTPHandler(txs, 0, false); err != nil {
+	if err := testHTTPHandler(txs, 1, false); err != nil {
 		t.Error(err)
 	}
 	// No transaction had to wait.
@@ -86,8 +92,8 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 	resetVariables(txs)
-
-	done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
+	done, waited, err := q.Wait(context.Background(), []string{"t1"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -97,7 +103,7 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 	done()
 
 	// No concurrency control was recoded.
-	if err := testHTTPHandler(txs, 0, true); err != nil {
+	if err := testHTTPHandler(txs, 1, true); err != nil {
 		t.Error(err)
 	}
 	// No transaction had to wait.
@@ -107,15 +113,12 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 }
 
 func TestConcurrencyController(t *testing.T) {
-	config := tabletenv.NewDefaultConfig()
-	config.HotRowProtection.MaxQueueSize = 2
-	config.HotRowProtection.MaxGlobalQueueSize = 3
-	config.HotRowProtection.MaxConcurrency = 1
 	txs := NewConcurrentControllerForTest(2, 3, 1, false)
 	resetVariables(txs)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	q := txs.GetOrCreateQueue("t1 where1", 2, 1)
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -129,7 +132,7 @@ func TestConcurrencyController(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+		done2, waited2, err2 := q.Wait(context.Background(), []string{"t1"})
 		if err2 != nil {
 			t.Error(err2)
 		}
@@ -147,8 +150,8 @@ func TestConcurrencyController(t *testing.T) {
 		t.Error(err)
 	}
 
-	// tx3 (gets rejected because it would exceed the local queue).
-	_, _, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	// tx3 (gets rejected because it would exceed the local Queue).
+	_, _, err3 := q.Wait(context.Background(), []string{"t1"})
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
@@ -161,7 +164,7 @@ func TestConcurrencyController(t *testing.T) {
 	wg.Wait()
 
 	if txs.queues["t1 where1"] != nil {
-		t.Error("queue object was not deleted after last transaction")
+		t.Error("Queue object was not deleted after last transaction")
 	}
 
 	// 2 transactions were recorded.
@@ -172,7 +175,7 @@ func TestConcurrencyController(t *testing.T) {
 	if got, want := txs.waits.Counts()["t1"], int64(1); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
-	// 1 (the third one) was rejected because the queue was exceeded.
+	// 1 (the third one) was rejected because the Queue was exceeded.
 	if got, want := txs.queueExceeded.Counts()["t1"], int64(1); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
@@ -184,7 +187,8 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	resetVariables(txs)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	q := txs.GetOrCreateQueue("t1 where1", 3, 2)
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -193,7 +197,7 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	}
 
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	done2, waited2, err2 := q.Wait(context.Background(), []string{"t1"})
 	if err2 != nil {
 		t.Error(err1)
 	}
@@ -207,7 +211,7 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+		done3, waited3, err3 := q.Wait(context.Background(), []string{"t1"})
 		if err3 != nil {
 			t.Error(err3)
 		}
@@ -230,11 +234,11 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	done2()
 	// Wait for tx3 to finish.
 	wg.Wait()
-	// Finish tx1 to delete the queue object.
+	// Finish tx1 to delete the Queue object.
 	done1()
 
 	if txs.queues["t1 where1"] != nil {
-		t.Error("queue object was not deleted after last transaction")
+		t.Error("Queue object was not deleted after last transaction")
 	}
 
 	// 3 transactions were recorded.
@@ -275,8 +279,8 @@ func testHTTPHandler(txs *ConcurrencyController, count int, redacted bool) error
 	}
 
 	if redacted {
-		if !strings.Contains(rr.Body.String(), "/debug/hotrows has been redacted for your protection") {
-			return fmt.Errorf("expected /debug/hotrows to be redacted")
+		if !strings.Contains(rr.Body.String(), "/debug/ccl has been redacted for your protection") {
+			return fmt.Errorf("expected /debug/ccl to be redacted")
 		}
 		return nil
 	}
@@ -304,9 +308,9 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 
 	// tx3 and tx4 will record their number once they're done waiting.
 	txDone := make(chan int)
-
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -314,7 +318,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 		t.Errorf("tx1 must never wait: %v", waited1)
 	}
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	done2, waited2, err2 := q.Wait(context.Background(), []string{"t1"})
 	if err2 != nil {
 		t.Error(err2)
 	}
@@ -329,7 +333,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		_, _, err3 := txs.Wait(ctx3, "t1 where1", []string{"t1"})
+		_, _, err3 := q.Wait(ctx3, []string{"t1"})
 		if err3 != context.Canceled {
 			t.Error(err3)
 		}
@@ -346,7 +350,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done4, waited4, err4 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+		done4, waited4, err4 := q.Wait(context.Background(), []string{"t1"})
 		if err4 != nil {
 			t.Error(err4)
 		}
@@ -375,11 +379,11 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 		t.Errorf("wrong tx was unblocked after tx1: %v", got)
 	}
 	wg.Wait()
-	// Finish tx2 (the last transaction) which will delete the queue object.
+	// Finish tx2 (the last transaction) which will delete the Queue object.
 	done2()
 
 	if txs.queues["t1 where1"] != nil {
-		t.Error("queue object was not deleted after last transaction")
+		t.Error("Queue object was not deleted after last transaction")
 	}
 
 	// 4 total transactions get recorded.
@@ -397,9 +401,9 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 func TestConcurrencyControllerDryRun(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 2, 1, true)
 	resetVariables(txs)
-
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -407,30 +411,30 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 		t.Errorf("first transaction must never wait: %v", waited1)
 	}
 
-	// tx2 (would wait and exceed the local queue).
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	// tx2 (would wait and exceed the local Queue).
+	done2, waited2, err2 := q.Wait(context.Background(), []string{"t1"})
 	if err2 != nil {
 		t.Error(err2)
 	}
 	if waited2 {
 		t.Errorf("second transaction must never wait in dry-run mode: %v", waited2)
 	}
-	if got, want := txs.waitsDryRun.Counts()["t1"], int64(1); got != want {
+	if got, want := txs.waitsDryRun.Counts()["t1"], int64(2); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
 	if got, want := txs.queueExceededDryRun.Counts()["t1"], int64(1); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
 
-	// tx3 (would wait and exceed the global queue).
-	done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	// tx3 (would wait and exceed the global Queue).
+	done3, waited3, err3 := q.Wait(context.Background(), []string{"t1"})
 	if err3 != nil {
 		t.Error(err3)
 	}
 	if waited3 {
 		t.Errorf("any transaction must never wait in dry-run mode: %v", waited3)
 	}
-	if got, want := txs.waitsDryRun.Counts()["t1"], int64(2); got != want {
+	if got, want := txs.waitsDryRun.Counts()["t1"], int64(3); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
 	if got, want := txs.globalQueueExceededDryRun.Get(), int64(1); got != want {
@@ -446,7 +450,7 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 	done3()
 
 	if txs.queues["t1 where1"] != nil {
-		t.Error("queue object was not deleted after last transaction")
+		t.Error("Queue object was not deleted after last transaction")
 	}
 
 	if err := testHTTPHandler(txs, 3, false); err != nil {
@@ -454,17 +458,18 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 	}
 }
 
-// TestConcurrencyControllerGlobalQueueOverflow shows that the global queue can exceed
+// TestConcurrencyControllerGlobalQueueOverflow shows that the global Queue can exceed
 // its limit without rejecting errors. This is the case when all transactions
 // are the first one for their row range.
-// This is done on purpose to avoid that a too low global queue limit would
+// This is done on purpose to avoid that a too low global Queue limit would
 // reject transactions although they may succeed within the txpool constraints
 // and RPC deadline.
 func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 1, false)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -473,28 +478,27 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	}
 
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where2", []string{"t1"})
-	if err2 != nil {
-		t.Error(err2)
-	}
+	q2 := txs.GetOrCreateQueue("t1 where2", 1, 1)
+	done2, waited2, err2 := q2.Wait(context.Background(), []string{"t1"})
+	assert.Error(t, err2, "concurrency control protection: too many queued transactions")
 	if waited2 {
 		t.Errorf("second transaction for different row range must not wait: %v", waited2)
 	}
+	assert.Nil(t, done2)
 
 	// tx3 (same row range as tx1).
-	_, _, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+	_, _, err3 := q.Wait(context.Background(), []string{"t1"})
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (2 >= 1)"; got != want {
+	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (1 >= 1)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
-	if got, want := txs.globalQueueExceeded.Get(), int64(1); got != want {
+	if got, want := txs.globalQueueExceeded.Get(), int64(2); got != want {
 		t.Errorf("variable not incremented: got = %v, want = %v", got, want)
 	}
 
 	done1()
-	done2()
 }
 
 func TestConcurrencyControllerPending(t *testing.T) {
@@ -506,11 +510,11 @@ func TestConcurrencyControllerPending(t *testing.T) {
 
 func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
-
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
+		done, waited, err := q.Wait(context.Background(), []string{"t1"})
 		if err != nil {
 			b.Error(err)
 		}
@@ -518,5 +522,26 @@ func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 			b.Error("non-parallel tx must never wait")
 		}
 		done()
+	}
+}
+
+func TestConcurrencyController_DenyAll(t *testing.T) {
+	txs := NewConcurrentControllerForTest(1, 0, 1, false)
+	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
+	done, waited, err := q.Wait(context.Background(), []string{"t1"})
+	if err == nil {
+		t.Error("expected error")
+		return
+	}
+	assert.Nil(t, done)
+	if waited {
+		t.Error("no transaction must ever wait")
+	}
+
+	if got, want := vterrors.Code(err), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
+		t.Errorf("wrong error code: got = %v, want = %v", got, want)
+	}
+	if got, want := err.Error(), "concurrency control protection: too many queued transactions (0 >= 0)"; got != want {
+		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 }
