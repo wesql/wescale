@@ -68,7 +68,7 @@ func TestConcurrencyController_NoHotRow(t *testing.T) {
 	}
 	done()
 
-	// No hot row was recoded.
+	// No concurrency control was recoded.
 	if err := testHTTPHandler(txs, 0, false); err != nil {
 		t.Error(err)
 	}
@@ -96,7 +96,7 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 	}
 	done()
 
-	// No hot row was recoded.
+	// No concurrency control was recoded.
 	if err := testHTTPHandler(txs, 0, true); err != nil {
 		t.Error(err)
 	}
@@ -152,7 +152,7 @@ func TestConcurrencyController(t *testing.T) {
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err3.Error(), "hot row protection: too many queued transactions (2 >= 2) for the same row (table + WHERE clause: 't1 where1')"; got != want {
+	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (2 >= 2) for the same row (table + WHERE clause: 't1 where1')"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 
@@ -179,7 +179,7 @@ func TestConcurrencyController(t *testing.T) {
 }
 
 func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
-	// Allow up to 2 concurrent transactions per hot row.
+	// Allow up to 2 concurrent transactions per concurrency control.
 	txs := NewConcurrentControllerForTest(3, 3, 2, false)
 	resetVariables(txs)
 
@@ -486,7 +486,7 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err3.Error(), "hot row protection: too many queued transactions (2 >= 1)"; got != want {
+	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (2 >= 1)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 	if got, want := txs.globalQueueExceeded.Get(), int64(1); got != want {
