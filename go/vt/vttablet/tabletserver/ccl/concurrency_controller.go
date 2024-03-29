@@ -154,11 +154,11 @@ type DoneFunc func()
 // done and the next waiting transaction can be unblocked.
 // "waited" is true if Wait() had to wait for other transactions.
 // "err" is not nil if a) the context is done or b) a queue limit was reached.
-func (txs *ConcurrencyController) Wait(ctx context.Context, key, table string) (done DoneFunc, waited bool, err error) {
+func (txs *ConcurrencyController) Wait(ctx context.Context, key string, tables []string) (done DoneFunc, waited bool, err error) {
 	txs.mu.Lock()
 	defer txs.mu.Unlock()
 
-	waited, err = txs.lockLocked(ctx, key, table)
+	waited, err = txs.lockLocked(ctx, key, tables)
 	if err != nil {
 		if waited {
 			// Waiting failed early e.g. due a canceled context and we did NOT get the
@@ -173,7 +173,7 @@ func (txs *ConcurrencyController) Wait(ctx context.Context, key, table string) (
 // lockLocked queues this transaction. It will unblock immediately if this
 // transaction is the first in the queue or when it acquired a slot.
 // The method has the suffix "Locked" to clarify that "txs.mu" must be locked.
-func (txs *ConcurrencyController) lockLocked(ctx context.Context, key, table string) (bool, error) {
+func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, tables []string) (bool, error) {
 	q, ok := txs.queues[key]
 	if !ok {
 		// First transaction in the queue i.e. we don't wait and return immediately.
@@ -195,10 +195,14 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key, table str
 
 	if q.size >= txs.maxQueueSize {
 		if txs.dryRun {
-			txs.queueExceededDryRun.Add(table, 1)
+			for _, table := range tables {
+				txs.queueExceededDryRun.Add(table, 1)
+			}
 			txs.logQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
 		} else {
-			txs.queueExceeded.Add(table, 1)
+			for _, table := range tables {
+				txs.queueExceeded.Add(table, 1)
+			}
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
 				"hot row protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
 		}
@@ -227,7 +231,9 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key, table str
 	txs.Record(key)
 
 	if txs.dryRun {
-		txs.waitsDryRun.Add(table, 1)
+		for _, table := range tables {
+			txs.waitsDryRun.Add(table, 1)
+		}
 		txs.logWaitsDryRun.Warningf("Would have queued BeginExecute RPC for row (range): '%v' because another transaction to the same range is already in progress.", key)
 		return false, nil
 	}
@@ -246,7 +252,9 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key, table str
 	}
 
 	// Blocking wait for the next available slot.
-	txs.waits.Add(table, 1)
+	for _, table := range tables {
+		txs.waits.Add(table, 1)
+	}
 	select {
 	case q.availableSlots <- struct{}{}:
 		return true, nil
