@@ -40,11 +40,10 @@ import (
 
 	"github.com/pingcap/failpoint"
 
-	"vitess.io/vitess/go/vt/failpointkey"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver"
-
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
+
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"github.com/spf13/pflag"
 
@@ -993,7 +992,7 @@ func formatTabletAlias(alias *topodatapb.TabletAlias) string {
 
 // where clause is not fully supported,
 // only support "alias = xxx" or "tablet_alias = xxx",
-// other cases will be ignored and return true.
+// other cases will be IGNORED and return TRUE.
 func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) bool {
 	if filter == nil {
 		return true
@@ -1024,7 +1023,7 @@ func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) bool {
 }
 
 func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
-	rows := [][]sqltypes.Value{}
+	rows := make([]sqltypes.Row, 0)
 	for _, tabletStatusList := range e.scatterConn.GetHealthCheckCacheStatus() {
 		for _, tabletStatus := range tabletStatusList.TabletsStats {
 
@@ -1033,53 +1032,12 @@ func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Res
 				continue
 			}
 
-			err := func() error {
-				// use anonymous function to release httpResp.Body immediately
-				url := fmt.Sprintf("http://%s/debug/tablet_plans_json", tabletStatus.GetTabletHostPort())
-				httpResp, err := http.Get(url)
-				if err != nil {
-					return err
-				}
-				defer httpResp.Body.Close()
-				body, err := io.ReadAll(httpResp.Body)
-				if err != nil {
-					return err
-				}
-
-				var tabletPlans []tabletserver.TabletsPlans
-				err = json.Unmarshal(body, &tabletPlans)
-				if err != nil {
-					return err
-				}
-
-				for _, plan := range tabletPlans {
-					tablesStr := ""
-					isFirst := true
-					for _, table := range plan.Tables {
-						if !isFirst {
-							tablesStr += ","
-						}
-						isFirst = false
-						tablesStr += table
-					}
-					rows = append(rows, buildVarCharRow(
-						tabletAlias,
-						plan.TemplateID,
-						plan.PlanType,
-						tablesStr,
-						strconv.FormatUint(plan.QueryCount, 10),
-						plan.Time.String(),
-						plan.MysqlTime.String(),
-						strconv.FormatUint(plan.RowsAffected, 10),
-						strconv.FormatUint(plan.RowsReturned, 10),
-						strconv.FormatUint(plan.ErrorCount, 10),
-					))
-				}
-				return nil
-			}()
+			qr, err := tabletStatus.Conn.CommonQuery(context.Background(), "TabletsPlans", nil)
 			if err != nil {
 				return nil, err
 			}
+
+			rows = append(rows, qr.Rows...)
 		}
 	}
 

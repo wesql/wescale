@@ -119,6 +119,8 @@ type QueryService interface {
 
 	ShowDMLJob(ctx context.Context, uuid string, showDetails bool) (*sqltypes.Result, error)
 
+	CommonQuery(ctx context.Context, queryFunctionName string, queryFunctionArgs map[string]any) (*sqltypes.Result, error)
+
 	// HandlePanic will be called if any of the functions panic.
 	HandlePanic(err *error)
 

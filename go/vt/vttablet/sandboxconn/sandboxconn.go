@@ -633,6 +633,10 @@ func (sbc *SandboxConn) ShowDMLJob(ctx context.Context, uuid string, showDetails
 	return nil, nil
 }
 
+func (sbc *SandboxConn) CommonQuery(ctx context.Context, queryFunctionName string, queryFunctionArgs map[string]any) (*sqltypes.Result, error) {
+	return nil, nil
+}
+
 // Close does not change ExecCount
 func (sbc *SandboxConn) Close(ctx context.Context) error {
 	return nil

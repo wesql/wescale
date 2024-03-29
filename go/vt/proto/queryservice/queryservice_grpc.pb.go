@@ -92,6 +92,7 @@ type QueryClient interface {
 	DropSchema(ctx context.Context, in *query.DropSchemaRequest, opts ...grpc.CallOption) (*query.DropSchemaResponse, error)
 	SubmitDMLJob(ctx context.Context, in *query.SubmitDMLJobRequest, opts ...grpc.CallOption) (*query.SubmitDMLJobResponse, error)
 	ShowDMLJob(ctx context.Context, in *query.ShowDMLJobRequest, opts ...grpc.CallOption) (*query.ShowDMLJobResponse, error)
+	CommonQuery(ctx context.Context, in *query.CommonQueryRequest, opts ...grpc.CallOption) (*query.CommonQueryResponse, error)
 }
 
 type queryClient struct {
@@ -629,6 +630,15 @@ func (c *queryClient) ShowDMLJob(ctx context.Context, in *query.ShowDMLJobReques
 	return out, nil
 }
 
+func (c *queryClient) CommonQuery(ctx context.Context, in *query.CommonQueryRequest, opts ...grpc.CallOption) (*query.CommonQueryResponse, error) {
+	out := new(query.CommonQueryResponse)
+	err := c.cc.Invoke(ctx, "/queryservice.Query/CommonQuery", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 // All implementations must embed UnimplementedQueryServer
 // for forward compatibility
@@ -701,6 +711,7 @@ type QueryServer interface {
 	DropSchema(context.Context, *query.DropSchemaRequest) (*query.DropSchemaResponse, error)
 	SubmitDMLJob(context.Context, *query.SubmitDMLJobRequest) (*query.SubmitDMLJobResponse, error)
 	ShowDMLJob(context.Context, *query.ShowDMLJobRequest) (*query.ShowDMLJobResponse, error)
+	CommonQuery(context.Context, *query.CommonQueryRequest) (*query.CommonQueryResponse, error)
 	mustEmbedUnimplementedQueryServer()
 }
 
@@ -806,6 +817,9 @@ func (UnimplementedQueryServer) SubmitDMLJob(context.Context, *query.SubmitDMLJo
 }
 func (UnimplementedQueryServer) ShowDMLJob(context.Context, *query.ShowDMLJobRequest) (*query.ShowDMLJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShowDMLJob not implemented")
+}
+func (UnimplementedQueryServer) CommonQuery(context.Context, *query.CommonQueryRequest) (*query.CommonQueryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CommonQuery not implemented")
 }
 func (UnimplementedQueryServer) mustEmbedUnimplementedQueryServer() {}
 
@@ -1444,6 +1458,24 @@ func _Query_ShowDMLJob_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_CommonQuery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(query.CommonQueryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).CommonQuery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/queryservice.Query/CommonQuery",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).CommonQuery(ctx, req.(*query.CommonQueryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Query_ServiceDesc is the grpc.ServiceDesc for Query service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1542,6 +1574,10 @@ var Query_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShowDMLJob",
 			Handler:    _Query_ShowDMLJob_Handler,
+		},
+		{
+			MethodName: "CommonQuery",
+			Handler:    _Query_CommonQuery_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
