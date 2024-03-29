@@ -6,8 +6,8 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/ccl"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/txserializer"
 )
 
 type ContinueAction struct {
@@ -105,18 +105,26 @@ func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
 	doneFunc, waited, err := q.Wait(qre.ctx, []string{"t1"})
 
 	if waited {
-		qre.tsv.stats.WaitTimings.Record("TxSerializer", time.Now())
+		qre.tsv.stats.WaitTimings.Record("ccl", time.Now())
 	}
 	if err != nil {
 		return err
 	}
-	qre.ctx = context.WithValue(qre.ctx, "txSerializerDoneFunc", doneFunc)
+	qre.ctx = context.WithValue(qre.ctx, "cclDoneFunc", doneFunc)
 
 	return nil
 }
 
 func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	doneFunc := qre.ctx.Value("txSerializerDoneFunc").(txserializer.DoneFunc)
+	v := qre.ctx.Value("cclDoneFunc")
+	if v == nil {
+		return &ActionExecutionResponse{
+			FireNext: true,
+			Reply:    reply,
+			Err:      err,
+		}
+	}
+	doneFunc := v.(ccl.DoneFunc)
 	doneFunc()
 	return &ActionExecutionResponse{
 		FireNext: true,
