@@ -189,7 +189,7 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 		} else {
 			txs.globalQueueExceeded.Add(1)
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"hot row protection: too many queued transactions (%d >= %d)", txs.globalSize, txs.maxGlobalQueueSize)
+				"concurrency control protection: too many queued transactions (%d >= %d)", txs.globalSize, txs.maxGlobalQueueSize)
 		}
 	}
 
@@ -204,12 +204,12 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 				txs.queueExceeded.Add(table, 1)
 			}
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"hot row protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
+				"concurrency control protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, txs.maxQueueSize, key)
 		}
 	}
 
 	if q.availableSlots == nil {
-		// Hot row detected: A second, concurrent transaction is seen for the
+		// concurrency control detected: A second, concurrent transaction is seen for the
 		// first time.
 
 		// As an optimization, we deferred the creation of the channel until now.
@@ -377,12 +377,12 @@ type queue struct {
 	max int
 
 	// availableSlots limits the number of concurrent transactions *per*
-	// hot row (range). It holds one element for each allowed pending
+	// concurrency control (range). It holds one element for each allowed pending
 	// transaction i.e. consumed tx pool slot. Consequently, if the channel
 	// is full, subsequent transactions have to wait until they can place
 	// their entry here.
 	// NOTE: As an optimization, we defer the creation of the channel until
-	// a second transaction for the same hot row is running.
+	// a second transaction for the same concurrency control is running.
 	availableSlots chan struct{}
 }
 
