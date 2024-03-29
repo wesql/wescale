@@ -36,17 +36,17 @@ import (
 )
 
 var (
-	concurrencyControllerMaxQueueSize       = 1
-	concurrencyControllerMaxGlobalQueueSize = 1
-	concurrencyControllerMaxConcurrency     = 1
 	concurrencyControllerDryRun             = false
+	concurrencyControllerMaxGlobalQueueSize = 1
+	concurrencyControllerMaxQueueSize       = 1
+	concurrencyControllerMaxConcurrency     = 1
 )
 
 func registerCclFlags(fs *pflag.FlagSet) {
-	fs.IntVar(&concurrencyControllerMaxQueueSize, "concurrency_controller_max_queue_size", concurrencyControllerMaxQueueSize, "Maximum number of transactions that can be queued")
-	fs.IntVar(&concurrencyControllerMaxGlobalQueueSize, "concurrency_controller_max_global_queue_size", concurrencyControllerMaxGlobalQueueSize, "Maximum number of transactions that can be queued globally")
-	fs.IntVar(&concurrencyControllerMaxConcurrency, "concurrency_controller_max_concurrency", concurrencyControllerMaxConcurrency, "Maximum number of transactions that can be executed concurrently")
 	fs.BoolVar(&concurrencyControllerDryRun, "concurrency_controller_dry_run", concurrencyControllerDryRun, "Dry run mode for the concurrency controller")
+	fs.IntVar(&concurrencyControllerMaxGlobalQueueSize, "concurrency_controller_max_global_queue_size", concurrencyControllerMaxGlobalQueueSize, "Maximum number of transactions that can be queued globally")
+	fs.IntVar(&concurrencyControllerMaxQueueSize, "concurrency_controller_max_queue_size", concurrencyControllerMaxQueueSize, "Maximum number of transactions that can be queued")
+	fs.IntVar(&concurrencyControllerMaxConcurrency, "concurrency_controller_max_concurrency", concurrencyControllerMaxConcurrency, "Maximum number of transactions that can be executed concurrently")
 }
 
 func init() {
@@ -177,7 +177,7 @@ func (txs *ConcurrencyController) lockLocked(ctx context.Context, key string, ta
 	q, ok := txs.queues[key]
 	if !ok {
 		// First transaction in the queue i.e. we don't wait and return immediately.
-		txs.queues[key] = newQueueForFirstTransaction(txs.maxConcurrency)
+		txs.queues[key] = newQueueForFirstTransaction()
 		txs.globalSize++
 		return false, nil
 	}
@@ -386,7 +386,7 @@ type queue struct {
 	availableSlots chan struct{}
 }
 
-func newQueueForFirstTransaction(concurrentTransactions int) *queue {
+func newQueueForFirstTransaction() *queue {
 	return &queue{
 		size:  1,
 		count: 1,
