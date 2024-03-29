@@ -148,7 +148,9 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 	}(time.Now())
 
 	qre.initDatabaseProxyFilter()
-	qre.runActionListBeforeExecution()
+	if err := qre.runActionListBeforeExecution(); err != nil {
+		return nil, err
+	}
 	defer qre.runActionListAfterExecution(reply, err)
 
 	if err = qre.checkPermissions(); err != nil {
