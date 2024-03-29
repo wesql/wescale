@@ -59,7 +59,7 @@ func TestConcurrencyController_NoHotRow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 	resetVariables(txs)
 
-	done, waited, err := txs.Wait(context.Background(), "t1 where1", "t1")
+	done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -87,7 +87,7 @@ func TestConcurrencyControllerRedactDebugUI(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 5, false)
 	resetVariables(txs)
 
-	done, waited, err := txs.Wait(context.Background(), "t1 where1", "t1")
+	done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err != nil {
 		t.Error(err)
 	}
@@ -115,7 +115,7 @@ func TestConcurrencyController(t *testing.T) {
 	resetVariables(txs)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -129,7 +129,7 @@ func TestConcurrencyController(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", "t1")
+		done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 		if err2 != nil {
 			t.Error(err2)
 		}
@@ -148,7 +148,7 @@ func TestConcurrencyController(t *testing.T) {
 	}
 
 	// tx3 (gets rejected because it would exceed the local queue).
-	_, _, err3 := txs.Wait(context.Background(), "t1 where1", "t1")
+	_, _, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
@@ -184,7 +184,7 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	resetVariables(txs)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -193,7 +193,7 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	}
 
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err2 != nil {
 		t.Error(err1)
 	}
@@ -207,7 +207,7 @@ func TestConcurrencyController_ConcurrentTransactions(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", "t1")
+		done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 		if err3 != nil {
 			t.Error(err3)
 		}
@@ -306,7 +306,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 	txDone := make(chan int)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -314,7 +314,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 		t.Errorf("tx1 must never wait: %v", waited1)
 	}
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err2 != nil {
 		t.Error(err2)
 	}
@@ -329,7 +329,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		_, _, err3 := txs.Wait(ctx3, "t1 where1", "t1")
+		_, _, err3 := txs.Wait(ctx3, "t1 where1", []string{"t1"})
 		if err3 != context.Canceled {
 			t.Error(err3)
 		}
@@ -346,7 +346,7 @@ func TestConcurrencyControllerCancel(t *testing.T) {
 	go func() {
 		defer wg.Done()
 
-		done4, waited4, err4 := txs.Wait(context.Background(), "t1 where1", "t1")
+		done4, waited4, err4 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 		if err4 != nil {
 			t.Error(err4)
 		}
@@ -399,7 +399,7 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 	resetVariables(txs)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -408,7 +408,7 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 	}
 
 	// tx2 (would wait and exceed the local queue).
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err2 != nil {
 		t.Error(err2)
 	}
@@ -423,7 +423,7 @@ func TestConcurrencyControllerDryRun(t *testing.T) {
 	}
 
 	// tx3 (would wait and exceed the global queue).
-	done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done3, waited3, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err3 != nil {
 		t.Error(err3)
 	}
@@ -464,7 +464,7 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	txs := NewConcurrentControllerForTest(1, 1, 1, false)
 
 	// tx1.
-	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", "t1")
+	done1, waited1, err1 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if err1 != nil {
 		t.Error(err1)
 	}
@@ -473,7 +473,7 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	}
 
 	// tx2.
-	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where2", "t1")
+	done2, waited2, err2 := txs.Wait(context.Background(), "t1 where2", []string{"t1"})
 	if err2 != nil {
 		t.Error(err2)
 	}
@@ -482,7 +482,7 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	}
 
 	// tx3 (same row range as tx1).
-	_, _, err3 := txs.Wait(context.Background(), "t1 where1", "t1")
+	_, _, err3 := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
@@ -510,7 +510,7 @@ func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		done, waited, err := txs.Wait(context.Background(), "t1 where1", "t1")
+		done, waited, err := txs.Wait(context.Background(), "t1 where1", []string{"t1"})
 		if err != nil {
 			b.Error(err)
 		}
