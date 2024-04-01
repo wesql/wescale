@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,7 +76,7 @@ type ConcurrencyController struct {
 	maxGlobalQueueSize int
 
 	// waits stores how many times a transaction was queued because another
-	// transaction was already in flight for the same row (range).
+	// transaction was already in flight.
 	// The key of the map is the table name of the query.
 	//
 	// waitsDryRun is similar as "waits": In dry-run mode it records how many
@@ -107,7 +112,7 @@ func New(exporter *servenv.Exporter) *ConcurrencyController {
 		maxGlobalQueueSize: concurrencyControllerMaxGlobalQueueSize,
 		waits: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerWaits",
-			"Number of times a transaction was queued because another transaction was already in flight for the same row range",
+			"Number of times a transaction was queued because another transaction was already in flight",
 			"table_name"),
 		waitsDryRun: exporter.NewCountersWithSingleLabel(
 			"ConcurrencyControllerWaitsDryRun",
@@ -195,13 +200,13 @@ func (q *Queue) lockLocked(ctx context.Context, key string, tables []string) (bo
 			for _, table := range tables {
 				txs.queueExceededDryRun.Add(table, 1)
 			}
-			txs.logQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, q.maxQueueSize, key)
+			txs.logQueueExceededDryRun.Warningf("Would have rejected BeginExecute RPC because there are too many queued transactions (%d >= %d)", q.size, q.maxQueueSize)
 		} else {
 			for _, table := range tables {
 				txs.queueExceeded.Add(table, 1)
 			}
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"concurrency control protection: too many queued transactions (%d >= %d) for the same row (table + WHERE clause: '%v')", q.size, q.maxQueueSize, key)
+				"concurrency control protection: too many queued transactions (%d >= %d)", q.size, q.maxQueueSize)
 		}
 	}
 
@@ -278,7 +283,7 @@ func (q *Queue) unlockLocked(key string, returnSlot bool) {
 
 		if q.max > 1 {
 			var logMsg string
-			logMsg = fmt.Sprintf("%v simultaneous transactions (%v in total) for the same row range (%v) would have been queued.", q.max, q.count, key)
+			logMsg = fmt.Sprintf("%v simultaneous transactions (%v in total) would have been queued.", q.max, q.count)
 			if txs.dryRun {
 				txs.logDryRun.Infof(logMsg)
 			} else {
@@ -376,7 +381,7 @@ type Queue struct {
 	// count is the same as "size", but never gets decremented.
 	count int
 	// max is the max of "size", i.e. the maximum number of transactions which
-	// were simultaneously queued for the same row range.
+	// were simultaneously queued
 	max int
 
 	// availableSlots limits the number of concurrent transactions *per*
