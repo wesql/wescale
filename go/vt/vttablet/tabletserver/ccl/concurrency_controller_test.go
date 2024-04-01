@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -153,7 +158,7 @@ func TestConcurrencyController(t *testing.T) {
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (2 >= 2) for the same row (table + WHERE clause: 't1 where1')"; got != want {
+	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (2 >= 2)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 
