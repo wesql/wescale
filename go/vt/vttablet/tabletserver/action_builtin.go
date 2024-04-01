@@ -98,7 +98,7 @@ type ConcurrencyControlAction struct {
 	// Action is the action to take if the rule matches
 	Action rules.Action
 
-	MaxQueueSize   int `json:"max_queue_size`
+	MaxQueueSize   int `json:"max_queue_size""`
 	MaxConcurrency int `json:"max_concurrency"`
 }
 
