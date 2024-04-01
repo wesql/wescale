@@ -98,11 +98,12 @@ type ConcurrencyControlAction struct {
 	// Action is the action to take if the rule matches
 	Action rules.Action
 
+	MaxQueueSize   int `json:"max_queue_size`
 	MaxConcurrency int `json:"max_concurrency"`
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
-	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.MaxConcurrency, p.MaxConcurrency)
+	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.MaxQueueSize, p.MaxConcurrency)
 	doneFunc, waited, err := q.Wait(qre.ctx, qre.plan.TableNames())
 
 	if waited {
@@ -136,6 +137,7 @@ func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
 	}
 	c := &ConcurrencyControlAction{}
 	json.Unmarshal([]byte(stringParams), c)
+	p.MaxQueueSize = c.MaxQueueSize
 	p.MaxConcurrency = c.MaxConcurrency
 	return nil
 }
