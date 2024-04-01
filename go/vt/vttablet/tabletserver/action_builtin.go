@@ -2,6 +2,7 @@ package tabletserver
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
@@ -97,12 +98,12 @@ type ConcurrencyControlAction struct {
 	// Action is the action to take if the rule matches
 	Action rules.Action
 
-	maxConcurrency int `json:"max_concurrency"`
+	MaxConcurrency int `json:"max_concurrency"`
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
-	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.maxConcurrency, p.maxConcurrency)
-	doneFunc, waited, err := q.Wait(qre.ctx, []string{"t1"})
+	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.MaxConcurrency, p.MaxConcurrency)
+	doneFunc, waited, err := q.Wait(qre.ctx, qre.plan.TableNames())
 
 	if waited {
 		qre.tsv.stats.WaitTimings.Record("ccl", time.Now())
@@ -117,15 +118,11 @@ func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
 
 func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	v := qre.ctx.Value("cclDoneFunc")
-	if v == nil {
-		return &ActionExecutionResponse{
-			FireNext: true,
-			Reply:    reply,
-			Err:      err,
-		}
+	if v != nil {
+		doneFunc := v.(ccl.DoneFunc)
+		doneFunc()
 	}
-	doneFunc := v.(ccl.DoneFunc)
-	doneFunc()
+
 	return &ActionExecutionResponse{
 		FireNext: true,
 		Reply:    reply,
@@ -134,6 +131,12 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 }
 
 func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
+	if stringParams == "" {
+		return nil
+	}
+	c := &ConcurrencyControlAction{}
+	json.Unmarshal([]byte(stringParams), c)
+	p.MaxConcurrency = c.MaxConcurrency
 	return nil
 }
 
