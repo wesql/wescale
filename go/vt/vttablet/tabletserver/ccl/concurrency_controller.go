@@ -42,7 +42,7 @@ import (
 
 var (
 	concurrencyControllerDryRun             = false
-	concurrencyControllerMaxGlobalQueueSize = 1
+	concurrencyControllerMaxGlobalQueueSize = 10
 )
 
 func registerCclFlags(fs *pflag.FlagSet) {
@@ -191,7 +191,7 @@ func (q *Queue) lockLocked(ctx context.Context, key string, tables []string) (bo
 		} else {
 			txs.globalQueueExceeded.Add(1)
 			return false, vterrors.Errorf(vtrpcpb.Code_RESOURCE_EXHAUSTED,
-				"concurrency control protection: too many queued transactions (%d >= %d)", txs.currentGlobalSize, txs.maxGlobalQueueSize)
+				"concurrency control protection: too many global queued transactions (%d >= %d)", txs.currentGlobalSize, txs.maxGlobalQueueSize)
 		}
 	}
 
