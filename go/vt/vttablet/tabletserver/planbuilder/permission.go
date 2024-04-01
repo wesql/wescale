@@ -48,7 +48,9 @@ func BuildDataBasePermissions(permissions []Permission, dbName string) []Permiss
 		return permissions
 	}
 	for index := range permissions {
-		permissions[index].Database = dbName
+		if permissions[index].Database == "" {
+			permissions[index].Database = dbName
+		}
 	}
 	return permissions
 }

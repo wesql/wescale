@@ -21,6 +21,10 @@ func InitTable(conn *mysql.Conn) {
 	conn.ExecuteFetch("use test", 1000, false)
 	conn.ExecuteFetch("CREATE TABLE t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
 	conn.ExecuteFetch("Insert into test.t1 values(null,100)", 1000, false)
+	conn.ExecuteFetch("CREATE DATABASE d2", 1000, false)
+	conn.ExecuteFetch("use d2", 1000, false)
+	conn.ExecuteFetch("CREATE TABLE t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
+	conn.ExecuteFetch("Insert into d2.t1 values(null,100)", 1000, false)
 }
 
 func CreateVtParam(username, host, password string) mysql.ConnParams {
@@ -46,6 +50,54 @@ func DropDatabase(conn *mysql.Conn, dbName string) {
 
 }
 
+func ClearTable(conn *mysql.Conn) {
+	DropDatabase(conn, "test")
+	DropDatabase(conn, "d1")
+}
+
+func TestDBPriv(t *testing.T) {
+	conn := getBackendPrimaryMysqlConn()
+	vtgateConn := getVTGateMysqlConn()
+
+	DBUser := "TestDBPriv_DB"
+	password := "password"
+	host := "127.0.0.1"
+	err := CreateUser(conn, DBUser, host, password)
+	require.Nil(t, err, "%v", err)
+	vtgateConn.ExecuteFetch("reload users", 1000, false)
+	InitTable(vtgateConn)
+
+	defer func() {
+		DropUser(conn, DBUser, host)
+		ClearTable(vtgateConn)
+	}()
+	ctx := context.Background()
+
+	DBVtParams := CreateVtParam(DBUser, host, password)
+	DBUserConn, err := mysql.Connect(ctx, &DBVtParams)
+	require.Nil(t, err)
+
+	// use test database
+	// select * from t1;
+	_, err = DBUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
+	require.NotNil(t, err, "%v", err)
+	conn.ExecuteFetch(fmt.Sprintf("GRANT SELECT ON test.* TO '%s'@'%s'", DBUser, host), 1000, false)
+	vtgateConn.ExecuteFetch("reload privileges", 1000, false)
+
+	// select * from d2.t1
+	_, err = DBUserConn.ExecuteFetch("use d2;", -1, false)
+	require.Nil(t, err, "%v", err)
+	_, err = DBUserConn.ExecuteFetch("SELECT * from t1", 1000, false)
+	require.NotNil(t, err, "%v", err)
+	_, err = DBUserConn.ExecuteFetch("SELECT * from test.t1", 1000, false)
+	require.Nil(t, err, "%v", err)
+
+	_, err = DBUserConn.ExecuteFetch("use test;", -1, false)
+	require.Nil(t, err, "%v", err)
+	_, err = DBUserConn.ExecuteFetch("SELECT * from t1", 1000, false)
+	require.Nil(t, err, "%v", err)
+}
+
 func TestReaderPriv(t *testing.T) {
 	conn := getBackendPrimaryMysqlConn()
 	vtgateConn := getVTGateMysqlConn()
@@ -67,13 +119,13 @@ func TestReaderPriv(t *testing.T) {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
 		DropUser(conn, TableUser, host)
-		DropDatabase(conn, "test")
+		ClearTable(conn)
 	}()
 	// wait vtgate pull user from mysql.user
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
 	ctx := context.Background()
-	DbVtParams := CreateVtParam(globalUser, host, password)
-	globalUserConn, err := mysql.Connect(ctx, &DbVtParams)
+	globalParams := CreateVtParam(globalUser, host, password)
+	globalUserConn, err := mysql.Connect(ctx, &globalParams)
 	require.Nil(t, err)
 	DBVtParams := CreateVtParam(DBUser, host, password)
 	DBUserConn, err := mysql.Connect(ctx, &DBVtParams)
@@ -134,7 +186,8 @@ func TestWriterPriv(t *testing.T) {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
 		DropUser(conn, TableUser, host)
-		DropDatabase(conn, "test")
+		ClearTable(conn)
+
 	}()
 	// waiting vtgate pull user from mysql.user
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
@@ -217,7 +270,7 @@ func TestAdminPriv(t *testing.T) {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
 		DropUser(conn, TableUser, host)
-		DropDatabase(conn, "test")
+		ClearTable(conn)
 	}()
 	// wait vtgate pull user from mysql.user
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
@@ -283,7 +336,7 @@ func TestOnlyReaderPriv(t *testing.T) {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
 		DropUser(conn, TableUser, host)
-		DropDatabase(conn, "test")
+		ClearTable(conn)
 	}()
 	// wait vtgate pull user from mysql.user
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
@@ -343,7 +396,7 @@ func TestOnlyWriterPriv(t *testing.T) {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
 		DropUser(conn, TableUser, host)
-		DropDatabase(conn, "test")
+		ClearTable(conn)
 	}()
 	// waiting vtgate pull user from mysql.user
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
