@@ -23,6 +23,7 @@ package grpcqueryservice
 
 import (
 	"context"
+	"encoding/json"
 
 	"google.golang.org/grpc"
 
@@ -536,6 +537,24 @@ func (q *query) SubmitDMLJob(ctx context.Context, request *querypb.SubmitDMLJobR
 func (q *query) ShowDMLJob(ctx context.Context, request *querypb.ShowDMLJobRequest) (*querypb.ShowDMLJobResponse, error) {
 	rst, err := q.server.ShowDMLJob(ctx, request.JobUuid, request.ShowDetails)
 	return &querypb.ShowDMLJobResponse{Result: sqltypes.ResultToProto3(rst)}, err
+}
+
+func (q *query) CommonQuery(ctx context.Context, request *querypb.CommonQueryRequest) (*querypb.CommonQueryResponse, error) {
+	args := make(map[string]any)
+	// when client call this RPC in CommonQuery in conn.go,
+	// it converts from map[string]any to map[string][]byte by Marshal every value in map[string]any.
+	// So here, we should converts from map[string][]byte to map[string]ant by Unmarshal every value in map[string]any.
+	for k, v := range request.QueryFunctionArgs {
+		var tmp any
+		err := json.Unmarshal(v, &tmp)
+		if err != nil {
+			return nil, err
+		}
+		args[k] = tmp
+	}
+
+	rst, err := q.server.CommonQuery(ctx, request.QueryFunctionName, args)
+	return &querypb.CommonQueryResponse{Result: sqltypes.ResultToProto3(rst)}, err
 }
 
 // Register registers the implementation on the provide gRPC Server.

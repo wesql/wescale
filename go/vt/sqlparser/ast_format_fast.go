@@ -1333,8 +1333,10 @@ func (node *ShowFilter) formatFast(buf *TrackedBuffer) {
 		buf.WriteString(" like ")
 		sqltypes.BufEncodeStringSQL(buf.Builder, node.Like)
 	} else {
-		buf.WriteString(" where ")
-		node.Filter.formatFast(buf)
+		if node.Filter != nil {
+			buf.WriteString(" where ")
+			node.Filter.formatFast(buf)
+		}
 	}
 }
 

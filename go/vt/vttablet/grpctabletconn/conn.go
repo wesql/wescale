@@ -23,6 +23,7 @@ package grpctabletconn
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"sync"
 
@@ -1190,6 +1191,36 @@ func (conn *gRPCQueryClient) Close(ctx context.Context) error {
 	cc := conn.cc
 	conn.cc = nil
 	return cc.Close()
+}
+
+func (conn *gRPCQueryClient) CommonQuery(ctx context.Context, queryFunctionName string, queryFunctionArgs map[string]any) (*sqltypes.Result, error) {
+	conn.mu.RLock()
+	defer conn.mu.RUnlock()
+	if conn.cc == nil {
+		return nil, tabletconn.ConnClosed
+	}
+
+	// We convert any to []byte here by using json.Marshal,
+	// when tablet receive the request in CommonQuery in server.go, it will use json.Unmarshal to convert back to any.
+	argsBytes := make(map[string][]byte)
+	for k, v := range queryFunctionArgs {
+		data, err := json.Marshal(v)
+		if err != nil {
+			return nil, tabletconn.InternalErr
+		}
+		argsBytes[k] = data
+	}
+
+	req := querypb.CommonQueryRequest{
+		QueryFunctionName: queryFunctionName,
+		QueryFunctionArgs: argsBytes,
+	}
+
+	er, err := conn.c.CommonQuery(ctx, &req)
+	if err != nil {
+		return nil, tabletconn.ErrorFromGRPC(err)
+	}
+	return sqltypes.Proto3ToResult(er.Result), nil
 }
 
 // Tablet returns the rpc end point.

@@ -80,6 +80,10 @@ func (f *FakeQueryService) ShowDMLJob(ctx context.Context, uuid string, showDeta
 	panic("implement me")
 }
 
+func (f *FakeQueryService) CommonQuery(ctx context.Context, queryFunctionName string, queryFunctionArgs map[string]any) (*sqltypes.Result, error) {
+	panic("implement me")
+}
+
 var _ queryservice.QueryService = (*FakeQueryService)(nil)
 
 // Close is a no-op.

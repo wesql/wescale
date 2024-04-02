@@ -38,12 +38,12 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/failpointkey"
-
 	"github.com/pingcap/failpoint"
 
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
+
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"github.com/spf13/pflag"
 
@@ -982,6 +982,73 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 	}
 	return &sqltypes.Result{
 		Fields: buildVarCharFields("Cell", "Keyspace", "Shard", "TabletType", "State", "Alias", "Hostname", "PrimaryTermStartTime"),
+		Rows:   rows,
+	}, nil
+}
+
+func formatTabletAlias(alias *topodatapb.TabletAlias) string {
+	return fmt.Sprintf("%v-%v", alias.Cell, alias.Uid)
+}
+
+// where clause is not fully supported,
+// only support "alias = xxx",
+// other cases will return an ERROR.
+func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) (bool, error) {
+	if filter == nil {
+		return true, nil
+	}
+
+	if filter.Like != "" {
+		tabletRegexp := sqlparser.LikeToRegexp(filter.Like)
+		return tabletRegexp.MatchString(alias), nil
+	}
+
+	if filter.Filter == nil {
+		// it means that the filter clause is like ''
+		return false, nil
+	}
+
+	if cmp, ok := filter.Filter.(*sqlparser.ComparisonExpr); ok {
+		if cmp.Operator == sqlparser.EqualOp {
+			if colName, ok := cmp.Left.(*sqlparser.ColName); ok {
+				colNameLower := strings.ToLower(colName.Name.String())
+				if colNameLower == "alias" {
+					val := sqlparser.String(cmp.Right)
+					val = strings.ReplaceAll(val, "'", "")
+					val = strings.ReplaceAll(val, " ", "")
+					return val == alias, nil
+				}
+			}
+		}
+	}
+	return false, fmt.Errorf("where caluse is not fully supported now, only support alias =\"xxx\"")
+}
+
+func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
+	rows := make([]sqltypes.Row, 0)
+	for _, tabletStatusList := range e.scatterConn.GetHealthCheckCacheStatus() {
+		for _, tabletStatus := range tabletStatusList.TabletsStats {
+
+			tabletAlias := formatTabletAlias(tabletStatus.Tablet.Alias)
+			matched, err := matchTabletByAlias(filter, tabletAlias)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
+				continue
+			}
+
+			qr, err := tabletStatus.Conn.CommonQuery(context.Background(), "TabletsPlans", nil)
+			if err != nil {
+				return nil, err
+			}
+
+			rows = append(rows, qr.Rows...)
+		}
+	}
+
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }

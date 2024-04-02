@@ -131,4 +131,6 @@ service Query {
   rpc SubmitDMLJob(query.SubmitDMLJobRequest) returns (query.SubmitDMLJobResponse) {};
 
   rpc ShowDMLJob(query.ShowDMLJobRequest) returns (query.ShowDMLJobResponse) {};
+
+  rpc CommonQuery(query.CommonQueryRequest) returns (query.CommonQueryResponse) {};
 }

@@ -393,3 +393,12 @@ func (ws *wrappedService) ShowDMLJob(ctx context.Context, uuid string, showDetai
 	})
 	return qr, err
 }
+
+func (ws *wrappedService) CommonQuery(ctx context.Context, queryFunctionName string, queryFunctionArgs map[string]any) (qr *sqltypes.Result, err error) {
+	err = ws.wrapper(ctx, nil, ws.impl, "CommonQuery", false, nil, func(ctx context.Context, target *querypb.Target, conn QueryService) (bool, error) {
+		var innerErr error
+		qr, innerErr = conn.CommonQuery(ctx, queryFunctionName, queryFunctionArgs)
+		return canRetry(ctx, innerErr), innerErr
+	})
+	return qr, err
+}
