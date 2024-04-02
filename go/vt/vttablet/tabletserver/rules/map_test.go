@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +46,7 @@ func setupRules() {
 
 	// mock denied tables
 	denyRules = New()
-	deniedTables := []string{"bannedtable1", "bannedtable2", "bannedtable3"}
+	deniedTables := []string{"d1.bannedtable1", "d1.bannedtable2", "d1.bannedtable3"}
 	qr = NewQueryRule("enforce denied tables", "denied_table", QRFailRetry)
 	for _, t := range deniedTables {
 		qr.AddTableCond(t)
@@ -51,7 +56,7 @@ func setupRules() {
 	// mock custom rules
 	otherRules = New()
 	qr = NewQueryRule("sample custom rule", "customrule_ban_bindvar", QRFail)
-	qr.AddTableCond("t_customer")
+	qr.AddTableCond("d.t_customer")
 	qr.AddBindVarCond("bindvar1", true, false, QRNoOp, nil)
 	otherRules.Add(qr)
 }
@@ -174,21 +179,21 @@ func TestMapFilterByPlan(t *testing.T) {
 	qri.SetRules(customQueryRules, otherRules)
 
 	// Test filter by denylist rule
-	qrs = qri.FilterByPlan("select * from bannedtable2", planbuilder.PlanSelect, "bannedtable2")
+	qrs = qri.FilterByPlan("select * from d1.bannedtable2", planbuilder.PlanSelect, "d1.bannedtable2")
 	if l := len(qrs.rules); l != 1 {
-		t.Errorf("Select from bannedtable matches %d rules, but we expect %d", l, 1)
+		t.Errorf("Select from d1.bannedtable matches %d rules, but we expect %d", l, 1)
 	}
 	if !strings.HasPrefix(qrs.rules[0].Name, "denied_table") {
-		t.Errorf("Select from bannedtable query matches rule '%s', but we expect rule with prefix '%s'", qrs.rules[0].Name, "denied_table")
+		t.Errorf("Select from d1.bannedtable query matches rule '%s', but we expect rule with prefix '%s'", qrs.rules[0].Name, "denied_table")
 	}
 
 	// Test filter by custom rule
-	qrs = qri.FilterByPlan("select cid from t_customer limit 10", planbuilder.PlanSelect, "t_customer")
+	qrs = qri.FilterByPlan("select cid from d.t_customer limit 10", planbuilder.PlanSelect, "d.t_customer")
 	if l := len(qrs.rules); l != 1 {
-		t.Errorf("Select from t_customer matches %d rules, but we expect %d", l, 1)
+		t.Errorf("Select from d.t_customer matches %d rules, but we expect %d", l, 1)
 	}
 	if !strings.HasPrefix(qrs.rules[0].Name, "customrule_ban_bindvar") {
-		t.Errorf("Select from t_customer matches rule '%s', but we expect rule with prefix '%s'", qrs.rules[0].Name, "customrule_ban_bindvar")
+		t.Errorf("Select from d.t_customer matches rule '%s', but we expect rule with prefix '%s'", qrs.rules[0].Name, "customrule_ban_bindvar")
 	}
 
 	// Test match two rules: both denylist rule and custom rule will be matched
@@ -197,9 +202,9 @@ func TestMapFilterByPlan(t *testing.T) {
 	qr.AddBindVarCond("bindvar1", true, false, QRNoOp, nil)
 	otherRules.Add(qr)
 	qri.SetRules(customQueryRules, otherRules)
-	qrs = qri.FilterByPlan("select * from bannedtable2", planbuilder.PlanSelect, "bannedtable2")
+	qrs = qri.FilterByPlan("select * from d1.bannedtable2", planbuilder.PlanSelect, "d1.bannedtable2")
 	if l := len(qrs.rules); l != 2 {
-		t.Errorf("Insert into bannedtable2 matches %d rules: %v, but we expect %d rules to be matched", l, qrs.rules, 2)
+		t.Errorf("Insert into d1.bannedtable2 matches %d rules: %v, but we expect %d rules to be matched", l, qrs.rules, 2)
 	}
 }
 
@@ -211,21 +216,7 @@ func TestMapJSON(t *testing.T) {
 	qri.RegisterSource(customQueryRules)
 	_ = qri.SetRules(customQueryRules, otherRules)
 	got := marshalled(qri)
-	want := compacted(`{
-		"CUSTOM_QUERY_RULES":[{
-			"Description":"sample custom rule",
-			"Name":"customrule_ban_bindvar",
-			"FullyQualifiedTableNames":["t_customer"],
-			"BindVarConds":[{"Name":"bindvar1","OnAbsent":true,"Operator":""}],
-			"Action":"FAIL"
-		}],
-		"DENYLIST_QUERY_RULES":[{
-			"Description":"enforce denied tables",
-			"Name":"denied_table",
-			"FullyQualifiedTableNames":["bannedtable1","bannedtable2","bannedtable3"],
-			"Action":"FAIL_RETRY"
-		}]
-	}`)
+	want := compacted(`{"CUSTOM_QUERY_RULES":[{"Description":"sample custom rule","Name":"customrule_ban_bindvar","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["d.t_customer"],"BindVarConds":[{"Name":"bindvar1","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}],"DENYLIST_QUERY_RULES":[{"Description":"enforce denied tables","Name":"denied_table","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["d1.bannedtable1","d1.bannedtable2","d1.bannedtable3"],"Action":"FAIL_RETRY","ActionArgs":""}]}`)
 	if got != want {
 		t.Errorf("MapJSON:\n%v, want\n%v", got, want)
 	}
