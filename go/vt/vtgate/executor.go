@@ -991,35 +991,37 @@ func formatTabletAlias(alias *topodatapb.TabletAlias) string {
 }
 
 // where clause is not fully supported,
-// only support "alias = xxx" or "tablet_alias = xxx",
-// other cases will be IGNORED and return TRUE.
-func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) bool {
+// only support "alias = xxx",
+// other cases will return an ERROR.
+func matchTabletByAlias(filter *sqlparser.ShowFilter, alias string) (bool, error) {
 	if filter == nil {
-		return true
+		return true, nil
 	}
+
 	if filter.Like != "" {
 		tabletRegexp := sqlparser.LikeToRegexp(filter.Like)
-		return tabletRegexp.MatchString(alias)
+		return tabletRegexp.MatchString(alias), nil
 	}
-	cmp, ok := filter.Filter.(*sqlparser.ComparisonExpr)
-	if !ok {
-		return true
+
+	if filter.Filter == nil {
+		// it means that the filter clause is like ''
+		return false, nil
 	}
-	if cmp.Operator == sqlparser.EqualOp {
-		colName, ok := cmp.Left.(*sqlparser.ColName)
-		if !ok {
-			return true
+
+	if cmp, ok := filter.Filter.(*sqlparser.ComparisonExpr); ok {
+		if cmp.Operator == sqlparser.EqualOp {
+			if colName, ok := cmp.Left.(*sqlparser.ColName); ok {
+				colNameLower := strings.ToLower(colName.Name.String())
+				if colNameLower == "alias" {
+					val := sqlparser.String(cmp.Right)
+					val = strings.ReplaceAll(val, "'", "")
+					val = strings.ReplaceAll(val, " ", "")
+					return val == alias, nil
+				}
+			}
 		}
-		colNameLower := strings.ToLower(colName.Name.String())
-		if colNameLower != "alias" && colNameLower != "tablet_alias" {
-			return true
-		}
-		val := sqlparser.String(cmp.Right)
-		val = strings.ReplaceAll(val, "'", "")
-		val = strings.ReplaceAll(val, " ", "")
-		return val == alias
 	}
-	return true
+	return false, fmt.Errorf("where caluse is not fully supported now, only support alias =\"xxx\"")
 }
 
 func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Result, error) {
@@ -1028,7 +1030,11 @@ func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Res
 		for _, tabletStatus := range tabletStatusList.TabletsStats {
 
 			tabletAlias := formatTabletAlias(tabletStatus.Tablet.Alias)
-			if !matchTabletByAlias(filter, tabletAlias) {
+			matched, err := matchTabletByAlias(filter, tabletAlias)
+			if err != nil {
+				return nil, err
+			}
+			if !matched {
 				continue
 			}
 

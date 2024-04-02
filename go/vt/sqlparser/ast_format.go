@@ -1006,7 +1006,9 @@ func (node *ShowFilter) Format(buf *TrackedBuffer) {
 		buf.astPrintf(node, " like ")
 		sqltypes.BufEncodeStringSQL(buf.Builder, node.Like)
 	} else {
-		buf.astPrintf(node, " where %v", node.Filter)
+		if node.Filter != nil {
+			buf.astPrintf(node, " where %v", node.Filter)
+		}
 	}
 }
 
