@@ -695,6 +695,7 @@ func fullyQualifiedTableNameRegexMatch(expectedFullyQualifiedTableNames []string
 	for _, expected := range expectedFullyQualifiedTableNames {
 		expectedParts := strings.Split(expected, ".")
 		if len(expectedParts) != 2 {
+			log.Errorf("expectedFullyQualifiedTableNames is not fully qualified table name, expected:%v", expected)
 			return false
 		}
 		databaseNameRegex, err1 := compileRegex(expectedParts[0])
@@ -705,6 +706,10 @@ func fullyQualifiedTableNameRegexMatch(expectedFullyQualifiedTableNames []string
 		}
 		for _, actual := range fullyQualifiedTableNames {
 			actualParts := strings.Split(actual, ".")
+			if len(actualParts) != 2 {
+				log.Errorf("fullyQualifiedTableNames is not fully qualified table name, actual:%v", actual)
+				return false
+			}
 			databaseMatched := databaseNameRegex.MatchString(actualParts[0])
 			tableMatched := tableNameRegex.MatchString(actualParts[1])
 			if databaseMatched && tableMatched {
@@ -1103,6 +1108,14 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for %s", k)
 			}
 		case "Priority":
+			// if v is json.Number, convert it to int
+			if num, ok := v.(json.Number); ok {
+				intNum, err := num.Int64()
+				if err != nil {
+					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
+				}
+				v = int(intNum)
+			}
 			iv, ok = v.(int)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
