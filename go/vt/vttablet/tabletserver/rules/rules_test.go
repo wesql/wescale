@@ -128,77 +128,31 @@ func TestFilterByPlan(t *testing.T) {
 	qr3.AddBindVarCond("a", true, false, QRNoOp, nil)
 
 	qr4 := NewQueryRule("rule 4", "r4", QRFail)
-	qr4.AddTableCond("b")
-	qr4.AddTableCond("c")
+	qr4.AddTableCond("d.b")
+	qr4.AddTableCond("d.c")
 
 	qrs.Add(qr1)
 	qrs.Add(qr2)
 	qrs.Add(qr3)
 	qrs.Add(qr4)
 
-	qrs1 := qrs.FilterByPlan("select", planbuilder.PlanSelect, "a")
-	want := compacted(`[{
-		"Description":"rule 1",
-		"Name":"r1",
-		"RequestIP":"123",
-		"BindVarConds":[{
-			"Name":"a",
-			"OnAbsent":true,
-			"Operator":""
-		}],
-		"Action":"FAIL"
-	},{
-		"Description":"rule 2",
-		"Name":"r2",
-		"BindVarConds":[{
-			"Name":"a",
-			"OnAbsent":true,
-			"Operator":""
-		}],
-		"Action":"FAIL"
-	},{
-		"Description":"rule 3",
-		"Name":"r3",
-		"BindVarConds":[{
-			"Name":"a",
-			"OnAbsent":true,
-			"Operator":""
-		}],
-		"Action":"FAIL"
-	}]`)
+	qrs1 := qrs.FilterByPlan("select", planbuilder.PlanSelect, "d.a")
+	want := compacted(`[{"Description":"rule 1","Name":"r1","Priority":0,"Status":"","RequestIP":"123","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got := marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
-	qrs1 = qrs.FilterByPlan("insert", planbuilder.PlanSelect, "a")
-	want = compacted(`[{
-		"Description":"rule 2",
-		"Name":"r2",
-		"BindVarConds":[{
-			"Name":"a",
-			"OnAbsent":true,
-			"Operator":""
-		}],
-		"Action":"FAIL"
-	}]`)
+	qrs1 = qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.a")
+	want = compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
-		t.Errorf("qrs1:\n%s, want\n%s", got, want)
+		t.Errorf("qrs1:\n%s\n, want\n%s", got, want)
 	}
 	{
 		// test multiple tables:
-		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "a", "other_table")
-		want := compacted(`[{
-			"Description":"rule 2",
-			"Name":"r2",
-			"BindVarConds":[{
-				"Name":"a",
-				"OnAbsent":true,
-				"Operator":""
-			}],
-			"Action":"FAIL"
-		}]`)
+		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.a", "d.other_table")
+		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 		got = marshalled(qrs1)
 		if got != want {
 			t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -207,56 +161,34 @@ func TestFilterByPlan(t *testing.T) {
 	}
 	{
 		// test multiple tables:
-		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "other_table", "a")
-		want := compacted(`[{
-			"Description":"rule 2",
-			"Name":"r2",
-			"BindVarConds":[{
-				"Name":"a",
-				"OnAbsent":true,
-				"Operator":""
-			}],
-			"Action":"FAIL"
-		}]`)
+		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.other_table", "d.a")
+		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 		got = marshalled(qrs1)
 		if got != want {
 			t.Errorf("qrs1:\n%s, want\n%s", got, want)
 		}
 	}
 
-	qrs1 = qrs.FilterByPlan("insert", planbuilder.PlanSelect, "a")
+	qrs1 = qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.a")
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
-	qrs1 = qrs.FilterByPlan("select", planbuilder.PlanInsert, "a")
-	want = compacted(`[{
-		"Description":"rule 3",
-		"Name":"r3",
-		"BindVarConds":[{
-			"Name":"a",
-			"OnAbsent":true,
-			"Operator":""
-		}],
-		"Action":"FAIL"
-	}]`)
+	qrs1 = qrs.FilterByPlan("select", planbuilder.PlanInsert, "d.a")
+	want = compacted(`[{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
-	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "a")
+	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "d.a")
 	if qrs1.rules != nil {
 		t.Errorf("want nil, got non-nil")
 	}
 
-	qrs1 = qrs.FilterByPlan("table", planbuilder.PlanInsert, "b")
-	want = compacted(`[{
-		"Description":"rule 4",
-		"Name":"r4",
-		"Action":"FAIL"
-	}]`)
+	qrs1 = qrs.FilterByPlan("table", planbuilder.PlanInsert, "d.b")
+	want = compacted(`[{"Description":"rule 4","Name":"r4","Priority":0,"Status":"","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -265,19 +197,15 @@ func TestFilterByPlan(t *testing.T) {
 	qr5 := NewQueryRule("rule 5", "r5", QRFail)
 	qrs.Add(qr5)
 
-	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "a")
-	want = compacted(`[{
-		"Description":"rule 5",
-		"Name":"r5",
-		"Action":"FAIL"
-	}]`)
+	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "d.a")
+	want = compacted(`[{"Description":"rule 5","Name":"r5","Priority":0,"Status":"","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
 	qrsnil1 := New()
-	if qrsnil2 := qrsnil1.FilterByPlan("", planbuilder.PlanSelect, "a"); qrsnil2.rules != nil {
+	if qrsnil2 := qrsnil1.FilterByPlan("", planbuilder.PlanSelect, "d.a"); qrsnil2.rules != nil {
 		t.Errorf("want nil, got non-nil")
 	}
 }
@@ -590,31 +518,7 @@ func TestAction(t *testing.T) {
 
 func TestImport(t *testing.T) {
 	var qrs = New()
-	jsondata := `[{
-		"Description": "desc1",
-		"Name": "name1",
-		"RequestIP": "123.123.123",
-		"User": "user",
-		"Query": "query",
-		"Plans": ["Select", "Insert"],
-		"FullyQualifiedTableNames":["a", "b"],
-		"BindVarConds": [{
-			"Name": "bvname1",
-			"OnAbsent": true,
-			"Operator": ""
-		},{
-			"Name": "bvname2",
-			"OnAbsent": true,
-			"OnMismatch": true,
-			"Operator": "==",
-			"Value": 123
-		}],
-		"Action": "FAIL_RETRY"
-	},{
-		"Description": "desc2",
-		"Name": "name2",
-		"Action": "FAIL"
-	}]`
+	jsondata := `[{"Description":"desc1","Name":"name1","Priority":0,"Status":"ACTIVE","RequestIP":"123.123.123","User":"user","Query":"query","QueryTemplate":"","Plans":["Select","Insert"],"FullyQualifiedTableNames":["d.a","d.b"],"BindVarConds":[{"Name":"bvname1","OnAbsent":true,"Operator":""},{"Name":"bvname2","OnAbsent":true,"OnMismatch":true,"Operator":"==","Value":123}],"Action":"FAIL_RETRY","ActionArgs":""},{"Description":"desc2","Name":"name2","Priority":0,"Status":"ACTIVE","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`
 	err := qrs.UnmarshalJSON([]byte(jsondata))
 	if err != nil {
 		t.Error(err)
@@ -709,14 +613,14 @@ var invalidjsons = []InvalidJSONCase{
 	{`[{"User": 1 }]`, "want string for User"},
 	{`[{"Query": 1 }]`, "want string for Query"},
 	{`[{"Plans": 1 }]`, "want list for Plans"},
-	{`[{"FullyQualifiedTableNames": 1 }]`, "want list for TableNames"},
+	{`[{"FullyQualifiedTableNames": "d.a" }]`, "want list for FullyQualifiedTableNames"},
 	{`[{"BindVarConds": 1 }]`, "want list for BindVarConds"},
 	{`[{"RequestIP": "[" }]`, "could not set IP condition: ["},
 	{`[{"User": "[" }]`, "could not set User condition: ["},
 	{`[{"Query": "[" }]`, "could not set Query condition: ["},
 	{`[{"Plans": [1] }]`, "want string for Plans"},
 	{`[{"Plans": ["invalid"] }]`, "invalid plan name: invalid"},
-	{`[{"FullyQualifiedTableNames": [1] }]`, "want string for TableNames"},
+	{`[{"FullyQualifiedTableNames": [1] }]`, "want string for fullyQualifiedTableName"},
 	{`[{"BindVarConds": [1] }]`, "want json object for bind var conditions"},
 	{`[{"BindVarConds": [{}] }]`, "Name missing in BindVarConds"},
 	{`[{"BindVarConds": [{"Name": 1}] }]`, "want string for Name in BindVarConds"},
@@ -925,6 +829,56 @@ func Test_queryTemplateMatch(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, queryTemplateMatch(tt.args.expect, tt.args.actual), "queryTemplateMatch(%v, %v)", tt.args.expect, tt.args.actual)
+		})
+	}
+}
+
+func Test_fullyQualifiedTableNameRegexMatch(t *testing.T) {
+	type args struct {
+		expectedFullyQualifiedTableNames []string
+		fullyQualifiedTableNames         []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "match",
+			args: args{
+				expectedFullyQualifiedTableNames: []string{"d1.t1", "d1.t2"},
+				fullyQualifiedTableNames:         []string{"d1.t1", "d1.t2"},
+			},
+			want: true,
+		},
+		{
+			name: "not match",
+			args: args{
+				expectedFullyQualifiedTableNames: []string{"d1.t1", "d1.t2"},
+				fullyQualifiedTableNames:         []string{"d1.t1", "d1.t3"},
+			},
+			want: true,
+		},
+		{
+			name: "invalid fullyQualifiedTableNames for actual",
+			args: args{
+				expectedFullyQualifiedTableNames: []string{"d1.t1", "d1.t2"},
+				fullyQualifiedTableNames:         []string{"t1", "t3"},
+			},
+			want: false,
+		},
+		{
+			name: "invalid fullyQualifiedTableNames for expect",
+			args: args{
+				expectedFullyQualifiedTableNames: []string{"t1", "t2"},
+				fullyQualifiedTableNames:         []string{"d1.t1", "d1.t3"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, fullyQualifiedTableNameRegexMatch(tt.args.expectedFullyQualifiedTableNames, tt.args.fullyQualifiedTableNames), "fullyQualifiedTableNameRegexMatch(%v, %v)", tt.args.expectedFullyQualifiedTableNames, tt.args.fullyQualifiedTableNames)
 		})
 	}
 }
