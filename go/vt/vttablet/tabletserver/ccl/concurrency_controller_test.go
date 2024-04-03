@@ -23,13 +23,14 @@ package ccl
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"context"
 
@@ -494,7 +495,7 @@ func TestConcurrencyControllerGlobalQueueOverflow(t *testing.T) {
 	if got, want := vterrors.Code(err3), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err3.Error(), "concurrency control protection: too many queued transactions (1 >= 1)"; got != want {
+	if got, want := err3.Error(), "concurrency control protection: too many global queued transactions (1 >= 1)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 	if got, want := txs.globalQueueExceeded.Get(), int64(2); got != want {
@@ -544,7 +545,7 @@ func TestConcurrencyController_DenyAll(t *testing.T) {
 	if got, want := vterrors.Code(err), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
-	if got, want := err.Error(), "concurrency control protection: too many queued transactions (0 >= 0)"; got != want {
+	if got, want := err.Error(), "concurrency control protection: too many global queued transactions (0 >= 0)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
 	}
 }
