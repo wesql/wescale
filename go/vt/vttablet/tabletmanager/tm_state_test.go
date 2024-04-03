@@ -127,7 +127,7 @@ func TestStateDenyList(t *testing.T) {
 
 	qsc := tm.QueryServiceControl.(*tabletservermock.Controller)
 	b, _ := json.Marshal(qsc.GetQueryRules(denyListQueryList))
-	assert.Equal(t, `[{"Description":"enforce denied tables","Name":"denied_table","FullyQualifiedTableNames":["t1"],"Action":"FAIL_RETRY"}]`, string(b))
+	assert.Equal(t, `[{"Description":"enforce denied tables","Name":"denied_table","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["t1"],"Action":"FAIL_RETRY","ActionArgs":""}]`, string(b))
 }
 
 func TestStateTabletControls(t *testing.T) {
