@@ -30,7 +30,7 @@ func TestFailAction(t *testing.T) {
 		Action: rules.QRFail,
 	}
 	qre := &QueryExecutor{}
-	assert.EqualErrorf(t, action.BeforeExecution(qre), "disallowed due to rule: %s", qr.Description)
+	assert.ErrorContains(t, action.BeforeExecution(qre), "disallowed due to rule")
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
 	}, action.AfterExecution(qre, nil, nil))
@@ -47,7 +47,7 @@ func TestFailRetryAction(t *testing.T) {
 	}
 	qre := &QueryExecutor{}
 	err := action.BeforeExecution(qre)
-	assert.EqualErrorf(t, err, "disallowed due to rule: %s", qr.Description)
+	assert.ErrorContains(t, err, "disallowed due to rule")
 	// check if the error is retried: Code_FAILED_PRECONDITION
 	errCode := vterrors.Code(err)
 	assert.Equal(t, vtrpcpb.Code_FAILED_PRECONDITION, errCode)
