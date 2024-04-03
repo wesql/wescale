@@ -54,7 +54,9 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		actInst, err = nil, fmt.Errorf("unknown action: %v", action)
 	}
 
-	actInst.SetParams(rule.GetActionArgs())
+	if actInst != nil {
+		actInst.SetParams(rule.GetActionArgs())
+	}
 	return actInst, err
 }
 
