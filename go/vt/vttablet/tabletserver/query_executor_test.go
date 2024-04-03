@@ -1154,6 +1154,55 @@ func _TestQueryExecutorDenyListQRRetry(t *testing.T) {
 	}
 }
 
+// todo filter
+func TestInitDatabaseProxyFilter(t *testing.T) {
+	db := setUpQueryExecutorTest(t)
+	defer db.Close()
+	query := "select * from test_table where name = 1 limit 1000"
+	expandedQuery := "select pk from test_table use index (`index`) where name = 1 limit 1000"
+	expected := &sqltypes.Result{
+		Fields: getTestTableFields(),
+	}
+	db.AddQuery(query, expected)
+	db.AddQuery(expandedQuery, expected)
+
+	db.AddQuery("select * from test_table where 1 != 1", &sqltypes.Result{
+		Fields: getTestTableFields(),
+	})
+
+	bannedAddr := "127.0.0.1"
+	bannedUser := "x"
+
+	alterRule := rules.NewQueryRule("test_rule", "test_rule", rules.QRContinue)
+
+	rulesName := "DATABASE_CUSTOM_RULE"
+	rules := rules.New()
+	rules.Add(alterRule)
+
+	callInfo := &fakecallinfo.FakeCallInfo{
+		Remote: bannedAddr,
+		User:   bannedUser,
+	}
+	ctx := callinfo.NewContext(context.Background(), callInfo)
+	tsv := newTestTabletServer(ctx, noFlags, db)
+	tsv.qe.queryRuleSources.UnRegisterSource(rulesName)
+	tsv.qe.queryRuleSources.RegisterSource(rulesName)
+	defer tsv.qe.queryRuleSources.UnRegisterSource(rulesName)
+
+	if err := tsv.qe.queryRuleSources.SetRules(rulesName, rules); err != nil {
+		t.Fatalf("failed to set rule, error: %v", err)
+	}
+
+	qre := newTestQueryExecutor(ctx, tsv, query, 0)
+	defer tsv.StopService()
+
+	assert.Equal(t, planbuilder.PlanSelect, qre.plan.PlanID)
+	qre.Execute()
+
+	assert.Equal(t, 1, len(qre.actionList))
+	assert.Equal(t, "test_rule", qre.actionList[0].GetRule().Name)
+}
+
 func TestReplaceSchemaName(t *testing.T) {
 	db := setUpQueryExecutorTest(t)
 	defer db.Close()
