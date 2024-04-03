@@ -17,7 +17,7 @@ func GetActionList(
 	bindVars map[string]*querypb.BindVariable,
 	marginComments sqlparser.MarginComments,
 ) (action []ActionInterface) {
-	var actionList []ActionInterface
+	var actionList = make([]ActionInterface, 0)
 	qrs.ForEachRule(func(qr *rules.Rule) {
 		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
 		p, err := CreateActionInstance(act, qr)

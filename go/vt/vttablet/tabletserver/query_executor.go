@@ -559,6 +559,9 @@ func (qre *QueryExecutor) initDatabaseProxyFilter() {
 
 // runActionListBeforeExecution runs the action list and returns the first error it encounters.
 func (qre *QueryExecutor) runActionListBeforeExecution() error {
+	if len(qre.actionList) == 0 {
+		return nil
+	}
 	for _, a := range qre.actionList {
 		if a.GetRule().Status == rules.DryRun {
 			log.Infof("Dry run: %s", a.GetRule().Name)
@@ -574,6 +577,9 @@ func (qre *QueryExecutor) runActionListBeforeExecution() error {
 
 // runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
 func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
+	if len(qre.actionList) == 0 {
+		return
+	}
 	for i := len(qre.actionList) - 1; i >= 0; i-- {
 		a := qre.actionList[i]
 		if a.GetRule().Status == rules.DryRun {

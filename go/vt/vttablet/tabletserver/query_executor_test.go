@@ -1154,7 +1154,6 @@ func _TestQueryExecutorDenyListQRRetry(t *testing.T) {
 	}
 }
 
-// todo filter
 func TestInitDatabaseProxyFilter(t *testing.T) {
 	db := setUpQueryExecutorTest(t)
 	defer db.Close()
