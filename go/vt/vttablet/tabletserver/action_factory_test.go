@@ -74,3 +74,41 @@ func TestCreateActionInstance(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateContinueAction(t *testing.T) {
+	tests := []struct {
+		name string
+		want ActionInterface
+	}{
+		{
+			name: "CreateContinueAction",
+			want: &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: DefaultPriority}, Action: rules.QRContinue},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, CreateContinueAction(), "CreateContinueAction()")
+		})
+	}
+}
+
+func Test_sortAction(t *testing.T) {
+	r1 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	r2 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	r3 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
+
+	a1 := &FailAction{Rule: r1, Action: rules.QRFail}
+	a2 := &FailAction{Rule: r2, Action: rules.QRFail}
+	a3 := &FailAction{Rule: r3, Action: rules.QRFail}
+
+	a1.GetRule().SetPriority(3)
+	a2.GetRule().SetPriority(2)
+	a3.GetRule().SetPriority(1)
+
+	actionList := []ActionInterface{a1, a2, a3}
+	sortAction(actionList)
+
+	assert.Equal(t, a3, actionList[0])
+	assert.Equal(t, a2, actionList[1])
+	assert.Equal(t, a1, actionList[2])
+}
