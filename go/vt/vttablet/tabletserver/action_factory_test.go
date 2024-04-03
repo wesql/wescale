@@ -4,8 +4,35 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
+
+func TestGetActionList_NoRules(t *testing.T) {
+	qrs := &rules.Rules{}
+	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
+	assert.Equal(t, 1, len(actionList))
+	assert.IsType(t, &ContinueAction{}, actionList[0])
+}
+
+func TestGetActionList_MatchingRule(t *testing.T) {
+	rule := rules.NewQueryRule("test_rule", "test_rule", rules.QRContinue)
+	qrs := rules.New()
+	qrs.Add(rule)
+	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
+	assert.Equal(t, 1, len(actionList))
+	assert.IsType(t, &ContinueAction{}, actionList[0])
+}
+
+func TestGetActionList_NonMatchingRule(t *testing.T) {
+	rule := rules.NewQueryRule("test_rule", "test_rule", rules.QRFail)
+	rule.SetIPCond("1.1.1.1")
+	qrs := rules.New()
+	qrs.Add(rule)
+	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
+	assert.Equal(t, 1, len(actionList))
+	assert.IsType(t, &ContinueAction{}, actionList[0])
+}
 
 func TestCreateActionInstance(t *testing.T) {
 	type args struct {
