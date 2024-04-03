@@ -30,10 +30,14 @@ func GetActionList(
 	if len(actionList) == 0 {
 		actionList = append(actionList, CreateContinueAction())
 	}
+	sortAction(actionList)
+	return actionList
+}
+
+func sortAction(actionList []ActionInterface) {
 	sort.SliceStable(actionList, func(i, j int) bool {
 		return actionList[i].GetRule().Priority < actionList[j].GetRule().Priority
 	})
-	return actionList
 }
 
 func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterface, error) {
@@ -61,5 +65,5 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 }
 
 func CreateContinueAction() ActionInterface {
-	return &ContinueAction{Rule: &rules.Rule{Name: "noop", Priority: DefaultPriority}, Action: rules.QRContinue}
+	return &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: DefaultPriority}, Action: rules.QRContinue}
 }
