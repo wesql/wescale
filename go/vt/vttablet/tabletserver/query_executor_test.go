@@ -28,7 +28,6 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
-
 	"vitess.io/vitess/go/vt/sidecardb"
 
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tx"
