@@ -27,9 +27,6 @@ func GetActionList(
 		}
 		actionList = append(actionList, p)
 	})
-	if len(actionList) == 0 {
-		actionList = append(actionList, CreateContinueAction())
-	}
 	sortAction(actionList)
 	return actionList
 }
