@@ -529,7 +529,7 @@ func BenchmarkConcurrencyController_NoHotRow(b *testing.B) {
 	}
 }
 
-func TestConcurrencyController_DenyAll(t *testing.T) {
+func TestConcurrencyController_DenyAll_global(t *testing.T) {
 	txs := NewConcurrentControllerForTest(0, false)
 	q := txs.GetOrCreateQueue("t1 where1", 1, 1)
 	done, waited, err := q.Wait(context.Background(), []string{"t1"})
@@ -547,5 +547,44 @@ func TestConcurrencyController_DenyAll(t *testing.T) {
 	}
 	if got, want := err.Error(), "concurrency control protection: too many global queued transactions (0 >= 0)"; got != want {
 		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
+	}
+}
+
+func TestConcurrencyController_DenyAll_queue_size(t *testing.T) {
+	txs := NewConcurrentControllerForTest(1, false)
+	q := txs.GetOrCreateQueue("t1 where1", 0, 1)
+	done, waited, err := q.Wait(context.Background(), []string{"t1"})
+	if err == nil {
+		t.Error("expected error")
+		return
+	}
+	assert.Nil(t, done)
+	if waited {
+		t.Error("no transaction must ever wait")
+	}
+
+	if got, want := vterrors.Code(err), vtrpcpb.Code_RESOURCE_EXHAUSTED; got != want {
+		t.Errorf("wrong error code: got = %v, want = %v", got, want)
+	}
+	if got, want := err.Error(), "concurrency control protection: too many queued transactions (0 >= 0)"; got != want {
+		t.Errorf("transaction rejected with wrong error: got = %v, want = %v", got, want)
+	}
+}
+
+func TestConcurrencyController_DenyAll_concurrency(t *testing.T) {
+	txs := NewConcurrentControllerForTest(1, false)
+	q := txs.GetOrCreateQueue("t1 where1", 1, 0)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second)
+	defer cancelFunc()
+	done, waited, err := q.Wait(ctx, []string{"t1"})
+	if err == nil {
+		t.Error("expected error")
+		return
+	}
+	assert.Nil(t, done)
+	assert.True(t, waited)
+
+	if got, want := vterrors.Code(err), vtrpcpb.Code_DEADLINE_EXCEEDED; got != want {
+		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
 }
