@@ -11,6 +11,7 @@ import (
 func TestGetActionList_NoRules(t *testing.T) {
 	qrs := &rules.Rules{}
 	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
+	assert.NotNil(t, actionList)
 	assert.Equal(t, 0, len(actionList))
 }
 
