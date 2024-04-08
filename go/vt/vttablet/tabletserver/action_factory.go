@@ -20,9 +20,11 @@ func GetActionList(
 	var actionList = make([]ActionInterface, 0)
 	qrs.ForEachRule(func(qr *rules.Rule) {
 		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
+		if act == rules.QRContinue {
+			return
+		}
 		p, err := CreateActionInstance(act, qr)
 		if err != nil {
-			actionList = append(actionList, CreateContinueAction())
 			return
 		}
 		actionList = append(actionList, p)

@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -148,6 +149,9 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 	}(time.Now())
 
 	qre.initDatabaseProxyFilter()
+	if isInspectFilter(qre.marginComments.Leading) {
+		return qre.getFilterInfo()
+	}
 	if err := qre.runActionListBeforeExecution(); err != nil {
 		return nil, err
 	}
@@ -1465,4 +1469,28 @@ func (qre *QueryExecutor) generateFinalQueryAndStreamExecute(query string, bindV
 	defer conn.Recycle()
 
 	return qre.execStreamSQL(conn, false /* isTransaction */, sql, callback)
+}
+
+func isInspectFilter(leadingComment string) bool {
+	return strings.ReplaceAll(leadingComment, " ", "") == strings.ReplaceAll("/*just inspect filter*/", " ", "")
+}
+
+func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
+	var rows [][]sqltypes.Value
+
+	for _, action := range qre.actionList {
+		filter := action.GetRule()
+		rows = append(rows, BuildVarCharRow(
+			filter.Name,
+			filter.Description,
+			strconv.Itoa(filter.Priority),
+			filter.GetActionType(),
+			filter.GetActionArgs(),
+		))
+	}
+
+	return &sqltypes.Result{
+		Fields: BuildVarCharFields("Name", "description", "priority", "action", "action_args"),
+		Rows:   rows,
+	}, nil
 }

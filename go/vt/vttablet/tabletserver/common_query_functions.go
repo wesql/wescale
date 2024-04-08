@@ -34,7 +34,7 @@ func (tsv *TabletServer) CommonQuery(_ context.Context, queryFunctionName string
 	}
 }
 
-func buildVarCharFields(names ...string) []*querypb.Field {
+func BuildVarCharFields(names ...string) []*querypb.Field {
 	fields := make([]*querypb.Field, len(names))
 	for i, v := range names {
 		fields[i] = &querypb.Field{
@@ -47,7 +47,7 @@ func buildVarCharFields(names ...string) []*querypb.Field {
 	return fields
 }
 
-func buildVarCharRow(values ...string) []sqltypes.Value {
+func BuildVarCharRow(values ...string) []sqltypes.Value {
 	row := make([]sqltypes.Value, len(values))
 	for i, v := range values {
 		row[i] = sqltypes.NewVarChar(v)
@@ -77,7 +77,7 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 		var pqstats perQueryStats
 		pqstats.QueryCount, pqstats.Time, pqstats.MysqlTime, pqstats.RowsAffected, pqstats.RowsReturned, pqstats.ErrorCount = plan.Stats()
 
-		rows = append(rows, buildVarCharRow(
+		rows = append(rows, BuildVarCharRow(
 			formattedAlias,
 			sqlparser.TruncateForUI(plan.Original),
 			plan.PlanID.String(),
@@ -93,7 +93,7 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 	})
 
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
+		Fields: BuildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }
