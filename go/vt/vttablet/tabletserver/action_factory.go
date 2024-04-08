@@ -3,6 +3,7 @@ package tabletserver
 import (
 	"fmt"
 	"sort"
+
 	"vitess.io/vitess/go/vt/log"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -30,6 +31,12 @@ func GetActionList(
 		actionList = append(actionList, p)
 	})
 	sortAction(actionList)
+	for i, act := range actionList {
+		if act.GetRule().FireNext == false {
+			actionList = actionList[:i+1]
+			break
+		}
+	}
 	return actionList
 }
 
