@@ -29,6 +29,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 
 	"google.golang.org/protobuf/proto"

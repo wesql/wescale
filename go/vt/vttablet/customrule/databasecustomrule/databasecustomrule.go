@@ -94,6 +94,7 @@ func queryResultToRule(row sqltypes.RowNamedValues) (*rules.Rule, error) {
 	ruleInfo["Description"] = row.AsString("description", "")
 	ruleInfo["Priority"] = int(row.AsInt64("priority", 1000))
 	ruleInfo["Status"] = row.AsString("status", "")
+	ruleInfo["FireNext"] = row.AsBool("fire_next", true)
 
 	// parse Plans
 	plansStringData := row.AsString("plans", "")
