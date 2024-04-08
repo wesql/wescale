@@ -1325,3 +1325,8 @@ func (qr *Rule) GetCancelCtx() context.Context {
 func (qr *Rule) GetActionArgs() string {
 	return qr.actionArgs
 }
+
+// GetActionType
+func (qr *Rule) GetActionType() string {
+	return qr.act.ToString()
+}
