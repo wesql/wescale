@@ -137,14 +137,14 @@ func TestFilterByPlan(t *testing.T) {
 	qrs.Add(qr4)
 
 	qrs1 := qrs.FilterByPlan("select", planbuilder.PlanSelect, "d.a")
-	want := compacted(`[{"Description":"rule 1","Name":"r1","Priority":0,"Status":"","RequestIP":"123","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
+	want := compacted(`[{"Description":"rule 1","Name":"r1","Priority":0,"Status":"","FireNext":false,"RequestIP":"123","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""},{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got := marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
 	qrs1 = qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.a")
-	want = compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
+	want = compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s\n, want\n%s", got, want)
@@ -152,7 +152,7 @@ func TestFilterByPlan(t *testing.T) {
 	{
 		// test multiple tables:
 		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.a", "d.other_table")
-		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
+		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 		got = marshalled(qrs1)
 		if got != want {
 			t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -162,7 +162,7 @@ func TestFilterByPlan(t *testing.T) {
 	{
 		// test multiple tables:
 		qrs1 := qrs.FilterByPlan("insert", planbuilder.PlanSelect, "d.other_table", "d.a")
-		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
+		want := compacted(`[{"Description":"rule 2","Name":"r2","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 		got = marshalled(qrs1)
 		if got != want {
 			t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -176,7 +176,7 @@ func TestFilterByPlan(t *testing.T) {
 	}
 
 	qrs1 = qrs.FilterByPlan("select", planbuilder.PlanInsert, "d.a")
-	want = compacted(`[{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
+	want = compacted(`[{"Description":"rule 3","Name":"r3","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","BindVarConds":[{"Name":"a","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -188,7 +188,7 @@ func TestFilterByPlan(t *testing.T) {
 	}
 
 	qrs1 = qrs.FilterByPlan("table", planbuilder.PlanInsert, "d.b")
-	want = compacted(`[{"Description":"rule 4","Name":"r4","Priority":0,"Status":"","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
+	want = compacted(`[{"Description":"rule 4","Name":"r4","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -198,7 +198,7 @@ func TestFilterByPlan(t *testing.T) {
 	qrs.Add(qr5)
 
 	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "d.a")
-	want = compacted(`[{"Description":"rule 5","Name":"r5","Priority":0,"Status":"","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
+	want = compacted(`[{"Description":"rule 5","Name":"r5","Priority":0,"Status":"","FireNext":false,"QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`)
 	got = marshalled(qrs1)
 	if got != want {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
@@ -518,7 +518,7 @@ func TestAction(t *testing.T) {
 
 func TestImport(t *testing.T) {
 	var qrs = New()
-	jsondata := `[{"Description":"desc1","Name":"name1","Priority":0,"Status":"ACTIVE","RequestIP":"123.123.123","User":"user","Query":"query","QueryTemplate":"","Plans":["Select","Insert"],"FullyQualifiedTableNames":["d.a","d.b"],"BindVarConds":[{"Name":"bvname1","OnAbsent":true,"Operator":""},{"Name":"bvname2","OnAbsent":true,"OnMismatch":true,"Operator":"==","Value":123}],"Action":"FAIL_RETRY","ActionArgs":""},{"Description":"desc2","Name":"name2","Priority":0,"Status":"ACTIVE","QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`
+	jsondata := `[{"Description":"desc1","Name":"name1","Priority":0,"Status":"ACTIVE","FireNext":false,"RequestIP":"123.123.123","User":"user","Query":"query","QueryTemplate":"","Plans":["Select","Insert"],"FullyQualifiedTableNames":["d.a","d.b"],"BindVarConds":[{"Name":"bvname1","OnAbsent":true,"Operator":""},{"Name":"bvname2","OnAbsent":true,"OnMismatch":true,"Operator":"==","Value":123}],"Action":"FAIL_RETRY","ActionArgs":""},{"Description":"desc2","Name":"name2","Priority":0,"Status":"ACTIVE","FireNext":false,"QueryTemplate":"","Action":"FAIL","ActionArgs":""}]`
 	err := qrs.UnmarshalJSON([]byte(jsondata))
 	if err != nil {
 		t.Error(err)

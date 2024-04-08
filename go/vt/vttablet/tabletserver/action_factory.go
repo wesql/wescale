@@ -32,7 +32,7 @@ func GetActionList(
 	})
 	sortAction(actionList)
 	for i, act := range actionList {
-		if act.GetRule().FireNext == false {
+		if !act.GetRule().FireNext {
 			actionList = actionList[:i+1]
 			break
 		}
