@@ -153,10 +153,14 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 	if isInspectFilter(qre.marginComments.Leading) {
 		return qre.getFilterInfo()
 	}
-	if err := qre.runActionListBeforeExecution(); err != nil {
+
+	err = qre.runActionListBeforeExecution()
+
+	defer qre.runActionListAfterExecution(reply)
+
+	if err != nil {
 		return nil, err
 	}
-	defer qre.runActionListAfterExecution(reply, err)
 
 	if err = qre.checkPermissions(); err != nil {
 		return nil, err
@@ -567,13 +571,14 @@ func (qre *QueryExecutor) runActionListBeforeExecution() error {
 	if len(qre.actionList) == 0 {
 		return nil
 	}
-	for _, a := range qre.actionList {
+	for i, a := range qre.actionList {
 		if a.GetRule().Status == rules.DryRun {
 			log.Infof("Dry run: %s", a.GetRule().Name)
 			continue
 		}
 		err := a.BeforeExecution(qre)
 		if err != nil {
+			qre.actionList = qre.actionList[:i]
 			return err
 		}
 	}
@@ -581,7 +586,7 @@ func (qre *QueryExecutor) runActionListBeforeExecution() error {
 }
 
 // runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
-func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result) {
 	if len(qre.actionList) == 0 {
 		return
 	}
@@ -590,8 +595,12 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 		if a.GetRule().Status == rules.DryRun {
 			continue
 		}
-		result := a.AfterExecution(qre, reply, err)
+		result := a.AfterExecution(qre, reply)
 		if !result.FireNext {
+			break
+		}
+		if result.Err != nil {
+			log.Errorf("Filter %s, Error in AfterExecution: %s", a.GetRule().Name, result.Err)
 			break
 		}
 	}

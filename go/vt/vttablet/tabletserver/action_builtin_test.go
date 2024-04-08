@@ -17,7 +17,7 @@ func TestContinueAction(t *testing.T) {
 	assert.NoError(t, action.BeforeExecution(qre))
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
-	}, action.AfterExecution(qre, nil, nil))
+	}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.Nil(t, action.GetRule())
 }
@@ -33,7 +33,7 @@ func TestFailAction(t *testing.T) {
 	assert.ErrorContains(t, action.BeforeExecution(qre), "disallowed due to rule")
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
-	}, action.AfterExecution(qre, nil, nil))
+	}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.NotNil(t, action.GetRule())
 }
@@ -54,7 +54,7 @@ func TestFailRetryAction(t *testing.T) {
 
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
-	}, action.AfterExecution(qre, nil, nil))
+	}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.NotNil(t, action.GetRule())
 }
@@ -104,13 +104,13 @@ func TestConcurrencyControlAction(t *testing.T) {
 
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
-	}, action.AfterExecution(qre, nil, nil))
+	}, action.AfterExecution(qre, nil))
 
 	assert.NoError(t, action.BeforeExecution(qre))
 
 	assert.Equal(t, &ActionExecutionResponse{
 		FireNext: true,
-	}, action.AfterExecution(qre, nil, nil))
+	}, action.AfterExecution(qre, nil))
 }
 
 func TestConcurrencyControlActionSetParams(t *testing.T) {

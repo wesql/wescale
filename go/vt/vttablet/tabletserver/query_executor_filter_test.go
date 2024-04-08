@@ -131,7 +131,7 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 			qre.actionList = tt.actionList
 			qr := &sqltypes.Result{}
 			var err error = nil
-			qre.runActionListAfterExecution(qr, err)
+			qre.runActionListAfterExecution(qr)
 			assert.Equal(t, &sqltypes.Result{}, qr)
 			assert.Equal(t, nil, err)
 		})
