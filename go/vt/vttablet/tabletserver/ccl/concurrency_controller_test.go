@@ -588,3 +588,77 @@ func TestConcurrencyController_DenyAll_concurrency(t *testing.T) {
 		t.Errorf("wrong error code: got = %v, want = %v", got, want)
 	}
 }
+
+// TestConcurrencyControllerWaitingRequest runs 3 pending transactions.
+// tx1 and tx2 are allowed to run concurrently while tx3 are queued.
+// tx3 will get canceled.
+// this is to test q.waitingRequest work correctly.
+func TestConcurrencyControllerWaitingRequest(t *testing.T) {
+	txs := NewConcurrentControllerForTest(4, false)
+	resetVariables(txs)
+
+	txDone := make(chan int)
+	q := txs.GetOrCreateQueue("t1 where1", 4, 2)
+	// tx1.
+	done1, waited1, err1 := q.Wait(context.Background(), []string{"t1"})
+	if err1 != nil {
+		t.Error(err1)
+	}
+	if waited1 {
+		t.Errorf("tx1 must never wait: %v", waited1)
+	}
+	// tx2.
+	done2, waited2, err2 := q.Wait(context.Background(), []string{"t1"})
+	if err2 != nil {
+		t.Error(err2)
+	}
+	if waited2 {
+		t.Errorf("tx2 must not wait: %v", waited2)
+	}
+
+	// tx3 (gets queued and must wait).
+	ctx3, cancel3 := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		_, _, err3 := q.Wait(ctx3, []string{"t1"})
+		if err3 != context.Canceled {
+			t.Error(err3)
+		}
+
+		txDone <- 3
+	}()
+	// Wait until tx3 is waiting before we try tx4.
+	if err := waitForPending(txs, "t1 where1", 3); err != nil {
+		t.Error(err)
+	}
+
+	// tx3 is waiting.
+	assert.Equal(t, 1, q.waitingRequest.Len())
+
+	// Cancel tx3.
+	cancel3()
+	if got := <-txDone; got != 3 {
+		t.Errorf("tx3 should have been unblocked after the cancel: %v", got)
+	}
+
+	// onTheFlySize should be 2 because currently tx1 and tx2 are running.
+	assert.Equal(t, 2, q.onTheFlySize)
+	// Though tx3 has been canceled, its ch (which is already closed) still remains in the list.
+	assert.Equal(t, 1, q.waitingRequest.Len())
+
+	// Finish tx1.
+	done1()
+	// onTheFlySize should be 1 because currently only tx2 is running.
+	assert.Equal(t, 1, q.onTheFlySize)
+	// the ch remains by tx3 should be 1 removed.
+	assert.Equal(t, 0, q.waitingRequest.Len())
+
+	// Finish tx2 (the last transaction) which will delete the Queue object.
+	done2()
+	if txs.queues["t1 where1"] != nil {
+		t.Error("Queue object was not deleted after last transaction")
+	}
+}

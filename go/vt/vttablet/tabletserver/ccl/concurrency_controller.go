@@ -22,11 +22,14 @@ limitations under the License.
 package ccl
 
 import (
+	"container/list"
 	"fmt"
-	"github.com/spf13/pflag"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/vt/servenv"
 
 	"context"
@@ -210,19 +213,6 @@ func (q *Queue) lockLocked(ctx context.Context, key string, tables []string) (bo
 		}
 	}
 
-	if q.availableSlots == nil {
-		// concurrency control detected: A second, concurrent transaction is seen for the
-		// first time.
-
-		// As an optimization, we deferred the creation of the channel until now.
-		q.availableSlots = make(chan struct{}, q.maxConcurrency)
-		//q.availableSlots <- struct{}{}
-
-		// Include first transaction in the count at /debug/hotrows. (It was not
-		// recorded on purpose because it did not wait.)
-		//txs.Record(key)
-	}
-
 	txs.currentGlobalSize++
 	q.size++
 	q.count++
@@ -240,29 +230,33 @@ func (q *Queue) lockLocked(ctx context.Context, key string, tables []string) (bo
 		return false, nil
 	}
 
+	var ch chan struct{}
+	if q.onTheFlySize < q.maxConcurrency {
+		q.onTheFlySize++
+		return false, nil
+	}
+
+	ch = make(chan struct{})
+	q.waitingRequest.PushBack(ch)
+
 	// Unlock before the wait and relock before returning because our caller
 	// Wait() holds the lock and assumes it still has it.
 	txs.mu.Unlock()
 	defer txs.mu.Lock()
 
-	// Non-blocking write attempt to get a slot.
-	select {
-	case q.availableSlots <- struct{}{}:
-		// Return waited=false because a slot was immediately available.
-		return false, nil
-	default:
-	}
-
 	// Blocking wait for the next available slot.
 	for _, table := range tables {
 		txs.waits.Add(table, 1)
 	}
+
 	select {
-	case q.availableSlots <- struct{}{}:
+	case ch <- struct{}{}:
 		return true, nil
 	case <-ctx.Done():
+		close(ch)
 		return true, ctx.Err()
 	}
+
 }
 
 func (q *Queue) unlock(key string) {
@@ -282,8 +276,7 @@ func (q *Queue) unlockLocked(key string, returnSlot bool) {
 		delete(txs.queues, key)
 
 		if q.max > 1 {
-			var logMsg string
-			logMsg = fmt.Sprintf("%v simultaneous transactions (%v in total) would have been queued.", q.max, q.count)
+			logMsg := fmt.Sprintf("%v simultaneous transactions (%v in total) would have been queued.", q.max, q.count)
 			if txs.dryRun {
 				txs.logDryRun.Infof(logMsg)
 			} else {
@@ -311,8 +304,30 @@ func (q *Queue) unlockLocked(key string, returnSlot bool) {
 		return
 	}
 
-	// This should never block.
-	<-q.availableSlots
+	if q.onTheFlySize > q.maxConcurrency {
+		// Due to resizing, we may have more than maxConcurrency transactions in flight.
+		q.onTheFlySize--
+		return
+	}
+
+	hasReleasedOne := false
+	for q.waitingRequest.Len() > 0 {
+		front := q.waitingRequest.Front()
+		q.waitingRequest.Remove(front)
+		ch := front.Value.(chan struct{})
+		// this should never block
+		_, ok := <-ch
+		if ok {
+			hasReleasedOne = true
+			break
+		}
+		// !ok means ch is closed due to timeout, and the ch will not be removed from the list by the requester
+		// because the doneFunc returned to it is nil, so here we should remove closed ch, and find the next valid ch to remove.
+	}
+
+	if !hasReleasedOne {
+		q.onTheFlySize--
+	}
 }
 
 // Pending returns the number of queued transactions (including the ones which
@@ -384,14 +399,12 @@ type Queue struct {
 	// were simultaneously queued
 	max int
 
-	// availableSlots limits the number of concurrent transactions *per*
-	// concurrency control (range). It holds one element for each allowed pending
-	// transaction i.e. consumed tx pool slot. Consequently, if the channel
-	// is full, subsequent transactions have to wait until they can place
-	// their entry here.
-	// NOTE: As an optimization, we defer the creation of the channel until
-	// a second transaction for the same concurrency control is running.
-	availableSlots chan struct{}
+	// onTheFlySize is the number of transactions which are currently in flight,
+	// it may be greater than maxConcurrency due to queue resizing.
+	onTheFlySize int
+
+	// waitingRequest is a list of channels representing transactions which are currently queued.
+	waitingRequest list.List
 
 	txs *ConcurrencyController
 }
