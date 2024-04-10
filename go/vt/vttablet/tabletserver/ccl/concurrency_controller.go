@@ -156,6 +156,10 @@ func (txs *ConcurrencyController) GetOrCreateQueue(key string, maxQueueSize, max
 	if !ok {
 		txs.queues[key] = newQueue(key, txs, maxQueueSize, maxConcurrency)
 	}
+	q := txs.queues[key]
+	if q.maxQueueSize != maxQueueSize || q.maxConcurrency != maxConcurrency {
+		q.resizeQueue(maxQueueSize, maxConcurrency)
+	}
 	return txs.queues[key]
 }
 
@@ -273,6 +277,7 @@ func (q *Queue) unlockLocked(key string, returnSlot bool) {
 
 	if q.size == 0 {
 		// This is the last transaction in flight.
+		q.onTheFlySize--
 		delete(txs.queues, key)
 
 		if q.max > 1 {
@@ -419,4 +424,30 @@ func newQueue(key string, txs *ConcurrencyController, maxQueueSize, maxConcurren
 		max:            0,
 		txs:            txs,
 	}
+}
+
+func (q *Queue) resizeQueue(newMaxQueueSize, newMaxConcurrency int) {
+	// lock to make sure there are no resource requesting and releasing during resizing progress.
+	q.txs.mu.Lock()
+	defer q.txs.mu.Unlock()
+
+	q.maxQueueSize = newMaxQueueSize
+
+	if newMaxConcurrency > q.maxConcurrency {
+		delta := newMaxConcurrency - q.maxConcurrency
+		for delta > 0 && q.waitingRequest.Len() > 0 {
+			front := q.waitingRequest.Front()
+			q.waitingRequest.Remove(front)
+			ch := front.Value.(chan struct{})
+			_, ok := <-ch
+			if ok {
+				delta--
+				q.onTheFlySize++
+			}
+		}
+	}
+	// if newMaxConcurrency <= maxConcurrency, just set q.MaxConcurrency to new value,
+	// which will lead q.onTheFlySize greater than q.MaxConcurrency,
+	// we don't need to do anything more.
+	q.maxConcurrency = newMaxConcurrency
 }
