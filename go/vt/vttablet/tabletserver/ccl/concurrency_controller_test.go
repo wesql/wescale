@@ -662,3 +662,162 @@ func TestConcurrencyControllerWaitingRequest(t *testing.T) {
 		t.Error("Queue object was not deleted after last transaction")
 	}
 }
+
+func startATransactionShouldNotWait(t *testing.T, q *Queue, txNum int, tables []string) DoneFunc {
+	done, waited, err := q.Wait(context.Background(), tables)
+	if err != nil {
+		t.Error(err)
+	}
+	if waited {
+		t.Errorf("tx %d must never wait: %v", txNum, waited)
+	}
+	return done
+}
+
+// doneFunc is the return parameter.
+func startATransactionShouldWait(t *testing.T, q *Queue, txNum int, txGetResource chan int, txReleased *int, expectedTxReleased int, doneFunc *DoneFunc) {
+	go func() {
+		done, waited, err := q.Wait(context.Background(), []string{"t1"})
+		if err != nil {
+			t.Error(err)
+		}
+		assert.Equal(t, true, waited)
+		// tx6 get unblocked only after 3 transactions finish and no new transaction starts.
+		if txReleased != nil {
+			assert.Equal(t, expectedTxReleased, *txReleased)
+		}
+		*doneFunc = done
+		txGetResource <- txNum
+	}()
+	// sleep for a while to make sure tx is waiting before we do the next thing.
+	time.Sleep(100 * time.Millisecond)
+}
+
+func TestConcurrencyControllerResizeQueue(t *testing.T) {
+	txs := NewConcurrentControllerForTest(10, false)
+	resetVariables(txs)
+
+	txGetResource := make(chan int)
+	q := txs.GetOrCreateQueue("t1 where1", 5, 1)
+	// tx1 should not wait.
+	done1 := startATransactionShouldNotWait(t, q, 1, []string{"t1"})
+
+	// tx2 should wait, but it cancels the context.
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	go func() {
+		_, _, err2 := q.Wait(ctx2, []string{"t1"})
+		assert.NotNil(t, err2)
+	}()
+	cancel2()
+
+	// tx3 should wait.
+	var done3 DoneFunc
+	startATransactionShouldWait(t, q, 3, txGetResource, nil, 0, &done3)
+
+	// ---- 1. new maxConcurrency is greater than on the fly plus waiting num (tx1 is on the fly, and tx3 is waiting). ----
+	q.resizeQueue(5, 3)
+
+	// tx3 should unblock.
+	if got := <-txGetResource; got != 3 {
+		t.Errorf("tx3 should have been unblocked after the resize: %v", got)
+	}
+
+	assert.Equal(t, 2, q.onTheFlySize)
+	assert.Equal(t, 0, q.waitingRequest.Len())
+
+	// tx4 should not wait.
+	done4 := startATransactionShouldNotWait(t, q, 4, []string{"t1"})
+
+	// tx5 should wait.
+	txReleased := 0
+	var done5 DoneFunc
+	startATransactionShouldWait(t, q, 5, txGetResource, &txReleased, 2, &done5)
+
+	// ---- 2. new maxConcurrency is smaller than on the fly plus waiting num (tx1, tx3, tx4 is on the fly, and tx5 is waiting). ----
+	q.resizeQueue(5, 2)
+
+	// tx6 should wait.
+	var done6 DoneFunc
+	startATransactionShouldWait(t, q, 6, txGetResource, &txReleased, 3, &done6)
+
+	// we finish tx1 and tx3, and tx5 will unblock.
+	txReleased = 2
+	done1()
+	done3()
+	if got := <-txGetResource; got != 5 {
+		t.Errorf("tx5 should have been unblocked after tx1 and tx3 finish: %v", got)
+	}
+
+	assert.Equal(t, 2, q.onTheFlySize)
+	// now only tx6 is waiting.
+	assert.Equal(t, 1, q.waitingRequest.Len())
+
+	// we finish tx4, and tx6 will unblock.
+	txReleased = 3
+	done4()
+	if got := <-txGetResource; got != 6 {
+		t.Errorf("tx6 should have been unblocked after tx4 finish: %v", got)
+	}
+
+	assert.Equal(t, 2, q.onTheFlySize)
+	assert.Equal(t, 0, q.waitingRequest.Len())
+
+	// tx7 should wait.
+	var done7 DoneFunc
+	startATransactionShouldWait(t, q, 7, txGetResource, nil, 0, &done7)
+
+	// tx8 should wait.
+	var done8 DoneFunc
+	startATransactionShouldWait(t, q, 8, txGetResource, &txReleased, 1, &done8)
+
+	// ---- 3. new maxConcurrency is greater than on the fly but smaller on the fly than plus waiting num (tx5, tx6 is on the fly, and tx7, tx8 is waiting). ----
+
+	q.resizeQueue(5, 3)
+
+	// tx7 should unblock.
+	if got := <-txGetResource; got != 7 {
+		t.Errorf("tx7 should have been unblocked after the resize: %v", got)
+	}
+	assert.Equal(t, 3, q.onTheFlySize)
+	// tx8 is still waiting.
+	assert.Equal(t, 1, q.waitingRequest.Len())
+
+	// clear txReleased and recount
+	txReleased = 1
+	done5()
+
+	// tx8 should unblock.
+	if got := <-txGetResource; got != 8 {
+		t.Errorf("tx8 should have been unblocked after tx5 finish: %v", got)
+	}
+	// tx6, tx7, tx8 are on the fly.
+	assert.Equal(t, 3, q.onTheFlySize)
+	assert.Equal(t, 0, q.waitingRequest.Len())
+
+	// ---- 4. change MaxQueueSize. ----
+	q.resizeQueue(3, 3)
+	_, waited, err := q.Wait(context.Background(), []string{"t1"})
+	assert.Equal(t, false, waited)
+	assert.NotNil(t, err)
+
+	q.resizeQueue(4, 3)
+	// tx9 should wait.
+	var done9 DoneFunc
+	startATransactionShouldWait(t, q, 9, txGetResource, &txReleased, 1, &done9)
+
+	// clear txReleased and recount
+	txReleased = 1
+	done6()
+	// tx9 should unblock.
+	if got := <-txGetResource; got != 9 {
+		t.Errorf("tx9 should have been unblocked after tx6 finish: %v", got)
+	}
+	assert.Equal(t, 3, q.onTheFlySize)
+	assert.Equal(t, 0, q.waitingRequest.Len())
+	done7()
+	done8()
+	done9()
+	assert.Equal(t, 0, q.onTheFlySize)
+	assert.Equal(t, 0, q.waitingRequest.Len())
+	assert.Nil(t, txs.queues["t1"])
+}
