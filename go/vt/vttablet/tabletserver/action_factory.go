@@ -65,7 +65,7 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 	}
 
 	if actInst != nil {
-		actInst.SetParams(rule.GetActionArgs())
+		err = actInst.SetParams(rule.GetActionArgs())
 	}
 	return actInst, err
 }

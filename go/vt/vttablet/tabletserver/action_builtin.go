@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
@@ -98,7 +99,7 @@ type ConcurrencyControlAction struct {
 	// Action is the action to take if the rule matches
 	Action rules.Action
 
-	MaxQueueSize   int `json:"max_queue_size""`
+	MaxQueueSize   int `json:"max_queue_size"`
 	MaxConcurrency int `json:"max_concurrency"`
 }
 
@@ -133,10 +134,18 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 
 func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
 	if stringParams == "" {
-		return nil
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
 	}
 	c := &ConcurrencyControlAction{}
-	json.Unmarshal([]byte(stringParams), c)
+	err := json.Unmarshal([]byte(stringParams), c)
+	if err != nil {
+		return err
+	}
+	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
+			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
+	}
+
 	p.MaxQueueSize = c.MaxQueueSize
 	p.MaxConcurrency = c.MaxConcurrency
 	return nil

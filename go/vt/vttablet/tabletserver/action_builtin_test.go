@@ -2,10 +2,12 @@ package tabletserver
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
@@ -119,4 +121,40 @@ func TestConcurrencyControlActionSetParams(t *testing.T) {
 	assert.NoError(t, action.SetParams(params))
 	assert.Equal(t, 2, action.MaxQueueSize)
 	assert.Equal(t, 1, action.MaxConcurrency)
+
+	// max_queue_size type invalid
+	params = `{"max_queue_size": 2.5, "max_concurrency": 1}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_concurrency type invalid
+	params = `{"max_queue_size": 2, "max_concurrency": "1"}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_concurrency < 0, invalid
+	params = `{"max_queue_size": -1, "max_concurrency": 1}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_concurrency < 0, invalid
+	params = `{"max_queue_size": 2, "max_concurrency": -2}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_queue_size < max_concurrency, invalid
+	params = `{"max_queue_size":2, "max_concurrency": 3}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_concurrency = 0 and max_queue_size != 0, invalid
+	params = `{"max_queue_size":2, "max_concurrency": 0}`
+	assert.NotNil(t, action.SetParams(params))
+
+	// max_concurrency = 0 and max_queue_size = 0, valid
+	params = `{"max_queue_size":0, "max_concurrency": 0}`
+	assert.NoError(t, action.SetParams(params))
+	assert.Equal(t, 0, action.MaxQueueSize)
+	assert.Equal(t, 0, action.MaxConcurrency)
+
+	// max_concurrency = -1 and max_queue_size = 0, valid
+	params = `{"max_queue_size":0, "max_concurrency": -1}`
+	assert.NoError(t, action.SetParams(params))
+	assert.Equal(t, 0, action.MaxQueueSize)
+	assert.Equal(t, -1, action.MaxConcurrency)
 }
