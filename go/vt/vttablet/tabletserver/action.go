@@ -23,7 +23,6 @@ type ActionInterface interface {
 }
 
 type ActionExecutionResponse struct {
-	FireNext bool
-	Reply    *sqltypes.Result
-	Err      error
+	Reply *sqltypes.Result
+	Err   error
 }

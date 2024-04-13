@@ -25,9 +25,8 @@ func (p *ContinueAction) BeforeExecution(qre *QueryExecutor) error {
 
 func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
-		FireNext: true,
-		Reply:    reply,
-		Err:      nil,
+		Reply: reply,
+		Err:   nil,
 	}
 }
 
@@ -52,9 +51,8 @@ func (p *FailAction) BeforeExecution(qre *QueryExecutor) error {
 
 func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
-		FireNext: true,
-		Reply:    reply,
-		Err:      nil,
+		Reply: reply,
+		Err:   nil,
 	}
 }
 
@@ -79,9 +77,8 @@ func (p *FailRetryAction) BeforeExecution(qre *QueryExecutor) error {
 
 func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
-		FireNext: true,
-		Reply:    reply,
-		Err:      nil,
+		Reply: reply,
+		Err:   nil,
 	}
 }
 
@@ -126,9 +123,8 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 	}
 
 	return &ActionExecutionResponse{
-		FireNext: true,
-		Reply:    reply,
-		Err:      nil,
+		Reply: reply,
+		Err:   nil,
 	}
 }
 
