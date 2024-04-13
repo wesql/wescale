@@ -596,9 +596,6 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result) {
 			continue
 		}
 		result := a.AfterExecution(qre, reply)
-		if !result.FireNext {
-			break
-		}
 		if result.Err != nil {
 			log.Errorf("Filter %s, Error in AfterExecution: %s", a.GetRule().Name, result.Err)
 			break

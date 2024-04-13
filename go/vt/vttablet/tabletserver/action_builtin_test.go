@@ -17,9 +17,7 @@ func TestContinueAction(t *testing.T) {
 	action := &ContinueAction{}
 	qre := &QueryExecutor{}
 	assert.NoError(t, action.BeforeExecution(qre))
-	assert.Equal(t, &ActionExecutionResponse{
-		FireNext: true,
-	}, action.AfterExecution(qre, nil))
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.Nil(t, action.GetRule())
 }
@@ -33,9 +31,7 @@ func TestFailAction(t *testing.T) {
 	}
 	qre := &QueryExecutor{}
 	assert.ErrorContains(t, action.BeforeExecution(qre), "disallowed due to rule")
-	assert.Equal(t, &ActionExecutionResponse{
-		FireNext: true,
-	}, action.AfterExecution(qre, nil))
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.NotNil(t, action.GetRule())
 }
@@ -54,9 +50,7 @@ func TestFailRetryAction(t *testing.T) {
 	errCode := vterrors.Code(err)
 	assert.Equal(t, vtrpcpb.Code_FAILED_PRECONDITION, errCode)
 
-	assert.Equal(t, &ActionExecutionResponse{
-		FireNext: true,
-	}, action.AfterExecution(qre, nil))
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.NotNil(t, action.GetRule())
 }
@@ -104,15 +98,11 @@ func TestConcurrencyControlAction(t *testing.T) {
 		assert.EqualError(t, timeOutErr, "context deadline exceeded")
 	}
 
-	assert.Equal(t, &ActionExecutionResponse{
-		FireNext: true,
-	}, action.AfterExecution(qre, nil))
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil))
 
 	assert.NoError(t, action.BeforeExecution(qre))
 
-	assert.Equal(t, &ActionExecutionResponse{
-		FireNext: true,
-	}, action.AfterExecution(qre, nil))
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil))
 }
 
 func TestConcurrencyControlActionSetParams(t *testing.T) {
