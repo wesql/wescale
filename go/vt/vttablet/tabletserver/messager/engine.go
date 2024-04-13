@@ -155,7 +155,13 @@ func (me *Engine) schemaChanged(tables map[string]*schema.Table, created, altere
 	}
 
 	for _, name := range append(created, altered...) {
-		t := tables[name]
+		t, ok := tables[name]
+		if !ok {
+			// tables in 'created' or 'altered' list may not in the 'tables' list, because
+			// populatePrimaryKeys(ctx context.Context, conn *connpool.DBConn, tables map[string]*Table) called in
+			// func (se *Engine) reload(ctx context.Context, includeStats bool) will delete tables which have no primary keys defined.
+			continue
+		}
 		if t.Type != schema.Message {
 			continue
 		}
