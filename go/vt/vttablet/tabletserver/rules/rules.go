@@ -287,7 +287,6 @@ func (qr *Rule) Equal(other *Rule) bool {
 		qr.Name == other.Name &&
 		qr.Priority == other.Priority &&
 		qr.Status == other.Status &&
-		qr.FireNext == other.FireNext &&
 		qr.requestIP.Equal(other.requestIP) &&
 		qr.user.Equal(other.user) &&
 		qr.query.Equal(other.query) &&
@@ -308,7 +307,6 @@ func (qr *Rule) Copy() (newqr *Rule) {
 		Name:            qr.Name,
 		Priority:        qr.Priority,
 		Status:          qr.Status,
-		FireNext:        qr.FireNext,
 		requestIP:       qr.requestIP,
 		user:            qr.user,
 		query:           qr.query,
@@ -341,7 +339,6 @@ func (qr *Rule) MarshalJSON() ([]byte, error) {
 	safeEncode(b, `,"Name":`, qr.Name)
 	safeEncode(b, `,"Priority":`, qr.Priority)
 	safeEncode(b, `,"Status":`, qr.Status)
-	safeEncode(b, `,"FireNext":`, qr.FireNext)
 	if qr.requestIP.Regexp != nil {
 		safeEncode(b, `,"RequestIP":`, qr.requestIP)
 	}
@@ -382,7 +379,6 @@ func (qr *Rule) ToBindVariable() (map[string]*querypb.BindVariable, error) {
 		"description":            sqltypes.StringBindVariable(qr.Description),
 		"priority":               sqltypes.Int64BindVariable(int64(qr.Priority)),
 		"status":                 sqltypes.StringBindVariable(qr.Status),
-		"fire_next":              sqltypes.BoolBindVariable(qr.FireNext),
 		"query_regex":            sqltypes.StringBindVariable(qr.query.String()),
 		"query_template":         sqltypes.StringBindVariable(qr.queryTemplate),
 		"request_ip_regex":       sqltypes.StringBindVariable(qr.requestIP.String()),
@@ -434,11 +430,6 @@ func (qr *Rule) SetPriority(priority int) {
 // SetStatus sets the status of the rule.
 func (qr *Rule) SetStatus(status string) {
 	qr.Status = status
-}
-
-// SetFireNext sets the FireNext of the rule.
-func (qr *Rule) SetFireNext(fireNext bool) {
-	qr.FireNext = fireNext
 }
 
 // SetQueryTemplate sets the query template of the rule.
@@ -1106,7 +1097,6 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 	for k, v := range ruleInfo {
 		var sv string
 		var iv int
-		var bv bool
 		var lv []any
 		var ok bool
 		switch k {
@@ -1135,11 +1125,6 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want list for %s", k)
 			}
-		case "FireNext":
-			bv, ok = v.(bool)
-			if !ok {
-				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want bool for %s", k)
-			}
 		default:
 			return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unrecognized tag %s", k)
 		}
@@ -1155,8 +1140,6 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid status: %s", sv)
 			}
 			qr.Status = sv
-		case "FireNext":
-			qr.FireNext = bv
 		case "Description":
 			qr.Description = sv
 		case "RequestIP":

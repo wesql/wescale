@@ -35,12 +35,6 @@ func GetActionList(
 		actionList = append(actionList, p)
 	})
 	sortAction(actionList)
-	for i, act := range actionList {
-		if !act.GetRule().FireNext {
-			actionList = actionList[:i+1]
-			break
-		}
-	}
 	return actionList
 }
 
