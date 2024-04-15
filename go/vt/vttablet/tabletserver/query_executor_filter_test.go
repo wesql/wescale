@@ -3,9 +3,11 @@ package tabletserver
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
@@ -67,7 +69,8 @@ func TestQueryExecutor_runActionListBeforeExecution(t *testing.T) {
 			defer cancel()
 			qre := &QueryExecutor{ctx: ctx}
 			qre.actionList = tt.actionList
-			tt.wantErr(t, qre.runActionListBeforeExecution(), fmt.Sprintf("runActionListBeforeExecution()"))
+			_, err := qre.runActionListBeforeExecution()
+			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
 		})
 	}
 }
@@ -130,8 +133,8 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 			qre := &QueryExecutor{ctx: ctx}
 			qre.actionList = tt.actionList
 			qr := &sqltypes.Result{}
-			var err error = nil
-			qre.runActionListAfterExecution(qr)
+			var err error
+			qre.runActionListAfterExecution(qr, err)
 			assert.Equal(t, &sqltypes.Result{}, qr)
 			assert.Equal(t, nil, err)
 		})
