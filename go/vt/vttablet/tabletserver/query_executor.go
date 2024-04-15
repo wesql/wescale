@@ -575,10 +575,6 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 		return nil, nil
 	}
 	for _, a := range qre.matchedActionList {
-		if a.GetRule().Status == rules.DryRun {
-			log.Infof("Dry run: %s", a.GetRule().Name)
-			continue
-		}
 		qr, err := a.BeforeExecution(qre)
 		qre.calledActionList = append(qre.calledActionList, a)
 		if qr != nil || err != nil {
@@ -597,9 +593,6 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 
 	for i := len(qre.calledActionList) - 1; i >= 0; i-- {
 		a := qre.matchedActionList[i]
-		if a.GetRule().Status == rules.DryRun {
-			continue
-		}
 		resp := a.AfterExecution(qre, reply, err)
 		newReply, newErr = resp.Reply, resp.Err
 	}

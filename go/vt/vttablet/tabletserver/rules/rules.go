@@ -809,12 +809,11 @@ func (act Action) MarshalJSON() ([]byte, error) {
 const (
 	Active   = "ACTIVE"
 	InActive = "INACTIVE"
-	DryRun   = "DRY_RUN"
 )
 
 func StatusIsValid(status string) bool {
 	switch status {
-	case Active, InActive, DryRun:
+	case Active, InActive:
 		return true
 	}
 	return false
