@@ -20,6 +20,10 @@ func GetActionList(
 ) (action []ActionInterface) {
 	var actionList = make([]ActionInterface, 0)
 	qrs.ForEachRule(func(qr *rules.Rule) {
+		if qr.Status == rules.InActive {
+			log.Errorf("rule %s is inactive", qr.Name)
+			return
+		}
 		act := qr.FilterByExecutionInfo(ip, user, bindVars, marginComments)
 		if act == rules.QRContinue {
 			return
