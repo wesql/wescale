@@ -1474,7 +1474,7 @@ func (qre *QueryExecutor) generateFinalQueryAndStreamExecute(query string, bindV
 }
 
 func isInspectFilter(leadingComment string) bool {
-	return strings.ReplaceAll(leadingComment, " ", "") == strings.ReplaceAll("/*just inspect filter*/", " ", "")
+	return strings.ReplaceAll(leadingComment, " ", "") == strings.ReplaceAll("/*explain filter*/", " ", "")
 }
 
 func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
