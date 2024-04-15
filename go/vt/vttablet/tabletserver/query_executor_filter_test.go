@@ -68,7 +68,7 @@ func TestQueryExecutor_runActionListBeforeExecution(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			qre := &QueryExecutor{ctx: ctx}
-			qre.actionList = tt.actionList
+			qre.matchedActionList = tt.actionList
 			_, err := qre.runActionListBeforeExecution()
 			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
 		})
@@ -131,12 +131,59 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			qre := &QueryExecutor{ctx: ctx}
-			qre.actionList = tt.actionList
+			qre.matchedActionList = tt.actionList
 			qr := &sqltypes.Result{}
 			var err error
 			qre.runActionListAfterExecution(qr, err)
 			assert.Equal(t, &sqltypes.Result{}, qr)
 			assert.Equal(t, nil, err)
+		})
+	}
+}
+
+//todo filter: add testcase
+// 1. test BeforeExecution returns a result and error, the coming actions should be skipped
+// 2. test AfterExecution returns a result and error, the result and error should be passed to the next action
+// 3. test that actions skipped by BeforeExecution should not be executed by AfterExecution
+
+func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		actionList []ActionInterface
+		wantErr    assert.ErrorAssertionFunc
+	}{
+		{
+			name: "QRContinue, QRContinue, QRFail",
+			actionList: []ActionInterface{
+				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+			},
+			wantErr: assert.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			qre := &QueryExecutor{ctx: ctx}
+			qre.matchedActionList = tt.actionList
+			qr, err := qre.runActionListBeforeExecution()
+			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
+			assert.Equal(t, 2, len(qre.calledActionList))
+			assert.Equal(t,
+				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				qre.matchedActionList[0],
+			)
+			assert.Equal(t,
+				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				qre.matchedActionList[1],
+			)
+
+			newQr, newErr := qre.runActionListAfterExecution(qr, err)
+			assert.Equal(t, qr, newQr)
+			assert.Equal(t, err, newErr)
 		})
 	}
 }

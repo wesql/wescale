@@ -1197,8 +1197,8 @@ func TestInitDatabaseProxyFilter(t *testing.T) {
 	assert.Equal(t, planbuilder.PlanSelect, qre.plan.PlanID)
 	qre.Execute()
 
-	assert.Equal(t, 1, len(qre.actionList))
-	assert.Equal(t, "test_rule", qre.actionList[0].GetRule().Name)
+	assert.Equal(t, 1, len(qre.matchedActionList))
+	assert.Equal(t, "test_rule", qre.matchedActionList[0].GetRule().Name)
 }
 
 func TestReplaceSchemaName(t *testing.T) {
