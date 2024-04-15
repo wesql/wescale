@@ -593,7 +593,7 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 
 	for i := len(qre.calledActionList) - 1; i >= 0; i-- {
 		a := qre.matchedActionList[i]
-		resp := a.AfterExecution(qre, reply, err)
+		resp := a.AfterExecution(qre, newReply, newErr)
 		newReply, newErr = resp.Reply, resp.Err
 	}
 	return newReply, newErr
