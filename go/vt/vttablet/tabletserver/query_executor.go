@@ -59,18 +59,19 @@ import (
 
 // QueryExecutor is used for executing a query request.
 type QueryExecutor struct {
-	query          string
-	marginComments sqlparser.MarginComments
-	bindVars       map[string]*querypb.BindVariable
-	connID         int64
-	options        *querypb.ExecuteOptions
-	plan           *TabletPlan
-	ctx            context.Context
-	logStats       *tabletenv.LogStats
-	tsv            *TabletServer
-	tabletType     topodatapb.TabletType
-	setting        *pools.Setting
-	actionList     []ActionInterface
+	query             string
+	marginComments    sqlparser.MarginComments
+	bindVars          map[string]*querypb.BindVariable
+	connID            int64
+	options           *querypb.ExecuteOptions
+	plan              *TabletPlan
+	ctx               context.Context
+	logStats          *tabletenv.LogStats
+	tsv               *TabletServer
+	tabletType        topodatapb.TabletType
+	setting           *pools.Setting
+	matchedActionList []ActionInterface
+	calledActionList  []ActionInterface
 }
 
 const (
@@ -156,7 +157,9 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 
 	qr, err := qre.runActionListBeforeExecution()
 
-	defer qre.runActionListAfterExecution(reply, err)
+	defer func() {
+		reply, err = qre.runActionListAfterExecution(reply, err)
+	}()
 
 	if qr != nil || err != nil {
 		return qr, err
@@ -563,20 +566,21 @@ func (qre *QueryExecutor) initDatabaseProxyFilter() {
 	}
 
 	pluginList := GetActionList(qre.plan.Rules, remoteAddr, username, qre.bindVars, qre.marginComments)
-	qre.actionList = pluginList
+	qre.matchedActionList = pluginList
 }
 
 // runActionListBeforeExecution runs the action list and returns the first error it encounters.
 func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, error) {
-	if len(qre.actionList) == 0 {
+	if len(qre.matchedActionList) == 0 {
 		return nil, nil
 	}
-	for _, a := range qre.actionList {
+	for _, a := range qre.matchedActionList {
 		if a.GetRule().Status == rules.DryRun {
 			log.Infof("Dry run: %s", a.GetRule().Name)
 			continue
 		}
 		qr, err := a.BeforeExecution(qre)
+		qre.calledActionList = append(qre.calledActionList, a)
 		if qr != nil || err != nil {
 			return nil, err
 		}
@@ -585,18 +589,21 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 }
 
 // runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
-func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
-	if len(qre.actionList) == 0 {
-		return
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) (*sqltypes.Result, error) {
+	newReply, newErr := reply, err
+	if len(qre.calledActionList) == 0 {
+		return newReply, newErr
 	}
-	for i := len(qre.actionList) - 1; i >= 0; i-- {
-		a := qre.actionList[i]
+
+	for i := len(qre.calledActionList) - 1; i >= 0; i-- {
+		a := qre.matchedActionList[i]
 		if a.GetRule().Status == rules.DryRun {
 			continue
 		}
-		a.AfterExecution(qre, reply, err)
+		resp := a.AfterExecution(qre, reply, err)
+		newReply, newErr = resp.Reply, resp.Err
 	}
-	//todo filter: support modify the reply and err
+	return newReply, newErr
 }
 
 // checkPermissions returns an error if the query does not pass all checks
@@ -1480,7 +1487,7 @@ func isInspectFilter(leadingComment string) bool {
 func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
 	var rows [][]sqltypes.Value
 
-	for _, action := range qre.actionList {
+	for _, action := range qre.matchedActionList {
 		filter := action.GetRule()
 		rows = append(rows, BuildVarCharRow(
 			filter.Name,
