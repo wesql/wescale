@@ -154,12 +154,12 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		return qre.getFilterInfo()
 	}
 
-	err = qre.runActionListBeforeExecution()
+	qr, err := qre.runActionListBeforeExecution()
 
-	defer qre.runActionListAfterExecution(reply)
+	defer qre.runActionListAfterExecution(reply, err)
 
-	if err != nil {
-		return nil, err
+	if qr != nil || err != nil {
+		return qr, err
 	}
 
 	if err = qre.checkPermissions(); err != nil {
@@ -567,26 +567,25 @@ func (qre *QueryExecutor) initDatabaseProxyFilter() {
 }
 
 // runActionListBeforeExecution runs the action list and returns the first error it encounters.
-func (qre *QueryExecutor) runActionListBeforeExecution() error {
+func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, error) {
 	if len(qre.actionList) == 0 {
-		return nil
+		return nil, nil
 	}
-	for i, a := range qre.actionList {
+	for _, a := range qre.actionList {
 		if a.GetRule().Status == rules.DryRun {
 			log.Infof("Dry run: %s", a.GetRule().Name)
 			continue
 		}
-		err := a.BeforeExecution(qre)
-		if err != nil {
-			qre.actionList = qre.actionList[:i]
-			return err
+		qr, err := a.BeforeExecution(qre)
+		if qr != nil || err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // runActionListAfterExecution runs the action list and returns the first error it encounters in reverse order.
-func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result) {
+func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, err error) {
 	if len(qre.actionList) == 0 {
 		return
 	}
@@ -595,11 +594,7 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result) {
 		if a.GetRule().Status == rules.DryRun {
 			continue
 		}
-		result := a.AfterExecution(qre, reply)
-		if result.Err != nil {
-			log.Errorf("Filter %s, Error in AfterExecution: %s", a.GetRule().Name, result.Err)
-			break
-		}
+		a.AfterExecution(qre, reply, err)
 	}
 	//todo filter: support modify the reply and err
 }

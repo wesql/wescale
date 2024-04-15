@@ -19,14 +19,14 @@ type ContinueAction struct {
 	Action rules.Action
 }
 
-func (p *ContinueAction) BeforeExecution(qre *QueryExecutor) error {
-	return nil
+func (p *ContinueAction) BeforeExecution(qre *QueryExecutor) (*sqltypes.Result, error) {
+	return nil, nil
 }
 
-func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
+func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
-		Err:   nil,
+		Err:   err,
 	}
 }
 
@@ -45,14 +45,14 @@ type FailAction struct {
 	Action rules.Action
 }
 
-func (p *FailAction) BeforeExecution(qre *QueryExecutor) error {
-	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description)
+func (p *FailAction) BeforeExecution(qre *QueryExecutor) (*sqltypes.Result, error) {
+	return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
+func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
-		Err:   nil,
+		Err:   err,
 	}
 }
 
@@ -71,14 +71,14 @@ type FailRetryAction struct {
 	Action rules.Action
 }
 
-func (p *FailRetryAction) BeforeExecution(qre *QueryExecutor) error {
-	return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description)
+func (p *FailRetryAction) BeforeExecution(qre *QueryExecutor) (*sqltypes.Result, error) {
+	return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description)
 }
 
-func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
+func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
-		Err:   nil,
+		Err:   err,
 	}
 }
 
@@ -100,7 +100,7 @@ type ConcurrencyControlAction struct {
 	MaxConcurrency int `json:"max_concurrency"`
 }
 
-func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
+func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) (*sqltypes.Result, error) {
 	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.MaxQueueSize, p.MaxConcurrency)
 	doneFunc, waited, err := q.Wait(qre.ctx, qre.plan.TableNames())
 
@@ -108,14 +108,14 @@ func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) error {
 		qre.tsv.stats.WaitTimings.Record("ccl", time.Now())
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	qre.ctx = context.WithValue(qre.ctx, "cclDoneFunc", doneFunc)
 
-	return nil
+	return nil, nil
 }
 
-func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result) *ActionExecutionResponse {
+func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	v := qre.ctx.Value("cclDoneFunc")
 	if v != nil {
 		doneFunc := v.(ccl.DoneFunc)
@@ -124,7 +124,7 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 
 	return &ActionExecutionResponse{
 		Reply: reply,
-		Err:   nil,
+		Err:   err,
 	}
 }
 
