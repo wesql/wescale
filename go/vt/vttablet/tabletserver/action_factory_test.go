@@ -19,6 +19,7 @@ func TestGetActionList_MatchingRule(t *testing.T) {
 	rule := rules.NewQueryRule("test_rule", "test_rule", rules.QRContinue)
 	qrs := rules.New()
 	qrs.Add(rule)
+	//todo filter: rule status is "" by default
 	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
 	assert.Equal(t, 1, len(actionList))
 	assert.IsType(t, &ContinueAction{}, actionList[0])

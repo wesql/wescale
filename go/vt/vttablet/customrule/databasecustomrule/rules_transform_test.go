@@ -23,7 +23,6 @@ func expectedRule() *rules.Rule {
 
 	qr.SetStatus(rules.Active)
 	qr.SetPriority(1000)
-	qr.SetFireNext(true)
 
 	qr.SetIPCond(".*")
 	qr.SetUserCond(".*")
@@ -50,7 +49,7 @@ func expectedRule() *rules.Rule {
 }
 
 func expectedJSONString() string {
-	return `{"Description":"ruleDescription","Name":"ruleName","Priority":1000,"Status":"ACTIVE","FireNext":true,"RequestIP":".*","User":".*","Query":".*","QueryTemplate":"select * from t1 where a = :a and b = :b","LeadingComment":".*","TrailingComment":".*","Plans":["Insert","Select"],"FullyQualifiedTableNames":["db1.table1","*.*","*.table","db3.*"],"BindVarConds":[{"Name":"b","OnAbsent":false,"OnMismatch":true,"Operator":"==","Value":"b"},{"Name":"a","OnAbsent":true,"OnMismatch":false,"Operator":"==","Value":"a"}],"Action":"FAIL","ActionArgs":""}`
+	return `{"Description":"ruleDescription","Name":"ruleName","Priority":1000,"Status":"ACTIVE","RequestIP":".*","User":".*","Query":".*","QueryTemplate":"select * from t1 where a = :a and b = :b","LeadingComment":".*","TrailingComment":".*","Plans":["Insert","Select"],"FullyQualifiedTableNames":["db1.table1","*.*","*.table","db3.*"],"BindVarConds":[{"Name":"b","OnAbsent":false,"OnMismatch":true,"Operator":"==","Value":"b"},{"Name":"a","OnAbsent":true,"OnMismatch":false,"Operator":"==","Value":"a"}],"Action":"FAIL","ActionArgs":""}`
 }
 
 func expectedSQLString() string {
