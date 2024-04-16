@@ -43,6 +43,9 @@ func TestQueryzHandler(t *testing.T) {
 		Plan: &planbuilder.Plan{
 			Table:  &schema.Table{Name: sqlparser.NewIdentifierCS("test_table")},
 			PlanID: planbuilder.PlanSelect,
+			Permissions: []planbuilder.Permission{
+				{TableName: "test_table"},
+			},
 		},
 	}
 	plan1.AddStats(10, 2*time.Second, 1*time.Second, 0, 2, 0)
@@ -54,6 +57,9 @@ func TestQueryzHandler(t *testing.T) {
 		Plan: &planbuilder.Plan{
 			Table:  &schema.Table{Name: sqlparser.NewIdentifierCS("test_table")},
 			PlanID: planbuilder.PlanDDL,
+			Permissions: []planbuilder.Permission{
+				{TableName: "test_table"},
+			},
 		},
 	}
 	plan2.AddStats(1, 2*time.Millisecond, 1*time.Millisecond, 1, 0, 0)
@@ -80,6 +86,9 @@ func TestQueryzHandler(t *testing.T) {
 		Plan: &planbuilder.Plan{
 			Table:  &schema.Table{Name: sqlparser.NewIdentifierCS("")},
 			PlanID: planbuilder.PlanOtherRead,
+			Permissions: []planbuilder.Permission{
+				{TableName: "test_table"},
+			},
 		},
 	}
 	plan4.AddStats(1, 1*time.Millisecond, 1*time.Millisecond, 1, 0, 0)
@@ -130,7 +139,7 @@ func TestQueryzHandler(t *testing.T) {
 	planPattern3 := []string{
 		`<tr class="medium">`,
 		`<td>show tables</td>`,
-		`<td></td>`,
+		`<td>dual</td>`,
 		`<td>OtherRead</td>`,
 		`<td>1</td>`,
 		`<td>0.075000</td>`,
@@ -148,7 +157,7 @@ func TestQueryzHandler(t *testing.T) {
 	planPattern4 := []string{
 		`<tr class="low">`,
 		`<td>insert into test_table values .* \[TRUNCATED\][^<]*</td>`,
-		`<td></td>`,
+		`<td>test_table</td>`,
 		`<td>OtherRead</td>`,
 		`<td>1</td>`,
 		`<td>0.001000</td>`,
