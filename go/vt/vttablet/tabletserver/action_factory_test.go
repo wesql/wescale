@@ -16,26 +16,29 @@ func TestGetActionList_NoRules(t *testing.T) {
 }
 
 func TestGetActionList_MatchingRule(t *testing.T) {
-	rule := rules.NewQueryRule("test_rule", "test_rule", rules.QRContinue)
+	rule := rules.NewActiveQueryRule("test_rule", "test_rule", rules.QRFail)
 	qrs := rules.New()
 	qrs.Add(rule)
-	//todo filter: rule status is "" by default
 	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
 	assert.Equal(t, 1, len(actionList))
-	assert.IsType(t, &ContinueAction{}, actionList[0])
+	assert.NotNil(t, actionList)
+	assert.IsType(t, &FailAction{}, actionList[0])
 }
 
 func TestGetActionList_NonMatchingRule(t *testing.T) {
-	rule := rules.NewQueryRule("test_rule", "test_rule", rules.QRFail)
+	rule := rules.NewActiveQueryRule("test_rule", "test_rule", rules.QRFail)
 	rule.SetIPCond("1.1.1.1")
 	qrs := rules.New()
 	qrs.Add(rule)
 	actionList := GetActionList(qrs, "", "", nil, sqlparser.MarginComments{})
-	assert.Equal(t, 1, len(actionList))
-	assert.IsType(t, &ContinueAction{}, actionList[0])
+	assert.Equal(t, 0, len(actionList))
 }
 
 func TestCreateActionInstance(t *testing.T) {
+
+	cclRule := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl)
+	cclRule.SetActionArgs(`{"max_queue_size":1, "max_concurrency":1}`)
+
 	type args struct {
 		action rules.Action
 		rule   *rules.Rule
@@ -50,43 +53,43 @@ func TestCreateActionInstance(t *testing.T) {
 			name: "QRContinue",
 			args: args{
 				action: rules.QRContinue,
-				rule:   rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue),
+				rule:   rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue),
 			},
-			want:    &ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+			want:    &ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "QRFail",
 			args: args{
 				action: rules.QRFail,
-				rule:   rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail),
+				rule:   rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail),
 			},
-			want:    &FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+			want:    &FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "QRFailRetry",
 			args: args{
 				action: rules.QRFailRetry,
-				rule:   rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFailRetry),
+				rule:   rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFailRetry),
 			},
-			want:    &FailRetryAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry},
+			want:    &FailRetryAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "QRConcurrencyControl",
 			args: args{
 				action: rules.QRConcurrencyControl,
-				rule:   rules.NewQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl),
+				rule:   cclRule,
 			},
-			want:    &ConcurrencyControlAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl), Action: rules.QRConcurrencyControl},
+			want:    &ConcurrencyControlAction{Rule: cclRule, Action: rules.QRConcurrencyControl, MaxConcurrency: 1, MaxQueueSize: 1},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "unknown action",
 			args: args{
 				action: rules.Action(100),
-				rule:   rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue),
+				rule:   rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue),
 			},
 			want:    nil,
 			wantErr: assert.Error,
@@ -121,9 +124,9 @@ func TestCreateContinueAction(t *testing.T) {
 }
 
 func Test_sortAction(t *testing.T) {
-	r1 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
-	r2 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
-	r3 := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	r1 := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	r2 := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	r3 := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail)
 
 	a1 := &FailAction{Rule: r1, Action: rules.QRFail}
 	a2 := &FailAction{Rule: r2, Action: rules.QRFail}

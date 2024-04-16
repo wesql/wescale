@@ -47,7 +47,7 @@ func setupRules() {
 	// mock denied tables
 	denyRules = New()
 	deniedTables := []string{"d1.bannedtable1", "d1.bannedtable2", "d1.bannedtable3"}
-	qr = NewQueryRule("enforce denied tables", "denied_table", QRFailRetry)
+	qr = NewActiveQueryRule("enforce denied tables", "denied_table", QRFailRetry)
 	for _, t := range deniedTables {
 		qr.AddTableCond(t)
 	}
@@ -55,7 +55,7 @@ func setupRules() {
 
 	// mock custom rules
 	otherRules = New()
-	qr = NewQueryRule("sample custom rule", "customrule_ban_bindvar", QRFail)
+	qr = NewActiveQueryRule("sample custom rule", "customrule_ban_bindvar", QRFail)
 	qr.AddTableCond("d.t_customer")
 	qr.AddBindVarCond("bindvar1", true, false, QRNoOp, nil)
 	otherRules.Add(qr)
@@ -198,7 +198,7 @@ func TestMapFilterByPlan(t *testing.T) {
 
 	// Test match two rules: both denylist rule and custom rule will be matched
 	otherRules = New()
-	qr := NewQueryRule("sample custom rule", "customrule_ban_bindvar", QRFail)
+	qr := NewActiveQueryRule("sample custom rule", "customrule_ban_bindvar", QRFail)
 	qr.AddBindVarCond("bindvar1", true, false, QRNoOp, nil)
 	otherRules.Add(qr)
 	qri.SetRules(customQueryRules, otherRules)

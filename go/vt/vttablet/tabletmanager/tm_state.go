@@ -362,7 +362,7 @@ func (ts *tmState) applyDenyList(ctx context.Context) (err error) {
 		// that we don't add a rule to deny all tables
 		if len(tables) > 0 {
 			log.Infof("Denying tables %v", strings.Join(tables, ", "))
-			qr := rules.NewQueryRule("enforce denied tables", "denied_table", rules.QRFailRetry)
+			qr := rules.NewActiveQueryRule("enforce denied tables", "denied_table", rules.QRFailRetry)
 			for _, t := range tables {
 				qr.AddTableCond(t)
 			}

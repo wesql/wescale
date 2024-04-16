@@ -42,8 +42,8 @@ import (
 
 func TestQueryRules(t *testing.T) {
 	qrs := New()
-	qr1 := NewQueryRule("rule 1", "r1", QRFail)
-	qr2 := NewQueryRule("rule 2", "r2", QRFail)
+	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
+	qr2 := NewActiveQueryRule("rule 2", "r2", QRFail)
 	qrs.Add(qr1)
 	qrs.Add(qr2)
 
@@ -88,12 +88,12 @@ func TestQueryRules(t *testing.T) {
 // TestCopy tests for deep copy
 func TestCopy(t *testing.T) {
 	qrs1 := New()
-	qr1 := NewQueryRule("rule 1", "r1", QRFail)
+	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
 	qr1.AddPlanCond(planbuilder.PlanSelect)
 	qr1.AddTableCond("aa")
 	qr1.AddBindVarCond("a", true, false, QRNoOp, nil)
 
-	qr2 := NewQueryRule("rule 2", "r2", QRFail)
+	qr2 := NewActiveQueryRule("rule 2", "r2", QRFail)
 	qrs1.Add(qr1)
 	qrs1.Add(qr2)
 
@@ -112,22 +112,22 @@ func TestCopy(t *testing.T) {
 func TestFilterByPlan(t *testing.T) {
 	qrs := New()
 
-	qr1 := NewQueryRule("rule 1", "r1", QRFail)
+	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
 	qr1.SetIPCond("123")
 	qr1.SetQueryCond("select")
 	qr1.AddPlanCond(planbuilder.PlanSelect)
 	qr1.AddBindVarCond("a", true, false, QRNoOp, nil)
 
-	qr2 := NewQueryRule("rule 2", "r2", QRFail)
+	qr2 := NewActiveQueryRule("rule 2", "r2", QRFail)
 	qr2.AddPlanCond(planbuilder.PlanSelect)
 	qr2.AddPlanCond(planbuilder.PlanSelect)
 	qr2.AddBindVarCond("a", true, false, QRNoOp, nil)
 
-	qr3 := NewQueryRule("rule 3", "r3", QRFail)
+	qr3 := NewActiveQueryRule("rule 3", "r3", QRFail)
 	qr3.SetQueryCond("sele.*")
 	qr3.AddBindVarCond("a", true, false, QRNoOp, nil)
 
-	qr4 := NewQueryRule("rule 4", "r4", QRFail)
+	qr4 := NewActiveQueryRule("rule 4", "r4", QRFail)
 	qr4.AddTableCond("d.b")
 	qr4.AddTableCond("d.c")
 
@@ -194,7 +194,7 @@ func TestFilterByPlan(t *testing.T) {
 		t.Errorf("qrs1:\n%s, want\n%s", got, want)
 	}
 
-	qr5 := NewQueryRule("rule 5", "r5", QRFail)
+	qr5 := NewActiveQueryRule("rule 5", "r5", QRFail)
 	qrs.Add(qr5)
 
 	qrs1 = qrs.FilterByPlan("sel", planbuilder.PlanInsert, "d.a")
@@ -211,7 +211,7 @@ func TestFilterByPlan(t *testing.T) {
 }
 
 func TestQueryRule(t *testing.T) {
-	qr := NewQueryRule("rule 1", "r1", QRFail)
+	qr := NewActiveQueryRule("rule 1", "r1", QRFail)
 	err := qr.SetIPCond("123")
 	if err != nil {
 		t.Errorf("unexpected: %v", err)
@@ -247,7 +247,7 @@ func TestQueryRule(t *testing.T) {
 }
 
 func TestBindVarStruct(t *testing.T) {
-	qr := NewQueryRule("rule 1", "r1", QRFail)
+	qr := NewActiveQueryRule("rule 1", "r1", QRFail)
 
 	err := qr.AddBindVarCond("b", false, true, QRNoOp, nil)
 	if err != nil {
@@ -314,7 +314,7 @@ var creationCases = []BVCreation{
 }
 
 func TestBVCreation(t *testing.T) {
-	qr := NewQueryRule("rule 1", "r1", QRFail)
+	qr := NewActiveQueryRule("rule 1", "r1", QRFail)
 	for i, tcase := range creationCases {
 		err := qr.AddBindVarCond(tcase.name, tcase.onAbsent, tcase.onMismatch, tcase.op, tcase.value)
 		haserr := (err != nil)
@@ -454,13 +454,13 @@ func TestBVConditions(t *testing.T) {
 func TestAction(t *testing.T) {
 	qrs := New()
 
-	qr1 := NewQueryRule("rule 1", "r1", QRFail)
+	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
 	qr1.SetIPCond("123")
 
-	qr2 := NewQueryRule("rule 2", "r2", QRFailRetry)
+	qr2 := NewActiveQueryRule("rule 2", "r2", QRFailRetry)
 	qr2.SetUserCond("user")
 
-	qr3 := NewQueryRule("rule 3", "r3", QRFail)
+	qr3 := NewActiveQueryRule("rule 3", "r3", QRFail)
 	qr3.AddBindVarCond("a", true, true, QREqual, uint64(1))
 
 	qrs.Add(qr1)
@@ -496,7 +496,7 @@ func TestAction(t *testing.T) {
 	// reset bound variable 'a' to 0 so it doesn't match rule 3
 	bv["a"] = sqltypes.Uint64BindVariable(0)
 
-	qr4 := NewQueryRule("rule 4", "r4", QRFail)
+	qr4 := NewActiveQueryRule("rule 4", "r4", QRFail)
 	qr4.SetTrailingCommentCond(".*trailing.*")
 
 	newQrs := qrs.Copy()
@@ -506,7 +506,7 @@ func TestAction(t *testing.T) {
 	assert.Equalf(t, action, QRFail, "want fail, got %s", action)
 	assert.Equalf(t, desc, "rule 4", "want rule 4, got %s", desc)
 
-	qr5 := NewQueryRule("rule 5", "r4", QRFail)
+	qr5 := NewActiveQueryRule("rule 5", "r4", QRFail)
 	qr5.SetLeadingCommentCond(".*leading.*")
 
 	newQrs = qrs.Copy()
@@ -678,7 +678,7 @@ func TestBuildQueryRuleActionFail(t *testing.T) {
 }
 
 func TestBadAddBindVarCond(t *testing.T) {
-	qr1 := NewQueryRule("rule 1", "r1", QRFail)
+	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
 	err := qr1.AddBindVarCond("a", true, false, QRMatch, uint64(1))
 	if err == nil {
 		t.Fatalf("invalid op: QRMatch for value type: uint64")

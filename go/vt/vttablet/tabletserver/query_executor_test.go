@@ -1118,7 +1118,7 @@ func _TestQueryExecutorDenyListQRRetry(t *testing.T) {
 	bannedAddr := "127.0.0.1"
 	bannedUser := "x"
 
-	alterRule := rules.NewQueryRule("disable update", "disable update", rules.QRFailRetry)
+	alterRule := rules.NewActiveQueryRule("disable update", "disable update", rules.QRFailRetry)
 	alterRule.SetIPCond(bannedAddr)
 	alterRule.SetUserCond(bannedUser)
 	alterRule.SetQueryCond("select.*")
@@ -1171,7 +1171,7 @@ func TestInitDatabaseProxyFilter(t *testing.T) {
 	bannedAddr := "127.0.0.1"
 	bannedUser := "x"
 
-	alterRule := rules.NewQueryRule("test_rule", "test_rule", rules.QRContinue)
+	alterRule := rules.NewActiveQueryRule("test_rule", "test_rule", rules.QRContinue)
 
 	rulesName := "DATABASE_CUSTOM_RULE"
 	rules := rules.New()
