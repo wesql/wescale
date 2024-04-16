@@ -205,6 +205,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		// There is only a comment in the input.
 		// This is essentially a No-op
 		return newPlanResult(engine.NewRowsPrimitive(nil, nil)), nil
+	case *sqlparser.CreateFilter:
+		return buildCreateFilterPlan(query, vschema)
 	}
 
 	return nil, vterrors.VT13001(fmt.Sprintf("unexpected statement type: %T", stmt))

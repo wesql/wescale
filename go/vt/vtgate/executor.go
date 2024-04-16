@@ -1649,6 +1649,23 @@ func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, 
 	return th.Conn.ShowDMLJob(ctx, uuid, showDetails)
 }
 
+func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
+	ctx := context.Background()
+	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
+	var th *discovery.TabletHealth
+	for _, tablet := range healthyTablets {
+		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
+			th = tablet
+			break
+		}
+	}
+
+	args := make(map[string]any)
+	args["sql"] = sql
+
+	return th.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
+}
+
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {
 	if e.allowScatter || plan.Instructions == nil || sqlparser.AllowScatterDirective(stmt) {
 		return nil

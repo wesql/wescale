@@ -103,6 +103,14 @@ func (e *Executor) newExecute(
 		return recResult(plan.Type, rst)
 	}
 
+	rst, err = HandleWescaleFilterRequest(stmt, vcursor, sql)
+	if err != nil {
+		return err
+	}
+	if rst != nil {
+		return recResult(plan.Type, rst)
+	}
+
 	if plan.Type != sqlparser.StmtShow {
 		safeSession.ClearWarnings()
 	}
@@ -474,6 +482,20 @@ func HandleDMLJobRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql str
 			}
 		}
 		return qr, err
+	}
+	return nil, nil
+}
+
+func IsWescaleFilterRequest(stmt sqlparser.Statement) bool {
+	if _, ok := stmt.(*sqlparser.CreateFilter); ok {
+		return true
+	}
+	return false
+}
+
+func HandleWescaleFilterRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
+	if IsWescaleFilterRequest(stmt) {
+		return vcursor.executor.HandleWescaleFilterRequest(sql)
 	}
 	return nil, nil
 }
