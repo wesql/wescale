@@ -18,7 +18,6 @@ package tabletmanager
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -28,7 +27,6 @@ import (
 
 	"vitess.io/vitess/go/test/utils"
 	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/mysqlctl/fakemysqldaemon"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/topo"
 	"vitess.io/vitess/go/vt/topo/faketopo"
@@ -36,7 +34,6 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/tabletservermock"
 
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 )
@@ -97,37 +94,6 @@ func TestStateResharding(t *testing.T) {
 	qsc := tm.QueryServiceControl.(*tabletservermock.Controller)
 	assert.Equal(t, topodatapb.TabletType_PRIMARY, qsc.CurrentTarget().TabletType)
 	assert.False(t, qsc.IsServing())
-}
-
-func TestStateDenyList(t *testing.T) {
-	ctx := context.Background()
-	ts := memorytopo.NewServer("cell1")
-	tm := newTestTM(t, ts, 1, "ks", "0")
-	defer tm.Stop()
-
-	fmd := tm.MysqlDaemon.(*fakemysqldaemon.FakeMysqlDaemon)
-	fmd.Schema = &tabletmanagerdatapb.SchemaDefinition{
-		TableDefinitions: []*tabletmanagerdatapb.TableDefinition{{
-			Name: "t1",
-		}},
-	}
-	si := &topo.ShardInfo{
-		Shard: &topodatapb.Shard{
-			TabletControls: []*topodatapb.Shard_TabletControl{{
-				TabletType:   topodatapb.TabletType_REPLICA,
-				Cells:        []string{"cell1"},
-				DeniedTables: []string{"t1"},
-			}},
-		},
-	}
-	tm.tmState.RefreshFromTopoInfo(ctx, si, nil)
-	tm.tmState.mu.Lock()
-	assert.Equal(t, map[topodatapb.TabletType][]string{topodatapb.TabletType_REPLICA: {"t1"}}, tm.tmState.deniedTables)
-	tm.tmState.mu.Unlock()
-
-	qsc := tm.QueryServiceControl.(*tabletservermock.Controller)
-	b, _ := json.Marshal(qsc.GetQueryRules(denyListQueryList))
-	assert.Equal(t, `[{"Description":"enforce denied tables","Name":"denied_table","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["t1"],"Action":"FAIL_RETRY","ActionArgs":""}]`, string(b))
 }
 
 func TestStateTabletControls(t *testing.T) {

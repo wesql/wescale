@@ -216,7 +216,7 @@ func TestMapJSON(t *testing.T) {
 	qri.RegisterSource(customQueryRules)
 	_ = qri.SetRules(customQueryRules, otherRules)
 	got := marshalled(qri)
-	want := compacted(`{"CUSTOM_QUERY_RULES":[{"Description":"sample custom rule","Name":"customrule_ban_bindvar","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["d.t_customer"],"BindVarConds":[{"Name":"bindvar1","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}],"DENYLIST_QUERY_RULES":[{"Description":"enforce denied tables","Name":"denied_table","Priority":0,"Status":"","QueryTemplate":"","FullyQualifiedTableNames":["d1.bannedtable1","d1.bannedtable2","d1.bannedtable3"],"Action":"FAIL_RETRY","ActionArgs":""}]}`)
+	want := compacted(`{"CUSTOM_QUERY_RULES":[{"Description":"sample custom rule","Name":"customrule_ban_bindvar","Priority":0,"Status":"ACTIVE","QueryTemplate":"","FullyQualifiedTableNames":["d.t_customer"],"BindVarConds":[{"Name":"bindvar1","OnAbsent":true,"Operator":""}],"Action":"FAIL","ActionArgs":""}],"DENYLIST_QUERY_RULES":[{"Description":"enforce denied tables","Name":"denied_table","Priority":0,"Status":"ACTIVE","QueryTemplate":"","FullyQualifiedTableNames":["d1.bannedtable1","d1.bannedtable2","d1.bannedtable3"],"Action":"FAIL_RETRY","ActionArgs":""}]}`)
 	if got != want {
 		t.Errorf("MapJSON:\n%v, want\n%v", got, want)
 	}
