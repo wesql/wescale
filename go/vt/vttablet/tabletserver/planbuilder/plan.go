@@ -191,6 +191,9 @@ type Plan struct {
 // TableName returns the table name for the plan.
 func (plan *Plan) TableName() string {
 	for _, permission := range plan.Permissions {
+		if permission.Database == "" {
+			return permission.TableName
+		}
 		return fmt.Sprintf("%s.%s", permission.Database, permission.TableName)
 	}
 	return "dual"

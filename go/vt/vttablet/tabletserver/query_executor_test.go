@@ -1171,7 +1171,7 @@ func TestInitDatabaseProxyFilter(t *testing.T) {
 	bannedAddr := "127.0.0.1"
 	bannedUser := "x"
 
-	alterRule := rules.NewActiveQueryRule("test_rule", "test_rule", rules.QRContinue)
+	alterRule := rules.NewActiveQueryRule("test_rule", "test_rule", rules.QRFail)
 
 	rulesName := "DATABASE_CUSTOM_RULE"
 	rules := rules.New()
