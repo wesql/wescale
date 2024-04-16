@@ -124,6 +124,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfCountStar(in, f)
 	case *CreateDatabase:
 		return VisitRefOfCreateDatabase(in, f)
+	case *CreateFilter:
+		return VisitRefOfCreateFilter(in, f)
 	case *CreateTable:
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:
@@ -166,6 +168,10 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfExtractValueExpr(in, f)
 	case *ExtractedSubquery:
 		return VisitRefOfExtractedSubquery(in, f)
+	case *FilterAction:
+		return VisitRefOfFilterAction(in, f)
+	case *FilterPattern:
+		return VisitRefOfFilterPattern(in, f)
 	case *FirstOrLastValueExpr:
 		return VisitRefOfFirstOrLastValueExpr(in, f)
 	case *Flush:
@@ -1216,6 +1222,21 @@ func VisitRefOfCreateDatabase(in *CreateDatabase, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfCreateFilter(in *CreateFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfFilterPattern(in.Pattern, f); err != nil {
+		return err
+	}
+	if err := VisitRefOfFilterAction(in.Action, f); err != nil {
+		return err
+	}
+	return nil
+}
 func VisitRefOfCreateTable(in *CreateTable, f Visit) error {
 	if in == nil {
 		return nil
@@ -1543,6 +1564,24 @@ func VisitRefOfExtractedSubquery(in *ExtractedSubquery, f Visit) error {
 		return err
 	}
 	if err := VisitExpr(in.alternative, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfFilterAction(in *FilterAction, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
+func VisitRefOfFilterPattern(in *FilterPattern, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
 	return nil
@@ -4693,6 +4732,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfCommit(in, f)
 	case *CreateDatabase:
 		return VisitRefOfCreateDatabase(in, f)
+	case *CreateFilter:
+		return VisitRefOfCreateFilter(in, f)
 	case *CreateTable:
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:

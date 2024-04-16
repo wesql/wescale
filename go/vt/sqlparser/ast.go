@@ -520,6 +520,34 @@ type (
 		Comments   *ParsedComments
 	}
 
+	FilterPattern struct {
+		Plans                    string
+		FullyQualifiedTableNames string
+		QueryRegex               string
+		QueryTemplate            string
+		RequestIpRegex           string
+		UserRegex                string
+		LeadingCommentRegex      string
+		TrailingCommentRegex     string
+		BindVarConds             string
+	}
+
+	FilterAction struct {
+		Action     string
+		ActionArgs string
+	}
+
+	// CreateFilter represents a CREATE Filter statement.
+	CreateFilter struct {
+		Name        string
+		Description string
+		Priority    string
+		Status      string
+		IfNotExists bool
+		Pattern     *FilterPattern
+		Action      *FilterAction
+	}
+
 	// CreateTable represents a CREATE TABLE statement.
 	CreateTable struct {
 		Temp        bool
@@ -762,6 +790,7 @@ func (*Union) iSelectStatement()         {}
 func (*Load) iStatement()                {}
 func (*CreateDatabase) iStatement()      {}
 func (*AlterDatabase) iStatement()       {}
+func (*CreateFilter) iStatement()        {}
 func (*CreateTable) iStatement()         {}
 func (*CreateView) iStatement()          {}
 func (*AlterView) iStatement()           {}

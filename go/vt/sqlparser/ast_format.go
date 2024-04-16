@@ -2124,6 +2124,53 @@ func (node *CreateTable) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
+func (node *FilterPattern) Format(buf *TrackedBuffer) {
+	buf.literal("with_pattern ( ")
+	buf.astPrintf(node, "plans=%s, ", node.Plans)
+	buf.astPrintf(node, "fully_qualified_table_names=%s, ", node.FullyQualifiedTableNames)
+	buf.astPrintf(node, "query_regex=%s, ", node.QueryRegex)
+	buf.astPrintf(node, "query_template=%s, ", node.QueryTemplate)
+	buf.astPrintf(node, "request_ip_regex=%s, ", node.RequestIpRegex)
+	buf.astPrintf(node, "user_regex=%s, ", node.UserRegex)
+	buf.astPrintf(node, "leading_comment_regex=%s, ", node.LeadingCommentRegex)
+	buf.astPrintf(node, "trailing_comment_regex=%s, ", node.TrailingCommentRegex)
+	buf.astPrintf(node, "bind_var_conds=%s ", node.BindVarConds)
+	buf.literal(") ")
+}
+
+// Format formats the node.
+func (node *FilterAction) Format(buf *TrackedBuffer) {
+	buf.literal("execute ( ")
+	buf.astPrintf(node, "action=%s, ", node.Action)
+	buf.astPrintf(node, "action_args=%s ", node.ActionArgs)
+	buf.literal(") ")
+}
+
+// Format formats the node.
+func (node *CreateFilter) Format(buf *TrackedBuffer) {
+	buf.literal("create filter ")
+
+	if node.IfNotExists {
+		buf.literal("if not exists ")
+	}
+
+	buf.literal("( ")
+	buf.astPrintf(node, "name=%s, ", node.Name)
+	buf.astPrintf(node, "description=%s, ", node.Description)
+	buf.astPrintf(node, "priority=%s, ", node.Priority)
+	buf.astPrintf(node, "status=%s ", node.Status)
+	buf.literal(") ")
+
+	if node.Pattern != nil {
+		buf.astPrintf(node, "%v ", node.Pattern)
+	}
+
+	if node.Action != nil {
+		buf.astPrintf(node, "%v ", node.Action)
+	}
+}
+
+// Format formats the node.
 func (node *CreateView) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "create %v", node.Comments)
 	if node.IsReplace {

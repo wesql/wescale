@@ -332,6 +332,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfCreateDatabase(a, b)
+	case *CreateFilter:
+		b, ok := inB.(*CreateFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateFilter(a, b)
 	case *CreateTable:
 		b, ok := inB.(*CreateTable)
 		if !ok {
@@ -458,6 +464,18 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfExtractedSubquery(a, b)
+	case *FilterAction:
+		b, ok := inB.(*FilterAction)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfFilterAction(a, b)
+	case *FilterPattern:
+		b, ok := inB.(*FilterPattern)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfFilterPattern(a, b)
 	case *FirstOrLastValueExpr:
 		b, ok := inB.(*FirstOrLastValueExpr)
 		if !ok {
@@ -2147,6 +2165,23 @@ func (cmp *Comparator) RefOfCreateDatabase(a, b *CreateDatabase) bool {
 		cmp.SliceOfDatabaseOption(a.CreateOptions, b.CreateOptions)
 }
 
+// RefOfCreateFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfCreateFilter(a, b *CreateFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Name == b.Name &&
+		a.Description == b.Description &&
+		a.Priority == b.Priority &&
+		a.Status == b.Status &&
+		a.IfNotExists == b.IfNotExists &&
+		cmp.RefOfFilterPattern(a.Pattern, b.Pattern) &&
+		cmp.RefOfFilterAction(a.Action, b.Action)
+}
+
 // RefOfCreateTable does deep equals between the two objects.
 func (cmp *Comparator) RefOfCreateTable(a, b *CreateTable) bool {
 	if a == b {
@@ -2428,6 +2463,37 @@ func (cmp *Comparator) RefOfExtractedSubquery(a, b *ExtractedSubquery) bool {
 		cmp.RefOfSubquery(a.Subquery, b.Subquery) &&
 		cmp.Expr(a.OtherSide, b.OtherSide) &&
 		cmp.Expr(a.alternative, b.alternative)
+}
+
+// RefOfFilterAction does deep equals between the two objects.
+func (cmp *Comparator) RefOfFilterAction(a, b *FilterAction) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Action == b.Action &&
+		a.ActionArgs == b.ActionArgs
+}
+
+// RefOfFilterPattern does deep equals between the two objects.
+func (cmp *Comparator) RefOfFilterPattern(a, b *FilterPattern) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Plans == b.Plans &&
+		a.FullyQualifiedTableNames == b.FullyQualifiedTableNames &&
+		a.QueryRegex == b.QueryRegex &&
+		a.QueryTemplate == b.QueryTemplate &&
+		a.RequestIpRegex == b.RequestIpRegex &&
+		a.UserRegex == b.UserRegex &&
+		a.LeadingCommentRegex == b.LeadingCommentRegex &&
+		a.TrailingCommentRegex == b.TrailingCommentRegex &&
+		a.BindVarConds == b.BindVarConds
 }
 
 // RefOfFirstOrLastValueExpr does deep equals between the two objects.
@@ -6232,6 +6298,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfCreateDatabase(a, b)
+	case *CreateFilter:
+		b, ok := inB.(*CreateFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateFilter(a, b)
 	case *CreateTable:
 		b, ok := inB.(*CreateTable)
 		if !ok {

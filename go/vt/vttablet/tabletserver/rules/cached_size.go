@@ -1,9 +1,4 @@
 /*
-Copyright ApeCloud, Inc.
-Licensed under the Apache v2(found in the LICENSE file in the root directory).
-*/
-
-/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,14 +45,14 @@ func (cached *Rule) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(256)
+		size += int64(320)
 	}
 	// field Description string
 	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
 	// field Name string
 	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
-	//todo earayu: where is Priority?
-
+	// field Status string
+	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
 	// field plans []vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder.PlanType
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.plans)) * int64(8))
@@ -71,6 +66,8 @@ func (cached *Rule) CachedSize(alloc bool) int64 {
 	}
 	// field query vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
 	size += cached.query.CachedSize(false)
+	// field queryTemplate string
+	size += hack.RuntimeAllocSize(int64(len(cached.queryTemplate)))
 	// field requestIP vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
 	size += cached.requestIP.CachedSize(false)
 	// field user vitess.io/vitess/go/vt/vttablet/tabletserver/rules.namedRegexp
@@ -86,6 +83,8 @@ func (cached *Rule) CachedSize(alloc bool) int64 {
 			size += elem.CachedSize(false)
 		}
 	}
+	// field actionArgs string
+	size += hack.RuntimeAllocSize(int64(len(cached.actionArgs)))
 	return size
 }
 func (cached *Rules) CachedSize(alloc bool) int64 {

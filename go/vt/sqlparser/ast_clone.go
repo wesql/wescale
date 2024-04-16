@@ -125,6 +125,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfCountStar(in)
 	case *CreateDatabase:
 		return CloneRefOfCreateDatabase(in)
+	case *CreateFilter:
+		return CloneRefOfCreateFilter(in)
 	case *CreateTable:
 		return CloneRefOfCreateTable(in)
 	case *CreateView:
@@ -167,6 +169,10 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfExtractValueExpr(in)
 	case *ExtractedSubquery:
 		return CloneRefOfExtractedSubquery(in)
+	case *FilterAction:
+		return CloneRefOfFilterAction(in)
+	case *FilterPattern:
+		return CloneRefOfFilterPattern(in)
 	case *FirstOrLastValueExpr:
 		return CloneRefOfFirstOrLastValueExpr(in)
 	case *Flush:
@@ -1048,6 +1054,17 @@ func CloneRefOfCreateDatabase(n *CreateDatabase) *CreateDatabase {
 	return &out
 }
 
+// CloneRefOfCreateFilter creates a deep clone of the input.
+func CloneRefOfCreateFilter(n *CreateFilter) *CreateFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Pattern = CloneRefOfFilterPattern(n.Pattern)
+	out.Action = CloneRefOfFilterAction(n.Action)
+	return &out
+}
+
 // CloneRefOfCreateTable creates a deep clone of the input.
 func CloneRefOfCreateTable(n *CreateTable) *CreateTable {
 	if n == nil {
@@ -1282,6 +1299,24 @@ func CloneRefOfExtractedSubquery(n *ExtractedSubquery) *ExtractedSubquery {
 	out.Subquery = CloneRefOfSubquery(n.Subquery)
 	out.OtherSide = CloneExpr(n.OtherSide)
 	out.alternative = CloneExpr(n.alternative)
+	return &out
+}
+
+// CloneRefOfFilterAction creates a deep clone of the input.
+func CloneRefOfFilterAction(n *FilterAction) *FilterAction {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
+// CloneRefOfFilterPattern creates a deep clone of the input.
+func CloneRefOfFilterPattern(n *FilterPattern) *FilterPattern {
+	if n == nil {
+		return nil
+	}
+	out := *n
 	return &out
 }
 
@@ -3825,6 +3860,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfCommit(in)
 	case *CreateDatabase:
 		return CloneRefOfCreateDatabase(in)
+	case *CreateFilter:
+		return CloneRefOfCreateFilter(in)
 	case *CreateTable:
 		return CloneRefOfCreateTable(in)
 	case *CreateView:

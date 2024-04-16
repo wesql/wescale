@@ -124,6 +124,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfCountStar(parent, node, replacer)
 	case *CreateDatabase:
 		return a.rewriteRefOfCreateDatabase(parent, node, replacer)
+	case *CreateFilter:
+		return a.rewriteRefOfCreateFilter(parent, node, replacer)
 	case *CreateTable:
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:
@@ -166,6 +168,10 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfExtractValueExpr(parent, node, replacer)
 	case *ExtractedSubquery:
 		return a.rewriteRefOfExtractedSubquery(parent, node, replacer)
+	case *FilterAction:
+		return a.rewriteRefOfFilterAction(parent, node, replacer)
+	case *FilterPattern:
+		return a.rewriteRefOfFilterPattern(parent, node, replacer)
 	case *FirstOrLastValueExpr:
 		return a.rewriteRefOfFirstOrLastValueExpr(parent, node, replacer)
 	case *Flush:
@@ -2032,6 +2038,38 @@ func (a *application) rewriteRefOfCreateDatabase(parent SQLNode, node *CreateDat
 	}
 	return true
 }
+func (a *application) rewriteRefOfCreateFilter(parent SQLNode, node *CreateFilter, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
+		parent.(*CreateFilter).Pattern = newNode.(*FilterPattern)
+	}) {
+		return false
+	}
+	if !a.rewriteRefOfFilterAction(node, node.Action, func(newNode, parent SQLNode) {
+		parent.(*CreateFilter).Action = newNode.(*FilterAction)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfCreateTable(parent SQLNode, node *CreateTable, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -2736,6 +2774,54 @@ func (a *application) rewriteRefOfExtractedSubquery(parent SQLNode, node *Extrac
 		a.cur.replacer = replacer
 		a.cur.parent = parent
 		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfFilterAction(parent SQLNode, node *FilterAction, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfFilterPattern(parent SQLNode, node *FilterPattern, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
 		if !a.post(&a.cur) {
 			return false
 		}
@@ -8987,6 +9073,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfCommit(parent, node, replacer)
 	case *CreateDatabase:
 		return a.rewriteRefOfCreateDatabase(parent, node, replacer)
+	case *CreateFilter:
+		return a.rewriteRefOfCreateFilter(parent, node, replacer)
 	case *CreateTable:
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:

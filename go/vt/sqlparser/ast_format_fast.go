@@ -2780,6 +2780,85 @@ func (node *CreateTable) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
+func (node *FilterPattern) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("with_pattern ( ")
+	buf.WriteString("plans=")
+	buf.WriteString(node.Plans)
+	buf.WriteString(", ")
+	buf.WriteString("fully_qualified_table_names=")
+	buf.WriteString(node.FullyQualifiedTableNames)
+	buf.WriteString(", ")
+	buf.WriteString("query_regex=")
+	buf.WriteString(node.QueryRegex)
+	buf.WriteString(", ")
+	buf.WriteString("query_template=")
+	buf.WriteString(node.QueryTemplate)
+	buf.WriteString(", ")
+	buf.WriteString("request_ip_regex=")
+	buf.WriteString(node.RequestIpRegex)
+	buf.WriteString(", ")
+	buf.WriteString("user_regex=")
+	buf.WriteString(node.UserRegex)
+	buf.WriteString(", ")
+	buf.WriteString("leading_comment_regex=")
+	buf.WriteString(node.LeadingCommentRegex)
+	buf.WriteString(", ")
+	buf.WriteString("trailing_comment_regex=")
+	buf.WriteString(node.TrailingCommentRegex)
+	buf.WriteString(", ")
+	buf.WriteString("bind_var_conds=")
+	buf.WriteString(node.BindVarConds)
+	buf.WriteByte(' ')
+	buf.WriteString(") ")
+}
+
+// formatFast formats the node.
+func (node *FilterAction) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("execute ( ")
+	buf.WriteString("action=")
+	buf.WriteString(node.Action)
+	buf.WriteString(", ")
+	buf.WriteString("action_args=")
+	buf.WriteString(node.ActionArgs)
+	buf.WriteByte(' ')
+	buf.WriteString(") ")
+}
+
+// formatFast formats the node.
+func (node *CreateFilter) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("create filter ")
+
+	if node.IfNotExists {
+		buf.WriteString("if not exists ")
+	}
+
+	buf.WriteString("( ")
+	buf.WriteString("name=")
+	buf.WriteString(node.Name)
+	buf.WriteString(", ")
+	buf.WriteString("description=")
+	buf.WriteString(node.Description)
+	buf.WriteString(", ")
+	buf.WriteString("priority=")
+	buf.WriteString(node.Priority)
+	buf.WriteString(", ")
+	buf.WriteString("status=")
+	buf.WriteString(node.Status)
+	buf.WriteByte(' ')
+	buf.WriteString(") ")
+
+	if node.Pattern != nil {
+		node.Pattern.formatFast(buf)
+		buf.WriteByte(' ')
+	}
+
+	if node.Action != nil {
+		node.Action.formatFast(buf)
+		buf.WriteByte(' ')
+	}
+}
+
+// formatFast formats the node.
 func (node *CreateView) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("create ")
 	node.Comments.formatFast(buf)
