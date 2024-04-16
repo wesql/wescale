@@ -31,34 +31,34 @@ func TestQueryExecutor_runActionListBeforeExecution(t *testing.T) {
 		},
 		{
 			name:       "action list with one QRContinue action",
-			actionList: []ActionInterface{&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue}},
+			actionList: []ActionInterface{&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue}},
 			wantErr:    assert.NoError,
 		},
 		{
 			name:       "action list with one QRFail action",
-			actionList: []ActionInterface{&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail}},
+			actionList: []ActionInterface{&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail}},
 			wantErr:    assert.Error,
 		},
 		{
 			name:       "action list with one QRFailRetry action",
-			actionList: []ActionInterface{&FailRetryAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry}},
+			actionList: []ActionInterface{&FailRetryAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry}},
 			wantErr:    assert.Error,
 		},
 		{
 			name: "QRContinue, QRContinue, QRContinue",
 			actionList: []ActionInterface{
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "QRContinue, QRContinue, QRFail",
 			actionList: []ActionInterface{
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
 			},
 			wantErr: assert.Error,
 		},
@@ -94,34 +94,34 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 		},
 		{
 			name:       "action list with one QRContinue action",
-			actionList: []ActionInterface{&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue}},
+			actionList: []ActionInterface{&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue}},
 			wantErr:    assert.NoError,
 		},
 		{
 			name:       "action list with one QRFail action",
-			actionList: []ActionInterface{&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail}},
+			actionList: []ActionInterface{&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail}},
 			wantErr:    assert.Error,
 		},
 		{
 			name:       "action list with one QRFailRetry action",
-			actionList: []ActionInterface{&FailRetryAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry}},
+			actionList: []ActionInterface{&FailRetryAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFailRetry), Action: rules.QRFailRetry}},
 			wantErr:    assert.Error,
 		},
 		{
 			name: "QRContinue, QRContinue, QRContinue",
 			actionList: []ActionInterface{
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
 			},
 			wantErr: assert.NoError,
 		},
 		{
 			name: "QRContinue, QRContinue, QRFail",
 			actionList: []ActionInterface{
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
 			},
 			wantErr: assert.Error,
 		},
@@ -156,9 +156,9 @@ func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
 		{
 			name: "QRContinue, QRContinue, QRFail",
 			actionList: []ActionInterface{
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
-				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
 			},
 			wantErr: assert.Error,
 		},
@@ -173,11 +173,11 @@ func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
 			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
 			assert.Equal(t, 2, len(qre.calledActionList))
 			assert.Equal(t,
-				&ContinueAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
+				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
 				qre.matchedActionList[0],
 			)
 			assert.Equal(t,
-				&FailAction{Rule: rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
+				&FailAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail), Action: rules.QRFail},
 				qre.matchedActionList[1],
 			)
 

@@ -215,7 +215,6 @@ type Rule struct {
 	Name        string
 	Priority    int
 	Status      string
-	FireNext    bool
 
 	// a rule can be dynamically cancelled. This function determines whether it is cancelled
 	cancelCtx context.Context
@@ -266,16 +265,23 @@ func (nr namedRegexp) String() string {
 	return nr.name
 }
 
-// NewQueryRule creates a new Rule.
-func NewQueryRule(description, name string, act Action) (qr *Rule) {
+// NewActiveQueryRule creates a new Rule.
+func NewActiveQueryRule(description, name string, act Action) (qr *Rule) {
 	// We ignore act because there's only one action right now
-	return &Rule{Description: description, Name: name, act: act}
+	return &Rule{Description: description, Name: name, act: act, Status: Active}
 }
 
-// NewBufferedTableQueryRule creates a new buffer Rule.
-func NewBufferedTableQueryRule(cancelCtx context.Context, tableName string, description string) (qr *Rule) {
+// NewActiveBufferedTableQueryRule creates a new buffer Rule.
+func NewActiveBufferedTableQueryRule(cancelCtx context.Context, tableName string, description string) (qr *Rule) {
 	// We ignore act because there's only one action right now
-	return &Rule{cancelCtx: cancelCtx, Description: description, Name: bufferedTableRuleName, fullyQualifiedTableNames: []string{tableName}, act: QRBuffer}
+	return &Rule{
+		cancelCtx:                cancelCtx,
+		Description:              description,
+		Name:                     bufferedTableRuleName,
+		fullyQualifiedTableNames: []string{tableName},
+		act:                      QRBuffer,
+		Status:                   Active,
+	}
 }
 
 // Equal returns true if other is equal to this Rule, otherwise false.
@@ -1093,7 +1099,7 @@ func MapStrOperator(strop string) (op Operator, err error) {
 
 // BuildQueryRule builds a query rule from a ruleInfo.
 func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
-	qr = NewQueryRule("", "", QRFail)
+	qr = NewActiveQueryRule("", "", QRFail)
 	for k, v := range ruleInfo {
 		var sv string
 		var iv int

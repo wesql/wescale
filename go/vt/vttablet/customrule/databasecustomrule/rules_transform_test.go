@@ -19,7 +19,7 @@ import (
 )
 
 func expectedRule() *rules.Rule {
-	qr := rules.NewQueryRule("ruleDescription", "ruleName", rules.QRFail)
+	qr := rules.NewActiveQueryRule("ruleDescription", "ruleName", rules.QRFail)
 
 	qr.SetStatus(rules.Active)
 	qr.SetPriority(1000)

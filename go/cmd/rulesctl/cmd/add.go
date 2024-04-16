@@ -29,7 +29,7 @@ func runAdd(cmd *cobra.Command, args []string) {
 	rulePlans := mkPlanSlice()
 	ruleAction := mkAction()
 
-	rule := vtrules.NewQueryRule(addOptDescription, addOptName, ruleAction)
+	rule := vtrules.NewActiveQueryRule(addOptDescription, addOptName, ruleAction)
 	for _, pt := range rulePlans {
 		rule.AddPlanCond(pt)
 	}

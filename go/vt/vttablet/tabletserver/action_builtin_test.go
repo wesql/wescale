@@ -24,7 +24,7 @@ func TestContinueAction(t *testing.T) {
 }
 
 func TestFailAction(t *testing.T) {
-	qr := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFail)
+	qr := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFail)
 
 	action := &FailAction{
 		Rule:   qr,
@@ -39,7 +39,7 @@ func TestFailAction(t *testing.T) {
 }
 
 func TestFailRetryAction(t *testing.T) {
-	qr := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRFailRetry)
+	qr := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRFailRetry)
 
 	action := &FailRetryAction{
 		Rule:   qr,
@@ -58,7 +58,7 @@ func TestFailRetryAction(t *testing.T) {
 }
 
 func TestConcurrencyControlAction(t *testing.T) {
-	qr := rules.NewQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl)
+	qr := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl)
 
 	action := &ConcurrencyControlAction{
 		Rule:           qr,

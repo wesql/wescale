@@ -32,6 +32,11 @@ func TestGetReloadSqlWithCustomValues(t *testing.T) {
 	databaseCustomRuleDbName = "custom_db"
 	databaseCustomRuleTableName = "custom_table"
 
+	defer func() {
+		databaseCustomRuleDbName = "mysql"
+		databaseCustomRuleTableName = "wescale_plugin"
+	}()
+
 	expectedSQL := "SELECT * FROM custom_db.custom_table"
 	actualSQL := cr.getReloadSQL()
 
