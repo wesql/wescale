@@ -119,6 +119,9 @@ func bindVariable(yylex yyLexer, bvar string) {
   createDatabase  *CreateDatabase
   alterDatabase  *AlterDatabase
   createTable      *CreateTable
+  createFilter      *CreateFilter
+  filterPattern     *FilterPattern
+  filterAction     *FilterAction
   tableAndLockType *TableAndLockType
   alterTable       *AlterTable
   tableOption      *TableOption
@@ -321,6 +324,13 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> STATUS VARIABLES WARNINGS CASCADED DEFINER OPTION SQL UNDEFINED
 %token <str> SEQUENCE MERGE TEMPORARY TEMPTABLE INVOKER SECURITY FIRST AFTER LAST
 
+// Filter Tokens
+%token <str> FILTER WITHPATTERN
+%token <str> FILTER_INFO_DESCRIPTION FILTER_INFO_PRIORITY
+%token <str> FILTER_PATTERN_INFO_PLANS FILTER_PATTERN_INFO_TABLE_NAME FILTER_PATTERN_INFO_QUERY_REGEX FILTER_PATTERN_INFO_QUERY_TEMPLATE
+%token <str> FILTER_PATTERN_INFO_REQUEST_IP_REGEX FILTER_PATTERN_INFO_USER_REGEX FILTER_PATTERN_INFO_LEADING_COMMENT_REGEX FILTER_PATTERN_INFO_TRAILING_COMMENT_REGEX FILTER_PATTERN_INFO_BIND_VAR_CONDS
+%token <str> FILTER_ACTION_INFO_ACTION_ARGS
+
 // Migration tokens
 %token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME SCHEMA_MIGRATION
 // Throttler tokens
@@ -431,6 +441,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <statement> execute_statement deallocate_statement
 %type <statement> stream_statement vstream_statement insert_statement update_statement delete_statement set_statement set_transaction_statement
 %type <statement> create_statement alter_statement rename_statement drop_statement truncate_statement flush_statement do_statement
+%type <statement> create_filter_statement
 %type <with> with_clause_opt with_clause
 %type <cte> common_table_expr
 %type <ctes> with_list
@@ -618,6 +629,14 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <checkType> check_table_opt
 %type <checkOptions> check_table_opts
 %type <tableNames> check_table_list
+
+%type <createFilter> filter_info
+%type <filterPattern> filter_pattern_info
+%type <filterAction> filter_action_info
+%type <str> filter_info_field
+%type <str> filter_pattern_info_field
+%type <str> filter_action_info_field
+
 %start any_command
 
 %%
@@ -681,6 +700,7 @@ command:
 | prepare_statement
 | execute_statement
 | deallocate_statement
+| create_filter_statement
 | /*empty*/
 {
   setParseTree(yylex, nil)
@@ -1149,6 +1169,195 @@ set_session_or_global:
   {
     $$ = GlobalScope
   }
+
+create_filter_statement:
+  CREATE FILTER not_exists_opt '(' filter_info ')' WITHPATTERN '(' filter_pattern_info ')' EXECUTE '(' filter_action_info ')'
+  {
+   $$ = &CreateFilter{Name:$5.Name, Description:$5.Description, Priority:$5.Priority, Status:$5.Status, IfNotExists:$3,Pattern:$9,Action:$13}
+  }
+
+filter_info:
+  filter_info_field '=' STRING
+  {
+    if $1 == "name" {
+        $$ = &CreateFilter{Name:$3}
+    }
+    if $1 == "description" {
+        $$ = &CreateFilter{Description:$3}
+    }
+    if $1 == "priority" {
+        $$ = &CreateFilter{Priority:$3}
+    }
+    if $1 == "status" {
+        $$ = &CreateFilter{Status:$3}
+    }
+  }
+  | filter_info ',' filter_info_field '=' STRING
+  {
+    if $3 == "name" {
+        $$.Name = $5
+    }
+    if $3 == "description" {
+        $$.Description = $5
+    }
+    if $3 == "priority" {
+        $$.Priority = $5
+    }
+    if $3 == "status" {
+        $$.Status = $5
+    }
+  }
+
+filter_info_field:
+  NAME
+  {
+    $$ = "name"
+  }
+  | FILTER_INFO_DESCRIPTION
+  {
+    $$ = "description"
+  }
+  | FILTER_INFO_PRIORITY
+  {
+   $$ = "priority"
+  }
+  | STATUS
+  {
+   $$ = "status"
+  }
+
+filter_pattern_info:
+filter_pattern_info_field '=' STRING
+{
+  if $1 == "plans" {
+      $$ = &FilterPattern{Plans:$3}
+  }
+  if $1 == "fully_qualified_table_names" {
+      $$ = &FilterPattern{FullyQualifiedTableNames:$3}
+  }
+  if $1 == "query_regex" {
+      $$ = &FilterPattern{QueryRegex:$3}
+  }
+  if $1 == "query_template" {
+      $$ = &FilterPattern{QueryTemplate:$3}
+  }
+   if $1 == "request_ip_regex" {
+      $$ = &FilterPattern{RequestIpRegex:$3}
+   }
+   if $1 == "user_regex" {
+      $$ = &FilterPattern{UserRegex:$3}
+   }
+   if $1 == "leading_comment_regex" {
+      $$ = &FilterPattern{LeadingCommentRegex:$3}
+   }
+   if $1 == "trailing_comment_regex" {
+      $$ = &FilterPattern{TrailingCommentRegex:$3}
+   }
+   if $1 == "bind_var_conds" {
+      $$ = &FilterPattern{BindVarConds:$3}
+   }
+}
+| filter_pattern_info ',' filter_pattern_info_field '=' STRING
+{
+  if $3 == "plans" {
+      $$.Plans = $5
+  }
+  if $3 == "fully_qualified_table_names" {
+      $$.FullyQualifiedTableNames = $5
+  }
+  if $3 == "query_regex" {
+      $$.QueryRegex = $5
+  }
+  if $3 == "query_template" {
+      $$.QueryTemplate = $5
+  }
+  if $3 == "request_ip_regex" {
+      $$.RequestIpRegex = $5
+  }
+  if $3 == "user_regex" {
+      $$.UserRegex = $5
+  }
+  if $3 == "leading_comment_regex" {
+      $$.LeadingCommentRegex = $5
+  }
+  if $3 == "trailing_comment_regex" {
+      $$.TrailingCommentRegex = $5
+  }
+  if $3 == "bind_var_conds" {
+      $$.BindVarConds = $5
+  }
+}
+
+filter_pattern_info_field:
+FILTER_PATTERN_INFO_PLANS
+{
+  $$ = "plans"
+}
+| FILTER_PATTERN_INFO_TABLE_NAME
+{
+  $$ = "fully_qualified_table_names"
+}
+| FILTER_PATTERN_INFO_QUERY_REGEX
+{
+ $$ = "query_regex"
+}
+| FILTER_PATTERN_INFO_QUERY_TEMPLATE
+{
+ $$ = "query_template"
+}
+| FILTER_PATTERN_INFO_REQUEST_IP_REGEX
+{
+  $$ = "request_ip_regex"
+}
+| FILTER_PATTERN_INFO_USER_REGEX
+{
+  $$ = "user_regex"
+}
+| FILTER_PATTERN_INFO_LEADING_COMMENT_REGEX
+{
+ $$ = "leading_comment_regex"
+}
+| FILTER_PATTERN_INFO_TRAILING_COMMENT_REGEX
+{
+ $$ = "trailing_comment_regex"
+}
+| FILTER_PATTERN_INFO_BIND_VAR_CONDS
+{
+ $$ = "bind_var_conds"
+}
+
+
+filter_action_info:
+  filter_action_info_field '=' STRING
+  {
+    $$ = &FilterAction{}
+    if $1 == "action" {
+        $$.Action = $3
+    }
+    if $1 == "action_args" {
+        $$.ActionArgs = $3
+    }
+  }
+  | filter_action_info ',' filter_action_info_field '=' STRING
+  {
+    if $3 == "action" {
+        $$.Action = $5
+    }
+    if $3 == "action_args" {
+        $$.ActionArgs = $5
+    }
+  }
+
+filter_action_info_field:
+  ACTION
+  {
+    $$ = "action"
+  }
+  | FILTER_ACTION_INFO_ACTION_ARGS
+  {
+    $$ = "action_args"
+  }
+
 
 create_statement:
   create_table_prefix table_spec
@@ -8386,6 +8595,7 @@ non_reserved_keyword:
 | SECOND_MICROSECOND
 | YEAR_MONTH
 | WEIGHT_STRING %prec FUNCTION_CALL_NON_KEYWORD
+| FILTER_PATTERN_INFO_QUERY_TEMPLATE
 
 
 

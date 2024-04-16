@@ -124,6 +124,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfCountStar(n, parent)
 	case *CreateDatabase:
 		return c.copyOnRewriteRefOfCreateDatabase(n, parent)
+	case *CreateFilter:
+		return c.copyOnRewriteRefOfCreateFilter(n, parent)
 	case *CreateTable:
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:
@@ -166,6 +168,10 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfExtractValueExpr(n, parent)
 	case *ExtractedSubquery:
 		return c.copyOnRewriteRefOfExtractedSubquery(n, parent)
+	case *FilterAction:
+		return c.copyOnRewriteRefOfFilterAction(n, parent)
+	case *FilterPattern:
+		return c.copyOnRewriteRefOfFilterPattern(n, parent)
 	case *FirstOrLastValueExpr:
 		return c.copyOnRewriteRefOfFirstOrLastValueExpr(n, parent)
 	case *Flush:
@@ -1644,6 +1650,30 @@ func (c *cow) copyOnRewriteRefOfCreateDatabase(n *CreateDatabase, parent SQLNode
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfCreateFilter(n *CreateFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Pattern, changedPattern := c.copyOnRewriteRefOfFilterPattern(n.Pattern, n)
+		_Action, changedAction := c.copyOnRewriteRefOfFilterAction(n.Action, n)
+		if changedPattern || changedAction {
+			res := *n
+			res.Pattern, _ = _Pattern.(*FilterPattern)
+			res.Action, _ = _Action.(*FilterAction)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfCreateTable(n *CreateTable, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -2143,6 +2173,30 @@ func (c *cow) copyOnRewriteRefOfExtractedSubquery(n *ExtractedSubquery, parent S
 			}
 			changed = true
 		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfFilterAction(n *FilterAction, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfFilterPattern(n *FilterPattern, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -6763,6 +6817,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfCommit(n, parent)
 	case *CreateDatabase:
 		return c.copyOnRewriteRefOfCreateDatabase(n, parent)
+	case *CreateFilter:
+		return c.copyOnRewriteRefOfCreateFilter(n, parent)
 	case *CreateTable:
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:

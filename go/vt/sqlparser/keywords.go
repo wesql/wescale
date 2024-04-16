@@ -711,6 +711,20 @@ var keywords = []keyword{
 	{"year", YEAR},
 	{"year_month", YEAR_MONTH},
 	{"zerofill", ZEROFILL},
+	{"filter", FILTER},
+	{"with_pattern", WITHPATTERN},
+	{"description", FILTER_INFO_DESCRIPTION},
+	{"priority", FILTER_INFO_PRIORITY},
+	{"plans", FILTER_PATTERN_INFO_PLANS},
+	{"fully_qualified_table_names", FILTER_PATTERN_INFO_TABLE_NAME},
+	{"query_regex", FILTER_PATTERN_INFO_QUERY_REGEX},
+	{"query_template", FILTER_PATTERN_INFO_QUERY_TEMPLATE},
+	{"request_ip_regex", FILTER_PATTERN_INFO_REQUEST_IP_REGEX},
+	{"user_regex", FILTER_PATTERN_INFO_USER_REGEX},
+	{"leading_comment_regex", FILTER_PATTERN_INFO_LEADING_COMMENT_REGEX},
+	{"trailing_comment_regex", FILTER_PATTERN_INFO_TRAILING_COMMENT_REGEX},
+	{"bind_var_conds", FILTER_PATTERN_INFO_BIND_VAR_CONDS},
+	{"action_args", FILTER_ACTION_INFO_ACTION_ARGS},
 }
 
 // keywordStrings contains the reverse mapping of token to keyword strings
