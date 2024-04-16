@@ -64,11 +64,8 @@ func TestRule2Json(t *testing.T) {
 }
 
 func TestRule2SQL(t *testing.T) {
-	controller := NewMockController()
-	cr, _ := newDatabaseCustomRule(controller)
-
 	qr := expectedRule()
-	sql, err := cr.GenerateInsertStatement(qr)
+	sql, err := GenerateInsertStatement(qr)
 	assert.NoError(t, err)
 	fmt.Println(sql)
 	assert.Equal(t, expectedSQLString(), sql)

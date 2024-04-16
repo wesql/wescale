@@ -29,6 +29,8 @@ func (tsv *TabletServer) CommonQuery(_ context.Context, queryFunctionName string
 	switch queryFunctionName {
 	case "TabletsPlans":
 		return tsv.qe.TabletsPlans(tsv.alias)
+	case "HandleWescaleFilterRequest":
+		return tsv.qe.HandleWescaleFilterRequest(queryFunctionArgs["sql"].(string))
 	default:
 		return nil, fmt.Errorf("query function %s not found", queryFunctionName)
 	}
@@ -96,4 +98,19 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 		Fields: BuildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
+}
+
+func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
+
+	stmt, _, err := sqlparser.Parse2(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	switch s := stmt.(type) {
+	case *sqlparser.CreateFilter:
+		return qe.HandleCreateFilter(s)
+	}
+
+	return nil, fmt.Errorf("stmt type is not support: %v", stmt)
 }
