@@ -2,7 +2,6 @@ package tabletserver
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -70,7 +69,7 @@ func TestQueryExecutor_runActionListBeforeExecution(t *testing.T) {
 			qre := &QueryExecutor{ctx: ctx}
 			qre.matchedActionList = tt.actionList
 			_, err := qre.runActionListBeforeExecution()
-			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
+			tt.wantErr(t, err, "runActionListBeforeExecution()")
 		})
 	}
 }
@@ -166,7 +165,7 @@ func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
 			qre := &QueryExecutor{ctx: ctx}
 			qre.matchedActionList = tt.actionList
 			qr, err := qre.runActionListBeforeExecution()
-			tt.wantErr(t, err, fmt.Sprintf("runActionListBeforeExecution()"))
+			tt.wantErr(t, err, "runActionListBeforeExecution()")
 			assert.Equal(t, 2, len(qre.calledActionList))
 			assert.Equal(t,
 				&ContinueAction{Rule: rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRContinue), Action: rules.QRContinue},
