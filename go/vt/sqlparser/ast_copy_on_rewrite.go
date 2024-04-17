@@ -44,6 +44,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
+	case *AlterFilter:
+		return c.copyOnRewriteRefOfAlterFilter(n, parent)
 	case *AlterIndex:
 		return c.copyOnRewriteRefOfAlterIndex(n, parent)
 	case *AlterMigration:
@@ -751,6 +753,30 @@ func (c *cow) copyOnRewriteRefOfAlterDatabase(n *AlterDatabase, parent SQLNode) 
 		if changedDBName {
 			res := *n
 			res.DBName, _ = _DBName.(IdentifierCS)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfAlterFilter(n *AlterFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Pattern, changedPattern := c.copyOnRewriteRefOfFilterPattern(n.Pattern, n)
+		_Action, changedAction := c.copyOnRewriteRefOfFilterAction(n.Action, n)
+		if changedPattern || changedAction {
+			res := *n
+			res.Pattern, _ = _Pattern.(*FilterPattern)
+			res.Action, _ = _Action.(*FilterAction)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -6797,6 +6823,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
+	case *AlterFilter:
+		return c.copyOnRewriteRefOfAlterFilter(n, parent)
 	case *AlterMigration:
 		return c.copyOnRewriteRefOfAlterMigration(n, parent)
 	case *AlterTable:

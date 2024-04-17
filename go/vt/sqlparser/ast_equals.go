@@ -92,6 +92,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterDatabase(a, b)
+	case *AlterFilter:
+		b, ok := inB.(*AlterFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterFilter(a, b)
 	case *AlterIndex:
 		b, ok := inB.(*AlterIndex)
 		if !ok {
@@ -1673,6 +1679,24 @@ func (cmp *Comparator) RefOfAlterDatabase(a, b *AlterDatabase) bool {
 		a.FullyParsed == b.FullyParsed &&
 		cmp.IdentifierCS(a.DBName, b.DBName) &&
 		cmp.SliceOfDatabaseOption(a.AlterOptions, b.AlterOptions)
+}
+
+// RefOfAlterFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfAlterFilter(a, b *AlterFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.OriginName == b.OriginName &&
+		a.NewName == b.NewName &&
+		a.Description == b.Description &&
+		a.Priority == b.Priority &&
+		a.Status == b.Status &&
+		a.SetStatus == b.SetStatus &&
+		cmp.RefOfFilterPattern(a.Pattern, b.Pattern) &&
+		cmp.RefOfFilterAction(a.Action, b.Action)
 }
 
 // RefOfAlterIndex does deep equals between the two objects.
@@ -6238,6 +6262,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfAlterDatabase(a, b)
+	case *AlterFilter:
+		b, ok := inB.(*AlterFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterFilter(a, b)
 	case *AlterMigration:
 		b, ok := inB.(*AlterMigration)
 		if !ok {

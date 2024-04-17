@@ -24,7 +24,6 @@ package sqlparser
 
 import (
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2835,6 +2834,37 @@ func (node *CreateFilter) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("( ")
 	buf.WriteString("name=")
 	buf.WriteString(node.Name)
+	buf.WriteString(", ")
+	buf.WriteString("description=")
+	buf.WriteString(node.Description)
+	buf.WriteString(", ")
+	buf.WriteString("priority=")
+	buf.WriteString(node.Priority)
+	buf.WriteString(", ")
+	buf.WriteString("status=")
+	buf.WriteString(node.Status)
+	buf.WriteByte(' ')
+	buf.WriteString(") ")
+
+	if node.Pattern != nil {
+		node.Pattern.formatFast(buf)
+		buf.WriteByte(' ')
+	}
+
+	if node.Action != nil {
+		node.Action.formatFast(buf)
+		buf.WriteByte(' ')
+	}
+}
+
+// formatFast formats the node.
+func (node *AlterFilter) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("alter filter ")
+	buf.WriteString(node.OriginName)
+	buf.WriteByte(' ')
+	buf.WriteString("( ")
+	buf.WriteString("name=")
+	buf.WriteString(node.NewName)
 	buf.WriteString(", ")
 	buf.WriteString("description=")
 	buf.WriteString(node.Description)

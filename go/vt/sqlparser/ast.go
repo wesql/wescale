@@ -548,6 +548,17 @@ type (
 		Action      *FilterAction
 	}
 
+	AlterFilter struct {
+		OriginName  string
+		NewName     string
+		Description string
+		Priority    string
+		Status      string
+		SetStatus   bool
+		Pattern     *FilterPattern
+		Action      *FilterAction
+	}
+
 	// CreateTable represents a CREATE TABLE statement.
 	CreateTable struct {
 		Temp        bool
@@ -790,7 +801,6 @@ func (*Union) iSelectStatement()         {}
 func (*Load) iStatement()                {}
 func (*CreateDatabase) iStatement()      {}
 func (*AlterDatabase) iStatement()       {}
-func (*CreateFilter) iStatement()        {}
 func (*CreateTable) iStatement()         {}
 func (*CreateView) iStatement()          {}
 func (*AlterView) iStatement()           {}
@@ -818,6 +828,8 @@ func (*ExplainTab) iStatement()          {}
 func (*PrepareStmt) iStatement()         {}
 func (*ExecuteStmt) iStatement()         {}
 func (*DeallocateStmt) iStatement()      {}
+func (*CreateFilter) iStatement()        {}
+func (*AlterFilter) iStatement()         {}
 
 func (*CreateView) iDDLStatement()    {}
 func (*AlterView) iDDLStatement()     {}
