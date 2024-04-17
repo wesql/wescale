@@ -7,7 +7,7 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 )
 
-func buildCreateFilterPlan(query string, vschema plancontext.VSchema) (*planResult, error) {
+func buildWescaleFilterPlan(query string, vschema plancontext.VSchema) (*planResult, error) {
 	dest, ks, _, err := vschema.TargetDestination("")
 	if err != nil {
 		return nil, err

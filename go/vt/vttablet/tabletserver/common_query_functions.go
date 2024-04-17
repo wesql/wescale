@@ -110,6 +110,8 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result,
 	switch s := stmt.(type) {
 	case *sqlparser.CreateFilter:
 		return qe.HandleCreateFilter(s)
+	case *sqlparser.AlterFilter:
+		return qe.HandleAlterFilter(s)
 	}
 
 	return nil, fmt.Errorf("stmt type is not support: %v", stmt)
