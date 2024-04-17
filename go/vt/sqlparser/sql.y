@@ -1179,17 +1179,18 @@ create_filter_statement:
 filter_info:
   filter_info_field '=' STRING
   {
+    $$ = &CreateFilter{Name:"-1",Description:"-1",Priority:"-1",Status:"-1"}
     if $1 == "name" {
-        $$ = &CreateFilter{Name:$3}
+        $$.Name = $3
     }
     if $1 == "description" {
-        $$ = &CreateFilter{Description:$3}
+        $$.Description = $3
     }
     if $1 == "priority" {
-        $$ = &CreateFilter{Priority:$3}
+        $$.Priority = $3
     }
     if $1 == "status" {
-        $$ = &CreateFilter{Status:$3}
+        $$.Status = $3
     }
   }
   | filter_info ',' filter_info_field '=' STRING
@@ -1229,32 +1230,33 @@ filter_info_field:
 filter_pattern_info:
 filter_pattern_info_field '=' STRING
 {
+  $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIpRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
   if $1 == "plans" {
-      $$ = &FilterPattern{Plans:$3}
+      $$.Plans = $3
   }
   if $1 == "fully_qualified_table_names" {
-      $$ = &FilterPattern{FullyQualifiedTableNames:$3}
+      $$.FullyQualifiedTableNames = $3
   }
   if $1 == "query_regex" {
-      $$ = &FilterPattern{QueryRegex:$3}
+      $$.QueryRegex = $3
   }
   if $1 == "query_template" {
-      $$ = &FilterPattern{QueryTemplate:$3}
+      $$.QueryTemplate = $3
   }
    if $1 == "request_ip_regex" {
-      $$ = &FilterPattern{RequestIpRegex:$3}
+      $$.RequestIpRegex = $3
    }
    if $1 == "user_regex" {
-      $$ = &FilterPattern{UserRegex:$3}
+      $$.UserRegex = $3
    }
    if $1 == "leading_comment_regex" {
-      $$ = &FilterPattern{LeadingCommentRegex:$3}
+      $$.LeadingCommentRegex = $3
    }
    if $1 == "trailing_comment_regex" {
-      $$ = &FilterPattern{TrailingCommentRegex:$3}
+      $$.TrailingCommentRegex = $3
    }
    if $1 == "bind_var_conds" {
-      $$ = &FilterPattern{BindVarConds:$3}
+      $$.BindVarConds = $3
    }
 }
 | filter_pattern_info ',' filter_pattern_info_field '=' STRING
@@ -1330,7 +1332,7 @@ PLANS
 filter_action_info:
   filter_action_info_field '=' STRING
   {
-    $$ = &FilterAction{}
+    $$ = &FilterAction{Action:"-1",ActionArgs:"-1"}
     if $1 == "action" {
         $$.Action = $3
     }

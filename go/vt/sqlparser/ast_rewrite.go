@@ -44,6 +44,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
+	case *AlterFilter:
+		return a.rewriteRefOfAlterFilter(parent, node, replacer)
 	case *AlterIndex:
 		return a.rewriteRefOfAlterIndex(parent, node, replacer)
 	case *AlterMigration:
@@ -824,6 +826,38 @@ func (a *application) rewriteRefOfAlterDatabase(parent SQLNode, node *AlterDatab
 	}
 	if !a.rewriteIdentifierCS(node, node.DBName, func(newNode, parent SQLNode) {
 		parent.(*AlterDatabase).DBName = newNode.(IdentifierCS)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfAlterFilter(parent SQLNode, node *AlterFilter, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
+		parent.(*AlterFilter).Pattern = newNode.(*FilterPattern)
+	}) {
+		return false
+	}
+	if !a.rewriteRefOfFilterAction(node, node.Action, func(newNode, parent SQLNode) {
+		parent.(*AlterFilter).Action = newNode.(*FilterAction)
 	}) {
 		return false
 	}
@@ -9053,6 +9087,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
+	case *AlterFilter:
+		return a.rewriteRefOfAlterFilter(parent, node, replacer)
 	case *AlterMigration:
 		return a.rewriteRefOfAlterMigration(parent, node, replacer)
 	case *AlterTable:

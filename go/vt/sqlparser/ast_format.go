@@ -2171,6 +2171,25 @@ func (node *CreateFilter) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
+func (node *AlterFilter) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "alter filter %s ", node.OriginName)
+	buf.literal("( ")
+	buf.astPrintf(node, "name=%s, ", node.NewName)
+	buf.astPrintf(node, "description=%s, ", node.Description)
+	buf.astPrintf(node, "priority=%s, ", node.Priority)
+	buf.astPrintf(node, "status=%s ", node.Status)
+	buf.literal(") ")
+
+	if node.Pattern != nil {
+		buf.astPrintf(node, "%v ", node.Pattern)
+	}
+
+	if node.Action != nil {
+		buf.astPrintf(node, "%v ", node.Action)
+	}
+}
+
+// Format formats the node.
 func (node *CreateView) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "create %v", node.Comments)
 	if node.IsReplace {

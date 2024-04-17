@@ -45,6 +45,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
+	case *AlterFilter:
+		return CloneRefOfAlterFilter(in)
 	case *AlterIndex:
 		return CloneRefOfAlterIndex(in)
 	case *AlterMigration:
@@ -638,6 +640,17 @@ func CloneRefOfAlterDatabase(n *AlterDatabase) *AlterDatabase {
 	out := *n
 	out.DBName = CloneIdentifierCS(n.DBName)
 	out.AlterOptions = CloneSliceOfDatabaseOption(n.AlterOptions)
+	return &out
+}
+
+// CloneRefOfAlterFilter creates a deep clone of the input.
+func CloneRefOfAlterFilter(n *AlterFilter) *AlterFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Pattern = CloneRefOfFilterPattern(n.Pattern)
+	out.Action = CloneRefOfFilterAction(n.Action)
 	return &out
 }
 
@@ -3840,6 +3853,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
+	case *AlterFilter:
+		return CloneRefOfAlterFilter(in)
 	case *AlterMigration:
 		return CloneRefOfAlterMigration(in)
 	case *AlterTable:

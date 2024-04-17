@@ -61,41 +61,17 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateFilter) (*rules.Rule, err
 	}
 	ruleInfo["Priority"] = priority
 
-	//userInputPlans := stmt.Pattern.Plans
-	//userInputPlans = fmt.Sprintf("[%s]", userInputPlans)
-	//plans, err := unmarshalArray(userInputPlans)
-	//if err != nil {
-	//	return nil, fmt.Errorf("create filter failed: plans %v can't be transformed to array", stmt.Pattern.Plans)
-	//}
-	//reg, _ := regexp.Compile("\\s+")
-	//userInputPlans = reg.ReplaceAllString(userInputPlans, "")
-	//plans := strings.Split(userInputPlans, ",")
-	//for _, plan := range plans {
-	//	_, ok := planbuilder.PlanByNameIC(plan)
-	//	if !ok {
-	//		return nil, fmt.Errorf("create filter failed: plan %v is not supportted", plan)
-	//	}
-	//}
 	plans, err := userInputStrArrayToJSONArray(stmt.Pattern.Plans)
 	if err != nil {
 		return nil, fmt.Errorf("create filter failed: plans %v can't be transformed to array", stmt.Pattern.Plans)
 	}
 	ruleInfo["Plans"] = plans
 
-	//userInputFullyQualifiedTableNames := stmt.Pattern.FullyQualifiedTableNames
-	//userInputFullyQualifiedTableNames = fmt.Sprintf("[%s]", userInputFullyQualifiedTableNames)
-	//fullyQualifiedTableNames, err := unmarshalArray(userInputFullyQualifiedTableNames)
-	//if err != nil {
-	//	return nil, fmt.Errorf("create filter failed: fully_qualified_table_names %v can't be transformed to array", stmt.Pattern.FullyQualifiedTableNames)
-	//}
 	fullyQualifiedTableNames, err := userInputStrArrayToJSONArray(stmt.Pattern.FullyQualifiedTableNames)
 	if err != nil {
 		return nil, fmt.Errorf("create filter failed: fully_qualified_table_names %v can't be transformed to array", stmt.Pattern.FullyQualifiedTableNames)
 	}
 	ruleInfo["FullyQualifiedTableNames"] = fullyQualifiedTableNames
-
-	//userInputFullyQualifiedTableNames = reg.ReplaceAllString(userInputFullyQualifiedTableNames, "")
-	//ruleInfo["FullyQualifiedTableNames"] = strings.Split(userInputFullyQualifiedTableNames, ",")
 
 	ruleInfo["Status"] = strings.ToUpper(stmt.Status)
 

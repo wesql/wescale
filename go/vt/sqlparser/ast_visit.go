@@ -44,6 +44,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
+	case *AlterFilter:
+		return VisitRefOfAlterFilter(in, f)
 	case *AlterIndex:
 		return VisitRefOfAlterIndex(in, f)
 	case *AlterMigration:
@@ -667,6 +669,21 @@ func VisitRefOfAlterDatabase(in *AlterDatabase, f Visit) error {
 		return err
 	}
 	if err := VisitIdentifierCS(in.DBName, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfAlterFilter(in *AlterFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfFilterPattern(in.Pattern, f); err != nil {
+		return err
+	}
+	if err := VisitRefOfFilterAction(in.Action, f); err != nil {
 		return err
 	}
 	return nil
@@ -4712,6 +4729,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
+	case *AlterFilter:
+		return VisitRefOfAlterFilter(in, f)
 	case *AlterMigration:
 		return VisitRefOfAlterMigration(in, f)
 	case *AlterTable:
