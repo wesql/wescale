@@ -1693,8 +1693,8 @@ func (cmp *Comparator) RefOfAlterFilter(a, b *AlterFilter) bool {
 		a.NewName == b.NewName &&
 		a.Description == b.Description &&
 		a.Priority == b.Priority &&
+		a.SetPriority == b.SetPriority &&
 		a.Status == b.Status &&
-		a.SetStatus == b.SetStatus &&
 		cmp.RefOfFilterPattern(a.Pattern, b.Pattern) &&
 		cmp.RefOfFilterAction(a.Action, b.Action)
 }

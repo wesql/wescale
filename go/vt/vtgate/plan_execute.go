@@ -490,6 +490,9 @@ func IsWescaleFilterRequest(stmt sqlparser.Statement) bool {
 	if _, ok := stmt.(*sqlparser.CreateFilter); ok {
 		return true
 	}
+	if _, ok := stmt.(*sqlparser.AlterFilter); ok {
+		return true
+	}
 	return false
 }
 

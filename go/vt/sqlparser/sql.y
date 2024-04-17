@@ -120,6 +120,7 @@ func bindVariable(yylex yyLexer, bvar string) {
   alterDatabase  *AlterDatabase
   createTable      *CreateTable
   createFilter      *CreateFilter
+  alterFilter       *AlterFilter
   filterPattern     *FilterPattern
   filterAction     *FilterAction
   tableAndLockType *TableAndLockType
@@ -442,6 +443,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <statement> stream_statement vstream_statement insert_statement update_statement delete_statement set_statement set_transaction_statement
 %type <statement> create_statement alter_statement rename_statement drop_statement truncate_statement flush_statement do_statement
 %type <statement> create_filter_statement
+%type <statement> alter_filter_statement
 %type <with> with_clause_opt with_clause
 %type <cte> common_table_expr
 %type <ctes> with_list
@@ -631,8 +633,12 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <tableNames> check_table_list
 
 %type <createFilter> filter_info
+%type <alterFilter> alter_filter_info
+%type <alterFilter> alter_filter_info_opt
 %type <filterPattern> filter_pattern_info
+%type <filterPattern> filter_pattern_info_opt
 %type <filterAction> filter_action_info
+%type <filterAction> filter_action_info_opt
 %type <str> filter_info_field
 %type <str> filter_pattern_info_field
 %type <str> filter_action_info_field
@@ -701,6 +707,7 @@ command:
 | execute_statement
 | deallocate_statement
 | create_filter_statement
+| alter_filter_statement
 | /*empty*/
 {
   setParseTree(yylex, nil)
@@ -1176,6 +1183,43 @@ create_filter_statement:
    $$ = &CreateFilter{Name:$5.Name, Description:$5.Description, Priority:$5.Priority, Status:$5.Status, IfNotExists:$3,Pattern:$9,Action:$13}
   }
 
+alter_filter_statement:
+  ALTER FILTER ID alter_filter_info_opt filter_pattern_info_opt filter_action_info_opt
+  {
+     $$ = &AlterFilter{OriginName:$3, NewName:$4.NewName, Description:$4.Description, Priority:$4.Priority, SetPriority:$4.SetPriority, Status:$4.Status, Pattern:$5,Action:$6}
+  }
+
+  alter_filter_info_opt:
+  /*empty*/
+  {
+    $$ = &AlterFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+  }
+  | '(' alter_filter_info ')'
+  {
+    $$ = $2
+  }
+
+  filter_pattern_info_opt:
+  /*empty*/
+  {
+     $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIpRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+  }
+  | WITHPATTERN '(' filter_pattern_info ')'
+  {
+    $$ = $3
+  }
+
+  filter_action_info_opt:
+  /*empty*/
+  {
+     $$ = &FilterAction{Action:"-1",ActionArgs:"-1"}
+  }
+  | EXECUTE '(' filter_action_info ')'
+  {
+    $$ = $3
+  }
+
+
 filter_info:
   filter_info_field '=' STRING
   {
@@ -1209,6 +1253,42 @@ filter_info:
     }
   }
 
+
+alter_filter_info:
+  filter_info_field '=' STRING
+  {
+    $$ = &AlterFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+    if $1 == "name" {
+      $$.NewName = $3
+    }
+    if $1 == "description" {
+        $$.Description = $3
+    }
+    if $1 == "priority" {
+        $$.Priority = $3
+        $$.SetPriority = true
+    }
+    if $1 == "status" {
+        $$.Status = $3
+    }
+  }
+  | alter_filter_info ',' filter_info_field '=' STRING
+  {
+    if $3 == "name" {
+        $$.NewName = $5
+    }
+    if $3 == "description" {
+        $$.Description = $5
+    }
+    if $3 == "priority" {
+        $$.Priority = $5
+        $$.SetPriority = true
+    }
+    if $3 == "status" {
+        $$.Status = $5
+    }
+  }
+
 filter_info_field:
   NAME
   {
@@ -1226,6 +1306,9 @@ filter_info_field:
   {
    $$ = "status"
   }
+
+
+
 
 filter_pattern_info:
 filter_pattern_info_field '=' STRING

@@ -553,8 +553,8 @@ type (
 		NewName     string
 		Description string
 		Priority    string
+		SetPriority bool
 		Status      string
-		SetStatus   bool
 		Pattern     *FilterPattern
 		Action      *FilterAction
 	}
