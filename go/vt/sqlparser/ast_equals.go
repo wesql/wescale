@@ -422,6 +422,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfDropView(a, b)
+	case *DropWescaleFilter:
+		b, ok := inB.(*DropWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfDropWescaleFilter(a, b)
 	case *ExecuteStmt:
 		b, ok := inB.(*ExecuteStmt)
 		if !ok {
@@ -1244,6 +1250,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfShowThrottlerStatus(a, b)
+	case *ShowWescaleFilter:
+		b, ok := inB.(*ShowWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowWescaleFilter(a, b)
 	case *StarExpr:
 		b, ok := inB.(*StarExpr)
 		if !ok {
@@ -2385,6 +2397,17 @@ func (cmp *Comparator) RefOfDropView(a, b *DropView) bool {
 		cmp.RefOfParsedComments(a.Comments, b.Comments)
 }
 
+// RefOfDropWescaleFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfDropWescaleFilter(a, b *DropWescaleFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Name == b.Name
+}
+
 // RefOfExecuteStmt does deep equals between the two objects.
 func (cmp *Comparator) RefOfExecuteStmt(a, b *ExecuteStmt) bool {
 	if a == b {
@@ -2513,7 +2536,7 @@ func (cmp *Comparator) RefOfFilterPattern(a, b *FilterPattern) bool {
 		a.FullyQualifiedTableNames == b.FullyQualifiedTableNames &&
 		a.QueryRegex == b.QueryRegex &&
 		a.QueryTemplate == b.QueryTemplate &&
-		a.RequestIpRegex == b.RequestIpRegex &&
+		a.RequestIPRegex == b.RequestIPRegex &&
 		a.UserRegex == b.UserRegex &&
 		a.LeadingCommentRegex == b.LeadingCommentRegex &&
 		a.TrailingCommentRegex == b.TrailingCommentRegex &&
@@ -4072,6 +4095,18 @@ func (cmp *Comparator) RefOfShowThrottlerStatus(a, b *ShowThrottlerStatus) bool 
 		return false
 	}
 	return cmp.Comments(a.Comments, b.Comments)
+}
+
+// RefOfShowWescaleFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfShowWescaleFilter(a, b *ShowWescaleFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.ShowAll == b.ShowAll &&
+		a.Name == b.Name
 }
 
 // RefOfStarExpr does deep equals between the two objects.
@@ -6376,6 +6411,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfDropView(a, b)
+	case *DropWescaleFilter:
+		b, ok := inB.(*DropWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfDropWescaleFilter(a, b)
 	case *ExecuteStmt:
 		b, ok := inB.(*ExecuteStmt)
 		if !ok {
@@ -6520,6 +6561,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfShowThrottlerStatus(a, b)
+	case *ShowWescaleFilter:
+		b, ok := inB.(*ShowWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowWescaleFilter(a, b)
 	case *Stream:
 		b, ok := inB.(*Stream)
 		if !ok {

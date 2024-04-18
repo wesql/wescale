@@ -154,6 +154,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfDropTable(n, parent)
 	case *DropView:
 		return c.copyOnRewriteRefOfDropView(n, parent)
+	case *DropWescaleFilter:
+		return c.copyOnRewriteRefOfDropWescaleFilter(n, parent)
 	case *ExecuteStmt:
 		return c.copyOnRewriteRefOfExecuteStmt(n, parent)
 	case *ExistsExpr:
@@ -428,6 +430,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfShowThrottledApps(n, parent)
 	case *ShowThrottlerStatus:
 		return c.copyOnRewriteRefOfShowThrottlerStatus(n, parent)
+	case *ShowWescaleFilter:
+		return c.copyOnRewriteRefOfShowWescaleFilter(n, parent)
 	case *StarExpr:
 		return c.copyOnRewriteRefOfStarExpr(n, parent)
 	case *Std:
@@ -2000,6 +2004,18 @@ func (c *cow) copyOnRewriteRefOfDropView(n *DropView, parent SQLNode) (out SQLNo
 			}
 			changed = true
 		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfDropWescaleFilter(n *DropWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -5038,6 +5054,18 @@ func (c *cow) copyOnRewriteRefOfShowThrottlerStatus(n *ShowThrottlerStatus, pare
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfShowWescaleFilter(n *ShowWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfStarExpr(n *StarExpr, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6861,6 +6889,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfDropTable(n, parent)
 	case *DropView:
 		return c.copyOnRewriteRefOfDropView(n, parent)
+	case *DropWescaleFilter:
+		return c.copyOnRewriteRefOfDropWescaleFilter(n, parent)
 	case *ExecuteStmt:
 		return c.copyOnRewriteRefOfExecuteStmt(n, parent)
 	case *ExplainStmt:
@@ -6909,6 +6939,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfShowThrottledApps(n, parent)
 	case *ShowThrottlerStatus:
 		return c.copyOnRewriteRefOfShowThrottlerStatus(n, parent)
+	case *ShowWescaleFilter:
+		return c.copyOnRewriteRefOfShowWescaleFilter(n, parent)
 	case *Stream:
 		return c.copyOnRewriteRefOfStream(n, parent)
 	case *TruncateTable:

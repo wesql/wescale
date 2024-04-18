@@ -24,6 +24,7 @@ package sqlparser
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2794,7 +2795,7 @@ func (node *FilterPattern) formatFast(buf *TrackedBuffer) {
 	buf.WriteString(node.QueryTemplate)
 	buf.WriteString(", ")
 	buf.WriteString("request_ip_regex=")
-	buf.WriteString(node.RequestIpRegex)
+	buf.WriteString(node.RequestIPRegex)
 	buf.WriteString(", ")
 	buf.WriteString("user_regex=")
 	buf.WriteString(node.UserRegex)
@@ -2885,6 +2886,22 @@ func (node *AlterFilter) formatFast(buf *TrackedBuffer) {
 	if node.Action != nil {
 		node.Action.formatFast(buf)
 		buf.WriteByte(' ')
+	}
+}
+
+// formatFast formats the node.
+func (node *DropWescaleFilter) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("drop filter ")
+	buf.WriteString(node.Name)
+}
+
+// formatFast formats the node.
+func (node *ShowWescaleFilter) formatFast(buf *TrackedBuffer) {
+	if node.ShowAll {
+		buf.WriteString("show filters")
+	} else {
+		buf.WriteString("show filter ")
+		buf.WriteString(node.Name)
 	}
 }
 

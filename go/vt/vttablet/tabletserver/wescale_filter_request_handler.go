@@ -86,7 +86,7 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateFilter) (*rules.Rule, err
 	ruleInfo["Description"] = stmt.Description
 	ruleInfo["Query"] = stmt.Pattern.QueryRegex
 	ruleInfo["QueryTemplate"] = stmt.Pattern.QueryTemplate
-	ruleInfo["RequestIP"] = stmt.Pattern.RequestIpRegex
+	ruleInfo["RequestIP"] = stmt.Pattern.RequestIPRegex
 	ruleInfo["User"] = stmt.Pattern.UserRegex
 	ruleInfo["LeadingComment"] = stmt.Pattern.LeadingCommentRegex
 	ruleInfo["TrailingComment"] = stmt.Pattern.TrailingCommentRegex
@@ -268,8 +268,8 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterFilter) error {
 	if stmt.Pattern.QueryTemplate != "-1" {
 		ruleInfo["QueryTemplate"] = stmt.Pattern.QueryTemplate
 	}
-	if stmt.Pattern.RequestIpRegex != "-1" {
-		ruleInfo["RequestIP"] = stmt.Pattern.RequestIpRegex
+	if stmt.Pattern.RequestIPRegex != "-1" {
+		ruleInfo["RequestIP"] = stmt.Pattern.RequestIPRegex
 	}
 	if stmt.Pattern.UserRegex != "-1" {
 		ruleInfo["User"] = stmt.Pattern.UserRegex

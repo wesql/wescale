@@ -525,7 +525,7 @@ type (
 		FullyQualifiedTableNames string
 		QueryRegex               string
 		QueryTemplate            string
-		RequestIpRegex           string
+		RequestIPRegex           string
 		UserRegex                string
 		LeadingCommentRegex      string
 		TrailingCommentRegex     string
@@ -557,6 +557,15 @@ type (
 		Status      string
 		Pattern     *FilterPattern
 		Action      *FilterAction
+	}
+
+	DropWescaleFilter struct {
+		Name string
+	}
+
+	ShowWescaleFilter struct {
+		ShowAll bool
+		Name    string
 	}
 
 	// CreateTable represents a CREATE TABLE statement.
@@ -830,6 +839,8 @@ func (*ExecuteStmt) iStatement()         {}
 func (*DeallocateStmt) iStatement()      {}
 func (*CreateFilter) iStatement()        {}
 func (*AlterFilter) iStatement()         {}
+func (*DropWescaleFilter) iStatement()   {}
+func (*ShowWescaleFilter) iStatement()   {}
 
 func (*CreateView) iDDLStatement()    {}
 func (*AlterView) iDDLStatement()     {}
