@@ -158,6 +158,15 @@ func getSelectByNameSQL(name string) (string, error) {
 	return sqlparser.ParseAndBind(query, sqltypes.StringBindVariable(name))
 }
 
+func getSelectAllSQL() string {
+	return fmt.Sprintf("SELECT * FROM %s.%s", databaseCustomRuleDbName, databaseCustomRuleTableName)
+}
+
+func getDropByNameSQL(name string) (string, error) {
+	query := fmt.Sprintf("DELETE FROM %s.%s where `name` = %%a", databaseCustomRuleDbName, databaseCustomRuleTableName)
+	return sqlparser.ParseAndBind(query, sqltypes.StringBindVariable(name))
+}
+
 // todo newborn22, relocate this function to a better package.
 func queryResultToRuleInfo(row sqltypes.RowNamedValues) (map[string]any, error) {
 	ruleInfo := make(map[string]any)
@@ -350,5 +359,27 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 		return nil, err
 	}
 
+	return qe.executeQuery(context.Background(), query)
+}
+
+func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sqltypes.Result, error) {
+	query, err := getDropByNameSQL(stmt.Name)
+	if err != nil {
+		return nil, err
+	}
+	return qe.executeQuery(context.Background(), query)
+}
+
+func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {
+	var query string
+	var err error
+	if stmt.ShowAll {
+		query = getSelectAllSQL()
+	} else {
+		query, err = getSelectByNameSQL(stmt.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return qe.executeQuery(context.Background(), query)
 }
