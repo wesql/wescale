@@ -1184,16 +1184,33 @@ set_session_or_global:
   }
 
 create_filter_statement:
-  CREATE FILTER not_exists_opt '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
+  CREATE comment_opt FILTER not_exists_opt '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
   {
-   $$ = &CreateWescaleFilter{Name:$5.Name, Description:$5.Description, Priority:$5.Priority, Status:$5.Status, IfNotExists:$3,Pattern:$9,Action:$13}
+   $$ = &CreateWescaleFilter{Name:$6.Name, Description:$6.Description, Priority:$6.Priority, Status:$6.Status, IfNotExists:$4,Pattern:$10,Action:$14}
   }
 
 alter_filter_statement:
-  ALTER FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
+  ALTER comment_opt FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
   {
-     $$ = &AlterWescaleFilter{OriginName:$3, NewName:$4.NewName, Description:$4.Description, Priority:$4.Priority, SetPriority:$4.SetPriority, Status:$4.Status, Pattern:$5,Action:$6}
+     $$ = &AlterWescaleFilter{OriginName:$4, NewName:$5.NewName, Description:$5.Description, Priority:$5.Priority, SetPriority:$5.SetPriority, Status:$5.Status, Pattern:$6,Action:$7}
   }
+
+drop_filter_statement:
+  DROP comment_opt FILTER ID
+  {
+      $$ = &DropWescaleFilter{Name:$4}
+  }
+
+  show_filter_statement:
+    SHOW comment_opt FILTER ID
+    {
+      $$ = &ShowWescaleFilter{Name:$4}
+    }
+    | SHOW comment_opt FILTERS
+    {
+      $$ = &ShowWescaleFilter{ShowAll:true}
+    }
+
 
   alter_wescale_filter_info_opt:
   /*empty*/
@@ -1225,21 +1242,7 @@ alter_filter_statement:
     $$ = $3
   }
 
-drop_filter_statement:
-  DROP FILTER ID
-  {
-    $$ = &DropWescaleFilter{Name:$3}
-  }
 
-show_filter_statement:
-  SHOW FILTER ID
-  {
-    $$ = &ShowWescaleFilter{Name:$3}
-  }
-  | SHOW FILTERS
-  {
-    $$ = &ShowWescaleFilter{ShowAll:true}
-  }
 
 wescale_filter_info:
   wescale_filter_info_field '=' STRING
@@ -1315,7 +1318,7 @@ wescale_filter_info_field:
   {
     $$ = "name"
   }
-  | DESCRIPTION
+  | DESC
   {
     $$ = "description"
   }

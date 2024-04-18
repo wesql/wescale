@@ -714,7 +714,6 @@ var keywords = []keyword{
 	{"filter", FILTER},
 	{"filters", FILTERS},
 	{"with_pattern", WITHPATTERN},
-	{"description", DESCRIPTION},
 	{"priority", PRIORITY},
 	{"plans", PLANS},
 	{"fully_qualified_table_names", TABLE_NAME},
