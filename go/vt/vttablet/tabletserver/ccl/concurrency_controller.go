@@ -45,7 +45,7 @@ import (
 
 var (
 	concurrencyControllerDryRun             = false
-	concurrencyControllerMaxGlobalQueueSize = 10
+	concurrencyControllerMaxGlobalQueueSize = 10000000
 )
 
 func registerCclFlags(fs *pflag.FlagSet) {

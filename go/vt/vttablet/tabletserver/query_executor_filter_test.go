@@ -141,11 +141,7 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 	}
 }
 
-//todo filter: add testcase
-// 1. test BeforeExecution returns a result and error, the coming actions should be skipped
-// 2. test AfterExecution returns a result and error, the result and error should be passed to the next action
-// 3. test that actions skipped by BeforeExecution should not be executed by AfterExecution
-
+// TestQueryExecutor_actions_can_be_skipped tests that actions skipped by BeforeExecution should not be executed by AfterExecution
 func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
 
 	tests := []struct {

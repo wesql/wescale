@@ -27,11 +27,10 @@ import (
 )
 
 var (
-	databaseCustomRuleEnable    = true
-	databaseCustomRuleDbName    = sidecardb.SidecarDBName
-	databaseCustomRuleTableName = "wescale_plugin"
-	//todo filter: change the reload interval to 60s
-	databaseCustomRuleReloadInterval = 1 * time.Second
+	databaseCustomRuleEnable         = true
+	databaseCustomRuleDbName         = sidecardb.SidecarDBName
+	databaseCustomRuleTableName      = "wescale_plugin"
+	databaseCustomRuleReloadInterval = 60 * time.Second
 )
 
 func registerFlags(fs *pflag.FlagSet) {
