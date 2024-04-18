@@ -2124,7 +2124,7 @@ func (node *CreateTable) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
-func (node *FilterPattern) Format(buf *TrackedBuffer) {
+func (node *WescaleFilterPattern) Format(buf *TrackedBuffer) {
 	buf.literal("with_pattern ( ")
 	buf.astPrintf(node, "plans=%s, ", node.Plans)
 	buf.astPrintf(node, "fully_qualified_table_names=%s, ", node.FullyQualifiedTableNames)
@@ -2139,7 +2139,7 @@ func (node *FilterPattern) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
-func (node *FilterAction) Format(buf *TrackedBuffer) {
+func (node *WescaleFilterAction) Format(buf *TrackedBuffer) {
 	buf.literal("execute ( ")
 	buf.astPrintf(node, "action=%s, ", node.Action)
 	buf.astPrintf(node, "action_args=%s ", node.ActionArgs)
@@ -2147,7 +2147,7 @@ func (node *FilterAction) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
-func (node *CreateFilter) Format(buf *TrackedBuffer) {
+func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.literal("create filter ")
 
 	if node.IfNotExists {
@@ -2171,7 +2171,7 @@ func (node *CreateFilter) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
-func (node *AlterFilter) Format(buf *TrackedBuffer) {
+func (node *AlterWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "alter filter %s ", node.OriginName)
 	buf.literal("( ")
 	buf.astPrintf(node, "name=%s, ", node.NewName)

@@ -487,10 +487,10 @@ func HandleDMLJobRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql str
 }
 
 func IsWescaleFilterRequest(stmt sqlparser.Statement) bool {
-	if _, ok := stmt.(*sqlparser.CreateFilter); ok {
+	if _, ok := stmt.(*sqlparser.CreateWescaleFilter); ok {
 		return true
 	}
-	if _, ok := stmt.(*sqlparser.AlterFilter); ok {
+	if _, ok := stmt.(*sqlparser.AlterWescaleFilter); ok {
 		return true
 	}
 	return false

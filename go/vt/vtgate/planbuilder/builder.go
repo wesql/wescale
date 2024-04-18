@@ -205,7 +205,7 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		// There is only a comment in the input.
 		// This is essentially a No-op
 		return newPlanResult(engine.NewRowsPrimitive(nil, nil)), nil
-	case *sqlparser.CreateFilter, *sqlparser.AlterFilter:
+	case *sqlparser.CreateWescaleFilter, *sqlparser.AlterWescaleFilter:
 		return buildWescaleFilterPlan(query, vschema)
 	}
 

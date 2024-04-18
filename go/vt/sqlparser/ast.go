@@ -520,7 +520,7 @@ type (
 		Comments   *ParsedComments
 	}
 
-	FilterPattern struct {
+	WescaleFilterPattern struct {
 		Plans                    string
 		FullyQualifiedTableNames string
 		QueryRegex               string
@@ -532,31 +532,31 @@ type (
 		BindVarConds             string
 	}
 
-	FilterAction struct {
+	WescaleFilterAction struct {
 		Action     string
 		ActionArgs string
 	}
 
-	// CreateFilter represents a CREATE Filter statement.
-	CreateFilter struct {
+	// CreateWescaleFilter represents a CREATE Filter statement.
+	CreateWescaleFilter struct {
 		Name        string
 		Description string
 		Priority    string
 		Status      string
 		IfNotExists bool
-		Pattern     *FilterPattern
-		Action      *FilterAction
+		Pattern     *WescaleFilterPattern
+		Action      *WescaleFilterAction
 	}
 
-	AlterFilter struct {
+	AlterWescaleFilter struct {
 		OriginName  string
 		NewName     string
 		Description string
 		Priority    string
 		SetPriority bool
 		Status      string
-		Pattern     *FilterPattern
-		Action      *FilterAction
+		Pattern     *WescaleFilterPattern
+		Action      *WescaleFilterAction
 	}
 
 	DropWescaleFilter struct {
@@ -837,8 +837,8 @@ func (*ExplainTab) iStatement()          {}
 func (*PrepareStmt) iStatement()         {}
 func (*ExecuteStmt) iStatement()         {}
 func (*DeallocateStmt) iStatement()      {}
-func (*CreateFilter) iStatement()        {}
-func (*AlterFilter) iStatement()         {}
+func (*CreateWescaleFilter) iStatement() {}
+func (*AlterWescaleFilter) iStatement()  {}
 func (*DropWescaleFilter) iStatement()   {}
 func (*ShowWescaleFilter) iStatement()   {}
 

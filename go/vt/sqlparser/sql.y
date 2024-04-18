@@ -119,12 +119,12 @@ func bindVariable(yylex yyLexer, bvar string) {
   createDatabase  *CreateDatabase
   alterDatabase  *AlterDatabase
   createTable      *CreateTable
-  createFilter      *CreateFilter
-  alterFilter       *AlterFilter
+  createWescaleFilter      *CreateWescaleFilter
+  alterWescaleFilter       *AlterWescaleFilter
   dropWescaleFilter        *DropWescaleFilter
   showWescaleFilter        *ShowWescaleFilter
-  filterPattern     *FilterPattern
-  filterAction     *FilterAction
+  wescaleFilterPattern     *WescaleFilterPattern
+  wescaleFilterAction     *WescaleFilterAction
   tableAndLockType *TableAndLockType
   alterTable       *AlterTable
   tableOption      *TableOption
@@ -636,16 +636,16 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <checkOptions> check_table_opts
 %type <tableNames> check_table_list
 
-%type <createFilter> filter_info
-%type <alterFilter> alter_filter_info
-%type <alterFilter> alter_filter_info_opt
-%type <filterPattern> filter_pattern_info
-%type <filterPattern> filter_pattern_info_opt
-%type <filterAction> filter_action_info
-%type <filterAction> filter_action_info_opt
-%type <str> filter_info_field
-%type <str> filter_pattern_info_field
-%type <str> filter_action_info_field
+%type <createWescaleFilter> wescale_filter_info
+%type <alterWescaleFilter> alter_wescale_filter_info
+%type <alterWescaleFilter> alter_wescale_filter_info_opt
+%type <wescaleFilterPattern> wescale_filter_pattern_info
+%type <wescaleFilterPattern> wescale_filter_pattern_info_opt
+%type <wescaleFilterAction> wescale_filter_action_info
+%type <wescaleFilterAction> wescale_filter_action_info_opt
+%type <str> wescale_filter_info_field
+%type <str> wescale_filter_pattern_info_field
+%type <str> wescale_filter_action_info_field
 
 %start any_command
 
@@ -1184,43 +1184,43 @@ set_session_or_global:
   }
 
 create_filter_statement:
-  CREATE FILTER not_exists_opt '(' filter_info ')' WITHPATTERN '(' filter_pattern_info ')' EXECUTE '(' filter_action_info ')'
+  CREATE FILTER not_exists_opt '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
   {
-   $$ = &CreateFilter{Name:$5.Name, Description:$5.Description, Priority:$5.Priority, Status:$5.Status, IfNotExists:$3,Pattern:$9,Action:$13}
+   $$ = &CreateWescaleFilter{Name:$5.Name, Description:$5.Description, Priority:$5.Priority, Status:$5.Status, IfNotExists:$3,Pattern:$9,Action:$13}
   }
 
 alter_filter_statement:
-  ALTER FILTER ID alter_filter_info_opt filter_pattern_info_opt filter_action_info_opt
+  ALTER FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
   {
-     $$ = &AlterFilter{OriginName:$3, NewName:$4.NewName, Description:$4.Description, Priority:$4.Priority, SetPriority:$4.SetPriority, Status:$4.Status, Pattern:$5,Action:$6}
+     $$ = &AlterWescaleFilter{OriginName:$3, NewName:$4.NewName, Description:$4.Description, Priority:$4.Priority, SetPriority:$4.SetPriority, Status:$4.Status, Pattern:$5,Action:$6}
   }
 
-  alter_filter_info_opt:
+  alter_wescale_filter_info_opt:
   /*empty*/
   {
-    $$ = &AlterFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+    $$ = &AlterWescaleFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
   }
-  | '(' alter_filter_info ')'
+  | '(' alter_wescale_filter_info ')'
   {
     $$ = $2
   }
 
-  filter_pattern_info_opt:
+  wescale_filter_pattern_info_opt:
   /*empty*/
   {
-     $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+     $$ = &WescaleFilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
   }
-  | WITHPATTERN '(' filter_pattern_info ')'
+  | WITHPATTERN '(' wescale_filter_pattern_info ')'
   {
     $$ = $3
   }
 
-  filter_action_info_opt:
+  wescale_filter_action_info_opt:
   /*empty*/
   {
-     $$ = &FilterAction{Action:"-1",ActionArgs:"-1"}
+     $$ = &WescaleFilterAction{Action:"-1",ActionArgs:"-1"}
   }
-  | EXECUTE '(' filter_action_info ')'
+  | EXECUTE '(' wescale_filter_action_info ')'
   {
     $$ = $3
   }
@@ -1241,10 +1241,10 @@ show_filter_statement:
     $$ = &ShowWescaleFilter{ShowAll:true}
   }
 
-filter_info:
-  filter_info_field '=' STRING
+wescale_filter_info:
+  wescale_filter_info_field '=' STRING
   {
-    $$ = &CreateFilter{Name:"-1",Description:"-1",Priority:"-1",Status:"-1"}
+    $$ = &CreateWescaleFilter{Name:"-1",Description:"-1",Priority:"-1",Status:"-1"}
     if $1 == "name" {
         $$.Name = $3
     }
@@ -1258,7 +1258,7 @@ filter_info:
         $$.Status = $3
     }
   }
-  | filter_info ',' filter_info_field '=' STRING
+  | wescale_filter_info ',' wescale_filter_info_field '=' STRING
   {
     if $3 == "name" {
         $$.Name = $5
@@ -1275,10 +1275,10 @@ filter_info:
   }
 
 
-alter_filter_info:
-  filter_info_field '=' STRING
+alter_wescale_filter_info:
+  wescale_filter_info_field '=' STRING
   {
-    $$ = &AlterFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+    $$ = &AlterWescaleFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
     if $1 == "name" {
       $$.NewName = $3
     }
@@ -1293,7 +1293,7 @@ alter_filter_info:
         $$.Status = $3
     }
   }
-  | alter_filter_info ',' filter_info_field '=' STRING
+  | alter_wescale_filter_info ',' wescale_filter_info_field '=' STRING
   {
     if $3 == "name" {
         $$.NewName = $5
@@ -1310,7 +1310,7 @@ alter_filter_info:
     }
   }
 
-filter_info_field:
+wescale_filter_info_field:
   NAME
   {
     $$ = "name"
@@ -1331,10 +1331,10 @@ filter_info_field:
 
 
 
-filter_pattern_info:
-filter_pattern_info_field '=' STRING
+wescale_filter_pattern_info:
+wescale_filter_pattern_info_field '=' STRING
 {
-  $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+  $$ = &WescaleFilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
   if $1 == "plans" {
       $$.Plans = $3
   }
@@ -1363,7 +1363,7 @@ filter_pattern_info_field '=' STRING
       $$.BindVarConds = $3
    }
 }
-| filter_pattern_info ',' filter_pattern_info_field '=' STRING
+| wescale_filter_pattern_info ',' wescale_filter_pattern_info_field '=' STRING
 {
   if $3 == "plans" {
       $$.Plans = $5
@@ -1394,7 +1394,7 @@ filter_pattern_info_field '=' STRING
   }
 }
 
-filter_pattern_info_field:
+wescale_filter_pattern_info_field:
 PLANS
 {
   $$ = "plans"
@@ -1433,10 +1433,10 @@ PLANS
 }
 
 
-filter_action_info:
-  filter_action_info_field '=' STRING
+wescale_filter_action_info:
+  wescale_filter_action_info_field '=' STRING
   {
-    $$ = &FilterAction{Action:"-1",ActionArgs:"-1"}
+    $$ = &WescaleFilterAction{Action:"-1",ActionArgs:"-1"}
     if $1 == "action" {
         $$.Action = $3
     }
@@ -1444,7 +1444,7 @@ filter_action_info:
         $$.ActionArgs = $3
     }
   }
-  | filter_action_info ',' filter_action_info_field '=' STRING
+  | wescale_filter_action_info ',' wescale_filter_action_info_field '=' STRING
   {
     if $3 == "action" {
         $$.Action = $5
@@ -1454,7 +1454,7 @@ filter_action_info:
     }
   }
 
-filter_action_info_field:
+wescale_filter_action_info_field:
   ACTION
   {
     $$ = "action"

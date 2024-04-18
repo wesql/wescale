@@ -44,8 +44,6 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
-	case *AlterFilter:
-		return VisitRefOfAlterFilter(in, f)
 	case *AlterIndex:
 		return VisitRefOfAlterIndex(in, f)
 	case *AlterMigration:
@@ -56,6 +54,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfAlterView(in, f)
 	case *AlterVschema:
 		return VisitRefOfAlterVschema(in, f)
+	case *AlterWescaleFilter:
+		return VisitRefOfAlterWescaleFilter(in, f)
 	case *AndExpr:
 		return VisitRefOfAndExpr(in, f)
 	case Argument:
@@ -126,12 +126,12 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfCountStar(in, f)
 	case *CreateDatabase:
 		return VisitRefOfCreateDatabase(in, f)
-	case *CreateFilter:
-		return VisitRefOfCreateFilter(in, f)
 	case *CreateTable:
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:
 		return VisitRefOfCreateView(in, f)
+	case *CreateWescaleFilter:
+		return VisitRefOfCreateWescaleFilter(in, f)
 	case *CurTimeFuncExpr:
 		return VisitRefOfCurTimeFuncExpr(in, f)
 	case *DeallocateStmt:
@@ -172,10 +172,6 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfExtractValueExpr(in, f)
 	case *ExtractedSubquery:
 		return VisitRefOfExtractedSubquery(in, f)
-	case *FilterAction:
-		return VisitRefOfFilterAction(in, f)
-	case *FilterPattern:
-		return VisitRefOfFilterPattern(in, f)
 	case *FirstOrLastValueExpr:
 		return VisitRefOfFirstOrLastValueExpr(in, f)
 	case *Flush:
@@ -518,6 +514,10 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfVindexSpec(in, f)
 	case *WeightStringFuncExpr:
 		return VisitRefOfWeightStringFuncExpr(in, f)
+	case *WescaleFilterAction:
+		return VisitRefOfWescaleFilterAction(in, f)
+	case *WescaleFilterPattern:
+		return VisitRefOfWescaleFilterPattern(in, f)
 	case *When:
 		return VisitRefOfWhen(in, f)
 	case *Where:
@@ -677,21 +677,6 @@ func VisitRefOfAlterDatabase(in *AlterDatabase, f Visit) error {
 	}
 	return nil
 }
-func VisitRefOfAlterFilter(in *AlterFilter, f Visit) error {
-	if in == nil {
-		return nil
-	}
-	if cont, err := f(in); err != nil || !cont {
-		return err
-	}
-	if err := VisitRefOfFilterPattern(in.Pattern, f); err != nil {
-		return err
-	}
-	if err := VisitRefOfFilterAction(in.Action, f); err != nil {
-		return err
-	}
-	return nil
-}
 func VisitRefOfAlterIndex(in *AlterIndex, f Visit) error {
 	if in == nil {
 		return nil
@@ -785,6 +770,21 @@ func VisitRefOfAlterVschema(in *AlterVschema, f Visit) error {
 		}
 	}
 	if err := VisitRefOfAutoIncSpec(in.AutoIncSpec, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfAlterWescaleFilter(in *AlterWescaleFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfWescaleFilterPattern(in.Pattern, f); err != nil {
+		return err
+	}
+	if err := VisitRefOfWescaleFilterAction(in.Action, f); err != nil {
 		return err
 	}
 	return nil
@@ -1243,21 +1243,6 @@ func VisitRefOfCreateDatabase(in *CreateDatabase, f Visit) error {
 	}
 	return nil
 }
-func VisitRefOfCreateFilter(in *CreateFilter, f Visit) error {
-	if in == nil {
-		return nil
-	}
-	if cont, err := f(in); err != nil || !cont {
-		return err
-	}
-	if err := VisitRefOfFilterPattern(in.Pattern, f); err != nil {
-		return err
-	}
-	if err := VisitRefOfFilterAction(in.Action, f); err != nil {
-		return err
-	}
-	return nil
-}
 func VisitRefOfCreateTable(in *CreateTable, f Visit) error {
 	if in == nil {
 		return nil
@@ -1302,6 +1287,21 @@ func VisitRefOfCreateView(in *CreateView, f Visit) error {
 		return err
 	}
 	if err := VisitRefOfParsedComments(in.Comments, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfCreateWescaleFilter(in *CreateWescaleFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfWescaleFilterPattern(in.Pattern, f); err != nil {
+		return err
+	}
+	if err := VisitRefOfWescaleFilterAction(in.Action, f); err != nil {
 		return err
 	}
 	return nil
@@ -1594,24 +1594,6 @@ func VisitRefOfExtractedSubquery(in *ExtractedSubquery, f Visit) error {
 		return err
 	}
 	if err := VisitExpr(in.alternative, f); err != nil {
-		return err
-	}
-	return nil
-}
-func VisitRefOfFilterAction(in *FilterAction, f Visit) error {
-	if in == nil {
-		return nil
-	}
-	if cont, err := f(in); err != nil || !cont {
-		return err
-	}
-	return nil
-}
-func VisitRefOfFilterPattern(in *FilterPattern, f Visit) error {
-	if in == nil {
-		return nil
-	}
-	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
 	return nil
@@ -4050,6 +4032,24 @@ func VisitRefOfWeightStringFuncExpr(in *WeightStringFuncExpr, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfWescaleFilterAction(in *WescaleFilterAction, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
+func VisitRefOfWescaleFilterPattern(in *WescaleFilterPattern, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfWhen(in *When, f Visit) error {
 	if in == nil {
 		return nil
@@ -4751,8 +4751,6 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfAlterDMLJob(in, f)
 	case *AlterDatabase:
 		return VisitRefOfAlterDatabase(in, f)
-	case *AlterFilter:
-		return VisitRefOfAlterFilter(in, f)
 	case *AlterMigration:
 		return VisitRefOfAlterMigration(in, f)
 	case *AlterTable:
@@ -4761,6 +4759,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfAlterView(in, f)
 	case *AlterVschema:
 		return VisitRefOfAlterVschema(in, f)
+	case *AlterWescaleFilter:
+		return VisitRefOfAlterWescaleFilter(in, f)
 	case *Begin:
 		return VisitRefOfBegin(in, f)
 	case *CallProc:
@@ -4773,12 +4773,12 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfCommit(in, f)
 	case *CreateDatabase:
 		return VisitRefOfCreateDatabase(in, f)
-	case *CreateFilter:
-		return VisitRefOfCreateFilter(in, f)
 	case *CreateTable:
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:
 		return VisitRefOfCreateView(in, f)
+	case *CreateWescaleFilter:
+		return VisitRefOfCreateWescaleFilter(in, f)
 	case *DeallocateStmt:
 		return VisitRefOfDeallocateStmt(in, f)
 	case *Delete:

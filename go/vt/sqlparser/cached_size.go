@@ -210,30 +210,6 @@ func (cached *AlterDatabase) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
-func (cached *AlterFilter) CachedSize(alloc bool) int64 {
-	if cached == nil {
-		return int64(0)
-	}
-	size := int64(0)
-	if alloc {
-		size += int64(112)
-	}
-	// field OriginName string
-	size += hack.RuntimeAllocSize(int64(len(cached.OriginName)))
-	// field NewName string
-	size += hack.RuntimeAllocSize(int64(len(cached.NewName)))
-	// field Description string
-	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
-	// field Priority string
-	size += hack.RuntimeAllocSize(int64(len(cached.Priority)))
-	// field Status string
-	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
-	// field Pattern *vitess.io/vitess/go/vt/sqlparser.FilterPattern
-	size += cached.Pattern.CachedSize(true)
-	// field Action *vitess.io/vitess/go/vt/sqlparser.FilterAction
-	size += cached.Action.CachedSize(true)
-	return size
-}
 func (cached *AlterIndex) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -345,6 +321,30 @@ func (cached *AlterVschema) CachedSize(alloc bool) int64 {
 	}
 	// field AutoIncSpec *vitess.io/vitess/go/vt/sqlparser.AutoIncSpec
 	size += cached.AutoIncSpec.CachedSize(true)
+	return size
+}
+func (cached *AlterWescaleFilter) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(112)
+	}
+	// field OriginName string
+	size += hack.RuntimeAllocSize(int64(len(cached.OriginName)))
+	// field NewName string
+	size += hack.RuntimeAllocSize(int64(len(cached.NewName)))
+	// field Description string
+	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
+	// field Priority string
+	size += hack.RuntimeAllocSize(int64(len(cached.Priority)))
+	// field Status string
+	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
+	// field Pattern *vitess.io/vitess/go/vt/sqlparser.WescaleFilterPattern
+	size += cached.Pattern.CachedSize(true)
+	// field Action *vitess.io/vitess/go/vt/sqlparser.WescaleFilterAction
+	size += cached.Action.CachedSize(true)
 	return size
 }
 func (cached *AndExpr) CachedSize(alloc bool) int64 {
@@ -980,28 +980,6 @@ func (cached *CreateDatabase) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
-func (cached *CreateFilter) CachedSize(alloc bool) int64 {
-	if cached == nil {
-		return int64(0)
-	}
-	size := int64(0)
-	if alloc {
-		size += int64(96)
-	}
-	// field Name string
-	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
-	// field Description string
-	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
-	// field Priority string
-	size += hack.RuntimeAllocSize(int64(len(cached.Priority)))
-	// field Status string
-	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
-	// field Pattern *vitess.io/vitess/go/vt/sqlparser.FilterPattern
-	size += cached.Pattern.CachedSize(true)
-	// field Action *vitess.io/vitess/go/vt/sqlparser.FilterAction
-	size += cached.Action.CachedSize(true)
-	return size
-}
 func (cached *CreateTable) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -1055,6 +1033,28 @@ func (cached *CreateView) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.CheckOption)))
 	// field Comments *vitess.io/vitess/go/vt/sqlparser.ParsedComments
 	size += cached.Comments.CachedSize(true)
+	return size
+}
+func (cached *CreateWescaleFilter) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(96)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
+	// field Description string
+	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
+	// field Priority string
+	size += hack.RuntimeAllocSize(int64(len(cached.Priority)))
+	// field Status string
+	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
+	// field Pattern *vitess.io/vitess/go/vt/sqlparser.WescaleFilterPattern
+	size += cached.Pattern.CachedSize(true)
+	// field Action *vitess.io/vitess/go/vt/sqlparser.WescaleFilterAction
+	size += cached.Action.CachedSize(true)
 	return size
 }
 func (cached *CurTimeFuncExpr) CachedSize(alloc bool) int64 {
@@ -1396,48 +1396,6 @@ func (cached *ExtractedSubquery) CachedSize(alloc bool) int64 {
 	if cc, ok := cached.alternative.(cachedObject); ok {
 		size += cc.CachedSize(true)
 	}
-	return size
-}
-func (cached *FilterAction) CachedSize(alloc bool) int64 {
-	if cached == nil {
-		return int64(0)
-	}
-	size := int64(0)
-	if alloc {
-		size += int64(32)
-	}
-	// field Action string
-	size += hack.RuntimeAllocSize(int64(len(cached.Action)))
-	// field ActionArgs string
-	size += hack.RuntimeAllocSize(int64(len(cached.ActionArgs)))
-	return size
-}
-func (cached *FilterPattern) CachedSize(alloc bool) int64 {
-	if cached == nil {
-		return int64(0)
-	}
-	size := int64(0)
-	if alloc {
-		size += int64(144)
-	}
-	// field Plans string
-	size += hack.RuntimeAllocSize(int64(len(cached.Plans)))
-	// field FullyQualifiedTableNames string
-	size += hack.RuntimeAllocSize(int64(len(cached.FullyQualifiedTableNames)))
-	// field QueryRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.QueryRegex)))
-	// field QueryTemplate string
-	size += hack.RuntimeAllocSize(int64(len(cached.QueryTemplate)))
-	// field RequestIPRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.RequestIPRegex)))
-	// field UserRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.UserRegex)))
-	// field LeadingCommentRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.LeadingCommentRegex)))
-	// field TrailingCommentRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.TrailingCommentRegex)))
-	// field BindVarConds string
-	size += hack.RuntimeAllocSize(int64(len(cached.BindVarConds)))
 	return size
 }
 func (cached *FirstOrLastValueExpr) CachedSize(alloc bool) int64 {
@@ -4242,6 +4200,48 @@ func (cached *WeightStringFuncExpr) CachedSize(alloc bool) int64 {
 	}
 	// field As *vitess.io/vitess/go/vt/sqlparser.ConvertType
 	size += cached.As.CachedSize(true)
+	return size
+}
+func (cached *WescaleFilterAction) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(32)
+	}
+	// field Action string
+	size += hack.RuntimeAllocSize(int64(len(cached.Action)))
+	// field ActionArgs string
+	size += hack.RuntimeAllocSize(int64(len(cached.ActionArgs)))
+	return size
+}
+func (cached *WescaleFilterPattern) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(144)
+	}
+	// field Plans string
+	size += hack.RuntimeAllocSize(int64(len(cached.Plans)))
+	// field FullyQualifiedTableNames string
+	size += hack.RuntimeAllocSize(int64(len(cached.FullyQualifiedTableNames)))
+	// field QueryRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.QueryRegex)))
+	// field QueryTemplate string
+	size += hack.RuntimeAllocSize(int64(len(cached.QueryTemplate)))
+	// field RequestIPRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.RequestIPRegex)))
+	// field UserRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.UserRegex)))
+	// field LeadingCommentRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.LeadingCommentRegex)))
+	// field TrailingCommentRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.TrailingCommentRegex)))
+	// field BindVarConds string
+	size += hack.RuntimeAllocSize(int64(len(cached.BindVarConds)))
 	return size
 }
 func (cached *When) CachedSize(alloc bool) int64 {
