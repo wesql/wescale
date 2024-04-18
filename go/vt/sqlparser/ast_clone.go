@@ -45,8 +45,6 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
-	case *AlterFilter:
-		return CloneRefOfAlterFilter(in)
 	case *AlterIndex:
 		return CloneRefOfAlterIndex(in)
 	case *AlterMigration:
@@ -57,6 +55,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterView(in)
 	case *AlterVschema:
 		return CloneRefOfAlterVschema(in)
+	case *AlterWescaleFilter:
+		return CloneRefOfAlterWescaleFilter(in)
 	case *AndExpr:
 		return CloneRefOfAndExpr(in)
 	case Argument:
@@ -127,12 +127,12 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfCountStar(in)
 	case *CreateDatabase:
 		return CloneRefOfCreateDatabase(in)
-	case *CreateFilter:
-		return CloneRefOfCreateFilter(in)
 	case *CreateTable:
 		return CloneRefOfCreateTable(in)
 	case *CreateView:
 		return CloneRefOfCreateView(in)
+	case *CreateWescaleFilter:
+		return CloneRefOfCreateWescaleFilter(in)
 	case *CurTimeFuncExpr:
 		return CloneRefOfCurTimeFuncExpr(in)
 	case *DeallocateStmt:
@@ -173,10 +173,6 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfExtractValueExpr(in)
 	case *ExtractedSubquery:
 		return CloneRefOfExtractedSubquery(in)
-	case *FilterAction:
-		return CloneRefOfFilterAction(in)
-	case *FilterPattern:
-		return CloneRefOfFilterPattern(in)
 	case *FirstOrLastValueExpr:
 		return CloneRefOfFirstOrLastValueExpr(in)
 	case *Flush:
@@ -519,6 +515,10 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfVindexSpec(in)
 	case *WeightStringFuncExpr:
 		return CloneRefOfWeightStringFuncExpr(in)
+	case *WescaleFilterAction:
+		return CloneRefOfWescaleFilterAction(in)
+	case *WescaleFilterPattern:
+		return CloneRefOfWescaleFilterPattern(in)
 	case *When:
 		return CloneRefOfWhen(in)
 	case *Where:
@@ -647,17 +647,6 @@ func CloneRefOfAlterDatabase(n *AlterDatabase) *AlterDatabase {
 	return &out
 }
 
-// CloneRefOfAlterFilter creates a deep clone of the input.
-func CloneRefOfAlterFilter(n *AlterFilter) *AlterFilter {
-	if n == nil {
-		return nil
-	}
-	out := *n
-	out.Pattern = CloneRefOfFilterPattern(n.Pattern)
-	out.Action = CloneRefOfFilterAction(n.Action)
-	return &out
-}
-
 // CloneRefOfAlterIndex creates a deep clone of the input.
 func CloneRefOfAlterIndex(n *AlterIndex) *AlterIndex {
 	if n == nil {
@@ -716,6 +705,17 @@ func CloneRefOfAlterVschema(n *AlterVschema) *AlterVschema {
 	out.VindexSpec = CloneRefOfVindexSpec(n.VindexSpec)
 	out.VindexCols = CloneSliceOfIdentifierCI(n.VindexCols)
 	out.AutoIncSpec = CloneRefOfAutoIncSpec(n.AutoIncSpec)
+	return &out
+}
+
+// CloneRefOfAlterWescaleFilter creates a deep clone of the input.
+func CloneRefOfAlterWescaleFilter(n *AlterWescaleFilter) *AlterWescaleFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Pattern = CloneRefOfWescaleFilterPattern(n.Pattern)
+	out.Action = CloneRefOfWescaleFilterAction(n.Action)
 	return &out
 }
 
@@ -1071,17 +1071,6 @@ func CloneRefOfCreateDatabase(n *CreateDatabase) *CreateDatabase {
 	return &out
 }
 
-// CloneRefOfCreateFilter creates a deep clone of the input.
-func CloneRefOfCreateFilter(n *CreateFilter) *CreateFilter {
-	if n == nil {
-		return nil
-	}
-	out := *n
-	out.Pattern = CloneRefOfFilterPattern(n.Pattern)
-	out.Action = CloneRefOfFilterAction(n.Action)
-	return &out
-}
-
 // CloneRefOfCreateTable creates a deep clone of the input.
 func CloneRefOfCreateTable(n *CreateTable) *CreateTable {
 	if n == nil {
@@ -1107,6 +1096,17 @@ func CloneRefOfCreateView(n *CreateView) *CreateView {
 	out.Columns = CloneColumns(n.Columns)
 	out.Select = CloneSelectStatement(n.Select)
 	out.Comments = CloneRefOfParsedComments(n.Comments)
+	return &out
+}
+
+// CloneRefOfCreateWescaleFilter creates a deep clone of the input.
+func CloneRefOfCreateWescaleFilter(n *CreateWescaleFilter) *CreateWescaleFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Pattern = CloneRefOfWescaleFilterPattern(n.Pattern)
+	out.Action = CloneRefOfWescaleFilterAction(n.Action)
 	return &out
 }
 
@@ -1325,24 +1325,6 @@ func CloneRefOfExtractedSubquery(n *ExtractedSubquery) *ExtractedSubquery {
 	out.Subquery = CloneRefOfSubquery(n.Subquery)
 	out.OtherSide = CloneExpr(n.OtherSide)
 	out.alternative = CloneExpr(n.alternative)
-	return &out
-}
-
-// CloneRefOfFilterAction creates a deep clone of the input.
-func CloneRefOfFilterAction(n *FilterAction) *FilterAction {
-	if n == nil {
-		return nil
-	}
-	out := *n
-	return &out
-}
-
-// CloneRefOfFilterPattern creates a deep clone of the input.
-func CloneRefOfFilterPattern(n *FilterPattern) *FilterPattern {
-	if n == nil {
-		return nil
-	}
-	out := *n
 	return &out
 }
 
@@ -3173,6 +3155,24 @@ func CloneRefOfWeightStringFuncExpr(n *WeightStringFuncExpr) *WeightStringFuncEx
 	return &out
 }
 
+// CloneRefOfWescaleFilterAction creates a deep clone of the input.
+func CloneRefOfWescaleFilterAction(n *WescaleFilterAction) *WescaleFilterAction {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
+// CloneRefOfWescaleFilterPattern creates a deep clone of the input.
+func CloneRefOfWescaleFilterPattern(n *WescaleFilterPattern) *WescaleFilterPattern {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfWhen creates a deep clone of the input.
 func CloneRefOfWhen(n *When) *When {
 	if n == nil {
@@ -3875,8 +3875,6 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfAlterDMLJob(in)
 	case *AlterDatabase:
 		return CloneRefOfAlterDatabase(in)
-	case *AlterFilter:
-		return CloneRefOfAlterFilter(in)
 	case *AlterMigration:
 		return CloneRefOfAlterMigration(in)
 	case *AlterTable:
@@ -3885,6 +3883,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfAlterView(in)
 	case *AlterVschema:
 		return CloneRefOfAlterVschema(in)
+	case *AlterWescaleFilter:
+		return CloneRefOfAlterWescaleFilter(in)
 	case *Begin:
 		return CloneRefOfBegin(in)
 	case *CallProc:
@@ -3897,12 +3897,12 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfCommit(in)
 	case *CreateDatabase:
 		return CloneRefOfCreateDatabase(in)
-	case *CreateFilter:
-		return CloneRefOfCreateFilter(in)
 	case *CreateTable:
 		return CloneRefOfCreateTable(in)
 	case *CreateView:
 		return CloneRefOfCreateView(in)
+	case *CreateWescaleFilter:
+		return CloneRefOfCreateWescaleFilter(in)
 	case *DeallocateStmt:
 		return CloneRefOfDeallocateStmt(in)
 	case *Delete:

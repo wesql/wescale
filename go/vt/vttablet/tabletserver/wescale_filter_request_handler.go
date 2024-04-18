@@ -37,7 +37,7 @@ func (qe *QueryEngine) executeQuery(ctx context.Context, query string) (*sqltype
 	return conn.Exec(ctx, query, math.MaxInt32, true)
 }
 
-func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateFilter) (*sqltypes.Result, error) {
+func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (*sqltypes.Result, error) {
 	rule, err := TransformCreateFilterToRule(stmt)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateFilter) (*sqltyp
 	return qe.executeQuery(context.Background(), query)
 }
 
-func TransformCreateFilterToRule(stmt *sqlparser.CreateFilter) (*rules.Rule, error) {
+func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Rule, error) {
 	if stmt.Pattern.BindVarConds != "" {
 		return nil, fmt.Errorf("create filter failed: bind_var_conds %v not supportted yet", stmt.Pattern.BindVarConds)
 	}
@@ -212,7 +212,7 @@ func queryResultToRuleInfo(row sqltypes.RowNamedValues) (map[string]any, error) 
 	return ruleInfo, nil
 }
 
-func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterFilter) error {
+func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) error {
 	if stmt.Pattern.BindVarConds != "-1" {
 		if stmt.Pattern.BindVarConds != "" {
 			return fmt.Errorf("create filter failed: bind_var_conds %v not supportted yet", stmt.Pattern.BindVarConds)
@@ -316,7 +316,7 @@ func GenerateUpdateStatement(qr *rules.Rule, originName string) (string, error) 
 	return bound, err
 }
 
-func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterFilter) (*sqltypes.Result, error) {
+func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*sqltypes.Result, error) {
 	query, err := getSelectByNameSQL(stmt.OriginName)
 	if err != nil {
 		return nil, err

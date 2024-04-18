@@ -92,12 +92,6 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterDatabase(a, b)
-	case *AlterFilter:
-		b, ok := inB.(*AlterFilter)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfAlterFilter(a, b)
 	case *AlterIndex:
 		b, ok := inB.(*AlterIndex)
 		if !ok {
@@ -128,6 +122,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterVschema(a, b)
+	case *AlterWescaleFilter:
+		b, ok := inB.(*AlterWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterWescaleFilter(a, b)
 	case *AndExpr:
 		b, ok := inB.(*AndExpr)
 		if !ok {
@@ -338,12 +338,6 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfCreateDatabase(a, b)
-	case *CreateFilter:
-		b, ok := inB.(*CreateFilter)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfCreateFilter(a, b)
 	case *CreateTable:
 		b, ok := inB.(*CreateTable)
 		if !ok {
@@ -356,6 +350,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfCreateView(a, b)
+	case *CreateWescaleFilter:
+		b, ok := inB.(*CreateWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateWescaleFilter(a, b)
 	case *CurTimeFuncExpr:
 		b, ok := inB.(*CurTimeFuncExpr)
 		if !ok {
@@ -476,18 +476,6 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfExtractedSubquery(a, b)
-	case *FilterAction:
-		b, ok := inB.(*FilterAction)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfFilterAction(a, b)
-	case *FilterPattern:
-		b, ok := inB.(*FilterPattern)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfFilterPattern(a, b)
 	case *FirstOrLastValueExpr:
 		b, ok := inB.(*FirstOrLastValueExpr)
 		if !ok {
@@ -1514,6 +1502,18 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfWeightStringFuncExpr(a, b)
+	case *WescaleFilterAction:
+		b, ok := inB.(*WescaleFilterAction)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfWescaleFilterAction(a, b)
+	case *WescaleFilterPattern:
+		b, ok := inB.(*WescaleFilterPattern)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfWescaleFilterPattern(a, b)
 	case *When:
 		b, ok := inB.(*When)
 		if !ok {
@@ -1693,24 +1693,6 @@ func (cmp *Comparator) RefOfAlterDatabase(a, b *AlterDatabase) bool {
 		cmp.SliceOfDatabaseOption(a.AlterOptions, b.AlterOptions)
 }
 
-// RefOfAlterFilter does deep equals between the two objects.
-func (cmp *Comparator) RefOfAlterFilter(a, b *AlterFilter) bool {
-	if a == b {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.OriginName == b.OriginName &&
-		a.NewName == b.NewName &&
-		a.Description == b.Description &&
-		a.Priority == b.Priority &&
-		a.SetPriority == b.SetPriority &&
-		a.Status == b.Status &&
-		cmp.RefOfFilterPattern(a.Pattern, b.Pattern) &&
-		cmp.RefOfFilterAction(a.Action, b.Action)
-}
-
 // RefOfAlterIndex does deep equals between the two objects.
 func (cmp *Comparator) RefOfAlterIndex(a, b *AlterIndex) bool {
 	if a == b {
@@ -1785,6 +1767,24 @@ func (cmp *Comparator) RefOfAlterVschema(a, b *AlterVschema) bool {
 		cmp.RefOfVindexSpec(a.VindexSpec, b.VindexSpec) &&
 		cmp.SliceOfIdentifierCI(a.VindexCols, b.VindexCols) &&
 		cmp.RefOfAutoIncSpec(a.AutoIncSpec, b.AutoIncSpec)
+}
+
+// RefOfAlterWescaleFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfAlterWescaleFilter(a, b *AlterWescaleFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.OriginName == b.OriginName &&
+		a.NewName == b.NewName &&
+		a.Description == b.Description &&
+		a.Priority == b.Priority &&
+		a.SetPriority == b.SetPriority &&
+		a.Status == b.Status &&
+		cmp.RefOfWescaleFilterPattern(a.Pattern, b.Pattern) &&
+		cmp.RefOfWescaleFilterAction(a.Action, b.Action)
 }
 
 // RefOfAndExpr does deep equals between the two objects.
@@ -2201,23 +2201,6 @@ func (cmp *Comparator) RefOfCreateDatabase(a, b *CreateDatabase) bool {
 		cmp.SliceOfDatabaseOption(a.CreateOptions, b.CreateOptions)
 }
 
-// RefOfCreateFilter does deep equals between the two objects.
-func (cmp *Comparator) RefOfCreateFilter(a, b *CreateFilter) bool {
-	if a == b {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.Name == b.Name &&
-		a.Description == b.Description &&
-		a.Priority == b.Priority &&
-		a.Status == b.Status &&
-		a.IfNotExists == b.IfNotExists &&
-		cmp.RefOfFilterPattern(a.Pattern, b.Pattern) &&
-		cmp.RefOfFilterAction(a.Action, b.Action)
-}
-
 // RefOfCreateTable does deep equals between the two objects.
 func (cmp *Comparator) RefOfCreateTable(a, b *CreateTable) bool {
 	if a == b {
@@ -2253,6 +2236,23 @@ func (cmp *Comparator) RefOfCreateView(a, b *CreateView) bool {
 		cmp.Columns(a.Columns, b.Columns) &&
 		cmp.SelectStatement(a.Select, b.Select) &&
 		cmp.RefOfParsedComments(a.Comments, b.Comments)
+}
+
+// RefOfCreateWescaleFilter does deep equals between the two objects.
+func (cmp *Comparator) RefOfCreateWescaleFilter(a, b *CreateWescaleFilter) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Name == b.Name &&
+		a.Description == b.Description &&
+		a.Priority == b.Priority &&
+		a.Status == b.Status &&
+		a.IfNotExists == b.IfNotExists &&
+		cmp.RefOfWescaleFilterPattern(a.Pattern, b.Pattern) &&
+		cmp.RefOfWescaleFilterAction(a.Action, b.Action)
 }
 
 // RefOfCurTimeFuncExpr does deep equals between the two objects.
@@ -2510,37 +2510,6 @@ func (cmp *Comparator) RefOfExtractedSubquery(a, b *ExtractedSubquery) bool {
 		cmp.RefOfSubquery(a.Subquery, b.Subquery) &&
 		cmp.Expr(a.OtherSide, b.OtherSide) &&
 		cmp.Expr(a.alternative, b.alternative)
-}
-
-// RefOfFilterAction does deep equals between the two objects.
-func (cmp *Comparator) RefOfFilterAction(a, b *FilterAction) bool {
-	if a == b {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.Action == b.Action &&
-		a.ActionArgs == b.ActionArgs
-}
-
-// RefOfFilterPattern does deep equals between the two objects.
-func (cmp *Comparator) RefOfFilterPattern(a, b *FilterPattern) bool {
-	if a == b {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return a.Plans == b.Plans &&
-		a.FullyQualifiedTableNames == b.FullyQualifiedTableNames &&
-		a.QueryRegex == b.QueryRegex &&
-		a.QueryTemplate == b.QueryTemplate &&
-		a.RequestIPRegex == b.RequestIPRegex &&
-		a.UserRegex == b.UserRegex &&
-		a.LeadingCommentRegex == b.LeadingCommentRegex &&
-		a.TrailingCommentRegex == b.TrailingCommentRegex &&
-		a.BindVarConds == b.BindVarConds
 }
 
 // RefOfFirstOrLastValueExpr does deep equals between the two objects.
@@ -4641,6 +4610,37 @@ func (cmp *Comparator) RefOfWeightStringFuncExpr(a, b *WeightStringFuncExpr) boo
 		cmp.RefOfConvertType(a.As, b.As)
 }
 
+// RefOfWescaleFilterAction does deep equals between the two objects.
+func (cmp *Comparator) RefOfWescaleFilterAction(a, b *WescaleFilterAction) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Action == b.Action &&
+		a.ActionArgs == b.ActionArgs
+}
+
+// RefOfWescaleFilterPattern does deep equals between the two objects.
+func (cmp *Comparator) RefOfWescaleFilterPattern(a, b *WescaleFilterPattern) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Plans == b.Plans &&
+		a.FullyQualifiedTableNames == b.FullyQualifiedTableNames &&
+		a.QueryRegex == b.QueryRegex &&
+		a.QueryTemplate == b.QueryTemplate &&
+		a.RequestIPRegex == b.RequestIPRegex &&
+		a.UserRegex == b.UserRegex &&
+		a.LeadingCommentRegex == b.LeadingCommentRegex &&
+		a.TrailingCommentRegex == b.TrailingCommentRegex &&
+		a.BindVarConds == b.BindVarConds
+}
+
 // RefOfWhen does deep equals between the two objects.
 func (cmp *Comparator) RefOfWhen(a, b *When) bool {
 	if a == b {
@@ -6297,12 +6297,6 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfAlterDatabase(a, b)
-	case *AlterFilter:
-		b, ok := inB.(*AlterFilter)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfAlterFilter(a, b)
 	case *AlterMigration:
 		b, ok := inB.(*AlterMigration)
 		if !ok {
@@ -6327,6 +6321,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfAlterVschema(a, b)
+	case *AlterWescaleFilter:
+		b, ok := inB.(*AlterWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterWescaleFilter(a, b)
 	case *Begin:
 		b, ok := inB.(*Begin)
 		if !ok {
@@ -6363,12 +6363,6 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfCreateDatabase(a, b)
-	case *CreateFilter:
-		b, ok := inB.(*CreateFilter)
-		if !ok {
-			return false
-		}
-		return cmp.RefOfCreateFilter(a, b)
 	case *CreateTable:
 		b, ok := inB.(*CreateTable)
 		if !ok {
@@ -6381,6 +6375,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfCreateView(a, b)
+	case *CreateWescaleFilter:
+		b, ok := inB.(*CreateWescaleFilter)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateWescaleFilter(a, b)
 	case *DeallocateStmt:
 		b, ok := inB.(*DeallocateStmt)
 		if !ok {

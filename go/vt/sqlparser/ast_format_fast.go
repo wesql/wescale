@@ -2780,7 +2780,7 @@ func (node *CreateTable) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
-func (node *FilterPattern) formatFast(buf *TrackedBuffer) {
+func (node *WescaleFilterPattern) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("with_pattern ( ")
 	buf.WriteString("plans=")
 	buf.WriteString(node.Plans)
@@ -2813,7 +2813,7 @@ func (node *FilterPattern) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
-func (node *FilterAction) formatFast(buf *TrackedBuffer) {
+func (node *WescaleFilterAction) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("execute ( ")
 	buf.WriteString("action=")
 	buf.WriteString(node.Action)
@@ -2825,7 +2825,7 @@ func (node *FilterAction) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
-func (node *CreateFilter) formatFast(buf *TrackedBuffer) {
+func (node *CreateWescaleFilter) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("create filter ")
 
 	if node.IfNotExists {
@@ -2859,7 +2859,7 @@ func (node *CreateFilter) formatFast(buf *TrackedBuffer) {
 }
 
 // formatFast formats the node.
-func (node *AlterFilter) formatFast(buf *TrackedBuffer) {
+func (node *AlterWescaleFilter) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("alter filter ")
 	buf.WriteString(node.OriginName)
 	buf.WriteByte(' ')

@@ -7029,11 +7029,6 @@ func (st *yySymType) alterDatabaseUnion() *AlterDatabase {
 	return v
 }
 
-func (st *yySymType) alterFilterUnion() *AlterFilter {
-	v, _ := st.union.(*AlterFilter)
-	return v
-}
-
 func (st *yySymType) alterMigrationUnion() *AlterMigration {
 	v, _ := st.union.(*AlterMigration)
 	return v
@@ -7051,6 +7046,11 @@ func (st *yySymType) alterOptionsUnion() []AlterOption {
 
 func (st *yySymType) alterTableUnion() *AlterTable {
 	v, _ := st.union.(*AlterTable)
+	return v
+}
+
+func (st *yySymType) alterWescaleFilterUnion() *AlterWescaleFilter {
+	v, _ := st.union.(*AlterWescaleFilter)
 	return v
 }
 
@@ -7154,13 +7154,13 @@ func (st *yySymType) createDatabaseUnion() *CreateDatabase {
 	return v
 }
 
-func (st *yySymType) createFilterUnion() *CreateFilter {
-	v, _ := st.union.(*CreateFilter)
+func (st *yySymType) createTableUnion() *CreateTable {
+	v, _ := st.union.(*CreateTable)
 	return v
 }
 
-func (st *yySymType) createTableUnion() *CreateTable {
-	v, _ := st.union.(*CreateTable)
+func (st *yySymType) createWescaleFilterUnion() *CreateWescaleFilter {
+	v, _ := st.union.(*CreateWescaleFilter)
 	return v
 }
 
@@ -7206,16 +7206,6 @@ func (st *yySymType) exprUnion() Expr {
 
 func (st *yySymType) exprsUnion() Exprs {
 	v, _ := st.union.(Exprs)
-	return v
-}
-
-func (st *yySymType) filterActionUnion() *FilterAction {
-	v, _ := st.union.(*FilterAction)
-	return v
-}
-
-func (st *yySymType) filterPatternUnion() *FilterPattern {
-	v, _ := st.union.(*FilterPattern)
 	return v
 }
 
@@ -7681,6 +7671,16 @@ func (st *yySymType) vexplainTypeUnion() VExplainType {
 
 func (st *yySymType) vindexParamsUnion() []VindexParam {
 	v, _ := st.union.([]VindexParam)
+	return v
+}
+
+func (st *yySymType) wescaleFilterActionUnion() *WescaleFilterAction {
+	v, _ := st.union.(*WescaleFilterAction)
+	return v
+}
+
+func (st *yySymType) wescaleFilterPatternUnion() *WescaleFilterPattern {
+	v, _ := st.union.(*WescaleFilterPattern)
 	return v
 }
 
@@ -10140,7 +10140,7 @@ yydefault:
 		var yyLOCAL Statement
 //line sql.y:1188
 		{
-			yyLOCAL = &CreateFilter{Name: yyDollar[5].createFilterUnion().Name, Description: yyDollar[5].createFilterUnion().Description, Priority: yyDollar[5].createFilterUnion().Priority, Status: yyDollar[5].createFilterUnion().Status, IfNotExists: yyDollar[3].booleanUnion(), Pattern: yyDollar[9].filterPatternUnion(), Action: yyDollar[13].filterActionUnion()}
+			yyLOCAL = &CreateWescaleFilter{Name: yyDollar[5].createWescaleFilterUnion().Name, Description: yyDollar[5].createWescaleFilterUnion().Description, Priority: yyDollar[5].createWescaleFilterUnion().Priority, Status: yyDollar[5].createWescaleFilterUnion().Status, IfNotExists: yyDollar[3].booleanUnion(), Pattern: yyDollar[9].wescaleFilterPatternUnion(), Action: yyDollar[13].wescaleFilterActionUnion()}
 		}
 		yyVAL.union = yyLOCAL
 	case 134:
@@ -10148,55 +10148,55 @@ yydefault:
 		var yyLOCAL Statement
 //line sql.y:1194
 		{
-			yyLOCAL = &AlterFilter{OriginName: yyDollar[3].str, NewName: yyDollar[4].alterFilterUnion().NewName, Description: yyDollar[4].alterFilterUnion().Description, Priority: yyDollar[4].alterFilterUnion().Priority, SetPriority: yyDollar[4].alterFilterUnion().SetPriority, Status: yyDollar[4].alterFilterUnion().Status, Pattern: yyDollar[5].filterPatternUnion(), Action: yyDollar[6].filterActionUnion()}
+			yyLOCAL = &AlterWescaleFilter{OriginName: yyDollar[3].str, NewName: yyDollar[4].alterWescaleFilterUnion().NewName, Description: yyDollar[4].alterWescaleFilterUnion().Description, Priority: yyDollar[4].alterWescaleFilterUnion().Priority, SetPriority: yyDollar[4].alterWescaleFilterUnion().SetPriority, Status: yyDollar[4].alterWescaleFilterUnion().Status, Pattern: yyDollar[5].wescaleFilterPatternUnion(), Action: yyDollar[6].wescaleFilterActionUnion()}
 		}
 		yyVAL.union = yyLOCAL
 	case 135:
 		yyDollar = yyS[yypt-0 : yypt+1]
-		var yyLOCAL *AlterFilter
+		var yyLOCAL *AlterWescaleFilter
 //line sql.y:1200
 		{
-			yyLOCAL = &AlterFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false, Status: "-1"}
+			yyLOCAL = &AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false, Status: "-1"}
 		}
 		yyVAL.union = yyLOCAL
 	case 136:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		var yyLOCAL *AlterFilter
+		var yyLOCAL *AlterWescaleFilter
 //line sql.y:1204
 		{
-			yyLOCAL = yyDollar[2].alterFilterUnion()
+			yyLOCAL = yyDollar[2].alterWescaleFilterUnion()
 		}
 		yyVAL.union = yyLOCAL
 	case 137:
 		yyDollar = yyS[yypt-0 : yypt+1]
-		var yyLOCAL *FilterPattern
+		var yyLOCAL *WescaleFilterPattern
 //line sql.y:1210
 		{
-			yyLOCAL = &FilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1", QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1", BindVarConds: "-1"}
+			yyLOCAL = &WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1", QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1", BindVarConds: "-1"}
 		}
 		yyVAL.union = yyLOCAL
 	case 138:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		var yyLOCAL *FilterPattern
+		var yyLOCAL *WescaleFilterPattern
 //line sql.y:1214
 		{
-			yyLOCAL = yyDollar[3].filterPatternUnion()
+			yyLOCAL = yyDollar[3].wescaleFilterPatternUnion()
 		}
 		yyVAL.union = yyLOCAL
 	case 139:
 		yyDollar = yyS[yypt-0 : yypt+1]
-		var yyLOCAL *FilterAction
+		var yyLOCAL *WescaleFilterAction
 //line sql.y:1220
 		{
-			yyLOCAL = &FilterAction{Action: "-1", ActionArgs: "-1"}
+			yyLOCAL = &WescaleFilterAction{Action: "-1", ActionArgs: "-1"}
 		}
 		yyVAL.union = yyLOCAL
 	case 140:
 		yyDollar = yyS[yypt-4 : yypt+1]
-		var yyLOCAL *FilterAction
+		var yyLOCAL *WescaleFilterAction
 //line sql.y:1224
 		{
-			yyLOCAL = yyDollar[3].filterActionUnion()
+			yyLOCAL = yyDollar[3].wescaleFilterActionUnion()
 		}
 		yyVAL.union = yyLOCAL
 	case 141:
@@ -10225,10 +10225,10 @@ yydefault:
 		yyVAL.union = yyLOCAL
 	case 144:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		var yyLOCAL *CreateFilter
+		var yyLOCAL *CreateWescaleFilter
 //line sql.y:1246
 		{
-			yyLOCAL = &CreateFilter{Name: "-1", Description: "-1", Priority: "-1", Status: "-1"}
+			yyLOCAL = &CreateWescaleFilter{Name: "-1", Description: "-1", Priority: "-1", Status: "-1"}
 			if yyDollar[1].str == "name" {
 				yyLOCAL.Name = yyDollar[3].str
 			}
@@ -10248,24 +10248,24 @@ yydefault:
 //line sql.y:1262
 		{
 			if yyDollar[3].str == "name" {
-				yyVAL.createFilterUnion().Name = yyDollar[5].str
+				yyVAL.createWescaleFilterUnion().Name = yyDollar[5].str
 			}
 			if yyDollar[3].str == "description" {
-				yyVAL.createFilterUnion().Description = yyDollar[5].str
+				yyVAL.createWescaleFilterUnion().Description = yyDollar[5].str
 			}
 			if yyDollar[3].str == "priority" {
-				yyVAL.createFilterUnion().Priority = yyDollar[5].str
+				yyVAL.createWescaleFilterUnion().Priority = yyDollar[5].str
 			}
 			if yyDollar[3].str == "status" {
-				yyVAL.createFilterUnion().Status = yyDollar[5].str
+				yyVAL.createWescaleFilterUnion().Status = yyDollar[5].str
 			}
 		}
 	case 146:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		var yyLOCAL *AlterFilter
+		var yyLOCAL *AlterWescaleFilter
 //line sql.y:1280
 		{
-			yyLOCAL = &AlterFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false, Status: "-1"}
+			yyLOCAL = &AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false, Status: "-1"}
 			if yyDollar[1].str == "name" {
 				yyLOCAL.NewName = yyDollar[3].str
 			}
@@ -10286,17 +10286,17 @@ yydefault:
 //line sql.y:1297
 		{
 			if yyDollar[3].str == "name" {
-				yyVAL.alterFilterUnion().NewName = yyDollar[5].str
+				yyVAL.alterWescaleFilterUnion().NewName = yyDollar[5].str
 			}
 			if yyDollar[3].str == "description" {
-				yyVAL.alterFilterUnion().Description = yyDollar[5].str
+				yyVAL.alterWescaleFilterUnion().Description = yyDollar[5].str
 			}
 			if yyDollar[3].str == "priority" {
-				yyVAL.alterFilterUnion().Priority = yyDollar[5].str
-				yyVAL.alterFilterUnion().SetPriority = true
+				yyVAL.alterWescaleFilterUnion().Priority = yyDollar[5].str
+				yyVAL.alterWescaleFilterUnion().SetPriority = true
 			}
 			if yyDollar[3].str == "status" {
-				yyVAL.alterFilterUnion().Status = yyDollar[5].str
+				yyVAL.alterWescaleFilterUnion().Status = yyDollar[5].str
 			}
 		}
 	case 148:
@@ -10325,10 +10325,10 @@ yydefault:
 		}
 	case 152:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		var yyLOCAL *FilterPattern
+		var yyLOCAL *WescaleFilterPattern
 //line sql.y:1336
 		{
-			yyLOCAL = &FilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1", QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1", BindVarConds: "-1"}
+			yyLOCAL = &WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1", QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1", BindVarConds: "-1"}
 			if yyDollar[1].str == "plans" {
 				yyLOCAL.Plans = yyDollar[3].str
 			}
@@ -10363,31 +10363,31 @@ yydefault:
 //line sql.y:1367
 		{
 			if yyDollar[3].str == "plans" {
-				yyVAL.filterPatternUnion().Plans = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().Plans = yyDollar[5].str
 			}
 			if yyDollar[3].str == "fully_qualified_table_names" {
-				yyVAL.filterPatternUnion().FullyQualifiedTableNames = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().FullyQualifiedTableNames = yyDollar[5].str
 			}
 			if yyDollar[3].str == "query_regex" {
-				yyVAL.filterPatternUnion().QueryRegex = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().QueryRegex = yyDollar[5].str
 			}
 			if yyDollar[3].str == "query_template" {
-				yyVAL.filterPatternUnion().QueryTemplate = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().QueryTemplate = yyDollar[5].str
 			}
 			if yyDollar[3].str == "request_ip_regex" {
-				yyVAL.filterPatternUnion().RequestIPRegex = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().RequestIPRegex = yyDollar[5].str
 			}
 			if yyDollar[3].str == "user_regex" {
-				yyVAL.filterPatternUnion().UserRegex = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().UserRegex = yyDollar[5].str
 			}
 			if yyDollar[3].str == "leading_comment_regex" {
-				yyVAL.filterPatternUnion().LeadingCommentRegex = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().LeadingCommentRegex = yyDollar[5].str
 			}
 			if yyDollar[3].str == "trailing_comment_regex" {
-				yyVAL.filterPatternUnion().TrailingCommentRegex = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().TrailingCommentRegex = yyDollar[5].str
 			}
 			if yyDollar[3].str == "bind_var_conds" {
-				yyVAL.filterPatternUnion().BindVarConds = yyDollar[5].str
+				yyVAL.wescaleFilterPatternUnion().BindVarConds = yyDollar[5].str
 			}
 		}
 	case 154:
@@ -10446,10 +10446,10 @@ yydefault:
 		}
 	case 163:
 		yyDollar = yyS[yypt-3 : yypt+1]
-		var yyLOCAL *FilterAction
+		var yyLOCAL *WescaleFilterAction
 //line sql.y:1438
 		{
-			yyLOCAL = &FilterAction{Action: "-1", ActionArgs: "-1"}
+			yyLOCAL = &WescaleFilterAction{Action: "-1", ActionArgs: "-1"}
 			if yyDollar[1].str == "action" {
 				yyLOCAL.Action = yyDollar[3].str
 			}
@@ -10463,10 +10463,10 @@ yydefault:
 //line sql.y:1448
 		{
 			if yyDollar[3].str == "action" {
-				yyVAL.filterActionUnion().Action = yyDollar[5].str
+				yyVAL.wescaleFilterActionUnion().Action = yyDollar[5].str
 			}
 			if yyDollar[3].str == "action_args" {
-				yyVAL.filterActionUnion().ActionArgs = yyDollar[5].str
+				yyVAL.wescaleFilterActionUnion().ActionArgs = yyDollar[5].str
 			}
 		}
 	case 165:

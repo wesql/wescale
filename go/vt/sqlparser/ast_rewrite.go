@@ -44,8 +44,6 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
-	case *AlterFilter:
-		return a.rewriteRefOfAlterFilter(parent, node, replacer)
 	case *AlterIndex:
 		return a.rewriteRefOfAlterIndex(parent, node, replacer)
 	case *AlterMigration:
@@ -56,6 +54,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfAlterView(parent, node, replacer)
 	case *AlterVschema:
 		return a.rewriteRefOfAlterVschema(parent, node, replacer)
+	case *AlterWescaleFilter:
+		return a.rewriteRefOfAlterWescaleFilter(parent, node, replacer)
 	case *AndExpr:
 		return a.rewriteRefOfAndExpr(parent, node, replacer)
 	case Argument:
@@ -126,12 +126,12 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfCountStar(parent, node, replacer)
 	case *CreateDatabase:
 		return a.rewriteRefOfCreateDatabase(parent, node, replacer)
-	case *CreateFilter:
-		return a.rewriteRefOfCreateFilter(parent, node, replacer)
 	case *CreateTable:
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:
 		return a.rewriteRefOfCreateView(parent, node, replacer)
+	case *CreateWescaleFilter:
+		return a.rewriteRefOfCreateWescaleFilter(parent, node, replacer)
 	case *CurTimeFuncExpr:
 		return a.rewriteRefOfCurTimeFuncExpr(parent, node, replacer)
 	case *DeallocateStmt:
@@ -172,10 +172,6 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfExtractValueExpr(parent, node, replacer)
 	case *ExtractedSubquery:
 		return a.rewriteRefOfExtractedSubquery(parent, node, replacer)
-	case *FilterAction:
-		return a.rewriteRefOfFilterAction(parent, node, replacer)
-	case *FilterPattern:
-		return a.rewriteRefOfFilterPattern(parent, node, replacer)
 	case *FirstOrLastValueExpr:
 		return a.rewriteRefOfFirstOrLastValueExpr(parent, node, replacer)
 	case *Flush:
@@ -518,6 +514,10 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfVindexSpec(parent, node, replacer)
 	case *WeightStringFuncExpr:
 		return a.rewriteRefOfWeightStringFuncExpr(parent, node, replacer)
+	case *WescaleFilterAction:
+		return a.rewriteRefOfWescaleFilterAction(parent, node, replacer)
+	case *WescaleFilterPattern:
+		return a.rewriteRefOfWescaleFilterPattern(parent, node, replacer)
 	case *When:
 		return a.rewriteRefOfWhen(parent, node, replacer)
 	case *Where:
@@ -843,38 +843,6 @@ func (a *application) rewriteRefOfAlterDatabase(parent SQLNode, node *AlterDatab
 	}
 	return true
 }
-func (a *application) rewriteRefOfAlterFilter(parent SQLNode, node *AlterFilter, replacer replacerFunc) bool {
-	if node == nil {
-		return true
-	}
-	if a.pre != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.pre(&a.cur) {
-			return true
-		}
-	}
-	if !a.rewriteRefOfFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
-		parent.(*AlterFilter).Pattern = newNode.(*FilterPattern)
-	}) {
-		return false
-	}
-	if !a.rewriteRefOfFilterAction(node, node.Action, func(newNode, parent SQLNode) {
-		parent.(*AlterFilter).Action = newNode.(*FilterAction)
-	}) {
-		return false
-	}
-	if a.post != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.post(&a.cur) {
-			return false
-		}
-	}
-	return true
-}
 func (a *application) rewriteRefOfAlterIndex(parent SQLNode, node *AlterIndex, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -1060,6 +1028,38 @@ func (a *application) rewriteRefOfAlterVschema(parent SQLNode, node *AlterVschem
 	}
 	if !a.rewriteRefOfAutoIncSpec(node, node.AutoIncSpec, func(newNode, parent SQLNode) {
 		parent.(*AlterVschema).AutoIncSpec = newNode.(*AutoIncSpec)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfAlterWescaleFilter(parent SQLNode, node *AlterWescaleFilter, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfWescaleFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
+		parent.(*AlterWescaleFilter).Pattern = newNode.(*WescaleFilterPattern)
+	}) {
+		return false
+	}
+	if !a.rewriteRefOfWescaleFilterAction(node, node.Action, func(newNode, parent SQLNode) {
+		parent.(*AlterWescaleFilter).Action = newNode.(*WescaleFilterAction)
 	}) {
 		return false
 	}
@@ -2076,38 +2076,6 @@ func (a *application) rewriteRefOfCreateDatabase(parent SQLNode, node *CreateDat
 	}
 	return true
 }
-func (a *application) rewriteRefOfCreateFilter(parent SQLNode, node *CreateFilter, replacer replacerFunc) bool {
-	if node == nil {
-		return true
-	}
-	if a.pre != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.pre(&a.cur) {
-			return true
-		}
-	}
-	if !a.rewriteRefOfFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
-		parent.(*CreateFilter).Pattern = newNode.(*FilterPattern)
-	}) {
-		return false
-	}
-	if !a.rewriteRefOfFilterAction(node, node.Action, func(newNode, parent SQLNode) {
-		parent.(*CreateFilter).Action = newNode.(*FilterAction)
-	}) {
-		return false
-	}
-	if a.post != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.post(&a.cur) {
-			return false
-		}
-	}
-	return true
-}
 func (a *application) rewriteRefOfCreateTable(parent SQLNode, node *CreateTable, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -2189,6 +2157,38 @@ func (a *application) rewriteRefOfCreateView(parent SQLNode, node *CreateView, r
 	}
 	if !a.rewriteRefOfParsedComments(node, node.Comments, func(newNode, parent SQLNode) {
 		parent.(*CreateView).Comments = newNode.(*ParsedComments)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfCreateWescaleFilter(parent SQLNode, node *CreateWescaleFilter, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfWescaleFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
+		parent.(*CreateWescaleFilter).Pattern = newNode.(*WescaleFilterPattern)
+	}) {
+		return false
+	}
+	if !a.rewriteRefOfWescaleFilterAction(node, node.Action, func(newNode, parent SQLNode) {
+		parent.(*CreateWescaleFilter).Action = newNode.(*WescaleFilterAction)
 	}) {
 		return false
 	}
@@ -2836,54 +2836,6 @@ func (a *application) rewriteRefOfExtractedSubquery(parent SQLNode, node *Extrac
 		a.cur.replacer = replacer
 		a.cur.parent = parent
 		a.cur.node = node
-		if !a.post(&a.cur) {
-			return false
-		}
-	}
-	return true
-}
-func (a *application) rewriteRefOfFilterAction(parent SQLNode, node *FilterAction, replacer replacerFunc) bool {
-	if node == nil {
-		return true
-	}
-	if a.pre != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.pre(&a.cur) {
-			return true
-		}
-	}
-	if a.post != nil {
-		if a.pre == nil {
-			a.cur.replacer = replacer
-			a.cur.parent = parent
-			a.cur.node = node
-		}
-		if !a.post(&a.cur) {
-			return false
-		}
-	}
-	return true
-}
-func (a *application) rewriteRefOfFilterPattern(parent SQLNode, node *FilterPattern, replacer replacerFunc) bool {
-	if node == nil {
-		return true
-	}
-	if a.pre != nil {
-		a.cur.replacer = replacer
-		a.cur.parent = parent
-		a.cur.node = node
-		if !a.pre(&a.cur) {
-			return true
-		}
-	}
-	if a.post != nil {
-		if a.pre == nil {
-			a.cur.replacer = replacer
-			a.cur.parent = parent
-			a.cur.node = node
-		}
 		if !a.post(&a.cur) {
 			return false
 		}
@@ -8311,6 +8263,54 @@ func (a *application) rewriteRefOfWeightStringFuncExpr(parent SQLNode, node *Wei
 	}
 	return true
 }
+func (a *application) rewriteRefOfWescaleFilterAction(parent SQLNode, node *WescaleFilterAction, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfWescaleFilterPattern(parent SQLNode, node *WescaleFilterPattern, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfWhen(parent SQLNode, node *When, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -9139,8 +9139,6 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfAlterDMLJob(parent, node, replacer)
 	case *AlterDatabase:
 		return a.rewriteRefOfAlterDatabase(parent, node, replacer)
-	case *AlterFilter:
-		return a.rewriteRefOfAlterFilter(parent, node, replacer)
 	case *AlterMigration:
 		return a.rewriteRefOfAlterMigration(parent, node, replacer)
 	case *AlterTable:
@@ -9149,6 +9147,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfAlterView(parent, node, replacer)
 	case *AlterVschema:
 		return a.rewriteRefOfAlterVschema(parent, node, replacer)
+	case *AlterWescaleFilter:
+		return a.rewriteRefOfAlterWescaleFilter(parent, node, replacer)
 	case *Begin:
 		return a.rewriteRefOfBegin(parent, node, replacer)
 	case *CallProc:
@@ -9161,12 +9161,12 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfCommit(parent, node, replacer)
 	case *CreateDatabase:
 		return a.rewriteRefOfCreateDatabase(parent, node, replacer)
-	case *CreateFilter:
-		return a.rewriteRefOfCreateFilter(parent, node, replacer)
 	case *CreateTable:
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:
 		return a.rewriteRefOfCreateView(parent, node, replacer)
+	case *CreateWescaleFilter:
+		return a.rewriteRefOfCreateWescaleFilter(parent, node, replacer)
 	case *DeallocateStmt:
 		return a.rewriteRefOfDeallocateStmt(parent, node, replacer)
 	case *Delete:

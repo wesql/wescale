@@ -108,9 +108,9 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result,
 	}
 
 	switch s := stmt.(type) {
-	case *sqlparser.CreateFilter:
+	case *sqlparser.CreateWescaleFilter:
 		return qe.HandleCreateFilter(s)
-	case *sqlparser.AlterFilter:
+	case *sqlparser.AlterWescaleFilter:
 		return qe.HandleAlterFilter(s)
 	}
 

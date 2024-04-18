@@ -44,8 +44,6 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
-	case *AlterFilter:
-		return c.copyOnRewriteRefOfAlterFilter(n, parent)
 	case *AlterIndex:
 		return c.copyOnRewriteRefOfAlterIndex(n, parent)
 	case *AlterMigration:
@@ -56,6 +54,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfAlterView(n, parent)
 	case *AlterVschema:
 		return c.copyOnRewriteRefOfAlterVschema(n, parent)
+	case *AlterWescaleFilter:
+		return c.copyOnRewriteRefOfAlterWescaleFilter(n, parent)
 	case *AndExpr:
 		return c.copyOnRewriteRefOfAndExpr(n, parent)
 	case Argument:
@@ -126,12 +126,12 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfCountStar(n, parent)
 	case *CreateDatabase:
 		return c.copyOnRewriteRefOfCreateDatabase(n, parent)
-	case *CreateFilter:
-		return c.copyOnRewriteRefOfCreateFilter(n, parent)
 	case *CreateTable:
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:
 		return c.copyOnRewriteRefOfCreateView(n, parent)
+	case *CreateWescaleFilter:
+		return c.copyOnRewriteRefOfCreateWescaleFilter(n, parent)
 	case *CurTimeFuncExpr:
 		return c.copyOnRewriteRefOfCurTimeFuncExpr(n, parent)
 	case *DeallocateStmt:
@@ -172,10 +172,6 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfExtractValueExpr(n, parent)
 	case *ExtractedSubquery:
 		return c.copyOnRewriteRefOfExtractedSubquery(n, parent)
-	case *FilterAction:
-		return c.copyOnRewriteRefOfFilterAction(n, parent)
-	case *FilterPattern:
-		return c.copyOnRewriteRefOfFilterPattern(n, parent)
 	case *FirstOrLastValueExpr:
 		return c.copyOnRewriteRefOfFirstOrLastValueExpr(n, parent)
 	case *Flush:
@@ -518,6 +514,10 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfVindexSpec(n, parent)
 	case *WeightStringFuncExpr:
 		return c.copyOnRewriteRefOfWeightStringFuncExpr(n, parent)
+	case *WescaleFilterAction:
+		return c.copyOnRewriteRefOfWescaleFilterAction(n, parent)
+	case *WescaleFilterPattern:
+		return c.copyOnRewriteRefOfWescaleFilterPattern(n, parent)
 	case *When:
 		return c.copyOnRewriteRefOfWhen(n, parent)
 	case *Where:
@@ -769,30 +769,6 @@ func (c *cow) copyOnRewriteRefOfAlterDatabase(n *AlterDatabase, parent SQLNode) 
 	}
 	return
 }
-func (c *cow) copyOnRewriteRefOfAlterFilter(n *AlterFilter, parent SQLNode) (out SQLNode, changed bool) {
-	if n == nil || c.cursor.stop {
-		return n, false
-	}
-	out = n
-	if c.pre == nil || c.pre(n, parent) {
-		_Pattern, changedPattern := c.copyOnRewriteRefOfFilterPattern(n.Pattern, n)
-		_Action, changedAction := c.copyOnRewriteRefOfFilterAction(n.Action, n)
-		if changedPattern || changedAction {
-			res := *n
-			res.Pattern, _ = _Pattern.(*FilterPattern)
-			res.Action, _ = _Action.(*FilterAction)
-			out = &res
-			if c.cloned != nil {
-				c.cloned(n, out)
-			}
-			changed = true
-		}
-	}
-	if c.post != nil {
-		out, changed = c.postVisit(out, parent, changed)
-	}
-	return
-}
 func (c *cow) copyOnRewriteRefOfAlterIndex(n *AlterIndex, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -929,6 +905,30 @@ func (c *cow) copyOnRewriteRefOfAlterVschema(n *AlterVschema, parent SQLNode) (o
 			res.VindexSpec, _ = _VindexSpec.(*VindexSpec)
 			res.VindexCols = _VindexCols
 			res.AutoIncSpec, _ = _AutoIncSpec.(*AutoIncSpec)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfAlterWescaleFilter(n *AlterWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Pattern, changedPattern := c.copyOnRewriteRefOfWescaleFilterPattern(n.Pattern, n)
+		_Action, changedAction := c.copyOnRewriteRefOfWescaleFilterAction(n.Action, n)
+		if changedPattern || changedAction {
+			res := *n
+			res.Pattern, _ = _Pattern.(*WescaleFilterPattern)
+			res.Action, _ = _Action.(*WescaleFilterAction)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -1680,30 +1680,6 @@ func (c *cow) copyOnRewriteRefOfCreateDatabase(n *CreateDatabase, parent SQLNode
 	}
 	return
 }
-func (c *cow) copyOnRewriteRefOfCreateFilter(n *CreateFilter, parent SQLNode) (out SQLNode, changed bool) {
-	if n == nil || c.cursor.stop {
-		return n, false
-	}
-	out = n
-	if c.pre == nil || c.pre(n, parent) {
-		_Pattern, changedPattern := c.copyOnRewriteRefOfFilterPattern(n.Pattern, n)
-		_Action, changedAction := c.copyOnRewriteRefOfFilterAction(n.Action, n)
-		if changedPattern || changedAction {
-			res := *n
-			res.Pattern, _ = _Pattern.(*FilterPattern)
-			res.Action, _ = _Action.(*FilterAction)
-			out = &res
-			if c.cloned != nil {
-				c.cloned(n, out)
-			}
-			changed = true
-		}
-	}
-	if c.post != nil {
-		out, changed = c.postVisit(out, parent, changed)
-	}
-	return
-}
 func (c *cow) copyOnRewriteRefOfCreateTable(n *CreateTable, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -1752,6 +1728,30 @@ func (c *cow) copyOnRewriteRefOfCreateView(n *CreateView, parent SQLNode) (out S
 			res.Columns, _ = _Columns.(Columns)
 			res.Select, _ = _Select.(SelectStatement)
 			res.Comments, _ = _Comments.(*ParsedComments)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfCreateWescaleFilter(n *CreateWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Pattern, changedPattern := c.copyOnRewriteRefOfWescaleFilterPattern(n.Pattern, n)
+		_Action, changedAction := c.copyOnRewriteRefOfWescaleFilterAction(n.Action, n)
+		if changedPattern || changedAction {
+			res := *n
+			res.Pattern, _ = _Pattern.(*WescaleFilterPattern)
+			res.Action, _ = _Action.(*WescaleFilterAction)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -2215,30 +2215,6 @@ func (c *cow) copyOnRewriteRefOfExtractedSubquery(n *ExtractedSubquery, parent S
 			}
 			changed = true
 		}
-	}
-	if c.post != nil {
-		out, changed = c.postVisit(out, parent, changed)
-	}
-	return
-}
-func (c *cow) copyOnRewriteRefOfFilterAction(n *FilterAction, parent SQLNode) (out SQLNode, changed bool) {
-	if n == nil || c.cursor.stop {
-		return n, false
-	}
-	out = n
-	if c.pre == nil || c.pre(n, parent) {
-	}
-	if c.post != nil {
-		out, changed = c.postVisit(out, parent, changed)
-	}
-	return
-}
-func (c *cow) copyOnRewriteRefOfFilterPattern(n *FilterPattern, parent SQLNode) (out SQLNode, changed bool) {
-	if n == nil || c.cursor.stop {
-		return n, false
-	}
-	out = n
-	if c.pre == nil || c.pre(n, parent) {
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -6081,6 +6057,30 @@ func (c *cow) copyOnRewriteRefOfWeightStringFuncExpr(n *WeightStringFuncExpr, pa
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfWescaleFilterAction(n *WescaleFilterAction, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfWescaleFilterPattern(n *WescaleFilterPattern, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfWhen(n *When, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6851,8 +6851,6 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfAlterDMLJob(n, parent)
 	case *AlterDatabase:
 		return c.copyOnRewriteRefOfAlterDatabase(n, parent)
-	case *AlterFilter:
-		return c.copyOnRewriteRefOfAlterFilter(n, parent)
 	case *AlterMigration:
 		return c.copyOnRewriteRefOfAlterMigration(n, parent)
 	case *AlterTable:
@@ -6861,6 +6859,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfAlterView(n, parent)
 	case *AlterVschema:
 		return c.copyOnRewriteRefOfAlterVschema(n, parent)
+	case *AlterWescaleFilter:
+		return c.copyOnRewriteRefOfAlterWescaleFilter(n, parent)
 	case *Begin:
 		return c.copyOnRewriteRefOfBegin(n, parent)
 	case *CallProc:
@@ -6873,12 +6873,12 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfCommit(n, parent)
 	case *CreateDatabase:
 		return c.copyOnRewriteRefOfCreateDatabase(n, parent)
-	case *CreateFilter:
-		return c.copyOnRewriteRefOfCreateFilter(n, parent)
 	case *CreateTable:
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:
 		return c.copyOnRewriteRefOfCreateView(n, parent)
+	case *CreateWescaleFilter:
+		return c.copyOnRewriteRefOfCreateWescaleFilter(n, parent)
 	case *DeallocateStmt:
 		return c.copyOnRewriteRefOfDeallocateStmt(n, parent)
 	case *Delete:
