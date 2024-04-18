@@ -18,6 +18,7 @@
 *.test
 *.result
 *.y
+*.cnf
 go.mod
 go.sum
 .github/*
