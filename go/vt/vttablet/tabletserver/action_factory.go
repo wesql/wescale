@@ -58,7 +58,6 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		actInst, err = &ConcurrencyControlAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
-		//todo filter: maybe we should use 'vterrors.Errorf' here
 		actInst, err = nil, fmt.Errorf("unknown action: %v", action)
 	}
 

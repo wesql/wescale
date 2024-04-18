@@ -51,7 +51,6 @@ func resetVariables(txs *ConcurrencyController) {
 }
 
 func NewConcurrentControllerForTest(maxGlobalQueueSize int, dryRun bool) *ConcurrencyController {
-	//todo filter: remove maxQueueSize & maxConcurrency
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "ConcurrencyControllerTest")
 	concurrencyControllerMaxGlobalQueueSize = maxGlobalQueueSize

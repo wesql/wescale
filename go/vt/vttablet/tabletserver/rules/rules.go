@@ -1138,10 +1138,8 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		case "Name":
 			qr.Name = sv
 		case "Priority":
-			//todo earayu: add testcase
 			qr.Priority = iv
 		case "Status":
-			//todo earayu: add testcase
 			if !StatusIsValid(sv) {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid status: %s", sv)
 			}

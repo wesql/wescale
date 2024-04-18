@@ -677,6 +677,86 @@ func TestBuildQueryRuleActionFail(t *testing.T) {
 	}
 }
 
+func TestBuildQueryRulePriority(t *testing.T) {
+	{
+		var ruleInfo map[string]any
+		dec := json.NewDecoder(bytes.NewReader([]byte(`{"Priority": 10 }`)))
+		dec.UseNumber()
+		err := dec.Decode(&ruleInfo)
+		if err != nil {
+			t.Fatalf("failed to unmarshal json, got error: %v", err)
+		}
+		qr, err := BuildQueryRule(ruleInfo)
+		if err != nil {
+			t.Fatalf("build query rule should succeed")
+		}
+		if qr.act != QRFail {
+			t.Fatalf("action should fail")
+		}
+	}
+
+	{
+		var ruleInfo map[string]any
+		dec := json.NewDecoder(bytes.NewReader([]byte(`{"Priority": -1 }`)))
+		dec.UseNumber()
+		err := dec.Decode(&ruleInfo)
+		if err != nil {
+			t.Fatalf("failed to unmarshal json, got error: %v", err)
+		}
+		qr, err := BuildQueryRule(ruleInfo)
+		if err != nil {
+			t.Fatalf("build query rule should succeed")
+		}
+		if qr.act != QRFail {
+			t.Fatalf("action should fail")
+		}
+	}
+
+	{
+		var ruleInfo map[string]any
+		dec := json.NewDecoder(bytes.NewReader([]byte(`{"Priority": "foo" }`)))
+		dec.UseNumber()
+		err := dec.Decode(&ruleInfo)
+		if err != nil {
+			t.Fatalf("failed to unmarshal json, got error: %v", err)
+		}
+		_, err2 := BuildQueryRule(ruleInfo)
+		assert.Error(t, err2)
+	}
+}
+
+func TestBuildQueryRuleStatus(t *testing.T) {
+	{
+		var ruleInfo map[string]any
+		err := json.Unmarshal([]byte(`{"Status": "ACTIVE" }`), &ruleInfo)
+		if err != nil {
+			t.Fatalf("failed to unmarshal json, got error: %v", err)
+		}
+		qr, err := BuildQueryRule(ruleInfo)
+		if err != nil {
+			t.Fatalf("build query rule should succeed")
+		}
+		if qr.act != QRFail {
+			t.Fatalf("action should fail")
+		}
+	}
+
+	{
+		var ruleInfo map[string]any
+		err := json.Unmarshal([]byte(`{"Status": "INACTIVE" }`), &ruleInfo)
+		if err != nil {
+			t.Fatalf("failed to unmarshal json, got error: %v", err)
+		}
+		qr, err := BuildQueryRule(ruleInfo)
+		if err != nil {
+			t.Fatalf("build query rule should succeed")
+		}
+		if qr.act != QRFail {
+			t.Fatalf("action should fail")
+		}
+	}
+}
+
 func TestBadAddBindVarCond(t *testing.T) {
 	qr1 := NewActiveQueryRule("rule 1", "r1", QRFail)
 	err := qr1.AddBindVarCond("a", true, false, QRMatch, uint64(1))
