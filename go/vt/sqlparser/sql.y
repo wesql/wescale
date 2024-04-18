@@ -121,6 +121,8 @@ func bindVariable(yylex yyLexer, bvar string) {
   createTable      *CreateTable
   createFilter      *CreateFilter
   alterFilter       *AlterFilter
+  dropWescaleFilter        *DropWescaleFilter
+  showWescaleFilter        *ShowWescaleFilter
   filterPattern     *FilterPattern
   filterAction     *FilterAction
   tableAndLockType *TableAndLockType
@@ -326,7 +328,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> SEQUENCE MERGE TEMPORARY TEMPTABLE INVOKER SECURITY FIRST AFTER LAST
 
 // Filter Tokens
-%token <str> FILTER WITHPATTERN
+%token <str> FILTER FILTERS WITHPATTERN
 %token <str> PRIORITY
 %token <str> PLANS TABLE_NAME QUERY_REGEX QUERY_TEMPLATE
 %token <str> REQUEST_IP_REGEX USER_REGEX LEADING_COMMENT_REGEX TRAILING_COMMENT_REGEX BIND_VAR_CONDS
@@ -444,6 +446,8 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <statement> create_statement alter_statement rename_statement drop_statement truncate_statement flush_statement do_statement
 %type <statement> create_filter_statement
 %type <statement> alter_filter_statement
+%type <statement> drop_filter_statement
+%type <statement> show_filter_statement
 %type <with> with_clause_opt with_clause
 %type <cte> common_table_expr
 %type <ctes> with_list
@@ -708,6 +712,8 @@ command:
 | deallocate_statement
 | create_filter_statement
 | alter_filter_statement
+| drop_filter_statement
+| show_filter_statement
 | /*empty*/
 {
   setParseTree(yylex, nil)
@@ -1202,7 +1208,7 @@ alter_filter_statement:
   filter_pattern_info_opt:
   /*empty*/
   {
-     $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIpRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+     $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
   }
   | WITHPATTERN '(' filter_pattern_info ')'
   {
@@ -1219,6 +1225,21 @@ alter_filter_statement:
     $$ = $3
   }
 
+drop_filter_statement:
+  DROP FILTER ID
+  {
+    $$ = &DropWescaleFilter{Name:$3}
+  }
+
+show_filter_statement:
+  SHOW FILTER ID
+  {
+    $$ = &ShowWescaleFilter{Name:$3}
+  }
+  | SHOW FILTERS
+  {
+    $$ = &ShowWescaleFilter{ShowAll:true}
+  }
 
 filter_info:
   filter_info_field '=' STRING
@@ -1313,7 +1334,7 @@ filter_info_field:
 filter_pattern_info:
 filter_pattern_info_field '=' STRING
 {
-  $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIpRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+  $$ = &FilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
   if $1 == "plans" {
       $$.Plans = $3
   }
@@ -1327,7 +1348,7 @@ filter_pattern_info_field '=' STRING
       $$.QueryTemplate = $3
   }
    if $1 == "request_ip_regex" {
-      $$.RequestIpRegex = $3
+      $$.RequestIPRegex = $3
    }
    if $1 == "user_regex" {
       $$.UserRegex = $3
@@ -1357,7 +1378,7 @@ filter_pattern_info_field '=' STRING
       $$.QueryTemplate = $5
   }
   if $3 == "request_ip_regex" {
-      $$.RequestIpRegex = $5
+      $$.RequestIPRegex = $5
   }
   if $3 == "user_regex" {
       $$.UserRegex = $5

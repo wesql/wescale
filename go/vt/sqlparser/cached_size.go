@@ -1263,6 +1263,18 @@ func (cached *DropView) CachedSize(alloc bool) int64 {
 	size += cached.Comments.CachedSize(true)
 	return size
 }
+func (cached *DropWescaleFilter) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
+	return size
+}
 func (cached *ExecuteStmt) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -1416,8 +1428,8 @@ func (cached *FilterPattern) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.QueryRegex)))
 	// field QueryTemplate string
 	size += hack.RuntimeAllocSize(int64(len(cached.QueryTemplate)))
-	// field RequestIpRegex string
-	size += hack.RuntimeAllocSize(int64(len(cached.RequestIpRegex)))
+	// field RequestIPRegex string
+	size += hack.RuntimeAllocSize(int64(len(cached.RequestIPRegex)))
 	// field UserRegex string
 	size += hack.RuntimeAllocSize(int64(len(cached.UserRegex)))
 	// field LeadingCommentRegex string
@@ -3569,6 +3581,18 @@ func (cached *ShowThrottlerStatus) CachedSize(alloc bool) int64 {
 			size += hack.RuntimeAllocSize(int64(len(elem)))
 		}
 	}
+	return size
+}
+func (cached *ShowWescaleFilter) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(24)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
 	return size
 }
 func (cached *StarExpr) CachedSize(alloc bool) int64 {

@@ -2130,7 +2130,7 @@ func (node *FilterPattern) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "fully_qualified_table_names=%s, ", node.FullyQualifiedTableNames)
 	buf.astPrintf(node, "query_regex=%s, ", node.QueryRegex)
 	buf.astPrintf(node, "query_template=%s, ", node.QueryTemplate)
-	buf.astPrintf(node, "request_ip_regex=%s, ", node.RequestIpRegex)
+	buf.astPrintf(node, "request_ip_regex=%s, ", node.RequestIPRegex)
 	buf.astPrintf(node, "user_regex=%s, ", node.UserRegex)
 	buf.astPrintf(node, "leading_comment_regex=%s, ", node.LeadingCommentRegex)
 	buf.astPrintf(node, "trailing_comment_regex=%s, ", node.TrailingCommentRegex)
@@ -2186,6 +2186,20 @@ func (node *AlterFilter) Format(buf *TrackedBuffer) {
 
 	if node.Action != nil {
 		buf.astPrintf(node, "%v ", node.Action)
+	}
+}
+
+// Format formats the node.
+func (node *DropWescaleFilter) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "drop filter %s", node.Name)
+}
+
+// Format formats the node.
+func (node *ShowWescaleFilter) Format(buf *TrackedBuffer) {
+	if node.ShowAll {
+		buf.literal("show filters")
+	} else {
+		buf.astPrintf(node, "show filter %s", node.Name)
 	}
 }
 

@@ -155,6 +155,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfDropTable(in)
 	case *DropView:
 		return CloneRefOfDropView(in)
+	case *DropWescaleFilter:
+		return CloneRefOfDropWescaleFilter(in)
 	case *ExecuteStmt:
 		return CloneRefOfExecuteStmt(in)
 	case *ExistsExpr:
@@ -429,6 +431,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfShowThrottledApps(in)
 	case *ShowThrottlerStatus:
 		return CloneRefOfShowThrottlerStatus(in)
+	case *ShowWescaleFilter:
+		return CloneRefOfShowWescaleFilter(in)
 	case *StarExpr:
 		return CloneRefOfStarExpr(in)
 	case *Std:
@@ -1223,6 +1227,15 @@ func CloneRefOfDropView(n *DropView) *DropView {
 	out := *n
 	out.FromTables = CloneTableNames(n.FromTables)
 	out.Comments = CloneRefOfParsedComments(n.Comments)
+	return &out
+}
+
+// CloneRefOfDropWescaleFilter creates a deep clone of the input.
+func CloneRefOfDropWescaleFilter(n *DropWescaleFilter) *DropWescaleFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
 	return &out
 }
 
@@ -2681,6 +2694,15 @@ func CloneRefOfShowThrottlerStatus(n *ShowThrottlerStatus) *ShowThrottlerStatus 
 	return &out
 }
 
+// CloneRefOfShowWescaleFilter creates a deep clone of the input.
+func CloneRefOfShowWescaleFilter(n *ShowWescaleFilter) *ShowWescaleFilter {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfStarExpr creates a deep clone of the input.
 func CloneRefOfStarExpr(n *StarExpr) *StarExpr {
 	if n == nil {
@@ -3891,6 +3913,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfDropTable(in)
 	case *DropView:
 		return CloneRefOfDropView(in)
+	case *DropWescaleFilter:
+		return CloneRefOfDropWescaleFilter(in)
 	case *ExecuteStmt:
 		return CloneRefOfExecuteStmt(in)
 	case *ExplainStmt:
@@ -3939,6 +3963,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfShowThrottledApps(in)
 	case *ShowThrottlerStatus:
 		return CloneRefOfShowThrottlerStatus(in)
+	case *ShowWescaleFilter:
+		return CloneRefOfShowWescaleFilter(in)
 	case *Stream:
 		return CloneRefOfStream(in)
 	case *TruncateTable:

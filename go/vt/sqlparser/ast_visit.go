@@ -154,6 +154,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfDropTable(in, f)
 	case *DropView:
 		return VisitRefOfDropView(in, f)
+	case *DropWescaleFilter:
+		return VisitRefOfDropWescaleFilter(in, f)
 	case *ExecuteStmt:
 		return VisitRefOfExecuteStmt(in, f)
 	case *ExistsExpr:
@@ -428,6 +430,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfShowThrottledApps(in, f)
 	case *ShowThrottlerStatus:
 		return VisitRefOfShowThrottlerStatus(in, f)
+	case *ShowWescaleFilter:
+		return VisitRefOfShowWescaleFilter(in, f)
 	case *StarExpr:
 		return VisitRefOfStarExpr(in, f)
 	case *Std:
@@ -1460,6 +1464,15 @@ func VisitRefOfDropView(in *DropView, f Visit) error {
 		return err
 	}
 	if err := VisitRefOfParsedComments(in.Comments, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfDropWescaleFilter(in *DropWescaleFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
 	return nil
@@ -3401,6 +3414,15 @@ func VisitRefOfShowThrottlerStatus(in *ShowThrottlerStatus, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfShowWescaleFilter(in *ShowWescaleFilter, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfStarExpr(in *StarExpr, f Visit) error {
 	if in == nil {
 		return nil
@@ -4767,6 +4789,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfDropTable(in, f)
 	case *DropView:
 		return VisitRefOfDropView(in, f)
+	case *DropWescaleFilter:
+		return VisitRefOfDropWescaleFilter(in, f)
 	case *ExecuteStmt:
 		return VisitRefOfExecuteStmt(in, f)
 	case *ExplainStmt:
@@ -4815,6 +4839,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfShowThrottledApps(in, f)
 	case *ShowThrottlerStatus:
 		return VisitRefOfShowThrottlerStatus(in, f)
+	case *ShowWescaleFilter:
+		return VisitRefOfShowWescaleFilter(in, f)
 	case *Stream:
 		return VisitRefOfStream(in, f)
 	case *TruncateTable:

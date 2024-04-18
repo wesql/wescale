@@ -712,6 +712,7 @@ var keywords = []keyword{
 	{"year_month", YEAR_MONTH},
 	{"zerofill", ZEROFILL},
 	{"filter", FILTER},
+	{"filters", FILTERS},
 	{"with_pattern", WITHPATTERN},
 	{"description", DESCRIPTION},
 	{"priority", PRIORITY},
