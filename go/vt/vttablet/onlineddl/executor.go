@@ -783,7 +783,7 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 	// Preparation is complete. We proceed to cut-over.
 	toggleBuffering := func(bufferQueries bool) error {
 		log.Infof("toggling buffering: %t in migration %v", bufferQueries, onlineDDL.UUID)
-		e.toggleBufferTableFunc(bufferingCtx, onlineDDL.Table, bufferQueries)
+		e.toggleBufferTableFunc(bufferingCtx, fmt.Sprintf("%s.%s", onlineDDL.Schema, onlineDDL.Table), bufferQueries)
 		if !bufferQueries {
 			// called after new table is in place.
 			// unbuffer existing queries:
