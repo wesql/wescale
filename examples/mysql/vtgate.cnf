@@ -19,5 +19,5 @@ mysql_server_require_secure_transport = false
 mysql_auth_server_static_file         =
 mysql_server_ssl_key                  =
 mysql_server_ssl_cert                 =
-enable_display_sql_execution_vttablets    = true
+enable_display_sql_execution_vttablets    = false
 enable_read_write_split_for_read_only_txn = true
