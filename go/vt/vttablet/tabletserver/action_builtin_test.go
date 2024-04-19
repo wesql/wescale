@@ -57,6 +57,45 @@ func TestFailRetryAction(t *testing.T) {
 	assert.NotNil(t, action.GetRule())
 }
 
+func TestBufferActionNoTimeout(t *testing.T) {
+	ruleCancelCtx, ruleCancelFunc := context.WithTimeout(context.Background(), 1*time.Second)
+	defer ruleCancelFunc()
+	qr := rules.NewActiveBufferedTableQueryRule(ruleCancelCtx, "d1.t1", "desc")
+
+	action := &BufferAction{
+		Rule:   qr,
+		Action: rules.QRBuffer,
+	}
+	qre := &QueryExecutor{
+		ctx: context.Background(),
+	}
+	resp := action.BeforeExecution(qre)
+	assert.NoError(t, resp.Err)
+}
+
+func TestBufferActionTimeout(t *testing.T) {
+	ruleCancelCtx, ruleCancelFunc := context.WithTimeout(context.Background(), 12*time.Second)
+	defer ruleCancelFunc()
+	qr := rules.NewActiveBufferedTableQueryRule(ruleCancelCtx, "d1.t1", "desc")
+
+	action := &BufferAction{
+		Rule:   qr,
+		Action: rules.QRBuffer,
+	}
+	qre := &QueryExecutor{
+		ctx: context.Background(),
+	}
+	resp := action.BeforeExecution(qre)
+	assert.ErrorContains(t, resp.Err, "buffer timeout")
+	// check if the error is retried: Code_FAILED_PRECONDITION
+	errCode := vterrors.Code(resp.Err)
+	assert.Equal(t, vtrpcpb.Code_FAILED_PRECONDITION, errCode)
+
+	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
+	assert.NoError(t, action.SetParams(""))
+	assert.NotNil(t, action.GetRule())
+}
+
 func TestConcurrencyControlAction(t *testing.T) {
 	qr := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl)
 

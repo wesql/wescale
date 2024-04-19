@@ -99,6 +99,54 @@ func (p *FailRetryAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+type BufferAction struct {
+	Rule *rules.Rule
+
+	// Action is the action to take if the rule matches
+	Action rules.Action
+}
+
+func (p *BufferAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+	bufferingTimeoutCtx, cancel := context.WithTimeout(qre.ctx, maxQueryBufferDuration)
+	defer cancel()
+
+	ruleCancelCtx := p.GetRule().GetCancelCtx()
+	if ruleCancelCtx != nil {
+		// We buffer up to some timeout. The timeout is determined by ctx.Done().
+		// If we're not at timeout yet, we fail the query
+		select {
+		case <-ruleCancelCtx.Done():
+			// good! We have buffered the query, and buffering is completed
+		case <-bufferingTimeoutCtx.Done():
+			// Sorry, timeout while waiting for buffering to complete
+			return &ActionExecutionResponse{
+				Reply: nil,
+				Err:   vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "buffer timeout in rule: %s", p.GetRule().Name),
+			}
+		}
+	}
+
+	return &ActionExecutionResponse{
+		Reply: nil,
+		Err:   nil,
+	}
+}
+
+func (p *BufferAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+	return &ActionExecutionResponse{
+		Reply: reply,
+		Err:   err,
+	}
+}
+
+func (p *BufferAction) SetParams(stringParams string) error {
+	return nil
+}
+
+func (p *BufferAction) GetRule() *rules.Rule {
+	return p.Rule
+}
+
 type ConcurrencyControlAction struct {
 	Rule *rules.Rule
 
