@@ -185,7 +185,6 @@ func (qrs *Rules) FilterByPlan(query string, planid planbuilder.PlanType, tableN
 }
 
 // GetAction runs the input against the rules engine and returns the action to be performed.
-// todo earayu: deprecate this function
 func (qrs *Rules) GetAction(
 	ip,
 	user string,

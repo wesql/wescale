@@ -575,10 +575,10 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 		return nil, nil
 	}
 	for _, a := range qre.matchedActionList {
-		qr, err := a.BeforeExecution(qre)
+		resp := a.BeforeExecution(qre)
 		qre.calledActionList = append(qre.calledActionList, a)
-		if qr != nil || err != nil {
-			return nil, err
+		if resp.Reply != nil || resp.Err != nil {
+			return resp.Reply, resp.Err
 		}
 	}
 	return nil, nil
