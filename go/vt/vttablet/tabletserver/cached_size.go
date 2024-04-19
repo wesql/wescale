@@ -25,14 +25,12 @@ func (cached *TabletPlan) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(128)
+		size += int64(112)
 	}
 	// field Plan *vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder.Plan
 	size += cached.Plan.CachedSize(true)
 	// field Original string
 	size += hack.RuntimeAllocSize(int64(len(cached.Original)))
-	// field QueryTemplateID string
-	size += hack.RuntimeAllocSize(int64(len(cached.QueryTemplateID)))
 	// field Rules *vitess.io/vitess/go/vt/vttablet/tabletserver/rules.Rules
 	size += cached.Rules.CachedSize(true)
 	// field Authorized [][]*vitess.io/vitess/go/vt/tableacl.ACLResult
