@@ -77,6 +77,15 @@ func TestCreateActionInstance(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name: "QRBuffer",
+			args: args{
+				action: rules.QRBuffer,
+				rule:   rules.NewActiveBufferedTableQueryRule(nil, "test_rule", "desc"),
+			},
+			want:    &BufferAction{Rule: rules.NewActiveBufferedTableQueryRule(nil, "test_rule", "desc"), Action: rules.QRBuffer},
+			wantErr: assert.NoError,
+		},
+		{
 			name: "QRConcurrencyControl",
 			args: args{
 				action: rules.QRConcurrencyControl,
