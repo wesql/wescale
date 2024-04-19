@@ -54,8 +54,11 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		actInst, err = &FailAction{Rule: rule, Action: action}, nil
 	case rules.QRFailRetry:
 		actInst, err = &FailRetryAction{Rule: rule, Action: action}, nil
+	case rules.QRBuffer:
+		actInst, err = &BufferAction{Rule: rule, Action: action}, nil
 	case rules.QRConcurrencyControl:
 		actInst, err = &ConcurrencyControlAction{Rule: rule, Action: action}, nil
+
 	default:
 		log.Errorf("unknown action: %v", action)
 		actInst, err = nil, fmt.Errorf("unknown action: %v", action)
