@@ -16,8 +16,8 @@ import (
 func TestContinueAction(t *testing.T) {
 	action := &ContinueAction{}
 	qre := &QueryExecutor{}
-	_, err := action.BeforeExecution(qre)
-	assert.NoError(t, err)
+	resp := action.BeforeExecution(qre)
+	assert.NoError(t, resp.Err)
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.Nil(t, action.GetRule())
@@ -31,8 +31,8 @@ func TestFailAction(t *testing.T) {
 		Action: rules.QRFail,
 	}
 	qre := &QueryExecutor{}
-	_, err := action.BeforeExecution(qre)
-	assert.ErrorContains(t, err, "disallowed due to rule")
+	resp := action.BeforeExecution(qre)
+	assert.ErrorContains(t, resp.Err, "disallowed due to rule")
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 	assert.NoError(t, action.SetParams(""))
 	assert.NotNil(t, action.GetRule())
@@ -46,10 +46,10 @@ func TestFailRetryAction(t *testing.T) {
 		Action: rules.QRFailRetry,
 	}
 	qre := &QueryExecutor{}
-	_, err := action.BeforeExecution(qre)
-	assert.ErrorContains(t, err, "disallowed due to rule")
+	resp := action.BeforeExecution(qre)
+	assert.ErrorContains(t, resp.Err, "disallowed due to rule")
 	// check if the error is retried: Code_FAILED_PRECONDITION
-	errCode := vterrors.Code(err)
+	errCode := vterrors.Code(resp.Err)
 	assert.Equal(t, vtrpcpb.Code_FAILED_PRECONDITION, errCode)
 
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
@@ -74,37 +74,37 @@ func TestConcurrencyControlAction(t *testing.T) {
 	qre := newTestQueryExecutor(ctx, tsv, "select * from t1 where a = :a and b = :b", 0)
 
 	// test with no concurrency control
-	_, err := action.BeforeExecution(qre)
-	assert.NoError(t, err)
+	resp := action.BeforeExecution(qre)
+	assert.NoError(t, resp.Err)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	// test with concurrency control
 	go func() {
 		defer wg.Done()
-		_, timeOutErr := action.BeforeExecution(qre)
-		assert.EqualError(t, timeOutErr, "context deadline exceeded")
+		timeoutResp := action.BeforeExecution(qre)
+		assert.EqualError(t, timeoutResp.Err, "context deadline exceeded")
 	}()
 
 	// test with concurrency control and max queue size
 	go func() {
 		defer wg.Done()
 		time.Sleep(1 * time.Second)
-		_, maxQueueSizeErr := action.BeforeExecution(qre)
-		assert.EqualError(t, maxQueueSizeErr, "concurrency control protection: too many queued transactions (2 >= 2)")
+		maxQueueSizeResp := action.BeforeExecution(qre)
+		assert.EqualError(t, maxQueueSizeResp.Err, "concurrency control protection: too many queued transactions (2 >= 2)")
 	}()
 
 	wg.Wait()
 
 	{
-		_, timeOutErr := action.BeforeExecution(qre)
-		assert.EqualError(t, timeOutErr, "context deadline exceeded")
+		timeoutResp := action.BeforeExecution(qre)
+		assert.EqualError(t, timeoutResp.Err, "context deadline exceeded")
 	}
 
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 
-	_, err2 := action.BeforeExecution(qre)
-	assert.NoError(t, err2)
+	resp2 := action.BeforeExecution(qre)
+	assert.NoError(t, resp2.Err)
 
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 }
