@@ -16,15 +16,32 @@ import (
 	"vitess.io/vitess/go/mysql"
 )
 
-func InitTable(conn *mysql.Conn) {
+func WaitDatabaseCreated(conn *mysql.Conn, db string) error {
+	_, err := conn.ExecuteFetch("CREATE DATABASE test", 1000, false)
+	reTryCount := 0
+	for err != nil && reTryCount < 5 {
+		// wait test database created
+		_, err = conn.ExecuteFetch(fmt.Sprintf("use %s", db), 1000, false)
+		time.Sleep(time.Millisecond * 100)
+		reTryCount++
+	}
+	return err
+}
+
+func InitTable(t *testing.T, conn *mysql.Conn) {
 	conn.ExecuteFetch("CREATE DATABASE test", 1000, false)
-	conn.ExecuteFetch("use test", 1000, false)
-	conn.ExecuteFetch("CREATE TABLE t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
+	err := WaitDatabaseCreated(conn, "test")
+	require.Nil(t, err, "%v", err)
+
+	conn.ExecuteFetch("CREATE TABLE test.t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
 	conn.ExecuteFetch("Insert into test.t1 values(null,100)", 1000, false)
+
 	conn.ExecuteFetch("CREATE DATABASE d2", 1000, false)
-	conn.ExecuteFetch("use d2", 1000, false)
-	conn.ExecuteFetch("CREATE TABLE t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
+	err = WaitDatabaseCreated(conn, "d2")
+	require.Nil(t, err, "%v", err)
+	conn.ExecuteFetch("CREATE d2.TABLE t1 (v1 INT AUTO_INCREMENT PRIMARY KEY,  v2 INT);", 1000, false)
 	conn.ExecuteFetch("Insert into d2.t1 values(null,100)", 1000, false)
+
 }
 
 func CreateVtParam(username, host, password string) mysql.ConnParams {
@@ -65,7 +82,7 @@ func TestDBPriv(t *testing.T) {
 	err := CreateUser(conn, DBUser, host, password)
 	require.Nil(t, err, "%v", err)
 	vtgateConn.ExecuteFetch("reload users", 1000, false)
-	InitTable(vtgateConn)
+	InitTable(t, vtgateConn)
 
 	defer func() {
 		DropUser(conn, DBUser, host)
@@ -114,7 +131,7 @@ func TestReaderPriv(t *testing.T) {
 	require.Nil(t, err, "%v", err)
 	err = CreateUser(conn, TableUser, host, password)
 	require.Nil(t, err, "%v", err)
-	InitTable(conn)
+	InitTable(t, conn)
 	defer func() {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
@@ -181,7 +198,7 @@ func TestWriterPriv(t *testing.T) {
 	require.NoError(t, err, "%v", err)
 	err = CreateUser(conn, TableUser, host, password)
 	require.NoError(t, err, "%v", err)
-	InitTable(conn)
+	InitTable(t, conn)
 	defer func() {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
@@ -264,7 +281,7 @@ func TestAdminPriv(t *testing.T) {
 	require.Nil(t, err, "%v", err)
 	err = CreateUser(conn, TableUser, host, password)
 	require.Nil(t, err, "%v", err)
-	InitTable(conn)
+	InitTable(t, conn)
 
 	defer func() {
 		DropUser(conn, globalUser, host)
@@ -331,7 +348,7 @@ func TestOnlyReaderPriv(t *testing.T) {
 	require.Nil(t, err, "%v", err)
 	err = CreateUser(conn, TableUser, host, password)
 	require.Nil(t, err, "%v", err)
-	InitTable(conn)
+	InitTable(t, conn)
 	defer func() {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
@@ -391,7 +408,7 @@ func TestOnlyWriterPriv(t *testing.T) {
 	require.NoError(t, err, "%v", err)
 	err = CreateUser(conn, TableUser, host, password)
 	require.NoError(t, err, "%v", err)
-	InitTable(conn)
+	InitTable(t, conn)
 	defer func() {
 		DropUser(conn, globalUser, host)
 		DropUser(conn, DBUser, host)
