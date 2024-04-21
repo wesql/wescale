@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"testing"
 
+	"vitess.io/vitess/go/vt/vttablet/customrule"
+
 	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -65,7 +67,7 @@ func TestRule2Json(t *testing.T) {
 
 func TestRule2SQL(t *testing.T) {
 	qr := expectedRule()
-	sql, err := GenerateInsertStatement(qr)
+	sql, err := customrule.GenerateInsertStatement(qr)
 	assert.NoError(t, err)
 	fmt.Println(sql)
 	assert.Equal(t, expectedSQLString(), sql)
@@ -150,7 +152,7 @@ func TestRule2SQL(t *testing.T) {
 			sqltypes.MakeTrusted(sqltypes.Text, []byte("")), // action_args
 		}},
 	}
-	rule, err := queryResultToRule(queryResult.Named().Rows[0])
+	rule, err := customrule.QueryResultToRule(queryResult.Named().Rows[0])
 	assert.NoError(t, err)
 	fmt.Println(rule)
 	//todo filter: support bind_var_conds

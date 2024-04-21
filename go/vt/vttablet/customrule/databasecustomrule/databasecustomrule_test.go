@@ -8,6 +8,8 @@ package databasecustomrule
 import (
 	"testing"
 
+	"vitess.io/vitess/go/vt/vttablet/customrule"
+
 	"github.com/stretchr/testify/assert"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -16,29 +18,23 @@ import (
 )
 
 func TestGetReloadSqlWithDefaultValues(t *testing.T) {
-	controller := NewMockController()
-	cr, _ := newDatabaseCustomRule(controller)
-
 	expectedSQL := "SELECT * FROM mysql.wescale_plugin"
-	actualSQL := cr.getReloadSQL()
+	actualSQL := customrule.GetSelectAllSQL()
 
 	assert.Equal(t, expectedSQL, actualSQL)
 }
 
 func TestGetReloadSqlWithCustomValues(t *testing.T) {
-	controller := NewMockController()
-	cr, _ := newDatabaseCustomRule(controller)
-
-	databaseCustomRuleDbName = "custom_db"
-	databaseCustomRuleTableName = "custom_table"
+	customrule.DatabaseCustomRuleDbName = "custom_db"
+	customrule.DatabaseCustomRuleTableName = "custom_table"
 
 	defer func() {
-		databaseCustomRuleDbName = "mysql"
-		databaseCustomRuleTableName = "wescale_plugin"
+		customrule.DatabaseCustomRuleDbName = "mysql"
+		customrule.DatabaseCustomRuleTableName = "wescale_plugin"
 	}()
 
 	expectedSQL := "SELECT * FROM custom_db.custom_table"
-	actualSQL := cr.getReloadSQL()
+	actualSQL := customrule.GetSelectAllSQL()
 
 	assert.Equal(t, expectedSQL, actualSQL)
 }
