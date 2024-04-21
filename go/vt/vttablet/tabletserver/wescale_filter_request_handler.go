@@ -2,10 +2,13 @@ package tabletserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/BurntSushi/toml"
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
@@ -15,9 +18,7 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
-// todo newborn22: where the conn inits?
-// todo newborn22: relocate the method to other struct?
-func (qe *QueryEngine) executeQuery(ctx context.Context, query string) (*sqltypes.Result, error) {
+func (qe *QueryEngine) ExecuteQuery(ctx context.Context, query string) (*sqltypes.Result, error) {
 	var setting pools.Setting
 	conn, err := qe.conns.Get(ctx, &setting)
 	if err != nil {
@@ -36,7 +37,7 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 	if err != nil {
 		return nil, err
 	}
-	return qe.executeQuery(context.Background(), query)
+	return qe.ExecuteQuery(context.Background(), query)
 }
 
 func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Rule, error) {
@@ -69,8 +70,11 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 
 	ruleInfo["Action"] = strings.ToUpper(stmt.Action.Action)
 
-	// todo newborn22, now it's still json
-	ruleInfo["ActionArgs"] = stmt.Action.ActionArgs
+	actionArgs, err := UserActionArgsToJSON(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
+	if err != nil {
+		return nil, err
+	}
+	ruleInfo["ActionArgs"] = actionArgs
 
 	ruleInfo["Name"] = stmt.Name
 	ruleInfo["Description"] = stmt.Description
@@ -90,7 +94,7 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 		return nil, err
 	}
 
-	qr, err := qe.executeQuery(context.Background(), query)
+	qr, err := qe.ExecuteQuery(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +122,7 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 		return nil, err
 	}
 
-	return qe.executeQuery(context.Background(), query)
+	return qe.ExecuteQuery(context.Background(), query)
 }
 
 func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) error {
@@ -160,9 +164,12 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 		ruleInfo["Action"] = strings.ToUpper(stmt.Action.Action)
 	}
 
-	// todo newborn22, now it's still json
 	if stmt.Action.ActionArgs != "-1" {
-		ruleInfo["ActionArgs"] = stmt.Action.ActionArgs
+		actionArgs, err := UserActionArgsToJSON(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
+		if err != nil {
+			return err
+		}
+		ruleInfo["ActionArgs"] = actionArgs
 	}
 
 	if stmt.NewName != "-1" {
@@ -197,7 +204,7 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 	if err != nil {
 		return nil, err
 	}
-	return qe.executeQuery(context.Background(), query)
+	return qe.ExecuteQuery(context.Background(), query)
 }
 
 func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {
@@ -211,5 +218,58 @@ func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sql
 			return nil, err
 		}
 	}
-	return qe.executeQuery(context.Background(), query)
+	return qe.ExecuteQuery(context.Background(), query)
+}
+
+// ConvertSemicolonToNewline converts ';' inside '\” to '\n' in the input string
+func ConvertSemicolonToNewline(input string) string {
+	var result strings.Builder
+	insideQuotes := false
+
+	for _, char := range input {
+		if char == '"' {
+			insideQuotes = !insideQuotes
+		}
+		if char == ';' && !insideQuotes {
+			result.WriteString("\n")
+		} else {
+			result.WriteRune(char)
+		}
+	}
+
+	return result.String()
+}
+
+func TOMLToJSON(data string, s any) (string, error) {
+	_, err := toml.Decode(data, s)
+	if err != nil {
+		return "", err
+	}
+	bytes, err := json.Marshal(s)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+
+}
+
+func UserActionArgsToJSON(actionType, actionArgs string) (string, error) {
+	// user input use ';' instead of '\n' to separate key value pairs
+	action, err := rules.ParseStringToAction(actionType)
+	if err != nil {
+		return "", err
+	}
+
+	actionArgsTOML := ConvertSemicolonToNewline(actionArgs)
+	switch action {
+	case rules.QRConcurrencyControl:
+		type ConcurrencyControlActionArgs struct {
+			MaxQueueSize   int `json:"max_queue_size" toml:"max_queue_size"`
+			MaxConcurrency int `json:"max_concurrency" toml:"max_concurrency"`
+		}
+		ccl := &ConcurrencyControlActionArgs{}
+		return TOMLToJSON(actionArgsTOML, ccl)
+	default:
+		return "", fmt.Errorf("action type: %s have no parameters to set", action)
+	}
 }
