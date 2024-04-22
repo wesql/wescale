@@ -39,7 +39,7 @@ func TestGetActionList_NonMatchingRule(t *testing.T) {
 func TestCreateActionInstance(t *testing.T) {
 
 	cclRule := rules.NewActiveQueryRule("ruleDescription", "test_rule", rules.QRConcurrencyControl)
-	cclRule.SetActionArgs(`{"max_queue_size":1, "max_concurrency":1}`)
+	cclRule.SetActionArgs(`max_queue_size=1; max_concurrency=1`)
 
 	type args struct {
 		action rules.Action

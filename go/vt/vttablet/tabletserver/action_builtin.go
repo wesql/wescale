@@ -2,9 +2,10 @@ package tabletserver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/BurntSushi/toml"
 
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
@@ -174,16 +175,19 @@ type ConcurrencyControlAction struct {
 }
 
 type ConcurrencyControlActionArgs struct {
-	MaxQueueSize   int `json:"max_queue_size" toml:"max_queue_size"`
-	MaxConcurrency int `json:"max_concurrency" toml:"max_concurrency"`
+	MaxQueueSize   int `toml:"max_queue_size"`
+	MaxConcurrency int `toml:"max_concurrency"`
 }
 
 func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	if stringParams == "" {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
 	}
+
+	userInputTOML := ConvertUserInputToTOML(stringParams)
+
 	c := &ConcurrencyControlActionArgs{}
-	err := json.Unmarshal([]byte(stringParams), c)
+	err := toml.Unmarshal([]byte(userInputTOML), c)
 	if err != nil {
 		return nil, err
 	}
