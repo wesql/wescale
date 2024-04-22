@@ -60,6 +60,12 @@ if [ "$debug" == "on" ]; then
   echo "vtgate and vttablet processes killed"
 fi
 
+# if env var debug=on, kill the vtgate process and vttablet processes
+if [ "$debug_vtgate" == "on" ]; then
+  killall vtgate
+  echo "vtgate processes killed"
+fi
+
 if [ "$debug_vtctld" == "on" ]; then
   killall vtctld
   echo "vtctld killed"
