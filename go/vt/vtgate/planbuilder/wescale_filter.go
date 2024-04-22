@@ -1,6 +1,7 @@
 package planbuilder
 
 import (
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vtgate/engine"
@@ -8,7 +9,7 @@ import (
 )
 
 func buildWescaleFilterPlan(query string, vschema plancontext.VSchema) (*planResult, error) {
-	dest, ks, _, err := vschema.TargetDestination("")
+	dest, ks, _, err := vschema.TargetDestination(global.DefaultKeyspace)
 	if err != nil {
 		return nil, err
 	}
