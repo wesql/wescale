@@ -270,6 +270,6 @@ func UserActionArgsToJSON(actionType, actionArgs string) (string, error) {
 		ccl := &ConcurrencyControlActionArgs{}
 		return TOMLToJSON(actionArgsTOML, ccl)
 	default:
-		return "", fmt.Errorf("action type: %s have no parameters to set", action)
+		return "", nil
 	}
 }
