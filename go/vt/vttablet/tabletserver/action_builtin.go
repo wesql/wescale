@@ -33,6 +33,10 @@ func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Resu
 	}
 }
 
+func (p *ContinueAction) ParseParams(stringParams string) error {
+	return nil
+}
+
 func (p *ContinueAction) SetParams(stringParams string) error {
 	return nil
 }
@@ -62,6 +66,10 @@ func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, 
 	}
 }
 
+func (p *FailAction) ParseParams(stringParams string) error {
+	return nil
+}
+
 func (p *FailAction) SetParams(stringParams string) error {
 	return nil
 }
@@ -89,6 +97,10 @@ func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Res
 		Reply: reply,
 		Err:   err,
 	}
+}
+
+func (p *FailRetryAction) ParseParams(stringParams string) error {
+	return nil
 }
 
 func (p *FailRetryAction) SetParams(stringParams string) error {
@@ -137,6 +149,10 @@ func (p *BufferAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result
 		Reply: reply,
 		Err:   err,
 	}
+}
+
+func (p *BufferAction) ParseParams(stringParams string) error {
+	return nil
 }
 
 func (p *BufferAction) SetParams(stringParams string) error {
@@ -191,7 +207,27 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 	}
 }
 
+func (p *ConcurrencyControlAction) ParseParams(stringParams string) error {
+	if stringParams == "" {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
+	}
+	c := &ConcurrencyControlAction{}
+	err := json.Unmarshal([]byte(stringParams), c)
+	if err != nil {
+		return err
+	}
+	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
+			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
+	}
+
+	p.MaxQueueSize = c.MaxQueueSize
+	p.MaxConcurrency = c.MaxConcurrency
+	return nil
+}
+
 func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
+	//todo newborn22: remove this duplicate code
 	if stringParams == "" {
 		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
 	}

@@ -148,6 +148,8 @@ func TestConcurrencyControlAction(t *testing.T) {
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 }
 
+//todo newborn22: add testcase for ParseParams
+
 func TestConcurrencyControlActionSetParams(t *testing.T) {
 	action := &ConcurrencyControlAction{}
 	params := `{"max_queue_size": 2, "max_concurrency": 1}`
