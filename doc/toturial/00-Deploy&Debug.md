@@ -155,6 +155,6 @@ However, when using the `ps aux` command to obtain information about the program
 Shutdown the cluster. If some of the processes fail to shutdown, you can kill all the processes manually and delete the `vtdataroot` directory.
 
 ```Shell
-./shutdow_cluster.sh
+./shutdown_cluster.sh
 ```
 
