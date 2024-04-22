@@ -102,9 +102,6 @@ jobs:
           chmod 755 ./test/failpoint/failpoints.sh && source ./test/failpoint/failpoints.sh
           echo "GO_FAILPOINTS=$GO_FAILPOINTS" >> $GITHUB_OUTPUT
           
-          # copy config files
-          cp ./examples/mysql/*.cnf /tmp/
-          
           # run container
           PWD=$(pwd)
           docker run -id -v $PWD:/vt/src/mount -v /tmp:/wesqlscale/vt/vtdataroot -p 15306:15306 -e GO_FAILPOINTS=$GO_FAILPOINTS  --name wesqlscale-build  apecloud/mysql-tester
@@ -113,6 +110,9 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
+          # copy config files
+          docker exec wesqlscale-build bash -c "cp examples/mysql/*.cnf $VTDATAROOT"
+          
           # build WeScale and setup WeScale cluster
           docker exec wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
           # enlarge mysql max_connections 
