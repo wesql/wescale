@@ -12,14 +12,18 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
-func getInsertSQLTemplate() string {
+func getInsertSQLTemplate(ifNotExist bool) string {
 	tableSchemaName := fmt.Sprintf("`%s`.`%s`", DatabaseCustomRuleDbName, DatabaseCustomRuleTableName)
-	return "INSERT INTO " + tableSchemaName + " (`name`, `description`, `priority`, `status`, `plans`, `fully_qualified_table_names`, `query_regex`, `query_template`, `request_ip_regex`, `user_regex`, `leading_comment_regex`, `trailing_comment_regex`, `bind_var_conds`, `action`, `action_args`) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
+	prefix := "INSERT "
+	if ifNotExist {
+		prefix += "IGNORE "
+	}
+	return prefix + "INTO " + tableSchemaName + " (`name`, `description`, `priority`, `status`, `plans`, `fully_qualified_table_names`, `query_regex`, `query_template`, `request_ip_regex`, `user_regex`, `leading_comment_regex`, `trailing_comment_regex`, `bind_var_conds`, `action`, `action_args`) VALUES (%a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a, %a)"
 }
 
 // GenerateInsertStatement returns the SQL statement to insert the rule into the database.
-func GenerateInsertStatement(qr *rules.Rule) (string, error) {
-	insertTemplate := getInsertSQLTemplate()
+func GenerateInsertStatement(qr *rules.Rule, ifNotExist bool) (string, error) {
+	insertTemplate := getInsertSQLTemplate(ifNotExist)
 	parsed := sqlparser.BuildParsedQuery(insertTemplate,
 		":name",
 		":description",
