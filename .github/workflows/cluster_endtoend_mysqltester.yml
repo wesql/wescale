@@ -111,7 +111,7 @@ jobs:
         timeout-minutes: 45
         run: |
           # copy config files
-          docker exec wesqlscale-build bash -c "cp examples/mysql/*.cnf $VTDATAROOT"
+          # docker exec wesqlscale-build bash -c "cp examples/mysql/*.cnf $VTDATAROOT"
           
           # build WeScale and setup WeScale cluster
           docker exec wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"

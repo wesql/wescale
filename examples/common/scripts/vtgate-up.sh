@@ -22,6 +22,7 @@
 # This is an example script that starts a single vtgate.
 
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
+CONFIG_DIR="$(dirname "${BASH_SOURCE[0]:-$0}")/../../mysql"
 
 cell=${CELL:-'test'}
 web_port=15001
@@ -46,7 +47,7 @@ vtgate \
   --tablet_types_to_wait PRIMARY,REPLICA \
   --service_map 'grpc-vtgateservice' \
   --pid_file $VTDATAROOT/tmp/vtgate.pid \
-  --config_path $VTDATAROOT/../ \
+  --config_path $CONFIG_DIR \
   $jaeger_args \
   > $VTDATAROOT/tmp/vtgate.out 2>&1 &
 
