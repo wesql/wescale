@@ -2,8 +2,10 @@ package tabletserver
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
@@ -91,7 +93,7 @@ func TestCreateActionInstance(t *testing.T) {
 				action: rules.QRConcurrencyControl,
 				rule:   cclRule,
 			},
-			want:    &ConcurrencyControlAction{Rule: cclRule, Action: rules.QRConcurrencyControl, MaxConcurrency: 1, MaxQueueSize: 1},
+			want:    &ConcurrencyControlAction{Rule: cclRule, Action: rules.QRConcurrencyControl, Args: &ConcurrencyControlActionArgs{MaxConcurrency: 1, MaxQueueSize: 1}},
 			wantErr: assert.NoError,
 		},
 		{

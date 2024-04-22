@@ -65,11 +65,11 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 	}
 
 	if actInst != nil {
-		parseErr := actInst.ParseParams(rule.GetActionArgs())
+		args, parseErr := actInst.ParseParams(rule.GetActionArgs())
 		if parseErr != nil {
 			return nil, parseErr
 		}
-		err = actInst.SetParams(rule.GetActionArgs())
+		err = actInst.SetParams(args)
 	}
 	return actInst, err
 }

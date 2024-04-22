@@ -263,10 +263,6 @@ func UserActionArgsToJSON(actionType, actionArgs string) (string, error) {
 	actionArgsTOML := ConvertSemicolonToNewline(actionArgs)
 	switch action {
 	case rules.QRConcurrencyControl:
-		type ConcurrencyControlActionArgs struct {
-			MaxQueueSize   int `json:"max_queue_size" toml:"max_queue_size"`
-			MaxConcurrency int `json:"max_concurrency" toml:"max_concurrency"`
-		}
 		ccl := &ConcurrencyControlActionArgs{}
 		return TOMLToJSON(actionArgsTOML, ccl)
 

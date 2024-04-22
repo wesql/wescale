@@ -3,6 +3,7 @@ package tabletserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -33,11 +34,11 @@ func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Resu
 	}
 }
 
-func (p *ContinueAction) ParseParams(stringParams string) error {
-	return nil
+func (p *ContinueAction) ParseParams(stringParams string) (ActionArgs, error) {
+	return nil, nil
 }
 
-func (p *ContinueAction) SetParams(stringParams string) error {
+func (p *ContinueAction) SetParams(args ActionArgs) error {
 	return nil
 }
 
@@ -66,11 +67,11 @@ func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, 
 	}
 }
 
-func (p *FailAction) ParseParams(stringParams string) error {
-	return nil
+func (p *FailAction) ParseParams(stringParams string) (ActionArgs, error) {
+	return nil, nil
 }
 
-func (p *FailAction) SetParams(stringParams string) error {
+func (p *FailAction) SetParams(args ActionArgs) error {
 	return nil
 }
 
@@ -99,11 +100,11 @@ func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Res
 	}
 }
 
-func (p *FailRetryAction) ParseParams(stringParams string) error {
-	return nil
+func (p *FailRetryAction) ParseParams(stringParams string) (ActionArgs, error) {
+	return nil, nil
 }
 
-func (p *FailRetryAction) SetParams(stringParams string) error {
+func (p *FailRetryAction) SetParams(args ActionArgs) error {
 	return nil
 }
 
@@ -151,11 +152,11 @@ func (p *BufferAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result
 	}
 }
 
-func (p *BufferAction) ParseParams(stringParams string) error {
-	return nil
+func (p *BufferAction) ParseParams(stringParams string) (ActionArgs, error) {
+	return nil, nil
 }
 
-func (p *BufferAction) SetParams(stringParams string) error {
+func (p *BufferAction) SetParams(args ActionArgs) error {
 	return nil
 }
 
@@ -169,12 +170,32 @@ type ConcurrencyControlAction struct {
 	// Action is the action to take if the rule matches
 	Action rules.Action
 
-	MaxQueueSize   int `json:"max_queue_size"`
-	MaxConcurrency int `json:"max_concurrency"`
+	Args *ConcurrencyControlActionArgs
+}
+
+type ConcurrencyControlActionArgs struct {
+	MaxQueueSize   int `json:"max_queue_size" toml:"max_queue_size"`
+	MaxConcurrency int `json:"max_concurrency" toml:"max_concurrency"`
+}
+
+func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs, error) {
+	if stringParams == "" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
+	}
+	c := &ConcurrencyControlActionArgs{}
+	err := json.Unmarshal([]byte(stringParams), c)
+	if err != nil {
+		return nil, err
+	}
+	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
+			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
+	}
+	return c, nil
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.MaxQueueSize, p.MaxConcurrency)
+	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.Args.MaxQueueSize, p.Args.MaxConcurrency)
 	doneFunc, waited, err := q.Wait(qre.ctx, qre.plan.TableNames())
 
 	if waited {
@@ -207,42 +228,16 @@ func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sql
 	}
 }
 
-func (p *ConcurrencyControlAction) ParseParams(stringParams string) error {
-	if stringParams == "" {
-		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
-	}
-	c := &ConcurrencyControlAction{}
-	err := json.Unmarshal([]byte(stringParams), c)
-	if err != nil {
-		return err
-	}
-	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
-		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
-			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
-	}
-
-	p.MaxQueueSize = c.MaxQueueSize
-	p.MaxConcurrency = c.MaxConcurrency
-	return nil
+func (p *ConcurrencyControlAction) ParseParams(stringParams string) (ActionArgs, error) {
+	return p.Args.Parse(stringParams)
 }
 
-func (p *ConcurrencyControlAction) SetParams(stringParams string) error {
-	//todo newborn22: remove this duplicate code
-	if stringParams == "" {
-		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
+func (p *ConcurrencyControlAction) SetParams(args ActionArgs) error {
+	cclArgs, ok := args.(*ConcurrencyControlActionArgs)
+	if !ok {
+		return fmt.Errorf("args :%v is not a valid ConcurrencyControlActionArgs)", args)
 	}
-	c := &ConcurrencyControlAction{}
-	err := json.Unmarshal([]byte(stringParams), c)
-	if err != nil {
-		return err
-	}
-	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
-		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
-			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
-	}
-
-	p.MaxQueueSize = c.MaxQueueSize
-	p.MaxConcurrency = c.MaxConcurrency
+	p.Args = cclArgs
 	return nil
 }
 
