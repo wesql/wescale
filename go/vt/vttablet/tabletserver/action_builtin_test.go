@@ -147,10 +147,9 @@ func TestConcurrencyControlAction(t *testing.T) {
 	assert.Equal(t, &ActionExecutionResponse{}, action.AfterExecution(qre, nil, nil))
 }
 
-// todo newborn22 not json format here
 func TestConcurrencyControlActionSetParams(t *testing.T) {
 	action := &ConcurrencyControlAction{}
-	params := `{"max_queue_size": 2, "max_concurrency": 1}`
+	params := `max_queue_size=2; max_concurrency=1`
 	args, err := action.ParseParams(params)
 	assert.NoError(t, err)
 	assert.NoError(t, action.SetParams(args))
@@ -158,37 +157,37 @@ func TestConcurrencyControlActionSetParams(t *testing.T) {
 	assert.Equal(t, 1, action.Args.MaxConcurrency)
 
 	// max_queue_size type invalid
-	params = `{"max_queue_size": 2.5, "max_concurrency": 1}`
+	params = `max_queue_size=2.5; max_concurrency=1`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_concurrency type invalid
-	params = `{"max_queue_size": 2, "max_concurrency": "1"}`
+	params = `max_queue_size=2; max_concurrency="1"`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_concurrency < 0, invalid
-	params = `{"max_queue_size": -1, "max_concurrency": 1}`
+	params = `max_queue_size=-1; max_concurrency=1`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_concurrency < 0, invalid
-	params = `{"max_queue_size": 2, "max_concurrency": -2}`
+	params = `max_queue_size=2; max_concurrency=-2`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_queue_size < max_concurrency, invalid
-	params = `{"max_queue_size":2, "max_concurrency": 3}`
+	params = `max_queue_size=2; max_concurrency=3`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_concurrency = 0 and max_queue_size != 0, invalid
-	params = `{"max_queue_size":2, "max_concurrency": 0}`
+	params = `max_queue_size=2; max_concurrency=0`
 	_, err = action.ParseParams(params)
 	assert.NotNil(t, err)
 
 	// max_concurrency = 0 and max_queue_size = 0, valid
-	params = `{"max_queue_size":0, "max_concurrency": 0}`
+	params = `max_queue_size=0; max_concurrency=0`
 	args, err = action.ParseParams(params)
 	assert.NoError(t, err)
 	assert.NoError(t, action.SetParams(args))
@@ -196,7 +195,7 @@ func TestConcurrencyControlActionSetParams(t *testing.T) {
 	assert.Equal(t, 0, action.Args.MaxConcurrency)
 
 	// max_concurrency = -1 and max_queue_size = 0, valid
-	params = `{"max_queue_size":0, "max_concurrency": -1}`
+	params = `max_queue_size=0; max_concurrency=-1`
 	args, err = action.ParseParams(params)
 	assert.NoError(t, err)
 	assert.NoError(t, action.SetParams(args))

@@ -70,7 +70,7 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 
 	ruleInfo["Action"] = strings.ToUpper(stmt.Action.Action)
 
-	actionArgs, err := UserActionArgsToJSON(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
+	actionArgs, err := CheckAndFormatActionArgs(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 	}
 
 	if stmt.Action.ActionArgs != "-1" {
-		actionArgs, err := UserActionArgsToJSON(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
+		actionArgs, err := CheckAndFormatActionArgs(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
 		if err != nil {
 			return err
 		}
@@ -221,8 +221,8 @@ func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sql
 	return qe.ExecuteQuery(context.Background(), query)
 }
 
-// ConvertSemicolonToNewline converts ';' inside '\” to '\n' in the input string
-func ConvertSemicolonToNewline(input string) string {
+// ConvertUserInputToTOML converts ';' inside '\” to '\n' in the input string
+func ConvertUserInputToTOML(input string) string {
 	var result strings.Builder
 	insideQuotes := false
 
@@ -250,28 +250,40 @@ func TOMLToJSON(data string, s any) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
-
 }
 
-func UserActionArgsToJSON(actionType, actionArgs string) (string, error) {
-	// user input use ';' instead of '\n' to separate key value pairs
+func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 	action, err := rules.ParseStringToAction(actionType)
 	if err != nil {
 		return "", err
 	}
 
-	actionArgsTOML := ConvertSemicolonToNewline(actionArgs)
 	switch action {
 	case rules.QRConcurrencyControl:
 		ccl := &ConcurrencyControlActionArgs{}
-		return TOMLToJSON(actionArgsTOML, ccl)
+		_, err := ccl.Parse(actionArgs)
+		if err != nil {
+			return "", err
+		}
+		return FormatUserInputStr(actionArgs), nil
 
-		//todo newborn22: implement this
-		//cc := &ConcurrencyControlAction{}
-		//// format pretty
-		//err := cc.ParseParams(actionArgs)
-		//return actionArgs, err
 	default:
 		return "", nil
 	}
+}
+
+func FormatUserInputStr(str string) string {
+	var result strings.Builder
+	insideQuotes := false
+
+	for _, char := range str {
+		if char == '"' {
+			insideQuotes = !insideQuotes
+		}
+		if (char == ' ' || char == '\t') && !insideQuotes {
+			continue
+		}
+		result.WriteRune(char)
+	}
+	return result.String()
 }
