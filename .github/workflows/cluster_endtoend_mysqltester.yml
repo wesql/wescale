@@ -110,9 +110,6 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 45
         run: |
-          # copy config files
-          # docker exec wesqlscale-build bash -c "cp examples/mysql/*.cnf $VTDATAROOT"
-          
           # build WeScale and setup WeScale cluster
           docker exec wesqlscale-build bash -c "cd examples/mysql && ./init_cluster.sh"
           # enlarge mysql max_connections 
