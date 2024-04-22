@@ -17,11 +17,15 @@ type ActionInterface interface {
 
 	AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse
 
-	ParseParams(stringParams string) error
+	ParseParams(stringParams string) (ActionArgs, error)
 
-	SetParams(stringParams string) error
+	SetParams(args ActionArgs) error
 
 	GetRule() *rules.Rule
+}
+
+type ActionArgs interface {
+	Parse(stringParams string) (ActionArgs, error)
 }
 
 type ActionExecutionResponse struct {
