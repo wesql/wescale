@@ -46,7 +46,7 @@ vtgate \
   --tablet_types_to_wait PRIMARY,REPLICA \
   --service_map 'grpc-vtgateservice' \
   --pid_file $VTDATAROOT/tmp/vtgate.pid \
-  --config_path $VTDATAROOT/../ \
+  --mysql_auth_server_impl none \
   $jaeger_args \
   > $VTDATAROOT/tmp/vtgate.out 2>&1 &
 

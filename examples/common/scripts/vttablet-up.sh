@@ -48,6 +48,7 @@ vttablet \
  --tablet-path $alias \
  --tablet_hostname "$tablet_hostname" \
  --init_tablet_type $tablet_type \
+ --health_check_interval 5s \
  --enable_replication_reporter \
  --backup_storage_implementation file \
  --file_backup_storage_root $VTDATAROOT/backups \
@@ -58,7 +59,6 @@ vttablet \
  --pid_file $VTDATAROOT/$tablet_dir/vttablet.pid \
  --vtctld_addr http://$hostname:$vtctld_web_port/ \
  --disable_active_reparents \
- --config_path $VTDATAROOT/../ \
  $jaeger_args \
  > $VTDATAROOT/$tablet_dir/vttablet.out 2>&1 &
 
