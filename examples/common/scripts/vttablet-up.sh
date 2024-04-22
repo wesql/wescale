@@ -20,6 +20,7 @@
 # limitations under the License.
 
 source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
+CONFIG_DIR="$(dirname "${BASH_SOURCE[0]:-$0}")/../../mysql"
 
 cell=${CELL:-'test'}
 uid=$TABLET_UID
@@ -58,7 +59,7 @@ vttablet \
  --pid_file $VTDATAROOT/$tablet_dir/vttablet.pid \
  --vtctld_addr http://$hostname:$vtctld_web_port/ \
  --disable_active_reparents \
- --config_path $VTDATAROOT/../ \
+ --config_path $CONFIG_DIR \
  $jaeger_args \
  > $VTDATAROOT/$tablet_dir/vttablet.out 2>&1 &
 
