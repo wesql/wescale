@@ -67,7 +67,7 @@ func TestRule2Json(t *testing.T) {
 
 func TestRule2SQL(t *testing.T) {
 	qr := expectedRule()
-	sql, err := customrule.GenerateInsertStatement(qr)
+	sql, err := customrule.GenerateInsertStatement(qr, false)
 	assert.NoError(t, err)
 	fmt.Println(sql)
 	assert.Equal(t, expectedSQLString(), sql)

@@ -33,7 +33,7 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 	if err != nil {
 		return nil, err
 	}
-	query, err := customrule.GenerateInsertStatement(rule)
+	query, err := customrule.GenerateInsertStatement(rule, stmt.IfNotExists)
 	if err != nil {
 		return nil, err
 	}
