@@ -706,12 +706,8 @@ func TestBuildQueryRulePriority(t *testing.T) {
 			t.Fatalf("failed to unmarshal json, got error: %v", err)
 		}
 		qr, err := BuildQueryRule(ruleInfo)
-		if err != nil {
-			t.Fatalf("build query rule should succeed")
-		}
-		if qr.act != QRFail {
-			t.Fatalf("action should fail")
-		}
+		assert.Error(t, err)
+		assert.Nil(t, qr)
 	}
 
 	{
