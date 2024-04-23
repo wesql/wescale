@@ -116,6 +116,7 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 	}
 	ruleInfo["FullyQualifiedTableNames"] = fullyQualifiedTableNames
 
+	ruleInfo["Action"] = stmt.Action.Action
 	actionArgs, err := CheckAndFormatActionArgs(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
 	if err != nil {
 		return nil, err
@@ -131,7 +132,6 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 	ruleInfo["LeadingComment"] = stmt.Pattern.LeadingCommentRegex
 	ruleInfo["TrailingComment"] = stmt.Pattern.TrailingCommentRegex
 	ruleInfo["Status"] = stmt.Status
-	ruleInfo["Action"] = stmt.Action.Action
 
 	return rules.BuildQueryRule(ruleInfo)
 }
