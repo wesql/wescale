@@ -2,13 +2,11 @@ package tabletserver
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
@@ -29,6 +27,10 @@ func (qe *QueryEngine) ExecuteQuery(ctx context.Context, query string) (*sqltype
 }
 
 func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (*sqltypes.Result, error) {
+	err := setDefaultValueForCreateFilter(stmt)
+	if err != nil {
+		return nil, err
+	}
 	rule, err := TransformCreateFilterToRule(stmt)
 	if err != nil {
 		return nil, err
@@ -38,6 +40,54 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 		return nil, err
 	}
 	return qe.ExecuteQuery(context.Background(), query)
+}
+
+func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
+	if stmt.Name == "-1" {
+		return errors.New("create filter failed, please set a name")
+	}
+	if stmt.Pattern.Plans == "-1" {
+		return errors.New("create filter failed, please set plans")
+	}
+	if stmt.Pattern.FullyQualifiedTableNames == "-1" {
+		return errors.New("create filter failed, please set fully qualified table names")
+	}
+	if stmt.Priority == "-1" {
+		priority, err := strconv.Atoi(stmt.Priority)
+		if err != nil || priority < rules.MinPriority {
+			return fmt.Errorf("create filter failed, please set a valid priority that is greater than %d", rules.MinPriority)
+		}
+	}
+
+	if stmt.Status == "-1" {
+		stmt.Status = rules.DefaultStatus
+	}
+
+	if stmt.Description == "-1" {
+		stmt.Description = ""
+	}
+	if stmt.Pattern.QueryRegex == "-1" {
+		stmt.Pattern.QueryRegex = ""
+	}
+	if stmt.Pattern.RequestIPRegex == "-1" {
+		stmt.Pattern.RequestIPRegex = ""
+	}
+	if stmt.Pattern.UserRegex == "-1" {
+		stmt.Pattern.UserRegex = ""
+	}
+	if stmt.Pattern.LeadingCommentRegex == "-1" {
+		stmt.Pattern.LeadingCommentRegex = ""
+	}
+	if stmt.Pattern.TrailingCommentRegex == "-1" {
+		stmt.Pattern.TrailingCommentRegex = ""
+	}
+	if stmt.Pattern.QueryTemplate == "-1" {
+		stmt.Pattern.QueryTemplate = ""
+	}
+	if stmt.Pattern.BindVarConds == "-1" {
+		stmt.Pattern.BindVarConds = ""
+	}
+	return nil
 }
 
 func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Rule, error) {
@@ -240,18 +290,6 @@ func ConvertUserInputToTOML(input string) string {
 	return result.String()
 }
 
-func TOMLToJSON(data string, s any) (string, error) {
-	_, err := toml.Decode(data, s)
-	if err != nil {
-		return "", err
-	}
-	bytes, err := json.Marshal(s)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
 func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 	action, err := rules.ParseStringToAction(actionType)
 	if err != nil {
@@ -272,6 +310,7 @@ func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 	}
 }
 
+// FormatUserInputStr remove space and tab from the input string
 func FormatUserInputStr(str string) string {
 	var result strings.Builder
 	insideQuotes := false

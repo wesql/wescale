@@ -46,6 +46,12 @@ import (
 //-----------------------------------------------
 
 const (
+	DefaultPriority = 1000
+	MinPriority     = 0
+	DefaultStatus   = Active
+)
+
+const (
 	bufferedTableRuleName = "buffered_table"
 )
 
@@ -659,7 +665,7 @@ func (qr *Rule) FilterByExecutionInfo(
 }
 
 func reMatch(re *regexp.Regexp, val string) bool {
-	return re == nil || re.MatchString(val)
+	return re == nil || re.String() == "^$" || re.MatchString(val)
 }
 
 func queryTemplateMatch(expect string, actual string) bool {
@@ -1124,6 +1130,9 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 			iv, ok = v.(int)
 			if !ok {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want int for Priority")
+			}
+			if iv < MinPriority {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "Priority must be >= %d", MinPriority)
 			}
 		case "Plans", "BindVarConds", "FullyQualifiedTableNames":
 			lv, ok = v.([]any)

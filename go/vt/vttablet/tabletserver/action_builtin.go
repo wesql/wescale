@@ -189,7 +189,7 @@ func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs
 	c := &ConcurrencyControlActionArgs{}
 	err := toml.Unmarshal([]byte(userInputTOML), c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error when parsing action args: %v", err)
 	}
 	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
