@@ -714,7 +714,9 @@ func TestConcurrencyControllerResizeQueue(t *testing.T) {
 	startATransactionShouldWait(t, q, 3, txGetResource, nil, 0, &done3)
 
 	// ---- 1. new maxConcurrency is greater than on the fly plus waiting num (tx1 is on the fly, and tx3 is waiting). ----
-	q.resizeQueue(5, 3)
+	q.txs.mu.Lock()
+	q.resizeQueueLocked(5, 3)
+	q.txs.mu.Unlock()
 
 	// tx3 should unblock.
 	if got := <-txGetResource; got != 3 {
@@ -733,7 +735,9 @@ func TestConcurrencyControllerResizeQueue(t *testing.T) {
 	startATransactionShouldWait(t, q, 5, txGetResource, &txReleased, 2, &done5)
 
 	// ---- 2. new maxConcurrency is smaller than on the fly plus waiting num (tx1, tx3, tx4 is on the fly, and tx5 is waiting). ----
-	q.resizeQueue(5, 2)
+	q.txs.mu.Lock()
+	q.resizeQueueLocked(5, 2)
+	q.txs.mu.Unlock()
 
 	// tx6 should wait.
 	var done6 DoneFunc
@@ -770,8 +774,9 @@ func TestConcurrencyControllerResizeQueue(t *testing.T) {
 	startATransactionShouldWait(t, q, 8, txGetResource, &txReleased, 1, &done8)
 
 	// ---- 3. new maxConcurrency is greater than on the fly but smaller on the fly than plus waiting num (tx5, tx6 is on the fly, and tx7, tx8 is waiting). ----
-
-	q.resizeQueue(5, 3)
+	q.txs.mu.Lock()
+	q.resizeQueueLocked(5, 3)
+	q.txs.mu.Unlock()
 
 	// tx7 should unblock.
 	if got := <-txGetResource; got != 7 {
@@ -794,12 +799,16 @@ func TestConcurrencyControllerResizeQueue(t *testing.T) {
 	assert.Equal(t, 0, q.waitingRequest.Len())
 
 	// ---- 4. change MaxQueueSize. ----
-	q.resizeQueue(3, 3)
+	q.txs.mu.Lock()
+	q.resizeQueueLocked(3, 3)
+	q.txs.mu.Unlock()
 	_, waited, err := q.Wait(context.Background(), []string{"t1"})
 	assert.Equal(t, false, waited)
 	assert.NotNil(t, err)
 
-	q.resizeQueue(4, 3)
+	q.txs.mu.Lock()
+	q.resizeQueueLocked(4, 3)
+	q.txs.mu.Unlock()
 	// tx9 should wait.
 	var done9 DoneFunc
 	startATransactionShouldWait(t, q, 9, txGetResource, &txReleased, 1, &done9)
