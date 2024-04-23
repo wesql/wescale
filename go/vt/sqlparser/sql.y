@@ -2845,7 +2845,7 @@ name_opt:
   {
     $$ = ""
   }
-| ci_identifier
+| sql_id
   {
     $$ = string($1.String())
   }
