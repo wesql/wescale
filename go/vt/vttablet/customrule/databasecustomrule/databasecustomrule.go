@@ -45,17 +45,22 @@ func newDatabaseCustomRule(qsc tabletserver.Controller) (*databaseCustomRule, er
 
 func (cr *databaseCustomRule) start() {
 	go func() {
+		intervalTimer := time.NewTimer(customrule.DatabaseCustomRuleReloadInterval)
+		defer intervalTimer.Stop()
+
 		for {
-			if err := cr.reloadRulesFromDatabase(); err != nil {
-				log.Warningf("Background watch of database custom rule failed: %v", err)
+			select {
+			case <-intervalTimer.C:
+			case <-customrule.Watch():
+				if err := cr.reloadRulesFromDatabase(); err != nil {
+					log.Warningf("Background watch of database custom rule failed: %v", err)
+				}
 			}
 
 			if cr.stopped.Load() {
 				log.Warningf("Database custom rule was terminated")
 				return
 			}
-
-			time.Sleep(customrule.DatabaseCustomRuleReloadInterval)
 		}
 	}()
 }

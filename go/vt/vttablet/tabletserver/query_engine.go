@@ -33,6 +33,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/ccl"
 
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
