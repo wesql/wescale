@@ -21,25 +21,25 @@ type ContinueAction struct {
 	Action rules.Action
 }
 
-func (p *ContinueAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+func (p *ContinueAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: nil,
 		Err:   nil,
 	}
 }
 
-func (p *ContinueAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *ContinueAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,
 	}
 }
 
-func (p *ContinueAction) ParseParams(stringParams string) (ActionArgs, error) {
+func (p *ContinueAction) ParseParams(_ string) (ActionArgs, error) {
 	return nil, nil
 }
 
-func (p *ContinueAction) SetParams(args ActionArgs) error {
+func (p *ContinueAction) SetParams(_ ActionArgs) error {
 	return nil
 }
 
@@ -54,25 +54,25 @@ type FailAction struct {
 	Action rules.Action
 }
 
-func (p *FailAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+func (p *FailAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: nil,
 		Err:   vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description),
 	}
 }
 
-func (p *FailAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *FailAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,
 	}
 }
 
-func (p *FailAction) ParseParams(stringParams string) (ActionArgs, error) {
+func (p *FailAction) ParseParams(_ string) (ActionArgs, error) {
 	return nil, nil
 }
 
-func (p *FailAction) SetParams(args ActionArgs) error {
+func (p *FailAction) SetParams(_ ActionArgs) error {
 	return nil
 }
 
@@ -87,25 +87,25 @@ type FailRetryAction struct {
 	Action rules.Action
 }
 
-func (p *FailRetryAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+func (p *FailRetryAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: nil,
 		Err:   vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description),
 	}
 }
 
-func (p *FailRetryAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *FailRetryAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,
 	}
 }
 
-func (p *FailRetryAction) ParseParams(stringParams string) (ActionArgs, error) {
+func (p *FailRetryAction) ParseParams(_ string) (ActionArgs, error) {
 	return nil, nil
 }
 
-func (p *FailRetryAction) SetParams(args ActionArgs) error {
+func (p *FailRetryAction) SetParams(_ ActionArgs) error {
 	return nil
 }
 
@@ -146,18 +146,18 @@ func (p *BufferAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionRespo
 	}
 }
 
-func (p *BufferAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *BufferAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,
 	}
 }
 
-func (p *BufferAction) ParseParams(stringParams string) (ActionArgs, error) {
+func (p *BufferAction) ParseParams(_ string) (ActionArgs, error) {
 	return nil, nil
 }
 
-func (p *BufferAction) SetParams(args ActionArgs) error {
+func (p *BufferAction) SetParams(_ ActionArgs) error {
 	return nil
 }
 

@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"vitess.io/vitess/go/vt/vttablet/customrule"
+
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -109,10 +111,13 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result,
 
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleFilter:
+		defer customrule.NotifyReload()
 		return qe.HandleCreateFilter(s)
 	case *sqlparser.AlterWescaleFilter:
+		defer customrule.NotifyReload()
 		return qe.HandleAlterFilter(s)
 	case *sqlparser.DropWescaleFilter:
+		defer customrule.NotifyReload()
 		return qe.HandleDropFilter(s)
 	case *sqlparser.ShowWescaleFilter:
 		return qe.HandleShowFilter(s)
