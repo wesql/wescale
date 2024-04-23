@@ -10,8 +10,6 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 )
 
-const DefaultPriority = 1000
-
 type ActionInterface interface {
 	BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse
 

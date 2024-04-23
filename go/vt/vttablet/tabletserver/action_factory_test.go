@@ -124,7 +124,7 @@ func TestCreateContinueAction(t *testing.T) {
 	}{
 		{
 			name: "CreateContinueAction",
-			want: &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: DefaultPriority}, Action: rules.QRContinue},
+			want: &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: rules.DefaultPriority}, Action: rules.QRContinue},
 		},
 	}
 	for _, tt := range tests {

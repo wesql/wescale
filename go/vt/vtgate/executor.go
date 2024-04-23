@@ -1627,12 +1627,18 @@ func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart
 	ctx := context.Background()
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
 	var th *discovery.TabletHealth
+	findPrimary := false
 	for _, tablet := range healthyTablets {
 		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
 			th = tablet
+			findPrimary = true
 			break
 		}
 	}
+	if !findPrimary {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
+	}
+
 	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
 }
 
@@ -1640,12 +1646,18 @@ func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, 
 	ctx := context.Background()
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
 	var th *discovery.TabletHealth
+	findPrimary := false
 	for _, tablet := range healthyTablets {
 		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
 			th = tablet
+			findPrimary = true
 			break
 		}
 	}
+	if !findPrimary {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
+	}
+
 	return th.Conn.ShowDMLJob(ctx, uuid, showDetails)
 }
 
@@ -1653,16 +1665,20 @@ func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, err
 	ctx := context.Background()
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
 	var th *discovery.TabletHealth
+	findPrimary := false
 	for _, tablet := range healthyTablets {
 		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
 			th = tablet
+			findPrimary = true
 			break
 		}
+	}
+	if !findPrimary {
+		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
 	}
 
 	args := make(map[string]any)
 	args["sql"] = sql
-
 	return th.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
 }
 

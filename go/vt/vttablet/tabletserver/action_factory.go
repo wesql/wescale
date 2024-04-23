@@ -75,5 +75,5 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 }
 
 func CreateContinueAction() ActionInterface {
-	return &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: DefaultPriority}, Action: rules.QRContinue}
+	return &ContinueAction{Rule: &rules.Rule{Name: "continue_action", Priority: rules.DefaultPriority}, Action: rules.QRContinue}
 }
