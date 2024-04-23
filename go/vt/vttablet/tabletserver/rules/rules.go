@@ -1102,7 +1102,7 @@ func MapStrOperator(strop string) (op Operator, err error) {
 	return QRNoOp, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Operator %s", strop)
 }
 
-// BuildQueryRule builds a query rule from a ruleInfo.
+// BuildQueryRule check parameter validity and builds a query rule from a ruleInfo.
 func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 	qr = NewActiveQueryRule("", "", QRFail)
 	for k, v := range ruleInfo {
@@ -1148,7 +1148,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 		case "Priority":
 			qr.Priority = iv
 		case "Status":
-			if !StatusIsValid(sv) {
+			if !StatusIsValid(strings.ToUpper(sv)) {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid status: %s", sv)
 			}
 			qr.Status = sv
@@ -1187,7 +1187,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				if !ok {
 					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "want string for Plans")
 				}
-				pt, ok := planbuilder.PlanByName(pv)
+				pt, ok := planbuilder.PlanByNameIC(pv)
 				if !ok {
 					return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid plan name: %s", pv)
 				}
@@ -1216,7 +1216,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 			}
 		case "Action":
-			act, err := ParseStringToAction(sv)
+			act, err := ParseStringToAction(strings.ToUpper(sv))
 			if err != nil {
 				return nil, err
 			}

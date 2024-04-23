@@ -116,10 +116,6 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 	}
 	ruleInfo["FullyQualifiedTableNames"] = fullyQualifiedTableNames
 
-	ruleInfo["Status"] = strings.ToUpper(stmt.Status)
-
-	ruleInfo["Action"] = strings.ToUpper(stmt.Action.Action)
-
 	actionArgs, err := CheckAndFormatActionArgs(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
 	if err != nil {
 		return nil, err
@@ -134,6 +130,8 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 	ruleInfo["User"] = stmt.Pattern.UserRegex
 	ruleInfo["LeadingComment"] = stmt.Pattern.LeadingCommentRegex
 	ruleInfo["TrailingComment"] = stmt.Pattern.TrailingCommentRegex
+	ruleInfo["Status"] = stmt.Status
+	ruleInfo["Action"] = stmt.Action.Action
 
 	return rules.BuildQueryRule(ruleInfo)
 }
@@ -207,11 +205,11 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 	}
 
 	if stmt.Status != "-1" {
-		ruleInfo["Status"] = strings.ToUpper(stmt.Status)
+		ruleInfo["Status"] = stmt.Status
 	}
 
 	if stmt.Action.Action != "-1" {
-		ruleInfo["Action"] = strings.ToUpper(stmt.Action.Action)
+		ruleInfo["Action"] = stmt.Action.Action
 	}
 
 	if stmt.Action.ActionArgs != "-1" {
