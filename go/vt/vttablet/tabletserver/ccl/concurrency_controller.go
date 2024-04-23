@@ -158,7 +158,7 @@ func (txs *ConcurrencyController) GetOrCreateQueue(key string, maxQueueSize, max
 	}
 	q := txs.queues[key]
 	if q.maxQueueSize != maxQueueSize || q.maxConcurrency != maxConcurrency {
-		q.resizeQueue(maxQueueSize, maxConcurrency)
+		q.resizeQueueLocked(maxQueueSize, maxConcurrency)
 	}
 	return txs.queues[key]
 }
@@ -426,11 +426,9 @@ func newQueue(key string, txs *ConcurrencyController, maxQueueSize, maxConcurren
 	}
 }
 
-func (q *Queue) resizeQueue(newMaxQueueSize, newMaxConcurrency int) {
-	// lock to make sure there are no resource requesting and releasing during resizing progress.
-	q.txs.mu.Lock()
-	defer q.txs.mu.Unlock()
-
+// The method has the suffix "Locked" to clarify that "txs.mu" must be locked.
+// Lock to make sure there are no resource requesting and releasing during resizing progress.
+func (q *Queue) resizeQueueLocked(newMaxQueueSize, newMaxConcurrency int) {
 	q.maxQueueSize = newMaxQueueSize
 
 	if newMaxConcurrency > q.maxConcurrency {
