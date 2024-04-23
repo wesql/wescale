@@ -122,6 +122,7 @@ func TestFilterByPlan(t *testing.T) {
 	qr2.AddPlanCond(planbuilder.PlanSelect)
 	qr2.AddPlanCond(planbuilder.PlanSelect)
 	qr2.AddBindVarCond("a", true, false, QRNoOp, nil)
+	qr2.SetQueryCond("")
 
 	qr3 := NewActiveQueryRule("rule 3", "r3", QRFail)
 	qr3.SetQueryCond("sele.*")
@@ -130,6 +131,7 @@ func TestFilterByPlan(t *testing.T) {
 	qr4 := NewActiveQueryRule("rule 4", "r4", QRFail)
 	qr4.AddTableCond("d.b")
 	qr4.AddTableCond("d.c")
+	qr4.SetQueryCond("")
 
 	qrs.Add(qr1)
 	qrs.Add(qr2)
