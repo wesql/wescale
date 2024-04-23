@@ -692,6 +692,19 @@ func startATransactionShouldWait(t *testing.T, q *Queue, txNum int, txGetResourc
 	time.Sleep(100 * time.Millisecond)
 }
 
+func TestConcurrencyControllerResizeQueueSimple(t *testing.T) {
+	txs := NewConcurrentControllerForTest(10, false)
+	resetVariables(txs)
+
+	go func() {
+		timeout := 1 * time.Second
+		time.Sleep(timeout)
+		t.Fatal("Test case failed due to timeout")
+	}()
+	txs.GetOrCreateQueue("t1 where1", 1, 1)
+	txs.GetOrCreateQueue("t1 where1", 0, 0)
+}
+
 func TestConcurrencyControllerResizeQueue(t *testing.T) {
 	txs := NewConcurrentControllerForTest(10, false)
 	resetVariables(txs)
