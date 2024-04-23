@@ -761,7 +761,7 @@ const (
 )
 
 func ParseStringToAction(s string) (Action, error) {
-	switch s {
+	switch strings.ToUpper(s) {
 	case "CONTINUE":
 		return QRContinue, nil
 	case "FAIL":
@@ -1216,7 +1216,7 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				}
 			}
 		case "Action":
-			act, err := ParseStringToAction(strings.ToUpper(sv))
+			act, err := ParseStringToAction(sv)
 			if err != nil {
 				return nil, err
 			}
