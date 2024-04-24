@@ -55,7 +55,7 @@ func unmarshalArray(rawData string) ([]any, error) {
 	return result, err
 }
 
-func UserInputStrArrayToJSONArray(userInputArrayStr string) ([]any, error) {
+func UserInputStrArrayToArray(userInputArrayStr string) ([]any, error) {
 	reg, _ := regexp.Compile(`\s+`)
 	userInputArrayStr = reg.ReplaceAllString(userInputArrayStr, "")
 	userInputArray := strings.Split(userInputArrayStr, ",")
@@ -88,55 +88,10 @@ func GetDropByNameSQL(name string) (string, error) {
 
 // QueryResultToRule converts a query result to a rule.
 func QueryResultToRule(row sqltypes.RowNamedValues) (*rules.Rule, error) {
-	ruleInfo := make(map[string]any)
-	ruleInfo["Name"] = row.AsString("name", "")
-	ruleInfo["Description"] = row.AsString("description", "")
-	ruleInfo["Priority"] = int(row.AsInt64("priority", 1000))
-	ruleInfo["Status"] = row.AsString("status", "")
-
-	// parse Plans
-	plansStringData := row.AsString("plans", "")
-	if plansStringData != "" {
-		plans, err := unmarshalArray(plansStringData)
-		if err != nil {
-			log.Errorf("Failed to unmarshal plans: %v", err)
-			return nil, err
-		}
-		ruleInfo["Plans"] = plans
+	ruleInfo, err := QueryResultToRuleInfo(row)
+	if err != nil {
+		return nil, err
 	}
-
-	// parse TableNames
-	tableNamesData := row.AsString("fully_qualified_table_names", "")
-	if tableNamesData != "" {
-		tables, err := unmarshalArray(tableNamesData)
-		if err != nil {
-			log.Errorf("Failed to unmarshal fully_qualified_table_names: %v", err)
-			return nil, err
-		}
-		ruleInfo["FullyQualifiedTableNames"] = tables
-	}
-
-	ruleInfo["Query"] = row.AsString("query_regex", "")
-	ruleInfo["QueryTemplate"] = row.AsString("query_template", "")
-	ruleInfo["RequestIP"] = row.AsString("request_ip_regex", "")
-	ruleInfo["User"] = row.AsString("user_regex", "")
-	ruleInfo["LeadingComment"] = row.AsString("leading_comment_regex", "")
-	ruleInfo["TrailingComment"] = row.AsString("trailing_comment_regex", "")
-
-	// parse BindVarConds
-	bindVarCondsData := row.AsString("bind_var_conds", "")
-	if bindVarCondsData != "" {
-		bindVarConds, err := unmarshalArray(bindVarCondsData)
-		if err != nil {
-			log.Errorf("Failed to unmarshal bind_var_conds: %v", err)
-			return nil, err
-		}
-		ruleInfo["BindVarConds"] = bindVarConds
-	}
-
-	ruleInfo["Action"] = row.AsString("action", "")
-	ruleInfo["ActionArgs"] = row.AsString("action_args", "")
-
 	rule, err := rules.BuildQueryRule(ruleInfo)
 	if err != nil {
 		log.Errorf("Failed to build rule: %v", err)

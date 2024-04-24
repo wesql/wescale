@@ -104,13 +104,13 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 	}
 	ruleInfo["Priority"] = priority
 
-	plans, err := customrule.UserInputStrArrayToJSONArray(stmt.Pattern.Plans)
+	plans, err := customrule.UserInputStrArrayToArray(stmt.Pattern.Plans)
 	if err != nil {
 		return nil, fmt.Errorf("create filter failed: plans %v can't be transformed to array", stmt.Pattern.Plans)
 	}
 	ruleInfo["Plans"] = plans
 
-	fullyQualifiedTableNames, err := customrule.UserInputStrArrayToJSONArray(stmt.Pattern.FullyQualifiedTableNames)
+	fullyQualifiedTableNames, err := customrule.UserInputStrArrayToArray(stmt.Pattern.FullyQualifiedTableNames)
 	if err != nil {
 		return nil, fmt.Errorf("create filter failed: fully_qualified_table_names %v can't be transformed to array", stmt.Pattern.FullyQualifiedTableNames)
 	}
@@ -185,11 +185,14 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 		if err != nil {
 			return fmt.Errorf("create filter failed: priority %v can't be transformed to int", stmt.Priority)
 		}
-		ruleInfo["Priority"] = priority
+		if priority < rules.MinPriority {
+			return fmt.Errorf("alter filter failed: priority %v is smaller than min_priority %d", stmt.Priority, rules.MinPriority)
+		}
+		ruleInfo["Priority"] = stmt.Priority
 	}
 
 	if stmt.Pattern.Plans != "-1" {
-		plans, err := customrule.UserInputStrArrayToJSONArray(stmt.Pattern.Plans)
+		plans, err := customrule.UserInputStrArrayToArray(stmt.Pattern.Plans)
 		if err != nil {
 			return fmt.Errorf("create filter failed: plans %v can't be transformed to array", stmt.Pattern.Plans)
 		}
@@ -197,7 +200,7 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 	}
 
 	if stmt.Pattern.FullyQualifiedTableNames != "-1" {
-		fullyQualifiedTableNames, err := customrule.UserInputStrArrayToJSONArray(stmt.Pattern.FullyQualifiedTableNames)
+		fullyQualifiedTableNames, err := customrule.UserInputStrArrayToArray(stmt.Pattern.FullyQualifiedTableNames)
 		if err != nil {
 			return fmt.Errorf("create filter failed: fully_qualified_table_names %v can't be transformed to array", stmt.Pattern.FullyQualifiedTableNames)
 		}
@@ -213,7 +216,11 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 	}
 
 	if stmt.Action.ActionArgs != "-1" {
-		actionArgs, err := CheckAndFormatActionArgs(ruleInfo["Action"].(string), stmt.Action.ActionArgs)
+		actionStr, ok := ruleInfo["Action"].(string)
+		if !ok {
+			return fmt.Errorf("alter filter failed: action %v is not string", ruleInfo["Action"])
+		}
+		actionArgs, err := CheckAndFormatActionArgs(actionStr, stmt.Action.ActionArgs)
 		if err != nil {
 			return err
 		}
