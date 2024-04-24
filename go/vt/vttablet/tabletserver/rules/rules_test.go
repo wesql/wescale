@@ -960,3 +960,60 @@ func Test_fullyQualifiedTableNameRegexMatch(t *testing.T) {
 		})
 	}
 }
+
+func Test_reMatch(t *testing.T) {
+	type args struct {
+		re  *regexp.Regexp
+		val string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "match",
+			args: args{
+				re:  nil,
+				val: "",
+			},
+			want: true,
+		}, {
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^$"),
+				val: "",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^.*$"),
+				val: "fdslajkfkjdashfjkdsahj",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^foobar$"),
+				val: "foobar",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^foobar$"),
+				val: "foobar222",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, reMatch(tt.args.re, tt.args.val), "reMatch(%v, %v)", tt.args.re, tt.args.val)
+		})
+	}
+}

@@ -52,9 +52,10 @@ func (cr *databaseCustomRule) start() {
 			select {
 			case <-intervalTimer.C:
 			case <-customrule.Watch():
-				if err := cr.reloadRulesFromDatabase(); err != nil {
-					log.Warningf("Background watch of database custom rule failed: %v", err)
-				}
+			}
+
+			if err := cr.reloadRulesFromDatabase(); err != nil {
+				log.Warningf("Background watch of database custom rule failed: %v", err)
 			}
 
 			if cr.stopped.Load() {
