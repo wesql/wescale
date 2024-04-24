@@ -1184,9 +1184,9 @@ set_session_or_global:
   }
 
 create_filter_statement:
-  CREATE comment_opt FILTER not_exists_opt '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
+  CREATE comment_opt FILTER not_exists_opt ID '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
   {
-   $$ = &CreateWescaleFilter{Name:$6.Name, Description:$6.Description, Priority:$6.Priority, Status:$6.Status, IfNotExists:$4,Pattern:$10,Action:$14}
+   $$ = &CreateWescaleFilter{Name:$5, Description:$7.Description, Priority:$7.Priority, Status:$7.Status, IfNotExists:$4,Pattern:$11,Action:$15}
   }
 
 alter_filter_statement:
