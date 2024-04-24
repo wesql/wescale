@@ -179,6 +179,7 @@ type ConcurrencyControlActionArgs struct {
 	MaxConcurrency int `toml:"max_concurrency"`
 }
 
+// todo filter: replace with viper
 func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	if stringParams == "" {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
