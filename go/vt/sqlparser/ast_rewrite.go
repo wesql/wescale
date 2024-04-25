@@ -1053,13 +1053,8 @@ func (a *application) rewriteRefOfAlterWescaleFilter(parent SQLNode, node *Alter
 			return true
 		}
 	}
-	if !a.rewriteRefOfWescaleFilterPattern(node, node.Pattern, func(newNode, parent SQLNode) {
-		parent.(*AlterWescaleFilter).Pattern = newNode.(*WescaleFilterPattern)
-	}) {
-		return false
-	}
-	if !a.rewriteRefOfWescaleFilterAction(node, node.Action, func(newNode, parent SQLNode) {
-		parent.(*AlterWescaleFilter).Action = newNode.(*WescaleFilterAction)
+	if !a.rewriteRefOfCreateWescaleFilter(node, node.AlterInfo, func(newNode, parent SQLNode) {
+		parent.(*AlterWescaleFilter).AlterInfo = newNode.(*CreateWescaleFilter)
 	}) {
 		return false
 	}

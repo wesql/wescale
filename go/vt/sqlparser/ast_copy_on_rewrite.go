@@ -923,12 +923,10 @@ func (c *cow) copyOnRewriteRefOfAlterWescaleFilter(n *AlterWescaleFilter, parent
 	}
 	out = n
 	if c.pre == nil || c.pre(n, parent) {
-		_Pattern, changedPattern := c.copyOnRewriteRefOfWescaleFilterPattern(n.Pattern, n)
-		_Action, changedAction := c.copyOnRewriteRefOfWescaleFilterAction(n.Action, n)
-		if changedPattern || changedAction {
+		_AlterInfo, changedAlterInfo := c.copyOnRewriteRefOfCreateWescaleFilter(n.AlterInfo, n)
+		if changedAlterInfo {
 			res := *n
-			res.Pattern, _ = _Pattern.(*WescaleFilterPattern)
-			res.Action, _ = _Action.(*WescaleFilterAction)
+			res.AlterInfo, _ = _AlterInfo.(*CreateWescaleFilter)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)

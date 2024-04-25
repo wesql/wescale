@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/assert"
@@ -41,10 +43,10 @@ func TestAlterRuleInfo(t *testing.T) {
 		expectedErr      bool
 	}{
 		{
-			alter: &sqlparser.AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false,
-				Status: "-1", Pattern: &sqlparser.WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1",
-					QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1",
-					BindVarConds: "-1"}, Action: &sqlparser.WescaleFilterAction{Action: "-1", ActionArgs: "-1"}},
+			alter: &sqlparser.AlterWescaleFilter{AlterInfo: &sqlparser.CreateWescaleFilter{Name: rules.UnsetValueOfStmt, Description: rules.UnsetValueOfStmt, Priority: rules.UnsetValueOfStmt,
+				Status: rules.UnsetValueOfStmt, Pattern: &sqlparser.WescaleFilterPattern{Plans: rules.UnsetValueOfStmt, FullyQualifiedTableNames: rules.UnsetValueOfStmt, QueryRegex: rules.UnsetValueOfStmt,
+					QueryTemplate: rules.UnsetValueOfStmt, RequestIPRegex: rules.UnsetValueOfStmt, UserRegex: rules.UnsetValueOfStmt, LeadingCommentRegex: rules.UnsetValueOfStmt, TrailingCommentRegex: rules.UnsetValueOfStmt,
+					BindVarConds: rules.UnsetValueOfStmt}, Action: &sqlparser.WescaleFilterAction{Action: rules.UnsetValueOfStmt, ActionArgs: rules.UnsetValueOfStmt}}},
 			originRuleInfo: map[string]any{"Name": "p1", "Description": "nothing", "Priority": 1000,
 				"Query": "", "QueryTemplate": "", "RequestIP": "", "User": "", "LeadingComment": "", "TrailingComment": "",
 				"Plans": []string{"insert"}, "FullyQualifiedTableNames": []string{"d1.t1"},
@@ -55,10 +57,10 @@ func TestAlterRuleInfo(t *testing.T) {
 				"Status": "ACTIVE", "Action": "FAIL", "ActionArgs": ""},
 		},
 		{
-			alter: &sqlparser.AlterWescaleFilter{NewName: "p2", Description: "new desc", Priority: "1", SetPriority: true,
+			alter: &sqlparser.AlterWescaleFilter{AlterInfo: &sqlparser.CreateWescaleFilter{Name: "p2", Description: "new desc", Priority: "1",
 				Status: "inactive", Pattern: &sqlparser.WescaleFilterPattern{Plans: "insert ,select", FullyQualifiedTableNames: "d1.t1, d2.t2", QueryRegex: ".*",
 					QueryTemplate: ".*", RequestIPRegex: ".*", UserRegex: ".*", LeadingCommentRegex: ".*", TrailingCommentRegex: ".*",
-					BindVarConds: "-1"}, Action: &sqlparser.WescaleFilterAction{Action: "concurrency_control", ActionArgs: "a=1;b=1"}},
+					BindVarConds: rules.UnsetValueOfStmt}, Action: &sqlparser.WescaleFilterAction{Action: "concurrency_control", ActionArgs: "a=1;b=1"}}},
 			originRuleInfo: map[string]any{"Name": "p1", "Description": "nothing", "Priority": 1000,
 				"Query": "", "QueryTemplate": "", "RequestIP": "", "User": "", "LeadingComment": "", "TrailingComment": "",
 				"Plans": []string{"insert"}, "FullyQualifiedTableNames": []string{"d1.t1"},
@@ -69,24 +71,24 @@ func TestAlterRuleInfo(t *testing.T) {
 				"Status": "inactive", "Action": "concurrency_control", "ActionArgs": "a=1;b=1"},
 		},
 		{ // set priority 1000 -> -1
-			alter: &sqlparser.AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: true,
-				Status: "-1", Pattern: &sqlparser.WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1",
-					QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1",
-					BindVarConds: "-1"}, Action: &sqlparser.WescaleFilterAction{Action: "-1", ActionArgs: "-1"}},
+			alter: &sqlparser.AlterWescaleFilter{AlterInfo: &sqlparser.CreateWescaleFilter{Name: rules.UnsetValueOfStmt, Description: rules.UnsetValueOfStmt, Priority: "-1",
+				Status: rules.UnsetValueOfStmt, Pattern: &sqlparser.WescaleFilterPattern{Plans: rules.UnsetValueOfStmt, FullyQualifiedTableNames: rules.UnsetValueOfStmt, QueryRegex: rules.UnsetValueOfStmt,
+					QueryTemplate: rules.UnsetValueOfStmt, RequestIPRegex: rules.UnsetValueOfStmt, UserRegex: rules.UnsetValueOfStmt, LeadingCommentRegex: rules.UnsetValueOfStmt, TrailingCommentRegex: rules.UnsetValueOfStmt,
+					BindVarConds: rules.UnsetValueOfStmt}, Action: &sqlparser.WescaleFilterAction{Action: rules.UnsetValueOfStmt, ActionArgs: rules.UnsetValueOfStmt}}},
 			expectedErr: true,
 		},
 		{ // wrong format priority
-			alter: &sqlparser.AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "wrong format", SetPriority: true,
-				Status: "-1", Pattern: &sqlparser.WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1",
-					QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1",
-					BindVarConds: "-1"}, Action: &sqlparser.WescaleFilterAction{Action: "-1", ActionArgs: "-1"}},
+			alter: &sqlparser.AlterWescaleFilter{AlterInfo: &sqlparser.CreateWescaleFilter{Name: rules.UnsetValueOfStmt, Description: rules.UnsetValueOfStmt, Priority: "wrong format",
+				Status: rules.UnsetValueOfStmt, Pattern: &sqlparser.WescaleFilterPattern{Plans: rules.UnsetValueOfStmt, FullyQualifiedTableNames: rules.UnsetValueOfStmt, QueryRegex: rules.UnsetValueOfStmt,
+					QueryTemplate: rules.UnsetValueOfStmt, RequestIPRegex: rules.UnsetValueOfStmt, UserRegex: rules.UnsetValueOfStmt, LeadingCommentRegex: rules.UnsetValueOfStmt, TrailingCommentRegex: rules.UnsetValueOfStmt,
+					BindVarConds: rules.UnsetValueOfStmt}, Action: &sqlparser.WescaleFilterAction{Action: rules.UnsetValueOfStmt, ActionArgs: rules.UnsetValueOfStmt}}},
 			expectedErr: true,
 		},
 		{ // invalid ccl args
-			alter: &sqlparser.AlterWescaleFilter{NewName: "-1", Description: "-1", Priority: "-1", SetPriority: false,
-				Status: "-1", Pattern: &sqlparser.WescaleFilterPattern{Plans: "-1", FullyQualifiedTableNames: "-1", QueryRegex: "-1",
-					QueryTemplate: "-1", RequestIPRegex: "-1", UserRegex: "-1", LeadingCommentRegex: "-1", TrailingCommentRegex: "-1",
-					BindVarConds: "-1"}, Action: &sqlparser.WescaleFilterAction{Action: "-1", ActionArgs: "max_queue_size=-1"}},
+			alter: &sqlparser.AlterWescaleFilter{AlterInfo: &sqlparser.CreateWescaleFilter{Name: rules.UnsetValueOfStmt, Description: rules.UnsetValueOfStmt, Priority: rules.UnsetValueOfStmt,
+				Status: rules.UnsetValueOfStmt, Pattern: &sqlparser.WescaleFilterPattern{Plans: rules.UnsetValueOfStmt, FullyQualifiedTableNames: rules.UnsetValueOfStmt, QueryRegex: rules.UnsetValueOfStmt,
+					QueryTemplate: rules.UnsetValueOfStmt, RequestIPRegex: rules.UnsetValueOfStmt, UserRegex: rules.UnsetValueOfStmt, LeadingCommentRegex: rules.UnsetValueOfStmt, TrailingCommentRegex: rules.UnsetValueOfStmt,
+					BindVarConds: rules.UnsetValueOfStmt}, Action: &sqlparser.WescaleFilterAction{Action: rules.UnsetValueOfStmt, ActionArgs: "max_queue_size=-1"}}},
 			originRuleInfo: map[string]any{"Name": "p1", "Description": "nothing", "Priority": 1000,
 				"Query": "", "QueryTemplate": "", "RequestIP": "", "User": "", "LeadingComment": "", "TrailingComment": "",
 				"Plans": []string{"insert"}, "FullyQualifiedTableNames": []string{"d1.t1"},

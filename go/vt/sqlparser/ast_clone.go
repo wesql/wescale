@@ -714,8 +714,7 @@ func CloneRefOfAlterWescaleFilter(n *AlterWescaleFilter) *AlterWescaleFilter {
 		return nil
 	}
 	out := *n
-	out.Pattern = CloneRefOfWescaleFilterPattern(n.Pattern)
-	out.Action = CloneRefOfWescaleFilterAction(n.Action)
+	out.AlterInfo = CloneRefOfCreateWescaleFilter(n.AlterInfo)
 	return &out
 }
 

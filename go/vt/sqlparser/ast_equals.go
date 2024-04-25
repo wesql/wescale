@@ -1778,13 +1778,7 @@ func (cmp *Comparator) RefOfAlterWescaleFilter(a, b *AlterWescaleFilter) bool {
 		return false
 	}
 	return a.OriginName == b.OriginName &&
-		a.NewName == b.NewName &&
-		a.Description == b.Description &&
-		a.Priority == b.Priority &&
-		a.SetPriority == b.SetPriority &&
-		a.Status == b.Status &&
-		cmp.RefOfWescaleFilterPattern(a.Pattern, b.Pattern) &&
-		cmp.RefOfWescaleFilterAction(a.Action, b.Action)
+		cmp.RefOfCreateWescaleFilter(a.AlterInfo, b.AlterInfo)
 }
 
 // RefOfAndExpr does deep equals between the two objects.

@@ -43,55 +43,52 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 }
 
 func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
-	if stmt.Name == "-1" {
+	if stmt.Name == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set a name")
 	}
-	if stmt.Pattern.Plans == "-1" {
+	if stmt.Pattern.Plans == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set plans")
 	}
-	if stmt.Pattern.FullyQualifiedTableNames == "-1" {
+	if stmt.Pattern.FullyQualifiedTableNames == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set fully qualified table names")
 	}
-	if stmt.Priority == "-1" {
-		priority, err := strconv.Atoi(stmt.Priority)
-		if err != nil || priority < rules.MinPriority {
-			return fmt.Errorf("create filter failed, please set a valid priority that is greater than %d", rules.MinPriority)
-		}
+	if stmt.Priority == rules.UnsetValueOfStmt {
+		return fmt.Errorf("create filter failed, please set a valid priority that is greater than %d", rules.MinPriority)
 	}
-	if stmt.Action.Action == "-1" {
+	if stmt.Action.Action == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set action")
 	}
 
-	if stmt.Status == "-1" {
+	if stmt.Status == rules.UnsetValueOfStmt {
 		stmt.Status = rules.DefaultStatus
 	}
 
-	if stmt.Description == "-1" {
+	if stmt.Description == rules.UnsetValueOfStmt {
 		stmt.Description = ""
 	}
-	if stmt.Pattern.QueryRegex == "-1" {
-		stmt.Pattern.QueryRegex = ""
+	if stmt.Pattern.QueryRegex == rules.UnsetValueOfStmt {
+		stmt.Pattern.QueryRegex = rules.DefaultRegex
 	}
-	if stmt.Pattern.RequestIPRegex == "-1" {
-		stmt.Pattern.RequestIPRegex = ""
+	if stmt.Pattern.RequestIPRegex == rules.UnsetValueOfStmt {
+		stmt.Pattern.RequestIPRegex = rules.DefaultRegex
 	}
-	if stmt.Pattern.UserRegex == "-1" {
-		stmt.Pattern.UserRegex = ""
+	if stmt.Pattern.UserRegex == rules.UnsetValueOfStmt {
+		stmt.Pattern.UserRegex = rules.DefaultRegex
 	}
-	if stmt.Pattern.LeadingCommentRegex == "-1" {
-		stmt.Pattern.LeadingCommentRegex = ""
+	if stmt.Pattern.LeadingCommentRegex == rules.UnsetValueOfStmt {
+		stmt.Pattern.LeadingCommentRegex = rules.DefaultRegex
 	}
-	if stmt.Pattern.TrailingCommentRegex == "-1" {
-		stmt.Pattern.TrailingCommentRegex = ""
+	if stmt.Pattern.TrailingCommentRegex == rules.UnsetValueOfStmt {
+		stmt.Pattern.TrailingCommentRegex = rules.DefaultRegex
 	}
-	if stmt.Pattern.QueryTemplate == "-1" {
-		stmt.Pattern.QueryTemplate = ""
+	if stmt.Pattern.QueryTemplate == rules.UnsetValueOfStmt {
+		stmt.Pattern.QueryTemplate = rules.DefaultQueryTemplate
 	}
-	if stmt.Pattern.BindVarConds == "-1" {
-		stmt.Pattern.BindVarConds = ""
+	if stmt.Pattern.BindVarConds == rules.UnsetValueOfStmt {
+		stmt.Pattern.BindVarConds = rules.DefaultBindVarConds
 	}
-	if stmt.Action.ActionArgs == "-1" {
-		stmt.Action.ActionArgs = ""
+	if stmt.Action.ActionArgs == rules.UnsetValueOfStmt {
+		stmt.Action.ActionArgs = rules.DefaultActionArgs
 	}
 	return nil
 }
@@ -100,7 +97,7 @@ func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Ru
 
 	ruleInfo := make(map[string]any)
 
-	err := SetRuleInfoBasicInfo(ruleInfo, stmt.Name, stmt.Description, stmt.Status, stmt.Priority, true)
+	err := SetRuleInfoBasicInfo(ruleInfo, stmt.Name, stmt.Description, stmt.Status, stmt.Priority)
 	if err != nil {
 		return nil, err
 	}
@@ -155,15 +152,15 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 }
 
 func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) error {
-	err := SetRuleInfoBasicInfo(ruleInfo, stmt.NewName, stmt.Description, stmt.Status, stmt.Priority, stmt.SetPriority)
+	err := SetRuleInfoBasicInfo(ruleInfo, stmt.AlterInfo.Name, stmt.AlterInfo.Description, stmt.AlterInfo.Status, stmt.AlterInfo.Priority)
 	if err != nil {
 		return err
 	}
-	err = SetRuleInfoPattern(ruleInfo, stmt.Pattern)
+	err = SetRuleInfoPattern(ruleInfo, stmt.AlterInfo.Pattern)
 	if err != nil {
 		return err
 	}
-	err = SetRuleInfoAction(ruleInfo, stmt.Action)
+	err = SetRuleInfoAction(ruleInfo, stmt.AlterInfo.Action)
 	if err != nil {
 		return err
 	}
@@ -249,8 +246,8 @@ func FormatUserInputStr(str string) string {
 	return result.String()
 }
 
-func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority string, setPriority bool) error {
-	if setPriority {
+func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority string) error {
+	if priority != rules.UnsetValueOfStmt {
 		priorityInt, err := strconv.Atoi(priority)
 		if err != nil {
 			return fmt.Errorf("create filter failed: priority %v can't be transformed to int", priority)
@@ -261,14 +258,14 @@ func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority 
 		ruleInfo["Priority"] = priorityInt
 	}
 
-	if status != "-1" {
+	if status != rules.UnsetValueOfStmt {
 		ruleInfo["Status"] = status
 	}
 
-	if name != "-1" {
+	if name != rules.UnsetValueOfStmt {
 		ruleInfo["Name"] = name
 	}
-	if desc != "-1" {
+	if desc != rules.UnsetValueOfStmt {
 		ruleInfo["Description"] = desc
 	}
 
@@ -276,11 +273,11 @@ func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority 
 }
 
 func SetRuleInfoAction(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAction) error {
-	if stmt.Action != "-1" {
+	if stmt.Action != rules.UnsetValueOfStmt {
 		ruleInfo["Action"] = stmt.Action
 	}
 
-	if stmt.ActionArgs != "-1" {
+	if stmt.ActionArgs != rules.UnsetValueOfStmt {
 		actionStr, ok := ruleInfo["Action"].(string)
 		if !ok {
 			return fmt.Errorf("alter filter failed: action %v is not string", ruleInfo["Action"])
@@ -295,12 +292,12 @@ func SetRuleInfoAction(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAct
 }
 
 func SetRuleInfoPattern(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterPattern) error {
-	if stmt.BindVarConds != "-1" {
+	if stmt.BindVarConds != rules.UnsetValueOfStmt {
 		if stmt.BindVarConds != "" {
 			return fmt.Errorf("create filter failed: bind_var_conds %v not supportted yet", stmt.BindVarConds)
 		}
 	}
-	if stmt.Plans != "-1" {
+	if stmt.Plans != rules.UnsetValueOfStmt {
 		plans, err := customrule.UserInputStrArrayToArray(stmt.Plans)
 		if err != nil {
 			return fmt.Errorf("create filter failed: plans %v can't be transformed to array", stmt.Plans)
@@ -308,7 +305,7 @@ func SetRuleInfoPattern(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterPa
 		ruleInfo["Plans"] = plans
 	}
 
-	if stmt.FullyQualifiedTableNames != "-1" {
+	if stmt.FullyQualifiedTableNames != rules.UnsetValueOfStmt {
 		fullyQualifiedTableNames, err := customrule.UserInputStrArrayToArray(stmt.FullyQualifiedTableNames)
 		if err != nil {
 			return fmt.Errorf("create filter failed: fully_qualified_table_names %v can't be transformed to array", stmt.FullyQualifiedTableNames)
@@ -316,22 +313,22 @@ func SetRuleInfoPattern(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterPa
 		ruleInfo["FullyQualifiedTableNames"] = fullyQualifiedTableNames
 	}
 
-	if stmt.QueryRegex != "-1" {
+	if stmt.QueryRegex != rules.UnsetValueOfStmt {
 		ruleInfo["Query"] = stmt.QueryRegex
 	}
-	if stmt.QueryTemplate != "-1" {
+	if stmt.QueryTemplate != rules.UnsetValueOfStmt {
 		ruleInfo["QueryTemplate"] = stmt.QueryTemplate
 	}
-	if stmt.RequestIPRegex != "-1" {
+	if stmt.RequestIPRegex != rules.UnsetValueOfStmt {
 		ruleInfo["RequestIP"] = stmt.RequestIPRegex
 	}
-	if stmt.UserRegex != "-1" {
+	if stmt.UserRegex != rules.UnsetValueOfStmt {
 		ruleInfo["User"] = stmt.UserRegex
 	}
-	if stmt.LeadingCommentRegex != "-1" {
+	if stmt.LeadingCommentRegex != rules.UnsetValueOfStmt {
 		ruleInfo["LeadingComment"] = stmt.LeadingCommentRegex
 	}
-	if stmt.TrailingCommentRegex != "-1" {
+	if stmt.TrailingCommentRegex != rules.UnsetValueOfStmt {
 		ruleInfo["TrailingComment"] = stmt.TrailingCommentRegex
 	}
 	return nil

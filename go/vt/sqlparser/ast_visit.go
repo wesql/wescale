@@ -781,10 +781,7 @@ func VisitRefOfAlterWescaleFilter(in *AlterWescaleFilter, f Visit) error {
 	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
-	if err := VisitRefOfWescaleFilterPattern(in.Pattern, f); err != nil {
-		return err
-	}
-	if err := VisitRefOfWescaleFilterAction(in.Action, f); err != nil {
+	if err := VisitRefOfCreateWescaleFilter(in.AlterInfo, f); err != nil {
 		return err
 	}
 	return nil

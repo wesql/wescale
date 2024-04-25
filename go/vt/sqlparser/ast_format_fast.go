@@ -24,6 +24,7 @@ package sqlparser
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2831,10 +2832,9 @@ func (node *CreateWescaleFilter) formatFast(buf *TrackedBuffer) {
 		buf.WriteString("if not exists ")
 	}
 
-	buf.WriteString("( ")
 	buf.WriteString("name=")
 	buf.WriteString(node.Name)
-	buf.WriteString(", ")
+	buf.WriteString(" ( ")
 	buf.WriteString("description=")
 	buf.WriteString(node.Description)
 	buf.WriteString(", ")
@@ -2864,26 +2864,26 @@ func (node *AlterWescaleFilter) formatFast(buf *TrackedBuffer) {
 	buf.WriteByte(' ')
 	buf.WriteString("( ")
 	buf.WriteString("name=")
-	buf.WriteString(node.NewName)
+	buf.WriteString(node.AlterInfo.Name)
 	buf.WriteString(", ")
 	buf.WriteString("description=")
-	buf.WriteString(node.Description)
+	buf.WriteString(node.AlterInfo.Description)
 	buf.WriteString(", ")
 	buf.WriteString("priority=")
-	buf.WriteString(node.Priority)
+	buf.WriteString(node.AlterInfo.Priority)
 	buf.WriteString(", ")
 	buf.WriteString("status=")
-	buf.WriteString(node.Status)
+	buf.WriteString(node.AlterInfo.Status)
 	buf.WriteByte(' ')
 	buf.WriteString(") ")
 
-	if node.Pattern != nil {
-		node.Pattern.formatFast(buf)
+	if node.AlterInfo.Pattern != nil {
+		node.AlterInfo.Pattern.formatFast(buf)
 		buf.WriteByte(' ')
 	}
 
-	if node.Action != nil {
-		node.Action.formatFast(buf)
+	if node.AlterInfo.Action != nil {
+		node.AlterInfo.Action.formatFast(buf)
 		buf.WriteByte(' ')
 	}
 }
