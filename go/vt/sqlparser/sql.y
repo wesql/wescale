@@ -1192,7 +1192,7 @@ create_filter_statement:
 alter_filter_statement:
   ALTER comment_opt FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
   {
-     $$ = &AlterWescaleFilter{OriginName:$4, AlterInfo:$5.AlterInfo}
+atus     $$ = &AlterWescaleFilter{OriginName:$4, AlterInfo:&CreateWescaleFilter{Name:$5.AlterInfo.Name, Description:$5.AlterInfo.Description, Status:$5.AlterInfo.Status, Priority:$5.AlterInfo.Priority, Pattern:$6, Action: $7}}
   }
 
 drop_filter_statement:
