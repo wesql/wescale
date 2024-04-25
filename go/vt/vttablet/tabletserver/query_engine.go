@@ -370,7 +370,7 @@ func (qe *QueryEngine) GetPlan(ctx context.Context, logStats *tabletenv.LogStats
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: sql}
 	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableNames()...)
 	plan.buildAuthorized()
 	if plan.PlanID == planbuilder.PlanDDL || plan.PlanID == planbuilder.PlanSet {
@@ -391,7 +391,7 @@ func (qe *QueryEngine) GetStreamPlan(sql string, dbName string) (*TabletPlan, er
 	if err != nil {
 		return nil, err
 	}
-	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: GenerateSQLHash(sql)}
+	plan := &TabletPlan{Plan: splan, Original: sql, QueryTemplateID: sql}
 	plan.Rules = qe.queryRuleSources.FilterByPlan(sql, plan.PlanID, plan.TableName())
 	plan.buildAuthorized()
 	return plan, nil
