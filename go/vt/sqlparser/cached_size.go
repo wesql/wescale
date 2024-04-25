@@ -329,22 +329,12 @@ func (cached *AlterWescaleFilter) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(112)
+		size += int64(24)
 	}
 	// field OriginName string
 	size += hack.RuntimeAllocSize(int64(len(cached.OriginName)))
-	// field NewName string
-	size += hack.RuntimeAllocSize(int64(len(cached.NewName)))
-	// field Description string
-	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
-	// field Priority string
-	size += hack.RuntimeAllocSize(int64(len(cached.Priority)))
-	// field Status string
-	size += hack.RuntimeAllocSize(int64(len(cached.Status)))
-	// field Pattern *vitess.io/vitess/go/vt/sqlparser.WescaleFilterPattern
-	size += cached.Pattern.CachedSize(true)
-	// field Action *vitess.io/vitess/go/vt/sqlparser.WescaleFilterAction
-	size += cached.Action.CachedSize(true)
+	// field AlterInfo *vitess.io/vitess/go/vt/sqlparser.CreateWescaleFilter
+	size += cached.AlterInfo.CachedSize(true)
 	return size
 }
 func (cached *AndExpr) CachedSize(alloc bool) int64 {

@@ -46,9 +46,14 @@ import (
 //-----------------------------------------------
 
 const (
-	DefaultPriority = 1000
-	MinPriority     = 0
-	DefaultStatus   = Active
+	DefaultPriority      = 1000
+	MinPriority          = 0
+	DefaultStatus        = Active
+	UnsetValueOfStmt     = "-75516781"
+	DefaultRegex         = ""
+	DefaultQueryTemplate = ""
+	DefaultBindVarConds  = ""
+	DefaultActionArgs    = ""
 )
 
 const (

@@ -1192,7 +1192,7 @@ create_filter_statement:
 alter_filter_statement:
   ALTER comment_opt FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
   {
-     $$ = &AlterWescaleFilter{OriginName:$4, NewName:$5.NewName, Description:$5.Description, Priority:$5.Priority, SetPriority:$5.SetPriority, Status:$5.Status, Pattern:$6,Action:$7}
+     $$ = &AlterWescaleFilter{OriginName:$4, AlterInfo:$5.AlterInfo}
   }
 
 drop_filter_statement:
@@ -1215,7 +1215,7 @@ drop_filter_statement:
   alter_wescale_filter_info_opt:
   /*empty*/
   {
-    $$ = &AlterWescaleFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+    $$ = &AlterWescaleFilter{AlterInfo:&CreateWescaleFilter{Name:"-75516781",Description:"-75516781",Priority:"-75516781",Status:"-75516781"}}
   }
   | '(' alter_wescale_filter_info ')'
   {
@@ -1225,7 +1225,7 @@ drop_filter_statement:
   wescale_filter_pattern_info_opt:
   /*empty*/
   {
-     $$ = &WescaleFilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+     $$ = &WescaleFilterPattern{Plans:"-75516781",FullyQualifiedTableNames:"-75516781",QueryRegex:"-75516781",QueryTemplate:"-75516781",RequestIPRegex:"-75516781",UserRegex:"-75516781",LeadingCommentRegex:"-75516781",TrailingCommentRegex:"-75516781",BindVarConds:"-75516781"}
   }
   | WITHPATTERN '(' wescale_filter_pattern_info ')'
   {
@@ -1235,7 +1235,7 @@ drop_filter_statement:
   wescale_filter_action_info_opt:
   /*empty*/
   {
-     $$ = &WescaleFilterAction{Action:"-1",ActionArgs:"-1"}
+     $$ = &WescaleFilterAction{Action:"-75516781",ActionArgs:"-75516781"}
   }
   | EXECUTE '(' wescale_filter_action_info ')'
   {
@@ -1247,7 +1247,7 @@ drop_filter_statement:
 wescale_filter_info:
   wescale_filter_info_field '=' STRING
   {
-    $$ = &CreateWescaleFilter{Name:"-1",Description:"-1",Priority:"-1",Status:"-1"}
+    $$ = &CreateWescaleFilter{Name:"-75516781",Description:"-75516781",Priority:"-75516781",Status:"-75516781"}
     if $1 == "name" {
         $$.Name = $3
     }
@@ -1281,35 +1281,33 @@ wescale_filter_info:
 alter_wescale_filter_info:
   wescale_filter_info_field '=' STRING
   {
-    $$ = &AlterWescaleFilter{NewName:"-1",Description:"-1",Priority:"-1",SetPriority:false,Status:"-1"}
+    $$ = &AlterWescaleFilter{AlterInfo:&CreateWescaleFilter{Name:"-75516781",Description:"-75516781",Priority:"-75516781",Status:"-75516781"}}
     if $1 == "name" {
-      $$.NewName = $3
+      $$.AlterInfo.Name = $3
     }
     if $1 == "description" {
-        $$.Description = $3
+        $$.AlterInfo.Description = $3
     }
     if $1 == "priority" {
-        $$.Priority = $3
-        $$.SetPriority = true
+        $$.AlterInfo.Priority = $3
     }
     if $1 == "status" {
-        $$.Status = $3
+        $$.AlterInfo.Status = $3
     }
   }
   | alter_wescale_filter_info ',' wescale_filter_info_field '=' STRING
   {
     if $3 == "name" {
-        $$.NewName = $5
+        $$.AlterInfo.Name = $5
     }
     if $3 == "description" {
-        $$.Description = $5
+        $$.AlterInfo.Description = $5
     }
     if $3 == "priority" {
-        $$.Priority = $5
-        $$.SetPriority = true
+        $$.AlterInfo.Priority = $5
     }
     if $3 == "status" {
-        $$.Status = $5
+        $$.AlterInfo.Status = $5
     }
   }
 
@@ -1337,7 +1335,7 @@ wescale_filter_info_field:
 wescale_filter_pattern_info:
 wescale_filter_pattern_info_field '=' STRING
 {
-  $$ = &WescaleFilterPattern{Plans:"-1",FullyQualifiedTableNames:"-1",QueryRegex:"-1",QueryTemplate:"-1",RequestIPRegex:"-1",UserRegex:"-1",LeadingCommentRegex:"-1",TrailingCommentRegex:"-1",BindVarConds:"-1"}
+  $$ = &WescaleFilterPattern{Plans:"-75516781",FullyQualifiedTableNames:"-75516781",QueryRegex:"-75516781",QueryTemplate:"-75516781",RequestIPRegex:"-75516781",UserRegex:"-75516781",LeadingCommentRegex:"-75516781",TrailingCommentRegex:"-75516781",BindVarConds:"-75516781"}
   if $1 == "plans" {
       $$.Plans = $3
   }
@@ -1439,7 +1437,7 @@ PLANS
 wescale_filter_action_info:
   wescale_filter_action_info_field '=' STRING
   {
-    $$ = &WescaleFilterAction{Action:"-1",ActionArgs:"-1"}
+    $$ = &WescaleFilterAction{Action:"-75516781",ActionArgs:"-75516781"}
     if $1 == "action" {
         $$.Action = $3
     }

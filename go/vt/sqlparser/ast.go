@@ -549,14 +549,8 @@ type (
 	}
 
 	AlterWescaleFilter struct {
-		OriginName  string
-		NewName     string
-		Description string
-		Priority    string
-		SetPriority bool
-		Status      string
-		Pattern     *WescaleFilterPattern
-		Action      *WescaleFilterAction
+		OriginName string
+		AlterInfo  *CreateWescaleFilter
 	}
 
 	DropWescaleFilter struct {

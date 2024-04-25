@@ -2154,8 +2154,7 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 		buf.literal("if not exists ")
 	}
 
-	buf.literal("( ")
-	buf.astPrintf(node, "name=%s, ", node.Name)
+	buf.astPrintf(node, "name=%s ( ", node.Name)
 	buf.astPrintf(node, "description=%s, ", node.Description)
 	buf.astPrintf(node, "priority=%s, ", node.Priority)
 	buf.astPrintf(node, "status=%s ", node.Status)
@@ -2174,18 +2173,18 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 func (node *AlterWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "alter filter %s ", node.OriginName)
 	buf.literal("( ")
-	buf.astPrintf(node, "name=%s, ", node.NewName)
-	buf.astPrintf(node, "description=%s, ", node.Description)
-	buf.astPrintf(node, "priority=%s, ", node.Priority)
-	buf.astPrintf(node, "status=%s ", node.Status)
+	buf.astPrintf(node, "name=%s, ", node.AlterInfo.Name)
+	buf.astPrintf(node, "description=%s, ", node.AlterInfo.Description)
+	buf.astPrintf(node, "priority=%s, ", node.AlterInfo.Priority)
+	buf.astPrintf(node, "status=%s ", node.AlterInfo.Status)
 	buf.literal(") ")
 
-	if node.Pattern != nil {
-		buf.astPrintf(node, "%v ", node.Pattern)
+	if node.AlterInfo.Pattern != nil {
+		buf.astPrintf(node, "%v ", node.AlterInfo.Pattern)
 	}
 
-	if node.Action != nil {
-		buf.astPrintf(node, "%v ", node.Action)
+	if node.AlterInfo.Action != nil {
+		buf.astPrintf(node, "%v ", node.AlterInfo.Action)
 	}
 }
 
