@@ -56,6 +56,9 @@ func unmarshalArray(rawData string) ([]any, error) {
 }
 
 func UserInputStrArrayToArray(userInputArrayStr string) ([]any, error) {
+	if userInputArrayStr == "" {
+		return unmarshalArray("[]")
+	}
 	reg, _ := regexp.Compile(`\s+`)
 	userInputArrayStr = reg.ReplaceAllString(userInputArrayStr, "")
 	userInputArray := strings.Split(userInputArrayStr, ",")
