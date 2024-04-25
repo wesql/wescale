@@ -46,9 +46,7 @@ func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
 	if stmt.Name == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set a name")
 	}
-	if stmt.Pattern.Plans == rules.UnsetValueOfStmt {
-		return errors.New("create filter failed, please set plans")
-	}
+
 	if stmt.Pattern.FullyQualifiedTableNames == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set fully qualified table names")
 	}
@@ -86,6 +84,9 @@ func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
 	}
 	if stmt.Pattern.BindVarConds == rules.UnsetValueOfStmt {
 		stmt.Pattern.BindVarConds = rules.DefaultBindVarConds
+	}
+	if stmt.Pattern.Plans == rules.UnsetValueOfStmt {
+		stmt.Pattern.Plans = rules.DefaultPlans
 	}
 	if stmt.Action.ActionArgs == rules.UnsetValueOfStmt {
 		stmt.Action.ActionArgs = rules.DefaultActionArgs

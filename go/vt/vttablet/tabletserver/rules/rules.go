@@ -54,6 +54,7 @@ const (
 	DefaultQueryTemplate = ""
 	DefaultBindVarConds  = ""
 	DefaultActionArgs    = ""
+	DefaultPlans
 )
 
 const (
@@ -681,6 +682,9 @@ func planMatch(plans []planbuilder.PlanType, plan planbuilder.PlanType) bool {
 	if plans == nil {
 		return true
 	}
+	if len(plans) == 0 {
+		return true
+	}
 	for _, p := range plans {
 		if p == plan {
 			return true
@@ -1187,6 +1191,9 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "could not set TrailingComment condition: %v", sv)
 			}
 		case "Plans":
+			if len(lv) == 0 {
+				qr.plans = []planbuilder.PlanType{}
+			}
 			for _, p := range lv {
 				pv, ok := p.(string)
 				if !ok {
