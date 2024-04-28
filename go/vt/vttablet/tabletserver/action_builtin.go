@@ -199,7 +199,7 @@ func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs
 }
 
 func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(qre.plan.QueryTemplateID, p.Args.MaxQueueSize, p.Args.MaxConcurrency)
+	q := qre.tsv.qe.concurrencyController.GetOrCreateQueue(p.GetRule().Name, p.Args.MaxQueueSize, p.Args.MaxConcurrency)
 	doneFunc, waited, err := q.Wait(qre.ctx, qre.plan.TableNames())
 
 	if waited {
