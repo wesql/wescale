@@ -2126,23 +2126,23 @@ func (node *CreateTable) Format(buf *TrackedBuffer) {
 // Format formats the node.
 func (node *WescaleFilterPattern) Format(buf *TrackedBuffer) {
 	buf.literal("with_pattern ( ")
-	buf.astPrintf(node, "plans=%s, ", node.Plans)
-	buf.astPrintf(node, "fully_qualified_table_names=%s, ", node.FullyQualifiedTableNames)
-	buf.astPrintf(node, "query_regex=%s, ", node.QueryRegex)
-	buf.astPrintf(node, "query_template=%s, ", node.QueryTemplate)
-	buf.astPrintf(node, "request_ip_regex=%s, ", node.RequestIPRegex)
-	buf.astPrintf(node, "user_regex=%s, ", node.UserRegex)
-	buf.astPrintf(node, "leading_comment_regex=%s, ", node.LeadingCommentRegex)
-	buf.astPrintf(node, "trailing_comment_regex=%s, ", node.TrailingCommentRegex)
-	buf.astPrintf(node, "bind_var_conds=%s ", node.BindVarConds)
+	buf.astPrintf(node, "plans='%s', ", node.Plans)
+	buf.astPrintf(node, "fully_qualified_table_names='%s', ", node.FullyQualifiedTableNames)
+	buf.astPrintf(node, "query_regex='%s', ", node.QueryRegex)
+	buf.astPrintf(node, "query_template='%s', ", node.QueryTemplate)
+	buf.astPrintf(node, "request_ip_regex='%s', ", node.RequestIPRegex)
+	buf.astPrintf(node, "user_regex='%s', ", node.UserRegex)
+	buf.astPrintf(node, "leading_comment_regex='%s', ", node.LeadingCommentRegex)
+	buf.astPrintf(node, "trailing_comment_regex='%s', ", node.TrailingCommentRegex)
+	buf.astPrintf(node, "bind_var_conds='%s' ", node.BindVarConds)
 	buf.literal(") ")
 }
 
 // Format formats the node.
 func (node *WescaleFilterAction) Format(buf *TrackedBuffer) {
 	buf.literal("execute ( ")
-	buf.astPrintf(node, "action=%s, ", node.Action)
-	buf.astPrintf(node, "action_args=%s ", node.ActionArgs)
+	buf.astPrintf(node, "action='%s', ", node.Action)
+	buf.astPrintf(node, "action_args='%s' ", node.ActionArgs)
 	buf.literal(") ")
 }
 
@@ -2154,10 +2154,10 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 		buf.literal("if not exists ")
 	}
 
-	buf.astPrintf(node, "name=%s ( ", node.Name)
-	buf.astPrintf(node, "description=%s, ", node.Description)
-	buf.astPrintf(node, "priority=%s, ", node.Priority)
-	buf.astPrintf(node, "status=%s ", node.Status)
+	buf.astPrintf(node, "%s ( ", node.Name)
+	buf.astPrintf(node, "desc='%s', ", node.Description)
+	buf.astPrintf(node, "priority='%s', ", node.Priority)
+	buf.astPrintf(node, "status='%s' ", node.Status)
 	buf.literal(") ")
 
 	if node.Pattern != nil {
@@ -2173,10 +2173,10 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 func (node *AlterWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "alter filter %s ", node.OriginName)
 	buf.literal("( ")
-	buf.astPrintf(node, "name=%s, ", node.AlterInfo.Name)
-	buf.astPrintf(node, "description=%s, ", node.AlterInfo.Description)
-	buf.astPrintf(node, "priority=%s, ", node.AlterInfo.Priority)
-	buf.astPrintf(node, "status=%s ", node.AlterInfo.Status)
+	buf.astPrintf(node, "name='%s', ", node.AlterInfo.Name)
+	buf.astPrintf(node, "desc='%s', ", node.AlterInfo.Description)
+	buf.astPrintf(node, "priority='%s', ", node.AlterInfo.Priority)
+	buf.astPrintf(node, "status='%s' ", node.AlterInfo.Status)
 	buf.literal(") ")
 
 	if node.AlterInfo.Pattern != nil {
@@ -2195,11 +2195,15 @@ func (node *DropWescaleFilter) Format(buf *TrackedBuffer) {
 
 // Format formats the node.
 func (node *ShowWescaleFilter) Format(buf *TrackedBuffer) {
+	if node.ShowCreate {
+		buf.astPrintf(node, "show create filter %s", node.Name)
+		return
+	}
 	if node.ShowAll {
 		buf.literal("show filters")
-	} else {
-		buf.astPrintf(node, "show filter %s", node.Name)
+		return
 	}
+	buf.astPrintf(node, "show filter %s", node.Name)
 }
 
 // Format formats the node.

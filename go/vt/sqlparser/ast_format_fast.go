@@ -2782,45 +2782,45 @@ func (node *CreateTable) formatFast(buf *TrackedBuffer) {
 // formatFast formats the node.
 func (node *WescaleFilterPattern) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("with_pattern ( ")
-	buf.WriteString("plans=")
+	buf.WriteString("plans='")
 	buf.WriteString(node.Plans)
-	buf.WriteString(", ")
-	buf.WriteString("fully_qualified_table_names=")
+	buf.WriteString("', ")
+	buf.WriteString("fully_qualified_table_names='")
 	buf.WriteString(node.FullyQualifiedTableNames)
-	buf.WriteString(", ")
-	buf.WriteString("query_regex=")
+	buf.WriteString("', ")
+	buf.WriteString("query_regex='")
 	buf.WriteString(node.QueryRegex)
-	buf.WriteString(", ")
-	buf.WriteString("query_template=")
+	buf.WriteString("', ")
+	buf.WriteString("query_template='")
 	buf.WriteString(node.QueryTemplate)
-	buf.WriteString(", ")
-	buf.WriteString("request_ip_regex=")
+	buf.WriteString("', ")
+	buf.WriteString("request_ip_regex='")
 	buf.WriteString(node.RequestIPRegex)
-	buf.WriteString(", ")
-	buf.WriteString("user_regex=")
+	buf.WriteString("', ")
+	buf.WriteString("user_regex='")
 	buf.WriteString(node.UserRegex)
-	buf.WriteString(", ")
-	buf.WriteString("leading_comment_regex=")
+	buf.WriteString("', ")
+	buf.WriteString("leading_comment_regex='")
 	buf.WriteString(node.LeadingCommentRegex)
-	buf.WriteString(", ")
-	buf.WriteString("trailing_comment_regex=")
+	buf.WriteString("', ")
+	buf.WriteString("trailing_comment_regex='")
 	buf.WriteString(node.TrailingCommentRegex)
-	buf.WriteString(", ")
-	buf.WriteString("bind_var_conds=")
+	buf.WriteString("', ")
+	buf.WriteString("bind_var_conds='")
 	buf.WriteString(node.BindVarConds)
-	buf.WriteByte(' ')
+	buf.WriteString("' ")
 	buf.WriteString(") ")
 }
 
 // formatFast formats the node.
 func (node *WescaleFilterAction) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("execute ( ")
-	buf.WriteString("action=")
+	buf.WriteString("action='")
 	buf.WriteString(node.Action)
-	buf.WriteString(", ")
-	buf.WriteString("action_args=")
+	buf.WriteString("', ")
+	buf.WriteString("action_args='")
 	buf.WriteString(node.ActionArgs)
-	buf.WriteByte(' ')
+	buf.WriteString("' ")
 	buf.WriteString(") ")
 }
 
@@ -2832,18 +2832,17 @@ func (node *CreateWescaleFilter) formatFast(buf *TrackedBuffer) {
 		buf.WriteString("if not exists ")
 	}
 
-	buf.WriteString("name=")
 	buf.WriteString(node.Name)
 	buf.WriteString(" ( ")
-	buf.WriteString("description=")
+	buf.WriteString("desc='")
 	buf.WriteString(node.Description)
-	buf.WriteString(", ")
-	buf.WriteString("priority=")
+	buf.WriteString("', ")
+	buf.WriteString("priority='")
 	buf.WriteString(node.Priority)
-	buf.WriteString(", ")
-	buf.WriteString("status=")
+	buf.WriteString("', ")
+	buf.WriteString("status='")
 	buf.WriteString(node.Status)
-	buf.WriteByte(' ')
+	buf.WriteString("' ")
 	buf.WriteString(") ")
 
 	if node.Pattern != nil {
@@ -2863,18 +2862,18 @@ func (node *AlterWescaleFilter) formatFast(buf *TrackedBuffer) {
 	buf.WriteString(node.OriginName)
 	buf.WriteByte(' ')
 	buf.WriteString("( ")
-	buf.WriteString("name=")
+	buf.WriteString("name='")
 	buf.WriteString(node.AlterInfo.Name)
-	buf.WriteString(", ")
-	buf.WriteString("description=")
+	buf.WriteString("', ")
+	buf.WriteString("desc='")
 	buf.WriteString(node.AlterInfo.Description)
-	buf.WriteString(", ")
-	buf.WriteString("priority=")
+	buf.WriteString("', ")
+	buf.WriteString("priority='")
 	buf.WriteString(node.AlterInfo.Priority)
-	buf.WriteString(", ")
-	buf.WriteString("status=")
+	buf.WriteString("', ")
+	buf.WriteString("status='")
 	buf.WriteString(node.AlterInfo.Status)
-	buf.WriteByte(' ')
+	buf.WriteString("' ")
 	buf.WriteString(") ")
 
 	if node.AlterInfo.Pattern != nil {
@@ -2896,12 +2895,17 @@ func (node *DropWescaleFilter) formatFast(buf *TrackedBuffer) {
 
 // formatFast formats the node.
 func (node *ShowWescaleFilter) formatFast(buf *TrackedBuffer) {
+	if node.ShowCreate {
+		buf.WriteString("show create filter ")
+		buf.WriteString(node.Name)
+		return
+	}
 	if node.ShowAll {
 		buf.WriteString("show filters")
-	} else {
-		buf.WriteString("show filter ")
-		buf.WriteString(node.Name)
+		return
 	}
+	buf.WriteString("show filter ")
+	buf.WriteString(node.Name)
 }
 
 // formatFast formats the node.

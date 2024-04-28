@@ -4069,6 +4069,7 @@ func (cmp *Comparator) RefOfShowWescaleFilter(a, b *ShowWescaleFilter) bool {
 		return false
 	}
 	return a.ShowAll == b.ShowAll &&
+		a.ShowCreate == b.ShowCreate &&
 		a.Name == b.Name
 }
 

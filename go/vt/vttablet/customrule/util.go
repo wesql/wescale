@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -102,6 +103,49 @@ func QueryResultToRule(row sqltypes.RowNamedValues) (*rules.Rule, error) {
 	}
 
 	return rule, nil
+}
+
+func QueryResultToCreateFilter(row sqltypes.RowNamedValues) (*sqlparser.CreateWescaleFilter, error) {
+	rst := &sqlparser.CreateWescaleFilter{}
+
+	rst.Name = row.AsString("name", "")
+	rst.Description = row.AsString("description", "")
+	rst.Priority = strconv.Itoa(int(row.AsInt64("priority", 1000)))
+	rst.Status = row.AsString("status", "")
+
+	// parse Plans, remove `[` , `]` and `"` surrounds array elements
+	plans := row.AsString("plans", "")
+	plans = plans[1 : len(plans)-1]
+	plans = strings.ReplaceAll(plans, `"`, "")
+	rst.Pattern = &sqlparser.WescaleFilterPattern{}
+	rst.Pattern.Plans = plans
+
+	// parse TableNames, remove `[` , `]` and `"` surrounds array elements
+	tableNames := row.AsString("fully_qualified_table_names", "")
+	tableNames = tableNames[1 : len(tableNames)-1]
+	tableNames = strings.ReplaceAll(tableNames, `"`, "")
+	rst.Pattern.FullyQualifiedTableNames = tableNames
+
+	rst.Pattern.QueryRegex = row.AsString("query_regex", "")
+	rst.Pattern.QueryTemplate = row.AsString("query_template", "")
+	rst.Pattern.RequestIPRegex = row.AsString("request_ip_regex", "")
+	rst.Pattern.UserRegex = row.AsString("user_regex", "")
+	rst.Pattern.LeadingCommentRegex = row.AsString("leading_comment_regex", "")
+	rst.Pattern.TrailingCommentRegex = row.AsString("trailing_comment_regex", "")
+
+	// BindVarConds
+	// todo after supporting bind_var_conds, check the code follow:
+	// BindVarConds should be ""
+	rst.Pattern.BindVarConds = row.AsString("bind_var_conds", "")
+	if rst.Pattern.BindVarConds != "" {
+		return nil, fmt.Errorf("bind_var_conds is not supported yet, got %s", rst.Pattern.BindVarConds)
+	}
+
+	rst.Action = &sqlparser.WescaleFilterAction{}
+	rst.Action.Action = row.AsString("action", "")
+	rst.Action.ActionArgs = row.AsString("action_args", "")
+
+	return rst, nil
 }
 
 func QueryResultToRuleInfo(row sqltypes.RowNamedValues) (map[string]any, error) {

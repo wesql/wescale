@@ -558,8 +558,9 @@ type (
 	}
 
 	ShowWescaleFilter struct {
-		ShowAll bool
-		Name    string
+		ShowAll    bool
+		ShowCreate bool
+		Name       string
 	}
 
 	// CreateTable represents a CREATE TABLE statement.

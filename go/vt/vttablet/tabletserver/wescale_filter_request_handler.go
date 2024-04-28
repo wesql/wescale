@@ -179,6 +179,10 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {
 	var query string
 	var err error
+	if true {
+		return qe.HandleShowCreateFilter(stmt)
+	}
+
 	if stmt.ShowAll {
 		query = customrule.GetSelectAllSQL()
 	} else {
@@ -188,6 +192,33 @@ func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sql
 		}
 	}
 	return qe.ExecuteQuery(context.Background(), query)
+}
+
+func (qe *QueryEngine) HandleShowCreateFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {
+	query, err := customrule.GetSelectByNameSQL(stmt.Name)
+	if err != nil {
+		return nil, err
+	}
+	qr, err := qe.ExecuteQuery(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	if len(qr.Named().Rows) != 1 {
+		return nil, fmt.Errorf("the expected filter num is 1 but got %d", len(qr.Named().Rows))
+	}
+	createFilter, err := customrule.QueryResultToCreateFilter(qr.Named().Rows[0])
+	if err != nil {
+		return nil, err
+	}
+	rows := [][]sqltypes.Value{}
+	rows = append(rows, BuildVarCharRow(
+		stmt.Name,
+		sqlparser.String(createFilter),
+	))
+	return &sqltypes.Result{
+		Fields: BuildVarCharFields("Filer", "Create Filter"),
+		Rows:   rows,
+	}, nil
 }
 
 // ConvertUserInputToTOML converts ';' inside '\” to '\n' in the input string
