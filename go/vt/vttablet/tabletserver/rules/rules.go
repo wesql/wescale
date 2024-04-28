@@ -55,6 +55,7 @@ const (
 	DefaultBindVarConds  = ""
 	DefaultActionArgs    = ""
 	DefaultPlans
+	DefaultFullyQualifiedTableNames = ""
 )
 
 const (
@@ -713,6 +714,10 @@ func fullyQualifiedTableNameRegexMatch(expectedFullyQualifiedTableNames []string
 		return true
 	}
 
+	if len(expectedFullyQualifiedTableNames) == 0 {
+		return true
+	}
+
 	for _, expected := range expectedFullyQualifiedTableNames {
 		expectedParts := strings.Split(expected, ".")
 		if len(expectedParts) != 2 {
@@ -1206,6 +1211,9 @@ func BuildQueryRule(ruleInfo map[string]any) (qr *Rule, err error) {
 				qr.AddPlanCond(pt)
 			}
 		case "FullyQualifiedTableNames":
+			if len(lv) == 0 {
+				qr.fullyQualifiedTableNames = []string{}
+			}
 			for _, t := range lv {
 				fullyQualifiedTableName, ok := t.(string)
 				if !ok {
