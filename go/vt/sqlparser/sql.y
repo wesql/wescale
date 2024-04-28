@@ -1206,10 +1206,15 @@ drop_filter_statement:
     {
       $$ = &ShowWescaleFilter{Name:$4}
     }
+    | SHOW CREATE FILTER ID
+    {
+      $$ = &ShowWescaleFilter{Name:$4,ShowCreate:true}
+    }
     | SHOW comment_opt FILTERS
     {
       $$ = &ShowWescaleFilter{ShowAll:true}
     }
+
 
 
   alter_wescale_filter_info_opt:
