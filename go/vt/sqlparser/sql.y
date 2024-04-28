@@ -1184,15 +1184,15 @@ set_session_or_global:
   }
 
 create_filter_statement:
-  CREATE comment_opt FILTER not_exists_opt ID '(' wescale_filter_info ')' WITHPATTERN '(' wescale_filter_pattern_info ')' EXECUTE '(' wescale_filter_action_info ')'
+  CREATE comment_opt FILTER not_exists_opt ID '(' wescale_filter_info ')' wescale_filter_pattern_info_opt EXECUTE '(' wescale_filter_action_info ')'
   {
-   $$ = &CreateWescaleFilter{Name:$5, Description:$7.Description, Priority:$7.Priority, Status:$7.Status, IfNotExists:$4,Pattern:$11,Action:$15}
+   $$ = &CreateWescaleFilter{Name:$5, Description:$7.Description, Priority:$7.Priority, Status:$7.Status, IfNotExists:$4,Pattern:$9,Action:$12}
   }
 
 alter_filter_statement:
   ALTER comment_opt FILTER ID alter_wescale_filter_info_opt wescale_filter_pattern_info_opt wescale_filter_action_info_opt
   {
-atus     $$ = &AlterWescaleFilter{OriginName:$4, AlterInfo:&CreateWescaleFilter{Name:$5.AlterInfo.Name, Description:$5.AlterInfo.Description, Status:$5.AlterInfo.Status, Priority:$5.AlterInfo.Priority, Pattern:$6, Action: $7}}
+    $$ = &AlterWescaleFilter{OriginName:$4, AlterInfo:&CreateWescaleFilter{Name:$5.AlterInfo.Name, Description:$5.AlterInfo.Description, Status:$5.AlterInfo.Status, Priority:$5.AlterInfo.Priority, Pattern:$6, Action: $7}}
   }
 
 drop_filter_statement:
