@@ -57,7 +57,7 @@ type FailAction struct {
 func (p *FailAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: nil,
-		Err:   vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Description),
+		Err:   vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", p.Rule.Name),
 	}
 }
 
@@ -90,7 +90,7 @@ type FailRetryAction struct {
 func (p *FailRetryAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
 	return &ActionExecutionResponse{
 		Reply: nil,
-		Err:   vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Description),
+		Err:   vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", p.Rule.Name),
 	}
 }
 
@@ -179,10 +179,9 @@ type ConcurrencyControlActionArgs struct {
 	MaxConcurrency int `toml:"max_concurrency"`
 }
 
-// todo filter: replace with viper
 func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	if stringParams == "" {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams: %s is invalid", stringParams)
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "action args is empty")
 	}
 
 	userInputTOML := ConvertUserInputToTOML(stringParams)
