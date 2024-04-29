@@ -179,7 +179,7 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {
 	var query string
 	var err error
-	if true {
+	if stmt.ShowCreate {
 		return qe.HandleShowCreateFilter(stmt)
 	}
 
@@ -256,6 +256,9 @@ func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 		return FormatUserInputStr(actionArgs), nil
 
 	default:
+		if actionArgs != "" {
+			return "", fmt.Errorf("action %v does not support action_args", action)
+		}
 		return "", nil
 	}
 }

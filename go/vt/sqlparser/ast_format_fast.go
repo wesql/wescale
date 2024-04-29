@@ -2809,7 +2809,7 @@ func (node *WescaleFilterPattern) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("bind_var_conds='")
 	buf.WriteString(node.BindVarConds)
 	buf.WriteString("' ")
-	buf.WriteString(") ")
+	buf.WriteString(")")
 }
 
 // formatFast formats the node.
@@ -2821,7 +2821,7 @@ func (node *WescaleFilterAction) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("action_args='")
 	buf.WriteString(node.ActionArgs)
 	buf.WriteString("' ")
-	buf.WriteString(") ")
+	buf.WriteString(")")
 }
 
 // formatFast formats the node.
@@ -2847,12 +2847,11 @@ func (node *CreateWescaleFilter) formatFast(buf *TrackedBuffer) {
 
 	if node.Pattern != nil {
 		node.Pattern.formatFast(buf)
-		buf.WriteByte(' ')
 	}
 
 	if node.Action != nil {
-		node.Action.formatFast(buf)
 		buf.WriteByte(' ')
+		node.Action.formatFast(buf)
 	}
 }
 
@@ -2878,12 +2877,11 @@ func (node *AlterWescaleFilter) formatFast(buf *TrackedBuffer) {
 
 	if node.AlterInfo.Pattern != nil {
 		node.AlterInfo.Pattern.formatFast(buf)
-		buf.WriteByte(' ')
 	}
 
 	if node.AlterInfo.Action != nil {
-		node.AlterInfo.Action.formatFast(buf)
 		buf.WriteByte(' ')
+		node.AlterInfo.Action.formatFast(buf)
 	}
 }
 

@@ -2135,7 +2135,7 @@ func (node *WescaleFilterPattern) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "leading_comment_regex='%s', ", node.LeadingCommentRegex)
 	buf.astPrintf(node, "trailing_comment_regex='%s', ", node.TrailingCommentRegex)
 	buf.astPrintf(node, "bind_var_conds='%s' ", node.BindVarConds)
-	buf.literal(") ")
+	buf.literal(")")
 }
 
 // Format formats the node.
@@ -2143,7 +2143,7 @@ func (node *WescaleFilterAction) Format(buf *TrackedBuffer) {
 	buf.literal("execute ( ")
 	buf.astPrintf(node, "action='%s', ", node.Action)
 	buf.astPrintf(node, "action_args='%s' ", node.ActionArgs)
-	buf.literal(") ")
+	buf.literal(")")
 }
 
 // Format formats the node.
@@ -2161,11 +2161,11 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.literal(") ")
 
 	if node.Pattern != nil {
-		buf.astPrintf(node, "%v ", node.Pattern)
+		buf.astPrintf(node, "%v", node.Pattern)
 	}
 
 	if node.Action != nil {
-		buf.astPrintf(node, "%v ", node.Action)
+		buf.astPrintf(node, " %v", node.Action)
 	}
 }
 
@@ -2180,11 +2180,11 @@ func (node *AlterWescaleFilter) Format(buf *TrackedBuffer) {
 	buf.literal(") ")
 
 	if node.AlterInfo.Pattern != nil {
-		buf.astPrintf(node, "%v ", node.AlterInfo.Pattern)
+		buf.astPrintf(node, "%v", node.AlterInfo.Pattern)
 	}
 
 	if node.AlterInfo.Action != nil {
-		buf.astPrintf(node, "%v ", node.AlterInfo.Action)
+		buf.astPrintf(node, " %v", node.AlterInfo.Action)
 	}
 }
 
