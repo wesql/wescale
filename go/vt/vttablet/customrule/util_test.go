@@ -142,6 +142,23 @@ func TestQueryResultToCreateFilter(t *testing.T) {
 			action:                   "FAIL",
 			actionArgs:               ``,
 		},
+		{
+			name:                     "test1",
+			desc:                     "test1 desc",
+			priority:                 10,
+			status:                   "ACTIVE",
+			plans:                    `["Insert","Select"]`,
+			fullyQualifiedTableNames: `["db1.table1","*.*","*.table","db3.*"]`,
+			queryRegex:               `.*`,
+			queryTemplate:            `select * from t1 where a = :a and b = :b`,
+			requestIPRegex:           `127.0.0.\.*`,
+			userRegex:                `.*`,
+			leadingCommentRegex:      `.*`,
+			trailingCommentRegex:     `.*`,
+			bindVarConds:             ``,
+			action:                   "FAIL",
+			actionArgs:               ``,
+		},
 	}
 
 	for _, tt := range testCases {
