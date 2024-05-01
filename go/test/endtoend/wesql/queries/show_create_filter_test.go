@@ -41,5 +41,16 @@ func TestShowCreateFilter(t *testing.T) {
 		fmt.Printf("got: %s\n", got)
 		assert.Equal(t, expectedSQL2, got)
 
+		alterSQL2 := `alter filter ccl with_pattern ( plans='', fully_qualified_table_names='', query_regex='select \* .*', query_template='', request_ip_regex='127\.0\.0\..*', user_regex='.*', leading_comment_regex='haha.*', trailing_comment_regex='lala.*', bind_var_conds='' )`
+		expectedSQL3 := `create filter ccl ( desc='test ccl', priority='999', status='ACTIVE' ) with_pattern ( plans='', fully_qualified_table_names='', query_regex='select \* .*', query_template='', request_ip_regex='127\.0\.0\..*', user_regex='.*', leading_comment_regex='haha.*', trailing_comment_regex='lala.*', bind_var_conds='' ) execute ( action='FAIL', action_args='' )`
+		_, err = conn.ExecuteFetch(alterSQL2, 1000, true)
+		assert.Equal(t, nil, err)
+		qr, err = conn.ExecuteFetch(showCreateFilterCCL, 1000, true)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 1, len(qr.Named().Rows))
+		got = qr.Named().Rows[0]["Create Filter"].ToString()
+		fmt.Printf("got: %s\n", got)
+		assert.Equal(t, expectedSQL3, got)
+
 	})
 }
