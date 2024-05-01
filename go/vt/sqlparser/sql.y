@@ -1335,8 +1335,6 @@ wescale_filter_info_field:
   }
 
 
-
-
 wescale_filter_pattern_info:
 wescale_filter_pattern_info_field '=' STRING
 {

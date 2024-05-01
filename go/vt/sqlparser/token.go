@@ -47,6 +47,9 @@ type Tokenizer struct {
 
 	Pos int
 	buf string
+
+	KeyName     string
+	KeyValueCtx bool
 }
 
 // NewStringTokenizer creates a new Tokenizer for the
@@ -192,6 +195,8 @@ func (tkn *Tokenizer) Scan() (int, string) {
 		tkn.skip(1)
 		switch ch {
 		case '=', ',', '(', ')', '+', '*', '%', '^', '~':
+			tkn.KeyName = tkn.lastToken
+			tkn.KeyValueCtx = true
 			return int(ch), ""
 		case '&':
 			if tkn.cur() == '&' {
@@ -565,6 +570,11 @@ func (tkn *Tokenizer) scanString(delim uint16, typ int) (int, string) {
 // sequencse. The given `buffer` contains the contents of the string that have
 // been scanned so far.
 func (tkn *Tokenizer) scanStringSlow(buffer *strings.Builder, delim uint16, typ int) (int, string) {
+	defer func() {
+		tkn.KeyValueCtx = false
+		tkn.KeyName = ""
+	}()
+
 	for {
 		ch := tkn.cur()
 		if ch == eofChar {
@@ -599,6 +609,9 @@ func (tkn *Tokenizer) scanStringSlow(buffer *strings.Builder, delim uint16, typ 
 			}
 			// Preserve escaping of % and _
 			if tkn.cur() == '%' || tkn.cur() == '_' {
+				buffer.WriteByte('\\')
+				ch = tkn.cur()
+			} else if tkn.KeyValueCtx && IsRegexKey(tkn.KeyName) {
 				buffer.WriteByte('\\')
 				ch = tkn.cur()
 			} else if decodedChar := sqltypes.SQLDecodeMap[byte(tkn.cur())]; decodedChar == sqltypes.DontEscape {
@@ -729,4 +742,12 @@ func digitVal(ch uint16) int {
 
 func isDigit(ch uint16) bool {
 	return '0' <= ch && ch <= '9'
+}
+
+func IsRegexKey(keyName string) bool {
+	switch keyName {
+	case "query_regex", "request_ip_regex", "user_regex", "leading_comment_regex", "trailing_comment_regex":
+		return true
+	}
+	return false
 }
