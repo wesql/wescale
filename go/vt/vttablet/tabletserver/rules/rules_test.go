@@ -1010,6 +1010,54 @@ func Test_reMatch(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile(`^/\*hello\*/$`),
+				val: "/*hello*/",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile(`^/\*hello. w\*/$`),
+				val: "/*hello. world*/",
+			},
+			want: false,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile(`^/\*hello\. w.*\*/$`),
+				val: "/*hello. world*/",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^/\\*hello\\. w.*\\*/$"),
+				val: "/*hello. world*/",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^/\\*hello\\. w.*\\*/$"),
+				val: "/*hello. w*/",
+			},
+			want: true,
+		},
+		{
+			name: "match",
+			args: args{
+				re:  regexp.MustCompile("^select \\* from d1\\.t1$"),
+				val: "select * from d1.t1",
+			},
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

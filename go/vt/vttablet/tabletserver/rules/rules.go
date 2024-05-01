@@ -657,10 +657,10 @@ func (qr *Rule) FilterByExecutionInfo(
 	if !reMatch(qr.requestIP.Regexp, ip) {
 		return QRContinue
 	}
-	if !reMatch(qr.leadingComment.Regexp, marginComments.Leading) {
+	if !reMatch(qr.leadingComment.Regexp, removeLeadingAndTrailingSpace(marginComments.Leading)) {
 		return QRContinue
 	}
-	if !reMatch(qr.trailingComment.Regexp, marginComments.Trailing) {
+	if !reMatch(qr.trailingComment.Regexp, removeLeadingAndTrailingSpace(marginComments.Trailing)) {
 		return QRContinue
 	}
 	for _, bvcond := range qr.bindVarConds {
@@ -1361,4 +1361,19 @@ func (qr *Rule) GetActionArgs() string {
 // GetActionType
 func (qr *Rule) GetActionType() string {
 	return qr.act.ToString()
+}
+
+func removeLeadingAndTrailingSpace(str string) string {
+	if len(str) == 0 {
+		return str
+	}
+	startIDX := 0
+	for str[startIDX] == ' ' {
+		startIDX++
+	}
+	endIDX := len(str) - 1
+	for str[endIDX] == ' ' {
+		endIDX--
+	}
+	return str[startIDX : endIDX+1]
 }
