@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
@@ -32,7 +33,7 @@ func (tsv *TabletServer) CommonQuery(_ context.Context, queryFunctionName string
 	case "TabletsPlans":
 		return tsv.qe.TabletsPlans(tsv.alias)
 	case "HandleWescaleFilterRequest":
-		return tsv.qe.HandleWescaleFilterRequest(queryFunctionArgs["sql"].(string))
+		return tsv.qe.HandleWescaleFilterRequest(queryFunctionArgs["sql"].(string), queryFunctionArgs["isPrimary"].(bool))
 	default:
 		return nil, fmt.Errorf("query function %s not found", queryFunctionName)
 	}
@@ -102,7 +103,7 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 	}, nil
 }
 
-func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
+func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*sqltypes.Result, error) {
 
 	stmt, _, err := sqlparser.Parse2(sql)
 	if err != nil {
@@ -112,12 +113,24 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string) (*sqltypes.Result,
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleFilter:
 		defer customrule.NotifyReload()
+		if !isPrimary {
+			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
+			return nil, nil
+		}
 		return qe.HandleCreateFilter(s)
 	case *sqlparser.AlterWescaleFilter:
 		defer customrule.NotifyReload()
+		if !isPrimary {
+			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
+			return nil, nil
+		}
 		return qe.HandleAlterFilter(s)
 	case *sqlparser.DropWescaleFilter:
 		defer customrule.NotifyReload()
+		if !isPrimary {
+			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
+			return nil, nil
+		}
 		return qe.HandleDropFilter(s)
 	case *sqlparser.ShowWescaleFilter:
 		return qe.HandleShowFilter(s)

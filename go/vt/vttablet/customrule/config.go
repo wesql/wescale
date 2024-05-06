@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	DatabaseCustomRuleEnable         = true
-	DatabaseCustomRuleDbName         = sidecardb.SidecarDBName
-	DatabaseCustomRuleTableName      = "wescale_plugin"
-	DatabaseCustomRuleReloadInterval = 60 * time.Second
+	DatabaseCustomRuleEnable            = true
+	DatabaseCustomRuleDbName            = sidecardb.SidecarDBName
+	DatabaseCustomRuleTableName         = "wescale_plugin"
+	DatabaseCustomRuleReloadInterval    = 60 * time.Second
+	DatabaseCustomRuleNotifierDelayTime = 100 * time.Millisecond
 )
 
 func registerFlags(fs *pflag.FlagSet) {
