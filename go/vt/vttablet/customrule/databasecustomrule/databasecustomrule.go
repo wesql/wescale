@@ -45,12 +45,12 @@ func newDatabaseCustomRule(qsc tabletserver.Controller) (*databaseCustomRule, er
 
 func (cr *databaseCustomRule) start() {
 	go func() {
-		intervalTimer := time.NewTimer(customrule.DatabaseCustomRuleReloadInterval)
-		defer intervalTimer.Stop()
+		intervalTicker := time.NewTicker(customrule.DatabaseCustomRuleReloadInterval)
+		defer intervalTicker.Stop()
 
 		for {
 			select {
-			case <-intervalTimer.C:
+			case <-intervalTicker.C:
 			case <-customrule.Watch():
 			}
 

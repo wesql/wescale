@@ -1664,22 +1664,41 @@ func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, 
 func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
-	var th *discovery.TabletHealth
+
 	findPrimary := false
+	args := make(map[string]any)
+	args["sql"] = sql
+	args["isPrimary"] = true
+	var rst *sqltypes.Result
+	var rstErr error
+	var primaryAlias *topodatapb.TabletAlias
 	for _, tablet := range healthyTablets {
 		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
-			th = tablet
 			findPrimary = true
+			rst, rstErr = tablet.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
+			primaryAlias = tablet.Tablet.Alias
 			break
 		}
 	}
 	if !findPrimary {
 		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
 	}
+	if rstErr != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "err when sending wescale filter request to primary: %v", rstErr)
+	}
 
-	args := make(map[string]any)
-	args["sql"] = sql
-	return th.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
+	// after sending request to primary successfully, notify others (there may be two primary tablets in wescale at the same time, so we compare the tablet alias)
+	args["isPrimary"] = false
+	for _, tablet := range healthyTablets {
+		if tablet.Tablet.Alias != primaryAlias {
+			_, rstErr = tablet.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
+			if rstErr != nil {
+				return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "err when sending wescale filter request to replica and rdonly: %v", rstErr)
+			}
+		}
+	}
+
+	return rst, nil
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {
