@@ -255,6 +255,13 @@ func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 		}
 		return FormatUserInputStr(actionArgs), nil
 
+	case rules.QRWasmPlugin:
+		plugin := &WasmPluginActionArgs{}
+		_, err := plugin.Parse(actionArgs)
+		if err != nil {
+			return "", err
+		}
+		return actionArgs, nil
 	default:
 		if actionArgs != "" {
 			return "", fmt.Errorf("action %v does not support action_args", action)

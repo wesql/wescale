@@ -248,3 +248,85 @@ func (p *ConcurrencyControlAction) SetParams(args ActionArgs) error {
 func (p *ConcurrencyControlAction) GetRule() *rules.Rule {
 	return p.Rule
 }
+
+type WasmPluginAction struct {
+	Rule *rules.Rule
+
+	// Action is the action to take if the rule matches
+	Action rules.Action
+
+	Args *WasmPluginActionArgs
+}
+
+type WasmPluginActionArgs struct {
+	WasmBinaryName string `toml:"wasm_binary_name"`
+}
+
+func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error) {
+	if stringParams == "" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "wasm bytes is empty")
+	}
+
+	// todo, check is in table?
+	userInputTOML := ConvertUserInputToTOML(stringParams)
+	w := &WasmPluginActionArgs{}
+	err := toml.Unmarshal([]byte(userInputTOML), w)
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when parsing wasm plugin action args: %v", err)
+	}
+	if w.WasmBinaryName == "" {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "wasm binary name is empty")
+	}
+
+	// the wasm bytes is valid or not will be checked when compiling it
+	return w, nil
+}
+
+func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+	// todo by newborn22
+	runtime := qre.tsv.qe.wasmPluginController.Runtime
+	instance, err := runtime.InitOrGetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
+	if err != nil {
+		return &ActionExecutionResponse{
+			Reply: nil,
+			Err:   err,
+		}
+	}
+	args := ConvertQueryExecutorToWasmPluginExchange(qre)
+	rst, err := instance.RunWASMPlugin(args)
+	if err != nil {
+		return &ActionExecutionResponse{
+			Reply: nil,
+			Err:   err,
+		}
+	}
+	ConvertWasmPluginExchangeToQueryExecutor(qre, rst)
+	return &ActionExecutionResponse{
+		Reply: nil,
+		Err:   nil,
+	}
+}
+
+func (p *WasmPluginAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+	return &ActionExecutionResponse{
+		Reply: reply,
+		Err:   err,
+	}
+}
+
+func (p *WasmPluginAction) ParseParams(argsStr string) (ActionArgs, error) {
+	return p.Args.Parse(argsStr)
+}
+
+func (p *WasmPluginAction) SetParams(args ActionArgs) error {
+	wasmArgs, ok := args.(*WasmPluginActionArgs)
+	if !ok {
+		return fmt.Errorf("args :%v is not a valid WasmPluginAction)", args)
+	}
+	p.Args = wasmArgs
+	return nil
+}
+
+func (p *WasmPluginAction) GetRule() *rules.Rule {
+	return p.Rule
+}
