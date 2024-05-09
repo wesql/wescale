@@ -167,6 +167,7 @@ type QueryEngine struct {
 	// For implementation details, please see BeginExecute() in tabletserver.go.
 	txSerializer          *txserializer.TxSerializer
 	concurrencyController *ccl.ConcurrencyController
+	wasmPluginController  *WasmPluginController
 
 	// Vars
 	maxResultSize    sync2.AtomicInt64
@@ -237,6 +238,7 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 	}
 	qe.txSerializer = txserializer.New(env)
 	qe.concurrencyController = ccl.New(env.Exporter())
+	qe.wasmPluginController = NewWasmPluginController(qe)
 
 	qe.strictTableACL = config.StrictTableACL
 	qe.enableTableACLDryRun = config.EnableTableACLDryRun

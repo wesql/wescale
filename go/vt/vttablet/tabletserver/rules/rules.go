@@ -771,7 +771,7 @@ const (
 	QRFailRetry
 	QRBuffer
 	QRConcurrencyControl
-	QRPlugin
+	QRWasmPlugin
 )
 
 func ParseStringToAction(s string) (Action, error) {
@@ -786,8 +786,8 @@ func ParseStringToAction(s string) (Action, error) {
 		return QRBuffer, nil
 	case "CONCURRENCY_CONTROL":
 		return QRConcurrencyControl, nil
-	case "PLUGIN":
-		return QRPlugin, nil
+	case "WASM_PLUGIN":
+		return QRWasmPlugin, nil
 	default:
 		return QRContinue, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", s)
 	}
@@ -805,8 +805,8 @@ func (act Action) ToString() string {
 		return "BUFFER"
 	case QRConcurrencyControl:
 		return "CONCURRENCY_CONTROL"
-	case QRPlugin:
-		return "PLUGIN"
+	case QRWasmPlugin:
+		return "WASM_PLUGIN"
 	default:
 		return "INVALID"
 	}

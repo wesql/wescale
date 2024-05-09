@@ -58,7 +58,8 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		actInst, err = &BufferAction{Rule: rule, Action: action}, nil
 	case rules.QRConcurrencyControl:
 		actInst, err = &ConcurrencyControlAction{Rule: rule, Action: action}, nil
-
+	case rules.QRWasmPlugin:
+		actInst, err = &WasmPluginAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
 		actInst, err = nil, fmt.Errorf("unknown action: %v", action)
