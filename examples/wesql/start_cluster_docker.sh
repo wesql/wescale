@@ -3,14 +3,14 @@
 
 
 
-existing_image=$(docker images -q wescala-dev)
+existing_image=$(docker images -q wescale-dev)
 
-# Build the 'wescala-dev' image if it doesn't exist
+# Build the 'wescale-dev' image if it doesn't exist
 if [ -z "$existing_image" ]; then
-    echo "Building the 'wescala-dev' image..."
-    DOCKER_BUILDKIT=0 docker build  ../../docker/wesqlscale/local/ -t wescala-dev
+    echo "Building the 'wescale-dev' image..."
+    DOCKER_BUILDKIT=0 docker build  ../../docker/wesqlscale/local/ -t wescale-dev
 else
-    echo "The 'wescala-dev' image already exists."
+    echo "The 'wescale-dev' image already exists."
 fi
 container_mysql_port=(17100 17101 17102)
 vtgate_port=15306
@@ -64,14 +64,14 @@ echo random_number: $random_number
 if [ -n "$container_name" ]; then
   container_name_cmd="-e container_name=$container_name"
 else
-  container_name="wescala-dev-$random_number"
-  container_name_cmd="--name wescala-dev-$random_number"
+  container_name="wescale-dev-$random_number"
+  container_name_cmd="--name wescale-dev-$random_number"
 fi
 
 # Run the container with the specified settings
-echo "docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vttablet_ports="${vttablet_port}" -e grpc_ports="${grpc_port}" -e mysql_ports="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
+echo "docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vttablet_ports="${vttablet_port}" -e grpc_ports="${grpc_port}" -e mysql_ports="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:2379" -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescale-dev
 "
-docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vtgate_port=$vtgate_port -e vttablet_port="${vttablet_port}" -e grpc_port="${grpc_port}" -e mysql_port="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:${etcd_port}" -e vtgate_port=${vtgate_port} -e vtctld_port=${vtctld_port} -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescala-dev
+docker run -id ${port_mapping} -v $PWD/../../:/vt/src/mount/wesql-scala -v /tmp:/wesqlscale/vt/vtdataroot -e vtgate_port=$vtgate_port -e vttablet_port="${vttablet_port}" -e grpc_port="${grpc_port}" -e mysql_port="${mysql_port}" -e tablet_hostname='0.0.0.0' -e ETCD_SERVER="0.0.0.0:${etcd_port}" -e vtgate_port=${vtgate_port} -e vtctld_port=${vtctld_port} -e GO_FAILPOINTS=$GO_FAILPOINTS ${container_name_cmd} wescale-dev
 
 # 初始化集群
 docker exec ${container_name} bash -c "cd /vt/src/mount/wesql-scala/examples/wesql && ./init_cluster_docker.sh"
