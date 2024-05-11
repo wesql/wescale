@@ -1,7 +1,6 @@
 # 20230609_CompressGtidSets
 
 - Feature: CompressGtidSets
-- Status: in-progress
 - Start Date: 2023-06-09
 - Authors: @gerayking
 - RFC PR: https://github.com/apecloud/WeSQL WeScale/pull/103
