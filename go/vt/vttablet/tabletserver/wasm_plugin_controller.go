@@ -10,10 +10,11 @@ import (
 
 // todo, how to assin runtime better?
 const WASMER = "wamser-go"
+const WAZERO = "wazero"
 
 var (
-	DefaultRuntime = WASMER
-	Runtime        = WASMER
+	DefaultRuntime = WAZERO
+	Runtime        = WAZERO
 )
 
 // todo
@@ -47,6 +48,8 @@ func initWasmRuntime(qe *QueryEngine) WasmRuntime {
 	switch Runtime {
 	case WASMER:
 		return initWasmerRuntime(qe)
+	case WAZERO:
+		return initWazeroRuntime(qe)
 	default:
 		// todo, init a default runtime or panic?
 		log.Printf("runtime %v is not supported, use default runtime %v", Runtime, DefaultRuntime)
