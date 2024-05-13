@@ -307,7 +307,28 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 	}
 }
 
-func (p *WasmPluginAction) AfterExecution(_ *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+	runtime := qre.tsv.qe.wasmPluginController.Runtime
+	// todo, err name, pay attention there are two errors
+	instance, err2 := runtime.InitOrGetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
+	if err2 != nil {
+		return &ActionExecutionResponse{
+			Reply: nil,
+			Err:   err2,
+		}
+	}
+	args := ConvertQueryExecutorToWasmPluginExchangeAfter(qre)
+	rst, err2 := instance.RunWASMPluginAfter(args)
+	if err2 != nil {
+		return &ActionExecutionResponse{
+			Reply: nil,
+			Err:   err2,
+		}
+	}
+	fmt.Printf("instance: %v", instance)
+	fmt.Printf("args: %v", args)
+	fmt.Printf("rst: %v", rst)
+	ConvertWasmPluginExchangeToQueryExecutorAfter(qre, rst)
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,

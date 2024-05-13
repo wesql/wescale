@@ -31,6 +31,11 @@ type WasmPluginExchange struct {
 	Query string
 }
 
+// todo
+type WasmPluginExchangeAfter struct {
+	Query string
+}
+
 // todo，删除ctrl，只用runtime?
 type WasmPluginController struct {
 	Runtime WasmRuntime
@@ -61,8 +66,10 @@ func initWasmRuntime(qe *QueryEngine) WasmRuntime {
 type WasmRuntime interface {
 	GetRuntimeType() string
 	InitOrGetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error)
+	ClearWasmInstance()
 }
 
 type WasmInstance interface {
 	RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error)
+	RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error)
 }

@@ -29,6 +29,12 @@ func (*WazeroRuntime) GetRuntimeType() string {
 	return WAZERO
 }
 
+func (w *WazeroRuntime) ClearWasmInstance() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.instances = make(map[string]WasmInstance)
+}
+
 func (w *WazeroRuntime) InitOrGetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -99,7 +105,7 @@ func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 
 	ptrSize, err := wazeroGuestFunc.Call(ctx, dataPtr, uint64(len(dataStr)))
 	if err != nil {
-		log.Panicln(err)
+		return nil, err
 	}
 
 	rstFromGuestPtr := uint32(ptrSize[0] >> 32)
@@ -123,6 +129,68 @@ func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
 	}
 	rst := &WasmPluginExchange{}
+	err = json.Unmarshal(bytes, rst)
+	return rst, err
+
+}
+
+func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {
+	ctx := context.Background()
+
+	// todo use const or something else?
+	wazeroGuestFuncAfterExecution := ins.module.ExportedFunction("wazeroGuestFuncAfterExecution")
+	// These are undocumented, but exported. See tinygo-org/tinygo#2788
+	malloc := ins.module.ExportedFunction("malloc")
+	free := ins.module.ExportedFunction("free")
+
+	data, err := json.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+	dataStr := string(data)
+	dataLen := uint64(len(dataStr))
+
+	results, err := malloc.Call(ctx, dataLen)
+	if err != nil {
+		return nil, err
+	}
+	dataPtr := results[0]
+	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+	// So, we have to free it when finished
+	defer free.Call(ctx, dataPtr)
+
+	// The pointer is a linear memory offset, which is where we write the data.
+	if !ins.module.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
+		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
+			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+	}
+
+	ptrSize, err := wazeroGuestFuncAfterExecution.Call(ctx, dataPtr, uint64(len(dataStr)))
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	rstFromGuestPtr := uint32(ptrSize[0] >> 32)
+	rstFromGuestSize := uint32(ptrSize[0])
+
+	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+	// So, we have to free it when finished
+	if rstFromGuestPtr != 0 {
+		defer func() {
+			_, err := free.Call(ctx, uint64(rstFromGuestPtr))
+			if err != nil {
+				fmt.Print(err.Error())
+			}
+		}()
+	}
+
+	// The pointer is a linear memory offset, which is where we write the name.
+	bytes, ok := ins.module.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
+	if !ok {
+		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
+			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+	}
+	rst := &WasmPluginExchangeAfter{}
 	err = json.Unmarshal(bytes, rst)
 	return rst, err
 
