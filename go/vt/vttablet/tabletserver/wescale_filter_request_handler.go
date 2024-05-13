@@ -173,6 +173,8 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 	if err != nil {
 		return nil, err
 	}
+	// todo by newborn22, the code below is just for test
+	qe.wasmPluginController.Runtime.ClearWasmInstance()
 	return qe.ExecuteQuery(context.Background(), query)
 }
 

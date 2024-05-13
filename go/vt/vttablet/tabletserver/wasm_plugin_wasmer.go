@@ -40,6 +40,12 @@ func (w *WasmerRuntime) InitOrGetWasmInstance(key string, wasmBinaryName string)
 	return instance, nil
 }
 
+func (w *WasmerRuntime) ClearWasmInstance() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.instances = make(map[string]WasmInstance)
+}
+
 func (w *WasmerRuntime) initWasmInstance(wasmBinaryName string) (WasmInstance, error) {
 	wasmBytes, err := w.qe.GetWasmBytesByBinaryName(wasmBinaryName)
 	if err != nil {
@@ -97,6 +103,11 @@ func (ins *WasmerInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 	}
 
 	return getStructFromWASI(getBufLen, readBuf)
+}
+
+func (ins *WasmerInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {
+	// todo
+	return nil, nil
 }
 
 func sendStructToWASI(args *WasmPluginExchange, clearBuf, writeBuf wasmer.NativeFunction) error {
