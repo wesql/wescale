@@ -34,11 +34,11 @@ https://kubeblocks.io/docs/release-0.8/user_docs/installation/install-with-kbcli
 kbcli kubeblocks install
 ```
 
-# Manage WeScale Clusters
+# Cluster Management
 ## Create a WeScale Cluster
 You can create a WeScale cluster with just one command. For example, you can create a WeScale cluster named `vt` with the following command:
 ```zsh
-kbcli cluster create mysql vt --mode raftGroup --availability-policy none --proxy-enabled true
+kbcli cluster create mysql vt --mode raftGroup --availability-policy none --proxy-enabled true 
 ```
 
 ## List All WeScale Clusters
@@ -64,9 +64,37 @@ kbcli cluster connect vt --component vtgate
 kbcli cluster connect vt
 ```
 
-# Configure WeScale Clusters
-## Modify the Configuration of a WeScale Cluster
-TODO
+# Configurations
+## View the Configuration
+* View the Configuration of VTGate
+```zsh
+kbcli cluster describe-config vt --components vtgate --show-detail
+```
+* View the Configuration of VTTablet
+```zsh
+kbcli cluster describe-config vt --components mysql --show-detail --config-specs vttablet-config
+```
+* View the Configuration of MySQL
+```zsh
+kbcli cluster describe-config vt --components mysql --show-detail --config-specs mysql-consensusset-config
+```
+
+
+## Modify the Configuration
+```zsh
+* Modify the Configuration of VTGate
+```zsh
+kbcli cluster edit-config vt --components vtgate
+```
+* Modify the Configuration of VTTablet
+```zsh
+kbcli cluster edit-config vt --components mysql --config-spec=vttablet-config
+```
+* Modify the Configuration of MySQL
+```zsh
+kbcli cluster edit-config vt --components mysql --config-spec=mysql-consensusset-config
+```
+
 
 
 
