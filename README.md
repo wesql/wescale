@@ -41,6 +41,7 @@ provided in the documentation.
 * [Branch Tutorial](doc%2Ftoturial%2F08-Branch.md)
 * [Non-Transactional DML](doc%2Ftoturial%2F09-Non-Transactional%20DML.md)
 * [Show Tablets Query Plans](doc%2Ftoturial%2F10-Show%20Tablets%20Query%20Plans.md)
+* [Filters](doc%2Fdesign%2F20240514_Filters.md)
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
