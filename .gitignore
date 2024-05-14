@@ -73,6 +73,8 @@ _test/
 releases
 
 # Local examples
+examples/wesql/vtdataroot
+examples/mysql/vtdataroot
 /examples/wesql/vtdataroot
 /examples/mysql/vtdataroot
 /examples/workflow/Branch/vtdataroot
