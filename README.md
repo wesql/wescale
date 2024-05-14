@@ -20,8 +20,10 @@ By managing connections, read-write-split, read-after-write-consistency, load ba
 a valuable tool for developers and database administrators.
 
 # Getting Started
-To [Get Started](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeScale, simply clone the repository and follow the installation instructions
+* To [Get Started On Your Local Machine](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeScale, simply clone the repository and follow the installation instructions
 provided in the documentation.
+* To [Deploy WeScale on Kubernetes](doc%2Ftoturial%2F11-Getting-Started-with-Kubernetes.md), 
+you can use the powerful Kubeblocks Operator to quickly launch a WeScale cluster in a Kubernetes cluster. We recommend this method for production environments.
 
 # Blogs
 * [Introduction To WeScale.md](doc%2Fblogs%2FIntroduction%20To%20WeScale.md)
