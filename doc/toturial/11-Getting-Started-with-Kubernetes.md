@@ -81,7 +81,6 @@ kbcli cluster describe-config vt --components mysql --show-detail --config-specs
 
 
 ## Modify the Configuration
-```zsh
 * Modify the Configuration of VTGate
 ```zsh
 kbcli cluster edit-config vt --components vtgate
