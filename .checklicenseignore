@@ -3,6 +3,7 @@
 .checklicenseignore
 .gitignore
 
+*.png
 *.md
 *.json
 *.csv
