@@ -56,7 +56,7 @@ func (p *Plan) MarshalJSON() ([]byte, error) {
 		NeedsReservedConn bool                   `json:",omitempty"`
 	}{
 		PlanID:      p.PlanID,
-		TableName:   p.TableName(),
+		TableName:   sqlparser.NewIdentifierCS(p.TableName()),
 		Permissions: p.Permissions,
 		FullQuery:   p.FullQuery,
 		WhereClause: p.WhereClause,
