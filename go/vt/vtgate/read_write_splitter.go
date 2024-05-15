@@ -11,7 +11,6 @@ import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/semantics"
 )
 
 func suggestTabletType(readWriteSplittingPolicy string, inTransaction, hasCreatedTempTables, hasAdvisoryLock bool, ratio int32, sql string, enableReadOnlyTransaction, isReadOnlyTx bool) (tabletType topodatapb.TabletType, err error) {
@@ -85,12 +84,9 @@ func isSQLSupportReadWriteSplit(query string) (bool, error) {
 }
 
 func hasSystemTable(sel sqlparser.Statement, ksName string) bool {
-	semTable, err := semantics.Analyze(sel, ksName, &semantics.FakeSI{})
-	if err != nil {
-		return false
-	}
-	for _, tableInfo := range semTable.Tables {
-		if tableInfo.IsInfSchema() {
+	allTables := sqlparser.CollectTables(sel, ksName)
+	for _, table := range allTables {
+		if sqlparser.SystemSchema(table.GetSchema()) {
 			return true
 		}
 	}
