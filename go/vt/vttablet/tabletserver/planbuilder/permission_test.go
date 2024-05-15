@@ -189,7 +189,7 @@ func TestBuildPermissions(t *testing.T) {
 		}
 		got := BuildPermissions(stmt, "")
 		if !reflect.DeepEqual(got, tcase.output) {
-			t.Errorf("CollectTables(%s): %v, want %v", tcase.input, got, tcase.output)
+			t.Errorf("BuildPermissions(%s): %v, want %v", tcase.input, got, tcase.output)
 		}
 	}
 }
