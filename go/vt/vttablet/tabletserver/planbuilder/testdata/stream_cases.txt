@@ -11,7 +11,7 @@
 "select * from a join b"
 {
   "PlanID": "SelectStream",
-  "TableName": "",
+  "TableName": "a",
   "Permissions":[{"Database":"","TableName":"a","Role":0},{"Database":"","TableName":"b","Role":0}],
   "FullQuery": "select * from a join b"
 }
@@ -29,7 +29,7 @@
 "select * from a union select * from b"
 {
   "PlanID": "SelectStream",
-  "TableName": "",
+  "TableName": "a",
   "Permissions":[{"Database":"","TableName":"a","Role":0},{"Database":"","TableName":"b","Role":0}],
   "FullQuery": "select * from a union select * from b"
 }
@@ -38,7 +38,7 @@
 "show tables"
 {
   "PlanID": "SelectStream",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "show tables"
 }
 
@@ -46,7 +46,7 @@
 "show table status"
 {
   "PlanID": "SelectStream",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "show table status"
 }
 
@@ -54,7 +54,7 @@
 "desc foo"
 {
   "PlanID": "SelectStream",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "explain foo"
 }
 
