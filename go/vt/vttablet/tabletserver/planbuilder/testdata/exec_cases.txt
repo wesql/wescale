@@ -2,7 +2,7 @@
 "select * from a union select * from b"
 {
   "PlanID": "Select",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database": "",
@@ -22,7 +22,7 @@
 "select * from a union select * from b limit 10"
 {
   "PlanID": "Select",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -261,7 +261,7 @@
 "insert into b.a (eid, id) values (1, 2)"
 {
   "PlanID": "Insert",
-  "TableName": "",
+  "TableName": "b.a",
   "Permissions": [
     {
       "Database":"b",
@@ -389,7 +389,7 @@ options:PassthroughDMLs
 "update a.b set foo='foo' where name in ('a', 'b')"
 {
   "PlanID": "Update",
-  "TableName": "",
+  "TableName": "a.b",
   "Permissions": [
     {
       "Database":"a",
@@ -405,7 +405,7 @@ options:PassthroughDMLs
 "update bogus set name='foo' where id=1"
 {
   "PlanID": "Update",
-  "TableName": "",
+  "TableName": "bogus",
   "Permissions": [
     {
       "Database":"",
@@ -422,7 +422,7 @@ options:PassthroughDMLs
 "update bogus set name='foo' where id=1"
 {
   "PlanID": "Update",
-  "TableName": "",
+  "TableName": "bogus",
   "Permissions": [
     {
       "Database":"",
@@ -438,7 +438,7 @@ options:PassthroughDMLs
 "update a, b set a.name = 'foo' where a.id = b.id and b.var = 'test'"
 {
   "PlanID": "Update",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -460,7 +460,7 @@ options:PassthroughDMLs
 "update a join b on a.id = b.id set a.name = 'foo' where b.var = 'test'"
 {
   "PlanID": "Update",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -561,7 +561,7 @@ options:PassthroughDMLs
 "delete from bogus"
 {
   "PlanID": "Delete",
-  "TableName": "",
+  "TableName": "bogus",
   "Permissions": [
     {
       "Database":"",
@@ -577,7 +577,7 @@ options:PassthroughDMLs
 "delete from bogus"
 {
   "PlanID": "Delete",
-  "TableName": "",
+  "TableName": "bogus",
   "Permissions": [
     {
       "Database":"",
@@ -592,7 +592,7 @@ options:PassthroughDMLs
 "delete a, b from a, b where id = 1"
 {
   "PlanID": "Delete",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -645,7 +645,7 @@ options:PassthroughDMLs
 "create table a(a int, b varchar(8))"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -660,7 +660,7 @@ options:PassthroughDMLs
 "create index a on b(id)"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b",
   "Permissions": [
     {
       "Database":"",
@@ -675,7 +675,7 @@ options:PassthroughDMLs
 "create view a as select * from b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -690,7 +690,7 @@ options:PassthroughDMLs
 "alter table a add column(a int)"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -705,7 +705,7 @@ options:PassthroughDMLs
 "alter table a rename b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -725,7 +725,7 @@ options:PassthroughDMLs
 "rename table a to b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -745,7 +745,7 @@ options:PassthroughDMLs
 "rename table a to b, b to a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -775,7 +775,7 @@ options:PassthroughDMLs
 "drop table a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -790,7 +790,7 @@ options:PassthroughDMLs
 "truncate table a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -805,7 +805,7 @@ options:PassthroughDMLs
 "drop table a, b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -825,42 +825,42 @@ options:PassthroughDMLs
 "analyze table a"
 {
   "PlanID": "OtherRead",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # show
 "show a"
 {
   "PlanID": "OtherRead",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # describe
 "describe a"
 {
   "PlanID": "OtherRead",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # explain
 "explain a"
 {
   "PlanID": "OtherRead",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # repair
 "repair a"
 {
   "PlanID": "OtherAdmin",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # optimize
 "optimize a"
 {
   "PlanID": "OtherAdmin",
-  "TableName": ""
+  "TableName": "dual"
 }
 
 # syntax error
@@ -871,7 +871,7 @@ options:PassthroughDMLs
 "show tables like 'key%'"
 {
   "PlanID": "Show",
-  "TableName":"",
+  "TableName":"dual",
   "FullQuery": "show tables like 'key%'"
 }
 
@@ -879,7 +879,7 @@ options:PassthroughDMLs
 "show table status like 'key%'"
 {
   "PlanID": "Show",
-  "TableName":"",
+  "TableName":"dual",
   "FullQuery": "show table status like 'key%'"
 }
 
@@ -887,7 +887,7 @@ options:PassthroughDMLs
 "show table status where Name='apa'"
 {
   "PlanID": "Show",
-  "TableName":"",
+  "TableName":"dual",
   "FullQuery": "show table status where `Name` = 'apa'"
 }
 
@@ -895,7 +895,7 @@ options:PassthroughDMLs
 "show create table t1"
 {
   "PlanID": "Show",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "show create table t1"
 }
 
@@ -903,7 +903,7 @@ options:PassthroughDMLs
 "show create database mysql"
 {
   "PlanID": "Show",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "show create database mysql"
 }
 
@@ -911,7 +911,7 @@ options:PassthroughDMLs
 "show create database anything"
 {
   "PlanID": "Show",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "show create database"
 }
 
@@ -919,14 +919,14 @@ options:PassthroughDMLs
 "load data infile 'x.txt' into table a"
 {
     "PlanID":"Load",
-    "TableName":""
+    "TableName":"dual"
 }
 
 # alter view
 "alter view a as select * from b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -941,7 +941,7 @@ options:PassthroughDMLs
 "drop view a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -956,7 +956,7 @@ options:PassthroughDMLs
 "drop view a, b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -976,7 +976,7 @@ options:PassthroughDMLs
 "flush tables a,b"
 {
   "PlanID": "Flush",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -996,7 +996,7 @@ options:PassthroughDMLs
 "call getAllTheThings()"
 {
   "PlanID": "CallProcedure",
-  "TableName": "",
+  "TableName": "dual",
   "FullQuery": "call getAllTheThings()"
 }
 
@@ -1004,7 +1004,7 @@ options:PassthroughDMLs
 "create table function_default (x varchar(25) DEFAULT (TRIM(' check ')))"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "function_default",
   "Permissions": [
     {
       "Database":"",
@@ -1019,7 +1019,7 @@ options:PassthroughDMLs
 "create temporary table temp(a int)"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "temp",
   "Permissions": [
     {
       "Database":"",
