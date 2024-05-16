@@ -1,7 +1,7 @@
 "create table a(abcd bigint)"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -15,7 +15,7 @@
 "drop  table b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b",
   "Permissions": [
     {
       "Database":"",
@@ -29,7 +29,7 @@
 "drop table b.c"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b.c",
   "Permissions": [
     {
       "Database":"b",
@@ -43,7 +43,7 @@
 "alter table c add column foo bigint"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "c",
   "Permissions": [
     {
       "Database":"",
@@ -57,7 +57,7 @@
 "alter table c comment 'aa'"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "c",
   "Permissions": [
     {
       "Database":"",
@@ -71,7 +71,7 @@
 "alter table b.c comment 'aa'"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b.c",
   "Permissions": [
     {
       "Database":"b",
@@ -85,7 +85,7 @@
 "drop index a on b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b",
   "Permissions": [
     {
       "Database":"",
@@ -99,7 +99,7 @@
 "drop index a on b.c"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b.c",
   "Permissions": [
     {
       "Database":"b",
@@ -113,7 +113,7 @@
 "drop index a on b lock=none"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b",
   "Permissions": [
     {
       "Database":"",
@@ -127,7 +127,7 @@
 "rename table a to b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -146,7 +146,7 @@
 "rename table c.a to c.b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "c.a",
   "Permissions": [
     {
       "Database":"c",
@@ -166,7 +166,7 @@
 "alter table a rename b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -185,7 +185,7 @@
 "alter table a rename to b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -205,7 +205,7 @@
 "alter table c.a rename to c.b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "c.a",
   "Permissions": [
     {
       "Database":"c",
@@ -224,7 +224,7 @@
 "create view a as select * from asdasd"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -242,7 +242,7 @@
 "drop  view b"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "b",
   "Permissions": [
     {
       "Database":"",
@@ -256,7 +256,7 @@
 "alter table a reorganize partition b into (partition c values less than (1000), partition d values less than (maxvalue))"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -270,7 +270,7 @@
 "alter table a partition by range (id) (partition p0 values less than (10), partition p1 values less than (maxvalue))"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -285,7 +285,7 @@
 "truncate a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -300,7 +300,7 @@
 "truncate table a"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -315,7 +315,7 @@
 "create temporary table a(id bigint primary key)"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "a",
   "Permissions": [
     {
       "Database":"",
@@ -331,7 +331,7 @@
 "create temporary table x"
 {
   "PlanID": "DDL",
-  "TableName": "",
+  "TableName": "x",
   "Permissions": [
     {
       "Database":"",
