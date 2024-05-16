@@ -1,9 +1,5 @@
 package sqlparser
 
-import (
-	"fmt"
-)
-
 type TableSchemaAndName struct {
 	schema string
 	name   string
@@ -62,7 +58,6 @@ func CollectTables(stmt Statement, defaultTableSchema string) []TableSchemaAndNa
 		*OtherRead, Explain, DBDDLStatement:
 	// no op
 	default:
-		panic(fmt.Errorf("BUG: unexpected statement type: %T", node))
 	}
 	tables = addDefaultTableSchema(tables, defaultTableSchema)
 	return removeDuplicateTables(tables)
