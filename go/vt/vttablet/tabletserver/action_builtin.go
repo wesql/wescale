@@ -283,7 +283,6 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 }
 
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	// todo by newborn22 5.15 下面的过程可以封装
 	instance, err := qre.tsv.qe.wasmPluginController.Runtime.GetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
 	if err != nil {
 		return &ActionExecutionResponse{

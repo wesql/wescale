@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"strconv"
 	"sync"
+	"unsafe"
 
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
@@ -39,18 +41,18 @@ func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
 // todo by newborn22
 func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
-		// SetValueByKey
+		// SetValueByKeyHost
 		NewFunctionBuilder().
 		WithParameterNames("key", "value").
-		WithFunc(func(key, value uint32) {
+		WithFunc(func(ctx context.Context, mod api.Module, key, value uint32) {
 			wazeroRuntime.hostVariables[strconv.Itoa(int(key))] = value
 		}).
-		Export("SetValueByKey").
-		// GetValueByKey
+		Export("SetValueByKeyHost").
+		// GetValueByKeyHost
 		NewFunctionBuilder().
 		WithParameterNames("key").
 		WithResultNames("value").
-		WithFunc(func(key uint32) uint32 {
+		WithFunc(func(ctx context.Context, mod api.Module, key uint32) uint32 {
 			// todo
 			_, exist := wazeroRuntime.hostVariables[strconv.Itoa(int(key))]
 			if !exist {
@@ -58,8 +60,65 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 			}
 			return wazeroRuntime.hostVariables[strconv.Itoa(int(key))].(uint32)
 		}).
-		Export("GetValueByKey").Instantiate(ctx)
+		Export("GetValueByKeyHost").
+		// GetQueryHost
+		NewFunctionBuilder().
+		WithParameterNames("return_query_value_data",
+			"return_query_value_size").
+		WithResultNames("call_result").
+		WithFunc(func(ctx context.Context, mod api.Module, returnValueData,
+			returnValueSize uint32) uint32 {
+			var returnValueHostPtr *byte
+			var returnValueSizePtr int
+			ret := uint32(ProxyGetQuery(nil, &returnValueHostPtr, &returnValueSizePtr))
+			copyBytesToWasm(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize)
+			return ret
+		}).
+		Export("GetQueryHost").
+		// SetQueryHost
+		NewFunctionBuilder().
+		WithParameterNames("query_value_ptr",
+			"query_value_size").
+		WithResultNames("call_result").
+		WithFunc(func(ctx context.Context, mod api.Module, queryValuePtr,
+			queryValueSize uint32) uint32 {
+
+			bytes, ok := mod.Memory().Read(queryValuePtr, queryValueSize)
+			//todo newborn22, assign to query, perhaps every one has a qre
+			if !ok {
+				log.Printf("not ok!!!!!")
+			} else {
+				wazeroRuntime.hostVariables["haha"] = string(bytes)
+				log.Printf("wasm setquery: %v", bytes)
+			}
+
+			return uint32(StatusOK)
+
+		}).
+		Export("SetQueryHost").
+		Instantiate(ctx)
 	return err
+}
+
+type Status uint32
+
+const (
+	StatusOK              Status = 0
+	StatusNotFound        Status = 1
+	StatusBadArgument     Status = 2
+	StatusEmpty           Status = 7
+	StatusCasMismatch     Status = 8
+	StatusInternalFailure Status = 10
+	StatusUnimplemented   Status = 12
+)
+
+func ProxyGetQuery(wazeroRuntime *WazeroRuntime, dataPtrPtr **byte, dataSizePtr *int) Status {
+	// todo, how to set query?
+	data := []byte("select * from foo.bar")
+	*dataPtrPtr = &data[0]
+	dataSize := len(data)
+	*dataSizePtr = dataSize
+	return StatusOK
 }
 
 func (*WazeroRuntime) GetRuntimeType() string {
@@ -74,7 +133,6 @@ func (w *WazeroRuntime) ClearWasmModule(key string) {
 
 }
 
-// todo newborn22 5.14 instance->modules
 func (w *WazeroRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -261,4 +319,29 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	err = json.Unmarshal(bytes, rst)
 	return rst, err
 
+}
+
+func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) {
+	if size == 0 {
+		return
+	}
+	var hostSlice []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&hostSlice))
+	hdr.Data = uintptr(unsafe.Pointer(hostPtr))
+	hdr.Cap = size
+	hdr.Len = size
+
+	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
+	res, err := alloc.Call(ctx, uint64(size))
+	if err != nil {
+		log.Panicln(err)
+	}
+	buf, _ := mod.Memory().Read(uint32(res[0]), uint32(size))
+	// todo newborn22 handle ok
+
+	copy(buf, hostSlice)
+	_ = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
+	// todo newborn22 handle ok
+	_ = mod.Memory().WriteUint32Le(wasmSizePtr, uint32(size))
+	// todo newborn22 handle ok
 }
