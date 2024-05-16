@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 const wasmBinaryTableName = "mysql.wasm_binary"
@@ -59,4 +60,8 @@ func ConvertQueryExecutorToWasmPluginExchangeAfter(qre *QueryExecutor) *WasmPlug
 func ConvertWasmPluginExchangeToQueryExecutorAfter(qre *QueryExecutor, exchange *WasmPluginExchangeAfter) {
 	// todo by newborn22
 	qre.query = exchange.Query
+}
+
+func PtrToString(ptr uint32, size uint32) string {
+	return unsafe.String((*byte)(unsafe.Pointer(uintptr(ptr))), size)
 }
