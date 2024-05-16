@@ -5,81 +5,148 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
+
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 type WazeroRuntime struct {
-	mu        sync.Mutex
-	ctx       context.Context
-	runtime   wazero.Runtime
-	instances map[string]WasmInstance
-	qe        *QueryEngine
+	mu      sync.Mutex
+	ctx     context.Context
+	runtime wazero.Runtime
+	modules map[string]WasmModule
+	qe      *QueryEngine
+
+	hostVariables map[string]any
 }
 
 func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
 	ctx := context.Background()
-	return &WazeroRuntime{ctx: ctx, runtime: wazero.NewRuntime(ctx), instances: make(map[string]WasmInstance), qe: qe}
+	w := &WazeroRuntime{ctx: ctx, runtime: wazero.NewRuntime(ctx), modules: make(map[string]WasmModule), qe: qe, hostVariables: make(map[string]any)}
+
+	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
+	err := exportHostABI(w.ctx, w)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return w
+}
+
+// todo by newborn22
+func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
+	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
+		// SetValueByKey
+		NewFunctionBuilder().
+		WithParameterNames("key", "value").
+		WithFunc(func(key, value uint32) {
+			wazeroRuntime.hostVariables[strconv.Itoa(int(key))] = value
+		}).
+		Export("SetValueByKey").
+		// GetValueByKey
+		NewFunctionBuilder().
+		WithParameterNames("key").
+		WithResultNames("value").
+		WithFunc(func(key uint32) uint32 {
+			// todo
+			_, exist := wazeroRuntime.hostVariables[strconv.Itoa(int(key))]
+			if !exist {
+				wazeroRuntime.hostVariables[strconv.Itoa(int(key))] = uint32(0)
+			}
+			return wazeroRuntime.hostVariables[strconv.Itoa(int(key))].(uint32)
+		}).
+		Export("GetValueByKey").Instantiate(ctx)
+	return err
 }
 
 func (*WazeroRuntime) GetRuntimeType() string {
 	return WAZERO
 }
 
-func (w *WazeroRuntime) ClearWasmInstance() {
+func (w *WazeroRuntime) ClearWasmModule(key string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.instances = make(map[string]WasmInstance)
+
+	delete(w.modules, key)
+
 }
 
-func (w *WazeroRuntime) InitOrGetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error) {
+// todo newborn22 5.14 instance->modules
+func (w *WazeroRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	instance, exist := w.instances[key]
+	module, exist := w.modules[key]
 	if exist {
-		return instance, nil
+		return module, nil
 	}
-	instance, err := w.initWasmInstance(wasmBinaryName)
+	module, err := w.initWasmModule(wasmBinaryName)
 	if err != nil {
 		return nil, err
 	}
-	w.instances[key] = instance
-	return instance, nil
+	w.modules[key] = module
+	return module, nil
 }
 
-func (w *WazeroRuntime) initWasmInstance(wasmBinaryName string) (WasmInstance, error) {
+func (w *WazeroRuntime) initWasmModule(wasmBinaryName string) (WasmModule, error) {
 	wasmBytes, err := w.qe.GetWasmBytesByBinaryName(wasmBinaryName)
 	if err != nil {
 		return nil, err
 	}
-
-	// Compiles the module
-	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
-
-	module, err := w.runtime.Instantiate(w.ctx, wasmBytes)
+	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return &WazeroInstance{module: module}, nil
+	return &WazeroModule{compliedModule: module, wazeroRuntime: w}, nil
 
 }
 
+func (w *WazeroRuntime) GetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error) {
+	module, err := w.InitOrGetWasmModule(key, wasmBinaryName)
+	if err != nil {
+		return nil, err
+	}
+	instance, err := module.NewInstance()
+	if err != nil {
+		return nil, err
+	}
+	return instance, nil
+}
+
+type WazeroModule struct {
+	wazeroRuntime  *WazeroRuntime
+	compliedModule wazero.CompiledModule
+}
+
+func (mod *WazeroModule) NewInstance() (WasmInstance, error) {
+	if mod.wazeroRuntime == nil {
+		return nil, fmt.Errorf("wazeroRuntime is nil in NewInstance")
+	}
+	if mod.compliedModule == nil {
+		return nil, fmt.Errorf("compliedModule is nil in NewInstance")
+	}
+	instance, err := mod.wazeroRuntime.runtime.InstantiateModule(mod.wazeroRuntime.ctx, mod.compliedModule, wazero.NewModuleConfig().WithName(""))
+	if err != nil {
+		return nil, err
+	}
+	return &WazeroInstance{instance: instance}, nil
+}
+
 type WazeroInstance struct {
-	module api.Module
+	instance api.Module
 }
 
 func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error) {
 	ctx := context.Background()
 
 	// todo use const or something else?
-	wazeroGuestFunc := ins.module.ExportedFunction("wazeroGuestFunc")
+	wazeroGuestFunc := ins.instance.ExportedFunction("wazeroGuestFunc")
 	// These are undocumented, but exported. See tinygo-org/tinygo#2788
-	malloc := ins.module.ExportedFunction("malloc")
-	free := ins.module.ExportedFunction("free")
+	malloc := ins.instance.ExportedFunction("malloc")
+	free := ins.instance.ExportedFunction("free")
 
 	data, err := json.Marshal(args)
 	if err != nil {
@@ -98,9 +165,9 @@ func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 	defer free.Call(ctx, dataPtr)
 
 	// The pointer is a linear memory offset, which is where we write the data.
-	if !ins.module.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
+	if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
 		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
 	}
 
 	ptrSize, err := wazeroGuestFunc.Call(ctx, dataPtr, uint64(len(dataStr)))
@@ -123,10 +190,10 @@ func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 	}
 
 	// The pointer is a linear memory offset, which is where we write the name.
-	bytes, ok := ins.module.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
+	bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
 	if !ok {
 		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
 	}
 	rst := &WasmPluginExchange{}
 	err = json.Unmarshal(bytes, rst)
@@ -138,10 +205,10 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	ctx := context.Background()
 
 	// todo use const or something else?
-	wazeroGuestFuncAfterExecution := ins.module.ExportedFunction("wazeroGuestFuncAfterExecution")
+	wazeroGuestFuncAfterExecution := ins.instance.ExportedFunction("wazeroGuestFuncAfterExecution")
 	// These are undocumented, but exported. See tinygo-org/tinygo#2788
-	malloc := ins.module.ExportedFunction("malloc")
-	free := ins.module.ExportedFunction("free")
+	malloc := ins.instance.ExportedFunction("malloc")
+	free := ins.instance.ExportedFunction("free")
 
 	data, err := json.Marshal(args)
 	if err != nil {
@@ -160,9 +227,9 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	defer free.Call(ctx, dataPtr)
 
 	// The pointer is a linear memory offset, which is where we write the data.
-	if !ins.module.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
+	if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
 		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
 	}
 
 	ptrSize, err := wazeroGuestFuncAfterExecution.Call(ctx, dataPtr, uint64(len(dataStr)))
@@ -185,10 +252,10 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	}
 
 	// The pointer is a linear memory offset, which is where we write the name.
-	bytes, ok := ins.module.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
+	bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
 	if !ok {
 		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.module.Memory().Size())
+			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
 	}
 	rst := &WasmPluginExchangeAfter{}
 	err = json.Unmarshal(bytes, rst)

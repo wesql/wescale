@@ -169,13 +169,40 @@ func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) 
 }
 
 func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sqltypes.Result, error) {
-	query, err := customrule.GetDropByNameSQL(stmt.Name)
+	selectQeury, err := customrule.GetSelectByNameSQL(stmt.Name)
 	if err != nil {
 		return nil, err
 	}
-	// todo by newborn22, the code below is just for test
-	qe.wasmPluginController.Runtime.ClearWasmInstance()
-	return qe.ExecuteQuery(context.Background(), query)
+	filterQueryRst, err := qe.ExecuteQuery(context.Background(), selectQeury)
+	if err != nil {
+		return nil, err
+	}
+	if len(filterQueryRst.Named().Rows) < 1 {
+		return &sqltypes.Result{}, nil
+	}
+
+	dropQuery, err := customrule.GetDropByNameSQL(stmt.Name)
+	if err != nil {
+		return nil, err
+	}
+	rst, err := qe.ExecuteQuery(context.Background(), dropQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	filerName := filterQueryRst.Named().Rows[0].AsString("name", "")
+	filterAction, _ := rules.ParseStringToAction(filterQueryRst.Named().Rows[0].AsString("action", ""))
+	qe.removeFilterMemoryData(filerName, filterAction)
+
+	return rst, nil
+}
+
+func (qe *QueryEngine) removeFilterMemoryData(name string, action rules.Action) {
+	switch action {
+	case rules.QRWasmPlugin:
+		qe.wasmPluginController.Runtime.ClearWasmModule(name)
+		// todo newborn22 ccl?
+	}
 }
 
 func (qe *QueryEngine) HandleShowFilter(stmt *sqlparser.ShowWescaleFilter) (*sqltypes.Result, error) {

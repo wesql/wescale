@@ -25,7 +25,7 @@ func (*WasmerRuntime) GetRuntimeType() string {
 	return WASMER
 }
 
-func (w *WasmerRuntime) InitOrGetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error) {
+func (w *WasmerRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (WasmInstance, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	instance, exist := w.instances[key]
@@ -52,14 +52,14 @@ func (w *WasmerRuntime) initWasmInstance(wasmBinaryName string) (WasmInstance, e
 		return nil, err
 	}
 
-	// Compiles the module
+	// Compiles the modules
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// todo，let user decide which config to use? i think it's not necessary
-	// Instantiates the module
+	// Instantiates the modules
 	wasiEnv, err := wasmer.NewWasiStateBuilder("wasi-program").
 		// Choose according to your actual situation
 		// Argument("--foo").
