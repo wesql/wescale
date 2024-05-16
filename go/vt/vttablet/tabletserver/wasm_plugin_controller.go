@@ -9,6 +9,7 @@ import (
 )
 
 // todo, how to assin runtime better?
+// todo newborn22 5.14 2个runtime
 const WASMER = "wamser-go"
 const WAZERO = "wazero"
 
@@ -27,6 +28,8 @@ func init() {
 	servenv.OnParseFor("vttablet", registerCclFlags)
 }
 
+// todo newborn22 5.14 -> data struct to funciton
+// 1.query
 type WasmPluginExchange struct {
 	Query string
 }
@@ -51,8 +54,8 @@ func NewWasmPluginController(qe *QueryEngine) *WasmPluginController {
 
 func initWasmRuntime(qe *QueryEngine) WasmRuntime {
 	switch Runtime {
-	case WASMER:
-		return initWasmerRuntime(qe)
+	//case WASMER:
+	//	return initWasmerRuntime(qe)
 	case WAZERO:
 		return initWazeroRuntime(qe)
 	default:
@@ -65,8 +68,13 @@ func initWasmRuntime(qe *QueryEngine) WasmRuntime {
 
 type WasmRuntime interface {
 	GetRuntimeType() string
-	InitOrGetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error)
-	ClearWasmInstance()
+	InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error)
+	ClearWasmModule(key string)
+	GetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error)
+}
+
+type WasmModule interface {
+	NewInstance() (WasmInstance, error)
 }
 
 type WasmInstance interface {

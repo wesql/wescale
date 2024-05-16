@@ -283,15 +283,15 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 }
 
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	// todo by newborn22
-	runtime := qre.tsv.qe.wasmPluginController.Runtime
-	instance, err := runtime.InitOrGetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
+	// todo by newborn22 5.15 下面的过程可以封装
+	instance, err := qre.tsv.qe.wasmPluginController.Runtime.GetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
 	if err != nil {
 		return &ActionExecutionResponse{
 			Reply: nil,
 			Err:   err,
 		}
 	}
+	// todo newborn22, data struct to function call
 	args := ConvertQueryExecutorToWasmPluginExchange(qre)
 	rst, err := instance.RunWASMPlugin(args)
 	if err != nil {
@@ -308,9 +308,7 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 }
 
 func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	runtime := qre.tsv.qe.wasmPluginController.Runtime
-	// todo, err name, pay attention there are two errors
-	instance, err2 := runtime.InitOrGetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
+	instance, err2 := qre.tsv.qe.wasmPluginController.Runtime.GetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName)
 	if err2 != nil {
 		return &ActionExecutionResponse{
 			Reply: nil,
@@ -325,9 +323,6 @@ func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Re
 			Err:   err2,
 		}
 	}
-	fmt.Printf("instance: %v", instance)
-	fmt.Printf("args: %v", args)
-	fmt.Printf("rst: %v", rst)
 	ConvertWasmPluginExchangeToQueryExecutorAfter(qre, rst)
 	return &ActionExecutionResponse{
 		Reply: reply,
