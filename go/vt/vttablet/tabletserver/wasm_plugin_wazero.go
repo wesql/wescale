@@ -63,37 +63,34 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 		Export("GetValueByKeyHost").
 		// GetQueryHost
 		NewFunctionBuilder().
-		WithParameterNames("return_query_value_data",
+		WithParameterNames("hostInstancePtr", "return_query_value_data",
 			"return_query_value_size").
 		WithResultNames("call_result").
-		WithFunc(func(ctx context.Context, mod api.Module, returnValueData,
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
 			returnValueSize uint32) uint32 {
 			var returnValueHostPtr *byte
 			var returnValueSizePtr int
-			ret := uint32(ProxyGetQuery(nil, &returnValueHostPtr, &returnValueSizePtr))
+			ret := uint32(ProxyGetQuery(hostInstancePtr, &returnValueHostPtr, &returnValueSizePtr))
 			copyBytesToWasm(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize)
 			return ret
 		}).
 		Export("GetQueryHost").
 		// SetQueryHost
 		NewFunctionBuilder().
-		WithParameterNames("query_value_ptr",
-			"query_value_size", "hostInstancePtr").
+		WithParameterNames("hostInstancePtr", "query_value_ptr",
+			"query_value_size").
 		WithResultNames("call_result").
-		WithFunc(func(ctx context.Context, mod api.Module, queryValuePtr,
-			queryValueSize uint32, hostInstancePtr uint64) uint32 {
-
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr,
+			queryValueSize uint32) uint32 {
 			bytes, ok := mod.Memory().Read(queryValuePtr, queryValueSize)
 			if !ok {
 				return uint32(StatusInternalFailure)
 			}
-
 			w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
 			err := SetQueryToQre(w.qre, string(bytes))
 			if err != nil {
 				return uint32(StatusInternalFailure)
 			}
-
 			return uint32(StatusOK)
 
 		}).
@@ -114,9 +111,9 @@ const (
 	StatusUnimplemented   Status = 12
 )
 
-func ProxyGetQuery(wazeroRuntime *WazeroRuntime, dataPtrPtr **byte, dataSizePtr *int) Status {
-	// todo, how to set query?
-	data := []byte("select * from foo.bar")
+func ProxyGetQuery(hostInstancePtr uint64, dataPtrPtr **byte, dataSizePtr *int) Status {
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+	data := []byte(w.qre.query)
 	*dataPtrPtr = &data[0]
 	dataSize := len(data)
 	*dataSizePtr = dataSize
@@ -200,67 +197,15 @@ type WazeroInstance struct {
 	qre      *QueryExecutor
 }
 
-func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error) {
+func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
 
-	// todo use const or something else?
-	wazeroGuestFunc := ins.instance.ExportedFunction("wazeroGuestFunc")
+	wazeroGuestFunc := ins.instance.ExportedFunction("WazeroGuestFuncBeforeExecution")
 	// These are undocumented, but exported. See tinygo-org/tinygo#2788
-	malloc := ins.instance.ExportedFunction("malloc")
-	free := ins.instance.ExportedFunction("free")
-
-	data, err := json.Marshal(args)
-	if err != nil {
-		return nil, err
-	}
-	dataStr := string(data)
-	dataLen := uint64(len(dataStr))
-
-	results, err := malloc.Call(ctx, dataLen)
-	if err != nil {
-		return nil, err
-	}
-	dataPtr := results[0]
-	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	// So, we have to free it when finished
-	defer free.Call(ctx, dataPtr)
-
-	// The pointer is a linear memory offset, which is where we write the data.
-	if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
-		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	}
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
-	ptrSize, err := wazeroGuestFunc.Call(ctx, dataPtr, uint64(len(dataStr)), instancePtr)
-	if err != nil {
-		return nil, err
-	}
-
-	rstFromGuestPtr := uint32(ptrSize[0] >> 32)
-	rstFromGuestSize := uint32(ptrSize[0])
-
-	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	// So, we have to free it when finished
-	if rstFromGuestPtr != 0 {
-		defer func() {
-			_, err := free.Call(ctx, uint64(rstFromGuestPtr))
-			if err != nil {
-				fmt.Print(err.Error())
-			}
-		}()
-	}
-
-	// The pointer is a linear memory offset, which is where we write the name.
-	bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
-	if !ok {
-		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	}
-	rst := &WasmPluginExchange{}
-	err = json.Unmarshal(bytes, rst)
-	return rst, err
-
+	_, err := wazeroGuestFunc.Call(ctx, instancePtr)
+	return err
 }
 
 func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {

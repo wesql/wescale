@@ -290,19 +290,10 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 			Err:   err,
 		}
 	}
-	// todo newborn22, data struct to function call
-	args := ConvertQueryExecutorToWasmPluginExchange(qre)
-	_, err = instance.RunWASMPlugin(args)
-	if err != nil {
-		return &ActionExecutionResponse{
-			Reply: nil,
-			Err:   err,
-		}
-	}
-	//ConvertWasmPluginExchangeToQueryExecutor(qre, rst)
+	err = instance.RunWASMPlugin()
 	return &ActionExecutionResponse{
 		Reply: nil,
-		Err:   nil,
+		Err:   err,
 	}
 }
 

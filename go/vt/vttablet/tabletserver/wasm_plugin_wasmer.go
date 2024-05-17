@@ -85,24 +85,25 @@ type WasmerInstance struct {
 	instance *wasmer.Instance
 }
 
-func (ins *WasmerInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error) {
-	// todo, use const?
-	writeBuf, _ := ins.instance.Exports.GetFunction("writeBuf")
-	readBuf, _ := ins.instance.Exports.GetFunction("readBuf")
-	clearBuf, _ := ins.instance.Exports.GetFunction("clearBuf")
-	getBufLen, _ := ins.instance.Exports.GetFunction("getBufLen")
-	wasmerGuestFunc, _ := ins.instance.Exports.GetFunction("wasmerGuestFunc")
+func (ins *WasmerInstance) RunWASMPlugin() error {
+	// todo newborn22, fix wasmer
 
-	err := sendStructToWASI(args, clearBuf, writeBuf)
-	if err != nil {
-		return nil, err
-	}
-	_, err = wasmerGuestFunc()
-	if err != nil {
-		return nil, err
-	}
+	//writeBuf, _ := ins.instance.Exports.GetFunction("writeBuf")
+	//readBuf, _ := ins.instance.Exports.GetFunction("readBuf")
+	//clearBuf, _ := ins.instance.Exports.GetFunction("clearBuf")
+	//getBufLen, _ := ins.instance.Exports.GetFunction("getBufLen")
+	//wasmerGuestFunc, _ := ins.instance.Exports.GetFunction("wasmerGuestFunc")
+	//
+	//err := sendStructToWASI(args, clearBuf, writeBuf)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//_, err = wasmerGuestFunc()
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	return getStructFromWASI(getBufLen, readBuf)
+	return nil
 }
 
 func (ins *WasmerInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {
