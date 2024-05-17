@@ -70,11 +70,11 @@ type WasmRuntime interface {
 	GetRuntimeType() string
 	InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error)
 	ClearWasmModule(key string)
-	GetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error)
+	GetWasmInstance(key string, wasmBinaryName string, qre *QueryExecutor) (WasmInstance, error)
 }
 
 type WasmModule interface {
-	NewInstance() (WasmInstance, error)
+	NewInstance(qre *QueryExecutor) (WasmInstance, error)
 }
 
 type WasmInstance interface {

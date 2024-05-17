@@ -78,18 +78,20 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 		// SetQueryHost
 		NewFunctionBuilder().
 		WithParameterNames("query_value_ptr",
-			"query_value_size").
+			"query_value_size", "hostInstancePtr").
 		WithResultNames("call_result").
 		WithFunc(func(ctx context.Context, mod api.Module, queryValuePtr,
-			queryValueSize uint32) uint32 {
+			queryValueSize uint32, hostInstancePtr uint64) uint32 {
 
 			bytes, ok := mod.Memory().Read(queryValuePtr, queryValueSize)
-			//todo newborn22, assign to query, perhaps every one has a qre
 			if !ok {
-				log.Printf("not ok!!!!!")
-			} else {
-				wazeroRuntime.hostVariables["haha"] = string(bytes)
-				log.Printf("wasm setquery: %v", bytes)
+				return uint32(StatusInternalFailure)
+			}
+
+			w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+			err := SetQueryToQre(w.qre, string(bytes))
+			if err != nil {
+				return uint32(StatusInternalFailure)
 			}
 
 			return uint32(StatusOK)
@@ -162,12 +164,12 @@ func (w *WazeroRuntime) initWasmModule(wasmBinaryName string) (WasmModule, error
 
 }
 
-func (w *WazeroRuntime) GetWasmInstance(key string, wasmBinaryName string) (WasmInstance, error) {
+func (w *WazeroRuntime) GetWasmInstance(key string, wasmBinaryName string, qre *QueryExecutor) (WasmInstance, error) {
 	module, err := w.InitOrGetWasmModule(key, wasmBinaryName)
 	if err != nil {
 		return nil, err
 	}
-	instance, err := module.NewInstance()
+	instance, err := module.NewInstance(qre)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,7 @@ type WazeroModule struct {
 	compliedModule wazero.CompiledModule
 }
 
-func (mod *WazeroModule) NewInstance() (WasmInstance, error) {
+func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
 	if mod.wazeroRuntime == nil {
 		return nil, fmt.Errorf("wazeroRuntime is nil in NewInstance")
 	}
@@ -190,11 +192,12 @@ func (mod *WazeroModule) NewInstance() (WasmInstance, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &WazeroInstance{instance: instance}, nil
+	return &WazeroInstance{instance: instance, qre: qre}, nil
 }
 
 type WazeroInstance struct {
 	instance api.Module
+	qre      *QueryExecutor
 }
 
 func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error) {
@@ -228,7 +231,8 @@ func (ins *WazeroInstance) RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginE
 			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
 	}
 
-	ptrSize, err := wazeroGuestFunc.Call(ctx, dataPtr, uint64(len(dataStr)))
+	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
+	ptrSize, err := wazeroGuestFunc.Call(ctx, dataPtr, uint64(len(dataStr)), instancePtr)
 	if err != nil {
 		return nil, err
 	}

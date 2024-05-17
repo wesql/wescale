@@ -48,8 +48,14 @@ func ConvertQueryExecutorToWasmPluginExchange(qre *QueryExecutor) *WasmPluginExc
 
 func ConvertWasmPluginExchangeToQueryExecutor(qre *QueryExecutor, exchange *WasmPluginExchange) {
 	// todo by newborn22
-	qre.plan, _ = qre.tsv.qe.GetPlan(context.Background(), qre.logStats, "d1", exchange.Query, skipQueryPlanCache(nil))
+	qre.plan, _ = qre.tsv.qe.GetPlan(context.Background(), qre.logStats, "", exchange.Query, skipQueryPlanCache(nil))
 	//plan GetPlan(ctx, logStats, target.Keyspace, query, skipQueryPlanCache(options))
+}
+
+func SetQueryToQre(qre *QueryExecutor, query string) (err error) {
+	qre.query = query
+	qre.plan, err = qre.tsv.qe.GetPlan(context.Background(), qre.logStats, "", query, skipQueryPlanCache(nil))
+	return err
 }
 
 func ConvertQueryExecutorToWasmPluginExchangeAfter(qre *QueryExecutor) *WasmPluginExchangeAfter {
