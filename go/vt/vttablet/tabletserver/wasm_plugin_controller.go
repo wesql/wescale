@@ -78,6 +78,6 @@ type WasmModule interface {
 }
 
 type WasmInstance interface {
-	RunWASMPlugin(args *WasmPluginExchange) (*WasmPluginExchange, error)
+	RunWASMPlugin() error
 	RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error)
 }
