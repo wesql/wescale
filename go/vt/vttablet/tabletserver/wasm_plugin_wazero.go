@@ -23,6 +23,7 @@ type WazeroRuntime struct {
 	qe      *QueryEngine
 
 	globalHostVariables map[string][]byte
+	globalMu            sync.Mutex
 }
 
 func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
@@ -95,6 +96,36 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 			return SetQueryHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
 		Export("SetQueryHost").
+
+		// GlobalLockHost
+		NewFunctionBuilder().
+		WithFunc(func(ctx context.Context, mod api.Module) {
+			GlobalLockHost(wazeroRuntime)
+		}).
+		Export("GlobalLockHost").
+
+		// GlobalUnlockHost
+		NewFunctionBuilder().
+		WithFunc(func(ctx context.Context, mod api.Module) {
+			GlobalUnLockHost(wazeroRuntime)
+		}).
+		Export("GlobalUnlockHost").
+
+		// ModuleLockHost
+		NewFunctionBuilder().
+		WithParameterNames("hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
+			ModuleLockHost(hostModulePtr)
+		}).
+		Export("ModuleLockHost").
+
+		// ModuleUnlockHost
+		NewFunctionBuilder().
+		WithParameterNames("hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
+			ModuleUnLockHost(hostModulePtr)
+		}).
+		Export("ModuleUnLockHost").
 		Instantiate(ctx)
 	return err
 }
@@ -179,6 +210,8 @@ type WazeroModule struct {
 
 	mu                  sync.Mutex
 	moduleHostVariables map[string][]byte
+
+	moduleMu sync.Mutex
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {

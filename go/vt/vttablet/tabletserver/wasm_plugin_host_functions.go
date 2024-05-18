@@ -111,3 +111,21 @@ func SetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, q
 	}
 	return uint32(StatusOK)
 }
+
+func GlobalLockHost(wazeroRuntime *WazeroRuntime) {
+	wazeroRuntime.mu.Lock()
+}
+
+func GlobalUnLockHost(wazeroRuntime *WazeroRuntime) {
+	wazeroRuntime.mu.Unlock()
+}
+
+func ModuleLockHost(hostModulePtr uint64) {
+	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
+	module.moduleMu.Lock()
+}
+
+func ModuleUnLockHost(hostModulePtr uint64) {
+	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
+	module.moduleMu.Unlock()
+}
