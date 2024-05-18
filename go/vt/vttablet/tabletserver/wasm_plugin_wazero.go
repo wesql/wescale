@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"strconv"
 	"sync"
 	"unsafe"
 
@@ -23,12 +22,12 @@ type WazeroRuntime struct {
 	modules map[string]WasmModule
 	qe      *QueryEngine
 
-	hostVariables map[string]any
+	globalHostVariables map[string][]byte
 }
 
 func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
 	ctx := context.Background()
-	w := &WazeroRuntime{ctx: ctx, runtime: wazero.NewRuntime(ctx), modules: make(map[string]WasmModule), qe: qe, hostVariables: make(map[string]any)}
+	w := &WazeroRuntime{ctx: ctx, runtime: wazero.NewRuntime(ctx), modules: make(map[string]WasmModule), qe: qe, globalHostVariables: make(map[string][]byte)}
 
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	err := exportHostABI(w.ctx, w)
@@ -41,58 +40,58 @@ func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
 // todo by newborn22
 func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
-		// SetValueByKeyHost
+		// SetGlobalValueByKeyHost
 		NewFunctionBuilder().
-		WithParameterNames("key", "value").
-		WithFunc(func(ctx context.Context, mod api.Module, key, value uint32) {
-			wazeroRuntime.hostVariables[strconv.Itoa(int(key))] = value
+		WithParameterNames("keyPtr", "keySize", "valuePtr", "valueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+			return SetGlobalValueByKeyHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
 		}).
-		Export("SetValueByKeyHost").
-		// GetValueByKeyHost
+		Export("SetGlobalValueByKeyHost").
+
+		// GetGlobalValueByKeyHost
 		NewFunctionBuilder().
-		WithParameterNames("key").
+		WithParameterNames("keyPtr", "keySize", "returnValuePtr", "returnValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+			return GetGlobalValueByKeyHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
+		}).
+		Export("GetGlobalValueByKeyHost").
+
+		// SetModuleValueByKeyHost
+		NewFunctionBuilder().
+		WithParameterNames("hostModulePtr", "key", "value").
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, key, value uint32) {
+			SetModuleValueByKeyHost(hostModulePtr, key, value)
+		}).
+		Export("SetModuleValueByKeyHost").
+
+		// GetModuleValueByKeyHost
+		NewFunctionBuilder().
+		WithParameterNames("hostModulePtr", "key").
 		WithResultNames("value").
-		WithFunc(func(ctx context.Context, mod api.Module, key uint32) uint32 {
-			// todo
-			_, exist := wazeroRuntime.hostVariables[strconv.Itoa(int(key))]
-			if !exist {
-				wazeroRuntime.hostVariables[strconv.Itoa(int(key))] = uint32(0)
-			}
-			return wazeroRuntime.hostVariables[strconv.Itoa(int(key))].(uint32)
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, key uint32) uint32 {
+			return GetModuleValueByKeyHost(hostModulePtr, key)
 		}).
-		Export("GetValueByKeyHost").
+		Export("GetModuleValueByKeyHost").
+
 		// GetQueryHost
 		NewFunctionBuilder().
-		WithParameterNames("hostInstancePtr", "return_query_value_data",
-			"return_query_value_size").
-		WithResultNames("call_result").
-		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
-			returnValueSize uint32) uint32 {
-			var returnValueHostPtr *byte
-			var returnValueSizePtr int
-			ret := uint32(ProxyGetQuery(hostInstancePtr, &returnValueHostPtr, &returnValueSizePtr))
-			copyBytesToWasm(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize)
-			return ret
+		WithParameterNames("hostInstancePtr", "returnQueryValueData",
+			"returnQueryValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
+			return GetQueryHost(ctx, mod, hostInstancePtr, returnValueData, returnValueSize)
 		}).
 		Export("GetQueryHost").
+
 		// SetQueryHost
 		NewFunctionBuilder().
-		WithParameterNames("hostInstancePtr", "query_value_ptr",
-			"query_value_size").
-		WithResultNames("call_result").
-		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr,
-			queryValueSize uint32) uint32 {
-			bytes, ok := mod.Memory().Read(queryValuePtr, queryValueSize)
-			if !ok {
-				return uint32(StatusInternalFailure)
-			}
-			w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
-			err := SetQueryToQre(w.qre, string(bytes))
-			if err != nil {
-				return uint32(StatusInternalFailure)
-			}
-			return uint32(StatusOK)
-
+		WithParameterNames("hostInstancePtr", "queryValuePtr",
+			"queryValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {
+			return SetQueryHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
 		Export("SetQueryHost").
 		Instantiate(ctx)
@@ -157,7 +156,7 @@ func (w *WazeroRuntime) initWasmModule(wasmBinaryName string) (WasmModule, error
 		return nil, err
 	}
 
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w}, nil
+	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleHostVariables: make(map[string][]byte)}, nil
 
 }
 
@@ -176,6 +175,9 @@ func (w *WazeroRuntime) GetWasmInstance(key string, wasmBinaryName string, qre *
 type WazeroModule struct {
 	wazeroRuntime  *WazeroRuntime
 	compliedModule wazero.CompiledModule
+
+	mu                  sync.Mutex
+	moduleHostVariables map[string][]byte
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
@@ -189,22 +191,24 @@ func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &WazeroInstance{instance: instance, qre: qre}, nil
+	return &WazeroInstance{instance: instance, qre: qre, module: mod}, nil
 }
 
 type WazeroInstance struct {
 	instance api.Module
 	qre      *QueryExecutor
+
+	module *WazeroModule
 }
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("WazeroGuestFuncBeforeExecution")
-	// These are undocumented, but exported. See tinygo-org/tinygo#2788
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
-	_, err := wazeroGuestFunc.Call(ctx, instancePtr)
+	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
+	_, err := wazeroGuestFunc.Call(ctx, instancePtr, modulePtr)
 	return err
 }
 
@@ -270,9 +274,9 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 
 }
 
-func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) {
+func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
 	if size == 0 {
-		return
+		return StatusBadArgument
 	}
 	var hostSlice []byte
 	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&hostSlice))
@@ -283,14 +287,21 @@ func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size in
 	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
 	res, err := alloc.Call(ctx, uint64(size))
 	if err != nil {
-		log.Panicln(err)
+		return StatusInternalFailure
 	}
-	buf, _ := mod.Memory().Read(uint32(res[0]), uint32(size))
-	// todo newborn22 handle ok
+	buf, ok := mod.Memory().Read(uint32(res[0]), uint32(size))
+	if !ok {
+		return StatusInternalFailure
+	}
 
 	copy(buf, hostSlice)
-	_ = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
-	// todo newborn22 handle ok
-	_ = mod.Memory().WriteUint32Le(wasmSizePtr, uint32(size))
-	// todo newborn22 handle ok
+	ok = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
+	if !ok {
+		return StatusInternalFailure
+	}
+	ok = mod.Memory().WriteUint32Le(wasmSizePtr, uint32(size))
+	if !ok {
+		return StatusInternalFailure
+	}
+	return StatusOK
 }
