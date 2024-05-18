@@ -46,25 +46,45 @@ func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	return uint32(copyBytesToWasm(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
 }
 
-func SetModuleValueByKeyHost(hostModulePtr uint64, key, value uint32) {
-	//m := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
-	//m.mu.Lock()
-	//defer m.mu.Unlock()
-	//
-	//m.moduleHostVariables[strconv.Itoa(int(key))] = value
+func SetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
+	module.mu.Lock()
+	defer module.mu.Unlock()
+
+	keyBytes, ok := mod.Memory().Read(keyPtr, keySize)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+	key := string(keyBytes)
+
+	valueBytes, ok := mod.Memory().Read(valuePtr, valueSize)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+
+	module.moduleHostVariables[key] = valueBytes
+	return uint32(StatusOK)
 }
 
-func GetModuleValueByKeyHost(hostModulePtr uint64, key uint32) uint32 {
-	//m := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
-	//m.mu.Lock()
-	//defer m.mu.Unlock()
-	//
-	//_, exist := m.moduleHostVariables[strconv.Itoa(int(key))]
-	//if !exist {
-	//	m.moduleHostVariables[strconv.Itoa(int(key))] = uint32(0)
-	//}
-	//return m.moduleHostVariables[strconv.Itoa(int(key))].(uint32)
-	return 0
+func GetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
+	module.mu.Lock()
+	defer module.mu.Unlock()
+
+	keyBytes, ok := mod.Memory().Read(keyPtr, keySize)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+	key := string(keyBytes)
+
+	_, exist := module.moduleHostVariables[key]
+	if !exist {
+		return uint32(StatusNotFound)
+	}
+
+	hostDataPtr := &module.moduleHostVariables[key][0]
+	hostDataSize := len(module.moduleHostVariables[key])
+	return uint32(copyBytesToWasm(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
 }
 
 func GetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
