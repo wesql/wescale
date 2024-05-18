@@ -60,18 +60,19 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 
 		// SetModuleValueByKeyHost
 		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "key", "value").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, key, value uint32) {
-			SetModuleValueByKeyHost(hostModulePtr, key, value)
+		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+			return SetModuleValueByKeyHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
 		}).
 		Export("SetModuleValueByKeyHost").
 
 		// GetModuleValueByKeyHost
 		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "key").
-		WithResultNames("value").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, key uint32) uint32 {
-			return GetModuleValueByKeyHost(hostModulePtr, key)
+		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+			return GetModuleValueByKeyHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
 		Export("GetModuleValueByKeyHost").
 
