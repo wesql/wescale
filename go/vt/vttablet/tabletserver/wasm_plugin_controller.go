@@ -19,13 +19,13 @@ var (
 )
 
 // todo
-func registerCclFlags(fs *pflag.FlagSet) {
+func registerWasmFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&DefaultRuntime, "default_wasm_runtime", DefaultRuntime, "the default runtime for wasm plugin")
 	fs.StringVar(&Runtime, "wasm_runtime", Runtime, "the runtime for wasm plugin")
 }
 
 func init() {
-	servenv.OnParseFor("vttablet", registerCclFlags)
+	servenv.OnParseFor("vttablet", registerWasmFlags)
 }
 
 // todo newborn22 5.14 -> data struct to funciton
