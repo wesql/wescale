@@ -288,13 +288,13 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 	controller := qre.tsv.qe.wasmPluginController
 	wasmModuleCacheKey := p.GetRule().Name
 
-	ok, module := controller.Runtime.GetWasmModule(wasmModuleCacheKey)
+	ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
 	if !ok {
 		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
-		module, err = controller.Runtime.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+		module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
@@ -312,13 +312,13 @@ func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Re
 	controller := qre.tsv.qe.wasmPluginController
 	wasmModuleCacheKey := p.GetRule().Name
 
-	ok, module := controller.Runtime.GetWasmModule(wasmModuleCacheKey)
+	ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
 	if !ok {
 		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
-		module, err = controller.Runtime.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+		module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
