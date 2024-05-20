@@ -22,17 +22,26 @@ type WazeroRuntime struct {
 	modules map[string]WasmModule
 	qe      *QueryEngine
 
+	//todo by newborn22: 'sharedHostVariables' is a better name, because 'global' is not accurate, it is not shared between all vttablets
 	globalHostVariables map[string][]byte
-	globalMu            sync.Mutex
+	//todo by newborn22: same as above
+	globalMu sync.Mutex
 }
 
 func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
 	ctx := context.Background()
-	w := &WazeroRuntime{ctx: ctx, runtime: wazero.NewRuntime(ctx), modules: make(map[string]WasmModule), qe: qe, globalHostVariables: make(map[string][]byte)}
+	w := &WazeroRuntime{
+		ctx:                 ctx,
+		runtime:             wazero.NewRuntime(ctx),
+		modules:             make(map[string]WasmModule),
+		qe:                  qe,
+		globalHostVariables: make(map[string][]byte),
+	}
 
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	err := exportHostABI(w.ctx, w)
 	if err != nil {
+		//todo by newborn22: will cause the process to exit, you should not use this function here!
 		log.Fatal(err)
 	}
 	return w
@@ -178,6 +187,8 @@ func (w *WazeroRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (
 	return module, nil
 }
 
+// todo wasm: I think we should consider injecting the wasm module into the runtime, rather than calling GetWasmBytesByBinaryName here
+// todo wasm: because we'd better the runtime not to rely on the QueryEngine
 func (w *WazeroRuntime) initWasmModule(wasmBinaryName string) (WasmModule, error) {
 	wasmBytes, err := w.qe.GetWasmBytesByBinaryName(wasmBinaryName)
 	if err != nil {
@@ -318,6 +329,7 @@ func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size in
 	hdr.Cap = size
 	hdr.Len = size
 
+	//todo wasm: why not use 'malloc' here?
 	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
 	res, err := alloc.Call(ctx, uint64(size))
 	if err != nil {
