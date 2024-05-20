@@ -16,3 +16,15 @@ type WasmInstance interface {
 	RunWASMPlugin() error
 	RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error)
 }
+
+type Status uint32
+
+const (
+	StatusOK              Status = 0
+	StatusNotFound        Status = 1
+	StatusBadArgument     Status = 2
+	StatusEmpty           Status = 7
+	StatusCasMismatch     Status = 8
+	StatusInternalFailure Status = 10
+	StatusUnimplemented   Status = 12
+)

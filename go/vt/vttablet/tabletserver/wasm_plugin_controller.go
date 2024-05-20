@@ -3,10 +3,9 @@ package tabletserver
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
-
-	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
 )
