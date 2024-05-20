@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"log"
 	"reflect"
 	"sync"
 	"unsafe"
-
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -31,17 +30,10 @@ func initWazeroRuntime() *WazeroRuntime {
 	ctx := context.Background()
 	w := &WazeroRuntime{
 		ctx:                 ctx,
-		runtime:             wazero.NewRuntime(ctx),
 		modules:             make(map[string]WasmModule),
 		globalHostVariables: make(map[string][]byte),
 	}
-
-	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
-	err := exportHostABI(w.ctx, w)
-	if err != nil {
-		//todo by newborn22: will cause the process to exit, you should not use this function here!
-		log.Fatal(err)
-	}
+	w.InitRuntime()
 	return w
 }
 
@@ -160,6 +152,12 @@ func ProxyGetQuery(hostInstancePtr uint64, dataPtrPtr **byte, dataSizePtr *int) 
 
 func (*WazeroRuntime) GetRuntimeType() string {
 	return WAZERO
+}
+
+func (w *WazeroRuntime) InitRuntime() error {
+	wazero.NewRuntime(w.ctx)
+	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
+	return exportHostABI(w.ctx, w)
 }
 
 func (w *WazeroRuntime) ClearWasmModule(key string) {

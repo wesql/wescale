@@ -39,7 +39,7 @@ type WasmPluginExchangeAfter struct {
 
 type WasmPluginController struct {
 	qe      *QueryEngine
-	Runtime WasmRuntime
+	Runtime WasmVM
 }
 
 func NewWasmPluginController(qe *QueryEngine) *WasmPluginController {
@@ -76,7 +76,7 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 	return bytes, nil
 }
 
-func initWasmRuntime() WasmRuntime {
+func initWasmRuntime() WasmVM {
 	switch RuntimeType {
 	//case WASMER:
 	//	return initWasmerRuntime(qe)
@@ -87,8 +87,9 @@ func initWasmRuntime() WasmRuntime {
 	}
 }
 
-type WasmRuntime interface {
+type WasmVM interface {
 	GetRuntimeType() string
+	InitRuntime() error
 	GetWasmModule(key string) (bool, WasmModule)
 	InitWasmModule(key string, wasmBytes []byte) (WasmModule, error)
 	ClearWasmModule(key string)
