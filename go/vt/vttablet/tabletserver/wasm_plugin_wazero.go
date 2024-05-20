@@ -37,7 +37,7 @@ func initWazeroVM() *WazeroRuntime {
 }
 
 // todo by newborn22
-func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
+func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
 		// SetGlobalValueByKeyHost
 		NewFunctionBuilder().
@@ -144,7 +144,7 @@ func (*WazeroRuntime) GetRuntimeType() string {
 func (w *WazeroRuntime) InitRuntime() error {
 	wazero.NewRuntime(w.ctx)
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
-	return exportHostABI(w.ctx, w)
+	return exportHostABIV1(w.ctx, w)
 }
 
 func (w *WazeroRuntime) ClearWasmModule(key string) {

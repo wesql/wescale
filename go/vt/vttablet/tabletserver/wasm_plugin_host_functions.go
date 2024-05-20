@@ -6,6 +6,9 @@ import (
 	"unsafe"
 )
 
+//todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroRuntime'.
+//todo wasm: should not rely on tabletserver, should be a independent module. Now 'SetQueryHost' needs tabletserver.
+
 func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroRuntime, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()
