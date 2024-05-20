@@ -45,7 +45,7 @@ type WasmPluginController struct {
 func NewWasmPluginController(qe *QueryEngine) *WasmPluginController {
 	return &WasmPluginController{
 		qe:      qe,
-		Runtime: initWasmRuntime(qe),
+		Runtime: initWasmRuntime(),
 	}
 }
 
@@ -76,14 +76,14 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 	return bytes, nil
 }
 
-func initWasmRuntime(qe *QueryEngine) WasmRuntime {
+func initWasmRuntime() WasmRuntime {
 	switch RuntimeType {
 	//case WASMER:
 	//	return initWasmerRuntime(qe)
 	case WAZERO:
-		return initWazeroRuntime(qe)
+		return initWazeroRuntime()
 	default:
-		return initWazeroRuntime(qe)
+		return initWazeroRuntime()
 	}
 }
 

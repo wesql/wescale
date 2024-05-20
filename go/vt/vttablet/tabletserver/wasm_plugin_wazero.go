@@ -20,7 +20,6 @@ type WazeroRuntime struct {
 	ctx     context.Context
 	runtime wazero.Runtime
 	modules map[string]WasmModule
-	qe      *QueryEngine
 
 	//todo by newborn22: 'sharedHostVariables' is a better name, because 'global' is not accurate, it is not shared between all vttablets
 	globalHostVariables map[string][]byte
@@ -28,13 +27,12 @@ type WazeroRuntime struct {
 	globalMu sync.Mutex
 }
 
-func initWazeroRuntime(qe *QueryEngine) *WazeroRuntime {
+func initWazeroRuntime() *WazeroRuntime {
 	ctx := context.Background()
 	w := &WazeroRuntime{
 		ctx:                 ctx,
 		runtime:             wazero.NewRuntime(ctx),
 		modules:             make(map[string]WasmModule),
-		qe:                  qe,
 		globalHostVariables: make(map[string][]byte),
 	}
 
