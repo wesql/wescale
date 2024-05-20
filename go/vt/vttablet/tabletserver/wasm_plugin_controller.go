@@ -75,3 +75,14 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 	}
 	return bytes, nil
 }
+
+func initWasmVM() WasmVM {
+	switch RuntimeType {
+	//case WASMER:
+	//	return initWasmerRuntime(qe)
+	case WAZERO:
+		return initWazeroVM()
+	default:
+		return initWazeroVM()
+	}
+}

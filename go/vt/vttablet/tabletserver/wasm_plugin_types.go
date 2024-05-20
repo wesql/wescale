@@ -1,16 +1,5 @@
 package tabletserver
 
-func initWasmVM() WasmVM {
-	switch RuntimeType {
-	//case WASMER:
-	//	return initWasmerRuntime(qe)
-	case WAZERO:
-		return initWazeroVM()
-	default:
-		return initWazeroVM()
-	}
-}
-
 type WasmVM interface {
 	GetRuntimeType() string
 	InitRuntime() error
