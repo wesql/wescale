@@ -200,7 +200,7 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 func (qe *QueryEngine) removeFilterMemoryData(name string, action rules.Action) {
 	switch action {
 	case rules.QRWasmPlugin:
-		qe.wasmPluginController.Runtime.ClearWasmModule(name)
+		qe.wasmPluginController.VM.ClearWasmModule(name)
 		// todo newborn22 ccl?
 	}
 }

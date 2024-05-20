@@ -26,7 +26,7 @@ type WazeroRuntime struct {
 	globalMu sync.Mutex
 }
 
-func initWazeroRuntime() *WazeroRuntime {
+func initWazeroVM() *WazeroRuntime {
 	ctx := context.Background()
 	w := &WazeroRuntime{
 		ctx:                 ctx,
