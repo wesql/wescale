@@ -258,10 +258,12 @@ type WasmPluginAction struct {
 	Args *WasmPluginActionArgs
 }
 
+// todo newborn22: add testcase
 type WasmPluginActionArgs struct {
 	WasmBinaryName string `toml:"wasm_binary_name"`
 }
 
+// todo newborn22: add testcase
 func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	if stringParams == "" {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "wasm bytes is empty")
@@ -283,22 +285,46 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 }
 
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	instance, err := qre.tsv.qe.wasmPluginController.Runtime.GetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName, qre)
-	if err != nil {
-		return &ActionExecutionResponse{
-			Reply: nil,
-			Err:   err,
+	controller := qre.tsv.qe.wasmPluginController
+	wasmModuleCacheKey := p.GetRule().Name
+
+	ok, module := controller.Runtime.GetWasmModule(wasmModuleCacheKey)
+	if !ok {
+		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
+		if err != nil {
+			return &ActionExecutionResponse{Err: err}
+		}
+		module, err = controller.Runtime.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+		if err != nil {
+			return &ActionExecutionResponse{Err: err}
 		}
 	}
-	err = instance.RunWASMPlugin()
-	return &ActionExecutionResponse{
-		Reply: nil,
-		Err:   err,
+
+	instance, err := module.NewInstance(qre)
+	if err != nil {
+		return &ActionExecutionResponse{Err: err}
 	}
+	err = instance.RunWASMPlugin()
+	return &ActionExecutionResponse{Err: err}
 }
 
 func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	instance, err2 := qre.tsv.qe.wasmPluginController.Runtime.GetWasmInstance(p.GetRule().Name, p.Args.WasmBinaryName, qre)
+	controller := qre.tsv.qe.wasmPluginController
+	wasmModuleCacheKey := p.GetRule().Name
+
+	ok, module := controller.Runtime.GetWasmModule(wasmModuleCacheKey)
+	if !ok {
+		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
+		if err != nil {
+			return &ActionExecutionResponse{Err: err}
+		}
+		module, err = controller.Runtime.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+		if err != nil {
+			return &ActionExecutionResponse{Err: err}
+		}
+	}
+
+	instance, err2 := module.NewInstance(qre)
 	if err2 != nil {
 		return &ActionExecutionResponse{
 			Reply: nil,

@@ -172,14 +172,21 @@ func (w *WazeroRuntime) ClearWasmModule(key string) {
 
 }
 
-func (w *WazeroRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error) {
+func (w *WazeroRuntime) GetWasmModule(key string) (bool, WasmModule) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	module, exist := w.modules[key]
+	return exist, module
+}
+
+func (w *WazeroRuntime) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	module, exist := w.modules[key]
 	if exist {
 		return module, nil
 	}
-	module, err := w.initWasmModule(wasmBinaryName)
+	module, err := w.initWasmModule(wasmBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -187,32 +194,13 @@ func (w *WazeroRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (
 	return module, nil
 }
 
-// todo wasm: I think we should consider injecting the wasm module into the runtime, rather than calling GetWasmBytesByBinaryName here
-// todo wasm: because we'd better the runtime not to rely on the QueryEngine
-func (w *WazeroRuntime) initWasmModule(wasmBinaryName string) (WasmModule, error) {
-	wasmBytes, err := w.qe.GetWasmBytesByBinaryName(wasmBinaryName)
-	if err != nil {
-		return nil, err
-	}
+func (w *WazeroRuntime) initWasmModule(wasmBytes []byte) (WasmModule, error) {
 	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleHostVariables: make(map[string][]byte)}, nil
-
-}
-
-func (w *WazeroRuntime) GetWasmInstance(key string, wasmBinaryName string, qre *QueryExecutor) (WasmInstance, error) {
-	module, err := w.InitOrGetWasmModule(key, wasmBinaryName)
-	if err != nil {
-		return nil, err
-	}
-	instance, err := module.NewInstance(qre)
-	if err != nil {
-		return nil, err
-	}
-	return instance, nil
 }
 
 type WazeroModule struct {
