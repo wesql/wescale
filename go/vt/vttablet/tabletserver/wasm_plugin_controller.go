@@ -1,27 +1,25 @@
 package tabletserver
 
 import (
-	"log"
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
 )
 
-// todo, how to assin runtime better?
-// todo newborn22 5.14 2个runtime
 const WASMER = "wamser-go"
 const WAZERO = "wazero"
 
 var (
-	DefaultRuntime = WAZERO
-	Runtime        = WAZERO
+	RuntimeType = WAZERO
 )
 
-// todo
 func registerWasmFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&DefaultRuntime, "default_wasm_runtime", DefaultRuntime, "the default runtime for wasm plugin")
-	fs.StringVar(&Runtime, "wasm_runtime", Runtime, "the runtime for wasm plugin")
+	fs.StringVar(&RuntimeType, "wasm_runtime_type", WAZERO, "the runtime for wasm plugin. default is wazero.")
 }
 
 func init() {
@@ -39,38 +37,61 @@ type WasmPluginExchangeAfter struct {
 	Query string
 }
 
-// todo，删除ctrl，只用runtime?
 type WasmPluginController struct {
+	qe      *QueryEngine
 	Runtime WasmRuntime
 }
 
-// todo 确保单例
-// todo 是否可以动态更换runtime?
 func NewWasmPluginController(qe *QueryEngine) *WasmPluginController {
 	return &WasmPluginController{
+		qe:      qe,
 		Runtime: initWasmRuntime(qe),
 	}
 }
 
+func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, wasmBinaryName string) ([]byte, error) {
+	query := getQueryByName(wasmBinaryName)
+	qr, err := wpc.qe.ExecuteQuery(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : %v", wasmBinaryName, err)
+	}
+	if len(qr.Named().Rows) != 1 {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : qr len is %v instead of 1", wasmBinaryName, len(qr.Named().Rows))
+	}
+	binaryStr, err := qr.Named().Rows[0].ToString("data")
+	if err != nil {
+		return nil, err
+	}
+
+	// todo by newborn22,split into small func and test correctness
+	byteStrArray := strings.Split(binaryStr, " ")
+	bytes := make([]byte, 0)
+	for _, byteInt := range byteStrArray {
+		b, err := strconv.ParseUint(byteInt, 10, 8)
+		if err != nil {
+			return nil, fmt.Errorf("error when parsing action args: %v", err)
+		}
+		bytes = append(bytes, byte(b))
+	}
+	return bytes, nil
+}
+
 func initWasmRuntime(qe *QueryEngine) WasmRuntime {
-	switch Runtime {
+	switch RuntimeType {
 	//case WASMER:
 	//	return initWasmerRuntime(qe)
 	case WAZERO:
 		return initWazeroRuntime(qe)
 	default:
-		// todo, init a default runtime or panic?
-		log.Printf("runtime %v is not supported, use default runtime %v", Runtime, DefaultRuntime)
-		Runtime = DefaultRuntime
-		return initWasmRuntime(qe)
+		return initWazeroRuntime(qe)
 	}
 }
 
 type WasmRuntime interface {
 	GetRuntimeType() string
-	InitOrGetWasmModule(key string, wasmBinaryName string) (WasmModule, error)
+	GetWasmModule(key string) (bool, WasmModule)
+	InitWasmModule(key string, wasmBytes []byte) (WasmModule, error)
 	ClearWasmModule(key string)
-	GetWasmInstance(key string, wasmBinaryName string, qre *QueryExecutor) (WasmInstance, error)
 }
 
 type WasmModule interface {

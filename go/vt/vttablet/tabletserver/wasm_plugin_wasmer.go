@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"sync"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"github.com/wasmerio/wasmer-go/wasmer"
 )
 
@@ -25,14 +27,19 @@ func (*WasmerRuntime) GetRuntimeType() string {
 	return WASMER
 }
 
-func (w *WasmerRuntime) InitOrGetWasmModule(key string, wasmBinaryName string) (WasmInstance, error) {
+func (w *WasmerRuntime) GetModule(key string) (bool, WasmModule) {
+	log.Error("WasmerRuntime.GetWasmModule is not implemented")
+	return false, nil
+}
+
+func (w *WasmerRuntime) InitOrGetWasmModule(key string, wasmBytes []byte) (WasmInstance, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	instance, exist := w.instances[key]
 	if exist {
 		return instance, nil
 	}
-	instance, err := w.initWasmInstance(wasmBinaryName)
+	instance, err := w.initWasmInstance(wasmBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +53,7 @@ func (w *WasmerRuntime) ClearWasmInstance() {
 	w.instances = make(map[string]WasmInstance)
 }
 
-func (w *WasmerRuntime) initWasmInstance(wasmBinaryName string) (WasmInstance, error) {
-	wasmBytes, err := w.qe.GetWasmBytesByBinaryName(wasmBinaryName)
-	if err != nil {
-		return nil, err
-	}
-
+func (w *WasmerRuntime) initWasmInstance(wasmBytes []byte) (WasmInstance, error) {
 	// Compiles the modules
 	module, err := wasmer.NewModule(w.store, wasmBytes)
 	if err != nil {
