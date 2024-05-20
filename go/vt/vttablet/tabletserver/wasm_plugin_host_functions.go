@@ -2,9 +2,8 @@ package tabletserver
 
 import (
 	"context"
-	"unsafe"
-
 	"github.com/tetratelabs/wazero/api"
+	"unsafe"
 )
 
 func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroRuntime, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {

@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"log"
 	"reflect"
 	"sync"
 	"unsafe"
-
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
 )
 
 type WazeroRuntime struct {
@@ -128,18 +127,6 @@ func exportHostABI(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
 		Instantiate(ctx)
 	return err
 }
-
-type Status uint32
-
-const (
-	StatusOK              Status = 0
-	StatusNotFound        Status = 1
-	StatusBadArgument     Status = 2
-	StatusEmpty           Status = 7
-	StatusCasMismatch     Status = 8
-	StatusInternalFailure Status = 10
-	StatusUnimplemented   Status = 12
-)
 
 func ProxyGetQuery(hostInstancePtr uint64, dataPtrPtr **byte, dataSizePtr *int) Status {
 	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
