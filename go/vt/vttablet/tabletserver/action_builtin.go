@@ -309,37 +309,37 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 }
 
 func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	controller := qre.tsv.qe.wasmPluginController
-	wasmModuleCacheKey := p.GetRule().Name
-
-	ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
-	if !ok {
-		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
-		if err != nil {
-			return &ActionExecutionResponse{Err: err}
-		}
-		module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
-		if err != nil {
-			return &ActionExecutionResponse{Err: err}
-		}
-	}
-
-	instance, err2 := module.NewInstance(qre)
-	if err2 != nil {
-		return &ActionExecutionResponse{
-			Reply: nil,
-			Err:   err2,
-		}
-	}
-	args := ConvertQueryExecutorToWasmPluginExchangeAfter(qre)
-	rst, err2 := instance.RunWASMPluginAfter(args)
-	if err2 != nil {
-		return &ActionExecutionResponse{
-			Reply: nil,
-			Err:   err2,
-		}
-	}
-	ConvertWasmPluginExchangeToQueryExecutorAfter(qre, rst)
+	//controller := qre.tsv.qe.wasmPluginController
+	//wasmModuleCacheKey := p.GetRule().Name
+	//
+	//ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
+	//if !ok {
+	//	wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
+	//	if err != nil {
+	//		return &ActionExecutionResponse{Err: err}
+	//	}
+	//	module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+	//	if err != nil {
+	//		return &ActionExecutionResponse{Err: err}
+	//	}
+	//}
+	//
+	//instance, err2 := module.NewInstance(qre)
+	//if err2 != nil {
+	//	return &ActionExecutionResponse{
+	//		Reply: nil,
+	//		Err:   err2,
+	//	}
+	//}
+	//args := ConvertQueryExecutorToWasmPluginExchangeAfter(qre)
+	//rst, err2 := instance.RunWASMPluginAfter(args)
+	//if err2 != nil {
+	//	return &ActionExecutionResponse{
+	//		Reply: nil,
+	//		Err:   err2,
+	//	}
+	//}
+	//ConvertWasmPluginExchangeToQueryExecutorAfter(qre, rst)
 	return &ActionExecutionResponse{
 		Reply: reply,
 		Err:   err,

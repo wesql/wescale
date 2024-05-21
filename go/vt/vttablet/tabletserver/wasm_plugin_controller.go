@@ -3,9 +3,8 @@ package tabletserver
 import (
 	"context"
 	"fmt"
+
 	"github.com/spf13/pflag"
-	"strconv"
-	"strings"
 
 	"vitess.io/vitess/go/vt/servenv"
 )
@@ -54,22 +53,25 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 	if len(qr.Named().Rows) != 1 {
 		return nil, fmt.Errorf("get wasm binary by name %s failed : qr len is %v instead of 1", wasmBinaryName, len(qr.Named().Rows))
 	}
-	binaryStr, err := qr.Named().Rows[0].ToString("data")
-	if err != nil {
-		return nil, err
-	}
+	//binaryStr, err := qr.Named().Rows[0].ToString("data")
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// todo by newborn22,split into small func and test correctness
-	byteStrArray := strings.Split(binaryStr, " ")
-	bytes := make([]byte, 0)
-	for _, byteInt := range byteStrArray {
-		b, err := strconv.ParseUint(byteInt, 10, 8)
-		if err != nil {
-			return nil, fmt.Errorf("error when parsing action args: %v", err)
-		}
-		bytes = append(bytes, byte(b))
-	}
-	return bytes, nil
+	//byteStrArray := strings.Split(binaryStr, " ")
+	//bytes := make([]byte, 0)
+	//for _, byteInt := range byteStrArray {
+	//	b, err := strconv.ParseUint(byteInt, 10, 8)
+	//	if err != nil {
+	//		return nil, fmt.Errorf("error when parsing action args: %v", err)
+	//	}
+	//	bytes = append(bytes, byte(b))
+	//}
+
+	//return bytes, nil
+
+	return qr.Named().Rows[0].ToBytes("data")
 }
 
 func initWasmVM() WasmVM {

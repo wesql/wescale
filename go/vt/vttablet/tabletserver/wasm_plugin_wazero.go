@@ -2,9 +2,7 @@ package tabletserver
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 	"unsafe"
 
@@ -36,91 +34,100 @@ func initWazeroVM() *WazeroVM {
 
 func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
-		// SetGlobalValueByKeyHost
+		NewFunctionBuilder().
+		WithParameterNames("returnValuePtr", "returnValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, returnValueData, returnValueSize uint32) uint32 {
+			return GetAbiVersionOnHost(ctx, mod, returnValueData, returnValueSize)
+		}).
+		Export("GetAbiVersionOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("returnValuePtr", "returnValueSize").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, returnValueData, returnValueSize uint32) uint32 {
+			return GetRuntimeTypeOnHost(ctx, mod, returnValueData, returnValueSize)
+		}).
+		Export("GetRuntimeTypeOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("ptr", "size").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
+			return InfoLogOnHost(ctx, mod, ptr, size)
+		}).
+		Export("InfoLogOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("ptr", "size").
+		WithResultNames("callResult").
+		WithFunc(func(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
+			return ErrorLogOnHost(ctx, mod, ptr, size)
+		}).
+		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("keyPtr", "keySize", "valuePtr", "valueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetGlobalValueByKeyHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
+			return SetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
 		}).
-		Export("SetGlobalValueByKeyHost").
-
-		// GetGlobalValueByKeyHost
+		Export("SetGlobalValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("keyPtr", "keySize", "returnValuePtr", "returnValueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetGlobalValueByKeyHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
+			return GetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
-		Export("GetGlobalValueByKeyHost").
-
-		// SetModuleValueByKeyHost
+		Export("GetGlobalValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetModuleValueByKeyHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
+			return SetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
 		}).
-		Export("SetModuleValueByKeyHost").
-
-		// GetModuleValueByKeyHost
+		Export("SetModuleValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetModuleValueByKeyHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
+			return GetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
-		Export("GetModuleValueByKeyHost").
-
-		// GetQueryHost
+		Export("GetModuleValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
-			return GetQueryHost(ctx, mod, hostInstancePtr, returnValueData, returnValueSize)
+			return GetQueryOnHost(ctx, mod, hostInstancePtr, returnValueData, returnValueSize)
 		}).
-		Export("GetQueryHost").
-
-		// SetQueryHost
+		Export("GetQueryOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "queryValuePtr",
 			"queryValueSize").
 		WithResultNames("callResult").
 		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {
-			return SetQueryHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
+			return SetQueryOnHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
-		Export("SetQueryHost").
-
-		// GlobalLockHost
+		Export("SetQueryOnHost").
 		NewFunctionBuilder().
 		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalLockHost(wazeroRuntime)
+			GlobalLockOnHost(wazeroRuntime)
 		}).
-		Export("GlobalLockHost").
-
-		// GlobalUnlockHost
+		Export("GlobalLockOnHost").
 		NewFunctionBuilder().
 		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalUnLockHost(wazeroRuntime)
+			GlobalUnLockOnHost(wazeroRuntime)
 		}).
-		Export("GlobalUnlockHost").
-
-		// ModuleLockHost
+		Export("GlobalUnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleLockHost(hostModulePtr)
+			ModuleLockOnHost(hostModulePtr)
 		}).
-		Export("ModuleLockHost").
-
-		// ModuleUnlockHost
+		Export("ModuleLockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleUnLockHost(hostModulePtr)
+			ModuleUnLockOnHost(hostModulePtr)
 		}).
-		Export("ModuleUnLockHost").
+		Export("ModuleUnLockOnHost").
 		Instantiate(ctx)
 	return err
 }
@@ -229,65 +236,65 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 }
 
 func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {
-	ctx := context.Background()
-
-	// todo use const or something else?
-	wazeroGuestFuncAfterExecution := ins.instance.ExportedFunction("wazeroGuestFuncAfterExecution")
-	// These are undocumented, but exported. See tinygo-org/tinygo#2788
-	malloc := ins.instance.ExportedFunction("malloc")
-	free := ins.instance.ExportedFunction("free")
-
-	data, err := json.Marshal(args)
-	if err != nil {
-		return nil, err
-	}
-	dataStr := string(data)
-	dataLen := uint64(len(dataStr))
-
-	results, err := malloc.Call(ctx, dataLen)
-	if err != nil {
-		return nil, err
-	}
-	dataPtr := results[0]
-	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	// So, we have to free it when finished
-	defer free.Call(ctx, dataPtr)
-
-	// The pointer is a linear memory offset, which is where we write the data.
-	if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
-		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	}
-
-	ptrSize, err := wazeroGuestFuncAfterExecution.Call(ctx, dataPtr, uint64(len(dataStr)))
-	if err != nil {
-		log.Panicln(err)
-	}
-
-	rstFromGuestPtr := uint32(ptrSize[0] >> 32)
-	rstFromGuestSize := uint32(ptrSize[0])
-
-	// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	// So, we have to free it when finished
-	if rstFromGuestPtr != 0 {
-		defer func() {
-			_, err := free.Call(ctx, uint64(rstFromGuestPtr))
-			if err != nil {
-				fmt.Print(err.Error())
-			}
-		}()
-	}
-
-	// The pointer is a linear memory offset, which is where we write the name.
-	bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
-	if !ok {
-		return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-			dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	}
-	rst := &WasmPluginExchangeAfter{}
-	err = json.Unmarshal(bytes, rst)
-	return rst, err
-
+	//ctx := context.Background()
+	//
+	//// todo use const or something else?
+	//wazeroGuestFuncAfterExecution := ins.instance.ExportedFunction("wazeroGuestFuncAfterExecution")
+	//// These are undocumented, but exported. See tinygo-org/tinygo#2788
+	//malloc := ins.instance.ExportedFunction("malloc")
+	////free := ins.instance.ExportedFunction("free")
+	//
+	//data, err := json.Marshal(args)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//dataStr := string(data)
+	//dataLen := uint64(len(dataStr))
+	//
+	//results, err := malloc.Call(ctx, dataLen)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//dataPtr := results[0]
+	//// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+	//// So, we have to free it when finished
+	////defer free.Call(ctx, dataPtr)
+	//
+	//// The pointer is a linear memory offset, which is where we write the data.
+	//if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
+	//	return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
+	//		dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
+	//}
+	//
+	//ptrSize, err := wazeroGuestFuncAfterExecution.Call(ctx, dataPtr, uint64(len(dataStr)))
+	//if err != nil {
+	//	log.Panicln(err)
+	//}
+	//
+	//rstFromGuestPtr := uint32(ptrSize[0] >> 32)
+	//rstFromGuestSize := uint32(ptrSize[0])
+	//
+	//// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
+	//// So, we have to free it when finished
+	////if rstFromGuestPtr != 0 {
+	////	defer func() {
+	////		_, err := free.Call(ctx, uint64(rstFromGuestPtr))
+	////		if err != nil {
+	////			fmt.Print(err.Error())
+	////		}
+	////	}()
+	////}
+	//
+	//// The pointer is a linear memory offset, which is where we write the name.
+	//bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
+	//if !ok {
+	//	return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
+	//		dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
+	//}
+	//rst := &WasmPluginExchangeAfter{}
+	//err = json.Unmarshal(bytes, rst)
+	//return rst, err
+	return nil, nil
 }
 
 func (ins *WazeroInstance) Close() error {

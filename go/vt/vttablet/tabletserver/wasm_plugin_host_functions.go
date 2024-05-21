@@ -4,23 +4,43 @@ import (
 	"context"
 	"unsafe"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"github.com/tetratelabs/wazero/api"
 )
 
 //todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroVM'.
 //todo wasm: should not rely on tabletserver, should be a independent module. Now 'SetQueryHost' needs tabletserver.
 
-func GetAbiVersionHost(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
-	//todo
+func GetAbiVersionOnHost(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
+	return uint32(copyHostStringIntoGuest(ctx, mod, AbiVersion, returnValuePtr, returnValueSize))
+}
+
+func GetRuntimeTypeOnHost(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
+	return uint32(copyHostStringIntoGuest(ctx, mod, RuntimeType, returnValuePtr, returnValueSize))
+}
+
+func InfoLogOnHost(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
+	bytes, ok := mod.Memory().Read(ptr, size)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+	str := string(bytes)
+	log.Info(str)
 	return uint32(StatusOK)
 }
 
-func GetRuntimeType(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
-	//todo
+func ErrorLogOnHost(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
+	bytes, ok := mod.Memory().Read(ptr, size)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+	str := string(bytes)
+	log.Error(str)
 	return uint32(StatusOK)
 }
 
-func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+func SetGlobalValueByKeyOnHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()
 
@@ -39,7 +59,7 @@ func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	return uint32(StatusOK)
 }
 
-func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+func GetGlobalValueByKeyOnHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()
 
@@ -56,7 +76,7 @@ func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	return uint32(copyHostBytesIntoGuest(ctx, mod, wazeroRuntime.hostSharedVariables[key], returnValuePtr, returnValueSize))
 }
 
-func SetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+func SetModuleValueByKeyOnHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.mu.Lock()
 	defer module.mu.Unlock()
@@ -76,7 +96,7 @@ func SetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr 
 	return uint32(StatusOK)
 }
 
-func GetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+func GetModuleValueByKeyOnHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.mu.Lock()
 	defer module.mu.Unlock()
@@ -95,13 +115,13 @@ func GetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr 
 	return uint32(copyHostBytesIntoGuest(ctx, mod, module.moduleHostVariables[key], returnValuePtr, returnValueSize))
 }
 
-func GetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
+func GetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
 	returnValueSize uint32) uint32 {
 	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
 	return uint32(copyHostStringIntoGuest(ctx, mod, w.qre.query, returnValueData, returnValueSize))
 }
 
-func SetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {
+func SetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {
 	bytes, ok := mod.Memory().Read(queryValuePtr, queryValueSize)
 	if !ok {
 		return uint32(StatusInternalFailure)
@@ -114,20 +134,20 @@ func SetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, q
 	return uint32(StatusOK)
 }
 
-func GlobalLockHost(wazeroRuntime *WazeroVM) {
+func GlobalLockOnHost(wazeroRuntime *WazeroVM) {
 	wazeroRuntime.mu.Lock()
 }
 
-func GlobalUnLockHost(wazeroRuntime *WazeroVM) {
+func GlobalUnLockOnHost(wazeroRuntime *WazeroVM) {
 	wazeroRuntime.mu.Unlock()
 }
 
-func ModuleLockHost(hostModulePtr uint64) {
+func ModuleLockOnHost(hostModulePtr uint64) {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.moduleMu.Lock()
 }
 
-func ModuleUnLockHost(hostModulePtr uint64) {
+func ModuleUnLockOnHost(hostModulePtr uint64) {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.moduleMu.Unlock()
 }
