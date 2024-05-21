@@ -143,7 +143,7 @@ func (*WazeroRuntime) GetRuntimeType() string {
 }
 
 func (w *WazeroRuntime) InitRuntime() error {
-	w.runtime = wazero.NewRuntime(w.ctx)
+	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, wazero.NewRuntimeConfig().WithCompilationCache(wazero.NewCompilationCache()))
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	return exportHostABIV1(w.ctx, w)
 }
