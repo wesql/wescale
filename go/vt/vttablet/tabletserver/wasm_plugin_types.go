@@ -6,6 +6,7 @@ type WasmVM interface {
 	GetWasmModule(key string) (bool, WasmModule)
 	InitWasmModule(key string, wasmBytes []byte) (WasmModule, error)
 	ClearWasmModule(key string)
+	Close() error
 }
 
 type WasmModule interface {
