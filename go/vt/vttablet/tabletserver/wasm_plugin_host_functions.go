@@ -2,8 +2,9 @@ package tabletserver
 
 import (
 	"context"
-	"github.com/tetratelabs/wazero/api"
 	"unsafe"
+
+	"github.com/tetratelabs/wazero/api"
 )
 
 //todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroVM'.
@@ -52,10 +53,7 @@ func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	if !exist {
 		return uint32(StatusNotFound)
 	}
-
-	hostDataPtr := &wazeroRuntime.hostSharedVariables[key][0]
-	hostDataSize := len(wazeroRuntime.hostSharedVariables[key])
-	return uint32(copyHostBytesIntoGuest(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
+	return uint32(copyHostBytesIntoGuest(ctx, mod, wazeroRuntime.hostSharedVariables[key], returnValuePtr, returnValueSize))
 }
 
 func SetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
@@ -94,21 +92,13 @@ func GetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr 
 		return uint32(StatusNotFound)
 	}
 
-	hostDataPtr := &module.moduleHostVariables[key][0]
-	hostDataSize := len(module.moduleHostVariables[key])
-	return uint32(copyHostBytesIntoGuest(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
+	return uint32(copyHostBytesIntoGuest(ctx, mod, module.moduleHostVariables[key], returnValuePtr, returnValueSize))
 }
 
 func GetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
 	returnValueSize uint32) uint32 {
-	var returnValueHostPtr *byte
-	var returnValueSizePtr int
-	ret := uint32(ProxyGetQuery(hostInstancePtr, &returnValueHostPtr, &returnValueSizePtr))
-	if 0 != ret {
-		return ret
-	}
-	ret = uint32(copyHostBytesIntoGuest(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize))
-	return ret
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+	return uint32(copyHostStringIntoGuest(ctx, mod, w.qre.query, returnValueData, returnValueSize))
 }
 
 func SetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {

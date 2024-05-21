@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"reflect"
 	"sync"
 	"unsafe"
 
@@ -124,15 +123,6 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		Export("ModuleUnLockHost").
 		Instantiate(ctx)
 	return err
-}
-
-func ProxyGetQuery(hostInstancePtr uint64, dataPtrPtr **byte, dataSizePtr *int) Status {
-	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
-	data := []byte(w.qre.query)
-	*dataPtrPtr = &data[0]
-	dataSize := len(data)
-	*dataSizePtr = dataSize
-	return StatusOK
 }
 
 func (*WazeroVM) GetRuntimeType() string {
@@ -306,21 +296,15 @@ func (ins *WazeroInstance) Close() error {
 }
 
 func copyHostStringIntoGuest(ctx context.Context, mod api.Module, str string, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
-	//ptr, size := stringToPtr(str)
-	//return copyHostBytesIntoGuest(ctx, mod, ptr, size, wasmPtrPtr, wasmSizePtr)
-	//todo
-	return StatusOK
+	bytes := []byte(str)
+	return copyHostBytesIntoGuest(ctx, mod, bytes, wasmPtrPtr, wasmSizePtr)
 }
 
-func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
+func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, bytes []byte, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
+	size := len(bytes)
 	if size == 0 {
 		return StatusBadArgument
 	}
-	var hostSlice []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&hostSlice))
-	hdr.Data = uintptr(unsafe.Pointer(hostPtr))
-	hdr.Cap = size
-	hdr.Len = size
 
 	//todo wasm: why not use 'malloc' here?
 	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
@@ -333,7 +317,7 @@ func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, hostPtr *byte, 
 		return StatusInternalFailure
 	}
 
-	copy(buf, hostSlice)
+	copy(buf, bytes)
 	ok = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
 	if !ok {
 		return StatusInternalFailure
