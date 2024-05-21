@@ -35,7 +35,6 @@ func initWazeroVM() *WazeroVM {
 	return w
 }
 
-// todo by newborn22
 func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
 		// SetGlobalValueByKeyHost
@@ -150,8 +149,10 @@ func (w *WazeroVM) ClearWasmModule(key string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	if mod, exist := w.modules[key]; exist {
+		defer mod.Close()
+	}
 	delete(w.modules, key)
-
 }
 
 func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
@@ -212,6 +213,11 @@ func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
 		return nil, err
 	}
 	return &WazeroInstance{instance: instance, qre: qre, module: mod}, nil
+}
+
+func (mod *WazeroModule) Close() error {
+	mod.compliedModule.Close(mod.wazeroRuntime.ctx)
+	return nil
 }
 
 type WazeroInstance struct {
@@ -292,6 +298,11 @@ func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	err = json.Unmarshal(bytes, rst)
 	return rst, err
 
+}
+
+func (ins *WazeroInstance) Close() error {
+	ins.instance.Close(ins.module.wazeroRuntime.ctx)
+	return nil
 }
 
 func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) Status {

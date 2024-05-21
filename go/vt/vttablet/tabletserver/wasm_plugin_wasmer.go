@@ -112,6 +112,11 @@ func (ins *WasmerInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*W
 	return nil, nil
 }
 
+func (ins *WasmerInstance) Close() error {
+	ins.instance.Close()
+	return nil
+}
+
 func sendStructToWASI(args *WasmPluginExchange, clearBuf, writeBuf wasmer.NativeFunction) error {
 	_, err := clearBuf()
 	if err != nil {
