@@ -9,6 +9,16 @@ import (
 //todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroVM'.
 //todo wasm: should not rely on tabletserver, should be a independent module. Now 'SetQueryHost' needs tabletserver.
 
+func GetAbiVersionHost(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
+	//todo
+	return uint32(StatusOK)
+}
+
+func GetRuntimeType(ctx context.Context, mod api.Module, returnValuePtr uint32, returnValueSize uint32) uint32 {
+	//todo
+	return uint32(StatusOK)
+}
+
 func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()

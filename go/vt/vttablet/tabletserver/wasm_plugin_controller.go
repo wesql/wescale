@@ -10,9 +10,6 @@ import (
 	"vitess.io/vitess/go/vt/servenv"
 )
 
-const WASMER = "wamser-go"
-const WAZERO = "wazero"
-
 var (
 	RuntimeType = WAZERO
 )
