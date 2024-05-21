@@ -305,7 +305,7 @@ func (ins *WazeroInstance) Close() error {
 	return nil
 }
 
-func copyBytesToWasm(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
+func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, hostPtr *byte, size int, wasmPtrPtr uint32, wasmSizePtr uint32) Status {
 	if size == 0 {
 		return StatusBadArgument
 	}

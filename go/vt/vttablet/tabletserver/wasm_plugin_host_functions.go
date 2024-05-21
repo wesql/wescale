@@ -55,7 +55,7 @@ func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 
 	hostDataPtr := &wazeroRuntime.hostSharedVariables[key][0]
 	hostDataSize := len(wazeroRuntime.hostSharedVariables[key])
-	return uint32(copyBytesToWasm(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
+	return uint32(copyHostBytesIntoGuest(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
 }
 
 func SetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
@@ -96,7 +96,7 @@ func GetModuleValueByKeyHost(ctx context.Context, mod api.Module, hostModulePtr 
 
 	hostDataPtr := &module.moduleHostVariables[key][0]
 	hostDataSize := len(module.moduleHostVariables[key])
-	return uint32(copyBytesToWasm(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
+	return uint32(copyHostBytesIntoGuest(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
 }
 
 func GetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
@@ -107,7 +107,7 @@ func GetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, r
 	if 0 != ret {
 		return ret
 	}
-	ret = uint32(copyBytesToWasm(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize))
+	ret = uint32(copyHostBytesIntoGuest(ctx, mod, returnValueHostPtr, returnValueSizePtr, returnValueData, returnValueSize))
 	return ret
 }
 
