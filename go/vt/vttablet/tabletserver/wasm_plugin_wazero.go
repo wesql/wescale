@@ -20,10 +20,8 @@ type WazeroVM struct {
 	runtime wazero.Runtime
 	modules map[string]WasmModule
 
-	//todo by newborn22: 'sharedHostVariables' is a better name, because 'global' is not accurate, it is not shared between all vttablets
-	globalHostVariables map[string][]byte
-	//todo by newborn22: same as above
-	globalMu sync.Mutex
+	hostSharedVariables map[string][]byte
+	hostSharedMu        sync.Mutex
 }
 
 func initWazeroVM() *WazeroVM {
@@ -31,7 +29,7 @@ func initWazeroVM() *WazeroVM {
 	w := &WazeroVM{
 		ctx:                 ctx,
 		modules:             make(map[string]WasmModule),
-		globalHostVariables: make(map[string][]byte),
+		hostSharedVariables: make(map[string][]byte),
 	}
 	w.InitRuntime()
 	return w

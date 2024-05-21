@@ -24,7 +24,7 @@ func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 		return uint32(StatusInternalFailure)
 	}
 
-	wazeroRuntime.globalHostVariables[key] = valueBytes
+	wazeroRuntime.hostSharedVariables[key] = valueBytes
 	return uint32(StatusOK)
 }
 
@@ -38,13 +38,13 @@ func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	}
 	key := string(keyBytes)
 
-	_, exist := wazeroRuntime.globalHostVariables[key]
+	_, exist := wazeroRuntime.hostSharedVariables[key]
 	if !exist {
 		return uint32(StatusNotFound)
 	}
 
-	hostDataPtr := &wazeroRuntime.globalHostVariables[key][0]
-	hostDataSize := len(wazeroRuntime.globalHostVariables[key])
+	hostDataPtr := &wazeroRuntime.hostSharedVariables[key][0]
+	hostDataSize := len(wazeroRuntime.hostSharedVariables[key])
 	return uint32(copyBytesToWasm(ctx, mod, hostDataPtr, hostDataSize, returnValuePtr, returnValueSize))
 }
 
