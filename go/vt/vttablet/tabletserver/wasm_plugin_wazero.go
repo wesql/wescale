@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"log"
 	"reflect"
 	"sync"
 	"unsafe"
+
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 type WazeroRuntime struct {
@@ -142,7 +143,7 @@ func (*WazeroRuntime) GetRuntimeType() string {
 }
 
 func (w *WazeroRuntime) InitRuntime() error {
-	wazero.NewRuntime(w.ctx)
+	w.runtime = wazero.NewRuntime(w.ctx)
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	return exportHostABIV1(w.ctx, w)
 }
