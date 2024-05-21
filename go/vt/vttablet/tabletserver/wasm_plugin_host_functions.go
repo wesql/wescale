@@ -6,10 +6,10 @@ import (
 	"unsafe"
 )
 
-//todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroRuntime'.
+//todo wasm: add a abstract layer, should not rely on 'wazero' and 'WazeroVM'.
 //todo wasm: should not rely on tabletserver, should be a independent module. Now 'SetQueryHost' needs tabletserver.
 
-func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroRuntime, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()
 
@@ -28,7 +28,7 @@ func SetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime 
 	return uint32(StatusOK)
 }
 
-func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+func GetGlobalValueByKeyHost(ctx context.Context, mod api.Module, wazeroRuntime *WazeroVM, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
 	wazeroRuntime.mu.Lock()
 	defer wazeroRuntime.mu.Unlock()
 
@@ -114,11 +114,11 @@ func SetQueryHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, q
 	return uint32(StatusOK)
 }
 
-func GlobalLockHost(wazeroRuntime *WazeroRuntime) {
+func GlobalLockHost(wazeroRuntime *WazeroVM) {
 	wazeroRuntime.mu.Lock()
 }
 
-func GlobalUnLockHost(wazeroRuntime *WazeroRuntime) {
+func GlobalUnLockHost(wazeroRuntime *WazeroVM) {
 	wazeroRuntime.mu.Unlock()
 }
 

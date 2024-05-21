@@ -14,7 +14,7 @@ import (
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
-type WazeroRuntime struct {
+type WazeroVM struct {
 	mu      sync.Mutex
 	ctx     context.Context
 	runtime wazero.Runtime
@@ -26,9 +26,9 @@ type WazeroRuntime struct {
 	globalMu sync.Mutex
 }
 
-func initWazeroVM() *WazeroRuntime {
+func initWazeroVM() *WazeroVM {
 	ctx := context.Background()
-	w := &WazeroRuntime{
+	w := &WazeroVM{
 		ctx:                 ctx,
 		modules:             make(map[string]WasmModule),
 		globalHostVariables: make(map[string][]byte),
@@ -38,7 +38,7 @@ func initWazeroVM() *WazeroRuntime {
 }
 
 // todo by newborn22
-func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroRuntime) error {
+func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
 		// SetGlobalValueByKeyHost
 		NewFunctionBuilder().
@@ -138,17 +138,17 @@ func ProxyGetQuery(hostInstancePtr uint64, dataPtrPtr **byte, dataSizePtr *int) 
 	return StatusOK
 }
 
-func (*WazeroRuntime) GetRuntimeType() string {
+func (*WazeroVM) GetRuntimeType() string {
 	return WAZERO
 }
 
-func (w *WazeroRuntime) InitRuntime() error {
+func (w *WazeroVM) InitRuntime() error {
 	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, wazero.NewRuntimeConfig().WithCompilationCache(wazero.NewCompilationCache()))
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	return exportHostABIV1(w.ctx, w)
 }
 
-func (w *WazeroRuntime) ClearWasmModule(key string) {
+func (w *WazeroVM) ClearWasmModule(key string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -156,14 +156,14 @@ func (w *WazeroRuntime) ClearWasmModule(key string) {
 
 }
 
-func (w *WazeroRuntime) GetWasmModule(key string) (bool, WasmModule) {
+func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	module, exist := w.modules[key]
 	return exist, module
 }
 
-func (w *WazeroRuntime) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
+func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	module, exist := w.modules[key]
@@ -178,7 +178,7 @@ func (w *WazeroRuntime) InitWasmModule(key string, wasmBytes []byte) (WasmModule
 	return module, nil
 }
 
-func (w *WazeroRuntime) initWasmModule(wasmBytes []byte) (WasmModule, error) {
+func (w *WazeroVM) initWasmModule(wasmBytes []byte) (WasmModule, error) {
 	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err
@@ -187,8 +187,13 @@ func (w *WazeroRuntime) initWasmModule(wasmBytes []byte) (WasmModule, error) {
 	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleHostVariables: make(map[string][]byte)}, nil
 }
 
+func (w *WazeroVM) Close() error {
+	w.runtime.Close(w.ctx)
+	return nil
+}
+
 type WazeroModule struct {
-	wazeroRuntime  *WazeroRuntime
+	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
 
 	mu                  sync.Mutex
