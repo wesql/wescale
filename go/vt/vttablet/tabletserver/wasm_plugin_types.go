@@ -11,11 +11,13 @@ type WasmVM interface {
 
 type WasmModule interface {
 	NewInstance(qre *QueryExecutor) (WasmInstance, error)
+	Close() error
 }
 
 type WasmInstance interface {
 	RunWASMPlugin() error
 	RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error)
+	Close() error
 }
 
 type Status uint32
