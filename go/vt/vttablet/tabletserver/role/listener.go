@@ -27,6 +27,7 @@ import (
 )
 
 var (
+	mysqlRoleProbeEnable      = true
 	mysqlRoleProbeInterval    = 1 * time.Second
 	mysqlRoleProbeTimeout     = 1 * time.Second
 	mysqlRoleProbeUrlTemplate = "http://%s:%d/v1.0/getrole"
@@ -98,6 +99,7 @@ func setUpMysqlProbeServiceHost() {
 }
 
 func registerGCFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&mysqlRoleProbeEnable, "mysql_role_probe_enable", mysqlRoleProbeEnable, "enable mysql role probe. default is true")
 	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "mysql role probe interval")
 	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "mysql role probe timeout")
 	fs.StringVar(&mysqlRoleProbeUrlTemplate, "mysql_role_probe_url_template", mysqlRoleProbeUrlTemplate, "mysql role probe url template")
@@ -181,6 +183,10 @@ func (collector *Listener) probeLoop(ctx context.Context) {
 func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	collector.reconcileMutex.Lock()
 	defer collector.reconcileMutex.Unlock()
+
+	if !mysqlRoleProbeEnable {
+		return
+	}
 
 	setUpMysqlProbeServicePort()
 	setUpMysqlProbeServiceHost()
