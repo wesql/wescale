@@ -26,17 +26,6 @@ func init() {
 	servenv.OnParseFor("vttablet", registerWasmFlags)
 }
 
-// todo newborn22 5.14 -> data struct to funciton
-// 1.query
-type WasmPluginExchange struct {
-	Query string
-}
-
-// todo
-type WasmPluginExchangeAfter struct {
-	Query string
-}
-
 type WasmPluginController struct {
 	qe *QueryEngine
 	VM WasmVM

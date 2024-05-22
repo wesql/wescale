@@ -16,8 +16,9 @@ type WasmModule interface {
 
 type WasmInstance interface {
 	RunWASMPlugin() error
-	RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error)
+	RunWASMPluginAfter() error
 	Close() error
+	SetErrorMessage(message string)
 }
 
 type Status uint32
