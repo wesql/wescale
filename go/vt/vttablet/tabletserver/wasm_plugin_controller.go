@@ -1,8 +1,12 @@
 package tabletserver
 
 import (
+	"bytes"
+	"compress/bzip2"
 	"context"
+	"crypto/md5"
 	"fmt"
+	"io"
 
 	"github.com/spf13/pflag"
 
@@ -10,7 +14,8 @@ import (
 )
 
 var (
-	RuntimeType = WAZERO
+	RuntimeType                 = WAZERO
+	wasmBinaryCompressAlgorithm = "bzip2"
 )
 
 func registerWasmFlags(fs *pflag.FlagSet) {
@@ -44,6 +49,20 @@ func NewWasmPluginController(qe *QueryEngine) *WasmPluginController {
 	}
 }
 
+func UnCompressByBZip2(compressedData []byte) ([]byte, error) {
+	r := bzip2.NewReader(bytes.NewReader(compressedData))
+	decompressedData, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return decompressedData, nil
+}
+
+func CalcMd5String32(data []byte) string {
+	hash := md5.Sum(data)
+	return fmt.Sprintf("%x", hash)
+}
+
 func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, wasmBinaryName string) ([]byte, error) {
 	query := getQueryByName(wasmBinaryName)
 	qr, err := wpc.qe.ExecuteQuery(ctx, query)
@@ -53,25 +72,29 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 	if len(qr.Named().Rows) != 1 {
 		return nil, fmt.Errorf("get wasm binary by name %s failed : qr len is %v instead of 1", wasmBinaryName, len(qr.Named().Rows))
 	}
-	//binaryStr, err := qr.Named().Rows[0].ToString("data")
-	//if err != nil {
-	//	return nil, err
-	//}
 
-	// todo by newborn22,split into small func and test correctness
-	//byteStrArray := strings.Split(binaryStr, " ")
-	//bytes := make([]byte, 0)
-	//for _, byteInt := range byteStrArray {
-	//	b, err := strconv.ParseUint(byteInt, 10, 8)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("error when parsing action args: %v", err)
-	//	}
-	//	bytes = append(bytes, byte(b))
-	//}
+	compressAlgorithm := qr.Named().Rows[0].AsString("compress_algorithm", "")
+	if compressAlgorithm != wasmBinaryCompressAlgorithm {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : compress algorithm is %v instead of %v",
+			wasmBinaryName, compressAlgorithm, wasmBinaryCompressAlgorithm)
+	}
 
-	//return bytes, nil
+	compressedBytes, err := qr.Named().Rows[0].ToBytes("data")
+	if err != nil {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
+	}
 
-	return qr.Named().Rows[0].ToBytes("data")
+	originalBytes, err := UnCompressByBZip2(compressedBytes)
+	if err != nil {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
+	}
+
+	hash := CalcMd5String32(originalBytes)
+	hashInTable := qr.Named().Rows[0].AsString("hash_before_compress", "")
+	if hash != hashInTable {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : hash is not equal", wasmBinaryName)
+	}
+	return originalBytes, nil
 }
 
 func initWasmVM() WasmVM {
