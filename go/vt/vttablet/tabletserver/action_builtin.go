@@ -304,46 +304,26 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 	if err != nil {
 		return &ActionExecutionResponse{Err: err}
 	}
+
+	qre.ctx = context.WithValue(qre.ctx, "wasmInstance", instance)
+
 	err = instance.RunWASMPlugin()
 	return &ActionExecutionResponse{Err: err}
 }
 
 func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	//controller := qre.tsv.qe.wasmPluginController
-	//wasmModuleCacheKey := p.GetRule().Name
-	//
-	//ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
-	//if !ok {
-	//	wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
-	//	if err != nil {
-	//		return &ActionExecutionResponse{Err: err}
-	//	}
-	//	module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
-	//	if err != nil {
-	//		return &ActionExecutionResponse{Err: err}
-	//	}
-	//}
-	//
-	//instance, err2 := module.NewInstance(qre)
-	//if err2 != nil {
-	//	return &ActionExecutionResponse{
-	//		Reply: nil,
-	//		Err:   err2,
-	//	}
-	//}
-	//args := ConvertQueryExecutorToWasmPluginExchangeAfter(qre)
-	//rst, err2 := instance.RunWASMPluginAfter(args)
-	//if err2 != nil {
-	//	return &ActionExecutionResponse{
-	//		Reply: nil,
-	//		Err:   err2,
-	//	}
-	//}
-	//ConvertWasmPluginExchangeToQueryExecutorAfter(qre, rst)
-	return &ActionExecutionResponse{
-		Reply: reply,
-		Err:   err,
+	v := qre.ctx.Value("wasmInstance")
+	if v == nil {
+		return &ActionExecutionResponse{Reply: reply, Err: fmt.Errorf("fail to get wasm instance after query execution")}
 	}
+	instance := v.(WasmInstance)
+	defer instance.Close()
+	instance.SetErrorMessage(err.Error())
+	errFromGuest := instance.RunWASMPluginAfter()
+	if reply == nil && errFromGuest == nil {
+		return &ActionExecutionResponse{Reply: reply, Err: fmt.Errorf("unknown error in wasm plugin")}
+	}
+	return &ActionExecutionResponse{Reply: reply, Err: errFromGuest}
 }
 
 func (p *WasmPluginAction) ParseParams(argsStr string) (ActionArgs, error) {

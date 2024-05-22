@@ -158,6 +158,11 @@ func SetErrorMessageOnHost(ctx context.Context, mod api.Module, hostInstancePtr 
 	if !ok {
 		return uint32(StatusInternalFailure)
 	}
-	w.errMessageFromGuest = string(bytes)
+	w.errorMessage = string(bytes)
 	return uint32(StatusOK)
+}
+
+func GetErrorMessageOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+	return uint32(copyHostStringIntoGuest(ctx, mod, w.errorMessage, returnValueData, returnValueSize))
 }

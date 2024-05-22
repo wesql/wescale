@@ -134,6 +134,13 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 			return SetErrorMessageOnHost(ctx, mod, hostInstancePtr, errMessagePtr, errMessageSize)
 		}).
 		Export("SetErrorMessageOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
+		WithResultNames("callStatus").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, errMessagePtr, errMessageSize uint32) uint32 {
+			return GetErrorMessageOnHost(ctx, mod, hostInstancePtr, errMessagePtr, errMessageSize)
+		}).
+		Export("GetErrorMessageOnHost").
 		Instantiate(ctx)
 	return err
 }
@@ -227,8 +234,8 @@ type WazeroInstance struct {
 	instance api.Module
 	qre      *QueryExecutor
 
-	module              *WazeroModule
-	errMessageFromGuest string
+	module       *WazeroModule
+	errorMessage string
 }
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
@@ -242,72 +249,29 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 	if err != nil {
 		return err
 	}
-	if ins.errMessageFromGuest != "" {
-		return fmt.Errorf("error from wasm plugin: %s", ins.errMessageFromGuest)
+	if ins.errorMessage != "" {
+		return fmt.Errorf("error from wasm plugin at before execution stage: %s", ins.errorMessage)
 	}
 	return nil
 }
 
-func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {
-	//ctx := context.Background()
-	//
-	//// todo use const or something else?
-	//wazeroGuestFuncAfterExecution := ins.instance.ExportedFunction("wazeroGuestFuncAfterExecution")
-	//// These are undocumented, but exported. See tinygo-org/tinygo#2788
-	//malloc := ins.instance.ExportedFunction("malloc")
-	////free := ins.instance.ExportedFunction("free")
-	//
-	//data, err := json.Marshal(args)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//dataStr := string(data)
-	//dataLen := uint64(len(dataStr))
-	//
-	//results, err := malloc.Call(ctx, dataLen)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//dataPtr := results[0]
-	//// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	//// So, we have to free it when finished
-	////defer free.Call(ctx, dataPtr)
-	//
-	//// The pointer is a linear memory offset, which is where we write the data.
-	//if !ins.instance.Memory().Write(uint32(dataPtr), []byte(dataStr)) {
-	//	return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-	//		dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	//}
-	//
-	//ptrSize, err := wazeroGuestFuncAfterExecution.Call(ctx, dataPtr, uint64(len(dataStr)))
-	//if err != nil {
-	//	log.Panicln(err)
-	//}
-	//
-	//rstFromGuestPtr := uint32(ptrSize[0] >> 32)
-	//rstFromGuestSize := uint32(ptrSize[0])
-	//
-	//// This pointer is managed by TinyGo, but TinyGo is unaware of external usage.
-	//// So, we have to free it when finished
-	////if rstFromGuestPtr != 0 {
-	////	defer func() {
-	////		_, err := free.Call(ctx, uint64(rstFromGuestPtr))
-	////		if err != nil {
-	////			fmt.Print(err.Error())
-	////		}
-	////	}()
-	////}
-	//
-	//// The pointer is a linear memory offset, which is where we write the name.
-	//bytes, ok := ins.instance.Memory().Read(rstFromGuestPtr, rstFromGuestSize)
-	//if !ok {
-	//	return nil, fmt.Errorf("Memory.Write(%d, %d) out of range of memory size %d",
-	//		dataPtr, uint64(len(dataStr)), ins.instance.Memory().Size())
-	//}
-	//rst := &WasmPluginExchangeAfter{}
-	//err = json.Unmarshal(bytes, rst)
-	//return rst, err
-	return nil, nil
+func (ins *WazeroInstance) RunWASMPluginAfter() error {
+	ctx := context.Background()
+
+	wazeroGuestFunc := ins.instance.ExportedFunction("WazeroGuestFuncAfterExecution")
+
+	_, err := wazeroGuestFunc.Call(ctx)
+	if err != nil {
+		return err
+	}
+	if ins.errorMessage != "" {
+		return fmt.Errorf("error from wasm plugin at after execution stage: %s", ins.errorMessage)
+	}
+	return nil
+}
+
+func (ins *WazeroInstance) SetErrorMessage(message string) {
+	ins.errorMessage = message
 }
 
 func (ins *WazeroInstance) Close() error {
