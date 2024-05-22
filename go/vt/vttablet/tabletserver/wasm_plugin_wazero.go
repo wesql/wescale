@@ -3,12 +3,11 @@ package tabletserver
 import (
 	"context"
 	"fmt"
-	"sync"
-	"unsafe"
-
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
+	"sync"
+	"unsafe"
 )
 
 type WazeroVM struct {
@@ -36,56 +35,56 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 	_, err := wazeroRuntime.runtime.NewHostModuleBuilder("env").
 		NewFunctionBuilder().
 		WithParameterNames("returnValuePtr", "returnValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, returnValueData, returnValueSize uint32) uint32 {
 			return GetAbiVersionOnHost(ctx, mod, returnValueData, returnValueSize)
 		}).
 		Export("GetAbiVersionOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("returnValuePtr", "returnValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, returnValueData, returnValueSize uint32) uint32 {
 			return GetRuntimeTypeOnHost(ctx, mod, returnValueData, returnValueSize)
 		}).
 		Export("GetRuntimeTypeOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("ptr", "size").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
 			return InfoLogOnHost(ctx, mod, ptr, size)
 		}).
 		Export("InfoLogOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("ptr", "size").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, ptr, size uint32) uint32 {
 			return ErrorLogOnHost(ctx, mod, ptr, size)
 		}).
 		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 			return SetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
 		}).
 		Export("SetGlobalValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
 			return GetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
 		Export("GetGlobalValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
 			return SetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
 		}).
 		Export("SetModuleValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
 			return GetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
@@ -93,7 +92,7 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
 			return GetQueryOnHost(ctx, mod, hostInstancePtr, returnValueData, returnValueSize)
 		}).
@@ -101,7 +100,7 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "queryValuePtr",
 			"queryValueSize").
-		WithResultNames("callResult").
+		WithResultNames("callStatus").
 		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryValuePtr, queryValueSize uint32) uint32 {
 			return SetQueryOnHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
@@ -128,6 +127,13 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 			ModuleUnLockOnHost(hostModulePtr)
 		}).
 		Export("ModuleUnLockOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
+		WithResultNames("callStatus").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, errMessagePtr, errMessageSize uint32) uint32 {
+			return SetErrorMessageOnHost(ctx, mod, hostInstancePtr, errMessagePtr, errMessageSize)
+		}).
+		Export("SetErrorMessageOnHost").
 		Instantiate(ctx)
 	return err
 }
@@ -221,7 +227,8 @@ type WazeroInstance struct {
 	instance api.Module
 	qre      *QueryExecutor
 
-	module *WazeroModule
+	module              *WazeroModule
+	errMessageFromGuest string
 }
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
@@ -232,7 +239,13 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
 	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
 	_, err := wazeroGuestFunc.Call(ctx, instancePtr, modulePtr)
-	return err
+	if err != nil {
+		return err
+	}
+	if ins.errMessageFromGuest != "" {
+		return fmt.Errorf("error from wasm plugin: %s", ins.errMessageFromGuest)
+	}
+	return nil
 }
 
 func (ins *WazeroInstance) RunWASMPluginAfter(args *WasmPluginExchangeAfter) (*WasmPluginExchangeAfter, error) {

@@ -151,3 +151,13 @@ func ModuleUnLockOnHost(hostModulePtr uint64) {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.moduleMu.Unlock()
 }
+
+func SetErrorMessageOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, errMessagePtr, errMessageSize uint32) uint32 {
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+	bytes, ok := mod.Memory().Read(errMessagePtr, errMessageSize)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+	w.errMessageFromGuest = string(bytes)
+	return uint32(StatusOK)
+}
