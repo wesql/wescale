@@ -32,20 +32,20 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/schema"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 var (

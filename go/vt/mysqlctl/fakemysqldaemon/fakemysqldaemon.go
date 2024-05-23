@@ -25,16 +25,16 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/mysql/fakesqldb"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/dbconnpool"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/dbconnpool"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
 )
 
 // FakeMysqlDaemon implements MysqlDaemon and allows the user to fake

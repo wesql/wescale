@@ -24,12 +24,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/cmd/vtctldclient/cli"
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/cmd/vtctldclient/cli"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 var (

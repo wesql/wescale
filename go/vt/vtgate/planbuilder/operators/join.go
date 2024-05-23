@@ -17,10 +17,10 @@ limitations under the License.
 package operators
 
 import (
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/rewrite"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/rewrite"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 // Join represents a join. If we have a predicate, this is an inner join. If no predicate exists, it is a cross join

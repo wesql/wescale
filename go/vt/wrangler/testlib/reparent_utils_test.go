@@ -20,22 +20,22 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtctl/reparentutil/reparenttestutil"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil/reparenttestutil"
 
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/vtctl/reparentutil"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil"
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestShardReplicationStatuses(t *testing.T) {

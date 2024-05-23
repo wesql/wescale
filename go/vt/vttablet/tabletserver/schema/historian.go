@@ -24,15 +24,15 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/log"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/connpool"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 const getSchemaVersions = "select id, pos, ddl, time_updated, schemax from mysql.schema_version where id > %d order by id asc"

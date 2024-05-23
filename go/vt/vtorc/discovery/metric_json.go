@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtorc/collection"
+	"github.com/wesql/wescale/go/vt/vtorc/collection"
 )
 
 // formattedFloat is to force the JSON output to show 3 decimal places

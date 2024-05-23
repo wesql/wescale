@@ -19,7 +19,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/logutil"
 )
 
 type (

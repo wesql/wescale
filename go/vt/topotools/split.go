@@ -23,9 +23,9 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/key"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/key"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // ValidateForReshard returns an error if sourceShards cannot reshard into

@@ -24,16 +24,16 @@ import (
 	"strconv"
 	"testing"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var (

@@ -26,16 +26,16 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/log"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/srvtopo"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/log"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/srvtopo"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 )
 
 // Opcode is a number representing the opcode

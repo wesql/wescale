@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/utils"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"strings"
 
-	"vitess.io/vitess/go/vt/log"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/schema"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/log"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/olekukonko/tablewriter"
 )

@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver"
 )
 
 func init() {

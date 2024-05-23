@@ -26,14 +26,14 @@ import (
 	"errors"
 	"testing"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // TestMergeSortNormal tests the normal flow of a merge

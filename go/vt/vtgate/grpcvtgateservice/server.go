@@ -25,20 +25,20 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/callerid"
-	"vitess.io/vitess/go/vt/callinfo"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate"
-	"vitess.io/vitess/go/vt/vtgate/vtgateservice"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/callerid"
+	"github.com/wesql/wescale/go/vt/callinfo"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateservice"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	vtgateservicepb "vitess.io/vitess/go/vt/proto/vtgateservice"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	vtgateservicepb "github.com/wesql/wescale/go/vt/proto/vtgateservice"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 const (

@@ -31,12 +31,12 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/timer"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/timer"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 type (

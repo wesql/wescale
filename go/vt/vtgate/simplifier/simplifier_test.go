@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func TestFindAllExpressions(t *testing.T) {

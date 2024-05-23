@@ -22,13 +22,13 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // ShardReplicationInfo is the companion structure for ShardReplication.

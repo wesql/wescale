@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 var MycnfPath = "/tmp/my.cnf"

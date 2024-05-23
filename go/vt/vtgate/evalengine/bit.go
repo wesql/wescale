@@ -17,9 +17,9 @@ limitations under the License.
 package evalengine
 
 import (
-	"vitess.io/vitess/go/sqltypes"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/sqltypes"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 type (

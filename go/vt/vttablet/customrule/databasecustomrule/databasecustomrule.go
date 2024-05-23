@@ -13,13 +13,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vitess.io/vitess/go/vt/vttablet/customrule"
+	"github.com/wesql/wescale/go/vt/vttablet/customrule"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 // databaseCustomRuleSource is database based custom rule source name

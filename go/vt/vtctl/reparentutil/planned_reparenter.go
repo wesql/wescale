@@ -24,19 +24,19 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/event"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/topotools/events"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/event"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topotools/events"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // PlannedReparenter performs PlannedReparentShard operations.

@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/discovery"
 )
 
 // TestReplicationLagCache tests that the ring buffer in "replicationLagHistory"

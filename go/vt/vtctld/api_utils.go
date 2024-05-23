@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
-	"vitess.io/vitess/go/vt/discovery"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/discovery"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 )
 
 const (

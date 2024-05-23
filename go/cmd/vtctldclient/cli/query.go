@@ -21,7 +21,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // WriteQueryResultTable writes a QueryResult as a human-friendly table to the

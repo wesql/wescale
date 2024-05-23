@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // initShardArray returns the ShardReference array for the provided

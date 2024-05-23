@@ -28,11 +28,11 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/test/endtoend/reparent/utils"
-	"vitess.io/vitess/go/vt/log"
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/reparent/utils"
+	"github.com/wesql/wescale/go/vt/log"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
 )
 
 func TestPrimaryToSpareStateChangeImpossible(t *testing.T) {

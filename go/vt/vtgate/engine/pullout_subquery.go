@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 var _ Primitive = (*PulloutSubquery)(nil)

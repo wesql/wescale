@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtorc/logic"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtorc/logic"
 )
 
 // addStatusParts adds UI parts to the /debug/status page of VTOrc

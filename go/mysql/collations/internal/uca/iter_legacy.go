@@ -17,7 +17,7 @@ limitations under the License.
 package uca
 
 import (
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
 )
 
 type WeightIteratorLegacy struct {

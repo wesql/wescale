@@ -26,9 +26,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/mysql/collations/internal/uca"
-	"vitess.io/vitess/go/mysql/collations/tools/makecolldata/codegen"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/uca"
+	"github.com/wesql/wescale/go/mysql/collations/tools/makecolldata/codegen"
 )
 
 var Print8BitData = pflag.Bool("full8bit", false, "")

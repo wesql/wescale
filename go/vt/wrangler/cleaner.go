@@ -23,11 +23,11 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 const (

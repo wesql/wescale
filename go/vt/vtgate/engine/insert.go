@@ -30,20 +30,20 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/srvtopo"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/srvtopo"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 var _ Primitive = (*Insert)(nil)

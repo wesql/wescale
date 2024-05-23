@@ -29,25 +29,25 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtgate/logstats"
+	"github.com/wesql/wescale/go/vt/vtgate/logstats"
 
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/cache"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/srvtopo"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
+	"github.com/wesql/wescale/go/cache"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/srvtopo"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vttablet/sandboxconn"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 var executorVSchema = `

@@ -16,7 +16,7 @@ limitations under the License.
 
 package debug
 
-import "vitess.io/vitess/go/vt/vtadmin/cluster"
+import "github.com/wesql/wescale/go/vt/vtadmin/cluster"
 
 // API defines the interface needed to provide debug info for a vtadmin.API.
 // This is implemented by a private wrapper struct in package vtadmin, to

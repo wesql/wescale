@@ -19,7 +19,7 @@ package etcd2topo
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // EtcdVersion is etcd's idea of a version.

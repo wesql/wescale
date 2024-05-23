@@ -19,9 +19,9 @@ package tabletmanager
 import (
 	"fmt"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/schema"
-	"vitess.io/vitess/go/vt/vttablet/vexec"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/vttablet/vexec"
 
 	"context"
 )

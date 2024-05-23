@@ -22,10 +22,10 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // vdbClient is a wrapper on binlogplayer.DBClient.

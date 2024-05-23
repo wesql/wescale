@@ -19,11 +19,11 @@ package operators
 import (
 	"strings"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 )
 
 func (r *Route) findSysInfoRoutingPredicatesGen4(predicates []sqlparser.Expr, reservedVars *sqlparser.ReservedVars) error {

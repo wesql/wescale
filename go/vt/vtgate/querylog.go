@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"sync"
 
-	"vitess.io/vitess/go/streamlog"
+	"github.com/wesql/wescale/go/streamlog"
 )
 
 var (

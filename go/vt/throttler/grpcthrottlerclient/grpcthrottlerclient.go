@@ -24,12 +24,12 @@ import (
 
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/throttler/throttlerclient"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/throttler/throttlerclient"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	throttlerdatapb "vitess.io/vitess/go/vt/proto/throttlerdata"
-	throttlerservicepb "vitess.io/vitess/go/vt/proto/throttlerservice"
+	throttlerdatapb "github.com/wesql/wescale/go/vt/proto/throttlerdata"
+	throttlerservicepb "github.com/wesql/wescale/go/vt/proto/throttlerservice"
 )
 
 var (

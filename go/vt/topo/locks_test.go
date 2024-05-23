@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/internal/flag"
+	"github.com/wesql/wescale/go/internal/flag"
 )
 
 // TestGetLockTimeout tests the behaviour of

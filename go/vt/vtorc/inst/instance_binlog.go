@@ -20,7 +20,7 @@ import (
 	"errors"
 	"regexp"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // Event entries may contains table IDs (can be different for same tables on different servers)

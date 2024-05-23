@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/ini.v1"
 
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 func WriteVtGateConfig(filename string) error {

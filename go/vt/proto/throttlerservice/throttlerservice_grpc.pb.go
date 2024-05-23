@@ -11,7 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	throttlerdata "vitess.io/vitess/go/vt/proto/throttlerdata"
+	throttlerdata "github.com/wesql/wescale/go/vt/proto/throttlerdata"
 )
 
 // This is a compile-time assertion to ensure that this generated file

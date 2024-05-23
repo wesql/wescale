@@ -33,15 +33,15 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 const appendEntry = -1

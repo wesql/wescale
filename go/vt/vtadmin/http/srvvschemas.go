@@ -19,7 +19,7 @@ package http
 import (
 	"context"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // GetSrvVSchema implements the http wrapper for the /api/srvvschema/{cluster_id}/{cell} route.

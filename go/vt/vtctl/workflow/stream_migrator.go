@@ -25,20 +25,20 @@ import (
 
 	"google.golang.org/protobuf/encoding/prototext"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/schema"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
 )
 
 // StreamType is an enum representing the kind of stream.

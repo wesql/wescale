@@ -17,7 +17,7 @@ limitations under the License.
 package mysql
 
 import (
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
 )
 
 // PrimaryStatus holds replication information from SHOW MASTER STATUS.

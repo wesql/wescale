@@ -19,7 +19,7 @@ package planbuilder
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func TestValEqual(t *testing.T) {

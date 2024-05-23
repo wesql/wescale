@@ -22,10 +22,10 @@ import (
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topotools"
-	"vitess.io/vitess/go/vt/vtorc/db"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topotools"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
 )
 
 func TestSaveAndReadKeyspace(t *testing.T) {

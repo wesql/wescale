@@ -27,10 +27,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
-	"vitess.io/vitess/go/vt/tlstest"
-	"vitess.io/vitess/go/vt/vttls"
+	"github.com/wesql/wescale/go/vt/tlstest"
+	"github.com/wesql/wescale/go/vt/vttls"
 )
 
 // This file tests the handshake scenarios between our client and our server.

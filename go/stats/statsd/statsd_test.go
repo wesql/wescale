@@ -11,7 +11,7 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 func getBackend(t *testing.T) (StatsBackend, *net.UDPConn) {

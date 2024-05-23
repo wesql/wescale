@@ -30,14 +30,14 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/prototext"
 
-	"vitess.io/vitess/go/cache"
-	"vitess.io/vitess/go/flagutil"
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/log"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/throttler"
+	"github.com/wesql/wescale/go/cache"
+	"github.com/wesql/wescale/go/flagutil"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/log"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/throttler"
 )
 
 // These constants represent values for various config parameters.

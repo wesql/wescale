@@ -7,11 +7,11 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"vitess.io/vitess/go/sqltypes"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/ccl"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/sqltypes"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/ccl"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 type ContinueAction struct {

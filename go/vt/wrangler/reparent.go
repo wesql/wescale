@@ -27,15 +27,15 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"vitess.io/vitess/go/event"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/topotools/events"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
-	"vitess.io/vitess/go/vt/vtctl/reparentutil"
+	"github.com/wesql/wescale/go/event"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topotools/events"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 // ReparentTablet tells a tablet to reparent this tablet to the current

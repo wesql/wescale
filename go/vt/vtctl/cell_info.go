@@ -23,10 +23,10 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 // This file contains the Cells command group for vtctl.

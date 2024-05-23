@@ -20,8 +20,8 @@ import (
 	"errors"
 	"testing"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestRemoveUnhealthyTablets(t *testing.T) {

@@ -19,14 +19,14 @@ package tabletmanager
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
 	"context"
 
-	"vitess.io/vitess/go/tb"
-	"vitess.io/vitess/go/vt/callinfo"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/tb"
+	"github.com/wesql/wescale/go/vt/callinfo"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 )
 
 // This file contains the RPC method helpers for the tablet manager.

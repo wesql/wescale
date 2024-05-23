@@ -35,10 +35,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // This file contains the topodata.Tablet utility functions.

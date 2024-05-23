@@ -21,12 +21,12 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sqltypes"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/sqltypes"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
 )
 
 type TestReplicatorPlan struct {

@@ -25,7 +25,7 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	cache "k8s.io/client-go/tools/cache"
 
-	versioned "vitess.io/vitess/go/vt/topo/k8stopo/client/clientset/versioned"
+	versioned "github.com/wesql/wescale/go/vt/topo/k8stopo/client/clientset/versioned"
 )
 
 // NewInformerFunc takes versioned.Interface and time.Duration to return a SharedIndexInformer.

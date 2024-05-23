@@ -9,25 +9,25 @@ import (
 	"context"
 	"testing"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtctl"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver/testutil"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/vttablet/tmclienttest"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtctl"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver/testutil"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclienttest"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestGetSchema(t *testing.T) {

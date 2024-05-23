@@ -24,13 +24,13 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	throttlerdatapb "vitess.io/vitess/go/vt/proto/throttlerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	throttlerdatapb "github.com/wesql/wescale/go/vt/proto/throttlerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 type state string

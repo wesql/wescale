@@ -26,9 +26,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/mysql/collations/remote"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations/remote"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 type TextWithCollation struct {

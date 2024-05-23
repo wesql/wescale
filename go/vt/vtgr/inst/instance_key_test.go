@@ -25,7 +25,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
 )
 
 func init() {

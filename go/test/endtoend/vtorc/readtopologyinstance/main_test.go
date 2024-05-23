@@ -27,12 +27,12 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/test/endtoend/vtorc/utils"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/server"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/vtorc/utils"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/server"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"

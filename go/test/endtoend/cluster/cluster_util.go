@@ -34,12 +34,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	tmc "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	tmc "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 )
 
 var (

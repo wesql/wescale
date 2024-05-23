@@ -23,9 +23,9 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
-	vtv1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
+	vtv1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/apis/topo/v1beta1"
 )
 
 // ListDir is part of the topo.Conn interface.

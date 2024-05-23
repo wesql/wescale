@@ -25,9 +25,9 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
 
-	mysqlctlpb "vitess.io/vitess/go/vt/proto/mysqlctl"
+	mysqlctlpb "github.com/wesql/wescale/go/vt/proto/mysqlctl"
 )
 
 // server is our gRPC server.

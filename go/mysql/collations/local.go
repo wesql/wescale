@@ -21,8 +21,8 @@ package collations
 import (
 	"sync"
 
-	"vitess.io/vitess/go/internal/flag"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/internal/flag"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 var defaultEnv *Environment

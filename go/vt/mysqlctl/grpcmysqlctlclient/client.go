@@ -29,10 +29,10 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/mysqlctl/mysqlctlclient"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/mysqlctl/mysqlctlclient"
 
-	mysqlctlpb "vitess.io/vitess/go/vt/proto/mysqlctl"
+	mysqlctlpb "github.com/wesql/wescale/go/vt/proto/mysqlctl"
 )
 
 type client struct {

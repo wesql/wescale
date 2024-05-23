@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/logic"
-	"vitess.io/vitess/go/vt/vtorc/process"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/logic"
+	"github.com/wesql/wescale/go/vt/vtorc/process"
 )
 
 // vtorcAPI struct is created to implement the Handler interface to register

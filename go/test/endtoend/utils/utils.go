@@ -27,16 +27,16 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 func AssertDatabaseExists(t testing.TB, conn *mysql.Conn, dbName string) {

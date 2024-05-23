@@ -19,7 +19,7 @@ package events
 import (
 	"testing"
 
-	"vitess.io/vitess/go/event"
+	"github.com/wesql/wescale/go/event"
 )
 
 type testEvent struct {

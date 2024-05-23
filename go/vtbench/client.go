@@ -23,17 +23,17 @@ import (
 
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
-	"vitess.io/vitess/go/vt/vttablet/queryservice"
-	"vitess.io/vitess/go/vt/vttablet/tabletconn"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/vt/vttablet/queryservice"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletconn"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 type clientConn interface {

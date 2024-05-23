@@ -27,24 +27,24 @@ import (
 	"os"
 	"testing"
 
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/cache"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/test/utils"
-	_ "vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
+	"github.com/wesql/wescale/go/cache"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/test/utils"
+	_ "github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vttablet/sandboxconn"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 func TestSelectNext(t *testing.T) {

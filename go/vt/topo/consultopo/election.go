@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/consul/api"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // NewLeaderParticipation is part of the topo.Server interface

@@ -20,16 +20,16 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/internal/global"
+	"github.com/wesql/wescale/go/vt/servenv"
 
 	"golang.org/x/exp/slices"
 
-	stringutil "vitess.io/vitess/go/mysql/utils"
+	stringutil "github.com/wesql/wescale/go/mysql/utils"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vttablet/queryservice"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vttablet/queryservice"
 )
 
 var (

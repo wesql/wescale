@@ -20,20 +20,20 @@ import (
 	"context"
 	"errors"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/logutil"
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtorc/db"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/logutil"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 )
 
 // TopoServ is the connection to the topo server.

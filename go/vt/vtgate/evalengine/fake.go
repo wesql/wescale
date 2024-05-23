@@ -12,10 +12,10 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 
-	"vitess.io/vitess/go/vt/vtgate/evalengine/internal/decimal"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine/internal/decimal"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 type builtinGofakeitByType struct{}

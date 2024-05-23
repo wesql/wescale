@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/srvtopo"
-	_ "vitess.io/vitess/go/vt/status"
-	"vitess.io/vitess/go/vt/vtgate"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/srvtopo"
+	_ "github.com/wesql/wescale/go/vt/status"
+	"github.com/wesql/wescale/go/vt/vtgate"
 )
 
 func addStatusParts(vtg *vtgate.VTGate) {

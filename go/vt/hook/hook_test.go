@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	vtenv "vitess.io/vitess/go/vt/env"
+	vtenv "github.com/wesql/wescale/go/vt/env"
 )
 
 func TestExecuteContext(t *testing.T) {

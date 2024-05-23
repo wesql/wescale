@@ -22,16 +22,16 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/vt/servenv"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // tabletManagerProtocol is the implementation to use for tablet

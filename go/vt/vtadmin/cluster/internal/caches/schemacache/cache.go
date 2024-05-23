@@ -24,15 +24,15 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	"vitess.io/vitess/go/vt/vtadmin/cache"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/vt/vtadmin/cache"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // Key is the cache key for vtadmin's schema caches.

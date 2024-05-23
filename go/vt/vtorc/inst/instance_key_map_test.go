@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
 )
 
 func init() {

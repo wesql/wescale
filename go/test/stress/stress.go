@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 const (

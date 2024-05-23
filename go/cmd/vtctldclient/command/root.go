@@ -25,9 +25,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtctl/vtctldclient"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctldclient"
 )
 
 var (

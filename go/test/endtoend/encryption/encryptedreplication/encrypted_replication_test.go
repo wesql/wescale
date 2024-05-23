@@ -25,9 +25,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/test/endtoend/encryption"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/encryption"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 var (

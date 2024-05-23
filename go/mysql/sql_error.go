@@ -22,10 +22,10 @@ import (
 	"regexp"
 	"strconv"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // SQLError is the error structure returned from calling a db library function

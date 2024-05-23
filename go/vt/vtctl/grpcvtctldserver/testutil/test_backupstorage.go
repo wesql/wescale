@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"sort"
 
-	"vitess.io/vitess/go/vt/mysqlctl/backupstorage"
+	"github.com/wesql/wescale/go/vt/mysqlctl/backupstorage"
 )
 
 type backupStorage struct {

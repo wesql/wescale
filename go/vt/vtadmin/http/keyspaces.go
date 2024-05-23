@@ -23,10 +23,10 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"vitess.io/vitess/go/vt/vtadmin/errors"
+	"github.com/wesql/wescale/go/vt/vtadmin/errors"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 // CreateKeyspace implements the http wrapper for POST /keyspace/{cluster_id}.

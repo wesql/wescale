@@ -24,8 +24,8 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/tableacl"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/tableacl"
 )
 
 // Permission associates the required access permission

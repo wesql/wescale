@@ -16,7 +16,7 @@ limitations under the License.
 
 package trace
 
-import "vitess.io/vitess/go/vt/log"
+import "github.com/wesql/wescale/go/vt/log"
 
 // traceLogger wraps the standard vitess log package to satisfy the datadog and
 // jaeger logger interfaces.

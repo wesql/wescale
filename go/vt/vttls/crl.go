@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 type verifyPeerCertificateFunc func([][]byte, [][]*x509.Certificate) error

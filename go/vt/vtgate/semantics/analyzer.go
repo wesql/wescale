@@ -17,11 +17,11 @@ limitations under the License.
 package semantics
 
 import (
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // analyzer controls the flow of the analysis.

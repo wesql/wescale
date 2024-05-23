@@ -26,7 +26,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/stretchr/testify/require"
 )

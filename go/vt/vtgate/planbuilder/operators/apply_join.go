@@ -20,11 +20,11 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 // ApplyJoin is a nested loop join - for each row on the LHS,

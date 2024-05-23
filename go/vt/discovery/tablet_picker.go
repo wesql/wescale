@@ -29,24 +29,24 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/internal/global"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletconn"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletconn"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"context"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vterrors"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var (

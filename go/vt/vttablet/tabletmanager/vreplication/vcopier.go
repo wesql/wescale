@@ -30,22 +30,22 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/bytes2"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/log"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/bytes2"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/log"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 type vcopier struct {

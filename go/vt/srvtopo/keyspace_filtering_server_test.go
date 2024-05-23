@@ -23,11 +23,11 @@ import (
 	"sync"
 	"testing"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	"vitess.io/vitess/go/vt/srvtopo/srvtopotest"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	"github.com/wesql/wescale/go/vt/srvtopo/srvtopotest"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
 )
 
 var (

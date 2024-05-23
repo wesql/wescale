@@ -25,10 +25,10 @@ import (
 	"strconv"
 	"strings"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sysvars"
-	"vitess.io/vitess/go/vt/vterrors"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sysvars"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var (

@@ -19,7 +19,7 @@ package k8stopo
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // KubernetesVersion is Kubernetes's idea of a version.

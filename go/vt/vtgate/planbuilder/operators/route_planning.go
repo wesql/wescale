@@ -21,21 +21,21 @@ import (
 	"fmt"
 	"io"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/rewrite"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/rewrite"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
 
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-	"vitess.io/vitess/go/vt/vtgate/semantics"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/semantics"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 type (

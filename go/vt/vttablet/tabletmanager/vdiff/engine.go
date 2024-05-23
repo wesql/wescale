@@ -24,19 +24,19 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	"vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 type Engine struct {

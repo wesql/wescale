@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 func TestLoadOptions(t *testing.T) {

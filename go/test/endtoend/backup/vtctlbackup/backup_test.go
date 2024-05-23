@@ -19,7 +19,7 @@ package vtctlbackup
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
 )
 
 // TestBackupMain - main tests backup using vtctl commands

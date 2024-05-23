@@ -24,11 +24,11 @@ import (
 	"strings"
 	"sync"
 
-	"vitess.io/vitess/go/bytes2"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/bytes2"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // Collation is a generic implementation of the Collation interface

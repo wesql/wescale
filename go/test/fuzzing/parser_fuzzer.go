@@ -20,8 +20,8 @@ limitations under the License.
 package fuzzing
 
 import (
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/sqlparser"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )

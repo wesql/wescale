@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtgr/config"
-	"vitess.io/vitess/go/vt/vtgr/ssl"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/ssl"
 )
 
 /*

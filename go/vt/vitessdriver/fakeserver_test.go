@@ -24,12 +24,12 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/sqltypes"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	"vitess.io/vitess/go/vt/vtgate/vtgateservice"
+	"github.com/wesql/wescale/go/sqltypes"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateservice"
 )
 
 // fakeVTGateService has the server side of this fake

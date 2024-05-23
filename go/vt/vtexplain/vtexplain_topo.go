@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"sync"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 // ExplainTopo satisfies the srvtopo.Server interface.

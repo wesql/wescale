@@ -22,10 +22,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/event"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo/events"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/event"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo/events"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // ExternalVitessClusterInfo is a meta struct that contains metadata to give the

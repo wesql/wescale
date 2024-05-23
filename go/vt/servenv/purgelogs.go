@@ -17,7 +17,7 @@ limitations under the License.
 package servenv
 
 import (
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/logutil"
 )
 
 func init() {

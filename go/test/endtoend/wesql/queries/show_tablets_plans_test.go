@@ -12,10 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/test/endtoend/utils"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/test/endtoend/utils"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 func aliasCount(qr *sqltypes.Result) int {

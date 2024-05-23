@@ -19,5 +19,5 @@ package main
 // Imports and register the gRPC throttler server.
 
 import (
-	_ "vitess.io/vitess/go/vt/throttler/grpcthrottlerserver"
+	_ "github.com/wesql/wescale/go/vt/throttler/grpcthrottlerserver"
 )

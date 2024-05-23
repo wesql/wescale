@@ -22,8 +22,8 @@ import (
 	"sync"
 	"unsafe"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/mysql/collations/internal/uca"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/uca"
 )
 
 func init() {

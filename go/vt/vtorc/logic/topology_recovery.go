@@ -26,18 +26,18 @@ import (
 
 	"github.com/patrickmn/go-cache"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtctl/reparentutil"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/util"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/util"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 )
 
 type RecoveryType string

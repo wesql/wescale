@@ -21,11 +21,11 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/hack"
-	"vitess.io/vitess/go/sqltypes"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/evalengine/internal/decimal"
+	"github.com/wesql/wescale/go/hack"
+	"github.com/wesql/wescale/go/sqltypes"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine/internal/decimal"
 )
 
 // evalengine represents a numeric value extracted from

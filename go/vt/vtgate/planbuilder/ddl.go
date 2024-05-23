@@ -8,12 +8,12 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 )
 
 type fkStrategy int

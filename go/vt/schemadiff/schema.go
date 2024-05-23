@@ -24,7 +24,7 @@ import (
 	"sort"
 	"strings"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // Schema represents a database schema, which may contain entities such as tables and views.

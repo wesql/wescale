@@ -16,7 +16,7 @@ limitations under the License.
 
 package evalengine
 
-import "vitess.io/vitess/go/sqltypes"
+import "github.com/wesql/wescale/go/sqltypes"
 
 type (
 	UnaryExpr struct {

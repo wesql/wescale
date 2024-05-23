@@ -29,9 +29,9 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
 )
 
 // QueueMetric contains the queue's active and queued sizes

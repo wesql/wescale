@@ -15,10 +15,10 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	discovery "vitess.io/vitess/go/vt/discovery"
-	query "vitess.io/vitess/go/vt/proto/query"
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	queryservice "vitess.io/vitess/go/vt/vttablet/queryservice"
+	discovery "github.com/wesql/wescale/go/vt/discovery"
+	query "github.com/wesql/wescale/go/vt/proto/query"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	queryservice "github.com/wesql/wescale/go/vt/vttablet/queryservice"
 )
 
 // MockHealthCheck is a mock of HealthCheck interface.

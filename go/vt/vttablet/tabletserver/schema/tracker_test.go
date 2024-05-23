@@ -28,9 +28,9 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/sqltypes"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/sqltypes"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 func _TestTracker(t *testing.T) {

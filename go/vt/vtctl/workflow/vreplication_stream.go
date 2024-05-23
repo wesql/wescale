@@ -23,9 +23,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
 )
 
 // VReplicationStream represents a single stream of a vreplication workflow.

@@ -29,12 +29,12 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgr/db"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgr/db"
 )
 
 var pingTabletTimeout = 2 * time.Second

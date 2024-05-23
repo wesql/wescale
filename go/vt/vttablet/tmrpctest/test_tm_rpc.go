@@ -28,19 +28,19 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // fakeRPCTM implements tabletmanager.RPCTM and fills in all

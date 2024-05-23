@@ -26,20 +26,20 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/discovery"
 
 	"context"
 
-	"vitess.io/vitess/go/mysql/fakesqldb"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // TestApplySchema_AllowLongUnavailability is an integration test for the

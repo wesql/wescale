@@ -25,5 +25,5 @@ package vtconsensus
 
 import (
 	// register the gRPC tabletmanager client
-	_ "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 )

@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/assert"
 )

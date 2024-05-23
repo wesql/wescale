@@ -24,14 +24,14 @@ import (
 
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/vtctl/grpcclientcommon"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcclientcommon"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
 )
 
 type gRPCVtctlClient struct {

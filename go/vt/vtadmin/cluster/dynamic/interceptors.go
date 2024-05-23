@@ -8,10 +8,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtadmin/cluster"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // StreamServerInterceptor returns a StreamServerInterceptor that redirects a

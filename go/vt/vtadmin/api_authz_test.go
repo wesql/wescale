@@ -32,20 +32,20 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtadmin"
-	"vitess.io/vitess/go/vt/vtadmin/cluster"
-	"vitess.io/vitess/go/vt/vtadmin/rbac"
-	"vitess.io/vitess/go/vt/vtadmin/testutil"
-	"vitess.io/vitess/go/vt/vtadmin/vtctldclient/fakevtctldclient"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtadmin"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster"
+	"github.com/wesql/wescale/go/vt/vtadmin/rbac"
+	"github.com/wesql/wescale/go/vt/vtadmin/testutil"
+	"github.com/wesql/wescale/go/vt/vtadmin/vtctldclient/fakevtctldclient"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	mysqlctlpb "vitess.io/vitess/go/vt/proto/mysqlctl"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	mysqlctlpb "github.com/wesql/wescale/go/vt/proto/mysqlctl"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 func TestCreateKeyspace(t *testing.T) {

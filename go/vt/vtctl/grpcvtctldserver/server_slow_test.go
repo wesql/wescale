@@ -24,18 +24,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver/testutil"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver/testutil"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
-	"vitess.io/vitess/go/vt/proto/vttime"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
+	"github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 func TestEmergencyReparentShardSlow(t *testing.T) {

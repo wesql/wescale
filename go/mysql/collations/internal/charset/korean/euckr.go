@@ -19,7 +19,7 @@ package korean
 import (
 	"unicode/utf8"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset/types"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/types"
 )
 
 type Charset_euckr struct{}

@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"testing"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,11 +35,11 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/vttablet/sandboxconn"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestMySQLProtocolExecute(t *testing.T) {

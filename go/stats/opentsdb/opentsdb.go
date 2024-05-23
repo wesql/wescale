@@ -29,8 +29,8 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 var openTsdbURI string

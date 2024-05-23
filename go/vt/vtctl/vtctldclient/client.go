@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
 )
 
 type VtctldClient interface {

@@ -29,10 +29,10 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/vttest"
+	"github.com/wesql/wescale/go/vt/vttest"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
 )
 
 func _TestVtclient(t *testing.T) {

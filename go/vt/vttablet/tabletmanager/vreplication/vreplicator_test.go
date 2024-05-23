@@ -33,18 +33,18 @@ import (
 	"time"
 	"unicode"
 
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
 	"github.com/buger/jsonparser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	"vitess.io/vitess/go/vt/schemadiff"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	"github.com/wesql/wescale/go/vt/schemadiff"
 )
 
 func TestRecalculatePKColsInfoByColumnNames(t *testing.T) {

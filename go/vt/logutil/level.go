@@ -17,7 +17,7 @@ limitations under the License.
 package logutil
 
 import (
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 )
 
 func init() {

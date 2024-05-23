@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/test/endtoend/utils"
+	"github.com/wesql/wescale/go/test/endtoend/utils"
 )
 
 func TestSimpleInsertSelect(t *testing.T) {

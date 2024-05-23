@@ -20,16 +20,16 @@ import (
 	"context"
 	"sync"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/srvtopo"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/srvtopo"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 var _ VSchemaOperator = (*VSchemaManager)(nil)

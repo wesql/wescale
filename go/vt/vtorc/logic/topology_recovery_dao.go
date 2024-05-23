@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"strings"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/db"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/process"
-	"vitess.io/vitess/go/vt/vtorc/util"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/process"
+	"github.com/wesql/wescale/go/vt/vtorc/util"
 )
 
 // AttemptFailureDetectionRegistration tries to add a failure-detection entry; if this fails that means the problem has already been detected

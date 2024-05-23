@@ -30,7 +30,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/mysql/collations/tools/makecolldata/codegen"
+	"github.com/wesql/wescale/go/mysql/collations/tools/makecolldata/codegen"
 )
 
 type versionInfo struct {

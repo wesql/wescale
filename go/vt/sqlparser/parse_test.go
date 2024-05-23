@@ -34,7 +34,7 @@ import (
 	"sync"
 	"testing"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
 	"github.com/google/go-cmp/cmp"
 

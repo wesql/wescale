@@ -18,7 +18,7 @@ limitations under the License.
 package services
 
 import (
-	"vitess.io/vitess/go/vt/vtgate/vtgateservice"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateservice"
 )
 
 // CreateServices creates the implementation chain of all the test cases

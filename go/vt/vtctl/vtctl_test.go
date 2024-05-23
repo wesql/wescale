@@ -31,10 +31,10 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/sqltypes"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/wrangler"
 )
 
 // TestMoveTables tests the the MoveTables client command

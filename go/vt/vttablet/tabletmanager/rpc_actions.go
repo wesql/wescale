@@ -27,12 +27,12 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/topotools"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/topotools"
 
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // DBAction is used to tell ChangeTabletType whether to call SetReadOnly on change to

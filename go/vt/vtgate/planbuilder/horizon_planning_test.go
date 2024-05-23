@@ -21,9 +21,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/vtgate/semantics"
+	"github.com/wesql/wescale/go/vt/vtgate/semantics"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func TestCheckIfAlreadyExists(t *testing.T) {

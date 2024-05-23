@@ -19,7 +19,7 @@ package vschemaacl
 import (
 	"testing"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 func TestVschemaAcl(t *testing.T) {

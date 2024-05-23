@@ -24,16 +24,16 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/mysqlctl/backupstorage"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl/backupstorage"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 func init() {

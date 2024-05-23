@@ -21,11 +21,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vtorc/db"
-	"vitess.io/vitess/go/vt/vtorc/test"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtorc/test"
 )
 
 // TestGetReplicationAnalysisDecision tests the code of GetReplicationAnalysis decision-making. It doesn't check the SQL query

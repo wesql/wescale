@@ -25,22 +25,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/vt/servenv"
 
-	"vitess.io/vitess/go/sqlescape"
+	"github.com/wesql/wescale/go/sqlescape"
 
 	proxyproto "github.com/pires/go-proxyproto"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/tb"
-	"vitess.io/vitess/go/vt/log"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/tb"
+	"github.com/wesql/wescale/go/vt/log"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 const (

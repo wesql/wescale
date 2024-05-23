@@ -33,7 +33,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/servenv"
 
 	"github.com/spf13/pflag"
 
@@ -43,11 +43,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
-	vtv1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1"
-	vtkube "vitess.io/vitess/go/vt/topo/k8stopo/client/clientset/versioned"
-	vttyped "vitess.io/vitess/go/vt/topo/k8stopo/client/clientset/versioned/typed/topo/v1beta1"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
+	vtv1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/apis/topo/v1beta1"
+	vtkube "github.com/wesql/wescale/go/vt/topo/k8stopo/client/clientset/versioned"
+	vttyped "github.com/wesql/wescale/go/vt/topo/k8stopo/client/clientset/versioned/typed/topo/v1beta1"
 )
 
 var kubeconfigPath, configContext, configNamespace string

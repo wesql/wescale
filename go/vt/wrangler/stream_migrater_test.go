@@ -28,11 +28,11 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vtctl/workflow"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/vtctl/workflow"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 var (

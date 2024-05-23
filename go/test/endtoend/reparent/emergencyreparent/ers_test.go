@@ -24,9 +24,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/test/endtoend/reparent/utils"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/reparent/utils"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 func TestTrivialERS(t *testing.T) {

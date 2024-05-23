@@ -29,7 +29,7 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 const DateTimeFormat = "2006-01-02 15:04:05.999999"

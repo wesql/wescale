@@ -19,8 +19,8 @@ package discovery
 import (
 	"strings"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 )
 
 // This file contains helper filter methods to process the unfiltered list of

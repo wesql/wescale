@@ -19,9 +19,9 @@ package tabletmanager
 import (
 	"context"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // VReplicationExec executes a vreplication command.

@@ -31,8 +31,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 )
 
 var (

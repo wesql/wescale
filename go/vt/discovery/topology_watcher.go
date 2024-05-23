@@ -25,18 +25,18 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	"vitess.io/vitess/go/vt/key"
+	"github.com/wesql/wescale/go/vt/key"
 
 	"context"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/trace"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/trace"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 const (

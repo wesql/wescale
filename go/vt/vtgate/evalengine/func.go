@@ -28,11 +28,11 @@ import (
 	"math/bits"
 	"math/rand"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/sqltypes"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var builtinFunctions = map[string]builtin{

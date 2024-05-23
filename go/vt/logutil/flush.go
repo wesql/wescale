@@ -17,7 +17,7 @@ limitations under the License.
 package logutil
 
 import (
-	"vitess.io/vitess/go/event"
+	"github.com/wesql/wescale/go/event"
 )
 
 var (

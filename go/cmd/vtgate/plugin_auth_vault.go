@@ -19,8 +19,8 @@ package main
 // This plugin imports InitAuthServerVault to register the HashiCorp Vault implementation of AuthServer.
 
 import (
-	"vitess.io/vitess/go/mysql/vault"
-	"vitess.io/vitess/go/vt/vtgate"
+	"github.com/wesql/wescale/go/mysql/vault"
+	"github.com/wesql/wescale/go/vt/vtgate"
 )
 
 func init() {

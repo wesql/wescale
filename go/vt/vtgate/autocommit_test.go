@@ -25,14 +25,14 @@ import (
 	"context"
 	"testing"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 // This file contains tests for all the autocommit code paths

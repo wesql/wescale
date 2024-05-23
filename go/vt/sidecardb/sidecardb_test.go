@@ -29,14 +29,14 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 
-	"vitess.io/vitess/go/mysql/fakesqldb"
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // TestInitErrors validates that the schema init error stats are being correctly set

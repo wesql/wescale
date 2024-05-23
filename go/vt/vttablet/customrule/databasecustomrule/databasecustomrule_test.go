@@ -8,13 +8,13 @@ package databasecustomrule
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/customrule"
+	"github.com/wesql/wescale/go/vt/vttablet/customrule"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vttablet/tabletservermock"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletservermock"
 )
 
 func TestGetReloadSqlWithDefaultValues(t *testing.T) {

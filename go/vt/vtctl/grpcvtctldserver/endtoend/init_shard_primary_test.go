@@ -21,23 +21,23 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql/fakesqldb"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
-	"vitess.io/vitess/go/vt/vttablet/tabletservermock"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/wrangler"
-	"vitess.io/vitess/go/vt/wrangler/testlib"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletservermock"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/wrangler"
+	"github.com/wesql/wescale/go/vt/wrangler/testlib"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 func TestInitShardPrimary(t *testing.T) {

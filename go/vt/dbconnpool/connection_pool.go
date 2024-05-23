@@ -27,13 +27,13 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/netutil"
+	"github.com/wesql/wescale/go/netutil"
 
 	"context"
 
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
 )
 
 var (

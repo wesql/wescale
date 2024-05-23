@@ -17,7 +17,7 @@ limitations under the License.
 package rewrite
 
 import (
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
 )
 
 type (

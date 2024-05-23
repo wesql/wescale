@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/base"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

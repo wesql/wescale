@@ -27,10 +27,10 @@ import (
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 
-	topov1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1"
-	versioned "vitess.io/vitess/go/vt/topo/k8stopo/client/clientset/versioned"
-	internalinterfaces "vitess.io/vitess/go/vt/topo/k8stopo/client/informers/externalversions/internalinterfaces"
-	v1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/client/listers/topo/v1beta1"
+	topov1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/apis/topo/v1beta1"
+	versioned "github.com/wesql/wescale/go/vt/topo/k8stopo/client/clientset/versioned"
+	internalinterfaces "github.com/wesql/wescale/go/vt/topo/k8stopo/client/informers/externalversions/internalinterfaces"
+	v1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/client/listers/topo/v1beta1"
 )
 
 // VitessTopoNodeInformer provides access to a shared informer and lister for

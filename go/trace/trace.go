@@ -28,8 +28,8 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // Span represents a unit of work within a trace. After creating a Span with

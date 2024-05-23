@@ -21,7 +21,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // convertError converts errors into a topo error. All errors

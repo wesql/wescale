@@ -20,17 +20,17 @@ import (
 	"fmt"
 	"os"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtexplain"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtexplain"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 
 	"github.com/spf13/pflag"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 var (

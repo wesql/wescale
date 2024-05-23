@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/assert"
 )

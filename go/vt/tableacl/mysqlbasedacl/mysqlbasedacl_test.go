@@ -8,7 +8,7 @@ package mysqlbasedacl
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/tableacl/testlib"
+	"github.com/wesql/wescale/go/vt/tableacl/testlib"
 )
 
 func TestMysqlbasedACL(t *testing.T) {

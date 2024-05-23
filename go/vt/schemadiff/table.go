@@ -30,8 +30,8 @@ import (
 
 	golcs "github.com/yudai/golcs"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 type AlterTableEntityDiff struct {

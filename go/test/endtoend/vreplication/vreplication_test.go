@@ -32,24 +32,24 @@ import (
 	"testing"
 	"time"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/buger/jsonparser"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/test/utils"
-	"vitess.io/vitess/go/vt/log"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	throttlebase "vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/vstreamer"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/utils"
+	"github.com/wesql/wescale/go/vt/log"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	throttlebase "github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/base"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/vstreamer"
 )
 
 var (

@@ -6,11 +6,11 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package planbuilder
 
 import (
-	"vitess.io/vitess/go/vt/key"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/key"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 func buildAlterDMLJobPlan(query string, vschema plancontext.VSchema) (*planResult, error) {

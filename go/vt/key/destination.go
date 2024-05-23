@@ -23,10 +23,10 @@ import (
 	"sort"
 	"strings"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // AnyShardPicker makes a choice on what shard to use when any shard will do. Used for testing.

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 func ValidateReadAfterWriteConsistency(readAfterWriteConsistency string) error {

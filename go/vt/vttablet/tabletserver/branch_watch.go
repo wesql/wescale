@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/connpool"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 const SeleteWorkflowNameFromBranchJobs = "SELECT * from mysql.branch_jobs;"

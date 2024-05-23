@@ -8,8 +8,8 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
 
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	topo "vitess.io/vitess/go/vt/topo"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	topo "github.com/wesql/wescale/go/vt/topo"
 )
 
 // MockGRTopo is a mock of GRTopo interface.

@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtgate/logstats"
+	"github.com/wesql/wescale/go/vt/vtgate/logstats"
 
 	"context"
 
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/callerid"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/callerid"
 )
 
 func TestQuerylogzHandlerInvalidLogStats(t *testing.T) {

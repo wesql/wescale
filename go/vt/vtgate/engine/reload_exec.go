@@ -8,9 +8,9 @@ package engine
 import (
 	"context"
 
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/sqltypes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 var _ Primitive = (*ReloadExec)(nil)

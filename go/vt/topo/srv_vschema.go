@@ -23,10 +23,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 // This file contains the utility methods to manage SrvVSchema objects.

@@ -26,20 +26,20 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/key"
+	"github.com/wesql/wescale/go/vt/key"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/wesql/wescale/go/sync2"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/status"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/status"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 // TestGetSrvKeyspace will test we properly return updated SrvKeyspace.

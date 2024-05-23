@@ -24,7 +24,7 @@ package vterrors
 import (
 	"fmt"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 var (

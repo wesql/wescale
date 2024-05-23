@@ -15,26 +15,26 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
 
-	_ "vitess.io/vitess/go/vt/topo/etcd2topo" // TODO: after #11394, add rowlog to this https://github.com/vitessio/vitess/pull/11394/files#diff-ee3c1b94c587244ea0645a8ee10187e1112167725f752d58cf17bab6e6d1047cR85
-	_ "vitess.io/vitess/go/vt/vtctl/grpcvtctlclient"
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
-	_ "vitess.io/vitess/go/vt/vttablet/grpctabletconn"
+	_ "github.com/wesql/wescale/go/vt/topo/etcd2topo" // TODO: after #11394, add rowlog to this https://github.com/vitessio/vitess/pull/11394/files#diff-ee3c1b94c587244ea0645a8ee10187e1112167725f752d58cf17bab6e6d1047cR85
+	_ "github.com/wesql/wescale/go/vt/vtctl/grpcvtctlclient"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctabletconn"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 type RowLogConfig struct {

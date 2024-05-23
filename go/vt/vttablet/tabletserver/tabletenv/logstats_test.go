@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/callinfo"
-	"vitess.io/vitess/go/vt/callinfo/fakecallinfo"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/callinfo"
+	"github.com/wesql/wescale/go/vt/callinfo/fakecallinfo"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 func TestLogStats(t *testing.T) {

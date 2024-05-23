@@ -22,7 +22,7 @@ import (
 	"os"
 	"text/template"
 
-	"vitess.io/vitess/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/grpcclient"
 )
 
 // LoadFromTemplate renders a template string into a path, using the data

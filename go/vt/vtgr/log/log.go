@@ -3,7 +3,7 @@ package log
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // Logger is a wrapper that prefix loglines with keyspace/shard

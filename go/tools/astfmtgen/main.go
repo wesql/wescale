@@ -28,7 +28,7 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/tools/common"
+	"github.com/wesql/wescale/go/tools/common"
 
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/go/packages"

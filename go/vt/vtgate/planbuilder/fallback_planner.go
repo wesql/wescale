@@ -19,9 +19,9 @@ package planbuilder
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 type fallbackPlanner struct {

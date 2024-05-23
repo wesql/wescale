@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"vitess.io/vitess/go/cache/ristretto"
+	"github.com/wesql/wescale/go/cache/ristretto"
 )
 
 var _ Cache = &ristretto.Cache{}

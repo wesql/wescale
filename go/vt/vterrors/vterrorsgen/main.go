@@ -22,9 +22,9 @@ import (
 	"strings"
 	"text/template"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 const (

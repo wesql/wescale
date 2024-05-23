@@ -32,13 +32,13 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtconsensus/controller"
-	"vitess.io/vitess/go/vt/vtconsensus/db"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtconsensus/controller"
+	"github.com/wesql/wescale/go/vt/vtconsensus/db"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 )
 
 var (

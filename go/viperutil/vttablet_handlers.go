@@ -8,13 +8,13 @@ package viperutil
 import (
 	"strconv"
 
-	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+	"github.com/wesql/wescale/go/vt/vttablet/jobcontroller"
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/role"
 )
 
 // RegisterReloadHandlersForVtTablet

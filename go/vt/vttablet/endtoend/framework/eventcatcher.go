@@ -20,9 +20,9 @@ import (
 	"errors"
 	"time"
 
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 // TxCatcher allows you to capture and fetch transactions that are being

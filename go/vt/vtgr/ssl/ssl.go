@@ -10,12 +10,12 @@ import (
 	"os"
 	"strings"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/go-martini/martini"
 	"github.com/howeyc/gopass"
 
-	"vitess.io/vitess/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
 )
 
 /*

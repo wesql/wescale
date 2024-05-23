@@ -19,7 +19,7 @@ package simpleacl
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/tableacl/testlib"
+	"github.com/wesql/wescale/go/vt/tableacl/testlib"
 )
 
 func TestSimpleAcl(t *testing.T) {

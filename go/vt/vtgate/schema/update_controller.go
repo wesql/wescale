@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
-	"vitess.io/vitess/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/discovery"
 )
 
 type (

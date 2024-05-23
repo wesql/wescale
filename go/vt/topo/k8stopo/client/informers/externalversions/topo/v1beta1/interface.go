@@ -19,7 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	internalinterfaces "vitess.io/vitess/go/vt/topo/k8stopo/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/wesql/wescale/go/vt/topo/k8stopo/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

@@ -33,14 +33,14 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // WaitForReplicationStart waits until the deadline for replication to start.

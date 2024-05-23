@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vtorc/config"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
 )
 
 type AnalysisCode string

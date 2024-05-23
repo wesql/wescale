@@ -11,31 +11,31 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/schema"
 
 	"google.golang.org/protobuf/proto"
 
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver"
 
-	"vitess.io/vitess/go/vt/schemadiff"
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/vt/schemadiff"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	"vitess.io/vitess/go/vt/vtctl/schematools"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	"github.com/wesql/wescale/go/vt/vtctl/schematools"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/log"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 type BranchJob struct {

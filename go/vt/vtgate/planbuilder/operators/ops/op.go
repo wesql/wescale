@@ -17,8 +17,8 @@ limitations under the License.
 package ops
 
 import (
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 type (

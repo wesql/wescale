@@ -25,15 +25,15 @@ import (
 	"context"
 	"time"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tx"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tx"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 // TxExecutor is used for executing a transactional request.

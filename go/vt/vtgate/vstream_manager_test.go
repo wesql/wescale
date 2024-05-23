@@ -29,26 +29,26 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/wesql/wescale/go/sync2"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/vttablet/sandboxconn"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/proto/binlogdata"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/srvtopo"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/proto/binlogdata"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/srvtopo"
 )
 
 var mu sync.Mutex

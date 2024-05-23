@@ -6,8 +6,8 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package tabletserver
 
 import (
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 type ActionInterface interface {

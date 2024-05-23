@@ -42,20 +42,20 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/event"
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/grpccommon"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/event"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/grpccommon"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
 	// register the proper init and shutdown hooks for logging
-	_ "vitess.io/vitess/go/vt/logutil"
+	_ "github.com/wesql/wescale/go/vt/logutil"
 
 	// Include deprecation warnings for soon-to-be-unsupported flag invocations.
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 )
 
 var (

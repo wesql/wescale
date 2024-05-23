@@ -27,13 +27,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	vtenv "vitess.io/vitess/go/vt/env"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/tlstest"
-	"vitess.io/vitess/go/vt/vttest"
+	"github.com/wesql/wescale/go/mysql"
+	vtenv "github.com/wesql/wescale/go/vt/env"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/tlstest"
+	"github.com/wesql/wescale/go/vt/vttest"
 
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
 )
 
 var (

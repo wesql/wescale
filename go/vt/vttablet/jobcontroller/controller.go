@@ -15,25 +15,25 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/servenv"
 
 	"github.com/pingcap/failpoint"
 
-	"vitess.io/vitess/go/vt/failpointkey"
+	"github.com/wesql/wescale/go/vt/failpointkey"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle"
 
-	"vitess.io/vitess/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/schema"
 
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/sqltypes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/connpool"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 )
 
 var (

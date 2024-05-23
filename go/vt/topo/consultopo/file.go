@@ -23,7 +23,7 @@ import (
 
 	"github.com/hashicorp/consul/api"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // Create is part of the topo.Conn interface.

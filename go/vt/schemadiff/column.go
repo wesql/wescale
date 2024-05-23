@@ -19,7 +19,7 @@ package schemadiff
 import (
 	"strings"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // columnDetails decorates a column with more details, used by diffing logic

@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // resultStreamer streams the results of the requested query

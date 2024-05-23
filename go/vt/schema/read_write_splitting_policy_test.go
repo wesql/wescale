@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/query"
 
 	"github.com/stretchr/testify/assert"
 )

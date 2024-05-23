@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"sync"
 
-	"vitess.io/vitess/go/vt/vtctl/workflow"
+	"github.com/wesql/wescale/go/vt/vtctl/workflow"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	vdiff2 "vitess.io/vitess/go/vt/vttablet/tabletmanager/vdiff"
+	vdiff2 "github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vdiff"
 
-	"vitess.io/vitess/go/vt/proto/tabletmanagerdata"
+	"github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
 )
 
 type VDiffOutput struct {

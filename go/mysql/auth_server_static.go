@@ -32,16 +32,16 @@ import (
 	"syscall"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
+	"github.com/wesql/wescale/go/internal/global"
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 var (

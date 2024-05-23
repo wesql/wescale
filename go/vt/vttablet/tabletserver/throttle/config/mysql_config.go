@@ -6,7 +6,7 @@
 
 package config
 
-import "vitess.io/vitess/go/sync2"
+import "github.com/wesql/wescale/go/sync2"
 
 //
 // MySQL-specific configuration

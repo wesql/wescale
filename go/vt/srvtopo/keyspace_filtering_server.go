@@ -20,9 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	"vitess.io/vitess/go/vt/topo"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 var (

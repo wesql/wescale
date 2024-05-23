@@ -26,15 +26,15 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/patrickmn/go-cache"
 	"github.com/rcrowley/go-metrics"
 
-	"vitess.io/vitess/go/vt/vtgr/config"
-	"vitess.io/vitess/go/vt/vtgr/ssl"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/ssl"
 )
 
 const Error3159 = "Error 3159:"

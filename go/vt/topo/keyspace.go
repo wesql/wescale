@@ -23,14 +23,14 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/event"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo/events"
+	"github.com/wesql/wescale/go/event"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo/events"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // This file contains keyspace utility functions

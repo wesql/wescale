@@ -25,23 +25,23 @@ import (
 	"sync"
 	"time"
 
-	workflow2 "vitess.io/vitess/go/vt/vtctl/workflow"
+	workflow2 "github.com/wesql/wescale/go/vt/vtctl/workflow"
 
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/concurrency"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/topo"
-	vtctldvexec "vitess.io/vitess/go/vt/vtctl/workflow/vexec" // renamed to avoid a collision with the vexec struct in this package
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/topo"
+	vtctldvexec "github.com/wesql/wescale/go/vt/vtctl/workflow/vexec" // renamed to avoid a collision with the vexec struct in this package
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 const (

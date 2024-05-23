@@ -17,7 +17,7 @@ limitations under the License.
 
 package query
 
-import hack "vitess.io/vitess/go/hack"
+import hack "github.com/wesql/wescale/go/hack"
 
 func (cached *BindVariable) CachedSize(alloc bool) int64 {
 	if cached == nil {

@@ -17,7 +17,7 @@ limitations under the License.
 
 package pools
 
-import hack "vitess.io/vitess/go/hack"
+import hack "github.com/wesql/wescale/go/hack"
 
 func (cached *Setting) CachedSize(alloc bool) int64 {
 	if cached == nil {

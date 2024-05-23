@@ -21,9 +21,9 @@ import (
 	"sort"
 	"testing"
 
-	"vitess.io/vitess/go/test/utils"
+	"github.com/wesql/wescale/go/test/utils"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // AssertKeyspaceSlicesEqual is a convenience function to assert that two

@@ -31,7 +31,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	vttime "vitess.io/vitess/go/vt/proto/vttime"
+	vttime "github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 const (

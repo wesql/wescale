@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtadmin/errors"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtadmin/errors"
 )
 
 // FindSchema implements the http wrapper for the

@@ -9,7 +9,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
-	query "vitess.io/vitess/go/vt/proto/query"
+	query "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 const (

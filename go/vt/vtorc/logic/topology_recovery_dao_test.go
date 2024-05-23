@@ -21,10 +21,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
 
-	"vitess.io/vitess/go/vt/vtorc/db"
-	"vitess.io/vitess/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
 )
 
 // TestTopologyRecovery tests various operations related to topology recovery like reading from and writing it to the database.

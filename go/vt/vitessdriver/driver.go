@@ -28,11 +28,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	"vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/sqltypes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	"github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
 )
 
 var (

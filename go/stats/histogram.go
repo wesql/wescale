@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/wesql/wescale/go/sync2"
 )
 
 // Histogram tracks counts and totals while

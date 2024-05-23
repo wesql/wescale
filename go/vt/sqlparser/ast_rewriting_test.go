@@ -27,7 +27,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/sysvars"
+	"github.com/wesql/wescale/go/vt/sysvars"
 
 	"github.com/stretchr/testify/require"
 )

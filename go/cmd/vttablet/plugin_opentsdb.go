@@ -19,7 +19,7 @@ package main
 // This plugin imports opentsdb to register the opentsdb stats backend.
 
 import (
-	"vitess.io/vitess/go/stats/opentsdb"
+	"github.com/wesql/wescale/go/stats/opentsdb"
 )
 
 func init() {

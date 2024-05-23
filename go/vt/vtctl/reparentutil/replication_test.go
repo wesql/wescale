@@ -27,17 +27,17 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	_flag "vitess.io/vitess/go/internal/flag"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/topotools/events"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	_flag "github.com/wesql/wescale/go/internal/flag"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topotools/events"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestMain(m *testing.M) {

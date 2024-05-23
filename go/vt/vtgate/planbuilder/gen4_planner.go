@@ -22,15 +22,15 @@ limitations under the License.
 package planbuilder
 
 import (
-	"vitess.io/vitess/go/internal/global"
+	"github.com/wesql/wescale/go/internal/global"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-	"vitess.io/vitess/go/vt/vtgate/semantics"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/semantics"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 )
 
 func gen4SelectStmtPlanner(

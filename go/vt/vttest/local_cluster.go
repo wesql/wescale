@@ -30,24 +30,24 @@ import (
 	"time"
 	"unicode"
 
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/proto/logutil"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/proto/logutil"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
 
 	// we need to import the grpcvtctlclient library so the gRPC
 	// vtctl client is registered and can be used.
-	_ "vitess.io/vitess/go/vt/vtctl/grpcvtctlclient"
+	_ "github.com/wesql/wescale/go/vt/vtctl/grpcvtctlclient"
 )
 
 // Config are the settings used to configure the self-contained Vitess cluster.

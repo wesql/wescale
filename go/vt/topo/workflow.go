@@ -23,7 +23,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	workflowpb "vitess.io/vitess/go/vt/proto/workflow"
+	workflowpb "github.com/wesql/wescale/go/vt/proto/workflow"
 )
 
 // This file provides the utility methods to save / retrieve workflows

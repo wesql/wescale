@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/proto/vtadmin"
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	"github.com/wesql/wescale/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 func TestDiscoverVTGate(t *testing.T) {

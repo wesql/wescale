@@ -25,8 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func knownBadQuery(expr Expr) bool {

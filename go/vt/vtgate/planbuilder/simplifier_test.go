@@ -25,17 +25,17 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/vtgate/simplifier"
+	"github.com/wesql/wescale/go/vt/vtgate/simplifier"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func TestSimplifyPanic(t *testing.T) {

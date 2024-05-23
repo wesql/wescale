@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/vt/vttablet/customrule"
+	"github.com/wesql/wescale/go/vt/vttablet/customrule"
 
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 func (qe *QueryEngine) ExecuteQuery(ctx context.Context, query string) (*sqltypes.Result, error) {

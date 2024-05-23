@@ -23,10 +23,10 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/log"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // ClientProtocol indicates how to connect

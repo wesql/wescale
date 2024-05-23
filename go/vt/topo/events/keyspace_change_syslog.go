@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"log/syslog"
 
-	"vitess.io/vitess/go/event/syslogger"
+	"github.com/wesql/wescale/go/event/syslogger"
 )
 
 // Syslog writes the event to syslog.

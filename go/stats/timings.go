@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/wesql/wescale/go/sync2"
 )
 
 // Timings is meant to tracks timing data

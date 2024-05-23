@@ -20,9 +20,9 @@ import (
 	"context"
 	"time"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 type SrvKeyspaceWatcher struct {

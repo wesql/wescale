@@ -11,13 +11,13 @@ import (
 	"strconv"
 	"time"
 
-	"vitess.io/vitess/go/vt/vttablet/customrule"
+	"github.com/wesql/wescale/go/vt/vttablet/customrule"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/sqltypes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // CommonQuery is a universal RPC interface.

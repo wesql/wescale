@@ -19,7 +19,7 @@ package discovery
 import (
 	"github.com/montanaflynn/stats"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // AggregatedQueueMetrics contains aggregate information some part queue metrics

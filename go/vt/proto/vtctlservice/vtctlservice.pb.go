@@ -28,7 +28,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
-	vtctldata "vitess.io/vitess/go/vt/proto/vtctldata"
+	vtctldata "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 const (

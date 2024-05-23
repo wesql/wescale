@@ -19,7 +19,7 @@ package handlers
 import (
 	"net/http"
 
-	"vitess.io/vitess/go/vt/vtadmin/rbac"
+	"github.com/wesql/wescale/go/vt/vtadmin/rbac"
 )
 
 // NewAuthenticationHandler returns an http middleware that invokes the given

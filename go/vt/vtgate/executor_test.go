@@ -33,29 +33,29 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtgate/logstats"
+	"github.com/wesql/wescale/go/vt/vtgate/logstats"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/cache"
-	"vitess.io/vitess/go/test/utils"
-	"vitess.io/vitess/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/cache"
+	"github.com/wesql/wescale/go/test/utils"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 
 	"github.com/google/go-cmp/cmp"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vtgate/vschemaacl"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vtgate/vschemaacl"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 func TestExecutorResultsExceeded(t *testing.T) {

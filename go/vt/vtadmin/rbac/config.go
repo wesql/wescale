@@ -23,8 +23,8 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // Config is the RBAC configuration representation. The public fields are

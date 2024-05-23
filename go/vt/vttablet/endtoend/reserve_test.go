@@ -25,7 +25,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/vttablet/endtoend/framework"
+	"github.com/wesql/wescale/go/vt/vttablet/endtoend/framework"
 )
 
 //TODO: Add Counter checks in all the tests.

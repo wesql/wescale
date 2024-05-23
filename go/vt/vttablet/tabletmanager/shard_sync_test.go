@@ -23,19 +23,19 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/proto/vttime"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/proto/vttime"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	"vitess.io/vitess/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
 )
 
 const (

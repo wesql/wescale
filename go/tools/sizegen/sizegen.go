@@ -30,9 +30,9 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/tools/go/packages"
 
-	"vitess.io/vitess/go/hack"
-	"vitess.io/vitess/go/tools/common"
-	"vitess.io/vitess/go/tools/goimports"
+	"github.com/wesql/wescale/go/hack"
+	"github.com/wesql/wescale/go/tools/common"
+	"github.com/wesql/wescale/go/tools/goimports"
 )
 
 const licenseFileHeader = `Copyright 2021 The Vitess Authors.

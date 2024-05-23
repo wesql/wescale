@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vtctl"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver/testutil"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/vttablet/tmclienttest"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vtctl"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver/testutil"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclienttest"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestShowOnlineDDL_All(t *testing.T) {

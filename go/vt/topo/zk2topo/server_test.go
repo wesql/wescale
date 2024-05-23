@@ -28,12 +28,12 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/testfiles"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/test"
-	"vitess.io/vitess/go/vt/zkctl"
+	"github.com/wesql/wescale/go/testfiles"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/test"
+	"github.com/wesql/wescale/go/vt/zkctl"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func _TestZk2Topo(t *testing.T) {

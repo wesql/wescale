@@ -17,8 +17,8 @@ limitations under the License.
 package testutil
 
 import (
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // TopodataTabletsFromVTAdminTablets returns a slice of topodatapb.Tablet

@@ -26,14 +26,14 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // To run this test locally on MacOS, set hostname to localhost first:

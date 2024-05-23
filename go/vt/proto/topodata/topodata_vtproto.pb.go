@@ -11,7 +11,7 @@ import (
 	io "io"
 	math "math"
 	bits "math/bits"
-	vttime "vitess.io/vitess/go/vt/proto/vttime"
+	vttime "github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 const (

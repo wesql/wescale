@@ -22,8 +22,8 @@ import (
 
 	"context"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	qh "vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication/queryhistory"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	qh "github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication/queryhistory"
 )
 
 func TestJournalOneToOne(t *testing.T) {

@@ -19,18 +19,18 @@ package main
 import (
 	"flag"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/cmd/vtctldclient/command"
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/grpccommon"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtctl/grpcclientcommon"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/cmd/vtctldclient/command"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/grpccommon"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcclientcommon"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 )
 
 func main() {

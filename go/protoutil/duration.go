@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"vitess.io/vitess/go/vt/proto/vttime"
+	"github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 // DurationFromProto converts a durationpb type to a time.Duration. It returns a

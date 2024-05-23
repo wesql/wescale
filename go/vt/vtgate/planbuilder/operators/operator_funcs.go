@@ -19,10 +19,10 @@ package operators
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 // RemovePredicate is used when we turn a predicate into a plan operator,

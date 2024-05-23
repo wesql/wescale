@@ -25,7 +25,7 @@ import (
 	consul "github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/assert"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 type fakeConsulClient struct {

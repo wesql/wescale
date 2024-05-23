@@ -66,7 +66,7 @@ import (
 
 	// "vitess.io/vitess/go/vt/log"
 
-	"vitess.io/vitess/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
 )
 
 // Metric is an interface containing a metric

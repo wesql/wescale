@@ -26,11 +26,11 @@ import (
 	"fmt"
 	"math"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/spyzhov/ajson"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 /*

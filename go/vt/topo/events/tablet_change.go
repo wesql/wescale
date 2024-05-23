@@ -17,7 +17,7 @@ limitations under the License.
 package events
 
 import (
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // TabletChange is an event that describes changes to a tablet's topo record.

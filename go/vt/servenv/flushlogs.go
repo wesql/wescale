@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/logutil"
 )
 
 func init() {

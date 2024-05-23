@@ -20,8 +20,8 @@ import (
 	"path"
 	"strconv"
 
-	"vitess.io/vitess/go/mysql/collations/internal/uca"
-	"vitess.io/vitess/go/mysql/collations/tools/makecolldata/codegen"
+	"github.com/wesql/wescale/go/mysql/collations/internal/uca"
+	"github.com/wesql/wescale/go/mysql/collations/tools/makecolldata/codegen"
 )
 
 func maketable(g *codegen.Generator, table string, collation *CollationMetadata, pages codegen.PageGenerator, layout uca.Layout) *codegen.TableGenerator {

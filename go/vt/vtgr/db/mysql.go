@@ -26,13 +26,13 @@ import (
 	gouuid "github.com/google/uuid"
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtgr/config"
-	"vitess.io/vitess/go/vt/vtgr/inst"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/inst"
 )
 
 var (

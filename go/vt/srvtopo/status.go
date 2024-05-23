@@ -22,7 +22,7 @@ import (
 	"sort"
 	"time"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // TopoTemplate is the HTML to use to display the

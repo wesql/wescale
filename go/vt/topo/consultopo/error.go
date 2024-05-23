@@ -22,7 +22,7 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // Errors specific to this package.

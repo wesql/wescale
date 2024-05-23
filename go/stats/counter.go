@@ -20,8 +20,8 @@ import (
 	"strconv"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/logutil"
 )
 
 // logCounterNegative is for throttling adding a negative value to a counter messages in logs

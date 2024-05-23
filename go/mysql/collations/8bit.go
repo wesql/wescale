@@ -17,7 +17,7 @@ limitations under the License.
 package collations
 
 import (
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
 )
 
 var sortOrderIdentity [256]byte

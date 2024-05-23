@@ -28,12 +28,12 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	logutil "vitess.io/vitess/go/vt/proto/logutil"
-	mysqlctl "vitess.io/vitess/go/vt/proto/mysqlctl"
-	tabletmanagerdata "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	vschema "vitess.io/vitess/go/vt/proto/vschema"
-	vtctldata "vitess.io/vitess/go/vt/proto/vtctldata"
+	logutil "github.com/wesql/wescale/go/vt/proto/logutil"
+	mysqlctl "github.com/wesql/wescale/go/vt/proto/mysqlctl"
+	tabletmanagerdata "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	vschema "github.com/wesql/wescale/go/vt/proto/vschema"
+	vtctldata "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 const (

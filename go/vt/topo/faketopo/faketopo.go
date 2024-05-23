@@ -21,12 +21,12 @@ import (
 	"strings"
 	"sync"
 
-	"vitess.io/vitess/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
 
-	"vitess.io/vitess/go/vt/log"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/log"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // FakeFactory implements the Factory interface. This is supposed to be used only for testing

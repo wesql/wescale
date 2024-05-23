@@ -22,11 +22,11 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 var ctx = context.Background()

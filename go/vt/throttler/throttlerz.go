@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"strings"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 const listHTML = `<!DOCTYPE html>

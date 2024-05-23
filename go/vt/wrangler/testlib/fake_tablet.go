@@ -30,30 +30,30 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/mysql/fakesqldb"
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/mysqlctl/fakemysqldaemon"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vttablet/grpctmserver"
-	"vitess.io/vitess/go/vt/vttablet/tabletconntest"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
-	"vitess.io/vitess/go/vt/vttablet/tabletservermock"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
-	"vitess.io/vitess/go/vt/vttablet/tmclienttest"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/mysqlctl/fakemysqldaemon"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vttablet/grpctmserver"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletconntest"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletservermock"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclienttest"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
 	// import the gRPC client implementation for tablet manager
-	_ "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 
 	// import the gRPC client implementation for query service
-	_ "vitess.io/vitess/go/vt/vttablet/grpctabletconn"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctabletconn"
 )
 
 // This file contains utility methods for unit tests.

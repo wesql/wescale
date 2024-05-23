@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/cmd/rulesctl/common"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
-	vtrules "vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/cmd/rulesctl/common"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/planbuilder"
+	vtrules "github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 var (

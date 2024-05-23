@@ -24,8 +24,8 @@ import (
 	"github.com/hashicorp/consul/api"
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 var (

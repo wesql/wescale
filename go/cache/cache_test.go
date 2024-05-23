@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/cache/ristretto"
+	"github.com/wesql/wescale/go/cache/ristretto"
 )
 
 func TestNewDefaultCacheImpl(t *testing.T) {

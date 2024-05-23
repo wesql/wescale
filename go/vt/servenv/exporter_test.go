@@ -27,7 +27,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 func TestURLPrefix(t *testing.T) {

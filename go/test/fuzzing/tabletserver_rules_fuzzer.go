@@ -14,7 +14,7 @@ limitations under the License.
 package fuzzing
 
 import (
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 func FuzzUnmarshalJSON(data []byte) int {

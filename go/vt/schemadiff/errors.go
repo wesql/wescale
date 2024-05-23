@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"vitess.io/vitess/go/sqlescape"
+	"github.com/wesql/wescale/go/sqlescape"
 )
 
 var (

@@ -19,7 +19,7 @@ package zk2topo
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // ZKVersion is zookeeper's idea of a version.

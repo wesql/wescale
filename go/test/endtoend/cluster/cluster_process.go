@@ -41,22 +41,22 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/test/endtoend/filelock"
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
-	"vitess.io/vitess/go/vt/vttablet/tabletconn"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/test/endtoend/filelock"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletconn"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
 	// Ensure dialers are registered (needed by ExecOnTablet and ExecOnVTGate).
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
-	_ "vitess.io/vitess/go/vt/vttablet/grpctabletconn"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctabletconn"
 )
 
 // DefaultCell : If no cell name is passed, then use following

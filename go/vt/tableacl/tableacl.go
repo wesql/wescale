@@ -33,21 +33,21 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/internal/global"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/connpool"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 
 	"github.com/tchap/go-patricia/patricia"
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/tableacl/acl"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/tableacl/acl"
 
-	tableaclpb "vitess.io/vitess/go/vt/proto/tableacl"
+	tableaclpb "github.com/wesql/wescale/go/vt/proto/tableacl"
 )
 
 // ACLResult embeds an acl.ACL and also tell which table group it belongs to.

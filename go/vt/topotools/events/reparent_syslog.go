@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"log/syslog"
 
-	"vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
 
-	"vitess.io/vitess/go/event/syslogger"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/event/syslogger"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 )
 
 // Syslog writes a Reparent event to syslog.

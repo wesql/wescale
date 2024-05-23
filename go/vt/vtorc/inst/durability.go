@@ -17,9 +17,9 @@ limitations under the License.
 package inst
 
 import (
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vtctl/reparentutil"
-	"vitess.io/vitess/go/vt/vtctl/reparentutil/promotionrule"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil/promotionrule"
 )
 
 // IsReplicaSemiSync returns the replica semi-sync setting for the instance.

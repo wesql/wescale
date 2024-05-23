@@ -26,17 +26,17 @@ import (
 	"encoding/json"
 	"strings"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	"vitess.io/vitess/go/vt/vttablet/queryservice"
+	"github.com/wesql/wescale/go/vt/vttablet/queryservice"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // TabletHealth represents simple tablet health data that is returned to users of healthcheck.

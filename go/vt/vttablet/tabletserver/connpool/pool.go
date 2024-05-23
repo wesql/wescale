@@ -29,20 +29,20 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/callerid"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/dbconnpool"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/callerid"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/dbconnpool"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // ErrConnPoolClosed is returned when the connection pool is closed.

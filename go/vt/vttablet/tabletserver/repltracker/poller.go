@@ -25,15 +25,15 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/proto/query"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 
-	mysqlctl "vitess.io/vitess/go/vt/mysqlctl"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	mysqlctl "github.com/wesql/wescale/go/vt/mysqlctl"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var replicationLagSeconds = stats.NewGauge("replicationLagSec", "replication lag in seconds")

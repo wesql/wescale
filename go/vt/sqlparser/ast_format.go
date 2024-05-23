@@ -22,7 +22,7 @@ limitations under the License.
 package sqlparser
 
 import (
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // Format formats the node.

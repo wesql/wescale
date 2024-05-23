@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // BindVars is a set of reserved bind variables from a SQL statement

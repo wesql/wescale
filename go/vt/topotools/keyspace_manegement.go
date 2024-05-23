@@ -8,19 +8,19 @@ package topotools
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/failpointkey"
+	"github.com/wesql/wescale/go/vt/failpointkey"
 
 	"github.com/pingcap/failpoint"
 
-	"vitess.io/vitess/go/internal/global"
+	"github.com/wesql/wescale/go/internal/global"
 
 	"golang.org/x/net/context"
 
-	"vitess.io/vitess/go/vt/logutil"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vttablet/queryservice"
+	"github.com/wesql/wescale/go/vt/logutil"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vttablet/queryservice"
 )
 
 var defaultKeyspace = global.DefaultKeyspace

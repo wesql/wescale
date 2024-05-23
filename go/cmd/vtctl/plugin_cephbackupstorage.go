@@ -17,5 +17,5 @@ limitations under the License.
 package main
 
 import (
-	_ "vitess.io/vitess/go/vt/mysqlctl/cephbackupstorage"
+	_ "github.com/wesql/wescale/go/vt/mysqlctl/cephbackupstorage"
 )

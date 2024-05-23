@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"vitess.io/vitess/go/vt/vtconsensus/inst"
+	"github.com/wesql/wescale/go/vt/vtconsensus/inst"
 )
 
 // MockAgent is a mock of Agent interface

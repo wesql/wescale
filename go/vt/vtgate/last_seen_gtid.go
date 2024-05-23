@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sync"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 // LastSeenGtid is used to track the last seen gtid

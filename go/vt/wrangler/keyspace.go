@@ -24,15 +24,15 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/proto/binlogdata"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/concurrency"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/topotools"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topotools"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 const (

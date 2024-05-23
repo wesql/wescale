@@ -24,7 +24,7 @@ import (
 
 	"context"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func TestTee(t *testing.T) {

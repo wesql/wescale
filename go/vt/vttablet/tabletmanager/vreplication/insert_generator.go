@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	"vitess.io/vitess/go/vt/throttler"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/throttler"
 )
 
 // InsertGenerator generates a vreplication insert statement.

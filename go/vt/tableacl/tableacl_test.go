@@ -28,19 +28,19 @@ import (
 	"reflect"
 	"testing"
 
-	"vitess.io/vitess/go/vt/tableacl/mysqlbasedacl"
+	"github.com/wesql/wescale/go/vt/tableacl/mysqlbasedacl"
 
-	"vitess.io/vitess/go/internal/global"
+	"github.com/wesql/wescale/go/internal/global"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/tableacl/acl"
-	"vitess.io/vitess/go/vt/tableacl/simpleacl"
+	"github.com/wesql/wescale/go/vt/tableacl/acl"
+	"github.com/wesql/wescale/go/vt/tableacl/simpleacl"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	tableaclpb "vitess.io/vitess/go/vt/proto/tableacl"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	tableaclpb "github.com/wesql/wescale/go/vt/proto/tableacl"
 )
 
 type fakeACLFactory struct{}

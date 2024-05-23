@@ -19,10 +19,10 @@ package cli
 import (
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/flagutil"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/flagutil"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // StringMapValue augments flagutil.StringMapValue so it can be used as a

@@ -23,10 +23,10 @@ import (
 
 	"github.com/z-division/go-zookeeper/zk"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // This file contains the primary election code for zk2topo.Server.

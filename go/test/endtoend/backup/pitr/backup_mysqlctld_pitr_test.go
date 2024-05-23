@@ -26,9 +26,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	backup "vitess.io/vitess/go/test/endtoend/backup/vtctlbackup"
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/mysql"
+	backup "github.com/wesql/wescale/go/test/endtoend/backup/vtctlbackup"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 )
 
 func waitForReplica(t *testing.T) {

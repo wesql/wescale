@@ -27,9 +27,9 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // VtctlClientProcess is a generic handle for a running vtctlclient command .

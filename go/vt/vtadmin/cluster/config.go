@@ -27,12 +27,12 @@ import (
 
 	"github.com/spf13/viper"
 
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtadmin/cache"
-	"vitess.io/vitess/go/vt/vtadmin/errors"
-	"vitess.io/vitess/go/vt/vtadmin/vtctldclient"
-	"vitess.io/vitess/go/vt/vtadmin/vtsql"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtadmin/cache"
+	"github.com/wesql/wescale/go/vt/vtadmin/errors"
+	"github.com/wesql/wescale/go/vt/vtadmin/vtctldclient"
+	"github.com/wesql/wescale/go/vt/vtadmin/vtsql"
 )
 
 var (

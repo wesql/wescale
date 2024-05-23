@@ -22,9 +22,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/tools/asthelpergen"
+	"github.com/wesql/wescale/go/tools/asthelpergen"
 
-	"vitess.io/vitess/go/tools/goimports"
+	"github.com/wesql/wescale/go/tools/goimports"
 )
 
 func main() {

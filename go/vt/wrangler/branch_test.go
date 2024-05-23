@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/schemadiff"
+	"github.com/wesql/wescale/go/vt/schemadiff"
 )
 
 func TestRemoveComments(t *testing.T) {

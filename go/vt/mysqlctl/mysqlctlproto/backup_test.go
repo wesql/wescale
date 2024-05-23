@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/test/utils"
-	"vitess.io/vitess/go/vt/mysqlctl/backupstorage"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/test/utils"
+	"github.com/wesql/wescale/go/vt/mysqlctl/backupstorage"
 
-	mysqlctlpb "vitess.io/vitess/go/vt/proto/mysqlctl"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	mysqlctlpb "github.com/wesql/wescale/go/vt/proto/mysqlctl"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 type backupHandle struct {

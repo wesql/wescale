@@ -21,17 +21,17 @@ import (
 	"fmt"
 	"strconv"
 
-	"vitess.io/vitess/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 var _ Primitive = (*OrderedAggregate)(nil)

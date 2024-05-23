@@ -29,7 +29,7 @@ import (
 	"time"
 	"unsafe"
 
-	"vitess.io/vitess/go/hack"
+	"github.com/wesql/wescale/go/hack"
 )
 
 var (

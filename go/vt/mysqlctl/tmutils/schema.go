@@ -28,16 +28,16 @@ import (
 	"regexp"
 	"strings"
 
-	"vitess.io/vitess/go/vt/schemadiff"
+	"github.com/wesql/wescale/go/vt/schemadiff"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/sqlescape"
+	"github.com/wesql/wescale/go/sqlescape"
 
-	"vitess.io/vitess/go/vt/concurrency"
-	"vitess.io/vitess/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/concurrency"
+	"github.com/wesql/wescale/go/vt/schema"
 
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
 )
 
 // This file contains helper methods to deal with Schema information.

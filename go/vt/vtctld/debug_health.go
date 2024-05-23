@@ -23,8 +23,8 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // RegisterDebugHealthHandler register a debug health http endpoint for a vtcld server

@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
 )
 
 var testcollationMap map[string]Collation

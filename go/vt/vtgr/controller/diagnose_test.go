@@ -29,15 +29,15 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver/testutil"
-	"vitess.io/vitess/go/vt/vtgr/config"
-	"vitess.io/vitess/go/vt/vtgr/db"
-	"vitess.io/vitess/go/vt/vtgr/inst"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver/testutil"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/db"
+	"github.com/wesql/wescale/go/vt/vtgr/inst"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 const diagnoseGroupSize = 3

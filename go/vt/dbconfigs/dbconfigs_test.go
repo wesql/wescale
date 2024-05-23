@@ -31,8 +31,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/yaml2"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/yaml2"
 )
 
 func TestInit(t *testing.T) {

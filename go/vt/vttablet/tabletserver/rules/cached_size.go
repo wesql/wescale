@@ -17,7 +17,7 @@ limitations under the License.
 
 package rules
 
-import hack "vitess.io/vitess/go/hack"
+import hack "github.com/wesql/wescale/go/hack"
 
 type cachedObject interface {
 	CachedSize(alloc bool) int64

@@ -28,11 +28,11 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // fullBinlogTransaction is a helper type for tests.

@@ -24,14 +24,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/internal/flag"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/utils"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vttest"
+	"github.com/wesql/wescale/go/internal/flag"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/utils"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vttest"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
 )
 
 var (

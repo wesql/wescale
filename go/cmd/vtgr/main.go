@@ -18,9 +18,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtgr"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtgr"
 )
 
 func main() {

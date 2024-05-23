@@ -25,13 +25,13 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 
-	"vitess.io/vitess/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
 )
 
 type testPlanner struct {

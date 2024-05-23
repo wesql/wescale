@@ -28,17 +28,17 @@ import (
 	"os"
 	"testing"
 
-	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/internal/global"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/tableacl"
-	"vitess.io/vitess/go/vt/tableacl/simpleacl"
-	"vitess.io/vitess/go/vt/vttablet/endtoend/framework"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
-	"vitess.io/vitess/go/vt/vttest"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/tableacl"
+	"github.com/wesql/wescale/go/vt/tableacl/simpleacl"
+	"github.com/wesql/wescale/go/vt/vttablet/endtoend/framework"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/vt/vttest"
 
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
 )
 
 var (

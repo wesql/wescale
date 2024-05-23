@@ -3,9 +3,9 @@
 package collations
 
 import (
-	charset "vitess.io/vitess/go/mysql/collations/internal/charset"
-	eightbit "vitess.io/vitess/go/mysql/collations/internal/charset/eightbit"
-	uca "vitess.io/vitess/go/mysql/collations/internal/uca"
+	charset "github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	eightbit "github.com/wesql/wescale/go/mysql/collations/internal/charset/eightbit"
+	uca "github.com/wesql/wescale/go/mysql/collations/internal/uca"
 )
 
 var ctype_dec8_swedish_ci = [...]uint8{

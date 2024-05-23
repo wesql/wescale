@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/logz"
+	"github.com/wesql/wescale/go/vt/logz"
 )
 
 const logHeaderHTML = `

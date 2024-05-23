@@ -10,8 +10,8 @@ import (
 	"context"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/mysql"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/base"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/mysql"
 
 	"github.com/stretchr/testify/assert"
 )

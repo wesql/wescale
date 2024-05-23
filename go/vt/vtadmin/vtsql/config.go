@@ -22,13 +22,13 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/vitessdriver"
-	"vitess.io/vitess/go/vt/vtadmin/cluster/discovery"
-	"vitess.io/vitess/go/vt/vtadmin/cluster/resolver"
-	"vitess.io/vitess/go/vt/vtadmin/credentials"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/vitessdriver"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster/discovery"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster/resolver"
+	"github.com/wesql/wescale/go/vt/vtadmin/credentials"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // Config represents the options that modify the behavior of a vtqsl.VTGateProxy.

@@ -27,10 +27,10 @@ import (
 	consul "github.com/hashicorp/consul/api"
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/textutil"
-	"vitess.io/vitess/go/trace"
+	"github.com/wesql/wescale/go/textutil"
+	"github.com/wesql/wescale/go/trace"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // ConsulDiscovery implements the Discovery interface for consul.

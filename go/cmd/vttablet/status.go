@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"vitess.io/vitess/go/vt/servenv"
-	_ "vitess.io/vitess/go/vt/status"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver"
+	"github.com/wesql/wescale/go/vt/servenv"
+	_ "github.com/wesql/wescale/go/vt/status"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver"
 )
 
 var (

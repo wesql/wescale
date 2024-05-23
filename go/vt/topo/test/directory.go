@@ -22,7 +22,7 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // checkDirectory tests the directory part of the topo.Conn API.

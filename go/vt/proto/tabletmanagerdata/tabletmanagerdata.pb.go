@@ -33,12 +33,12 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	logutil "vitess.io/vitess/go/vt/proto/logutil"
-	query "vitess.io/vitess/go/vt/proto/query"
-	replicationdata "vitess.io/vitess/go/vt/proto/replicationdata"
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	vtrpc "vitess.io/vitess/go/vt/proto/vtrpc"
-	vttime "vitess.io/vitess/go/vt/proto/vttime"
+	logutil "github.com/wesql/wescale/go/vt/proto/logutil"
+	query "github.com/wesql/wescale/go/vt/proto/query"
+	replicationdata "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtrpc "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	vttime "github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 const (

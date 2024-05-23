@@ -19,5 +19,5 @@ package main
 // This plugin imports consultopo to register the consul implementation of TopoServer.
 
 import (
-	_ "vitess.io/vitess/go/vt/topo/consultopo"
+	_ "github.com/wesql/wescale/go/vt/topo/consultopo"
 )

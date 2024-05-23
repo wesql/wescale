@@ -20,8 +20,8 @@ package main
 // with the Prometheus client library
 
 import (
-	"vitess.io/vitess/go/stats/prometheusbackend"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/stats/prometheusbackend"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 func init() {

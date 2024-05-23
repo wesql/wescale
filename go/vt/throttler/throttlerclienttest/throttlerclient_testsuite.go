@@ -34,10 +34,10 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/throttler"
-	"vitess.io/vitess/go/vt/throttler/throttlerclient"
+	"github.com/wesql/wescale/go/vt/throttler"
+	"github.com/wesql/wescale/go/vt/throttler/throttlerclient"
 
-	throttlerdatapb "vitess.io/vitess/go/vt/proto/throttlerdata"
+	throttlerdatapb "github.com/wesql/wescale/go/vt/proto/throttlerdata"
 )
 
 // TestSuite runs the test suite on the given throttlerclient and throttlerserver.

@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"vitess.io/vitess/go/vt/topo"
-	vtv1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1"
+	"github.com/wesql/wescale/go/vt/topo"
+	vtv1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/apis/topo/v1beta1"
 )
 
 // kubernetesLockDescriptor implements topo.LockDescriptor.

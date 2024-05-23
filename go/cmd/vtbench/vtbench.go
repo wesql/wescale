@@ -24,19 +24,19 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/grpccommon"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vtbench"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/grpccommon"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vtbench"
 
 	// Import and register the gRPC vtgateconn client
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
 	// Import and register the gRPC tabletconn client
-	_ "vitess.io/vitess/go/vt/vttablet/grpctabletconn"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctabletconn"
 )
 
 /*

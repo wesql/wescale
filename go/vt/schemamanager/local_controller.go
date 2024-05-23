@@ -25,7 +25,7 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // LocalController listens to the specified schema change dir and applies schema changes.

@@ -22,19 +22,19 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
 	"golang.org/x/net/context"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/logutil"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtgr/config"
-	"vitess.io/vitess/go/vt/vtgr/db"
-	"vitess.io/vitess/go/vt/vtgr/inst"
-	"vitess.io/vitess/go/vt/vtgr/log"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/logutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/vtgr/db"
+	"github.com/wesql/wescale/go/vt/vtgr/inst"
+	"github.com/wesql/wescale/go/vt/vtgr/log"
 )
 
 var (

@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // The fakeConn is a wrapper for a Conn that emits stats for every operation

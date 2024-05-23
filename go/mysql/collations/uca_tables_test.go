@@ -28,8 +28,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/mysql/collations/internal/uca"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/uca"
 )
 
 func verifyAllCodepoints(t *testing.T, expected map[rune][]uint16, weights uca.Weights, layout uca.Layout) {

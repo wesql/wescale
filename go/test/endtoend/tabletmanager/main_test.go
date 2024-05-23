@@ -30,10 +30,10 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
-	tmc "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	tabletpb "github.com/wesql/wescale/go/vt/proto/topodata"
+	tmc "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 )
 
 var (

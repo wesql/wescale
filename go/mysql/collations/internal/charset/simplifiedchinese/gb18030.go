@@ -20,7 +20,7 @@ import (
 	"unicode/utf8"
 	_ "unsafe"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset/types"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/types"
 )
 
 type Charset_gb18030 struct{}

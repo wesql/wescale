@@ -22,8 +22,8 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 var cert, key, ca, crl, name string

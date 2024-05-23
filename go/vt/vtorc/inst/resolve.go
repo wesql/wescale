@@ -26,8 +26,8 @@ import (
 
 	"github.com/patrickmn/go-cache"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
 )
 
 type HostnameResolve struct {

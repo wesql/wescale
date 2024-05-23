@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/acl"
+	"github.com/wesql/wescale/go/acl"
 )
 
 func TestGetACLPermissionLevelForAPI(t *testing.T) {

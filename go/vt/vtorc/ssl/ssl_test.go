@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtorc/ssl"
+	"github.com/wesql/wescale/go/vt/vtorc/ssl"
 )
 
 func TestHasString(t *testing.T) {

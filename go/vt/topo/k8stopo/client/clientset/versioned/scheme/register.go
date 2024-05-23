@@ -25,7 +25,7 @@ import (
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
-	topov1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/apis/topo/v1beta1"
+	topov1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/apis/topo/v1beta1"
 )
 
 var Scheme = runtime.NewScheme()

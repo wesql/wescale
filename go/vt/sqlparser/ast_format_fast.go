@@ -25,7 +25,7 @@ package sqlparser
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // formatFast formats the node.

@@ -6,9 +6,9 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package schema
 
 import (
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 func GetTableSchemaAndNameFromDdlStmt(schemaOfSession string, ddlStmt sqlparser.DDLStatement) ([]TableSchemaAndName, error) {

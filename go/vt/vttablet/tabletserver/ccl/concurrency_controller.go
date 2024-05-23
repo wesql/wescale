@@ -30,17 +30,17 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/servenv"
 
 	"context"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/logutil"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/logutil"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var (

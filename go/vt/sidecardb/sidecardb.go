@@ -32,20 +32,20 @@ import (
 	"strings"
 	"sync"
 
-	"vitess.io/vitess/go/history"
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/history"
+	"github.com/wesql/wescale/go/mysql"
 
-	"vitess.io/vitess/go/mysql/fakesqldb"
+	"github.com/wesql/wescale/go/mysql/fakesqldb"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vterrors"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/schemadiff"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/schemadiff"
 )
 
 const (

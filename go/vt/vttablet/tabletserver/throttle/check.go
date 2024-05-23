@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/textutil"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/textutil"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/base"
 )
 
 const (

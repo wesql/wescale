@@ -24,12 +24,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/proto/vschema"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication"
+	"github.com/wesql/wescale/go/vt/proto/vschema"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication"
 
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 func TestTemplatize(t *testing.T) {

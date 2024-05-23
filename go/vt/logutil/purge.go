@@ -26,7 +26,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 )
 
 var (

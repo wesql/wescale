@@ -28,9 +28,9 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/mysql/collations/internal/testutil"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/testutil"
 )
 
 func wikiRequest(lang testutil.Lang, args map[string]string, output any) error {

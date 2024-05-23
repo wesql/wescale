@@ -22,7 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sync2"
+	"github.com/wesql/wescale/go/sync2"
 )
 
 const (

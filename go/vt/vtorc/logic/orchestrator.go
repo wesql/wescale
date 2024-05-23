@@ -28,15 +28,15 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"github.com/sjmudd/stopwatch"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtorc/collection"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/discovery"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	ometrics "vitess.io/vitess/go/vt/vtorc/metrics"
-	"vitess.io/vitess/go/vt/vtorc/process"
-	"vitess.io/vitess/go/vt/vtorc/util"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtorc/collection"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/discovery"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	ometrics "github.com/wesql/wescale/go/vt/vtorc/metrics"
+	"github.com/wesql/wescale/go/vt/vtorc/process"
+	"github.com/wesql/wescale/go/vt/vtorc/util"
 )
 
 const (

@@ -25,11 +25,11 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtgr/db"
-	"vitess.io/vitess/go/vt/vtgr/inst"
-	"vitess.io/vitess/go/vt/vtgr/log"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtgr/db"
+	"github.com/wesql/wescale/go/vt/vtgr/inst"
+	"github.com/wesql/wescale/go/vt/vtgr/log"
 )
 
 var (

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"vitess.io/vitess/go/vt/vtadmin/errors"
+	"github.com/wesql/wescale/go/vt/vtadmin/errors"
 )
 
 // JSONResponse represents a generic response object.

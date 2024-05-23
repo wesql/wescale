@@ -26,10 +26,10 @@ import (
 	"net"
 	"time"
 
-	"vitess.io/vitess/go/mysql/collations"
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttls"
+	"github.com/wesql/wescale/go/mysql/collations"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttls"
 )
 
 // connectResult is used by Connect.

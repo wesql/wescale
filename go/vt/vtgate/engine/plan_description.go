@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"sort"
 
-	"vitess.io/vitess/go/tools/graphviz"
-	"vitess.io/vitess/go/vt/key"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/tools/graphviz"
+	"github.com/wesql/wescale/go/vt/key"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 )
 
 // PrimitiveDescription is used to create a serializable representation of the Primitive tree

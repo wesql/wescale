@@ -17,9 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"vitess.io/vitess/go/trace"
+	"github.com/wesql/wescale/go/trace"
 
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 func init() {

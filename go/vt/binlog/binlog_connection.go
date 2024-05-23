@@ -25,10 +25,10 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/pools"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/pools"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 var (

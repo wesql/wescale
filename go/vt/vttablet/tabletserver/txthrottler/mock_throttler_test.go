@@ -10,8 +10,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	discovery "vitess.io/vitess/go/vt/discovery"
-	throttlerdata "vitess.io/vitess/go/vt/proto/throttlerdata"
+	discovery "github.com/wesql/wescale/go/vt/discovery"
+	throttlerdata "github.com/wesql/wescale/go/vt/proto/throttlerdata"
 )
 
 // MockThrottlerInterface is a mock of ThrottlerInterface interface.

@@ -17,7 +17,7 @@ limitations under the License.
 
 package topodata
 
-import hack "vitess.io/vitess/go/hack"
+import hack "github.com/wesql/wescale/go/hack"
 
 func (cached *KeyRange) CachedSize(alloc bool) int64 {
 	if cached == nil {

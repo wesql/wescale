@@ -25,5 +25,5 @@ package vtconsensus
 
 import (
 	// register the etcd2 implementation of TopoServer.
-	_ "vitess.io/vitess/go/vt/topo/etcd2topo"
+	_ "github.com/wesql/wescale/go/vt/topo/etcd2topo"
 )

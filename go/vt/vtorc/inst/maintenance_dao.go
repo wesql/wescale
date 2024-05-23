@@ -19,10 +19,10 @@ package inst
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
 )
 
 // ExpireMaintenance will remove the maintenance flag on old maintenances and on bounded maintenances

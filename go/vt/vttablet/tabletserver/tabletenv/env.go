@@ -19,9 +19,9 @@ limitations under the License.
 package tabletenv
 
 import (
-	"vitess.io/vitess/go/tb"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/tb"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 // Env defines the functions supported by TabletServer

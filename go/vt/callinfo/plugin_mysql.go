@@ -24,7 +24,7 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 // MysqlCallInfo returns an augmented context with a CallInfo structure,

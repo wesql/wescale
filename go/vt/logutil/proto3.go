@@ -19,8 +19,8 @@ package logutil
 import (
 	"time"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	vttimepb "vitess.io/vitess/go/vt/proto/vttime"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	vttimepb "github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 // This file contains a few functions to help with proto3.

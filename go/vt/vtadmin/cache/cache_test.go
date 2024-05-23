@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/vtadmin/cache"
+	"github.com/wesql/wescale/go/vt/vtadmin/cache"
 )
 
 type testkey string

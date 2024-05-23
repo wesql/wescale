@@ -20,11 +20,11 @@ import (
 	"context"
 	"net/http"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/vtadmin/cache"
-	"vitess.io/vitess/go/vt/vtadmin/rbac"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/vtadmin/cache"
+	"github.com/wesql/wescale/go/vt/vtadmin/rbac"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // Options defines the set of configurations for an HTTP API server.

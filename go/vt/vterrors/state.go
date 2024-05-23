@@ -16,7 +16,7 @@ limitations under the License.
 
 package vterrors
 
-import vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+import vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 
 // State is error state
 type State int

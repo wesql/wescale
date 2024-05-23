@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/mysqlctl/fakemysqldaemon"
+	"github.com/wesql/wescale/go/vt/mysqlctl/fakemysqldaemon"
 )
 
 func TestPoller(t *testing.T) {

@@ -10,10 +10,10 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/discovery"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/discovery"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // PickTablet picks one tablet based on the pick tablet algorithm

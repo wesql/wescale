@@ -23,13 +23,13 @@ import (
 	"os"
 	"testing"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/sqltypes"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	vttestpb "vitess.io/vitess/go/vt/proto/vttest"
-	"vitess.io/vitess/go/vt/vttest"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/sqltypes"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	vttestpb "github.com/wesql/wescale/go/vt/proto/vttest"
+	"github.com/wesql/wescale/go/vt/vttest"
 )
 
 var (

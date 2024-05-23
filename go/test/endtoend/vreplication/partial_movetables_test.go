@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/wrangler"
 )
 
 // TestPartialMoveTables tests partial move tables by moving each

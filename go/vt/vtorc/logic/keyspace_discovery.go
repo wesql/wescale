@@ -22,10 +22,10 @@ import (
 	"strings"
 	"sync"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
 )
 
 // RefreshAllKeyspaces reloads the keyspace information for the keyspaces that vtorc is concerned with.

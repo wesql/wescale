@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // checkFile tests the file part of the Conn API.

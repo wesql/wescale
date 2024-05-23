@@ -26,15 +26,15 @@ import (
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vttablet/tmclient"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vttablet/tmclient"
 
-	tabletmanagerservicepb "vitess.io/vitess/go/vt/proto/tabletmanagerservice"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	tabletmanagerservicepb "github.com/wesql/wescale/go/vt/proto/tabletmanagerservice"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 var defaultPoolCapacity = 100

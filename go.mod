@@ -1,4 +1,4 @@
-module vitess.io/vitess
+module github.com/wesql/wescale
 
 go 1.21
 

@@ -19,8 +19,8 @@ package mysql
 import (
 	"fmt"
 
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	"vitess.io/vitess/go/vt/vterrors"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // ReplicationStatus holds replication information from SHOW SLAVE STATUS.

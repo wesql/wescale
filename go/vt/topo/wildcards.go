@@ -23,11 +23,11 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/fileutil"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/fileutil"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // ResolveKeyspaceWildcard will resolve keyspace wildcards.

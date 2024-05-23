@@ -23,11 +23,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vitess.io/vitess/go/vt/logz"
+	"github.com/wesql/wescale/go/vt/logz"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
 )
 
 type statsResults struct {

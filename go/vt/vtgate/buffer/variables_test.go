@@ -29,7 +29,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 func TestVariables(t *testing.T) {

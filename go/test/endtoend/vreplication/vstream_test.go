@@ -27,15 +27,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/log"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	_ "vitess.io/vitess/go/vt/vtctl/grpcvtctlclient"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
+	"github.com/wesql/wescale/go/vt/log"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/wescale/go/vt/proto/vtgate"
+	_ "github.com/wesql/wescale/go/vt/vtctl/grpcvtctlclient"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
 
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	"github.com/wesql/wescale/go/vt/vtgate/vtgateconn"
 )
 
 // Validates that we have a working VStream API

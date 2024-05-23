@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtctl/reparentutil/promotionrule"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil/promotionrule"
 )
 
 const ReasonableDiscoveryLatency = 500 * time.Millisecond

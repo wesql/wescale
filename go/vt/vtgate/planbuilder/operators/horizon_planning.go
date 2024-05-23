@@ -17,10 +17,10 @@ limitations under the License.
 package operators
 
 import (
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/rewrite"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/rewrite"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/operators/ops"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/operators/ops"
 )
 
 var errNotHorizonPlanned = vterrors.VT12001("query cannot be fully operator planned")

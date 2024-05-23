@@ -26,7 +26,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	throttlerdatapb "vitess.io/vitess/go/vt/proto/throttlerdata"
+	throttlerdatapb "github.com/wesql/wescale/go/vt/proto/throttlerdata"
 )
 
 // We base our test data on these defaults.

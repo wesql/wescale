@@ -19,9 +19,9 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/tlstest"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/tlstest"
 )
 
 var (

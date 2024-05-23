@@ -19,7 +19,7 @@ package http
 import (
 	"context"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // VTExplain implements the http wrapper for /vtexplain?cluster=&keyspace=&sql=

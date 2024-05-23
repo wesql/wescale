@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/vt/callinfo"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/vt/callinfo"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // QueryDetail is a simple wrapper for Query, Context and a killable conn.

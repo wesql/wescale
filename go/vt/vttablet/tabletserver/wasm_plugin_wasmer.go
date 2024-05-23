@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"sync"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/wasmerio/wasmer-go/wasmer"
 )

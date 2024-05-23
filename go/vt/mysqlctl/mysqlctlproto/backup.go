@@ -17,11 +17,11 @@ limitations under the License.
 package mysqlctlproto
 
 import (
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/mysqlctl"
-	"vitess.io/vitess/go/vt/mysqlctl/backupstorage"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/mysqlctl/backupstorage"
 
-	mysqlctlpb "vitess.io/vitess/go/vt/proto/mysqlctl"
+	mysqlctlpb "github.com/wesql/wescale/go/vt/proto/mysqlctl"
 )
 
 // BackupHandleToProto returns a BackupInfo proto from a BackupHandle.

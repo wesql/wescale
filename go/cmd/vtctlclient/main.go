@@ -26,15 +26,15 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
 	// Include deprecation warnings for soon-to-be-unsupported flag invocations.
 )
 

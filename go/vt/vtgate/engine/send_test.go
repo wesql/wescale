@@ -28,8 +28,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/key"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/key"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 func TestSendTableUnShardWithoutKS(t *testing.T) {

@@ -20,11 +20,11 @@ import (
 	"context"
 	"testing"
 
-	"vitess.io/vitess/go/test/endtoend/reparent/utils"
+	"github.com/wesql/wescale/go/test/endtoend/reparent/utils"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 )
 
 func TestReparentGracefulRangeBased(t *testing.T) {

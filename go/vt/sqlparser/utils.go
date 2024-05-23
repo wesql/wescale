@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sort"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 // QueryMatchesTemplates sees if the given query has the same fingerprint as one of the given templates

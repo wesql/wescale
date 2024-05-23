@@ -23,7 +23,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/vt/proto/vttime"
+	"github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 const (

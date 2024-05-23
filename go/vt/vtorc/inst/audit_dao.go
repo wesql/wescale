@@ -22,13 +22,13 @@ import (
 	"os"
 	"time"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/rcrowley/go-metrics"
 
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
 )
 
 // syslogWriter is optional, and defaults to nil (disabled)

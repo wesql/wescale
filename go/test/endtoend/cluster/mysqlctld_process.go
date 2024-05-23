@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // MysqlctldProcess is a generic handle for a running mysqlctld command .

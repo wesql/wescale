@@ -25,7 +25,7 @@ import (
 	"path"
 	"strings"
 
-	"vitess.io/vitess/go/tools/goimports"
+	"github.com/wesql/wescale/go/tools/goimports"
 
 	"github.com/dave/jennifer/jen"
 	"golang.org/x/tools/go/packages"

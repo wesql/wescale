@@ -3,7 +3,7 @@ package role
 import (
 	"os"
 	"testing"
-	"vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func Test_setUpMysqlProbeServicePort(t *testing.T) {

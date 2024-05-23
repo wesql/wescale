@@ -27,12 +27,12 @@ import (
 
 	"github.com/spf13/pflag"
 
-	_flag "vitess.io/vitess/go/internal/flag"
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vterrors"
+	_flag "github.com/wesql/wescale/go/internal/flag"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // This file contains utility methods and definitions to lock

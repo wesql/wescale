@@ -31,9 +31,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/z-division/go-zookeeper/zk"
 
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 const (

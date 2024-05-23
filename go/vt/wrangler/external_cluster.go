@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	"vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // MountExternalVitessCluster adds a topo record for cluster with specified parameters so that it is available to a Migrate command

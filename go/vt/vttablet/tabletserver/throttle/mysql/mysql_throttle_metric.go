@@ -13,7 +13,7 @@ import (
 
 	"github.com/patrickmn/go-cache"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 // MetricsQueryType indicates the type of metrics query on MySQL backend. See following.

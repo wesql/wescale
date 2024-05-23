@@ -17,9 +17,9 @@ limitations under the License.
 package planbuilder
 
 import (
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/vtgate/engine"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 func buildOtherReadAndAdmin(sql string, vschema plancontext.VSchema) (*planResult, error) {

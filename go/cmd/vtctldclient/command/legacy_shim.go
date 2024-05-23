@@ -23,13 +23,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/cmd/vtctldclient/cli"
-	"vitess.io/vitess/go/internal/flag"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/cmd/vtctldclient/cli"
+	"github.com/wesql/wescale/go/internal/flag"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
 )
 
 var (

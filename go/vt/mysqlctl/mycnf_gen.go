@@ -28,8 +28,8 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/env"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/env"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 // This files handles the creation of Mycnf objects for the default 'vt'

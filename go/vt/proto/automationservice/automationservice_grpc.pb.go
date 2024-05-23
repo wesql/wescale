@@ -11,7 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	automation "vitess.io/vitess/go/vt/proto/automation"
+	automation "github.com/wesql/wescale/go/vt/proto/automation"
 )
 
 // This is a compile-time assertion to ensure that this generated file

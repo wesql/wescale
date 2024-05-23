@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/mysql"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/mysql"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // TestReparentSorter tests that the sorting for tablets works correctly

@@ -28,17 +28,17 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 
 	"golang.org/x/net/context"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/logutil"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtconsensus/db"
-	"vitess.io/vitess/go/vt/vtconsensus/inst"
-	"vitess.io/vitess/go/vt/vtconsensus/log"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/logutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtconsensus/db"
+	"github.com/wesql/wescale/go/vt/vtconsensus/inst"
+	"github.com/wesql/wescale/go/vt/vtconsensus/log"
 )
 
 var (

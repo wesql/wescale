@@ -23,10 +23,10 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
-	"vitess.io/vitess/go/mysql/collations/internal/testutil"
-	"vitess.io/vitess/go/mysql/collations/remote"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/testutil"
+	"github.com/wesql/wescale/go/mysql/collations/remote"
 )
 
 func TestFastIterators(t *testing.T) {

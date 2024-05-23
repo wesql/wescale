@@ -30,16 +30,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/cmd/vtctldclient/cli"
-	"vitess.io/vitess/go/protoutil"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/schema"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/cmd/vtctldclient/cli"
+	"github.com/wesql/wescale/go/protoutil"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/wrangler"
 
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
-	"vitess.io/vitess/go/vt/proto/vtrpc"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 var (

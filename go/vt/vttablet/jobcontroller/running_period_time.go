@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // the function caller should make sure that runningTimePeriodStart and runningTimePeriodEnd is valid

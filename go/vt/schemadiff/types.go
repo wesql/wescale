@@ -17,7 +17,7 @@ limitations under the License.
 package schemadiff
 
 import (
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // Entity stands for a database object we can diff:

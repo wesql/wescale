@@ -14,11 +14,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/memorytopo"
-	"vitess.io/vitess/go/vt/vtconsensus/db"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldserver/testutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/memorytopo"
+	"github.com/wesql/wescale/go/vt/vtconsensus/db"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldserver/testutil"
 )
 
 func TestWrongPrimaryTabletRepair(t *testing.T) {

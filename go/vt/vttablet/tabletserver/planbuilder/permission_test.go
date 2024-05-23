@@ -25,8 +25,8 @@ import (
 	"reflect"
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/tableacl"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/tableacl"
 )
 
 func TestBuildPermissions(t *testing.T) {

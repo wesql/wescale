@@ -26,17 +26,17 @@ import (
 	"google.golang.org/grpc"
 	grpcresolver "google.golang.org/grpc/resolver"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/grpcclient"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtadmin/cluster/resolver"
-	"vitess.io/vitess/go/vt/vtadmin/debug"
-	"vitess.io/vitess/go/vt/vtadmin/vtadminproto"
-	"vitess.io/vitess/go/vt/vtctl/grpcvtctldclient"
-	"vitess.io/vitess/go/vt/vtctl/vtctldclient"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/grpcclient"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster/resolver"
+	"github.com/wesql/wescale/go/vt/vtadmin/debug"
+	"github.com/wesql/wescale/go/vt/vtadmin/vtadminproto"
+	"github.com/wesql/wescale/go/vt/vtctl/grpcvtctldclient"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctldclient"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
 )
 
 // Proxy defines the connection interface of a proxied vtctldclient used by

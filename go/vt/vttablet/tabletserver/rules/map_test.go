@@ -26,7 +26,7 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/planbuilder"
 )
 
 var (

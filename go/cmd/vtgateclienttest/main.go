@@ -22,11 +22,11 @@ package main
 import (
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/cmd/vtgateclienttest/services"
-	"vitess.io/vitess/go/exit"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtgate"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/cmd/vtgateclienttest/services"
+	"github.com/wesql/wescale/go/exit"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtgate"
 )
 
 func init() {

@@ -25,9 +25,9 @@ import (
 	"context"
 	"time"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // RPCPool is a specialized version of the ResourcePool, for bounding concurrent

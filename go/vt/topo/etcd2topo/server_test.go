@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/testfiles"
-	"vitess.io/vitess/go/vt/log"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/tlstest"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/topo/test"
+	"github.com/wesql/wescale/go/testfiles"
+	"github.com/wesql/wescale/go/vt/log"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/tlstest"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo/test"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )

@@ -24,7 +24,7 @@ package gc
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/schema"
+	"github.com/wesql/wescale/go/vt/schema"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 func TestOpenTsdbCounter(t *testing.T) {

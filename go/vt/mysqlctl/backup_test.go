@@ -23,7 +23,7 @@ import (
 	"sort"
 	"testing"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 func TestFindFilesToBackupWithoutRedoLog(t *testing.T) {

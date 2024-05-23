@@ -27,15 +27,15 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/streamlog"
-	"vitess.io/vitess/go/sync2"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/streamlog"
+	"github.com/wesql/wescale/go/sync2"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/tabletenv"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // TxSerializer serializes incoming transactions which target the same row range

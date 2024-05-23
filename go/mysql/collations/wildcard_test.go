@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
 )
 
 type wildcardtest struct {

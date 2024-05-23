@@ -24,7 +24,7 @@ import (
 
 	"context"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
 )
 
 var (

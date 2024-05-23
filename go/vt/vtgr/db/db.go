@@ -27,9 +27,9 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtgr/config"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtgr/config"
 )
 
 var (

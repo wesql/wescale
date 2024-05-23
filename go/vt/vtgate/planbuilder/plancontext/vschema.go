@@ -3,16 +3,16 @@ package plancontext
 import (
 	"strings"
 
-	"vitess.io/vitess/go/vt/log"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	"github.com/wesql/wescale/go/vt/log"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/vt/key"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/sqlparser"
-	"vitess.io/vitess/go/vt/vtgate/semantics"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/vt/key"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/vtgate/semantics"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 )
 
 // PlannerVersion is an alias here to make the code more readable

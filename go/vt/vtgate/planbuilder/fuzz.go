@@ -20,10 +20,10 @@ import (
 	"sync"
 	"testing"
 
-	"vitess.io/vitess/go/json2"
-	"vitess.io/vitess/go/sqltypes"
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
-	"vitess.io/vitess/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/json2"
+	"github.com/wesql/wescale/go/sqltypes"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
+	"github.com/wesql/wescale/go/vt/vtgate/vindexes"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 )

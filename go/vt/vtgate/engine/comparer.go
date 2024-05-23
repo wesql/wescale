@@ -17,9 +17,9 @@ limitations under the License.
 package engine
 
 import (
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vtgate/evalengine"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/vtgate/evalengine"
 )
 
 // comparer is the struct that has the logic for comparing two rows in the result set

@@ -24,18 +24,18 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtadmin"
-	"vitess.io/vitess/go/vt/vtadmin/cache"
-	"vitess.io/vitess/go/vt/vtadmin/cluster"
-	"vitess.io/vitess/go/vt/vtadmin/grpcserver"
-	vtadminhttp "vitess.io/vitess/go/vt/vtadmin/http"
-	"vitess.io/vitess/go/vt/vtadmin/http/debug"
-	"vitess.io/vitess/go/vt/vtadmin/rbac"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtadmin"
+	"github.com/wesql/wescale/go/vt/vtadmin/cache"
+	"github.com/wesql/wescale/go/vt/vtadmin/cluster"
+	"github.com/wesql/wescale/go/vt/vtadmin/grpcserver"
+	vtadminhttp "github.com/wesql/wescale/go/vt/vtadmin/http"
+	"github.com/wesql/wescale/go/vt/vtadmin/http/debug"
+	"github.com/wesql/wescale/go/vt/vtadmin/rbac"
 
-	_flag "vitess.io/vitess/go/internal/flag"
+	_flag "github.com/wesql/wescale/go/internal/flag"
 )
 
 var (

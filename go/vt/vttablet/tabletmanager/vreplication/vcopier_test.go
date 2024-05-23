@@ -23,18 +23,18 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/mysqlctl"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/mysqlctl"
 
 	"context"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/binlog/binlogplayer"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	qh "vitess.io/vitess/go/vt/vttablet/tabletmanager/vreplication/queryhistory"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/vstreamer"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/binlog/binlogplayer"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
+	qh "github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vreplication/queryhistory"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/vstreamer"
 )
 
 type vcopierTestCase struct {

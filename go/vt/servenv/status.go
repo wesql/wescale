@@ -32,8 +32,8 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // AddStatusPart adds a new section to status. fragment is used as a

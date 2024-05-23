@@ -33,8 +33,8 @@ import (
 	// register mysql driver
 	_ "github.com/go-sql-driver/mysql"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	"vitess.io/vitess/go/vt/vtconsensus/config"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	"github.com/wesql/wescale/go/vt/vtconsensus/config"
 )
 
 // OpenDiscovery returns a DB instance to access a topology instance.

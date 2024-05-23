@@ -22,7 +22,7 @@ limitations under the License.
 package mysql
 
 import (
-	"vitess.io/vitess/go/vt/vttls"
+	"github.com/wesql/wescale/go/vt/vttls"
 )
 
 // ConnParams contains all the parameters to use to connect to mysql.

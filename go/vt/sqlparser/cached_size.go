@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	hack "vitess.io/vitess/go/hack"
+	hack "github.com/wesql/wescale/go/hack"
 )
 
 type cachedObject interface {

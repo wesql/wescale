@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/vt/proto/vttest"
+	"github.com/wesql/wescale/go/vt/proto/vttest"
 
 	// we use gRPC everywhere, so import the vtgate client.
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
 )
 
 // Environment is the interface that customizes the global settings for

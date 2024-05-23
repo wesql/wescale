@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/topo"
 
-	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	vschemapb "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 // GetRoutingRules fetches routing rules from the topology server and returns a

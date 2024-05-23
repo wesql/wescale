@@ -7,7 +7,7 @@
 package mysql
 
 import (
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/throttle/base"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/throttle/base"
 )
 
 // ClusterInstanceKey combines a cluster name with an instance key

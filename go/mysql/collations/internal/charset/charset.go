@@ -19,12 +19,12 @@ package charset
 import (
 	"unicode/utf8"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset/eightbit"
-	"vitess.io/vitess/go/mysql/collations/internal/charset/japanese"
-	"vitess.io/vitess/go/mysql/collations/internal/charset/korean"
-	"vitess.io/vitess/go/mysql/collations/internal/charset/simplifiedchinese"
-	"vitess.io/vitess/go/mysql/collations/internal/charset/types"
-	"vitess.io/vitess/go/mysql/collations/internal/charset/unicode"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/eightbit"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/japanese"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/korean"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/simplifiedchinese"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/types"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/unicode"
 )
 
 const RuneError = utf8.RuneError

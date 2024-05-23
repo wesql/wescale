@@ -32,9 +32,9 @@ import (
 	"strings"
 	"text/template"
 
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/vt/env"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/vt/env"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 type zkServerAddr struct {

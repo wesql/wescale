@@ -26,11 +26,11 @@ import (
 	"fmt"
 	"math"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
 
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 )
 
 // GRFlavorID is the string identifier for the MysqlGR flavor.

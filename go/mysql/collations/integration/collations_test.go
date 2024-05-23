@@ -31,12 +31,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding/unicode/utf32"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/mysql/collations/remote"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/mysql/collations"
+	"github.com/wesql/wescale/go/mysql/collations/remote"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 var collationEnv *collations.Environment

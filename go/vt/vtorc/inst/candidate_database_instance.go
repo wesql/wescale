@@ -19,8 +19,8 @@ package inst
 import (
 	"fmt"
 
-	"vitess.io/vitess/go/vt/vtctl/reparentutil/promotionrule"
-	"vitess.io/vitess/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/vtctl/reparentutil/promotionrule"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
 )
 
 // CandidateDatabaseInstance contains information about explicit promotion rules for an instance

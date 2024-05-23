@@ -29,8 +29,8 @@ import (
 	"syscall"
 	"time"
 
-	vtenv "vitess.io/vitess/go/vt/env"
-	"vitess.io/vitess/go/vt/log"
+	vtenv "github.com/wesql/wescale/go/vt/env"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // Hook is the input structure for this library.

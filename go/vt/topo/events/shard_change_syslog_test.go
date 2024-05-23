@@ -20,9 +20,9 @@ import (
 	"log/syslog"
 	"testing"
 
-	"vitess.io/vitess/go/hack"
+	"github.com/wesql/wescale/go/hack"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func init() {

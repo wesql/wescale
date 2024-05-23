@@ -24,7 +24,7 @@ package mysql
 import (
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttls"
+	"github.com/wesql/wescale/go/vt/vttls"
 
 	"github.com/stretchr/testify/assert"
 )

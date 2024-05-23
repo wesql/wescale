@@ -17,9 +17,9 @@ limitations under the License.
 package vtadminproto
 
 import (
-	"vitess.io/vitess/go/trace"
+	"github.com/wesql/wescale/go/trace"
 
-	vtadminpb "vitess.io/vitess/go/vt/proto/vtadmin"
+	vtadminpb "github.com/wesql/wescale/go/vt/proto/vtadmin"
 )
 
 // AnnotateClusterSpan adds the cluster_id and cluster_name to a span.

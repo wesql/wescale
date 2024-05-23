@@ -17,5 +17,5 @@ limitations under the License.
 package main
 
 import (
-	_ "vitess.io/vitess/go/vt/mysqlctl/s3backupstorage"
+	_ "github.com/wesql/wescale/go/vt/mysqlctl/s3backupstorage"
 )

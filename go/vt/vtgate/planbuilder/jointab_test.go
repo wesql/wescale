@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func TestGenerateSubqueryVars(t *testing.T) {

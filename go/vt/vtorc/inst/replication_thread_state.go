@@ -16,7 +16,7 @@
 
 package inst
 
-import "vitess.io/vitess/go/mysql"
+import "github.com/wesql/wescale/go/mysql"
 
 type ReplicationThreadState int
 

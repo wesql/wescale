@@ -47,16 +47,16 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/config"
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/vt/dbconfigs"
-	"vitess.io/vitess/go/vt/dbconnpool"
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/mysqlctl/mysqlctlclient"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/config"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/dbconnpool"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/mysqlctl/mysqlctlclient"
+	"github.com/wesql/wescale/go/vt/servenv"
 
-	vtenv "vitess.io/vitess/go/vt/env"
+	vtenv "github.com/wesql/wescale/go/vt/env"
 )
 
 var (

@@ -3,8 +3,8 @@ package queries
 import (
 	"testing"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/utils"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/utils"
 )
 
 func TestRoutingTabletType(t *testing.T) {

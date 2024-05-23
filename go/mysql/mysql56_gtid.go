@@ -27,8 +27,8 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // Mysql56FlavorID is the string identifier for the Mysql56 flavor.

@@ -23,14 +23,14 @@ import (
 
 	"github.com/buger/jsonparser"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/endtoend/tabletgateway/buffer"
+	"github.com/wesql/wescale/go/test/endtoend/tabletgateway/buffer"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 )
 
 const (

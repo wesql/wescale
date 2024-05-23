@@ -19,11 +19,11 @@ package cluster
 import (
 	"strings"
 
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vtadmin/vtadminproto"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vtadmin/vtadminproto"
 
-	vtctldatapb "vitess.io/vitess/go/vt/proto/vtctldata"
+	vtctldatapb "github.com/wesql/wescale/go/vt/proto/vtctldata"
 )
 
 // AnnotateSpan adds the cluster_id and cluster_name to a span.

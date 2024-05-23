@@ -21,7 +21,7 @@ package discovery
 import (
 	"time"
 
-	"vitess.io/vitess/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
 )
 
 // Metric holds a set of information of instance discovery metrics

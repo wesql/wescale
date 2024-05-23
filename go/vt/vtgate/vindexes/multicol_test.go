@@ -20,9 +20,9 @@ import (
 	"context"
 	"testing"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/key"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/key"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

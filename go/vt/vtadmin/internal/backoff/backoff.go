@@ -32,8 +32,8 @@ import (
 
 	grpcbackoff "google.golang.org/grpc/backoff"
 
-	"vitess.io/vitess/go/vt/log"
-	vtrand "vitess.io/vitess/go/vt/vtadmin/internal/rand"
+	"github.com/wesql/wescale/go/vt/log"
+	vtrand "github.com/wesql/wescale/go/vt/vtadmin/internal/rand"
 )
 
 // Strategy defines the interface for different backoff strategies.

@@ -26,7 +26,7 @@ import (
 	"os"
 	"reflect"
 
-	"vitess.io/vitess/go/mysql/collations/internal/uca"
+	"github.com/wesql/wescale/go/mysql/collations/internal/uca"
 )
 
 type LiteralPageGenerator struct {

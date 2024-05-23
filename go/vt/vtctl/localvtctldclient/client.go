@@ -20,9 +20,9 @@ import (
 	"errors"
 	"sync"
 
-	"vitess.io/vitess/go/vt/vtctl/vtctldclient"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctldclient"
 
-	vtctlservicepb "vitess.io/vitess/go/vt/proto/vtctlservice"
+	vtctlservicepb "github.com/wesql/wescale/go/vt/proto/vtctlservice"
 )
 
 var (

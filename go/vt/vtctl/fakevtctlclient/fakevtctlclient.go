@@ -22,8 +22,8 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/vtctl/vtctlclient"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/vtctl/vtctlclient"
 )
 
 // FakeVtctlClient is a fake which implements the vtctlclient interface.

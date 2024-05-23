@@ -25,15 +25,15 @@ import (
 	"github.com/spf13/pflag"
 	_ "modernc.org/sqlite"
 
-	"vitess.io/vitess/go/acl"
-	"vitess.io/vitess/go/vt/grpccommon"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtorc/config"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/logic"
-	"vitess.io/vitess/go/vt/vtorc/server"
+	"github.com/wesql/wescale/go/acl"
+	"github.com/wesql/wescale/go/vt/grpccommon"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/logic"
+	"github.com/wesql/wescale/go/vt/vtorc/server"
 )
 
 // transformArgsForPflag turns a slice of raw args passed on the command line,

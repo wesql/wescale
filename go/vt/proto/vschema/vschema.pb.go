@@ -28,7 +28,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	query "vitess.io/vitess/go/vt/proto/query"
+	query "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 const (

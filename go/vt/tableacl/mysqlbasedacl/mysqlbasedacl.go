@@ -8,8 +8,8 @@ package mysqlbasedacl
 import (
 	"fmt"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/tableacl/acl"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/tableacl/acl"
 )
 
 // MysqlBasedACL keeps all entries from mysql table in a unique in-memory list

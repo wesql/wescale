@@ -22,7 +22,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
-	"vitess.io/vitess/go/sqltypes"
+	"github.com/wesql/wescale/go/sqltypes"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"

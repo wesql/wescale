@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 func Test_suggestTabletType_to_replica(t *testing.T) {

@@ -25,7 +25,7 @@ import (
 
 	"context"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // backendExplorer is a class that uses the Backend interface of a

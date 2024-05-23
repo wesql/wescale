@@ -22,8 +22,8 @@ import (
 	"net/http"
 	"strings"
 
-	"vitess.io/vitess/go/vt/discovery"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/discovery"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // This file implements a REST-style API for the vtgate web interface.

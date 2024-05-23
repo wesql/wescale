@@ -22,7 +22,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"vitess.io/vitess/go/cache/ristretto/bloom"
+	"github.com/wesql/wescale/go/cache/ristretto/bloom"
 )
 
 const (

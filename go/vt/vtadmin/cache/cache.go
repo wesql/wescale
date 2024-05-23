@@ -25,7 +25,7 @@ import (
 
 	"github.com/patrickmn/go-cache"
 
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 // Keyer is the interface cache keys implement to turn themselves into string

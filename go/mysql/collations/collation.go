@@ -19,7 +19,7 @@ package collations
 import (
 	"math"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset"
 )
 
 // CaseAwareCollation implements lowercase and uppercase conventions for collations.

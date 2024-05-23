@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 var dateFormats = []string{"2006-01-02", "06-01-02", "20060102", "060102"}

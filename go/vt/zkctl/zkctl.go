@@ -33,8 +33,8 @@ import (
 
 	zookeeper "github.com/z-division/go-zookeeper/zk"
 
-	"vitess.io/vitess/go/vt/env"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/vt/env"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 const (

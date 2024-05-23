@@ -52,7 +52,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	vschema "vitess.io/vitess/go/vt/proto/vschema"
+	vschema "github.com/wesql/wescale/go/vt/proto/vschema"
 )
 
 const (

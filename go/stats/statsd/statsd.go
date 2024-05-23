@@ -11,9 +11,9 @@ import (
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/stats"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/servenv"
+	"github.com/wesql/wescale/go/stats"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/servenv"
 )
 
 var (

@@ -17,7 +17,7 @@ limitations under the License.
 package vterrors
 
 import (
-	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	vtrpcpb "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 // This file contains the necessary methods to send and receive errors

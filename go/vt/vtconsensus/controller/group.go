@@ -27,9 +27,9 @@ import (
 	"strings"
 	"sync"
 
-	"vitess.io/vitess/go/vt/vtconsensus/db"
-	"vitess.io/vitess/go/vt/vtconsensus/inst"
-	"vitess.io/vitess/go/vt/vtconsensus/log"
+	"github.com/wesql/wescale/go/vt/vtconsensus/db"
+	"github.com/wesql/wescale/go/vt/vtconsensus/inst"
+	"github.com/wesql/wescale/go/vt/vtconsensus/log"
 )
 
 func init() {

@@ -24,14 +24,14 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/sidecardb"
+	"github.com/wesql/wescale/go/vt/sidecardb"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	replicationdatapb "vitess.io/vitess/go/vt/proto/replicationdata"
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
-	tmc "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	replicationdatapb "github.com/wesql/wescale/go/vt/proto/replicationdata"
+	tabletpb "github.com/wesql/wescale/go/vt/proto/topodata"
+	tmc "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 )
 
 var (

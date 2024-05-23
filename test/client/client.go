@@ -33,7 +33,7 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/vitessdriver"
+	"github.com/wesql/wescale/go/vt/vitessdriver"
 )
 
 var (

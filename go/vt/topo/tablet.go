@@ -24,22 +24,22 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/key"
+	"github.com/wesql/wescale/go/vt/key"
 
-	"vitess.io/vitess/go/vt/proto/vtrpc"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/proto/vtrpc"
+	"github.com/wesql/wescale/go/vt/vterrors"
 
 	"google.golang.org/protobuf/proto"
 
-	"vitess.io/vitess/go/event"
-	"vitess.io/vitess/go/netutil"
-	"vitess.io/vitess/go/trace"
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/event"
+	"github.com/wesql/wescale/go/netutil"
+	"github.com/wesql/wescale/go/trace"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
 
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo/events"
-	"vitess.io/vitess/go/vt/topo/topoproto"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo/events"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
 )
 
 // IsTrivialTypeChange returns if this db type be trivially reassigned

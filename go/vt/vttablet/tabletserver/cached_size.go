@@ -17,7 +17,7 @@ limitations under the License.
 
 package tabletserver
 
-import hack "vitess.io/vitess/go/hack"
+import hack "github.com/wesql/wescale/go/hack"
 
 func (cached *TabletPlan) CachedSize(alloc bool) int64 {
 	if cached == nil {

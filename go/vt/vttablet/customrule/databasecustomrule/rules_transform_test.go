@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vttablet/customrule"
+	"github.com/wesql/wescale/go/vt/vttablet/customrule"
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
+	"github.com/wesql/wescale/go/sqltypes"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/planbuilder"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/rules"
 )
 
 func expectedRule() *rules.Rule {

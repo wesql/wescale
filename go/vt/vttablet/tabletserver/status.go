@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"vitess.io/vitess/go/sync2"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/sync2"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 )
 
 // This file contains the status web page export for tabletserver

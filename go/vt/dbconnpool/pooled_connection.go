@@ -20,7 +20,7 @@ import (
 	"context"
 	"time"
 
-	"vitess.io/vitess/go/pools"
+	"github.com/wesql/wescale/go/pools"
 )
 
 // PooledDBConnection re-exposes DBConnection to be used by ConnectionPool.

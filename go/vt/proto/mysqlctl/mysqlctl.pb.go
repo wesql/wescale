@@ -29,8 +29,8 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	vttime "vitess.io/vitess/go/vt/proto/vttime"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	vttime "github.com/wesql/wescale/go/vt/proto/vttime"
 )
 
 const (

@@ -22,8 +22,8 @@ import (
 	"strconv"
 	"strings"
 
-	"vitess.io/vitess/go/textutil"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/textutil"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 // NormalizedDDLQuery contains a query which is online-ddl -normalized

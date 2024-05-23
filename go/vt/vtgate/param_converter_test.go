@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"vitess.io/vitess/go/vt/proto/vtgate"
+	"github.com/wesql/wescale/go/vt/proto/vtgate"
 )
 
 func TestConvertReadAfterWriteConsistency(t *testing.T) {

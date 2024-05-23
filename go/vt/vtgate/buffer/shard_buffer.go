@@ -23,13 +23,13 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/vt/vtgate/errorsanitizer"
+	"github.com/wesql/wescale/go/vt/vtgate/errorsanitizer"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/logutil"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo/topoproto"
-	"vitess.io/vitess/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/logutil"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo/topoproto"
+	"github.com/wesql/wescale/go/vt/vterrors"
 )
 
 // bufferState represents the different states a shardBuffer object can be in.

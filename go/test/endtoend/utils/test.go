@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"vitess.io/vitess/go/mysql"
+	"github.com/wesql/wescale/go/mysql"
 )
 
 func TestDatabaseExists(t testing.TB, conn *mysql.Conn, dbName string) bool {

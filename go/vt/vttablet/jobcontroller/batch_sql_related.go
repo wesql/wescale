@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"math"
 
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletserver/connpool"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/sqlparser"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/sqlparser"
 )
 
 func genPKsGreaterEqualOrLessEqualStr(pkInfos []PKInfo, currentBatchStart []sqltypes.Value, greatEqual bool) (string, error) {

@@ -17,7 +17,7 @@
 package inst
 
 import (
-	"vitess.io/vitess/go/vt/vtorc/config"
+	"github.com/wesql/wescale/go/vt/vtorc/config"
 )
 
 // Maintenance indicates a maintenance entry (also in the database)

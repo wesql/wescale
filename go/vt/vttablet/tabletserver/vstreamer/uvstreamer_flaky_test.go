@@ -56,15 +56,15 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/vt/dbconfigs"
+	"github.com/wesql/wescale/go/vt/dbconfigs"
 
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/vt/proto/query"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/vt/log"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
+	"github.com/wesql/wescale/go/vt/log"
+	binlogdatapb "github.com/wesql/wescale/go/vt/proto/binlogdata"
 )
 
 const (

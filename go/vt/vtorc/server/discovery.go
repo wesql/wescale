@@ -19,10 +19,10 @@ package server
 import (
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/log"
-	"vitess.io/vitess/go/vt/vtorc/inst"
-	"vitess.io/vitess/go/vt/vtorc/logic"
-	"vitess.io/vitess/go/vt/vtorc/process"
+	"github.com/wesql/wescale/go/vt/log"
+	"github.com/wesql/wescale/go/vt/vtorc/inst"
+	"github.com/wesql/wescale/go/vt/vtorc/logic"
+	"github.com/wesql/wescale/go/vt/vtorc/process"
 )
 
 // RegisterFlags registers the flags required by VTOrc

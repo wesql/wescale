@@ -25,8 +25,8 @@ import (
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 
-	"vitess.io/vitess/go/flagutil"
-	"vitess.io/vitess/go/vt/log"
+	"github.com/wesql/wescale/go/flagutil"
+	"github.com/wesql/wescale/go/vt/log"
 )
 
 /*

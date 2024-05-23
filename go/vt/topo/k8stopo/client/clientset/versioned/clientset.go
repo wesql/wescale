@@ -25,7 +25,7 @@ import (
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
 
-	topov1beta1 "vitess.io/vitess/go/vt/topo/k8stopo/client/clientset/versioned/typed/topo/v1beta1"
+	topov1beta1 "github.com/wesql/wescale/go/vt/topo/k8stopo/client/clientset/versioned/typed/topo/v1beta1"
 )
 
 type Interface interface {

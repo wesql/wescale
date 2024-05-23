@@ -19,5 +19,5 @@ package vtgr
 // Imports and register the gRPC tabletmanager client
 
 import (
-	_ "vitess.io/vitess/go/vt/vttablet/grpctmclient"
+	_ "github.com/wesql/wescale/go/vt/vttablet/grpctmclient"
 )

@@ -23,7 +23,7 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"vitess.io/vitess/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/topo"
 )
 
 // Create is part of the topo.Conn interface.

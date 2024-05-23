@@ -25,19 +25,19 @@ import (
 	"testing"
 	"time"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 
-	"vitess.io/vitess/go/cache"
-	"vitess.io/vitess/go/vt/discovery"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/cache"
+	"github.com/wesql/wescale/go/vt/discovery"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
 
 	"context"
 
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqltypes"
-	_ "vitess.io/vitess/go/vt/vtgate/vindexes"
-	"vitess.io/vitess/go/vt/vttablet/sandboxconn"
+	"github.com/wesql/wescale/go/sqltypes"
+	_ "github.com/wesql/wescale/go/vt/vtgate/vindexes"
+	"github.com/wesql/wescale/go/vt/vttablet/sandboxconn"
 )
 
 func TestStreamSQLSharded(t *testing.T) {

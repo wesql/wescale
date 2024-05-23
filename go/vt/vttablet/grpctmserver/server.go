@@ -24,24 +24,24 @@ package grpctmserver
 import (
 	"time"
 
-	"vitess.io/vitess/go/vt/callerid"
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	"github.com/wesql/wescale/go/vt/callerid"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 
 	"context"
 
 	"google.golang.org/grpc"
 
-	"vitess.io/vitess/go/vt/callinfo"
-	"vitess.io/vitess/go/vt/hook"
-	"vitess.io/vitess/go/vt/logutil"
-	"vitess.io/vitess/go/vt/mysqlctl/tmutils"
-	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vttablet/tabletmanager"
+	"github.com/wesql/wescale/go/vt/callinfo"
+	"github.com/wesql/wescale/go/vt/hook"
+	"github.com/wesql/wescale/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/mysqlctl/tmutils"
+	"github.com/wesql/wescale/go/vt/servenv"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vttablet/tabletmanager"
 
-	logutilpb "vitess.io/vitess/go/vt/proto/logutil"
-	tabletmanagerdatapb "vitess.io/vitess/go/vt/proto/tabletmanagerdata"
-	tabletmanagerservicepb "vitess.io/vitess/go/vt/proto/tabletmanagerservice"
+	logutilpb "github.com/wesql/wescale/go/vt/proto/logutil"
+	tabletmanagerdatapb "github.com/wesql/wescale/go/vt/proto/tabletmanagerdata"
+	tabletmanagerservicepb "github.com/wesql/wescale/go/vt/proto/tabletmanagerservice"
 )
 
 // server is the gRPC implementation of the RPC server

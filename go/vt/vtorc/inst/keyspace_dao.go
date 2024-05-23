@@ -19,10 +19,10 @@ package inst
 import (
 	"errors"
 
-	"vitess.io/vitess/go/vt/external/golib/sqlutils"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	"vitess.io/vitess/go/vt/topo"
-	"vitess.io/vitess/go/vt/vtorc/db"
+	"github.com/wesql/wescale/go/vt/external/golib/sqlutils"
+	topodatapb "github.com/wesql/wescale/go/vt/proto/topodata"
+	"github.com/wesql/wescale/go/vt/topo"
+	"github.com/wesql/wescale/go/vt/vtorc/db"
 )
 
 // ErrKeyspaceNotFound is a fixed error message used when a keyspace is not found in the database.

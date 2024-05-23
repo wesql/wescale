@@ -22,10 +22,10 @@ import (
 	"os"
 	"testing"
 
-	"vitess.io/vitess/go/vt/vtgate/planbuilder"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder"
 
-	"vitess.io/vitess/go/mysql"
-	"vitess.io/vitess/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/mysql"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
 )
 
 var (

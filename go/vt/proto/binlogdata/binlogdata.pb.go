@@ -34,9 +34,9 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
-	query "vitess.io/vitess/go/vt/proto/query"
-	topodata "vitess.io/vitess/go/vt/proto/topodata"
-	vtrpc "vitess.io/vitess/go/vt/proto/vtrpc"
+	query "github.com/wesql/wescale/go/vt/proto/query"
+	topodata "github.com/wesql/wescale/go/vt/proto/topodata"
+	vtrpc "github.com/wesql/wescale/go/vt/proto/vtrpc"
 )
 
 const (

@@ -31,12 +31,12 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/stretchr/testify/require"
 
-	"vitess.io/vitess/go/sqlescape"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/test/endtoend/cluster"
-	"vitess.io/vitess/go/vt/log"
-	vdiff2 "vitess.io/vitess/go/vt/vttablet/tabletmanager/vdiff"
-	"vitess.io/vitess/go/vt/wrangler"
+	"github.com/wesql/wescale/go/sqlescape"
+	"github.com/wesql/wescale/go/sqltypes"
+	"github.com/wesql/wescale/go/test/endtoend/cluster"
+	"github.com/wesql/wescale/go/vt/log"
+	vdiff2 "github.com/wesql/wescale/go/vt/vttablet/tabletmanager/vdiff"
+	"github.com/wesql/wescale/go/vt/wrangler"
 )
 
 const (

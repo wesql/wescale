@@ -19,7 +19,7 @@ package unshardedrecovery
 import (
 	"testing"
 
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
+	_ "github.com/wesql/wescale/go/vt/vtgate/grpcvtgateconn"
 )
 
 func TestMain(m *testing.M) {

@@ -19,7 +19,7 @@ package unicode
 import (
 	"unicode/utf8"
 
-	"vitess.io/vitess/go/mysql/collations/internal/charset/types"
+	"github.com/wesql/wescale/go/mysql/collations/internal/charset/types"
 )
 
 // Code points in the surrogate range are not valid for UTF-8.

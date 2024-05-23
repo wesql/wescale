@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"vitess.io/vitess/go/event"
+	"github.com/wesql/wescale/go/event"
 )
 
 func TestFireOnTermSyncHooksFinished(t *testing.T) {

@@ -22,7 +22,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"vitess.io/vitess/go/vt/logutil"
+	"github.com/wesql/wescale/go/vt/logutil"
 )
 
 func TestFindReplicationPosition(t *testing.T) {

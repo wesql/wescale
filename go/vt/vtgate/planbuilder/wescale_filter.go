@@ -1,11 +1,11 @@
 package planbuilder
 
 import (
-	"vitess.io/vitess/go/internal/global"
-	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/vterrors"
-	"vitess.io/vitess/go/vt/vtgate/engine"
-	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
+	"github.com/wesql/wescale/go/internal/global"
+	"github.com/wesql/wescale/go/vt/key"
+	"github.com/wesql/wescale/go/vt/vterrors"
+	"github.com/wesql/wescale/go/vt/vtgate/engine"
+	"github.com/wesql/wescale/go/vt/vtgate/planbuilder/plancontext"
 )
 
 func buildWescaleFilterPlan(query string, vschema plancontext.VSchema) (*planResult, error) {

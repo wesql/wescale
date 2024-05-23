@@ -17,7 +17,7 @@ limitations under the License.
 package buffer
 
 import (
-	"vitess.io/vitess/go/stats"
+	"github.com/wesql/wescale/go/stats"
 )
 
 // This file contains all status variables which can be used to monitor the

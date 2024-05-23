@@ -26,9 +26,9 @@ import (
 	"strings"
 	"unicode"
 
-	tabletpb "vitess.io/vitess/go/vt/proto/topodata"
+	tabletpb "github.com/wesql/wescale/go/vt/proto/topodata"
 
-	querypb "vitess.io/vitess/go/vt/proto/query"
+	querypb "github.com/wesql/wescale/go/vt/proto/query"
 )
 
 const (
