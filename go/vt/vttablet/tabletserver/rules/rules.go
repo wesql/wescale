@@ -1377,3 +1377,8 @@ func removeLeadingAndTrailingSpace(str string) string {
 	}
 	return str[startIDX : endIDX+1]
 }
+
+// GetAct
+func (qr *Rule) GetAct() Action {
+	return qr.act
+}

@@ -193,7 +193,7 @@ func (args *ConcurrencyControlActionArgs) Parse(stringParams string) (ActionArgs
 	}
 	if !(c.MaxQueueSize == 0 || (c.MaxConcurrency > 0 && c.MaxConcurrency <= c.MaxQueueSize)) {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "MaxQueueSize: %d, MaxConcurrency: %d, param value is invalid: "+
-			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxQueueSize)
+			"make sure MaxQueueSize == 0 || (MaxConcurrency > 0 && MaxConcurrency <= MaxQueueSize)", c.MaxQueueSize, c.MaxConcurrency)
 	}
 	return c, nil
 }
@@ -269,7 +269,6 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "wasm bytes is empty")
 	}
 
-	// todo, check is in table?
 	userInputTOML := ConvertUserInputToTOML(stringParams)
 	w := &WasmPluginActionArgs{}
 	err := toml.Unmarshal([]byte(userInputTOML), w)

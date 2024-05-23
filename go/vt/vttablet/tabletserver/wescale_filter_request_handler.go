@@ -35,11 +35,43 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 	if err != nil {
 		return nil, err
 	}
+
+	err = CheckFilter(qe, rule)
+	if err != nil {
+		return nil, err
+	}
+
 	query, err := customrule.GenerateInsertStatement(rule, stmt.IfNotExists)
 	if err != nil {
 		return nil, err
 	}
+
 	return qe.ExecuteQuery(context.Background(), query)
+}
+
+func CheckFilter(qe *QueryEngine, rule *rules.Rule) error {
+	actionType := rule.GetAct()
+	actionInstance, err := CreateActionInstance(actionType, rule)
+	if err != nil {
+		return err
+	}
+	switch actionType {
+	case rules.QRWasmPlugin:
+		wasmPlugin, ok := actionInstance.(*WasmPluginAction)
+		if !ok {
+			return errors.New("create action failed")
+		}
+
+		bytes, err := qe.wasmPluginController.GetWasmBytesByBinaryName(context.Background(), wasmPlugin.Args.WasmBinaryName)
+		if err != nil {
+			return err
+		}
+		_, err = qe.wasmPluginController.VM.InitWasmModule(rule.Name, bytes)
+		if err != nil {
+			return fmt.Errorf("err when compiling wasm moulde %v", err)
+		}
+	}
+	return nil
 }
 
 func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
@@ -139,6 +171,11 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 	}
 
 	newFilter, err := rules.BuildQueryRule(ruleInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	err = CheckFilter(qe, newFilter)
 	if err != nil {
 		return nil, err
 	}
