@@ -3,11 +3,14 @@ package tabletserver
 import (
 	"context"
 	"fmt"
+	"sync"
+	"unsafe"
+
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
-	"sync"
-	"unsafe"
+
+	"vitess.io/vitess/go/sqltypes"
 )
 
 type WazeroVM struct {
@@ -141,6 +144,22 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 			return GetErrorMessageOnHost(ctx, mod, hostInstancePtr, errMessagePtr, errMessageSize)
 		}).
 		Export("GetErrorMessageOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("hostInstancePtr", "returnQueryResultPtr",
+			"returnQueryResultSize").
+		WithResultNames("callStatus").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnQueryResultPtr, returnQueryResultSize uint32) uint32 {
+			return GetQueryResultOnHost(ctx, mod, hostInstancePtr, returnQueryResultPtr, returnQueryResultSize)
+		}).
+		Export("GetQueryResultOnHost").
+		NewFunctionBuilder().
+		WithParameterNames("hostInstancePtr", "queryResultPtr",
+			"queryResultSize").
+		WithResultNames("callStatus").
+		WithFunc(func(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryResultPtr, queryResultSize uint32) uint32 {
+			return SetQueryResultOnHost(ctx, mod, hostInstancePtr, queryResultPtr, queryResultSize)
+		}).
+		Export("SetQueryResultOnHost").
 		Instantiate(ctx)
 	return err
 }
@@ -236,6 +255,8 @@ type WazeroInstance struct {
 
 	module       *WazeroModule
 	errorMessage string
+
+	queryResult *sqltypes.Result
 }
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
@@ -272,6 +293,14 @@ func (ins *WazeroInstance) RunWASMPluginAfter() error {
 
 func (ins *WazeroInstance) SetErrorMessage(message string) {
 	ins.errorMessage = message
+}
+
+func (ins *WazeroInstance) SetQueryResult(qr *sqltypes.Result) {
+	ins.queryResult = qr
+}
+
+func (ins *WazeroInstance) GetQueryResult() *sqltypes.Result {
+	return ins.queryResult
 }
 
 func (ins *WazeroInstance) Close() error {

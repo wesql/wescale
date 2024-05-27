@@ -317,8 +317,16 @@ func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Re
 	}
 	instance := v.(WasmInstance)
 	defer instance.Close()
-	instance.SetErrorMessage(err.Error())
+
+	if err != nil {
+		instance.SetErrorMessage(err.Error())
+	}
+	instance.SetQueryResult(reply)
+
 	errFromGuest := instance.RunWASMPluginAfter()
+
+	reply = instance.GetQueryResult()
+
 	if reply == nil && errFromGuest == nil {
 		return &ActionExecutionResponse{Reply: reply, Err: fmt.Errorf("unknown error in wasm plugin")}
 	}

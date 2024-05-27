@@ -4,6 +4,9 @@ import (
 	"context"
 	"unsafe"
 
+	"vitess.io/vitess/go/sqltypes"
+	querypb "vitess.io/vitess/go/vt/proto/query"
+
 	"vitess.io/vitess/go/vt/log"
 
 	"github.com/tetratelabs/wazero/api"
@@ -165,4 +168,34 @@ func SetErrorMessageOnHost(ctx context.Context, mod api.Module, hostInstancePtr 
 func GetErrorMessageOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
 	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
 	return uint32(copyHostStringIntoGuest(ctx, mod, w.errorMessage, returnValueData, returnValueSize))
+}
+
+func GetQueryResultOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnQueryResultPtr,
+	returnQueryResultSize uint32) uint32 {
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+
+	proto3Result := sqltypes.ResultToProto3(w.queryResult)
+	bytes, err := proto3Result.MarshalVT()
+	if err != nil {
+		return uint32(StatusInternalFailure)
+	}
+
+	return uint32(copyHostBytesIntoGuest(ctx, mod, bytes, returnQueryResultPtr, returnQueryResultSize))
+}
+
+func SetQueryResultOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, queryResultPtr, queryResultSize uint32) uint32 {
+	bytes, ok := mod.Memory().Read(queryResultPtr, queryResultSize)
+	if !ok {
+		return uint32(StatusInternalFailure)
+	}
+
+	proto3Result := &querypb.QueryResult{}
+	err := proto3Result.UnmarshalVT(bytes)
+	if err != nil {
+		return uint32(StatusInternalFailure)
+	}
+	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
+	w.queryResult = sqltypes.Proto3ToResult(proto3Result)
+
+	return uint32(StatusOK)
 }
