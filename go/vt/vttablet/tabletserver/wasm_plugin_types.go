@@ -1,5 +1,7 @@
 package tabletserver
 
+import "vitess.io/vitess/go/sqltypes"
+
 type WasmVM interface {
 	GetRuntimeType() string
 	InitRuntime() error
@@ -19,6 +21,8 @@ type WasmInstance interface {
 	RunWASMPluginAfter() error
 	Close() error
 	SetErrorMessage(message string)
+	SetQueryResult(result *sqltypes.Result)
+	GetQueryResult() *sqltypes.Result
 }
 
 type Status uint32
