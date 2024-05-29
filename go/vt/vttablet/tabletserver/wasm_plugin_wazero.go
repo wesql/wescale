@@ -262,7 +262,7 @@ type WazeroInstance struct {
 func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
 
-	wazeroGuestFunc := ins.instance.ExportedFunction("WazeroGuestFuncBeforeExecution")
+	wazeroGuestFunc := ins.instance.ExportedFunction("RunBeforeExecutionOnGuest")
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
 	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
@@ -279,7 +279,7 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 func (ins *WazeroInstance) RunWASMPluginAfter() error {
 	ctx := context.Background()
 
-	wazeroGuestFunc := ins.instance.ExportedFunction("WazeroGuestFuncAfterExecution")
+	wazeroGuestFunc := ins.instance.ExportedFunction("RunAfterExecutionOnGuest")
 
 	_, err := wazeroGuestFunc.Call(ctx)
 	if err != nil {
