@@ -102,6 +102,15 @@ fully_qualified_table_names: ["d1.t1"]
 1 row in set (0.01 sec)
 ```
 
+You can also use `show create filter` to display the definition of a filter.
+```
+mysql> show create filter foo\G;
+*************************** 1. row ***************************
+        Filer: foo
+Create Filter: create filter foo ( desc='The description of the filter foo', priority='1000', status='ACTIVE' ) with_pattern ( plans='Select,Insert', fully_qualified_table_names='d1.t1', query_regex='', query_template='', request_ip_regex='', user_regex='', leading_comment_regex='', trailing_comment_regex='', bind_var_conds='' ) execute ( action='FAIL', action_args='' )
+1 row in set (0.00 sec)
+```
+
 # Explain a Filter
 For a specific SQL query, you can use the `/*explain filter*/` leading comment to explain which filter matches the query. For example:
 ```sql
