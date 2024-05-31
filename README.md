@@ -44,6 +44,7 @@ you can use the powerful Kubeblocks Operator to quickly launch a WeScale cluster
 * [Non-Transactional DML](doc%2Ftoturial%2F09-Non-Transactional%20DML.md)
 * [Show Tablets Query Plans](doc%2Ftoturial%2F10-Show%20Tablets%20Query%20Plans.md)
 * [Filters](doc%2Ftoturial%2F12-Filters.md)
+* [Write a Wasm Plugin In WeScale](doc%2Ftoturial%2F13-Write-a-Wasm-Plugin-In-WeScale.md)
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
