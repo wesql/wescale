@@ -6,20 +6,6 @@
 
 # WebAssembly in WeScale
 
-## Background
-
-Most platform software provides a certain degree of extensibility. Just as MySQL allows users to write UDFs 
-to extend functionality, WeScale also allows users to write Filters to achieve the same purpose.
-However, this is still not a very user-friendly way for most users because it requires them to compile and 
-distribute their own code along with the code provided by the service provider.
-
-A better way would be: modern browsers provide extensibility, allowing users who want deep customization to 
-write browser extensions, while users who want shallow customization can use plugins like Tampermonkey to inject 
-JavaScript code to change browser behavior.
-
-Therefore, based on Filter, WeScale proposes the concept of Wasm Plugin. We hope that Wasm Plugin can provide our
-users with more secure, dynamic and easy-to-use extensibility.
-
 ## What is WebAssembly?
 
 WebAssembly (Wasm) is a rising portable binary format designed for executing code. This code runs almost at native speed within a secure, memory-safe sandbox that has defined resource limits and an API for interaction with the host environment, such as a proxy.
@@ -71,6 +57,7 @@ to ensure that the Wasm plugin can interact with the host environment. Currently
 The v1 ABI specification is defined in the [wescale-wasm-plugin-sdk](https://github.com/wesql/wescale-wasm-plugin-sdk/tree/main/pkg) repository.
 
 > From the perspective of the Wasm plugin, it can call all the functions on the left side, and it needs to implement all the functions on the right side.
+
 ![wasm2.png](images%2Fwasm2.png)
 
 
