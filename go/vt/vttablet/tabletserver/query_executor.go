@@ -585,6 +585,7 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 		if resp.Reply != nil || resp.Err != nil {
 			return resp.Reply, resp.Err
 		}
+		idx++
 	}
 	return nil, nil
 }
