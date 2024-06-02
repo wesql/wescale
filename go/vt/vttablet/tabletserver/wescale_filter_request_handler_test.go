@@ -97,7 +97,7 @@ func TestAlterRuleInfo(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
-		err := CheckAndAlterRuleInfo(tt.originRuleInfo, tt.alter)
+		err := CheckAndAlterRuleInfo(nil, tt.originRuleInfo, tt.alter)
 		if tt.expectedErr {
 			assert.Error(t, err)
 		} else {
