@@ -6,7 +6,9 @@ type WasmVM interface {
 	GetRuntimeType() string
 	InitRuntime() error
 	GetWasmModule(key string) (bool, WasmModule)
+	SetWasmModule(key string, wasmModule WasmModule)
 	InitWasmModule(key string, wasmBytes []byte) (WasmModule, error)
+	CompileWasmModule(wasmBytes []byte) (WasmModule, error)
 	ClearWasmModule(key string)
 	Close() error
 }

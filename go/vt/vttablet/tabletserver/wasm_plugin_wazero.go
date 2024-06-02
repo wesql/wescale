@@ -191,6 +191,12 @@ func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
 	return exist, module
 }
 
+func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.modules[key] = wasmModule
+}
+
 func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -198,7 +204,7 @@ func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, err
 	if exist {
 		return module, nil
 	}
-	module, err := w.initWasmModule(wasmBytes)
+	module, err := w.CompileWasmModule(wasmBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +212,7 @@ func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, err
 	return module, nil
 }
 
-func (w *WazeroVM) initWasmModule(wasmBytes []byte) (WasmModule, error) {
+func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
 	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err

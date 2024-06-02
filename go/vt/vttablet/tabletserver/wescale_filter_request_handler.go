@@ -31,12 +31,7 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 	if err != nil {
 		return nil, err
 	}
-	rule, err := TransformCreateFilterToRule(stmt)
-	if err != nil {
-		return nil, err
-	}
-
-	err = CheckFilter(qe, rule)
+	rule, err := CheckAndTransformCreateFilterToRule(qe, stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -47,31 +42,6 @@ func (qe *QueryEngine) HandleCreateFilter(stmt *sqlparser.CreateWescaleFilter) (
 	}
 
 	return qe.ExecuteQuery(context.Background(), query)
-}
-
-func CheckFilter(qe *QueryEngine, rule *rules.Rule) error {
-	actionType := rule.GetAct()
-	actionInstance, err := CreateActionInstance(actionType, rule)
-	if err != nil {
-		return err
-	}
-	switch actionType {
-	case rules.QRWasmPlugin:
-		wasmPlugin, ok := actionInstance.(*WasmPluginAction)
-		if !ok {
-			return errors.New("create action failed")
-		}
-
-		bytes, err := qe.wasmPluginController.GetWasmBytesByBinaryName(context.Background(), wasmPlugin.Args.WasmBinaryName)
-		if err != nil {
-			return err
-		}
-		_, err = qe.wasmPluginController.VM.InitWasmModule(rule.Name, bytes)
-		if err != nil {
-			return fmt.Errorf("err when compiling wasm moulde %v", err)
-		}
-	}
-	return nil
 }
 
 func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
@@ -125,20 +95,20 @@ func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
 	return nil
 }
 
-func TransformCreateFilterToRule(stmt *sqlparser.CreateWescaleFilter) (*rules.Rule, error) {
+func CheckAndTransformCreateFilterToRule(qe *QueryEngine, stmt *sqlparser.CreateWescaleFilter) (*rules.Rule, error) {
 
 	ruleInfo := make(map[string]any)
 
-	err := SetRuleInfoBasicInfo(ruleInfo, stmt.Name, stmt.Description, stmt.Status, stmt.Priority)
+	err := CheckAndSetRuleInfoBasicInfo(ruleInfo, stmt.Name, stmt.Description, stmt.Status, stmt.Priority)
 	if err != nil {
 		return nil, err
 	}
 
-	err = SetRuleInfoPattern(ruleInfo, stmt.Pattern)
+	err = CheckAndSetRuleInfoPattern(ruleInfo, stmt.Pattern)
 	if err != nil {
 		return nil, err
 	}
-	err = SetRuleInfoAction(ruleInfo, stmt.Action)
+	err = CheckAndSetRuleInfoAction(qe, ruleInfo, stmt.Action)
 	if err != nil {
 		return nil, err
 	}
@@ -165,17 +135,12 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 		return nil, err
 	}
 
-	err = AlterRuleInfo(ruleInfo, stmt)
+	err = CheckAndAlterRuleInfo(qe, ruleInfo, stmt)
 	if err != nil {
 		return nil, err
 	}
 
 	newFilter, err := rules.BuildQueryRule(ruleInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = CheckFilter(qe, newFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -188,16 +153,16 @@ func (qe *QueryEngine) HandleAlterFilter(stmt *sqlparser.AlterWescaleFilter) (*s
 	return qe.ExecuteQuery(context.Background(), query)
 }
 
-func AlterRuleInfo(ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) error {
-	err := SetRuleInfoBasicInfo(ruleInfo, stmt.AlterInfo.Name, stmt.AlterInfo.Description, stmt.AlterInfo.Status, stmt.AlterInfo.Priority)
+func CheckAndAlterRuleInfo(qe *QueryEngine, ruleInfo map[string]any, stmt *sqlparser.AlterWescaleFilter) error {
+	err := CheckAndSetRuleInfoBasicInfo(ruleInfo, stmt.AlterInfo.Name, stmt.AlterInfo.Description, stmt.AlterInfo.Status, stmt.AlterInfo.Priority)
 	if err != nil {
 		return err
 	}
-	err = SetRuleInfoPattern(ruleInfo, stmt.AlterInfo.Pattern)
+	err = CheckAndSetRuleInfoPattern(ruleInfo, stmt.AlterInfo.Pattern)
 	if err != nil {
 		return err
 	}
-	err = SetRuleInfoAction(ruleInfo, stmt.AlterInfo.Action)
+	err = CheckAndSetRuleInfoAction(qe, ruleInfo, stmt.AlterInfo.Action)
 	if err != nil {
 		return err
 	}
@@ -238,7 +203,9 @@ func (qe *QueryEngine) removeFilterMemoryData(name string, action rules.Action) 
 	switch action {
 	case rules.QRWasmPlugin:
 		qe.wasmPluginController.VM.ClearWasmModule(name)
-		// todo newborn22 ccl?
+
+	case rules.QRConcurrencyControl:
+		qe.concurrencyController.DeleteQueue(name)
 	}
 }
 
@@ -306,7 +273,8 @@ func ConvertUserInputToTOML(input string) string {
 	return result.String()
 }
 
-func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
+func CheckAndFormatActionArgs(qe *QueryEngine, filerName, actionType, actionArgs string) (string, error) {
+
 	action, err := rules.ParseStringToAction(actionType)
 	if err != nil {
 		return "", err
@@ -323,18 +291,31 @@ func CheckAndFormatActionArgs(actionType, actionArgs string) (string, error) {
 
 	case rules.QRWasmPlugin:
 		plugin := &WasmPluginActionArgs{}
-		_, err := plugin.Parse(actionArgs)
+		args, err := plugin.Parse(actionArgs)
 		if err != nil {
 			return "", err
 		}
-		return actionArgs, nil
+		// check bytes can be complied or not
+		wasmPluginArgs, _ := args.(*WasmPluginActionArgs)
+		bytes, err := qe.wasmPluginController.GetWasmBytesByBinaryName(context.Background(), wasmPluginArgs.WasmBinaryName)
+		if err != nil {
+			return "", err
+		}
+		wasmModule, err := qe.wasmPluginController.VM.CompileWasmModule(bytes)
+		if err != nil {
+			return "", fmt.Errorf("err when compiling wasm moulde %v", err)
+		}
+		// whether create or alter, just set
+		qe.wasmPluginController.VM.SetWasmModule(filerName, wasmModule)
+
+		return FormatUserInputStr(actionArgs), nil
 	case rules.QRSkipFilter:
 		skipFilterArgs := &SkipFilterActionArgs{}
 		_, err := skipFilterArgs.Parse(actionArgs)
 		if err != nil {
 			return "", err
 		}
-		return actionArgs, nil
+		return FormatUserInputStr(actionArgs), nil
 	default:
 		if actionArgs != "" {
 			return "", fmt.Errorf("action %v does not support action_args", action)
@@ -360,7 +341,7 @@ func FormatUserInputStr(str string) string {
 	return result.String()
 }
 
-func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority string) error {
+func CheckAndSetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority string) error {
 	if priority != rules.UnsetValueOfStmt {
 		priorityInt, err := strconv.Atoi(priority)
 		if err != nil {
@@ -386,7 +367,7 @@ func SetRuleInfoBasicInfo(ruleInfo map[string]any, name, desc, status, priority 
 	return nil
 }
 
-func SetRuleInfoAction(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAction) error {
+func CheckAndSetRuleInfoAction(qe *QueryEngine, ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAction) error {
 	if stmt.Action != rules.UnsetValueOfStmt {
 		ruleInfo["Action"] = stmt.Action
 	}
@@ -396,7 +377,11 @@ func SetRuleInfoAction(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAct
 		if !ok {
 			return fmt.Errorf("alter filter failed: action %v is not string", ruleInfo["Action"])
 		}
-		actionArgs, err := CheckAndFormatActionArgs(actionStr, stmt.ActionArgs)
+		filerName, ok := ruleInfo["Name"].(string)
+		if !ok {
+			return fmt.Errorf("alter filter failed: name %v is not string", ruleInfo["Name"])
+		}
+		actionArgs, err := CheckAndFormatActionArgs(qe, filerName, actionStr, stmt.ActionArgs)
 		if err != nil {
 			return err
 		}
@@ -405,7 +390,7 @@ func SetRuleInfoAction(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterAct
 	return nil
 }
 
-func SetRuleInfoPattern(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterPattern) error {
+func CheckAndSetRuleInfoPattern(ruleInfo map[string]any, stmt *sqlparser.WescaleFilterPattern) error {
 	if stmt.BindVarConds != rules.UnsetValueOfStmt {
 		if stmt.BindVarConds != "" {
 			return fmt.Errorf("create filter failed: bind_var_conds %v not supportted yet", stmt.BindVarConds)
