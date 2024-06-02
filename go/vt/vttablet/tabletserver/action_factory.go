@@ -60,6 +60,8 @@ func CreateActionInstance(action rules.Action, rule *rules.Rule) (ActionInterfac
 		actInst, err = &ConcurrencyControlAction{Rule: rule, Action: action}, nil
 	case rules.QRWasmPlugin:
 		actInst, err = &WasmPluginAction{Rule: rule, Action: action}, nil
+	case rules.QRSkipFilter:
+		actInst, err = &SkipFilterAction{Rule: rule, Action: action}, nil
 	default:
 		log.Errorf("unknown action: %v", action)
 		actInst, err = nil, fmt.Errorf("unknown action: %v", action)

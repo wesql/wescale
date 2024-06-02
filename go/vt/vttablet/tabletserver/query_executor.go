@@ -577,7 +577,9 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 	if len(qre.matchedActionList) == 0 {
 		return nil, nil
 	}
-	for _, a := range qre.matchedActionList {
+	idx := 0
+	for idx < len(qre.matchedActionList) {
+		a := qre.matchedActionList[idx]
 		resp := a.BeforeExecution(qre)
 		qre.calledActionList = append(qre.calledActionList, a)
 		if resp.Reply != nil || resp.Err != nil {
@@ -595,7 +597,7 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 	}
 
 	for i := len(qre.calledActionList) - 1; i >= 0; i-- {
-		a := qre.matchedActionList[i]
+		a := qre.calledActionList[i]
 		resp := a.AfterExecution(qre, newReply, newErr)
 		newReply, newErr = resp.Reply, resp.Err
 	}
@@ -1483,7 +1485,7 @@ func isInspectFilter(leadingComment string) bool {
 func (qre *QueryExecutor) skipFilter() bool {
 	// todo, add more rules to skip filter, qre may have all the info we needs
 	// todo, may be we can add a table to let user to control which filter should be skipped
-	return strings.ReplaceAll(qre.marginComments.Leading, " ", "") == strings.ReplaceAll("/*skip filter*/", " ", "")
+	return strings.ReplaceAll(qre.marginComments.Leading, " ", "") == strings.ReplaceAll("/*skgitip filter*/", " ", "")
 }
 
 func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {

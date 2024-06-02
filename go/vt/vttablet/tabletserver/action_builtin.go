@@ -3,6 +3,7 @@ package tabletserver
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -348,4 +349,83 @@ func (p *WasmPluginAction) SetParams(args ActionArgs) error {
 
 func (p *WasmPluginAction) GetRule() *rules.Rule {
 	return p.Rule
+}
+
+type SkipFilterAction struct {
+	Rule *rules.Rule
+
+	// Action is the action to take if the rule matches
+	Action rules.Action
+
+	Args *SkipFilterActionArgs
+}
+
+type SkipFilterActionArgs struct {
+	AllowListRegexString string `toml:"allow_list"`
+	AllowListRegex       *regexp.Regexp
+}
+
+func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error) {
+	s := &SkipFilterActionArgs{}
+	if stringParams == "" {
+		// todo newborn22 6.2，让前端都变成*? 还是说这里也允许
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams is empty when parsing skip filter action args")
+	}
+
+	userInputTOML := ConvertUserInputToTOML(stringParams)
+	err := toml.Unmarshal([]byte(userInputTOML), s)
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when parsing skip filter action args: %v", err)
+	}
+	if s.AllowListRegexString == "" {
+		// todo newborn22 6.2，让前端都变成*? 还是说这里也允许
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "skip filter action args is empty")
+	}
+	s.AllowListRegex, err = regexp.Compile(fmt.Sprintf("^%s$", s.AllowListRegexString))
+	if err != nil {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when compiling skip filter action args: %v", err)
+	}
+
+	return s, nil
+}
+
+func (s *SkipFilterAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
+	// todo newborn22 6.2 do nothing here?
+	var newActionList = make([]ActionInterface, 0)
+	findSelf := false
+	for _, a := range qre.matchedActionList {
+		if a.GetRule().Name == s.GetRule().Name {
+			findSelf = true
+			continue
+		}
+		if findSelf {
+			if s.Args.AllowListRegex.MatchString(a.GetRule().Name) {
+				continue
+			}
+		}
+		newActionList = append(newActionList, a)
+	}
+	qre.matchedActionList = newActionList
+	return &ActionExecutionResponse{Err: nil}
+}
+
+func (s *SkipFilterAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+	return &ActionExecutionResponse{Reply: reply, Err: err}
+}
+
+func (s *SkipFilterAction) ParseParams(argsStr string) (ActionArgs, error) {
+	return s.Args.Parse(argsStr)
+}
+
+func (s *SkipFilterAction) SetParams(args ActionArgs) error {
+	skipFilterArgs, ok := args.(*SkipFilterActionArgs)
+	if !ok {
+		return fmt.Errorf("args :%v is not a valid SkipFilterActionArgs)", args)
+	}
+	s.Args = skipFilterArgs
+	return nil
+}
+
+func (s *SkipFilterAction) GetRule() *rules.Rule {
+	return s.Rule
 }
