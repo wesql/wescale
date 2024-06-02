@@ -163,6 +163,13 @@ func (txs *ConcurrencyController) GetOrCreateQueue(key string, maxQueueSize, max
 	return txs.queues[key]
 }
 
+func (txs *ConcurrencyController) DeleteQueue(key string) {
+	txs.mu.Lock()
+	defer txs.mu.Unlock()
+
+	delete(txs.queues, key)
+}
+
 // Wait blocks if another transaction for the same range is already in flight.
 // It returns when this transaction has its turn.
 // "done" is != nil if err == nil and must be called once the transaction is
