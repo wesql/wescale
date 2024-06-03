@@ -361,14 +361,13 @@ type SkipFilterAction struct {
 }
 
 type SkipFilterActionArgs struct {
-	AllowListRegexString string `toml:"allow_list"`
-	AllowListRegex       *regexp.Regexp
+	AllowRegexString string `toml:"allow_regex"`
+	AllowRegex       *regexp.Regexp
 }
 
 func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	s := &SkipFilterActionArgs{}
 	if stringParams == "" {
-		// todo newborn22 6.2，让前端都变成*? 还是说这里也允许
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams is empty when parsing skip filter action args")
 	}
 
@@ -377,11 +376,7 @@ func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error)
 	if err != nil {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when parsing skip filter action args: %v", err)
 	}
-	if s.AllowListRegexString == "" {
-		// todo newborn22 6.2，让前端都变成*? 还是说这里也允许
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "skip filter action args is empty")
-	}
-	s.AllowListRegex, err = regexp.Compile(fmt.Sprintf("^%s$", s.AllowListRegexString))
+	s.AllowRegex, err = regexp.Compile(fmt.Sprintf("^%s$", s.AllowRegexString))
 	if err != nil {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when compiling skip filter action args: %v", err)
 	}
@@ -390,16 +385,16 @@ func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error)
 }
 
 func (s *SkipFilterAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	// todo newborn22 6.2 do nothing here?
 	var newActionList = make([]ActionInterface, 0)
 	findSelf := false
 	for _, a := range qre.matchedActionList {
 		if a.GetRule().Name == s.GetRule().Name {
 			findSelf = true
+			newActionList = append(newActionList, a)
 			continue
 		}
 		if findSelf {
-			if s.Args.AllowListRegex.MatchString(a.GetRule().Name) {
+			if s.Args.AllowRegex.MatchString(a.GetRule().Name) {
 				continue
 			}
 		}
