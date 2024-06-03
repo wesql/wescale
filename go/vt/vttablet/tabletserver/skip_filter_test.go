@@ -13,11 +13,11 @@ func TestSkipFilter(t *testing.T) {
 	skipRule := rules.NewActiveQueryRule("skip all filters", "s1", rules.QRSkipFilter)
 	skipActionArgs := &SkipFilterActionArgs{}
 
-	args, _ := skipActionArgs.Parse(`allow_regex=".*"`)
+	args, _ := skipActionArgs.Parse(`skip_filter_regex=".*"`)
 	skipActionArgs = args.(*SkipFilterActionArgs)
 	skipFilter := &SkipFilterAction{Rule: skipRule, Action: rules.QRSkipFilter, Args: skipActionArgs}
 
-	argsTestRegex, _ := skipActionArgs.Parse(`allow_regex="c.*|d1"`)
+	argsTestRegex, _ := skipActionArgs.Parse(`skip_filter_regex="c.*|d1"`)
 	skipActionArgsTestRegex := argsTestRegex.(*SkipFilterActionArgs)
 	skipFilterTestRegex := &SkipFilterAction{Rule: skipRule, Action: rules.QRSkipFilter, Args: skipActionArgsTestRegex}
 
