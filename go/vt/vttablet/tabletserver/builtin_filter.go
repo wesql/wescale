@@ -30,7 +30,7 @@ const (
 	AllowListTrailingCommentRegex     = ""
 	AllowListBindVarConds             = ""
 	AllowListAction                   = rules.QRSkipFilter
-	AllowListActionArgs               = `allow_regex=".*"`
+	AllowListActionArgs               = `skip_filter_regex=".*"`
 )
 
 func getBuiltInAllowList() *sqlparser.CreateWescaleFilter {

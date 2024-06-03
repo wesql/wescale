@@ -361,7 +361,7 @@ type SkipFilterAction struct {
 }
 
 type SkipFilterActionArgs struct {
-	AllowRegexString string `toml:"allow_regex"`
+	AllowRegexString string `toml:"skip_filter_regex"`
 	AllowRegex       *regexp.Regexp
 }
 
