@@ -150,22 +150,19 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 		qre.tsv.Stats().ResultHistogram.Add(int64(len(reply.Rows)))
 	}(time.Now())
 
-	if !qre.skipFilter() {
+	qre.initDatabaseProxyFilter()
+	if isInspectFilter(qre.marginComments.Leading) {
+		return qre.getFilterInfo()
+	}
 
-		qre.initDatabaseProxyFilter()
-		if isInspectFilter(qre.marginComments.Leading) {
-			return qre.getFilterInfo()
-		}
+	qr, err := qre.runActionListBeforeExecution()
 
-		qr, err := qre.runActionListBeforeExecution()
+	defer func() {
+		reply, err = qre.runActionListAfterExecution(reply, err)
+	}()
 
-		defer func() {
-			reply, err = qre.runActionListAfterExecution(reply, err)
-		}()
-
-		if qr != nil || err != nil {
-			return qr, err
-		}
+	if qr != nil || err != nil {
+		return qr, err
 	}
 
 	if err = qre.checkPermissions(); err != nil {
@@ -1481,12 +1478,6 @@ func (qre *QueryExecutor) generateFinalQueryAndStreamExecute(query string, bindV
 
 func isInspectFilter(leadingComment string) bool {
 	return strings.ReplaceAll(leadingComment, " ", "") == strings.ReplaceAll("/*explain filter*/", " ", "")
-}
-
-func (qre *QueryExecutor) skipFilter() bool {
-	// todo, add more rules to skip filter, qre may have all the info we needs
-	// todo, may be we can add a table to let user to control which filter should be skipped
-	return strings.ReplaceAll(qre.marginComments.Leading, " ", "") == strings.ReplaceAll("/*skgitip filter*/", " ", "")
 }
 
 func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
