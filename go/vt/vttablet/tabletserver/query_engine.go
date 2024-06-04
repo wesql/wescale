@@ -324,8 +324,6 @@ func (qe *QueryEngine) Open() error {
 
 	qe.se.RegisterNotifier("qe", qe.schemaChanged)
 	qe.isOpen = true
-
-	qe.InitBuiltInFilter()
 	return nil
 }
 
