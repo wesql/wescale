@@ -20,6 +20,8 @@ type ContinueAction struct {
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
+
+	skipFlag bool
 }
 
 func (p *ContinueAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -53,6 +55,16 @@ type FailAction struct {
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
+
+	skipFlag bool
+}
+
+func (p *ContinueAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *ContinueAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
 }
 
 func (p *FailAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -81,11 +93,21 @@ func (p *FailAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+func (p *FailAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *FailAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
+}
+
 type FailRetryAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
+
+	skipFlag bool
 }
 
 func (p *FailRetryAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -114,11 +136,21 @@ func (p *FailRetryAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+func (p *FailRetryAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *FailRetryAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
+}
+
 type BufferAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
+
+	skipFlag bool
 }
 
 func (p *BufferAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
@@ -166,6 +198,14 @@ func (p *BufferAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+func (p *BufferAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *BufferAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
+}
+
 type ConcurrencyControlAction struct {
 	Rule *rules.Rule
 
@@ -173,6 +213,8 @@ type ConcurrencyControlAction struct {
 	Action rules.Action
 
 	Args *ConcurrencyControlActionArgs
+
+	skipFlag bool
 }
 
 type ConcurrencyControlActionArgs struct {
@@ -250,6 +292,14 @@ func (p *ConcurrencyControlAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+func (p *ConcurrencyControlAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *ConcurrencyControlAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
+}
+
 type WasmPluginAction struct {
 	Rule *rules.Rule
 
@@ -257,6 +307,8 @@ type WasmPluginAction struct {
 	Action rules.Action
 
 	Args *WasmPluginActionArgs
+
+	skipFlag bool
 }
 
 // todo newborn22: add testcase
@@ -351,6 +403,14 @@ func (p *WasmPluginAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
+func (p *WasmPluginAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *WasmPluginAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
+}
+
 type SkipFilterAction struct {
 	Rule *rules.Rule
 
@@ -358,6 +418,8 @@ type SkipFilterAction struct {
 	Action rules.Action
 
 	Args *SkipFilterActionArgs
+
+	skipFlag bool
 }
 
 type SkipFilterActionArgs struct {
@@ -384,43 +446,47 @@ func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error)
 	return s, nil
 }
 
-func (s *SkipFilterAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	var newActionList = make([]ActionInterface, 0)
+func (p *SkipFilterAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
 	findSelf := false
 	for _, a := range qre.matchedActionList {
-		if a.GetRule().Name == s.GetRule().Name {
+		if a.GetRule().Name == p.GetRule().Name {
 			findSelf = true
-			newActionList = append(newActionList, a)
 			continue
 		}
 		if findSelf {
-			if s.Args.AllowRegex.MatchString(a.GetRule().Name) {
-				continue
+			if p.Args.AllowRegex.MatchString(a.GetRule().Name) {
+				a.SetSkipFlag(true)
 			}
 		}
-		newActionList = append(newActionList, a)
 	}
-	qre.matchedActionList = newActionList
 	return &ActionExecutionResponse{Err: nil}
 }
 
-func (s *SkipFilterAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
+func (p *SkipFilterAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
 	return &ActionExecutionResponse{Reply: reply, Err: err}
 }
 
-func (s *SkipFilterAction) ParseParams(argsStr string) (ActionArgs, error) {
-	return s.Args.Parse(argsStr)
+func (p *SkipFilterAction) ParseParams(argsStr string) (ActionArgs, error) {
+	return p.Args.Parse(argsStr)
 }
 
-func (s *SkipFilterAction) SetParams(args ActionArgs) error {
+func (p *SkipFilterAction) SetParams(args ActionArgs) error {
 	skipFilterArgs, ok := args.(*SkipFilterActionArgs)
 	if !ok {
 		return fmt.Errorf("args :%v is not a valid SkipFilterActionArgs)", args)
 	}
-	s.Args = skipFilterArgs
+	p.Args = skipFilterArgs
 	return nil
 }
 
-func (s *SkipFilterAction) GetRule() *rules.Rule {
-	return s.Rule
+func (p *SkipFilterAction) GetRule() *rules.Rule {
+	return p.Rule
+}
+
+func (p *SkipFilterAction) GetSkipFlag() bool {
+	return p.skipFlag
+}
+
+func (p *SkipFilterAction) SetSkipFlag(skip bool) {
+	p.skipFlag = skip
 }

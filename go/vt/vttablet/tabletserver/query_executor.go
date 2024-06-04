@@ -574,15 +574,14 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 	if len(qre.matchedActionList) == 0 {
 		return nil, nil
 	}
-	idx := 0
-	for idx < len(qre.matchedActionList) {
-		a := qre.matchedActionList[idx]
-		resp := a.BeforeExecution(qre)
-		qre.calledActionList = append(qre.calledActionList, a)
-		if resp.Reply != nil || resp.Err != nil {
-			return resp.Reply, resp.Err
+	for _, a := range qre.matchedActionList {
+		if !a.GetSkipFlag() {
+			resp := a.BeforeExecution(qre)
+			qre.calledActionList = append(qre.calledActionList, a)
+			if resp.Reply != nil || resp.Err != nil {
+				return resp.Reply, resp.Err
+			}
 		}
-		idx++
 	}
 	return nil, nil
 }

@@ -20,6 +20,10 @@ type ActionInterface interface {
 	SetParams(args ActionArgs) error
 
 	GetRule() *rules.Rule
+
+	GetSkipFlag() bool
+
+	SetSkipFlag(skip bool)
 }
 
 type ActionArgs interface {
