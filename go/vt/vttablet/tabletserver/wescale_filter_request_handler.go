@@ -203,10 +203,21 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 func (qe *QueryEngine) removeFilterMemoryData(name, actionArgs string, action rules.Action) {
 	switch action {
 	case rules.QRWasmPlugin:
-		a := &WasmPluginActionArgs{}
-		tmp, _ := a.Parse(actionArgs)
-		a = tmp.(*WasmPluginActionArgs)
-		qe.wasmPluginController.VM.ClearWasmModule(a.WasmBinaryName)
+		query, err := customrule.GetSelectByActionArgsSQL(actionArgs)
+		if err != nil {
+			return
+		}
+		rst, err := qe.ExecuteQuery(context.Background(), query)
+		if err != nil {
+			return
+		}
+		if len(rst.Named().Rows) == 0 {
+			// only when there is no filter using this wasm binary module, we can delete it
+			a := &WasmPluginActionArgs{}
+			tmp, _ := a.Parse(actionArgs)
+			a = tmp.(*WasmPluginActionArgs)
+			qe.wasmPluginController.VM.ClearWasmModule(a.WasmBinaryName)
+		}
 
 	case rules.QRConcurrencyControl:
 		qe.concurrencyController.DeleteQueue(name)

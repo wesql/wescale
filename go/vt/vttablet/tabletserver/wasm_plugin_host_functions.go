@@ -150,7 +150,7 @@ func ModuleLockOnHost(hostModulePtr uint64) {
 	module.moduleMu.Lock()
 }
 
-func ModuleUnLockOnHost(hostModulePtr uint64) {
+func ModuleUnlockOnHost(hostModulePtr uint64) {
 	module := (*WazeroModule)(unsafe.Pointer(uintptr(hostModulePtr)))
 	module.moduleMu.Unlock()
 }

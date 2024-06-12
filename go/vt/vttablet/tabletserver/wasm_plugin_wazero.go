@@ -127,9 +127,9 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		NewFunctionBuilder().
 		WithParameterNames("hostModulePtr").
 		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleUnLockOnHost(hostModulePtr)
+			ModuleUnlockOnHost(hostModulePtr)
 		}).
-		Export("ModuleUnLockOnHost").
+		Export("ModuleUnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
 		WithResultNames("callStatus").

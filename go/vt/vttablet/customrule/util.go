@@ -81,6 +81,11 @@ func GetSelectByNameSQL(name string) (string, error) {
 	return sqlparser.ParseAndBind(query, sqltypes.StringBindVariable(name))
 }
 
+func GetSelectByActionArgsSQL(actionArgs string) (string, error) {
+	query := fmt.Sprintf("SELECT * FROM %s.%s where `action_args` = %%a", DatabaseCustomRuleDbName, DatabaseCustomRuleTableName)
+	return sqlparser.ParseAndBind(query, sqltypes.StringBindVariable(actionArgs))
+}
+
 func GetSelectAllSQL() string {
 	return fmt.Sprintf("SELECT * FROM %s.%s", DatabaseCustomRuleDbName, DatabaseCustomRuleTableName)
 }
