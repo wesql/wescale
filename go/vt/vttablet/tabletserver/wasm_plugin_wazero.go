@@ -19,6 +19,8 @@ type WazeroVM struct {
 	runtime wazero.Runtime
 	modules map[string]WasmModule
 
+	globalMu sync.Mutex
+
 	hostSharedVariables map[string][]byte
 	hostSharedMu        sync.Mutex
 }

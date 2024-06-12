@@ -138,11 +138,11 @@ func SetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64,
 }
 
 func GlobalLockOnHost(wazeroRuntime *WazeroVM) {
-	wazeroRuntime.mu.Lock()
+	wazeroRuntime.globalMu.Lock()
 }
 
 func GlobalUnLockOnHost(wazeroRuntime *WazeroVM) {
-	wazeroRuntime.mu.Unlock()
+	wazeroRuntime.globalMu.Unlock()
 }
 
 func ModuleLockOnHost(hostModulePtr uint64) {
