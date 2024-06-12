@@ -95,7 +95,7 @@ func SetModuleValueByKeyOnHost(ctx context.Context, mod api.Module, hostModulePt
 		return uint32(StatusInternalFailure)
 	}
 
-	module.moduleHostVariables[key] = valueBytes
+	module.moduleSharingVariables[key] = valueBytes
 	return uint32(StatusOK)
 }
 
@@ -110,12 +110,12 @@ func GetModuleValueByKeyOnHost(ctx context.Context, mod api.Module, hostModulePt
 	}
 	key := string(keyBytes)
 
-	_, exist := module.moduleHostVariables[key]
+	_, exist := module.moduleSharingVariables[key]
 	if !exist {
 		return uint32(StatusNotFound)
 	}
 
-	return uint32(copyHostBytesIntoGuest(ctx, mod, module.moduleHostVariables[key], returnValuePtr, returnValueSize))
+	return uint32(copyHostBytesIntoGuest(ctx, mod, module.moduleSharingVariables[key], returnValuePtr, returnValueSize))
 }
 
 func GetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,

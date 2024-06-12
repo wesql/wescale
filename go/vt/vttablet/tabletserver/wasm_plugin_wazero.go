@@ -194,6 +194,12 @@ func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
 func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	// the goal is to change the compiled module bytes, and keep module variables map
+	oldWasmModule, exist := w.modules[key]
+	if exist {
+		oldMap := oldWasmModule.GetModuleSharingVariables()
+		wasmModule.SetModuleSharingVariables(oldMap)
+	}
 	w.modules[key] = wasmModule
 }
 
@@ -218,7 +224,7 @@ func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
 		return nil, err
 	}
 
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleHostVariables: make(map[string][]byte)}, nil
+	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleSharingVariables: make(map[string][]byte)}, nil
 }
 
 func (w *WazeroVM) Close() error {
@@ -230,10 +236,23 @@ type WazeroModule struct {
 	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
 
-	mu                  sync.Mutex
-	moduleHostVariables map[string][]byte
+	mu                     sync.Mutex
+	moduleSharingVariables map[string][]byte
 
 	moduleMu sync.Mutex
+	tmp      int
+}
+
+func (mod *WazeroModule) GetModuleSharingVariables() map[string][]byte {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+	return mod.moduleSharingVariables
+}
+
+func (mod *WazeroModule) SetModuleSharingVariables(m map[string][]byte) {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+	mod.moduleSharingVariables = m
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
