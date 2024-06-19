@@ -67,33 +67,19 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("keyPtr", "keySize", "valuePtr", "valueSize").
+		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
 		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+			return SetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
 		}).
-		Export("SetGlobalValueByKeyOnHost").
+		Export("SetValueByKeyOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("keyPtr", "keySize", "returnValuePtr", "returnValueSize").
+		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
 		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+			return GetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
-		Export("GetGlobalValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
-		}).
-		Export("SetModuleValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
-		}).
-		Export("GetModuleValueByKeyOnHost").
+		Export("GetValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
@@ -111,27 +97,17 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("SetQueryOnHost").
 		NewFunctionBuilder().
-		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalLockOnHost(wazeroRuntime)
+		WithParameterNames("scope", "hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
+			LockOnHost(wazeroRuntime, scope, hostModulePtr)
 		}).
-		Export("GlobalLockOnHost").
+		Export("LockOnHost").
 		NewFunctionBuilder().
-		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalUnLockOnHost(wazeroRuntime)
+		WithParameterNames("scope", "hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
+			UnlockOnHost(wazeroRuntime, scope, hostModulePtr)
 		}).
-		Export("GlobalUnlockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleLockOnHost(hostModulePtr)
-		}).
-		Export("ModuleLockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleUnlockOnHost(hostModulePtr)
-		}).
-		Export("ModuleUnlockOnHost").
+		Export("UnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
 		WithResultNames("callStatus").

@@ -70,7 +70,7 @@ func TestMain(m *testing.M) {
 		}
 
 		// No need for replicas in this stress test
-		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0"}, 0, false); err != nil {
+		if err := clusterInstance.StartKeyspace(*keyspace, []string{"0"}, 1, true); err != nil {
 			return 1, err
 		}
 

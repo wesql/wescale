@@ -27,8 +27,9 @@ const (
 func TestJobControllerBasic(t *testing.T) {
 	t.Run("create user db", createUserDB)
 	t.Run("module var test", moduleVarTest)
-	t.Run("global var test", globalVarTest)
+	t.Run("tablet var test", tabletVarTest)
 	t.Run("data masking test", dataMaskingTest)
+	t.Run("intercept", intercept)
 }
 
 func createUserDB(t *testing.T) {
@@ -202,7 +203,18 @@ func moduleVarTest(t *testing.T) {
 	require.Equal(t, count, int64(5*100)+1)
 	fmt.Printf("lock: the count is %d\n", count)
 
-	// 12. delete all filters and modules
+	// 12. the value in another tablet should be 0
+	vtParams.DbName = TestDatabaseName + "@replica"
+	qr, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("INSERT INTO %s.t1 (int1, int2,name) VALUES (1, 100, 'Data');", TestDatabaseName))
+	require.Nil(t, err)
+	require.Equal(t, 1, len(qr.Named().Rows))
+	count, err = qr.Named().Rows[0].ToInt64("value")
+	require.Nil(t, err)
+	require.Equal(t, count, int64(1))
+	fmt.Printf("lock: the replica count is %d\n", count)
+	vtParams.DbName = TestDatabaseName
+
+	// 13. delete all filters and modules
 	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestModuleKVInc1Lock)
 	require.Nil(t, err)
 
@@ -210,7 +222,7 @@ func moduleVarTest(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func globalVarTest(t *testing.T) {
+func tabletVarTest(t *testing.T) {
 	defer cluster.PanicHandler(t)
 	vtParams := mysql.ConnParams{
 		Host:   clusterInstance.Hostname,
@@ -219,10 +231,10 @@ func globalVarTest(t *testing.T) {
 	}
 
 	// 1. create a wasm plugin filter: add 1 in global count variables without lock every time, and set the query to "select $(count) as value"
-	_, err := VtgateExecQuery(t, &vtParams, InsertWasmBinaryTestGlobalKVInc1WithoutLock)
+	_, err := VtgateExecQuery(t, &vtParams, InsertWasmBinaryTestTabletKVInc1WithoutLock)
 	require.Nil(t, err)
 
-	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestGlobalKVInc1WithoutLock)
+	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestTabletKVInc1WithoutLock)
 	require.Nil(t, err)
 
 	var mu sync.Mutex
@@ -275,10 +287,10 @@ func globalVarTest(t *testing.T) {
 
 	// 5. create 2 new filters with the same module, because module variable is shared among filters using same module name,
 	// and every filter will add 1 to the count variable, so now should add 3 to the count variable
-	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestGlobalKVInc1WithoutLockBak2)
+	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestTabletKVInc1WithoutLockBak2)
 	require.Nil(t, err)
 
-	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestGlobalKVInc1WithoutLockBak3)
+	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestTabletKVInc1WithoutLockBak3)
 	require.Nil(t, err)
 
 	qr, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("INSERT INTO %s.t1 (int1, int2,name) VALUES (1, 100, 'Data');", TestDatabaseName))
@@ -290,7 +302,7 @@ func globalVarTest(t *testing.T) {
 	require.Equal(t, count+3, newCount)
 
 	// 6. now we drop the one filter using this module
-	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestGlobalKVInc1WithoutLock)
+	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestTabletKVInc1WithoutLock)
 	require.Nil(t, err)
 
 	// 7. send a insert query to get the count value, the count value should be added 2 instead of 3 now
@@ -303,13 +315,13 @@ func globalVarTest(t *testing.T) {
 	require.Equal(t, newCount+2, newCount2)
 
 	// 8. now we drop the other 2 filters using this module
-	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestGlobalKVInc1WithoutLockBak2)
+	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestTabletKVInc1WithoutLockBak2)
 	require.Nil(t, err)
-	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestGlobalKVInc1WithoutLockBak3)
+	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestTabletKVInc1WithoutLockBak3)
 	require.Nil(t, err)
 
 	// 9. add a new filter using the same wasm binary (module) name, the count value should NOT start from 0, because global var will be always keep in tablet memory, until it crash
-	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestGlobalKVInc1WithoutLock)
+	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestTabletKVInc1WithoutLock)
 	require.Nil(t, err)
 
 	qr, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("INSERT INTO %s.t1 (int1, int2,name) VALUES (1, 100, 'Data');", TestDatabaseName))
@@ -320,13 +332,13 @@ func globalVarTest(t *testing.T) {
 	require.Equal(t, count, newCount2+1)
 
 	// 10. we drop this filter and create a new filter using module that add 1 after requiring LOCK
-	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestGlobalKVInc1WithoutLock)
+	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestTabletKVInc1WithoutLock)
 	require.Nil(t, err)
 
-	_, err = VtgateExecQuery(t, &vtParams, InsertWasmBinaryTestGlobalKVInc1Lock)
+	_, err = VtgateExecQuery(t, &vtParams, InsertWasmBinaryTestTabletKVInc1Lock)
 	require.Nil(t, err)
 
-	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestGlobalKVInc1Lock)
+	_, err = VtgateExecQuery(t, &vtParams, CreateWasmFilterTestTabletKVInc1Lock)
 	require.Nil(t, err)
 
 	// 11. because we require locks before adding counts, the final value should equal 500
@@ -364,8 +376,19 @@ func globalVarTest(t *testing.T) {
 	require.Equal(t, count+int64(5*100)+1, newCount3)
 	fmt.Printf("lock: the count is %d\n", newCount3)
 
-	// 12. delete all filters and modules
-	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestGlobalKVInc1Lock)
+	// 12. the value in another tablet should be 0
+	vtParams.DbName = TestDatabaseName + "@replica"
+	qr, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("INSERT INTO %s.t1 (int1, int2,name) VALUES (1, 100, 'Data');", TestDatabaseName))
+	require.Nil(t, err)
+	require.Equal(t, 1, len(qr.Named().Rows))
+	count, err = qr.Named().Rows[0].ToInt64("value")
+	require.Nil(t, err)
+	require.Equal(t, count, int64(1))
+	fmt.Printf("lock: the replica count is %d\n", count)
+	vtParams.DbName = TestDatabaseName
+
+	// 13. delete all filters and modules
+	_, err = VtgateExecQuery(t, &vtParams, DropWasmFilterTestTabletKVInc1Lock)
 	require.Nil(t, err)
 
 	_, err = VtgateExecQuery(t, &vtParams, "delete from mysql.wasm_binary;")
