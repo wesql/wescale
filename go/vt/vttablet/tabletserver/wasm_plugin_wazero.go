@@ -19,6 +19,8 @@ type WazeroVM struct {
 	runtime wazero.Runtime
 	modules map[string]WasmModule
 
+	globalMu sync.Mutex
+
 	hostSharedVariables map[string][]byte
 	hostSharedMu        sync.Mutex
 }
@@ -65,33 +67,19 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("keyPtr", "keySize", "valuePtr", "valueSize").
+		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
 		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, valuePtr, valueSize)
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
+			return SetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
 		}).
-		Export("SetGlobalValueByKeyOnHost").
+		Export("SetValueByKeyOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("keyPtr", "keySize", "returnValuePtr", "returnValueSize").
+		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
 		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetGlobalValueByKeyOnHost(ctx, mod, wazeroRuntime, keyPtr, keySize, returnValuePtr, returnValueSize)
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
+			return GetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
 		}).
-		Export("GetGlobalValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
-		}).
-		Export("SetModuleValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetModuleValueByKeyOnHost(ctx, mod, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
-		}).
-		Export("GetModuleValueByKeyOnHost").
+		Export("GetValueByKeyOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
@@ -109,27 +97,17 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("SetQueryOnHost").
 		NewFunctionBuilder().
-		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalLockOnHost(wazeroRuntime)
+		WithParameterNames("scope", "hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
+			LockOnHost(wazeroRuntime, scope, hostModulePtr)
 		}).
-		Export("GlobalLockOnHost").
+		Export("LockOnHost").
 		NewFunctionBuilder().
-		WithFunc(func(ctx context.Context, mod api.Module) {
-			GlobalUnLockOnHost(wazeroRuntime)
+		WithParameterNames("scope", "hostModulePtr").
+		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
+			UnlockOnHost(wazeroRuntime, scope, hostModulePtr)
 		}).
-		Export("GlobalUnlockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleLockOnHost(hostModulePtr)
-		}).
-		Export("ModuleLockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, hostModulePtr uint64) {
-			ModuleUnLockOnHost(hostModulePtr)
-		}).
-		Export("ModuleUnLockOnHost").
+		Export("UnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
 		WithResultNames("callStatus").
@@ -194,6 +172,12 @@ func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
 func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	// the goal is to change the compiled module bytes, and keep module variables map
+	oldWasmModule, exist := w.modules[key]
+	if exist {
+		oldMap := oldWasmModule.GetModuleSharingVariables()
+		wasmModule.SetModuleSharingVariables(oldMap)
+	}
 	w.modules[key] = wasmModule
 }
 
@@ -218,7 +202,7 @@ func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
 		return nil, err
 	}
 
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleHostVariables: make(map[string][]byte)}, nil
+	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleSharingVariables: make(map[string][]byte)}, nil
 }
 
 func (w *WazeroVM) Close() error {
@@ -230,10 +214,23 @@ type WazeroModule struct {
 	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
 
-	mu                  sync.Mutex
-	moduleHostVariables map[string][]byte
+	mu                     sync.Mutex
+	moduleSharingVariables map[string][]byte
 
 	moduleMu sync.Mutex
+	tmp      int
+}
+
+func (mod *WazeroModule) GetModuleSharingVariables() map[string][]byte {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+	return mod.moduleSharingVariables
+}
+
+func (mod *WazeroModule) SetModuleSharingVariables(m map[string][]byte) {
+	mod.mu.Lock()
+	defer mod.mu.Unlock()
+	mod.moduleSharingVariables = m
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {

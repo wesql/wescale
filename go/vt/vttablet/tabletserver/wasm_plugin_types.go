@@ -16,6 +16,8 @@ type WasmVM interface {
 type WasmModule interface {
 	NewInstance(qre *QueryExecutor) (WasmInstance, error)
 	Close() error
+	GetModuleSharingVariables() map[string][]byte
+	SetModuleSharingVariables(map[string][]byte)
 }
 
 type WasmInstance interface {

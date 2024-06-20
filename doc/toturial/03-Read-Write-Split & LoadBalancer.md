@@ -63,7 +63,7 @@ vtgate \
   - USE command.
   - COM_STMT_PREPARE command.
 
-You can use the set command `set session/global enable_display_sql_execution_vttablet=true` to examine the complete routing process of an SQL  in detail. 
+You can use the set command `set session/global enable_display_sql_execution_vttablets=true` to examine the complete routing process of an SQL  in detail. 
 
 The process mainly consists of two steps: 1. Determining the tablet type. 2.Among the tablets with the type determined in step 1, selecting a tablet to execute the SQL based on the load balance rules. 
 

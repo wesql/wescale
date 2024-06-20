@@ -254,7 +254,7 @@ func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) *ActionEx
 			Err:   err,
 		}
 	}
-	qre.ctx = context.WithValue(qre.ctx, "cclDoneFunc", doneFunc)
+	qre.ctx = context.WithValue(qre.ctx, fmt.Sprintf("%v:cclDoneFunc", p.GetRule().Name), doneFunc)
 
 	return &ActionExecutionResponse{
 		Reply: nil,
@@ -263,7 +263,7 @@ func (p *ConcurrencyControlAction) BeforeExecution(qre *QueryExecutor) *ActionEx
 }
 
 func (p *ConcurrencyControlAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	v := qre.ctx.Value("cclDoneFunc")
+	v := qre.ctx.Value(fmt.Sprintf("%v:cclDoneFunc", p.GetRule().Name))
 	if v != nil {
 		doneFunc := v.(ccl.DoneFunc)
 		doneFunc()
@@ -338,15 +338,14 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
 	controller := qre.tsv.qe.wasmPluginController
-	wasmModuleCacheKey := p.GetRule().Name
 
-	ok, module := controller.VM.GetWasmModule(wasmModuleCacheKey)
+	ok, module := controller.VM.GetWasmModule(p.Args.WasmBinaryName)
 	if !ok {
 		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
-		module, err = controller.VM.InitWasmModule(wasmModuleCacheKey, wasmBytes)
+		module, err = controller.VM.InitWasmModule(p.Args.WasmBinaryName, wasmBytes)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
@@ -357,14 +356,14 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 		return &ActionExecutionResponse{Err: err}
 	}
 
-	qre.ctx = context.WithValue(qre.ctx, "wasmInstance", instance)
+	qre.ctx = context.WithValue(qre.ctx, fmt.Sprintf("%v:wasmInstance", p.GetRule().Name), instance)
 
 	err = instance.RunWASMPlugin()
 	return &ActionExecutionResponse{Err: err}
 }
 
 func (p *WasmPluginAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	v := qre.ctx.Value("wasmInstance")
+	v := qre.ctx.Value(fmt.Sprintf("%v:wasmInstance", p.GetRule().Name))
 	if v == nil {
 		return &ActionExecutionResponse{Reply: reply, Err: fmt.Errorf("fail to get wasm instance after query execution")}
 	}
