@@ -3,12 +3,12 @@
 - Feature: CompressGtidSets
 - Start Date: 2023-06-09
 - Authors: @gerayking
-- RFC PR: https://github.com/apecloud/WeSQL WeScale/pull/103
-- WeSQL WeScale Issue: https://github.com/apecloud/WeSQL WeScale/issues/37
+- RFC PR: https://github.com/apecloud/wescale/pull/103
+- WeSQL WeScale Issue: https://github.com/apecloud/wescale/issues/37
 
 # BackGround
 
-For further related information, please refer to [20230414_ReadAfterWrite](https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
+For further related information, please refer to [20230414_ReadAfterWrite](https://github.com/apecloud/wescale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
 
 ## Why is gtidSets disconnected?
 
@@ -23,7 +23,7 @@ vtgate2:
 
 ## Why need Compress GtidSets?
 
-For the relevant issue, please refer to [#37](https://github.com/apecloud/WeSQL WeScale/issues/37)
+For the relevant issue, please refer to [#37](https://github.com/apecloud/wescale/issues/37)
 
 ## Summary
 
@@ -51,23 +51,25 @@ Within tablet_health_check, vtgate sends a heartbeat packet to vttablet. The res
 + Get the intersection of all mysql GTID sets.
     Example:
     ```yaml
-    tablet1 : 1~6,8~10,13~15
-    tablet2 : 2~7,9~12,14~16
-    tablet3 : 2~5,7~12,14~17
+    tablet1: 1~5,7~10
+    tablet2: 1~4,8~12
+    tablet3: 1~4,7~9
      
-    inttersectionSet: 2~5,9~11,14~15
+    inttersectionSet: 1-4:8-9
     ```
 + Merge intersectionSet and lastSeenGtid.
     The lastSeenGtid refers to the gtid sets maintained by vtagte. In this section, we utilize the mysql56GtidSet.Union function for implementation.
     + First we cut off the part larger than lastSeenGtid in inttersectionSet.
     Example:
         ```yaml
-        inttersectionSet: 2~5,9~13
-        lastSeenGtid: 1~11
-
-        result: 2~5:9~11
+        lastSeenGtid: 1~3,5~6
+        inttersectionSet after cut off: 1~4
         ```
     + Then, calculate the union of lastSeenGtid andthe remaining portion after truncation.
+     ```
+     final result: 1~6
+     ```
+    
 ### Conclusion
 
 After the return of the heartbeat packet, we compress the gtidset within the vtgate. In a scenario with multiple vtgates, we ensured read-after-write (RAW) consistency and prevented the SQL statement from becoming too lengthy. However, the mechanism is still reliant on the return of the heartbeat packet from all MySQL instances.
@@ -78,4 +80,4 @@ Given that the current mechanism still depends on the return of the heartbeat pa
 
 # Reference
 
-- 20230414_ReadAfterWrite: [https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md](https://github.com/apecloud/WeSQL WeScale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
+- 20230414_ReadAfterWrite: [https://github.com/apecloud/wescale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md](https://github.com/apecloud/wescale/blob/vitess-release-16.0-dev/doc/design-docs/RFCS/20230414_ReadAfterWrite.md)
