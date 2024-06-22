@@ -2125,24 +2125,24 @@ func (node *CreateTable) Format(buf *TrackedBuffer) {
 
 // Format formats the node.
 func (node *WescaleFilterPattern) Format(buf *TrackedBuffer) {
-	buf.literal("with_pattern ( ")
-	buf.astPrintf(node, "plans='%s', ", node.Plans)
-	buf.astPrintf(node, "fully_qualified_table_names='%s', ", node.FullyQualifiedTableNames)
-	buf.astPrintf(node, "query_regex='%s', ", node.QueryRegex)
-	buf.astPrintf(node, "query_template='%s', ", node.QueryTemplate)
-	buf.astPrintf(node, "request_ip_regex='%s', ", node.RequestIPRegex)
-	buf.astPrintf(node, "user_regex='%s', ", node.UserRegex)
-	buf.astPrintf(node, "leading_comment_regex='%s', ", node.LeadingCommentRegex)
-	buf.astPrintf(node, "trailing_comment_regex='%s', ", node.TrailingCommentRegex)
-	buf.astPrintf(node, "bind_var_conds='%s' ", node.BindVarConds)
+	buf.literal("with_pattern (\n")
+	buf.astPrintf(node, "\tplans='%s',\n", node.Plans)
+	buf.astPrintf(node, "\tfully_qualified_table_names='%s',\n", node.FullyQualifiedTableNames)
+	buf.astPrintf(node, "\tquery_regex='%s',\n", node.QueryRegex)
+	buf.astPrintf(node, "\tquery_template='%s',\n", node.QueryTemplate)
+	buf.astPrintf(node, "\trequest_ip_regex='%s',\n", node.RequestIPRegex)
+	buf.astPrintf(node, "\tuser_regex='%s',\n", node.UserRegex)
+	buf.astPrintf(node, "\tleading_comment_regex='%s',\n", node.LeadingCommentRegex)
+	buf.astPrintf(node, "\ttrailing_comment_regex='%s',\n", node.TrailingCommentRegex)
+	buf.astPrintf(node, "\tbind_var_conds='%s'\n", node.BindVarConds)
 	buf.literal(")")
 }
 
 // Format formats the node.
 func (node *WescaleFilterAction) Format(buf *TrackedBuffer) {
-	buf.literal("execute ( ")
-	buf.astPrintf(node, "action='%s', ", node.Action)
-	buf.astPrintf(node, "action_args='%s' ", node.ActionArgs)
+	buf.literal("execute (\n")
+	buf.astPrintf(node, "\taction='%s',\n", node.Action)
+	buf.astPrintf(node, "\taction_args='%s'\n", node.ActionArgs)
 	buf.literal(")")
 }
 
@@ -2154,18 +2154,18 @@ func (node *CreateWescaleFilter) Format(buf *TrackedBuffer) {
 		buf.literal("if not exists ")
 	}
 
-	buf.astPrintf(node, "%s ( ", node.Name)
-	buf.astPrintf(node, "desc='%s', ", node.Description)
-	buf.astPrintf(node, "priority='%s', ", node.Priority)
-	buf.astPrintf(node, "status='%s' ", node.Status)
-	buf.literal(") ")
+	buf.astPrintf(node, "%s (\n", node.Name)
+	buf.astPrintf(node, "\tdesc='%s',\n", node.Description)
+	buf.astPrintf(node, "\tpriority='%s',\n", node.Priority)
+	buf.astPrintf(node, "\tstatus='%s'\n", node.Status)
+	buf.literal(")")
 
 	if node.Pattern != nil {
-		buf.astPrintf(node, "%v", node.Pattern)
+		buf.astPrintf(node, "\n%v", node.Pattern)
 	}
 
 	if node.Action != nil {
-		buf.astPrintf(node, " %v", node.Action)
+		buf.astPrintf(node, "\n%v", node.Action)
 	}
 }
 

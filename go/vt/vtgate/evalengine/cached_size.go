@@ -241,7 +241,7 @@ func (cached *EvalResult) CachedSize(alloc bool) int64 {
 	// field tuple_ *[]vitess.io/vitess/go/vt/vtgate/evalengine.EvalResult
 	if cached.tuple_ != nil {
 		size += int64(24)
-		size += hack.RuntimeAllocSize(int64(cap(*cached.tuple_)) * int64(88))
+		size += hack.RuntimeAllocSize(int64(cap(*cached.tuple_)) * int64(96))
 		for _, elem := range *cached.tuple_ {
 			size += elem.CachedSize(false)
 		}
