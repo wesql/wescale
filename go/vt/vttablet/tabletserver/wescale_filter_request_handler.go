@@ -49,7 +49,7 @@ func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
 		return errors.New("create filter failed, please set a name")
 	}
 	if stmt.Priority == rules.UnsetValueOfStmt {
-		return fmt.Errorf("create filter failed, please set a valid priority that is greater than %d", rules.MinPriority)
+		stmt.Priority = strconv.Itoa(rules.DefaultPriority)
 	}
 	if stmt.Action.Action == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set action")
