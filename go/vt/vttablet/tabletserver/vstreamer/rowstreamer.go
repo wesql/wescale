@@ -143,7 +143,7 @@ func (rs *rowStreamer) buildPlan() error {
 		return err
 	}
 	ti := &Table{
-		Name:   st.Name,
+		Name:   st.Name.String(),
 		Fields: st.Fields,
 	}
 	// The plan we build is identical to the one for vstreamer.
@@ -190,7 +190,7 @@ func (rs *rowStreamer) buildPKColumnsFromUniqueKey() ([]int, error) {
 	return pkColumns, nil
 }
 
-func (rs *rowStreamer) buildPKColumns(st *binlogdatapb.MinimalTable) ([]int, error) {
+func (rs *rowStreamer) buildPKColumns(st *schema.Table) ([]int, error) {
 	if len(rs.ukColumnNames) > 0 {
 		return rs.buildPKColumnsFromUniqueKey()
 	}
@@ -210,7 +210,7 @@ func (rs *rowStreamer) buildPKColumns(st *binlogdatapb.MinimalTable) ([]int, err
 		return pkColumns, nil
 	}
 	for _, pk := range st.PKColumns {
-		if pk >= int64(len(st.Fields)) {
+		if pk >= len(st.Fields) {
 			return nil, fmt.Errorf("primary key %d refers to non-existent column", pk)
 		}
 		pkColumns = append(pkColumns, int(pk))

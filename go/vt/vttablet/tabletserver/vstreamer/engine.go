@@ -525,9 +525,9 @@ func (vse *Engine) getMySQLEndpoint(ctx context.Context, db dbconfigs.Connector)
 
 // mapPKEquivalentCols gets a PK equivalent from mysqld for the table
 // and maps the column names to field indexes in the MinimalTable struct.
-func (vse *Engine) mapPKEquivalentCols(ctx context.Context, table *binlogdatapb.MinimalTable) ([]int, error) {
+func (vse *Engine) mapPKEquivalentCols(ctx context.Context, table *schema.Table) ([]int, error) {
 	mysqld := mysqlctl.NewMysqld(vse.env.Config().DB)
-	pkeColNames, err := mysqld.GetPrimaryKeyEquivalentColumns(ctx, vse.env.Config().DB.DBName, table.Name)
+	pkeColNames, err := mysqld.GetPrimaryKeyEquivalentColumns(ctx, vse.env.Config().DB.DBName, table.Name.String())
 	if err != nil {
 		return nil, err
 	}
