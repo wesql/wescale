@@ -692,6 +692,13 @@ func (se *Engine) broadcast(created, altered, dropped []string) {
 	}
 }
 
+// GetTable returns the info for a table.
+func (se *Engine) GetTable(tableName sqlparser.IdentifierCS) *Table {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+	return se.tables[tableName.String()]
+}
+
 // GetSchema returns the current schema. The Tables are a
 // shared data structure and must be treated as read-only.
 func (se *Engine) GetSchema() map[string]*Table {
@@ -785,6 +792,9 @@ func NewEngineForTests() *Engine {
 		isOpen:    true,
 		tables:    make(map[string]*Table),
 		historian: newHistorian(false, nil),
+		cp: dbconfigs.New(&mysql.ConnParams{
+			DbName: "test",
+		}),
 	}
 	return se
 }
