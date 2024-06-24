@@ -429,10 +429,11 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 	var created, altered []string
 	for _, row := range tableData.Rows {
 		tableName := row[0].ToString()
+		tableSchema := row[6].ToString()
+
 		curTables[tableName] = true
 		createTime, _ := evalengine.ToInt64(row[2])
 		var fileSize, allocatedSize uint64
-		tableSchema := row[6].ToString()
 
 		if includeStats {
 			fileSize, _ = evalengine.ToUint64(row[4])
@@ -577,8 +578,11 @@ func (se *Engine) RegisterVersionEvent() error {
 	return se.historian.RegisterVersionEvent()
 }
 
-// GetTableFromSchema
-func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*binlogdatapb.MinimalTable, error) {
+// GetTableFromSchema returns a Table object for the given schema and table name.
+func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*Table, error) {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+
 	ctx := context.Background()
 	var setting pools.Setting
 	setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
@@ -607,7 +611,7 @@ func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*bin
 		table.PKColumns = append(table.PKColumns, index)
 	}
 
-	return newMinimalTable(table), nil
+	return table, nil
 }
 
 // GetTableForPos returns a best-effort schema for a specific gtid
@@ -688,13 +692,6 @@ func (se *Engine) broadcast(created, altered, dropped []string) {
 	}
 }
 
-// GetTable returns the info for a table.
-func (se *Engine) GetTable(tableName sqlparser.IdentifierCS) *Table {
-	se.mu.Lock()
-	defer se.mu.Unlock()
-	return se.tables[tableName.String()]
-}
-
 // GetSchema returns the current schema. The Tables are a
 // shared data structure and must be treated as read-only.
 func (se *Engine) GetSchema() map[string]*Table {
@@ -705,6 +702,44 @@ func (se *Engine) GetSchema() map[string]*Table {
 		tables[k] = v
 	}
 	return tables
+}
+
+func (se *Engine) GetSchema2(tableSchema string) (map[string]*Table, error) {
+	se.mu.Lock()
+	defer se.mu.Unlock()
+
+	//ctx := context.Background()
+	//var setting pools.Setting
+	//setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
+	//setting.SetResetQuery(fmt.Sprintf("use %s", se.cp.DBName()))
+	//
+	//conn, err := se.conns.Get(ctx, &setting)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer conn.Recycle()
+	//table, err := LoadTable(conn, tableSchema, tableName, "")
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//pkData, err := conn.Exec(ctx, fmt.Sprintf(mysql.BaseShowPrimaryOfTable, tableSchema, tableName), maxTableCount, false)
+	//if err != nil {
+	//	return nil, vterrors.Errorf(vtrpcpb.Code_UNKNOWN, "could not get table primary key info: %v", err)
+	//}
+	//for _, row := range pkData.Rows {
+	//	colName := row[0].ToString()
+	//	index := table.FindColumn(sqlparser.NewIdentifierCI(colName))
+	//	if index < 0 {
+	//		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "column %v is listed as primary key, but not present in table %v", colName, tableName)
+	//	}
+	//	table.PKColumns = append(table.PKColumns, index)
+	//}
+	//
+	//return newMinimalTable(table), nil
+
+	//todo earayu
+	return nil, nil
 }
 
 // GetConnection returns a connection from the pool
