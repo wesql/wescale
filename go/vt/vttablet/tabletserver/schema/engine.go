@@ -698,7 +698,7 @@ func (se *Engine) broadcast(created, altered, dropped []sqlparser.TableSchemaAnd
 func ConvertTableSchemaAndNameMap2String(tables map[sqlparser.TableSchemaAndName]*Table) map[string]*Table {
 	m := make(map[string]*Table, len(tables))
 	for k, v := range tables {
-		m[k.String()] = v
+		m[k.GetName()] = v
 	}
 	return m
 }
@@ -706,7 +706,7 @@ func ConvertTableSchemaAndNameMap2String(tables map[sqlparser.TableSchemaAndName
 func ConvertTableSchemaAndNameSlice2String(tables []sqlparser.TableSchemaAndName) []string {
 	m := make([]string, len(tables))
 	for i, v := range tables {
-		m[i] = v.String()
+		m[i] = v.GetName()
 	}
 	return m
 }
