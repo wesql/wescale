@@ -146,6 +146,7 @@ jobs:
         source build.env
 
         set -x
+        set -o pipefail
 
         {{if .LimitResourceUsage}}
         # Increase our open file descriptor limit as we could hit this
