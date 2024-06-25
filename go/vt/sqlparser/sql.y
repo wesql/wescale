@@ -637,6 +637,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <tableNames> check_table_list
 
 %type <createWescaleFilter> wescale_filter_info
+%type <createWescaleFilter> wescale_filter_info_opt
 %type <alterWescaleFilter> alter_wescale_filter_info
 %type <alterWescaleFilter> alter_wescale_filter_info_opt
 %type <wescaleFilterPattern> wescale_filter_pattern_info
@@ -644,6 +645,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <wescaleFilterAction> wescale_filter_action_info
 %type <wescaleFilterAction> wescale_filter_action_info_opt
 %type <str> wescale_filter_info_field
+%type <str> alter_wescale_filter_info_field
 %type <str> wescale_filter_pattern_info_field
 %type <str> wescale_filter_action_info_field
 
@@ -1184,9 +1186,9 @@ set_session_or_global:
   }
 
 create_filter_statement:
-  CREATE comment_opt FILTER not_exists_opt ID '(' wescale_filter_info ')' wescale_filter_pattern_info_opt EXECUTE '(' wescale_filter_action_info ')'
+  CREATE comment_opt FILTER not_exists_opt ID wescale_filter_info_opt wescale_filter_pattern_info_opt EXECUTE '(' wescale_filter_action_info ')'
   {
-   $$ = &CreateWescaleFilter{Name:$5, Description:$7.Description, Priority:$7.Priority, Status:$7.Status, IfNotExists:$4,Pattern:$9,Action:$12}
+   $$ = &CreateWescaleFilter{Name:$5, Description:$6.Description, Priority:$6.Priority, Status:$6.Status, IfNotExists:$4,Pattern:$7,Action:$10}
   }
 
 alter_filter_statement:
@@ -1227,6 +1229,16 @@ drop_filter_statement:
     $$ = $2
   }
 
+    wescale_filter_info_opt:
+    /*empty*/
+    {
+      $$ = &CreateWescaleFilter{Description:"-75516781",Priority:"-75516781",Status:"-75516781"}
+    }
+    | '(' wescale_filter_info ')'
+    {
+      $$ = $2
+    }
+
   wescale_filter_pattern_info_opt:
   /*empty*/
   {
@@ -1252,10 +1264,7 @@ drop_filter_statement:
 wescale_filter_info:
   wescale_filter_info_field '=' STRING
   {
-    $$ = &CreateWescaleFilter{Name:"-75516781",Description:"-75516781",Priority:"-75516781",Status:"-75516781"}
-    if $1 == "name" {
-        $$.Name = $3
-    }
+    $$ = &CreateWescaleFilter{Description:"-75516781",Priority:"-75516781",Status:"-75516781"}
     if $1 == "description" {
         $$.Description = $3
     }
@@ -1268,9 +1277,6 @@ wescale_filter_info:
   }
   | wescale_filter_info ',' wescale_filter_info_field '=' STRING
   {
-    if $3 == "name" {
-        $$.Name = $5
-    }
     if $3 == "description" {
         $$.Description = $5
     }
@@ -1284,7 +1290,7 @@ wescale_filter_info:
 
 
 alter_wescale_filter_info:
-  wescale_filter_info_field '=' STRING
+  alter_wescale_filter_info_field '=' STRING
   {
     $$ = &AlterWescaleFilter{AlterInfo:&CreateWescaleFilter{Name:"-75516781",Description:"-75516781",Priority:"-75516781",Status:"-75516781"}}
     if $1 == "name" {
@@ -1300,7 +1306,7 @@ alter_wescale_filter_info:
         $$.AlterInfo.Status = $3
     }
   }
-  | alter_wescale_filter_info ',' wescale_filter_info_field '=' STRING
+  | alter_wescale_filter_info ',' alter_wescale_filter_info_field '=' STRING
   {
     if $3 == "name" {
         $$.AlterInfo.Name = $5
@@ -1317,6 +1323,20 @@ alter_wescale_filter_info:
   }
 
 wescale_filter_info_field:
+  DESC
+  {
+    $$ = "description"
+  }
+  | PRIORITY
+  {
+   $$ = "priority"
+  }
+  | STATUS
+  {
+   $$ = "status"
+  }
+
+alter_wescale_filter_info_field:
   NAME
   {
     $$ = "name"

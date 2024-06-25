@@ -49,7 +49,7 @@ func setDefaultValueForCreateFilter(stmt *sqlparser.CreateWescaleFilter) error {
 		return errors.New("create filter failed, please set a name")
 	}
 	if stmt.Priority == rules.UnsetValueOfStmt {
-		return fmt.Errorf("create filter failed, please set a valid priority that is greater than %d", rules.MinPriority)
+		stmt.Priority = strconv.Itoa(rules.DefaultPriority)
 	}
 	if stmt.Action.Action == rules.UnsetValueOfStmt {
 		return errors.New("create filter failed, please set action")
@@ -261,7 +261,7 @@ func (qe *QueryEngine) HandleShowCreateFilter(stmt *sqlparser.ShowWescaleFilter)
 	rows := [][]sqltypes.Value{}
 	rows = append(rows, BuildVarCharRow(
 		stmt.Name,
-		sqlparser.String(createFilter),
+		"\n"+sqlparser.String(createFilter),
 	))
 	return &sqltypes.Result{
 		Fields: BuildVarCharFields("Filer", "Create Filter"),

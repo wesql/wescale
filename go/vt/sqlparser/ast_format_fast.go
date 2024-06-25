@@ -24,7 +24,6 @@ package sqlparser
 
 import (
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2781,46 +2780,46 @@ func (node *CreateTable) formatFast(buf *TrackedBuffer) {
 
 // formatFast formats the node.
 func (node *WescaleFilterPattern) formatFast(buf *TrackedBuffer) {
-	buf.WriteString("with_pattern ( ")
-	buf.WriteString("plans='")
+	buf.WriteString("with_pattern (\n")
+	buf.WriteString("\tplans='")
 	buf.WriteString(node.Plans)
-	buf.WriteString("', ")
-	buf.WriteString("fully_qualified_table_names='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tfully_qualified_table_names='")
 	buf.WriteString(node.FullyQualifiedTableNames)
-	buf.WriteString("', ")
-	buf.WriteString("query_regex='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tquery_regex='")
 	buf.WriteString(node.QueryRegex)
-	buf.WriteString("', ")
-	buf.WriteString("query_template='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tquery_template='")
 	buf.WriteString(node.QueryTemplate)
-	buf.WriteString("', ")
-	buf.WriteString("request_ip_regex='")
+	buf.WriteString("',\n")
+	buf.WriteString("\trequest_ip_regex='")
 	buf.WriteString(node.RequestIPRegex)
-	buf.WriteString("', ")
-	buf.WriteString("user_regex='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tuser_regex='")
 	buf.WriteString(node.UserRegex)
-	buf.WriteString("', ")
-	buf.WriteString("leading_comment_regex='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tleading_comment_regex='")
 	buf.WriteString(node.LeadingCommentRegex)
-	buf.WriteString("', ")
-	buf.WriteString("trailing_comment_regex='")
+	buf.WriteString("',\n")
+	buf.WriteString("\ttrailing_comment_regex='")
 	buf.WriteString(node.TrailingCommentRegex)
-	buf.WriteString("', ")
-	buf.WriteString("bind_var_conds='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tbind_var_conds='")
 	buf.WriteString(node.BindVarConds)
-	buf.WriteString("' ")
+	buf.WriteString("'\n")
 	buf.WriteString(")")
 }
 
 // formatFast formats the node.
 func (node *WescaleFilterAction) formatFast(buf *TrackedBuffer) {
-	buf.WriteString("execute ( ")
-	buf.WriteString("action='")
+	buf.WriteString("execute (\n")
+	buf.WriteString("\taction='")
 	buf.WriteString(node.Action)
-	buf.WriteString("', ")
-	buf.WriteString("action_args='")
+	buf.WriteString("',\n")
+	buf.WriteString("\taction_args='")
 	buf.WriteString(node.ActionArgs)
-	buf.WriteString("' ")
+	buf.WriteString("'\n")
 	buf.WriteString(")")
 }
 
@@ -2833,24 +2832,25 @@ func (node *CreateWescaleFilter) formatFast(buf *TrackedBuffer) {
 	}
 
 	buf.WriteString(node.Name)
-	buf.WriteString(" ( ")
-	buf.WriteString("desc='")
+	buf.WriteString(" (\n")
+	buf.WriteString("\tdesc='")
 	buf.WriteString(node.Description)
-	buf.WriteString("', ")
-	buf.WriteString("priority='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tpriority='")
 	buf.WriteString(node.Priority)
-	buf.WriteString("', ")
-	buf.WriteString("status='")
+	buf.WriteString("',\n")
+	buf.WriteString("\tstatus='")
 	buf.WriteString(node.Status)
-	buf.WriteString("' ")
-	buf.WriteString(") ")
+	buf.WriteString("'\n")
+	buf.WriteString(")")
 
 	if node.Pattern != nil {
+		buf.WriteByte('\n')
 		node.Pattern.formatFast(buf)
 	}
 
 	if node.Action != nil {
-		buf.WriteByte(' ')
+		buf.WriteByte('\n')
 		node.Action.formatFast(buf)
 	}
 }
