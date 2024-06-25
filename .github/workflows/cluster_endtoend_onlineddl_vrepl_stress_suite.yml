@@ -115,6 +115,7 @@ jobs:
         source build.env
 
         set -x
+        set -o pipefail
 
         # run the tests however you normally do, then produce a JUnit XML file
         # failpoint
