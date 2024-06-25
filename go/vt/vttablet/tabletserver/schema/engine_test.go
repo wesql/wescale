@@ -159,14 +159,14 @@ func TestOpenAndReload(t *testing.T) {
 		if firstTime {
 			firstTime = false
 			sort.Strings(created)
-			assert.Equal(t, []string{"dual", "fakesqldb.msg", "fakesqldb.seq", "fakesqldb.test_table_01", "fakesqldb.test_table_02", "fakesqldb.test_table_03"}, created)
+			assert.Equal(t, []string{"dual", "msg", "seq", "test_table_01", "test_table_02", "test_table_03"}, created)
 			assert.Equal(t, []string(nil), altered)
 			assert.Equal(t, []string(nil), dropped)
 		} else {
-			assert.Equal(t, []string{"fakesqldb.test_table_04"}, created)
-			assert.Equal(t, []string{"fakesqldb.test_table_03"}, altered)
+			assert.Equal(t, []string{"test_table_04"}, created)
+			assert.Equal(t, []string{"test_table_03"}, altered)
 			sort.Strings(dropped)
-			assert.Equal(t, []string{"fakesqldb.msg"}, dropped)
+			assert.Equal(t, []string{"msg"}, dropped)
 		}
 	}
 	se.RegisterNotifier("test", notifier)
