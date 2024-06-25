@@ -346,8 +346,8 @@ const TablesWithSize57 = `SELECT t.table_name,
 	UNIX_TIMESTAMP(t.create_time),
 	t.table_comment,
 	IFNULL(SUM(i.file_size), SUM(t.data_length + t.index_length)),
-	IFNULL(SUM(i.allocated_size), SUM(t.data_length + t.index_length))
-	t.table_schema,
+	IFNULL(SUM(i.allocated_size), SUM(t.data_length + t.index_length)),
+	t.table_schema
 FROM information_schema.tables t
 LEFT OUTER JOIN (
 	SELECT space, file_size, allocated_size, name
