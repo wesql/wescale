@@ -2,7 +2,7 @@
 
 name: Cluster (vreplication_v2)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

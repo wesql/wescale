@@ -2,7 +2,7 @@
 
 name: Cluster (vstream_failover)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

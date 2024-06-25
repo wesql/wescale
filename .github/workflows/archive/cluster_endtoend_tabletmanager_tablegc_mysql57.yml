@@ -2,7 +2,7 @@
 
 name: Cluster (tabletmanager_tablegc) mysql57
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:
