@@ -107,17 +107,18 @@ func TestVStreamCopyFilterValidations(t *testing.T) {
 
 	var getUVStreamer = func(filter *binlogdatapb.Filter, tablePKs []*binlogdatapb.TableLastPK) *uvstreamer {
 		uvs := &uvstreamer{
-			ctx:        ctx,
-			cancel:     cancel,
-			vse:        nil,
-			send:       nil,
-			cp:         dbconfigs.Connector{},
-			se:         engine.se,
-			startPos:   "",
-			filter:     filter,
-			vschema:    nil,
-			config:     nil,
-			inTablePKs: tablePKs,
+			ctx:         ctx,
+			cancel:      cancel,
+			tableSchema: "vttest",
+			vse:         nil,
+			send:        nil,
+			cp:          dbconfigs.Connector{},
+			se:          engine.se,
+			startPos:    "",
+			filter:      filter,
+			vschema:     nil,
+			config:      nil,
+			inTablePKs:  tablePKs,
 		}
 		return uvs
 	}
