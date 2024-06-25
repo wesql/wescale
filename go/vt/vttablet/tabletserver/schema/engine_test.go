@@ -86,9 +86,10 @@ func TestOpenAndReload(t *testing.T) {
 	defer se.Close()
 
 	want := initialSchema()
-	mustMatch(t, want, se.GetSchema2(dbName))
-	assert.Equal(t, int64(100), se.tableFileSizeGauge.Counts()["msg"])
-	assert.Equal(t, int64(150), se.tableAllocatedSizeGauge.Counts()["msg"])
+	got := se.GetSchema2(dbName)
+	mustMatch(t, want, got)
+	assert.Equal(t, int64(100), se.tableFileSizeGauge.Counts()["fakesqldb.msg"])
+	assert.Equal(t, int64(150), se.tableAllocatedSizeGauge.Counts()["fakesqldb.msg"])
 	// Advance time some more.
 	db.AddQuery("select unix_timestamp()", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"t",
@@ -112,7 +113,7 @@ func TestOpenAndReload(t *testing.T) {
 				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),              // table_comment
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("128")),             // file_size
 				sqltypes.MakeTrusted(sqltypes.Int64, []byte("256")),             // allocated_size
-				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),              // table_schema
+				sqltypes.MakeTrusted(sqltypes.VarChar, []byte("fakesqldb")),     // table_schema
 			},
 			// test_table_04 will in spite of older timestamp because it doesn't exist yet.
 			mysql.BaseShowTablesRow("test_table_04", false, ""),
@@ -158,14 +159,14 @@ func TestOpenAndReload(t *testing.T) {
 		if firstTime {
 			firstTime = false
 			sort.Strings(created)
-			assert.Equal(t, []string{"dual", "msg", "seq", "test_table_01", "test_table_02", "test_table_03"}, created)
+			assert.Equal(t, []string{"dual", "fakesqldb.msg", "fakesqldb.seq", "fakesqldb.test_table_01", "fakesqldb.test_table_02", "fakesqldb.test_table_03"}, created)
 			assert.Equal(t, []string(nil), altered)
 			assert.Equal(t, []string(nil), dropped)
 		} else {
-			assert.Equal(t, []string{"test_table_04"}, created)
-			assert.Equal(t, []string{"test_table_03"}, altered)
+			assert.Equal(t, []string{"fakesqldb.test_table_04"}, created)
+			assert.Equal(t, []string{"fakesqldb.test_table_03"}, altered)
 			sort.Strings(dropped)
-			assert.Equal(t, []string{"msg"}, dropped)
+			assert.Equal(t, []string{"fakesqldb.msg"}, dropped)
 		}
 	}
 	se.RegisterNotifier("test", notifier)

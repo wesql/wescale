@@ -718,26 +718,13 @@ func (se *Engine) GetTable(tableSchema, tableName string) *Table {
 	return se.tables[sqlparser.NewTableSchemaAndName(tableSchema, tableName)]
 }
 
-// Deprecated: This function is deprecated and will be removed in future versions.
-// GetSchema returns the current schema. The Tables are a
-// shared data structure and must be treated as read-only.
-func (se *Engine) GetSchema() map[string]*Table {
-	se.mu.Lock()
-	defer se.mu.Unlock()
-	tables := make(map[string]*Table, len(se.tables))
-	for k, v := range se.tables {
-		tables[k.GetSchema()] = v
-	}
-	return tables
-}
-
 func (se *Engine) GetSchema2(tableSchema string) map[string]*Table {
 	se.mu.Lock()
 	defer se.mu.Unlock()
 	tables := make(map[string]*Table, len(se.tables))
 	for k, v := range se.tables {
-		if k.GetSchema() == tableSchema || tableSchema == "" {
-			tables[k.String()] = v
+		if k.GetSchema() == tableSchema || k.GetSchema() == "" {
+			tables[k.GetName()] = v
 		}
 	}
 	return tables
