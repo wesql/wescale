@@ -38,7 +38,7 @@ const (
 	//	WHERE TABLE_SCHEMA = DATABASE() AND LOWER(INDEX_NAME) = 'primary'
 	//	ORDER BY table_name, SEQ_IN_INDEX`
 	BaseShowPrimary = `
-		SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name
+		SELECT TABLE_NAME as table_name, COLUMN_NAME as column_name, TABLE_SCHEMA as table_schema
 		FROM information_schema.STATISTICS
 		WHERE LOWER(INDEX_NAME) = 'primary'
 		ORDER BY table_name, SEQ_IN_INDEX`

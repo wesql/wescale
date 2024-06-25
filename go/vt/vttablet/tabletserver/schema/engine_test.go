@@ -52,6 +52,8 @@ const baseShowTablesPattern = `SELECT t\.table_name.*`
 
 var mustMatch = utils.MustMatchFn(".Mutex")
 
+var dbName = "fakesqldb"
+
 func TestOpenAndReload(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
@@ -84,7 +86,7 @@ func TestOpenAndReload(t *testing.T) {
 	defer se.Close()
 
 	want := initialSchema()
-	mustMatch(t, want, se.GetSchema())
+	mustMatch(t, want, se.GetSchema2(dbName))
 	assert.Equal(t, int64(100), se.tableFileSizeGauge.Counts()["msg"])
 	assert.Equal(t, int64(150), se.tableAllocatedSizeGauge.Counts()["msg"])
 	// Advance time some more.
@@ -201,7 +203,7 @@ func TestOpenAndReload(t *testing.T) {
 		AllocatedSize: 150,
 	}
 	delete(want, "msg")
-	assert.Equal(t, want, se.GetSchema())
+	assert.Equal(t, want, se.GetSchema2(dbName))
 	assert.Equal(t, int64(0), se.tableAllocatedSizeGauge.Counts()["msg"])
 	assert.Equal(t, int64(0), se.tableFileSizeGauge.Counts()["msg"])
 
@@ -214,11 +216,11 @@ func TestOpenAndReload(t *testing.T) {
 
 	err = se.ReloadAt(context.Background(), mysql.Position{})
 	require.NoError(t, err)
-	assert.Equal(t, want, se.GetSchema())
+	assert.Equal(t, want, se.GetSchema2(dbName))
 
 	err = se.ReloadAt(context.Background(), pos1)
 	require.NoError(t, err)
-	assert.Equal(t, want, se.GetSchema())
+	assert.Equal(t, want, se.GetSchema2(dbName))
 
 	db.AddQueryPattern(baseShowTablesPattern, &sqltypes.Result{
 		Fields: mysql.BaseShowTablesFields,
@@ -240,12 +242,12 @@ func TestOpenAndReload(t *testing.T) {
 	})
 	err = se.ReloadAt(context.Background(), pos1)
 	require.NoError(t, err)
-	assert.Equal(t, want, se.GetSchema())
+	assert.Equal(t, want, se.GetSchema2(dbName))
 
 	delete(want, "test_table_03")
 	err = se.ReloadAt(context.Background(), pos2)
 	require.NoError(t, err)
-	assert.Equal(t, want, se.GetSchema())
+	assert.Equal(t, want, se.GetSchema2(dbName))
 }
 
 func TestReloadWithSwappedTables(t *testing.T) {
@@ -274,7 +276,7 @@ func TestReloadWithSwappedTables(t *testing.T) {
 	se.Open()
 	defer se.Close()
 	want := initialSchema()
-	mustMatch(t, want, se.GetSchema())
+	mustMatch(t, want, se.GetSchema2(dbName))
 
 	// Add test_table_04 with a newer timestamp
 	// Advance time some more.
@@ -333,7 +335,7 @@ func TestReloadWithSwappedTables(t *testing.T) {
 		AllocatedSize: 256,
 	}
 
-	mustMatch(t, want, se.GetSchema())
+	mustMatch(t, want, se.GetSchema2(dbName))
 
 	// swap test_table_03 and test_table_04
 	// Advance time some more.
@@ -413,7 +415,7 @@ func TestReloadWithSwappedTables(t *testing.T) {
 		FileSize:      100,
 		AllocatedSize: 150,
 	}
-	mustMatch(t, want, se.GetSchema())
+	mustMatch(t, want, se.GetSchema2(dbName))
 }
 
 func TestOpenFailedDueToExecErr(t *testing.T) {

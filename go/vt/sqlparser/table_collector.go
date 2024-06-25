@@ -20,6 +20,13 @@ func (t TableSchemaAndName) GetName() string {
 	return t.name
 }
 
+func (t TableSchemaAndName) String() string {
+	if t.schema == "" {
+		return t.name
+	}
+	return t.schema + "." + t.name
+}
+
 // CollectTables builds the list of required tables for all the
 // tables referenced in a query.
 func CollectTables(stmt Statement, defaultTableSchema string) []TableSchemaAndName {

@@ -86,7 +86,7 @@ create table test_partitioned (
 		Alias:    &topodatapb.TabletAlias{},
 	})
 	se := tablet.tsv.SchemaEngine()
-	tables := se.GetSchema()
+	tables := se.GetSchema2("test_keyspace")
 
 	t1 := tables["t1"]
 	require.NotNil(t, t1, "table t1 wasn't parsed properly")
