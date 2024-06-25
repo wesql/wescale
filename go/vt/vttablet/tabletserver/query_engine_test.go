@@ -100,14 +100,15 @@ func TestGetMessageStreamPlan(t *testing.T) {
 	qe.Open()
 	defer qe.Close()
 
-	plan, err := qe.GetMessageStreamPlan("msg")
+	plan, err := qe.GetMessageStreamPlan("fakesqldb.msg")
 	if err != nil {
 		t.Fatal(err)
 	}
 	wantPlan := &planbuilder.Plan{
 		PlanID: planbuilder.PlanMessageStream,
-		Table:  qe.tables["msg"],
+		Table:  qe.tables["fakesqldb.msg"],
 		Permissions: []planbuilder.Permission{{
+			Database:  "fakesqldb",
 			TableName: "msg",
 			Role:      tableacl.WRITER,
 		}},
