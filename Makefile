@@ -296,6 +296,7 @@ vtadmin_authz_testgen:
 # is changed by adding a new test to an existing shard. Any new or modified files need to be committed into git
 generate_ci_workflows:
 	cd test && go run ci_workflow_gen.go && cd ..
+	cd .github/workflows && sh replace_workflows.sh && cd ../..
 
 .PHONY: check-license-header
 check-license-header: ## Run license header check.
