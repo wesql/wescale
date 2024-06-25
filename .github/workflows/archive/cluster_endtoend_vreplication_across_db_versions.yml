@@ -2,7 +2,7 @@
 
 name: Cluster (vreplication_across_db_versions)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

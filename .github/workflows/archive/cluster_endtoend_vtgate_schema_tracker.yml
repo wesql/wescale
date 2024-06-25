@@ -2,7 +2,7 @@
 
 name: Cluster (vtgate_schema_tracker)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

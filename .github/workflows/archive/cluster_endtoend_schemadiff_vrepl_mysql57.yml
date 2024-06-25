@@ -2,7 +2,7 @@
 
 name: Cluster (schemadiff_vrepl) mysql57
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

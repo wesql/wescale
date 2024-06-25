@@ -2,7 +2,7 @@
 
 name: Cluster (vtgate_concurrentdml)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

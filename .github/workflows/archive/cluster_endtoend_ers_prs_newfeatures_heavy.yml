@@ -2,7 +2,7 @@
 
 name: Cluster (ers_prs_newfeatures_heavy)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

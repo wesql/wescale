@@ -2,7 +2,7 @@
 
 name: Cluster (backup_pitr) mysql57
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

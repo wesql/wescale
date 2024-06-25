@@ -2,7 +2,7 @@
 
 name: Cluster (topo_connection_cache)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:

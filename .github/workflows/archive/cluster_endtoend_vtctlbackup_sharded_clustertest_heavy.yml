@@ -2,7 +2,7 @@
 
 name: Cluster (vtctlbackup_sharded_clustertest_heavy)
 on:
-#  pull_request:
+  pull_request:
   workflow_dispatch:
   push:
     branches:
