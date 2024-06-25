@@ -175,6 +175,7 @@ jobs:
         eatmydata -- go run test.go -docker={{if .Docker}}true -flavor={{.Platform}}{{else}}false{{end}} -follow -shard {{.Shard}}{{if .PartialKeyspace}} -partial-keyspace=true {{end}} | tee -a output.txt | go-junit-report -set-exit-code > report.xml
         TEST_EXIT_CODE=$?
         make failpoint-disable
+        echo $TEST_EXIT_CODE > test_exit_code.txt
         exit $TEST_EXIT_CODE
 
     - name: Print test output and Record test result
@@ -183,4 +184,5 @@ jobs:
 
         # print test output
         cat output.txt
+        TEST_EXIT_CODE=$(cat test_exit_code.txt)
         exit $TEST_EXIT_CODE
