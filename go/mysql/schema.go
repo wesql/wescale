@@ -241,7 +241,7 @@ func BaseShowTablesRow(tableName string, isView bool, comment string) []sqltypes
 		sqltypes.MakeTrusted(sqltypes.VarChar, []byte(comment)),
 		sqltypes.MakeTrusted(sqltypes.Int64, []byte("100")), // file_size
 		sqltypes.MakeTrusted(sqltypes.Int64, []byte("150")), // allocated_size
-		sqltypes.MakeTrusted(sqltypes.VarChar, []byte("")),
+		sqltypes.MakeTrusted(sqltypes.VarChar, []byte("fakesqldb")),
 	}
 }
 
@@ -252,6 +252,9 @@ var ShowPrimaryFields = []*querypb.Field{{
 }, {
 	Name: "column_name",
 	Type: sqltypes.VarChar,
+}, {
+	Name: "table_schema",
+	Type: sqltypes.VarChar,
 }}
 
 // ShowPrimaryRow returns a row for a primary key column.
@@ -259,5 +262,6 @@ func ShowPrimaryRow(tableName, colName string) []sqltypes.Value {
 	return []sqltypes.Value{
 		sqltypes.MakeTrusted(sqltypes.VarChar, []byte(tableName)),
 		sqltypes.MakeTrusted(sqltypes.VarChar, []byte(colName)),
+		sqltypes.MakeTrusted(sqltypes.VarChar, []byte("fakesqldb")),
 	}
 }

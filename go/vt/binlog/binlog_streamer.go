@@ -483,7 +483,7 @@ func (bls *Streamer) parseEvents(ctx context.Context, events <-chan mysql.Binlog
 			}
 
 			// Find and fill in the table schema.
-			tce.ti = bls.se.GetTable(tm.Database, tm.Name)
+			tce.ti = bls.se.GetTable("", tm.Name)
 			if tce.ti == nil {
 				return pos, fmt.Errorf("unknown table %v in schema", tm.Name)
 			}
