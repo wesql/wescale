@@ -109,7 +109,7 @@ func (tm *TabletManager) lockTablesUsingLockTables(conn *dbconnpool.DBConnection
 		return err
 	}
 
-	tables := se.GetSchema()
+	tables := se.GetSchema2(tm.DBConfigs.DBName)
 	tableNames := make([]string, 0, len(tables))
 	for name := range tables {
 		if name == "dual" {

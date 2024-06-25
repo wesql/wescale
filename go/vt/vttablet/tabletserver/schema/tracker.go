@@ -221,7 +221,8 @@ func (tr *Tracker) schemaUpdated(gtid string, ddl string, timestamp int64) error
 }
 
 func (tr *Tracker) saveCurrentSchemaToDb(ctx context.Context, gtid, ddl string, timestamp int64) error {
-	tables := tr.engine.GetSchema()
+	schemaName := tr.env.Config().DB.DBName
+	tables := tr.engine.GetSchema2(schemaName)
 	dbSchema := &binlogdatapb.MinimalSchema{
 		Tables: []*binlogdatapb.MinimalTable{},
 	}

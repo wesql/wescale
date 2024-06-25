@@ -142,7 +142,7 @@ func (uvs *uvstreamer) buildTablePlan() error {
 	for _, tablePK := range uvs.inTablePKs {
 		tableLastPKs[tablePK.TableName] = tablePK
 	}
-	tables := uvs.se.GetSchema()
+	tables := uvs.se.GetSchema2(uvs.tableSchema)
 	for range tables {
 		for _, rule := range uvs.filter.Rules {
 			if !strings.HasPrefix(rule.Match, "/") {
