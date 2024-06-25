@@ -193,6 +193,9 @@ jobs:
       if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true' && always()
       run: |
 
+        echo "TEST_EXIT_CODE"
+        cat test_exit_code.txt
+
         # print test output
         cat output.txt
         TEST_EXIT_CODE=$(cat test_exit_code.txt)
