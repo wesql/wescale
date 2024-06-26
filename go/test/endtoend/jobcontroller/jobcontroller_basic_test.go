@@ -39,6 +39,7 @@ func createUserDB(t *testing.T) {
 	}
 
 	_, err := VtgateExecQuery(t, &vtParams, fmt.Sprintf("create database if not exists %s", UserTableSchema))
+	time.Sleep(time.Second * 5)
 	require.Nil(t, err)
 }
 
@@ -99,7 +100,7 @@ func singleIntPK(t *testing.T) {
 	query, err = VtgateExecQuery(t, &vtParams, fmt.Sprintf("update /*vt+ dml_split=true */ %s set name='123' where age > 50;", tableName))
 	require.Nil(t, err)
 	jobUUID := query.Named().Rows[0]["job_uuid"].ToString()
-	fmt.Printf("job %s submitted", jobUUID)
+	fmt.Printf("job %s submitted\n", jobUUID)
 
 	// wait for job to complete
 	require.Equal(t, jobcontroller.CompletedStatus, WaitForJobStatus(t, &vtParams, jobUUID, 10*time.Minute, jobcontroller.CompletedStatus))

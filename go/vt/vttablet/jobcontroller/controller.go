@@ -530,7 +530,7 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	// 2. Query the number of rows that is going to be affected by this batch SQL.
 	// If it exceeds the threshold, we should split it.
 	// Here we use "FOR SHARE" to prevent users from modifying rows related to this batch.
-	batchCountSQLForShare := batchCountSQL + " FOR SHARE"
+	batchCountSQLForShare := batchCountSQL + " LOCK IN SHARE MODE"
 	qr, err := conn.Exec(ctx, batchCountSQLForShare, math.MaxInt32, true)
 	if err != nil {
 		return err
