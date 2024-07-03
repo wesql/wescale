@@ -24,9 +24,9 @@ package vtgate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
-
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
 	topoprotopb "vitess.io/vitess/go/vt/topo/topoproto"
@@ -68,6 +68,20 @@ func (e *Executor) newExecute(
 	stmt, reserved, err := sqlparser.Parse2(query)
 	if err != nil {
 		return err
+	}
+
+	// todo newborn22
+	if HasCustomFunction(stmt) {
+		fmt.Println("just test")
+		query, err = RemoveCustomFunction(stmt)
+		if err != nil {
+			return err
+		}
+
+		stmt, reserved, err = sqlparser.Parse2(query)
+		if err != nil {
+			return err
+		}
 	}
 
 	vcursor, err := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
