@@ -22,6 +22,7 @@ limitations under the License.
 package planbuilder
 
 import (
+	"fmt"
 	"vitess.io/vitess/go/internal/global"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -42,6 +43,11 @@ func gen4SelectStmtPlanner(
 
 	sel, isSel := stmt.(*sqlparser.Select)
 	if isSel {
+		// todo newborn22
+		if hasCustomFunction(sel.SelectExprs) {
+			fmt.Println("just test")
+		}
+
 		// handle dual table for processing at vtgate.
 		p, err := handleDualSelects(sel, vschema)
 		if err != nil {
