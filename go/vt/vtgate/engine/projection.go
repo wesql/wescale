@@ -147,6 +147,8 @@ func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcurso
 
 	newFieldNames := make([]string, 0)
 	idx := 0
+	// build final field
+	colNumsForStar := 0
 	for _, expr := range p.Meta.Origin {
 		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
 			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
@@ -173,6 +175,7 @@ func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcurso
 				newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
 				idx++
 			}
+			colNumsForStar = len(newFieldNames)
 		} else {
 			newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
 			idx++
@@ -180,24 +183,40 @@ func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcurso
 	}
 
 	// build final result
+	rows := [][]sqltypes.Value{}
+	for _, gotRow := range qr.Named().Rows {
+		rowValues := make([]string, 0, len(newFieldNames))
+		idx := 0
+		for _, colExpr := range p.Meta.Origin {
+			if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
+				if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+					funcRst, err := CalFuncExpr(funcExpr, gotRow)
+					if err != nil {
+						return nil, err
+					}
+					rowValues = append(rowValues, funcRst)
+					idx++
+					continue
+				}
+			}
+			if _, ok := colExpr.(*sqlparser.StarExpr); ok {
+				for i := 0; i < colNumsForStar; i++ {
+					rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
+					idx++
+				}
+				continue
+			}
+			rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
+			idx++
+		}
+		rows = append(rows, BuildVarCharRow(rowValues...))
+	}
 
-	//rows := [][]sqltypes.Value{}
-	//for _, gotRow := range qr.Named().Rows {
-	//	rowValues := make([]string, len(newFieldNames))
-	//	idx := 0
-	//
-	//	for _, colExpr := range p.Meta.Origin {
-	//		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-	//			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-	//				funcExpr
-	//			}
-	//		}
-	//	}
-	//
-	//	rows = append(rows, tabletserver.BuildVarCharRow(rowValues...))
-	//}
-
-	return qr, nil
+	return &sqltypes.Result{
+		Fields: BuildVarCharFields(newFieldNames...),
+		Rows:   rows,
+	}, nil
+	//return qr, nil
 }
 
 // TryStreamExecute implements the Primitive interface
@@ -295,4 +314,37 @@ func (p *Projection) description() PrimitiveDescription {
 			"Expressions": exprs,
 		},
 	}
+}
+
+func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues) (string, error) {
+	// get function paras
+	params := make([]string, 0, len(funcExpr.Exprs))
+	// todo newborn22， 简单地支持了 literal, colname, funcExpr作为参数
+	for _, para := range funcExpr.Exprs {
+		alias, ok := para.(*sqlparser.AliasedExpr)
+		if !ok {
+			return "", errors.New("only support literal, colname and funcExpr as parameter")
+		}
+		switch alias.Expr.(type) {
+		case *sqlparser.ColName:
+			colName := alias.Expr.(*sqlparser.ColName).Name.String()
+			val := rowValues[colName].ToString()
+			params = append(params, val)
+		case *sqlparser.Literal:
+			val := sqlparser.String(alias.Expr.(*sqlparser.Literal))
+			params = append(params, val)
+		case *sqlparser.FuncExpr:
+			// todo newborn22, 递归调用
+			rst, err := CalFuncExpr(alias.Expr.(*sqlparser.FuncExpr), rowValues)
+			if err != nil {
+				return "", err
+			}
+			params = append(params, rst)
+		default:
+			return "", errors.New("only support literal, colname and funcExpr as parameter")
+		}
+	}
+	// get the function
+	function, _ := CUSTOM_FUNCTIONS[funcExpr.Name.String()]
+	return function(params)
 }
