@@ -24,7 +24,6 @@ package vtgate
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
@@ -70,10 +69,19 @@ func (e *Executor) newExecute(
 		return err
 	}
 
-	// todo newborn22
-	if HasCustomFunction(stmt) {
-		fmt.Println("just test")
-		query, err = RemoveCustomFunction(stmt)
+	// todo newborn22, 目前只针对了select
+	var p *engine.Projection
+	if engine.HasCustomFunction(stmt) {
+		meta, err := engine.InitCustomProjectionMeta(stmt)
+		if err != nil {
+			return err
+		}
+		p = &engine.Projection{
+			IsCustomFunctionProjection: true,
+			Meta:                       meta,
+		}
+
+		query, err = engine.RemoveCustomFunction(stmt)
 		if err != nil {
 			return err
 		}
@@ -97,6 +105,12 @@ func (e *Executor) newExecute(
 
 	// 2: Create a plan for the query
 	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
+
+	// todo newborn22, 放在这里是否合适，需要用函数或注释来封装说明
+	if p != nil {
+		p.Input = plan.Instructions
+		plan.Instructions = p
+	}
 
 	execStart := e.logPlanningFinished(logStats, plan)
 
