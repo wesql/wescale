@@ -18,10 +18,13 @@ package engine
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"sync"
-
+	"unicode"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 )
 
@@ -33,6 +36,12 @@ type Projection struct {
 	Exprs []evalengine.Expr
 	Input Primitive
 	noTxNeeded
+	IsCustomFunctionProjection bool
+	Meta                       *CustomFunctionProjectionMeta
+}
+
+type CustomFunctionProjectionMeta struct {
+	Origin sqlparser.SelectExprs
 }
 
 // RouteType implements the Primitive interface
@@ -52,6 +61,10 @@ func (p *Projection) GetTableName() string {
 
 // TryExecute implements the Primitive interface
 func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+	if p.IsCustomFunctionProjection {
+		return p.executeCustomFunctionProjection(ctx, vcursor, bindVars, wantfields)
+	}
+
 	result, err := vcursor.ExecutePrimitive(ctx, p.Input, bindVars, wantfields)
 	if err != nil {
 		return nil, err
@@ -80,6 +93,111 @@ func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars m
 	}
 	result.Rows = resultRows
 	return result, nil
+}
+
+func compareStrings(s1, s2 string) bool {
+	normalized1 := normalizeString(s1)
+	normalized2 := normalizeString(s2)
+	return normalized1 == normalized2
+}
+
+func normalizeString(s string) string {
+	var builder strings.Builder
+	for _, r := range s {
+		if !unicode.IsSpace(r) {
+			builder.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return builder.String()
+}
+
+// todo newborn22 是否在这里对函数支持的类型做检查？
+func GetColNameFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectExpr, error) {
+	rst := make([]sqlparser.SelectExpr, 0)
+	for _, expr := range funcExpr.Exprs {
+		switch expr.(type) {
+		case *sqlparser.AliasedExpr:
+			alias, _ := expr.(*sqlparser.AliasedExpr)
+			_, ok := alias.Expr.(*sqlparser.ColName)
+			if ok {
+				rst = append(rst, alias)
+			} else {
+				subFunc, ok := alias.Expr.(*sqlparser.FuncExpr)
+				if ok {
+					subExpr, err := GetColNameFromFuncExpr(subFunc)
+					if err != nil {
+						return nil, err
+					}
+					rst = append(rst, subExpr...)
+				}
+			}
+
+		default:
+			return nil, errors.New("not support")
+		}
+	}
+	return rst, nil
+}
+
+func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+	qr, err := vcursor.ExecutePrimitive(ctx, p.Input, bindVars, wantfields)
+	if err != nil {
+		return nil, err
+	}
+
+	newFieldNames := make([]string, 0)
+	idx := 0
+	for _, expr := range p.Meta.Origin {
+		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
+			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+				newFieldNames = append(newFieldNames, sqlparser.String(funcExpr))
+
+				colNames, err := GetColNameFromFuncExpr(funcExpr)
+				if err != nil {
+					return nil, err
+				}
+				idx += len(colNames)
+				continue
+			}
+		}
+
+		// todo newborn22, 这样子直接拿名字ok?
+		colNameInOrigin := sqlparser.String(expr)
+		if colNameInOrigin == "*" {
+			set := make(map[string]bool)
+			for {
+				if _, exist := set[qr.Fields[idx].Name]; exist {
+					break
+				}
+				set[qr.Fields[idx].Name] = true
+				newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
+				idx++
+			}
+		} else {
+			newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
+			idx++
+		}
+	}
+
+	// build final result
+
+	//rows := [][]sqltypes.Value{}
+	//for _, gotRow := range qr.Named().Rows {
+	//	rowValues := make([]string, len(newFieldNames))
+	//	idx := 0
+	//
+	//	for _, colExpr := range p.Meta.Origin {
+	//		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
+	//			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+	//				funcExpr
+	//			}
+	//		}
+	//	}
+	//
+	//	rows = append(rows, tabletserver.BuildVarCharRow(rowValues...))
+	//}
+
+	return qr, nil
 }
 
 // TryStreamExecute implements the Primitive interface

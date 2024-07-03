@@ -1,4 +1,4 @@
-package vtgate
+package engine
 
 import (
 	"errors"
@@ -63,7 +63,7 @@ func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 				newExprs = append(newExprs, expr)
 			}
 		}
-		newExprs = removeRedundantExpr(newExprs)
+		//newExprs = removeRedundantExpr(newExprs)
 		sel.SelectExprs = newExprs
 		return sqlparser.String(sel), nil
 	default:
@@ -72,35 +72,7 @@ func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 	}
 }
 
-// todo newborn22 是否在这里对函数支持的类型做检查？
-func GetColNameFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectExpr, error) {
-	rst := make([]sqlparser.SelectExpr, 0)
-	for _, expr := range funcExpr.Exprs {
-		switch expr.(type) {
-		case *sqlparser.AliasedExpr:
-			alias, _ := expr.(*sqlparser.AliasedExpr)
-			_, ok := alias.Expr.(*sqlparser.ColName)
-			if ok {
-				rst = append(rst, alias)
-			} else {
-				subFunc, ok := alias.Expr.(*sqlparser.FuncExpr)
-				if ok {
-					subExpr, err := GetColNameFromFuncExpr(subFunc)
-					if err != nil {
-						return nil, err
-					}
-					rst = append(rst, subExpr...)
-				}
-			}
-
-		default:
-			return nil, errors.New("not support")
-		}
-	}
-	return rst, nil
-}
-
-// todo newborn22 如果有*时，是否要移除别的列？
+// todo newborn22 如果有*时，是否要移除别的列？ 由于算法考虑，暂时先不用
 func removeRedundantExpr(exprs []sqlparser.SelectExpr) []sqlparser.SelectExpr {
 	record := make(map[string]bool)
 	rst := make([]sqlparser.SelectExpr, 0)
@@ -128,4 +100,16 @@ func removeRedundantExpr(exprs []sqlparser.SelectExpr) []sqlparser.SelectExpr {
 		}
 	}
 	return rst
+}
+
+func InitCustomProjectionMeta(stmt sqlparser.Statement) (*CustomFunctionProjectionMeta, error) {
+	switch stmt.(type) {
+	case *sqlparser.Select:
+		sel, _ := stmt.(*sqlparser.Select)
+		exprs := sel.SelectExprs
+		return &CustomFunctionProjectionMeta{Origin: exprs}, nil
+	default:
+		// will not be here
+		return nil, errors.New("not support")
+	}
 }
