@@ -2,10 +2,16 @@ package engine
 
 import (
 	"errors"
+	"strconv"
+	"vitess.io/vitess/go/mysql/collations"
+	"vitess.io/vitess/go/sqltypes"
+	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
-var CUSTOM_FUNCTIONS []string = []string{"myadd"}
+type CustomFunction func([]string) (string, error)
+
+var CUSTOM_FUNCTIONS map[string]CustomFunction = map[string]CustomFunction{"myadd": myadd}
 
 func HasCustomFunction(stmt sqlparser.Statement) bool {
 	switch stmt.(type) {
@@ -31,12 +37,8 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 }
 
 func IsCustomFunctionName(fun string) bool {
-	for _, custoFunName := range CUSTOM_FUNCTIONS {
-		if custoFunName == fun {
-			return true
-		}
-	}
-	return false
+	_, exist := CUSTOM_FUNCTIONS[fun]
+	return exist
 }
 
 func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
@@ -112,4 +114,41 @@ func InitCustomProjectionMeta(stmt sqlparser.Statement) (*CustomFunctionProjecti
 		// will not be here
 		return nil, errors.New("not support")
 	}
+}
+
+func BuildVarCharRow(values ...string) []sqltypes.Value {
+	row := make([]sqltypes.Value, len(values))
+	for i, v := range values {
+		row[i] = sqltypes.NewVarChar(v)
+	}
+	return row
+}
+
+func BuildVarCharFields(names ...string) []*querypb.Field {
+	fields := make([]*querypb.Field, len(names))
+	for i, v := range names {
+		fields[i] = &querypb.Field{
+			Name:    v,
+			Type:    sqltypes.VarChar,
+			Charset: collations.CollationUtf8ID,
+			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
+		}
+	}
+	return fields
+}
+
+func myadd(parameters []string) (string, error) {
+	if len(parameters) != 2 {
+		return "", errors.New("myadd: should have two int parameters")
+	}
+	num1, err := strconv.Atoi(parameters[0])
+	if err != nil {
+		return "", errors.New("myadd: first parameter should be int")
+	}
+	num2, err := strconv.Atoi(parameters[1])
+	if err != nil {
+		return "", errors.New("myadd: second parameter should be int")
+	}
+
+	return strconv.Itoa(num1 + num2), nil
 }
