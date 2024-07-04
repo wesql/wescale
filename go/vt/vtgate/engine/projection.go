@@ -18,10 +18,8 @@ package engine
 
 import (
 	"context"
-	"errors"
-	"strings"
 	"sync"
-	"unicode"
+
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -61,9 +59,9 @@ func (p *Projection) GetTableName() string {
 
 // TryExecute implements the Primitive interface
 func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	if p.IsCustomFunctionProjection {
-		return p.executeCustomFunctionProjection(ctx, vcursor, bindVars, wantfields)
-	}
+	//if p.IsCustomFunctionProjection {
+	//	return p.executeCustomFunctionProjection(ctx, vcursor, bindVars, wantfields)
+	//}
 
 	result, err := vcursor.ExecutePrimitive(ctx, p.Input, bindVars, wantfields)
 	if err != nil {
@@ -93,50 +91,6 @@ func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars m
 	}
 	result.Rows = resultRows
 	return result, nil
-}
-
-func compareStrings(s1, s2 string) bool {
-	normalized1 := normalizeString(s1)
-	normalized2 := normalizeString(s2)
-	return normalized1 == normalized2
-}
-
-func normalizeString(s string) string {
-	var builder strings.Builder
-	for _, r := range s {
-		if !unicode.IsSpace(r) {
-			builder.WriteRune(unicode.ToLower(r))
-		}
-	}
-	return builder.String()
-}
-
-// todo newborn22 是否在这里对函数支持的类型做检查？
-func GetColNameFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectExpr, error) {
-	rst := make([]sqlparser.SelectExpr, 0)
-	for _, expr := range funcExpr.Exprs {
-		switch expr.(type) {
-		case *sqlparser.AliasedExpr:
-			alias, _ := expr.(*sqlparser.AliasedExpr)
-			_, ok := alias.Expr.(*sqlparser.ColName)
-			if ok {
-				rst = append(rst, alias)
-			} else {
-				subFunc, ok := alias.Expr.(*sqlparser.FuncExpr)
-				if ok {
-					subExpr, err := GetColNameFromFuncExpr(subFunc)
-					if err != nil {
-						return nil, err
-					}
-					rst = append(rst, subExpr...)
-				}
-			}
-
-		default:
-			return nil, errors.New("not support")
-		}
-	}
-	return rst, nil
 }
 
 func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
@@ -216,7 +170,6 @@ func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcurso
 		Fields: BuildVarCharFields(newFieldNames...),
 		Rows:   rows,
 	}, nil
-	//return qr, nil
 }
 
 // TryStreamExecute implements the Primitive interface
@@ -314,37 +267,4 @@ func (p *Projection) description() PrimitiveDescription {
 			"Expressions": exprs,
 		},
 	}
-}
-
-func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues) (string, error) {
-	// get function paras
-	params := make([]string, 0, len(funcExpr.Exprs))
-	// todo newborn22， 简单地支持了 literal, colname, funcExpr作为参数
-	for _, para := range funcExpr.Exprs {
-		alias, ok := para.(*sqlparser.AliasedExpr)
-		if !ok {
-			return "", errors.New("only support literal, colname and funcExpr as parameter")
-		}
-		switch alias.Expr.(type) {
-		case *sqlparser.ColName:
-			colName := alias.Expr.(*sqlparser.ColName).Name.String()
-			val := rowValues[colName].ToString()
-			params = append(params, val)
-		case *sqlparser.Literal:
-			val := sqlparser.String(alias.Expr.(*sqlparser.Literal))
-			params = append(params, val)
-		case *sqlparser.FuncExpr:
-			// todo newborn22, 递归调用
-			rst, err := CalFuncExpr(alias.Expr.(*sqlparser.FuncExpr), rowValues)
-			if err != nil {
-				return "", err
-			}
-			params = append(params, rst)
-		default:
-			return "", errors.New("only support literal, colname and funcExpr as parameter")
-		}
-	}
-	// get the function
-	function, _ := CUSTOM_FUNCTIONS[funcExpr.Name.String()]
-	return function(params)
 }
