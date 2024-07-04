@@ -26,6 +26,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
 	topoprotopb "vitess.io/vitess/go/vt/topo/topoproto"
@@ -70,15 +71,21 @@ func (e *Executor) newExecute(
 	}
 
 	// todo newborn22, 目前只针对了select
-	var p *engine.Projection
+	//var p *engine.Projection
+	var c *engine.CustomFunctionPrimitive
 	if engine.HasCustomFunction(stmt) {
-		meta, err := engine.InitCustomProjectionMeta(stmt)
+		//meta, err := engine.InitCustomProjectionMeta(stmt)
+		//if err != nil {
+		//	return err
+		//}
+		//p = &engine.Projection{
+		//	IsCustomFunctionProjection: true,
+		//	Meta:                       meta,
+		//}
+
+		c, err = engine.InitCustomFunctionPrimitive(stmt)
 		if err != nil {
 			return err
-		}
-		p = &engine.Projection{
-			IsCustomFunctionProjection: true,
-			Meta:                       meta,
 		}
 
 		query, err = engine.RemoveCustomFunction(stmt)
@@ -107,9 +114,17 @@ func (e *Executor) newExecute(
 	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
 	// todo newborn22, 放在这里是否合适，需要用函数或注释来封装说明
-	if p != nil {
-		p.Input = plan.Instructions
-		plan.Instructions = p
+	//if p != nil {
+	//	p.Input = plan.Instructions
+	//	plan.Instructions = p
+	//}
+	if c != nil {
+		tmp := plan.Instructions
+		// the plan may be cached, so we add the customFunctionPrimitive only when it's not cached
+		if _, ok := tmp.(*engine.CustomFunctionPrimitive); !ok {
+			c.Input = plan.Instructions
+			plan.Instructions = c
+		}
 	}
 
 	execStart := e.logPlanningFinished(logStats, plan)
