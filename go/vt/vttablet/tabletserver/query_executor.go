@@ -49,7 +49,6 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
 	p "vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -610,38 +609,12 @@ func (qre *QueryExecutor) checkPermissions() error {
 	}
 
 	// Check if the query relates to a table that is in the denylist.
-	remoteAddr := ""
 	username := ""
 	ci, ok := callinfo.FromContext(qre.ctx)
 	if ok {
-		remoteAddr = ci.RemoteAddr()
 		username = ci.Username()
 	}
 
-	bufferingTimeoutCtx, cancel := context.WithTimeout(qre.ctx, maxQueryBufferDuration)
-	defer cancel()
-
-	action, ruleCancelCtx, desc := qre.plan.Rules.GetAction(remoteAddr, username, qre.bindVars, qre.marginComments)
-	switch action {
-	case rules.QRFail:
-		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "disallowed due to rule: %s", desc)
-	case rules.QRFailRetry:
-		return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "disallowed due to rule: %s", desc)
-	case rules.QRBuffer:
-		if ruleCancelCtx != nil {
-			// We buffer up to some timeout. The timeout is determined by ctx.Done().
-			// If we're not at timeout yet, we fail the query
-			select {
-			case <-ruleCancelCtx.Done():
-				// good! We have buffered the query, and buffering is completed
-			case <-bufferingTimeoutCtx.Done():
-				// Sorry, timeout while waiting for buffering to complete
-				return vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "buffer timeout in rule: %s", desc)
-			}
-		}
-	default:
-		// no rules against this query. Good to proceed
-	}
 	// Skip ACL check for queries against the dummy dual table
 	if qre.plan.TableName() == "dual" {
 		return nil
