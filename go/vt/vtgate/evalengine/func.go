@@ -35,7 +35,7 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 )
 
-var builtinFunctions = map[string]builtin{
+var BuiltinFunctions = map[string]builtin{
 	"coalesce":          builtinCoalesce{},
 	"greatest":          &builtinMultiComparison{name: "GREATEST", cmp: 1},
 	"least":             &builtinMultiComparison{name: "LEAST", cmp: -1},
@@ -58,6 +58,7 @@ var builtinFunctions = map[string]builtin{
 	"rand":              builtinRand{},
 	"gofakeit_bytype":   builtinGofakeitByType{},
 	"gofakeit_generate": builtinGofakeitGenerate{},
+	"myadd":             builtinMyAdd{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{
