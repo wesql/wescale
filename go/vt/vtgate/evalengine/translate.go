@@ -345,7 +345,7 @@ func translateFuncExpr(fn *sqlparser.FuncExpr, lookup TranslationLookup) (Expr, 
 		return rewrite(args, lookup)
 	}
 
-	if call, ok := BuiltinFunctions[method]; ok {
+	if call, ok := builtinFunctions[method]; ok {
 		return &CallExpr{
 			Arguments: args,
 			Aliases:   aliases,

@@ -40,7 +40,7 @@ func GetParaExprFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectEx
 }
 
 func IsCustomFunctionName(fun string) bool {
-	_, exist := evalengine.BuiltinFunctions[fun]
+	_, exist := evalengine.CustomFunctions[fun]
 	return exist
 }
 
@@ -266,7 +266,7 @@ func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.F
 }
 
 func InitCallExprForFuncExpr(expr *sqlparser.FuncExpr, offset *int, coll collations.TypedCollation) (*evalengine.CallExpr, error) {
-	f, exist := evalengine.BuiltinFunctions[expr.Name.String()]
+	f, exist := evalengine.CustomFunctions[expr.Name.String()]
 	if !exist {
 		return nil, errors.New("function not found in builtin funcitons")
 	}
