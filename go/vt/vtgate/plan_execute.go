@@ -123,6 +123,10 @@ func (e *Executor) newExecute(
 		// the plan may be cached, so we add the customFunctionPrimitive only when it's not cached
 		if _, ok := tmp.(*engine.CustomFunctionPrimitive); !ok {
 			c.Input = plan.Instructions
+			err = c.SetSentSelectExprs(stmt)
+			if err != nil {
+				return err
+			}
 			plan.Instructions = c
 		}
 	}

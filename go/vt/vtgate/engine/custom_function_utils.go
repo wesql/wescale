@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"unicode"
+	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -11,28 +12,27 @@ import (
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
-// todo newborn22 是否在这里对函数支持的类型做检查？
-func GetColNameFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectExpr, error) {
+// todo newborn22，
+// 函数目前支持所有的表达式作为参数，会交由mysql进行计算，wescale只负责将mysql计算结果作为函数输入的参数
+func GetParaExprFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectExpr, error) {
 	rst := make([]sqlparser.SelectExpr, 0)
 	for _, expr := range funcExpr.Exprs {
 		switch expr.(type) {
 		case *sqlparser.AliasedExpr:
 			alias, _ := expr.(*sqlparser.AliasedExpr)
-			_, ok := alias.Expr.(*sqlparser.ColName)
+			subFunc, ok := alias.Expr.(*sqlparser.FuncExpr)
 			if ok {
-				rst = append(rst, alias)
-			} else {
-				subFunc, ok := alias.Expr.(*sqlparser.FuncExpr)
-				if ok {
-					subExpr, err := GetColNameFromFuncExpr(subFunc)
-					if err != nil {
-						return nil, err
-					}
-					rst = append(rst, subExpr...)
+				subExpr, err := GetParaExprFromFuncExpr(subFunc)
+				if err != nil {
+					return nil, err
 				}
+				rst = append(rst, subExpr...)
+			} else {
+				rst = append(rst, expr)
 			}
-
-		default:
+		case *sqlparser.Nextval:
+			rst = append(rst, expr)
+		case *sqlparser.StarExpr:
 			return nil, errors.New("not support")
 		}
 	}
@@ -44,7 +44,7 @@ func IsCustomFunctionName(fun string) bool {
 	return exist
 }
 
-func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues) (string, error) {
+func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues, fields []*querypb.Field, coll collations.TypedCollation, bindVars map[string]*querypb.BindVariable, row []sqltypes.Value) (string, error) {
 	// get function paras
 	params := make([]string, 0, len(funcExpr.Exprs))
 	// todo newborn22， 简单地支持了 literal, colname, funcExpr作为参数
@@ -55,15 +55,35 @@ func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues
 		}
 		switch alias.Expr.(type) {
 		case *sqlparser.ColName:
-			colName := alias.Expr.(*sqlparser.ColName).Name.String()
-			val := rowValues[colName].ToString()
-			params = append(params, val)
+			//colName := alias.Expr.(*sqlparser.ColName).Name.String()
+			//val := rowValues[colName].ToString()
+			//params = append(params, val)
+
+			// test
+			env := &evalengine.ExpressionEnv{
+				BindVars: bindVars,
+				Row:      row,
+				Fields:   fields,
+			}
+
+			colNameExpr := alias.Expr.(*sqlparser.ColName)
+			column, err := TranslateColExpr(colNameExpr, fields, coll)
+			if err != nil {
+				return "", err
+			}
+
+			evalRst, err := env.Evaluate(column)
+			if err != nil {
+				return "", err
+			}
+			params = append(params, evalRst.Value().ToString())
+
 		case *sqlparser.Literal:
 			val := sqlparser.String(alias.Expr.(*sqlparser.Literal))
 			params = append(params, val)
 		case *sqlparser.FuncExpr:
 			// todo newborn22, 递归调用
-			rst, err := CalFuncExpr(alias.Expr.(*sqlparser.FuncExpr), rowValues)
+			rst, err := CalFuncExpr(alias.Expr.(*sqlparser.FuncExpr), rowValues, fields, coll, bindVars, row)
 			if err != nil {
 				return "", err
 			}
@@ -149,7 +169,7 @@ func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 				aliasExpr, _ := expr.(*sqlparser.AliasedExpr)
 				funcExpr, ok := aliasExpr.Expr.(*sqlparser.FuncExpr)
 				if ok {
-					colExprs, err := GetColNameFromFuncExpr(funcExpr)
+					colExprs, err := GetParaExprFromFuncExpr(funcExpr)
 					if err != nil {
 						return "", err
 					}
@@ -197,5 +217,50 @@ func removeRedundantExpr(exprs []sqlparser.SelectExpr) []sqlparser.SelectExpr {
 			}
 		}
 	}
+	return rst
+}
+
+func TranslateColExpr(colNameExpr *sqlparser.ColName, fields []*querypb.Field, coll collations.TypedCollation) (*evalengine.Column, error) {
+	offset := -1
+	for i, col := range fields {
+		if colNameExpr.Name.EqualString(col.Name) {
+			offset = i
+			break
+		}
+	}
+	if offset == -1 {
+		return nil, errors.New("column not found")
+	}
+	expr := evalengine.NewColumn(offset, coll)
+	column := expr.(*evalengine.Column)
+	return column, nil
+}
+
+func GetSelectExprColName(expr sqlparser.SelectExpr) string {
+	return sqlparser.String(expr)
+}
+
+// GetColNamesForStar the rst is empty if sqlExprs doesn't contain *;
+func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.Field) []string {
+	numberOfColNamesForStar := len(resultField) - len(sqlExprs) + 1
+	rst := make([]string, 0, numberOfColNamesForStar)
+
+	if len(resultField) == len(sqlExprs) {
+		return rst
+	}
+
+	idx := 0
+	for _, expr := range sqlExprs {
+		if _, ok := expr.(*sqlparser.StarExpr); ok {
+			break
+		}
+		idx++
+	}
+
+	for i := 0; i < numberOfColNamesForStar; i++ {
+		rst = append(rst, resultField[idx].Name)
+		idx++
+	}
+
 	return rst
 }
