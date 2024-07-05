@@ -2,13 +2,13 @@ package evalengine
 
 import "vitess.io/vitess/go/sqltypes"
 
-type builtinMyAdd struct{}
+type MyAdd struct{}
 
-func (f builtinMyAdd) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
+func (f MyAdd) typeof(env *ExpressionEnv, args []Expr) (sqltypes.Type, flag) {
 	return sqltypes.Int64, flagIntegerRange
 }
 
-func (f builtinMyAdd) call(_ *ExpressionEnv, args []EvalResult, result *EvalResult) {
+func (f MyAdd) call(_ *ExpressionEnv, args []EvalResult, result *EvalResult) {
 	if len(args) != 2 {
 		throwArgError("myadd function need two parameters")
 	}

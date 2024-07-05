@@ -102,13 +102,6 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 		}
 		resultRows = append(resultRows, resultRow)
 	}
-	// todo newbonr22, check wantfields
-	//if wantfields {
-	//	err := p.addFields(env, result)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
 
 	return &sqltypes.Result{
 		Fields: BuildVarCharFields(finalFieldNames...),
