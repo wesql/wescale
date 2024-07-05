@@ -40,59 +40,116 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	}
 
 	// build final field
-	newFieldNames := make([]string, 0)
+	finalFieldNames := make([]string, 0)
 	colNamesForStar := GetColNamesForStar(c.Sent, qr.Fields)
 
-	// we use idx to help us get the right fields for * from qr.Fields
 	for _, expr := range c.Origin {
 		if _, ok := expr.(*sqlparser.StarExpr); ok {
-			newFieldNames = append(newFieldNames, colNamesForStar...)
+			finalFieldNames = append(finalFieldNames, colNamesForStar...)
 		} else {
-			newFieldNames = append(newFieldNames, GetSelectExprColName(expr))
+			finalFieldNames = append(finalFieldNames, GetSelectExprColName(expr))
 		}
 	}
 
-	//build final result
-	// todo newborn22, 放到remove中?
+	// build executable exprs to get final result
+	// here, we should use offset variable to get right offset for each colName expr,
+	// because the name in SelectExprs is not equal to the name in qr.Fields,
+	// for example, '1+1' in qr.Fields is 'vt1+vt1' in SelectExprs
 	coll := collations.TypedCollation{
 		Collation:    vcursor.ConnCollation(),
 		Coercibility: collations.CoerceCoercible,
 		Repertoire:   collations.RepertoireUnicode,
 	}
+	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
+	offset := 0
 
-	rows := [][]sqltypes.Value{}
-	for i, gotRow := range qr.Named().Rows {
-		rowValues := make([]string, 0, len(newFieldNames))
-		idx := 0
-		for _, colExpr := range c.Origin {
-			if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-				if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-					funcRst, err := CalFuncExpr(funcExpr, gotRow, qr.Fields, coll, bindVars, qr.Rows[i])
-					if err != nil {
-						return nil, err
-					}
-					rowValues = append(rowValues, funcRst)
-					idx++
-					continue
+	for _, colExpr := range c.Origin {
+		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
+			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+				callExpr, err := InitCallExprForFuncExpr(funcExpr, &offset, coll)
+				if err != nil {
+					return nil, err
 				}
-			}
-			if _, ok := colExpr.(*sqlparser.StarExpr); ok {
-				for i := 0; i < len(colNamesForStar); i++ {
-					rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
-					idx++
-				}
+				finalExprs = append(finalExprs, callExpr)
 				continue
 			}
-			rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
-			idx++
 		}
-		rows = append(rows, BuildVarCharRow(rowValues...))
+		if _, ok := colExpr.(*sqlparser.StarExpr); ok {
+			for i := 0; i < len(colNamesForStar); i++ {
+				col := evalengine.NewColumn(offset, coll)
+				finalExprs = append(finalExprs, col)
+				offset++
+			}
+			continue
+		}
+		finalExprs = append(finalExprs, evalengine.NewColumn(offset, coll))
+		offset++
 	}
 
+	//build final result
+	env := evalengine.EnvWithBindVars(bindVars, vcursor.ConnCollation())
+	env.Fields = BuildVarCharFields(finalFieldNames...)
+	var resultRows []sqltypes.Row
+	for _, row := range qr.Rows {
+		resultRow := make(sqltypes.Row, 0, len(finalExprs))
+		env.Row = row
+		for _, exp := range finalExprs {
+			result, err := env.Evaluate(exp)
+			if err != nil {
+				return nil, err
+			}
+			resultRow = append(resultRow, result.Value())
+		}
+		resultRows = append(resultRows, resultRow)
+	}
+	// todo newbonr22, check wantfields
+	//if wantfields {
+	//	err := p.addFields(env, result)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields(newFieldNames...),
-		Rows:   rows,
+		Fields: BuildVarCharFields(finalFieldNames...),
+		Rows:   resultRows,
 	}, nil
+
+	// todo newborn22, 放到remove中? expr由于 *的存在，在remove中做不了，因为没查之前不知道*对应几列
+
+	//rows := [][]sqltypes.Value{}
+	//for i, gotRow := range qr.Named().Rows {
+	//	rowValues := make([]string, 0, len(finalFieldNames))
+	//	idx := 0
+	//	for _, colExpr := range c.Origin {
+	//		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
+	//			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+	//				funcRst, err := CalFuncExpr(funcExpr, gotRow, qr.Fields, coll, bindVars, qr.Rows[i])
+	//				if err != nil {
+	//					return nil, err
+	//				}
+	//				rowValues = append(rowValues, funcRst)
+	//				idx++
+	//				continue
+	//			}
+	//		}
+	//		if _, ok := colExpr.(*sqlparser.StarExpr); ok {
+	//			for i := 0; i < len(colNamesForStar); i++ {
+	//				rowValues = append(rowValues, gotRow[finalFieldNames[idx]].ToString())
+	//				idx++
+	//			}
+	//			continue
+	//		}
+	//		rowValues = append(rowValues, gotRow[finalFieldNames[idx]].ToString())
+	//		idx++
+	//	}
+	//	rows = append(rows, BuildVarCharRow(rowValues...))
+	//}
+	//
+	//return &sqltypes.Result{
+	//	Fields: BuildVarCharFields(finalFieldNames...),
+	//	Rows:   rows,
+	//}, nil
 
 	//return qr, nil
 }
@@ -126,41 +183,4 @@ func (c *CustomFunctionPrimitive) description() PrimitiveDescription {
 // NeedsTransaction implements the Primitive interface
 func (c *CustomFunctionPrimitive) NeedsTransaction() bool {
 	return false
-}
-
-// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
-func InitCustomProjectionMeta(stmt sqlparser.Statement) (*CustomFunctionProjectionMeta, error) {
-	switch stmt.(type) {
-	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
-		exprs := sel.SelectExprs
-		return &CustomFunctionProjectionMeta{Origin: exprs}, nil
-	default:
-		// will not be here
-		return nil, errors.New("not support")
-	}
-}
-
-// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
-func InitCustomFunctionPrimitive(stmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
-	switch stmt.(type) {
-	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
-		exprs := sel.SelectExprs
-		return &CustomFunctionPrimitive{Origin: exprs}, nil
-	default:
-		// will not be here
-		return nil, errors.New("InitCustomFunctionPrimitive not support stmt type besides select")
-	}
-}
-
-func (c *CustomFunctionPrimitive) SetSentSelectExprs(stmt sqlparser.Statement) error {
-	switch stmt.(type) {
-	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
-		c.Sent = sel.SelectExprs
-		return nil
-	default:
-		return errors.New("SetSentSelectExprs not support stmt type besides select")
-	}
 }

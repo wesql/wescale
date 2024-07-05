@@ -40,7 +40,7 @@ func GetParaExprFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectEx
 }
 
 func IsCustomFunctionName(fun string) bool {
-	_, exist := CUSTOM_FUNCTIONS[fun]
+	_, exist := evalengine.BuiltinFunctions[fun]
 	return exist
 }
 
@@ -263,4 +263,68 @@ func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.F
 	}
 
 	return rst
+}
+
+func InitCallExprForFuncExpr(expr *sqlparser.FuncExpr, offset *int, coll collations.TypedCollation) (*evalengine.CallExpr, error) {
+	f, exist := evalengine.BuiltinFunctions[expr.Name.String()]
+	if !exist {
+		return nil, errors.New("function not found in builtin funcitons")
+	}
+	args := make([]evalengine.Expr, 0)
+	for _, para := range expr.Exprs {
+		if alias, ok := para.(*sqlparser.AliasedExpr); ok {
+			if subFunc, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
+				subFuncCallExpr, err := InitCallExprForFuncExpr(subFunc, offset, coll)
+				if err != nil {
+					return nil, err
+				}
+				args = append(args, subFuncCallExpr)
+				continue
+			}
+		}
+
+		colExpr := evalengine.NewColumn(*offset, coll)
+		*offset++
+		args = append(args, colExpr)
+	}
+
+	rst := &evalengine.CallExpr{F: f, Arguments: args}
+	return rst, nil
+}
+
+// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
+func InitCustomProjectionMeta(stmt sqlparser.Statement) (*CustomFunctionProjectionMeta, error) {
+	switch stmt.(type) {
+	case *sqlparser.Select:
+		sel, _ := stmt.(*sqlparser.Select)
+		exprs := sel.SelectExprs
+		return &CustomFunctionProjectionMeta{Origin: exprs}, nil
+	default:
+		// will not be here
+		return nil, errors.New("not support")
+	}
+}
+
+// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
+func InitCustomFunctionPrimitive(stmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
+	switch stmt.(type) {
+	case *sqlparser.Select:
+		sel, _ := stmt.(*sqlparser.Select)
+		exprs := sel.SelectExprs
+		return &CustomFunctionPrimitive{Origin: exprs}, nil
+	default:
+		// will not be here
+		return nil, errors.New("InitCustomFunctionPrimitive not support stmt type besides select")
+	}
+}
+
+func (c *CustomFunctionPrimitive) SetSentSelectExprs(stmt sqlparser.Statement) error {
+	switch stmt.(type) {
+	case *sqlparser.Select:
+		sel, _ := stmt.(*sqlparser.Select)
+		c.Sent = sel.SelectExprs
+		return nil
+	default:
+		return errors.New("SetSentSelectExprs not support stmt type besides select")
+	}
 }
