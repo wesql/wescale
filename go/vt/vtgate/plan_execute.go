@@ -71,18 +71,8 @@ func (e *Executor) newExecute(
 	}
 
 	// todo newborn22, 目前只针对了select
-	//var p *engine.Projection
 	var c *engine.CustomFunctionPrimitive
 	if engine.HasCustomFunction(stmt) {
-		//meta, err := engine.InitCustomProjectionMeta(stmt)
-		//if err != nil {
-		//	return err
-		//}
-		//p = &engine.Projection{
-		//	IsCustomFunctionProjection: true,
-		//	Meta:                       meta,
-		//}
-
 		c, err = engine.InitCustomFunctionPrimitive(stmt)
 		if err != nil {
 			return err
@@ -114,10 +104,6 @@ func (e *Executor) newExecute(
 	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
 	// todo newborn22, 放在这里是否合适，需要用函数或注释来封装说明
-	//if p != nil {
-	//	p.Input = plan.Instructions
-	//	plan.Instructions = p
-	//}
 	if c != nil {
 		tmp := plan.Instructions
 		// the plan may be cached, so we add the customFunctionPrimitive only when it's not cached
@@ -127,6 +113,7 @@ func (e *Executor) newExecute(
 			if err != nil {
 				return err
 			}
+			// todo newbon22 0705
 			plan.Instructions = c
 		}
 	}

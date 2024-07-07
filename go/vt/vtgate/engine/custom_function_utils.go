@@ -2,8 +2,6 @@ package engine
 
 import (
 	"errors"
-	"strings"
-	"unicode"
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"vitess.io/vitess/go/mysql/collations"
@@ -42,83 +40,6 @@ func GetParaExprFromFuncExpr(funcExpr *sqlparser.FuncExpr) ([]sqlparser.SelectEx
 func IsCustomFunctionName(fun string) bool {
 	_, exist := evalengine.CustomFunctions[fun]
 	return exist
-}
-
-func CalFuncExpr(funcExpr *sqlparser.FuncExpr, rowValues sqltypes.RowNamedValues, fields []*querypb.Field, coll collations.TypedCollation, bindVars map[string]*querypb.BindVariable, row []sqltypes.Value) (string, error) {
-	// get function paras
-	params := make([]string, 0, len(funcExpr.Exprs))
-	// todo newborn22， 简单地支持了 literal, colname, funcExpr作为参数
-	for _, para := range funcExpr.Exprs {
-		alias, ok := para.(*sqlparser.AliasedExpr)
-		if !ok {
-			return "", errors.New("only support literal, colname and funcExpr as parameter")
-		}
-		switch alias.Expr.(type) {
-		case *sqlparser.ColName:
-			//colName := alias.Expr.(*sqlparser.ColName).Name.String()
-			//val := rowValues[colName].ToString()
-			//params = append(params, val)
-
-			// test
-			env := &evalengine.ExpressionEnv{
-				BindVars: bindVars,
-				Row:      row,
-				Fields:   fields,
-			}
-
-			colNameExpr := alias.Expr.(*sqlparser.ColName)
-			column, err := TranslateColExpr(colNameExpr, fields, coll)
-			if err != nil {
-				return "", err
-			}
-
-			evalRst, err := env.Evaluate(column)
-			if err != nil {
-				return "", err
-			}
-			params = append(params, evalRst.Value().ToString())
-
-		case *sqlparser.Literal:
-			val := sqlparser.String(alias.Expr.(*sqlparser.Literal))
-			params = append(params, val)
-		case *sqlparser.FuncExpr:
-			// todo newborn22, 递归调用
-			rst, err := CalFuncExpr(alias.Expr.(*sqlparser.FuncExpr), rowValues, fields, coll, bindVars, row)
-			if err != nil {
-				return "", err
-			}
-			params = append(params, rst)
-		default:
-			return "", errors.New("only support literal, colname and funcExpr as parameter")
-		}
-	}
-	// get the function
-	function, _ := CUSTOM_FUNCTIONS[funcExpr.Name.String()]
-	return function(params)
-}
-
-func compareStrings(s1, s2 string) bool {
-	normalized1 := normalizeString(s1)
-	normalized2 := normalizeString(s2)
-	return normalized1 == normalized2
-}
-
-func normalizeString(s string) string {
-	var builder strings.Builder
-	for _, r := range s {
-		if !unicode.IsSpace(r) {
-			builder.WriteRune(unicode.ToLower(r))
-		}
-	}
-	return builder.String()
-}
-
-func BuildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
 }
 
 func BuildVarCharFields(names ...string) []*querypb.Field {
@@ -190,57 +111,12 @@ func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 	}
 }
 
-// todo newborn22 如果有*时，是否要移除别的列？ 由于算法考虑，暂时先不用
-func removeRedundantExpr(exprs []sqlparser.SelectExpr) []sqlparser.SelectExpr {
-	record := make(map[string]bool)
-	rst := make([]sqlparser.SelectExpr, 0)
-
-	for _, expr := range exprs {
-		switch expr.(type) {
-		case *sqlparser.AliasedExpr:
-			alias, _ := expr.(*sqlparser.AliasedExpr)
-			if _, exist := record[alias.ColumnName()]; !exist {
-				record[alias.ColumnName()] = true
-				rst = append(rst, expr)
-			}
-		case *sqlparser.StarExpr:
-			star, _ := expr.(*sqlparser.StarExpr)
-			if _, exist := record[sqlparser.String(star)]; !exist {
-				record[sqlparser.String(star)] = true
-				rst = append(rst, expr)
-			}
-		case *sqlparser.Nextval:
-			nextVal, _ := expr.(*sqlparser.Nextval)
-			if _, exist := record[sqlparser.String(nextVal.Expr)]; !exist {
-				record[sqlparser.String(nextVal.Expr)] = true
-				rst = append(rst, expr)
-			}
-		}
-	}
-	return rst
-}
-
-func TranslateColExpr(colNameExpr *sqlparser.ColName, fields []*querypb.Field, coll collations.TypedCollation) (*evalengine.Column, error) {
-	offset := -1
-	for i, col := range fields {
-		if colNameExpr.Name.EqualString(col.Name) {
-			offset = i
-			break
-		}
-	}
-	if offset == -1 {
-		return nil, errors.New("column not found")
-	}
-	expr := evalengine.NewColumn(offset, coll)
-	column := expr.(*evalengine.Column)
-	return column, nil
-}
-
 func GetSelectExprColName(expr sqlparser.SelectExpr) string {
 	return sqlparser.String(expr)
 }
 
 // GetColNamesForStar the rst is empty if sqlExprs doesn't contain *;
+// todo newborn22 0705 多表*
 func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.Field) []string {
 	numberOfColNamesForStar := len(resultField) - len(sqlExprs) + 1
 	rst := make([]string, 0, numberOfColNamesForStar)
@@ -250,27 +126,32 @@ func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.F
 	}
 
 	idx := 0
+	findStar := false
 	for _, expr := range sqlExprs {
 		if _, ok := expr.(*sqlparser.StarExpr); ok {
+			findStar = true
 			break
 		}
 		idx++
 	}
-
-	for i := 0; i < numberOfColNamesForStar; i++ {
-		rst = append(rst, resultField[idx].Name)
-		idx++
+	if findStar {
+		for i := 0; i < numberOfColNamesForStar; i++ {
+			rst = append(rst, resultField[idx].Name)
+			idx++
+		}
 	}
 
 	return rst
 }
 
 func InitCallExprForFuncExpr(expr *sqlparser.FuncExpr, offset *int, coll collations.TypedCollation) (*evalengine.CallExpr, error) {
+	// todo newborn22 0705 mysql func
 	f, exist := evalengine.CustomFunctions[expr.Name.String()]
 	if !exist {
 		return nil, errors.New("function not found in builtin funcitons")
 	}
 	args := make([]evalengine.Expr, 0)
+	// todo newborn22, 0705 translate
 	for _, para := range expr.Exprs {
 		if alias, ok := para.(*sqlparser.AliasedExpr); ok {
 			if subFunc, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
@@ -290,19 +171,6 @@ func InitCallExprForFuncExpr(expr *sqlparser.FuncExpr, offset *int, coll collati
 
 	rst := &evalengine.CallExpr{F: f, Arguments: args}
 	return rst, nil
-}
-
-// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
-func InitCustomProjectionMeta(stmt sqlparser.Statement) (*CustomFunctionProjectionMeta, error) {
-	switch stmt.(type) {
-	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
-		exprs := sel.SelectExprs
-		return &CustomFunctionProjectionMeta{Origin: exprs}, nil
-	default:
-		// will not be here
-		return nil, errors.New("not support")
-	}
 }
 
 // todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换

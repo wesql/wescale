@@ -55,6 +55,8 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	// here, we should use offset variable to get right offset for each colName expr,
 	// because the name in SelectExprs is not equal to the name in qr.Fields,
 	// for example, '1+1' in qr.Fields is 'vt1+vt1' in SelectExprs
+
+	// todo newbon22 0705 每个列的collation
 	coll := collations.TypedCollation{
 		Collation:    vcursor.ConnCollation(),
 		Coercibility: collations.CoerceCoercible,
@@ -107,47 +109,10 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 		Fields: BuildVarCharFields(finalFieldNames...),
 		Rows:   resultRows,
 	}, nil
-
-	// todo newborn22, 放到remove中? expr由于 *的存在，在remove中做不了，因为没查之前不知道*对应几列
-
-	//rows := [][]sqltypes.Value{}
-	//for i, gotRow := range qr.Named().Rows {
-	//	rowValues := make([]string, 0, len(finalFieldNames))
-	//	idx := 0
-	//	for _, colExpr := range c.Origin {
-	//		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-	//			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-	//				funcRst, err := CalFuncExpr(funcExpr, gotRow, qr.Fields, coll, bindVars, qr.Rows[i])
-	//				if err != nil {
-	//					return nil, err
-	//				}
-	//				rowValues = append(rowValues, funcRst)
-	//				idx++
-	//				continue
-	//			}
-	//		}
-	//		if _, ok := colExpr.(*sqlparser.StarExpr); ok {
-	//			for i := 0; i < len(colNamesForStar); i++ {
-	//				rowValues = append(rowValues, gotRow[finalFieldNames[idx]].ToString())
-	//				idx++
-	//			}
-	//			continue
-	//		}
-	//		rowValues = append(rowValues, gotRow[finalFieldNames[idx]].ToString())
-	//		idx++
-	//	}
-	//	rows = append(rows, BuildVarCharRow(rowValues...))
-	//}
-	//
-	//return &sqltypes.Result{
-	//	Fields: BuildVarCharFields(finalFieldNames...),
-	//	Rows:   rows,
-	//}, nil
-
-	//return qr, nil
 }
 
 // TryStreamExecute implements the Primitive interface
+// todo newbon22 0705
 func (c *CustomFunctionPrimitive) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
 	return errors.New("not implemented yet")
 }
@@ -155,10 +120,6 @@ func (c *CustomFunctionPrimitive) TryStreamExecute(ctx context.Context, vcursor 
 // GetFields implements the Primitive interface
 func (c *CustomFunctionPrimitive) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return nil, errors.New("not implemented yet")
-}
-
-func (c *CustomFunctionPrimitive) addFields(env *evalengine.ExpressionEnv, qr *sqltypes.Result) error {
-	return errors.New("not implemented yet")
 }
 
 // Inputs implements the Primitive interface
