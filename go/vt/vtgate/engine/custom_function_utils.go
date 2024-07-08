@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	"vitess.io/vitess/go/vt/vterrors"
 
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
@@ -140,29 +142,35 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 	for _, expr := range c.Sent {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
 
-			tableName := star.TableName.Name.String()
+			tableName := sqlparser.String(star.TableName)
 			if tableName == "" {
 				tableName = sqlparser.String(c.SentTables)
 			} else {
 				// todo newborn22, support more table expr types
-				asMap := make(map[string]string)
+				tableAliasMap := make(map[string]string)
 				for _, t := range c.SentTables {
+					// todo newborn22, join
 					if alias, ok := t.(*sqlparser.AliasedTableExpr); ok {
-						tableAlias := alias.As.String()
-
-						if tableAlias == "" {
-							asMap[sqlparser.String(alias.Expr)] = sqlparser.String(alias.Expr)
-						} else {
-							asMap[tableAlias] = sqlparser.String(alias.Expr)
+						tmpTableName, ok := alias.Expr.(sqlparser.TableName)
+						if !ok {
+							return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "BUG: the AST has changed. This should not be possible")
 						}
+
+						tableAlias := alias.As.String()
+						if tableAlias != "" {
+							tableAliasMap[tableAlias] = sqlparser.String(tmpTableName)
+						}
+						tableAliasMap[tmpTableName.Name.String()] = sqlparser.String(tmpTableName)
+						tableAliasMap[sqlparser.String(tmpTableName)] = sqlparser.String(tmpTableName)
+
 					} else {
 						return nil, errors.New("only support alias table expr")
 					}
 				}
 				var exist bool
-				tableName, exist = asMap[tableName]
-				if !exist {
-					return nil, fmt.Errorf("table %v not found", tableName)
+				_, exist = tableAliasMap[tableName]
+				if exist {
+					tableName = tableAliasMap[tableName]
 				}
 			}
 
