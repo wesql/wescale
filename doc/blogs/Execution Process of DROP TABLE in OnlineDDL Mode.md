@@ -1,5 +1,5 @@
 ---
-title: Dive into Read-Write-Splitting of WeScale
+title: Execution Process of DROP TABLE in OnlineDDL Mode
 ---
 
 # Introduction
