@@ -324,6 +324,10 @@ func translateIntroducerExpr(introduced *sqlparser.IntroducerExpr, lookup Transl
 }
 
 func translateFuncExpr(fn *sqlparser.FuncExpr, lookup TranslationLookup) (Expr, error) {
+	if customFunctionParamLookup, ok := lookup.(*CustomFunctionParamLookup); ok {
+		customFunctionParamLookup.HasCustomFunction = true
+	}
+
 	var args TupleExpr
 	var aliases []sqlparser.IdentifierCI
 	for _, expr := range fn.Exprs {

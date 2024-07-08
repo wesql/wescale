@@ -58,12 +58,12 @@ var builtinFunctions = map[string]builtin{
 	"rand":              builtinRand{},
 	"gofakeit_bytype":   builtinGofakeitByType{},
 	"gofakeit_generate": builtinGofakeitGenerate{},
+	"myadd":             MyAdd{},
 }
 
 // todo newborn22 0705, builtin func( custom func)
 var CustomFunctions = map[string]builtin{
 	"myadd": MyAdd{},
-	"upper": builtinUpper{},
 }
 
 var builtinFunctionsRewrite = map[string]builtinRewrite{

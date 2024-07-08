@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"context"
 	"errors"
+	"fmt"
+
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"vitess.io/vitess/go/mysql/collations"
@@ -78,7 +81,7 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 	}
 }
 
-func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
+func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
@@ -86,28 +89,45 @@ func RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 		newExprs := make([]sqlparser.SelectExpr, 0)
 		for _, expr := range exprs {
 			switch expr.(type) {
+			case *sqlparser.StarExpr:
+				newExprs = append(newExprs, expr)
+				c.TransferColName = append(c.TransferColName, true)
+
 			case *sqlparser.AliasedExpr:
-				aliasExpr, _ := expr.(*sqlparser.AliasedExpr)
-				funcExpr, ok := aliasExpr.Expr.(*sqlparser.FuncExpr)
-				if ok {
-					colExprs, err := GetParaExprFromFuncExpr(funcExpr)
-					if err != nil {
-						return "", err
+				lookup := &evalengine.CustomFunctionParamLookup{}
+				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
+				if err != nil {
+					return "", err
+				}
+				if lookup.HasCustomFunction {
+					for _, param := range lookup.FuncParams {
+						newExprs = append(newExprs, &sqlparser.AliasedExpr{Expr: param, As: param.Name})
 					}
-					newExprs = append(newExprs, colExprs...)
+					c.TransferColName = append(c.TransferColName, false)
 				} else {
 					newExprs = append(newExprs, expr)
+					c.TransferColName = append(c.TransferColName, true)
 				}
-			default:
+
+			case *sqlparser.Nextval:
+				lookup := &evalengine.CustomFunctionParamLookup{}
+				_, err := evalengine.Translate(expr.(*sqlparser.Nextval).Expr, lookup)
+				if err != nil {
+					return "", err
+				}
+				if lookup.HasCustomFunction {
+					return "", errors.New("custom function not support in next val")
+				}
 				newExprs = append(newExprs, expr)
+				c.TransferColName = append(c.TransferColName, true)
 			}
 		}
-		//newExprs = removeRedundantExpr(newExprs)
+
 		sel.SelectExprs = newExprs
 		return sqlparser.String(sel), nil
 	default:
 		// will not be here
-		return sqlparser.String(stmt), nil
+		return "", errors.New("RemoveCustomFunction: sql type not supported")
 	}
 }
 
@@ -117,31 +137,61 @@ func GetSelectExprColName(expr sqlparser.SelectExpr) string {
 
 // GetColNamesForStar the rst is empty if sqlExprs doesn't contain *;
 // todo newborn22 0705 多表*
-func GetColNamesForStar(sqlExprs sqlparser.SelectExprs, resultField []*querypb.Field) []string {
-	numberOfColNamesForStar := len(resultField) - len(sqlExprs) + 1
-	rst := make([]string, 0, numberOfColNamesForStar)
-
-	if len(resultField) == len(sqlExprs) {
-		return rst
+func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcursor VCursor) (map[string][]string, error) {
+	send, ok := c.Input.(*Send)
+	if !ok {
+		return nil, errors.New("CustomFunctionPrimitive's input is not send")
 	}
 
-	idx := 0
-	findStar := false
-	for _, expr := range sqlExprs {
-		if _, ok := expr.(*sqlparser.StarExpr); ok {
-			findStar = true
-			break
+	rst := make(map[string][]string)
+
+	for _, expr := range c.Sent {
+		if star, ok := expr.(*sqlparser.StarExpr); ok {
+
+			tableName := star.TableName.Name.String()
+			if tableName == "" {
+				tableName = sqlparser.String(c.SentTables)
+			} else {
+				// todo newborn22, support more table expr types
+				asMap := make(map[string]string)
+				for _, t := range c.SentTables {
+					if alias, ok := t.(*sqlparser.AliasedTableExpr); ok {
+						tableAlias := alias.As.String()
+
+						if tableAlias == "" {
+							asMap[sqlparser.String(alias.Expr)] = sqlparser.String(alias.Expr)
+						} else {
+							asMap[tableAlias] = sqlparser.String(alias.Expr)
+						}
+					} else {
+						return nil, errors.New("only support alias table expr")
+					}
+				}
+				var exist bool
+				tableName, exist = asMap[tableName]
+				if !exist {
+					return nil, fmt.Errorf("table %v not found", tableName)
+				}
+			}
+
+			fieldsQuery := fmt.Sprintf("select * from %s limit 1", tableName)
+			rss, err := send.Resolve(ctx, vcursor)
+			if err != nil {
+				return nil, err
+			}
+			qr, err := execShard(ctx, send, vcursor, fieldsQuery, nil, rss[0], false /* rollbackOnError */, false /* canAutocommit */)
+			if err != nil {
+				return nil, err
+			}
+			names := make([]string, 0, len(qr.Fields))
+			for _, field := range qr.Fields {
+				names = append(names, field.Name)
+			}
+			rst[star.TableName.Name.String()] = names
 		}
-		idx++
-	}
-	if findStar {
-		for i := 0; i < numberOfColNamesForStar; i++ {
-			rst = append(rst, resultField[idx].Name)
-			idx++
-		}
 	}
 
-	return rst
+	return rst, nil
 }
 
 func InitCallExprForFuncExpr(expr *sqlparser.FuncExpr, offset *int, coll collations.TypedCollation) (*evalengine.CallExpr, error) {
@@ -186,13 +236,14 @@ func InitCustomFunctionPrimitive(stmt sqlparser.Statement) (*CustomFunctionPrimi
 	}
 }
 
-func (c *CustomFunctionPrimitive) SetSentSelectExprs(stmt sqlparser.Statement) error {
+func (c *CustomFunctionPrimitive) SetSentExprs(stmt sqlparser.Statement) error {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
 		c.Sent = sel.SelectExprs
+		c.SentTables = sel.From
 		return nil
 	default:
-		return errors.New("SetSentSelectExprs not support stmt type besides select")
+		return errors.New("SetSentExprs not support stmt type besides select")
 	}
 }

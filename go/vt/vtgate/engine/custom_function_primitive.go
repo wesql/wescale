@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"vitess.io/vitess/go/mysql/collations"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -12,9 +14,11 @@ import (
 )
 
 type CustomFunctionPrimitive struct {
-	Input  Primitive
-	Origin sqlparser.SelectExprs
-	Sent   sqlparser.SelectExprs
+	Input           Primitive
+	Origin          sqlparser.SelectExprs
+	TransferColName []bool
+	Sent            sqlparser.SelectExprs
+	SentTables      sqlparser.TableExprs
 }
 
 // RouteType implements the Primitive interface
@@ -41,11 +45,14 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	// build final field
 	finalFieldNames := make([]string, 0)
-	colNamesForStar := GetColNamesForStar(c.Sent, qr.Fields)
+	colNamesForStar, err := c.GetColNamesForStar(ctx, vcursor)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, expr := range c.Origin {
-		if _, ok := expr.(*sqlparser.StarExpr); ok {
-			finalFieldNames = append(finalFieldNames, colNamesForStar...)
+		if star, ok := expr.(*sqlparser.StarExpr); ok {
+			finalFieldNames = append(finalFieldNames, colNamesForStar[star.TableName.Name.String()]...)
 		} else {
 			finalFieldNames = append(finalFieldNames, GetSelectExprColName(expr))
 		}
@@ -63,29 +70,47 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 		Repertoire:   collations.RepertoireUnicode,
 	}
 	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
-	offset := 0
+
+	offsetMap := make(map[string]int)
+	for i, field := range qr.Fields {
+		offsetMap[field.Name] = i
+	}
+	lookup := &evalengine.CustomFunctionParamLookup{ColOffsets: offsetMap}
 
 	for _, colExpr := range c.Origin {
-		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-				callExpr, err := InitCallExprForFuncExpr(funcExpr, &offset, coll)
-				if err != nil {
-					return nil, err
+
+		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
+			colNames := make([]string, 0)
+			if star.TableName.Name.String() == "" {
+				for _, cols := range colNamesForStar {
+					colNames = append(colNames, cols...)
 				}
-				finalExprs = append(finalExprs, callExpr)
-				continue
+			} else {
+				colNames = colNamesForStar[star.TableName.Name.String()]
 			}
-		}
-		if _, ok := colExpr.(*sqlparser.StarExpr); ok {
-			for i := 0; i < len(colNamesForStar); i++ {
+
+			for _, col := range colNames {
+				offset, exit := offsetMap[col]
+				if !exit {
+					return nil, fmt.Errorf("not found column offset for %v", col)
+				}
 				col := evalengine.NewColumn(offset, coll)
 				finalExprs = append(finalExprs, col)
-				offset++
 			}
 			continue
 		}
-		finalExprs = append(finalExprs, evalengine.NewColumn(offset, coll))
-		offset++
+
+		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
+			expr, err := evalengine.Translate(alias.Expr, lookup)
+			if err != nil {
+				return nil, err
+			}
+			finalExprs = append(finalExprs, expr)
+
+		} else {
+			return nil, fmt.Errorf("not support select expr type %v", sqlparser.String(colExpr))
+		}
+
 	}
 
 	//build final result

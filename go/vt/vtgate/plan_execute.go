@@ -78,7 +78,7 @@ func (e *Executor) newExecute(
 			return err
 		}
 
-		query, err = engine.RemoveCustomFunction(stmt)
+		query, err = c.RemoveCustomFunction(stmt)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (e *Executor) newExecute(
 		// the plan may be cached, so we add the customFunctionPrimitive only when it's not cached
 		if _, ok := tmp.(*engine.CustomFunctionPrimitive); !ok {
 			c.Input = plan.Instructions
-			err = c.SetSentSelectExprs(stmt)
+			err = c.SetSentExprs(stmt)
 			if err != nil {
 				return err
 			}
