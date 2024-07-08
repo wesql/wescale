@@ -325,7 +325,9 @@ func translateIntroducerExpr(introduced *sqlparser.IntroducerExpr, lookup Transl
 
 func translateFuncExpr(fn *sqlparser.FuncExpr, lookup TranslationLookup) (Expr, error) {
 	if customFunctionParamLookup, ok := lookup.(*CustomFunctionParamLookup); ok {
-		customFunctionParamLookup.HasCustomFunction = true
+		if _, exist := CustomFunctions[fn.Name.String()]; exist {
+			customFunctionParamLookup.HasCustomFunction = true
+		}
 	}
 
 	var args TupleExpr
