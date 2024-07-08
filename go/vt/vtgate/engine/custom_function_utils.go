@@ -144,8 +144,11 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 
 			tableName := sqlparser.String(star.TableName)
 			if tableName == "" {
+				// * without prefix support sentTables that can be formatted to string
 				tableName = sqlparser.String(c.SentTables)
 			} else {
+				// * with a prefix, so the table expr should be alias type,
+				// * use in a join table will not go in this condition code
 				// todo newborn22, support more table expr types
 				tableAliasMap := make(map[string]string)
 				for _, t := range c.SentTables {
@@ -164,7 +167,7 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 						tableAliasMap[sqlparser.String(tmpTableName)] = sqlparser.String(tmpTableName)
 
 					} else {
-						return nil, errors.New("only support alias table expr")
+						return nil, errors.New("only support alias table expr when * with a prefix")
 					}
 				}
 				var exist bool
