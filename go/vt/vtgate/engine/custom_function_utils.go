@@ -66,12 +66,13 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 		for _, expr := range exprs {
 			switch expr.(type) {
 			case *sqlparser.AliasedExpr:
-				aliasExpr, _ := expr.(*sqlparser.AliasedExpr)
-				funcExpr, ok := aliasExpr.Expr.(*sqlparser.FuncExpr)
-				if ok {
-					if IsCustomFunctionName(funcExpr.Name.String()) {
-						return true
-					}
+				lookup := &evalengine.CustomFunctionParamLookup{}
+				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
+				if err != nil {
+					return false
+				}
+				if lookup.HasCustomFunction {
+					return true
 				}
 			}
 		}
@@ -110,16 +111,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				}
 
 			case *sqlparser.Nextval:
-				lookup := &evalengine.CustomFunctionParamLookup{}
-				_, err := evalengine.Translate(expr.(*sqlparser.Nextval).Expr, lookup)
-				if err != nil {
-					return "", err
-				}
-				if lookup.HasCustomFunction {
-					return "", errors.New("custom function not support in next val")
-				}
-				newExprs = append(newExprs, expr)
-				c.TransferColName = append(c.TransferColName, true)
+				return "", errors.New("next value type select expr is not supported in custom function framework")
 			}
 		}
 
