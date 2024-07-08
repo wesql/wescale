@@ -1,3 +1,7 @@
+---
+title: Authentication & Authorization
+---
+
 # Background
 This article discusses two issues: User Authentication and Authorization Management.
 

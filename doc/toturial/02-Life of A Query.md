@@ -1,3 +1,7 @@
+---
+title: Life of A Query
+---
+
 Life of A Query
 =====================
 

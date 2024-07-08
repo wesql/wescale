@@ -1,3 +1,7 @@
+---
+title: Performance Comparison - WeSQL WeScale vs MySQL
+---
+
 # Performance Comparison: WeSQL WeScale vs MySQL
 
 WeSQL WeScale is a database proxy that is compatible with MySQL. It supports read-write splitting without stale reads, connection pooling, and transparent failover. These features work together to improve application scalability, performance, security, and resilience. In this article, we will compare the performance of WeSQL WeScale and MySQL, and examine how these features affect throughput and latency. Let's get started!
@@ -130,7 +134,6 @@ The above test proves a point: by introducing WeSQL WeScale as a proxy, it can s
 
 # Conclusion
 
-In conclusion, introducing WeSQL WeScale as a proxy can significantly improve the scalability, performance, security, and resilience of a MySQL database. With read-write-splitting enabled, WeSQL WeScale can utilize follower node resources, resulting in improved read and write performance of the cluster.
-</br>
+In conclusion, introducing WeSQL WeScale as a proxy can significantly improve the scalability, performance, security, and resilience of a MySQL database. With read-write-splitting enabled, WeSQL WeScale can utilize follower node resources, resulting in improved read and write performance of the cluster.  
 Furthermore, the overhead introduced by WeSQL WeScale is minimal, and its cost-effectiveness for increasing QPS through read-write-splitting and horizontal scaling is higher compared to the cost-effectiveness of vertical scaling with MySQL.
 

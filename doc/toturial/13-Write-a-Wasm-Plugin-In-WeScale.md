@@ -1,3 +1,7 @@
+---
+title: Write a Wasm Plugin In WeScale
+---
+
 # Introduction
 Most platform software provides a certain degree of extensibility. Just as MySQL allows users to write UDFs to extend functionality, WeScale also allows users to write Filters to achieve the same purpose. However, this is still not a very user-friendly way for most users because it requires them to compile and distribute their own code along with the code provided by the service provider.
 

@@ -1,3 +1,7 @@
+---
+title: Start to deploy & debug a local cluster
+---
+
 Start to deploy & debug a local cluster
 =====================
 

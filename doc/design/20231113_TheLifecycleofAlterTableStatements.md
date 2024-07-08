@@ -1,3 +1,7 @@
+---
+title: The Lifecycle of Alter Table Statements
+---
+
 # **In-Depth Understanding of Vitess Online DDL: The Lifecycle of Alter Table Statements**
 
 **Lifecycle of Alter Table in Online DDL**

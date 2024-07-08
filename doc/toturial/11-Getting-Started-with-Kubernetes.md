@@ -1,3 +1,7 @@
+---
+title: Getting Started with Kubernetes
+---
+
 Getting Started with Kubernetes
 =====================
 

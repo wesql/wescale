@@ -1,3 +1,7 @@
+---
+title: Execution Process of DROP TABLE in OnlineDDL Mode
+---
+
 # Introduction
 
 When OnlineDDL mode is enabled, the Drop Table statement will not immediately delete the table from the database. WeScale will take charge of this process, ensuring that Drop Table statements have as little negative performance impact on the database as possible.

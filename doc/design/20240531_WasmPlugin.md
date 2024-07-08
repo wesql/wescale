@@ -1,3 +1,7 @@
+---
+title: WebAssembly in WeScale
+---
+
 # Filters
 
 - Feature: WasmPlugin

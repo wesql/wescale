@@ -1,3 +1,7 @@
+---
+title: Using FailPoint Injection In WeScale
+---
+
 Injecting FailPoints in WeScale for Enhanced Error Testing
 =====================
 In prior tests, simulating extreme scenarios proved challenging. 

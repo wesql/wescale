@@ -1,3 +1,7 @@
+---
+title: Show Tablets Query Plans
+---
+
 ## Usage Scenario
 In wescale, when a user sends a SQL command to vtgate, vtgate will route it to the corresponding vttablets, and vttablets will ultimately send it to MySQL for execution. Vttablets cache the recently executed SQL plans and records their execution status. 
 
