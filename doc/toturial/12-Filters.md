@@ -1,3 +1,7 @@
+---
+title: Filters
+---
+
 # Introduction
 Filter Pattern is commonly used in API Gateways to intercept and manipulate requests and responses.
 Users can define a set of rules to filter out wanted requests and modify the request before it reaches the backend service or after the response is received.

@@ -1,3 +1,7 @@
+---
+title: Introduction To WeScale
+---
+
 # Introduction
 A database proxy is an essential tool for developers and database administrators to improve the scalability, performance, security, and resilience of their applications. 
 

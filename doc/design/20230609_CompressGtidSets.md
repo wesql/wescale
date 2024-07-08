@@ -1,3 +1,7 @@
+---
+title: CompressGtidSets
+---
+
 # 20230609_CompressGtidSets
 
 - Feature: CompressGtidSets

@@ -1,3 +1,7 @@
+---
+title: Read-After-Write-Consistency
+---
+
 # Introduction
 
 When an application writes data to the primary node and subsequently reads it on a read-only node, WeSQL WeScale makes sure that the data that was just written to the primary node can be accessed and read from the read-only node.

@@ -1,3 +1,7 @@
+---
+title: Read-Write-Split & LoadBalancer
+---
+
 # Introduction
 
 WeSQL WeScale simplifies application logic by automatically routing read queries to read-only nodes and write queries to the read-write node. This is achieved by parsing and analyzing SQL statements, which improves load balancing and ensures efficient use of available resources.

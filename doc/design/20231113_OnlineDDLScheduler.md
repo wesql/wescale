@@ -1,3 +1,7 @@
+---
+title: OnlineDDLScheduler
+---
+
 # **In-Depth Understanding of the Online DDL Scheduler**
 
 ## **Introduction**

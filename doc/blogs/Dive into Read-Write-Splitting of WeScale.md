@@ -1,3 +1,7 @@
+---
+title: Dive into Read-Write-Splitting of WeScale
+---
+
 # Introduction
 The need for read-only nodes in MySQL arises from the increasing demand for high availability and scalability in modern applications. As the number of users and data volume grows, it becomes essential to distribute the workload across multiple nodes to ensure optimal performance. Read-write splitting is a technique that helps achieve this goal by directing read queries to read-only nodes and write queries to read-write nodes, thereby reducing the load on the primary node and improving overall performance.
 

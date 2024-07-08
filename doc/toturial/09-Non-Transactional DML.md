@@ -1,3 +1,7 @@
+---
+title: Non-Transactional DML
+---
+
 ## Use Cases
 When you need to execute a large Data Manipulation Language (DML) operation, executing it directly may lead to **memory overflow** or excessive consumption of computational resources, **affecting the performance of other important SQL operations**.
 

@@ -1,3 +1,7 @@
+---
+title: Architecture of WeSQL WeScale
+---
+
 Architecture of WeSQL WeScale
 =====================
 

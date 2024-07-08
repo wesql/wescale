@@ -1,3 +1,7 @@
+---
+title: Branch
+---
+
 # Background
 The Branch feature is used to copy a database to another Wescale cluster or a local cluster. In a production environment, you can use Branch to create a database identical to the one in the development environment. This document will explain how to use the Branch function.`Branch` is an "umbrella" command. The `action` sub-command defines the operation on the workflow. Each `action` can have their own `options`.
 
