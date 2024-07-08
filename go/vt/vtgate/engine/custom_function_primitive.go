@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
+	"strings"
 	"vitess.io/vitess/go/mysql/collations"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -73,7 +73,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	offsetMap := make(map[string]int)
 	for i, field := range qr.Fields {
-		offsetMap[field.Name] = i
+		offsetMap[strings.ToLower(field.Name)] = i
 	}
 	lookup := &evalengine.CustomFunctionParamLookup{ColOffsets: offsetMap}
 
@@ -90,7 +90,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 			}
 
 			for _, col := range colNames {
-				offset, exit := offsetMap[col]
+				offset, exit := offsetMap[strings.ToLower(col)]
 				if !exit {
 					return nil, fmt.Errorf("not found column offset for %v", col)
 				}

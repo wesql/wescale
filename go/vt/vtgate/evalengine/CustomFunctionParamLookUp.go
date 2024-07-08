@@ -1,6 +1,7 @@
 package evalengine
 
 import (
+	"strings"
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -15,7 +16,7 @@ func (c *CustomFunctionParamLookup) ColumnLookup(col *sqlparser.ColName) (int, e
 	if c.HasCustomFunction {
 		c.FuncParams = append(c.FuncParams, col)
 	}
-	if off, exist := c.ColOffsets[col.Name.String()]; exist {
+	if off, exist := c.ColOffsets[strings.ToLower(col.Name.String())]; exist {
 		return off, nil
 	}
 	return -1, nil
