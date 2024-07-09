@@ -77,7 +77,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	}
 	lookup := &evalengine.CustomFunctionParamLookup{ColOffsets: offsetMap}
 
-	for _, colExpr := range c.Origin {
+	for i, colExpr := range c.Origin {
 
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
 			colNames := make([]string, 0)
@@ -101,11 +101,20 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 		}
 
 		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-			expr, err := evalengine.Translate(alias.Expr, lookup)
-			if err != nil {
-				return nil, err
+			if c.TransferColName[i] {
+				offset, exit := offsetMap[strings.ToLower(sqlparser.String(alias.Expr))]
+				if !exit {
+					return nil, fmt.Errorf("not found column offset for %v", sqlparser.String(alias.Expr))
+				}
+				col := evalengine.NewColumn(offset, coll)
+				finalExprs = append(finalExprs, col)
+			} else {
+				expr, err := evalengine.Translate(alias.Expr, lookup)
+				if err != nil {
+					return nil, err
+				}
+				finalExprs = append(finalExprs, expr)
 			}
-			finalExprs = append(finalExprs, expr)
 
 		} else {
 			return nil, fmt.Errorf("not support select expr type %v", sqlparser.String(colExpr))
