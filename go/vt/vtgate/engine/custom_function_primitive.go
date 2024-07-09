@@ -44,15 +44,27 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	// build final field
 	finalFieldNames := make([]string, 0)
-	colNamesForStar, err := c.GetColNamesForStar(ctx, vcursor)
+	colInfoForStar, err := c.GetColNamesForStar(ctx, vcursor)
 	if err != nil {
 		return nil, err
+	}
+
+	// ensure that there is at least one row, so we can get the collation info
+	if len(qr.Rows) == 0 {
+		return &sqltypes.Result{
+			Fields: BuildVarCharFields(finalFieldNames...),
+			Rows:   nil,
+		}, nil
 	}
 
 	for _, expr := range c.Origin {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
-			finalFieldNames = append(finalFieldNames, colNamesForStar[starPrefix]...)
+			colNames := make([]string, 0)
+			for _, colInfo := range colInfoForStar[starPrefix] {
+				colNames = append(colNames, colInfo.ColName)
+			}
+			finalFieldNames = append(finalFieldNames, colNames...)
 		} else if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
 			finalFieldNames = append(finalFieldNames, alias.ColumnName())
 		}
@@ -62,34 +74,52 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	// here, we should use offset variable to get right offset for each colName expr,
 	// because the name in SelectExprs is not equal to the name in qr.Fields,
 	// for example, '1+1' in qr.Fields is 'vt1+vt1' in SelectExprs
-
-	// todo newbon22 0705 每个列的collation
-	coll := collations.TypedCollation{
-		Collation:    vcursor.ConnCollation(),
-		Coercibility: collations.CoerceCoercible,
-		Repertoire:   collations.RepertoireUnicode,
-	}
 	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
 
 	colOffset := 0
 	lookup := &evalengine.CustomFunctionParamLookup{ColOffset: &colOffset}
+
+	// if send an expr to mysql, also send a collation related to the expr,
+	// so len(c.Sent)>>1 is the number of collation we send,
+	// collationIdx begin from len(qr.Fields) - len(c.Sent)>>1 in qr.Fields
+	collationIdx := len(qr.Fields) - len(c.Sent)>>1
+
 	for i, colExpr := range c.Origin {
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
-			colNames := colNamesForStar[starPrefix]
+			colInfos := colInfoForStar[starPrefix]
 
-			for range colNames {
+			for _, info := range colInfos {
+				coll := collations.TypedCollation{
+					Collation:    info.CollationID,
+					Coercibility: collations.CoerceImplicit,
+					Repertoire:   collations.RepertoireUnicode,
+				}
 				col := evalengine.NewColumn(colOffset, coll)
 				colOffset++
 				finalExprs = append(finalExprs, col)
 			}
+			// one place holder collation for star expr
+			collationIdx++
 			continue
 		}
 
 		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
 			if c.TransferColName[i] {
+				collationName := qr.Rows[0][collationIdx].ToString()
+				collationID, exist := collations.CollationNameToID[collationName]
+				if !exist {
+					return nil, fmt.Errorf("collation %s for %s not found", collationName, sqlparser.String(alias.Expr))
+				}
+
+				coll := collations.TypedCollation{
+					Collation:    collationID,
+					Coercibility: collations.CoerceImplicit,
+					Repertoire:   collations.RepertoireUnicode,
+				}
 				col := evalengine.NewColumn(colOffset, coll)
 				colOffset++
+				collationIdx++
 				finalExprs = append(finalExprs, col)
 			} else {
 				expr, err := evalengine.Translate(alias.Expr, lookup)

@@ -58,11 +58,16 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 		sel, _ := stmt.(*sqlparser.Select)
 		exprs := sel.SelectExprs
 		newExprs := make([]sqlparser.SelectExpr, 0)
+		collationExprs := make([]sqlparser.SelectExpr, 0)
 		for _, expr := range exprs {
 			switch expr.(type) {
 			case *sqlparser.StarExpr:
 				newExprs = append(newExprs, expr)
 				c.TransferColName = append(c.TransferColName, true)
+
+				// for star expr, we can't call collation(*), but we still take place, to make sure the len of collationExprs is the same as newExprs
+				collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{&sqlparser.AliasedExpr{Expr: sqlparser.NewIntLiteral("1")}}}
+				collationExprs = append(collationExprs, &sqlparser.AliasedExpr{Expr: collationFunc})
 
 			case *sqlparser.AliasedExpr:
 				//aliasExpr, _ := expr.(*sqlparser.AliasedExpr)
@@ -79,6 +84,9 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				} else {
 					newExprs = append(newExprs, expr)
 					c.TransferColName = append(c.TransferColName, true)
+
+					collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{expr}}
+					collationExprs = append(collationExprs, &sqlparser.AliasedExpr{Expr: collationFunc})
 				}
 
 			case *sqlparser.Nextval:
@@ -86,7 +94,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 			}
 		}
 
-		sel.SelectExprs = newExprs
+		sel.SelectExprs = append(newExprs, collationExprs...)
 		return sqlparser.String(sel), nil
 	default:
 		// will not be here
@@ -94,8 +102,13 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 	}
 }
 
+type ColInfo struct {
+	ColName     string
+	CollationID collations.ID
+}
+
 // GetColNamesForStar the rst is empty if sqlExprs doesn't contain *;
-func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcursor VCursor) (map[string][]string, error) {
+func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcursor VCursor) (map[string][]ColInfo, error) {
 	send, ok := c.Input.(*Send)
 	if !ok {
 		return nil, errors.New("CustomFunctionPrimitive's input is not Send primitive")
@@ -124,20 +137,20 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 		}
 	}
 
-	mapQualifyTableName2ColNames, err := GetColNamesForTable(ctx, send, vcursor, schemas, names)
+	mapQualifyTableName2ColInfo, err := GetColNamesForTable(ctx, send, vcursor, schemas, names)
 	if err != nil {
 		return nil, err
 	}
 
-	rst := make(map[string][]string)
+	rst := make(map[string][]ColInfo)
 
 	for _, expr := range c.Sent {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
 			if starPrefix == "" {
 				// then set all cols
-				for _, colNames := range mapQualifyTableName2ColNames {
-					rst[starPrefix] = append(rst[starPrefix], colNames...)
+				for _, colInfos := range mapQualifyTableName2ColInfo {
+					rst[starPrefix] = append(rst[starPrefix], colInfos...)
 				}
 			} else {
 				tables, exit := map2QualifyTableName[starPrefix]
@@ -145,7 +158,7 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 					return nil, fmt.Errorf("can not expand * for %v", star.TableName.Name.String())
 				}
 				for _, table := range tables {
-					rst[starPrefix] = append(rst[starPrefix], mapQualifyTableName2ColNames[table]...)
+					rst[starPrefix] = append(rst[starPrefix], mapQualifyTableName2ColInfo[table]...)
 				}
 			}
 		}
@@ -190,9 +203,8 @@ func GetNamesOfTableExpr(tableExpr sqlparser.TableExpr) ([]string, []string, []s
 	return alias, schemas, names, nil
 }
 
-// GetColNamesForTable return two maps:
-// mapQualifyTableName2ColNames: the key format is "qualify.name"
-func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, tableQualify []string, tableNames []string) (map[string][]string, error) {
+// GetColNamesForTable the key format is "qualify.name"
+func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, tableQualify []string, tableNames []string) (map[string][]ColInfo, error) {
 	if len(tableQualify) != len(tableNames) {
 		return nil, errors.New("tableQualify and tableNames must have the same length")
 	}
@@ -206,7 +218,7 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 		first = false
 	}
 
-	fieldsQuery := fmt.Sprintf("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE %s ORDER BY ORDINAL_POSITION", whereCondition)
+	fieldsQuery := fmt.Sprintf("SELECT TABLE_SCHEMA,TABLE_NAME,COLUMN_NAME,COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE %s ORDER BY ORDINAL_POSITION", whereCondition)
 	rss, err := send.Resolve(ctx, vcursor)
 	if err != nil {
 		return nil, err
@@ -216,13 +228,14 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 		return nil, err
 	}
 
-	rst := make(map[string][]string)
+	rst := make(map[string][]ColInfo)
 	for _, r := range qr.Named().Rows {
 		schema, _ := r.ToString("TABLE_SCHEMA")
 		name, _ := r.ToString("TABLE_NAME")
 		qualifyName := fmt.Sprintf("%v.%v", schema, name)
 		col, _ := r.ToString("COLUMN_NAME")
-		rst[qualifyName] = append(rst[qualifyName], col)
+		collation, _ := r.ToString("COLLATION_NAME")
+		rst[qualifyName] = append(rst[qualifyName], ColInfo{ColName: col, CollationID: collations.CollationNameToID[collation]})
 	}
 	return rst, nil
 }
