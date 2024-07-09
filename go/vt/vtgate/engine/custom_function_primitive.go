@@ -16,8 +16,8 @@ import (
 type CustomFunctionPrimitive struct {
 	Input           Primitive
 	Origin          sqlparser.SelectExprs
-	TransferColName []bool
 	Sent            sqlparser.SelectExprs
+	TransferColName []bool
 	SentTables      sqlparser.TableExprs
 }
 
@@ -52,9 +52,10 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	for _, expr := range c.Origin {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
-			finalFieldNames = append(finalFieldNames, colNamesForStar[star.TableName.Name.String()]...)
-		} else {
-			finalFieldNames = append(finalFieldNames, GetSelectExprColName(expr))
+			starPrefix := sqlparser.String(star.TableName)
+			finalFieldNames = append(finalFieldNames, colNamesForStar[starPrefix]...)
+		} else if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
+			finalFieldNames = append(finalFieldNames, alias.ColumnName())
 		}
 	}
 
@@ -78,16 +79,9 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	lookup := &evalengine.CustomFunctionParamLookup{ColOffsets: offsetMap}
 
 	for i, colExpr := range c.Origin {
-
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
-			colNames := make([]string, 0)
-			if star.TableName.Name.String() == "" {
-				for _, cols := range colNamesForStar {
-					colNames = append(colNames, cols...)
-				}
-			} else {
-				colNames = colNamesForStar[star.TableName.Name.String()]
-			}
+			starPrefix := sqlparser.String(star.TableName)
+			colNames := colNamesForStar[starPrefix]
 
 			for _, col := range colNames {
 				offset, exit := offsetMap[strings.ToLower(col)]
@@ -102,9 +96,9 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
 			if c.TransferColName[i] {
-				offset, exit := offsetMap[strings.ToLower(sqlparser.String(alias.Expr))]
+				offset, exit := offsetMap[strings.ToLower(alias.ColumnName())]
 				if !exit {
-					return nil, fmt.Errorf("not found column offset for %v", sqlparser.String(alias.Expr))
+					return nil, fmt.Errorf("not found column offset for %v", alias.ColumnName())
 				}
 				col := evalengine.NewColumn(offset, coll)
 				finalExprs = append(finalExprs, col)
@@ -122,7 +116,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	}
 
-	//build final result
+	// build final result
 	env := evalengine.EnvWithBindVars(bindVars, vcursor.ConnCollation())
 	env.Fields = BuildVarCharFields(finalFieldNames...)
 	var resultRows []sqltypes.Row

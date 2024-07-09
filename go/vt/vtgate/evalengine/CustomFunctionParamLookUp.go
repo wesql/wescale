@@ -10,6 +10,7 @@ type CustomFunctionParamLookup struct {
 	HasCustomFunction bool
 	FuncParams        []*sqlparser.ColName
 	ColOffsets        map[string]int
+	ColOffset         int
 }
 
 func (c *CustomFunctionParamLookup) ColumnLookup(col *sqlparser.ColName) (int, error) {
