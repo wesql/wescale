@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"vitess.io/vitess/go/mysql/collations"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -72,23 +71,16 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	}
 	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
 
-	offsetMap := make(map[string]int)
-	for i, field := range qr.Fields {
-		offsetMap[strings.ToLower(field.Name)] = i
-	}
-	lookup := &evalengine.CustomFunctionParamLookup{ColOffsets: offsetMap}
-
+	colOffset := 0
+	lookup := &evalengine.CustomFunctionParamLookup{ColOffset: &colOffset}
 	for i, colExpr := range c.Origin {
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
 			colNames := colNamesForStar[starPrefix]
 
-			for _, col := range colNames {
-				offset, exit := offsetMap[strings.ToLower(col)]
-				if !exit {
-					return nil, fmt.Errorf("not found column offset for %v", col)
-				}
-				col := evalengine.NewColumn(offset, coll)
+			for range colNames {
+				col := evalengine.NewColumn(colOffset, coll)
+				colOffset++
 				finalExprs = append(finalExprs, col)
 			}
 			continue
@@ -96,11 +88,8 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 		if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
 			if c.TransferColName[i] {
-				offset, exit := offsetMap[strings.ToLower(alias.ColumnName())]
-				if !exit {
-					return nil, fmt.Errorf("not found column offset for %v", alias.ColumnName())
-				}
-				col := evalengine.NewColumn(offset, coll)
+				col := evalengine.NewColumn(colOffset, coll)
+				colOffset++
 				finalExprs = append(finalExprs, col)
 			} else {
 				expr, err := evalengine.Translate(alias.Expr, lookup)
