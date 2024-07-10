@@ -14,6 +14,8 @@ import (
 
 type CustomFunctionPrimitive struct {
 	Input           Primitive
+	OriginQuery     string
+	OriginStmt      sqlparser.Statement
 	Origin          sqlparser.SelectExprs
 	Sent            sqlparser.SelectExprs
 	TransferColName []bool

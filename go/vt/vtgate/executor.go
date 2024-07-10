@@ -1259,12 +1259,18 @@ func (e *Executor) getPlan(ctx context.Context, stmt sqlparser.Statement, reserv
 	return e.cacheAndBuildStatement(ctx, vcursor, query, statement, qo, logStats, stmt, reservedVars, bindVarNeeds)
 }
 
-func (e *Executor) cacheAndBuildStatement(ctx context.Context, vcursor *vcursorImpl, query string, statement sqlparser.Statement, qo iQueryOption, logStats *logstats.LogStats, stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, bindVarNeeds *sqlparser.BindVarNeeds) (*engine.Plan, sqlparser.Statement, error) {
+func getPlanKey(ctx context.Context, vcursor *vcursorImpl, query string) string {
 	planHash := sha256.New()
-	_, _ = planHash.Write([]byte(vcursor.planPrefixKey(ctx)))
+	a := vcursor.planPrefixKey(ctx)
+	_, _ = planHash.Write([]byte(a))
 	_, _ = planHash.Write([]byte{':'})
 	_, _ = planHash.Write(hack.StringBytes(query))
 	planKey := hex.EncodeToString(planHash.Sum(nil))
+	return planKey
+}
+
+func (e *Executor) cacheAndBuildStatement(ctx context.Context, vcursor *vcursorImpl, query string, statement sqlparser.Statement, qo iQueryOption, logStats *logstats.LogStats, stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, bindVarNeeds *sqlparser.BindVarNeeds) (*engine.Plan, sqlparser.Statement, error) {
+	planKey := getPlanKey(ctx, vcursor, query)
 
 	if sqlparser.CachePlan(statement) && qo.cachePlan() {
 		if plan, ok := e.plans.Get(planKey); ok {

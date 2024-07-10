@@ -27,28 +27,6 @@ func BuildVarCharFields(names ...string) []*querypb.Field {
 	return fields
 }
 
-func HandleCustomFunction(stmt sqlparser.Statement, reserved map[string]struct{}) (*CustomFunctionPrimitive, error) {
-	var err error
-	var c *CustomFunctionPrimitive
-	if HasCustomFunction(stmt) {
-		c, err = InitCustomFunctionPrimitive(stmt)
-		if err != nil {
-			return nil, err
-		}
-
-		query, err := c.RemoveCustomFunction(stmt)
-		if err != nil {
-			return nil, err
-		}
-
-		stmt, reserved, err = sqlparser.Parse2(query)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return c, nil
-}
-
 func HasCustomFunction(stmt sqlparser.Statement) bool {
 	switch stmt.(type) {
 	case *sqlparser.Select:
@@ -73,21 +51,7 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 	}
 }
 
-func (c *CustomFunctionPrimitive) GetPlanForCustomFunction(stmt sqlparser.Statement, plan *Plan) (*Plan, error) {
-	c.Input = plan.Instructions
-	err := c.SetSentExprs(stmt)
-	if err != nil {
-		return nil, err
-	}
-
-	planForCustomFunction := &Plan{}
-	*planForCustomFunction = *plan
-	planForCustomFunction.Instructions = c
-
-	return planForCustomFunction, nil
-}
-
-func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
+func (c *CustomFunctionPrimitive) RewriteQueryForCustomFunction(stmt sqlparser.Statement) (string, error) {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
@@ -142,7 +106,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 		return sqlparser.String(sel), nil
 	default:
 		// will not be here
-		return "", errors.New("RemoveCustomFunction: sql type not supported")
+		return "", errors.New("RewriteQueryForCustomFunction: sql type not supported")
 	}
 }
 
@@ -327,12 +291,12 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 }
 
 // todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
-func InitCustomFunctionPrimitive(stmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
-	switch stmt.(type) {
+func InitCustomFunctionPrimitive(originQuery string, originStmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
+	switch originStmt.(type) {
 	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
+		sel, _ := originStmt.(*sqlparser.Select)
 		exprs := sel.SelectExprs
-		return &CustomFunctionPrimitive{Origin: exprs}, nil
+		return &CustomFunctionPrimitive{Origin: exprs, OriginStmt: originStmt, OriginQuery: originQuery}, nil
 	default:
 		// will not be here
 		return nil, errors.New("InitCustomFunctionPrimitive not support stmt type besides select")
