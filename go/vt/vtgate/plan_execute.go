@@ -78,9 +78,12 @@ func (e *Executor) newExecute(
 			return err
 		}
 
-		query, err = c.RemoveCustomFunction(stmt)
+		query, qr, err := c.RemoveCustomFunction(stmt)
 		if err != nil {
 			return err
+		}
+		if qr != nil {
+			return recResult(sqlparser.StmtSelect, qr)
 		}
 
 		stmt, reserved, err = sqlparser.Parse2(query)

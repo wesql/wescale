@@ -140,7 +140,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	env.Fields = BuildVarCharFields(finalFieldNames...)
 	var resultRows []sqltypes.Row
 	for _, row := range qr.Rows {
-		resultRow := make(sqltypes.Row, 0, len(finalExprs))
+		resultRow := make(sqltypes.Row, 0, len(qr.Rows))
 		env.Row = row
 		for _, exp := range finalExprs {
 			result, err := env.Evaluate(exp)
