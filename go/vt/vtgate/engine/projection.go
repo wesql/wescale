@@ -59,10 +59,6 @@ func (p *Projection) GetTableName() string {
 
 // TryExecute implements the Primitive interface
 func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	//if p.IsCustomFunctionProjection {
-	//	return p.executeCustomFunctionProjection(ctx, vcursor, bindVars, wantfields)
-	//}
-
 	result, err := vcursor.ExecutePrimitive(ctx, p.Input, bindVars, wantfields)
 	if err != nil {
 		return nil, err
@@ -92,85 +88,6 @@ func (p *Projection) TryExecute(ctx context.Context, vcursor VCursor, bindVars m
 	result.Rows = resultRows
 	return result, nil
 }
-
-//func (p *Projection) executeCustomFunctionProjection(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-//	qr, err := vcursor.ExecutePrimitive(ctx, p.Input, bindVars, wantfields)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	newFieldNames := make([]string, 0)
-//	idx := 0
-//	// build final field
-//	colNumsForStar := 0
-//	for _, expr := range p.Meta.Origin {
-//		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
-//			if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-//				newFieldNames = append(newFieldNames, sqlparser.String(funcExpr))
-//
-//				colNames, err := GetParaExprFromFuncExpr(funcExpr)
-//				if err != nil {
-//					return nil, err
-//				}
-//				idx += len(colNames)
-//				continue
-//			}
-//		}
-//
-//		// todo newborn22, 这样子直接拿名字ok?
-//		colNameInOrigin := sqlparser.String(expr)
-//		if colNameInOrigin == "*" {
-//			set := make(map[string]bool)
-//			for {
-//				if _, exist := set[qr.Fields[idx].Name]; exist {
-//					break
-//				}
-//				set[qr.Fields[idx].Name] = true
-//				newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
-//				idx++
-//			}
-//			colNumsForStar = len(newFieldNames)
-//		} else {
-//			newFieldNames = append(newFieldNames, qr.Fields[idx].Name)
-//			idx++
-//		}
-//	}
-//
-//	// build final result
-//	rows := [][]sqltypes.Value{}
-//	for _, gotRow := range qr.Named().Rows {
-//		rowValues := make([]string, 0, len(newFieldNames))
-//		idx := 0
-//		for _, colExpr := range p.Meta.Origin {
-//			if alias, ok := colExpr.(*sqlparser.AliasedExpr); ok {
-//				if funcExpr, ok := alias.Expr.(*sqlparser.FuncExpr); ok {
-//					funcRst, err := CalFuncExpr(funcExpr, gotRow)
-//					if err != nil {
-//						return nil, err
-//					}
-//					rowValues = append(rowValues, funcRst)
-//					idx++
-//					continue
-//				}
-//			}
-//			if _, ok := colExpr.(*sqlparser.StarExpr); ok {
-//				for i := 0; i < colNumsForStar; i++ {
-//					rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
-//					idx++
-//				}
-//				continue
-//			}
-//			rowValues = append(rowValues, gotRow[newFieldNames[idx]].ToString())
-//			idx++
-//		}
-//		rows = append(rows, BuildVarCharRow(rowValues...))
-//	}
-//
-//	return &sqltypes.Result{
-//		Fields: BuildVarCharFields(newFieldNames...),
-//		Rows:   rows,
-//	}, nil
-//}
 
 // TryStreamExecute implements the Primitive interface
 func (p *Projection) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {

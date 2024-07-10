@@ -13,13 +13,16 @@ import (
 )
 
 type CustomFunctionPrimitive struct {
-	Input           Primitive
-	OriginQuery     string
-	OriginStmt      sqlparser.Statement
-	Origin          sqlparser.SelectExprs
-	Sent            sqlparser.SelectExprs
-	TransferColName []bool
+	Input Primitive
+
+	OriginQuery       string
+	OriginStmt        sqlparser.Statement
+	OriginSelectExprs sqlparser.SelectExprs
+
+	SentSelectExprs sqlparser.SelectExprs
 	SentTables      sqlparser.TableExprs
+
+	TransferColName []bool
 }
 
 // RouteType implements the Primitive interface
@@ -59,7 +62,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 		}, nil
 	}
 
-	for _, expr := range c.Origin {
+	for _, expr := range c.OriginSelectExprs {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
 			colNames := make([]string, 0)
@@ -81,12 +84,12 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	// if send an expr to mysql, also send a collation related to the expr,
 	// so len(c.Sent)>>1 is the number of collation we send,
 	// collationIdx begin from len(qr.Fields) - len(c.Sent)>>1 in qr.Fields
-	collationIdx := len(qr.Fields) - len(c.Sent)>>1
+	collationIdx := len(qr.Fields) - len(c.SentSelectExprs)>>1
 
 	colOffset := 0
 	lookup := &evalengine.CustomFunctionLookup{ColOffset: &colOffset, CollationIdx: &collationIdx, RowContainsCollation: qr.Rows[0]}
 
-	for i, colExpr := range c.Origin {
+	for i, colExpr := range c.OriginSelectExprs {
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
 			colInfos := colInfoForStar[starPrefix]
