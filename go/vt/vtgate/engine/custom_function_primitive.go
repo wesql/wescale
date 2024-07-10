@@ -76,13 +76,13 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	// for example, '1+1' in qr.Fields is 'vt1+vt1' in SelectExprs
 	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
 
-	colOffset := 0
-	lookup := &evalengine.CustomFunctionParamLookup{ColOffset: &colOffset}
-
 	// if send an expr to mysql, also send a collation related to the expr,
 	// so len(c.Sent)>>1 is the number of collation we send,
 	// collationIdx begin from len(qr.Fields) - len(c.Sent)>>1 in qr.Fields
 	collationIdx := len(qr.Fields) - len(c.Sent)>>1
+
+	colOffset := 0
+	lookup := &evalengine.CustomFunctionLookup{ColOffset: &colOffset, CollationIdx: &collationIdx, RowContainsCollation: qr.Rows[0]}
 
 	for i, colExpr := range c.Origin {
 		if star, ok := colExpr.(*sqlparser.StarExpr); ok {

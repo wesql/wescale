@@ -36,7 +36,7 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 		for _, expr := range exprs {
 			switch expr.(type) {
 			case *sqlparser.AliasedExpr:
-				lookup := &evalengine.CustomFunctionParamLookup{}
+				lookup := &evalengine.CustomFunctionLookup{}
 				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
 				if err != nil {
 					return false
@@ -71,14 +71,16 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 
 			case *sqlparser.AliasedExpr:
 				//aliasExpr, _ := expr.(*sqlparser.AliasedExpr)
-				lookup := &evalengine.CustomFunctionParamLookup{}
+				lookup := &evalengine.CustomFunctionLookup{}
 				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
 				if err != nil {
 					return "", nil, err
 				}
 				if lookup.HasCustomFunction {
 					for _, param := range lookup.FuncParams {
-						newExprs = append(newExprs, &sqlparser.AliasedExpr{Expr: param, As: param.Name})
+						newExprs = append(newExprs, &sqlparser.AliasedExpr{Expr: param})
+						collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{&sqlparser.AliasedExpr{Expr: param}}}
+						collationExprs = append(collationExprs, &sqlparser.AliasedExpr{Expr: collationFunc})
 					}
 					c.TransferColName = append(c.TransferColName, false)
 				} else {
@@ -118,7 +120,7 @@ func (c *CustomFunctionPrimitive) QuickCalculate() (*sqltypes.Result, error) {
 		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
 			finalFieldNames = append(finalFieldNames, alias.ColumnName())
 			// there should be no any info about columns required, so we can use any lookup here
-			e, err := evalengine.Translate(alias.Expr, &evalengine.CustomFunctionParamLookup{})
+			e, err := evalengine.Translate(alias.Expr, &evalengine.CustomFunctionLookup{})
 			if err != nil {
 				return nil, err
 			}
