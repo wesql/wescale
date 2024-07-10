@@ -110,48 +110,6 @@ func (c *CustomFunctionPrimitive) RewriteQueryForCustomFunction(stmt sqlparser.S
 	}
 }
 
-func (c *CustomFunctionPrimitive) QuickCalculate() (*sqltypes.Result, error) {
-	// build final field and expr
-	finalFieldNames := make([]string, 0)
-	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
-
-	for _, expr := range c.Origin {
-		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
-			finalFieldNames = append(finalFieldNames, alias.ColumnName())
-			// there should be no any info about columns required, so we can use any lookup here
-			e, err := evalengine.Translate(alias.Expr, &evalengine.CustomFunctionLookup{})
-			if err != nil {
-				return nil, err
-			}
-			finalExprs = append(finalExprs, e)
-		} else {
-			return nil, fmt.Errorf("select expr type %v is not expected here", sqlparser.String(expr))
-		}
-	}
-
-	// build final result
-	env := evalengine.EnvWithBindVars(nil, collations.Unknown)
-	env.Fields = BuildVarCharFields(finalFieldNames...)
-	var resultRows []sqltypes.Row
-
-	// there should be only 1 row in result
-	resultRow := make(sqltypes.Row, 0, 1)
-	env.Row = nil
-	for _, exp := range finalExprs {
-		result, err := env.Evaluate(exp)
-		if err != nil {
-			return nil, err
-		}
-		resultRow = append(resultRow, result.Value())
-	}
-	resultRows = append(resultRows, resultRow)
-
-	return &sqltypes.Result{
-		Fields: BuildVarCharFields(finalFieldNames...),
-		Rows:   resultRows,
-	}, nil
-}
-
 type ColInfo struct {
 	ColName     string
 	CollationID collations.ID
@@ -194,7 +152,7 @@ func (c *CustomFunctionPrimitive) GetColNamesForStar(ctx context.Context, vcurso
 
 	rst := make(map[string][]ColInfo)
 
-	for _, expr := range c.Sent {
+	for _, expr := range c.SentSelectExprs {
 		if star, ok := expr.(*sqlparser.StarExpr); ok {
 			starPrefix := sqlparser.String(star.TableName)
 			if starPrefix == "" {
@@ -290,13 +248,12 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 	return rst, nil
 }
 
-// todo newborn22，是否都换成expr？ selectExpr不是epxr接口；另外还要考虑 insert select; 因此selectExpr得换
 func InitCustomFunctionPrimitive(originQuery string, originStmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
 	switch originStmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := originStmt.(*sqlparser.Select)
 		exprs := sel.SelectExprs
-		return &CustomFunctionPrimitive{Origin: exprs, OriginStmt: originStmt, OriginQuery: originQuery}, nil
+		return &CustomFunctionPrimitive{OriginSelectExprs: exprs, OriginStmt: originStmt, OriginQuery: originQuery}, nil
 	default:
 		// will not be here
 		return nil, errors.New("InitCustomFunctionPrimitive not support stmt type besides select")
@@ -307,7 +264,7 @@ func (c *CustomFunctionPrimitive) SetSentExprs(stmt sqlparser.Statement) error {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
-		c.Sent = sel.SelectExprs
+		c.SentSelectExprs = sel.SelectExprs
 		c.SentTables = sel.From
 		return nil
 	default:
