@@ -6,7 +6,6 @@ import (
 	"fmt"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
-
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"vitess.io/vitess/go/mysql/collations"
@@ -26,6 +25,28 @@ func BuildVarCharFields(names ...string) []*querypb.Field {
 		}
 	}
 	return fields
+}
+
+func HandleCustomFunction(stmt sqlparser.Statement, reserved map[string]struct{}) (*CustomFunctionPrimitive, error) {
+	var err error
+	var c *CustomFunctionPrimitive
+	if HasCustomFunction(stmt) {
+		c, err = InitCustomFunctionPrimitive(stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		query, err := c.RemoveCustomFunction(stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt, reserved, err = sqlparser.Parse2(query)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return c, nil
 }
 
 func HasCustomFunction(stmt sqlparser.Statement) bool {
@@ -52,7 +73,21 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 	}
 }
 
-func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, *sqltypes.Result, error) {
+func (c *CustomFunctionPrimitive) GetPlanForCustomFunction(stmt sqlparser.Statement, plan *Plan) (*Plan, error) {
+	c.Input = plan.Instructions
+	err := c.SetSentExprs(stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	planForCustomFunction := &Plan{}
+	*planForCustomFunction = *plan
+	planForCustomFunction.Instructions = c
+
+	return planForCustomFunction, nil
+}
+
+func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
@@ -74,7 +109,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				lookup := &evalengine.CustomFunctionLookup{}
 				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
 				if err != nil {
-					return "", nil, err
+					return "", err
 				}
 				if lookup.HasCustomFunction {
 					for _, param := range lookup.FuncParams {
@@ -92,7 +127,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				}
 
 			case *sqlparser.Nextval:
-				return "", nil, errors.New("next value type select expr is not supported in custom function framework")
+				return "", errors.New("next value type select expr is not supported in custom function framework")
 			}
 		}
 
@@ -104,10 +139,10 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 			// but it will make mistakes if user create a table named 'dual'.
 			sel.SelectExprs = append(sel.SelectExprs, &sqlparser.AliasedExpr{Expr: sqlparser.NewIntLiteral("1")})
 		}
-		return sqlparser.String(sel), nil, nil
+		return sqlparser.String(sel), nil
 	default:
 		// will not be here
-		return "", nil, errors.New("RemoveCustomFunction: sql type not supported")
+		return "", errors.New("RemoveCustomFunction: sql type not supported")
 	}
 }
 

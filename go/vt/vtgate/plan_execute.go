@@ -70,26 +70,9 @@ func (e *Executor) newExecute(
 		return err
 	}
 
-	// todo newborn22, 目前只针对了select
-	var c *engine.CustomFunctionPrimitive
-	if engine.HasCustomFunction(stmt) {
-		c, err = engine.InitCustomFunctionPrimitive(stmt)
-		if err != nil {
-			return err
-		}
-
-		query, qr, err := c.RemoveCustomFunction(stmt)
-		if err != nil {
-			return err
-		}
-		if qr != nil {
-			return recResult(sqlparser.StmtSelect, qr)
-		}
-
-		stmt, reserved, err = sqlparser.Parse2(query)
-		if err != nil {
-			return err
-		}
+	c, err := engine.HandleCustomFunction(stmt, reserved)
+	if err != nil {
+		return err
 	}
 
 	vcursor, err := newVCursorImpl(safeSession, query, comments, e, logStats, e.vm, e.VSchema(), e.resolver.resolver, e.serv, e.warnShardedOnly, e.pv)
@@ -106,19 +89,9 @@ func (e *Executor) newExecute(
 	// 2: Create a plan for the query
 	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
-	// todo newborn22, 放在这里是否合适，需要用函数或注释来封装说明
+	// if the sql contains custom function, we need to set the root of plan's primitive to customFunctionPrimitive
 	if c != nil {
-		tmp := plan.Instructions
-		// the plan may be cached, so we add the customFunctionPrimitive only when it's not cached
-		if _, ok := tmp.(*engine.CustomFunctionPrimitive); !ok {
-			c.Input = plan.Instructions
-			err = c.SetSentExprs(stmt)
-			if err != nil {
-				return err
-			}
-			// todo newbon22 0705
-			plan.Instructions = c
-		}
+		plan, _ = c.GetPlanForCustomFunction(stmt, plan)
 	}
 
 	execStart := e.logPlanningFinished(logStats, plan)
