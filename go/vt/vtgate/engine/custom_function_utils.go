@@ -52,7 +52,7 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 	}
 }
 
-func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, error) {
+func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement) (string, *sqltypes.Result, error) {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
@@ -74,7 +74,7 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				lookup := &evalengine.CustomFunctionParamLookup{}
 				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
 				if err != nil {
-					return "", err
+					return "", nil, err
 				}
 				if lookup.HasCustomFunction {
 					for _, param := range lookup.FuncParams {
@@ -90,16 +90,65 @@ func (c *CustomFunctionPrimitive) RemoveCustomFunction(stmt sqlparser.Statement)
 				}
 
 			case *sqlparser.Nextval:
-				return "", errors.New("next value type select expr is not supported in custom function framework")
+				return "", nil, errors.New("next value type select expr is not supported in custom function framework")
 			}
 		}
 
 		sel.SelectExprs = append(newExprs, collationExprs...)
-		return sqlparser.String(sel), nil
+		if len(sel.SelectExprs) == 0 {
+			// need to query table to get rows, so we fill literal 1 as place holder.
+			// if tables in the sql is not assigned, wescale will add 'dual' as table,
+			// we can identify that case and do some quick calculation on custom functions without sending a query to mysql,
+			// but it will make mistakes if user create a table named 'dual'.
+			sel.SelectExprs = append(sel.SelectExprs, &sqlparser.AliasedExpr{Expr: sqlparser.NewIntLiteral("1")})
+		}
+		return sqlparser.String(sel), nil, nil
 	default:
 		// will not be here
-		return "", errors.New("RemoveCustomFunction: sql type not supported")
+		return "", nil, errors.New("RemoveCustomFunction: sql type not supported")
 	}
+}
+
+func (c *CustomFunctionPrimitive) QuickCalculate() (*sqltypes.Result, error) {
+	// build final field and expr
+	finalFieldNames := make([]string, 0)
+	finalExprs := make([]evalengine.Expr, 0, len(finalFieldNames))
+
+	for _, expr := range c.Origin {
+		if alias, ok := expr.(*sqlparser.AliasedExpr); ok {
+			finalFieldNames = append(finalFieldNames, alias.ColumnName())
+			// there should be no any info about columns required, so we can use any lookup here
+			e, err := evalengine.Translate(alias.Expr, &evalengine.CustomFunctionParamLookup{})
+			if err != nil {
+				return nil, err
+			}
+			finalExprs = append(finalExprs, e)
+		} else {
+			return nil, fmt.Errorf("select expr type %v is not expected here", sqlparser.String(expr))
+		}
+	}
+
+	// build final result
+	env := evalengine.EnvWithBindVars(nil, collations.Unknown)
+	env.Fields = BuildVarCharFields(finalFieldNames...)
+	var resultRows []sqltypes.Row
+
+	// there should be only 1 row in result
+	resultRow := make(sqltypes.Row, 0, 1)
+	env.Row = nil
+	for _, exp := range finalExprs {
+		result, err := env.Evaluate(exp)
+		if err != nil {
+			return nil, err
+		}
+		resultRow = append(resultRow, result.Value())
+	}
+	resultRows = append(resultRows, resultRow)
+
+	return &sqltypes.Result{
+		Fields: BuildVarCharFields(finalFieldNames...),
+		Rows:   resultRows,
+	}, nil
 }
 
 type ColInfo struct {
