@@ -324,10 +324,11 @@ func translateIntroducerExpr(introduced *sqlparser.IntroducerExpr, lookup Transl
 }
 
 func translateFuncExpr(fn *sqlparser.FuncExpr, lookup TranslationLookup) (Expr, error) {
-	if customFunctionParamLookup, ok := lookup.(*CustomFunctionLookup); ok {
+	customFunctionLookup, isCustomFunctionLookup := lookup.(*CustomFunctionLookup)
+	if isCustomFunctionLookup {
 		funcName := fn.Name.String()
 		if _, exist := CustomFunctions[funcName]; exist {
-			customFunctionParamLookup.HasCustomFunction = true
+			customFunctionLookup.HasCustomFunction = true
 		}
 	}
 
@@ -359,6 +360,13 @@ func translateFuncExpr(fn *sqlparser.FuncExpr, lookup TranslationLookup) (Expr, 
 			Method:    method,
 			F:         call,
 		}, nil
+	}
+
+	if isCustomFunctionLookup && !customFunctionLookup.HasCustomFunction {
+		// though the function is not support yet, it's not in an expr contains custom function,
+		// so we can pass the function to mysql.
+		// so we don't need to return an error here.
+		return NewLiteralInt(1), nil
 	}
 
 	return nil, translateExprNotSupported(fn)
