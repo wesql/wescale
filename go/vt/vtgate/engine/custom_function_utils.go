@@ -27,7 +27,12 @@ func BuildVarCharFields(names ...string) []*querypb.Field {
 	return fields
 }
 
-func HasCustomFunction(stmt sqlparser.Statement) bool {
+// HasCustomFunction checks whether there is an expr contains custom function and
+// checks whether there is any errors in those exprs.
+// error will be returned only when there is an expr contains custom function.
+func HasCustomFunction(stmt sqlparser.Statement) (bool, error) {
+	var err error
+	has := false
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := stmt.(*sqlparser.Select)
@@ -36,18 +41,23 @@ func HasCustomFunction(stmt sqlparser.Statement) bool {
 			switch expr.(type) {
 			case *sqlparser.AliasedExpr:
 				lookup := &evalengine.CustomFunctionLookup{}
-				_, err := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
-				if err != nil {
-					return false
-				}
+				_, tmpErr := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
 				if lookup.HasCustomFunction {
-					return true
+					has = true
+				}
+				// record not nil error but only return it when has is true
+				if tmpErr != nil {
+					err = tmpErr
 				}
 			}
 		}
-		return false
+		if !has {
+			return false, nil
+		}
+		return has, err
+
 	default:
-		return false
+		return false, nil
 	}
 }
 
@@ -248,12 +258,12 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 	return rst, nil
 }
 
-func InitCustomFunctionPrimitive(originQuery string, originStmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
+func InitCustomFunctionPrimitive(originStmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
 	switch originStmt.(type) {
 	case *sqlparser.Select:
 		sel, _ := originStmt.(*sqlparser.Select)
 		exprs := sel.SelectExprs
-		return &CustomFunctionPrimitive{OriginSelectExprs: exprs, OriginStmt: originStmt, OriginQuery: originQuery}, nil
+		return &CustomFunctionPrimitive{OriginSelectExprs: exprs, OriginStmt: originStmt}, nil
 	default:
 		// will not be here
 		return nil, errors.New("InitCustomFunctionPrimitive not support stmt type besides select")

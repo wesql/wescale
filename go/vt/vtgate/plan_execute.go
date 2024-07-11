@@ -24,6 +24,7 @@ package vtgate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
@@ -84,21 +85,18 @@ func (e *Executor) newExecute(
 		return err
 	}
 
-	// handle the sql contains custom function, the plan of the sql may have been cached
-	c, plan, stmt, reserved, err := e.handleCustomFunction(ctx, vcursor, query, stmt, reserved, safeSession, logStats)
+	// Handle the sql contains custom function, rewrite the query that will be sent to mysql
+	c, stmt, reserved, err := e.handleCustomFunction(stmt, reserved)
 	if err != nil {
 		return err
 	}
 
 	// 2: Create a plan for the query
-	if plan == nil {
-		plan, _, err = e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
-	}
+	plan, _, err := e.getPlan(ctx, stmt, reserved, vcursor, query, comments, bindVars, safeSession, logStats)
 
-	// if the sql contains custom function and the custom function sql has not cached the plan yet,
-	// we need to create and cache the plan for it.
+	// If the sql contains custom function we need to create the plan for it.
 	if c != nil {
-		plan, _ = e.createAndCachePlanForCustomFunction(ctx, c, vcursor, stmt, plan, safeSession)
+		plan, _ = e.createPlanForCustomFunction(c, stmt, plan)
 	}
 
 	execStart := e.logPlanningFinished(logStats, plan)
@@ -521,38 +519,37 @@ func HandleWescaleFilterRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, 
 	return nil, nil
 }
 
-func (e *Executor) handleCustomFunction(ctx context.Context, vcursor *vcursorImpl, originQuery string, originStmt sqlparser.Statement, originReserved sqlparser.BindVars, qo iQueryOption, logStats *logstats.LogStats) (*engine.CustomFunctionPrimitive, *engine.Plan, sqlparser.Statement, sqlparser.BindVars, error) {
-	if engine.HasCustomFunction(originStmt) {
-		// get plan for custom function from plan cache
-		planKey := getPlanKey(ctx, vcursor, originQuery)
-		if sqlparser.CachePlan(originStmt) && qo.cachePlan() {
-			if plan, ok := e.plans.Get(planKey); ok {
-				logStats.CachedPlan = true
-				return nil, plan.(*engine.Plan), originStmt, originReserved, nil
-			}
-		}
-
-		c, err := engine.InitCustomFunctionPrimitive(originQuery, originStmt)
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-
-		customFunctionQuery, err := c.RewriteQueryForCustomFunction(originStmt)
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-
-		customFunctionStmt, customFunctionStmtReserved, err := sqlparser.Parse2(customFunctionQuery)
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-
-		return c, nil, customFunctionStmt, customFunctionStmtReserved, nil
+func (e *Executor) handleCustomFunction(originStmt sqlparser.Statement, originReserved sqlparser.BindVars) (*engine.CustomFunctionPrimitive, sqlparser.Statement, sqlparser.BindVars, error) {
+	has, err := engine.HasCustomFunction(originStmt)
+	if !has {
+		return nil, originStmt, originReserved, nil
 	}
-	return nil, nil, originStmt, originReserved, nil
+
+	// from now on, we can assert that the statement has a custom function
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error when using custom function framework: %v", err)
+	}
+
+	c, err := engine.InitCustomFunctionPrimitive(originStmt)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	customFunctionQuery, err := c.RewriteQueryForCustomFunction(originStmt)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	customFunctionStmt, customFunctionStmtReserved, err := sqlparser.Parse2(customFunctionQuery)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return c, customFunctionStmt, customFunctionStmtReserved, nil
+
 }
 
-func (e *Executor) createAndCachePlanForCustomFunction(ctx context.Context, c *engine.CustomFunctionPrimitive, vcursor *vcursorImpl, stmt sqlparser.Statement, plan *engine.Plan, qo iQueryOption) (*engine.Plan, error) {
+func (e *Executor) createPlanForCustomFunction(c *engine.CustomFunctionPrimitive, stmt sqlparser.Statement, plan *engine.Plan) (*engine.Plan, error) {
 	c.Input = plan.Instructions
 	err := c.SetSentExprs(stmt)
 	if err != nil {
@@ -562,15 +559,6 @@ func (e *Executor) createAndCachePlanForCustomFunction(ctx context.Context, c *e
 	planForCustomFunction := &engine.Plan{}
 	*planForCustomFunction = *plan
 	planForCustomFunction.Instructions = c
-
-	planForCustomFunction.Warnings = vcursor.warnings
-	vcursor.warnings = nil
-	err = e.checkThatPlanIsValid(stmt, planForCustomFunction)
-	// Only cache the plan if it is valid (i.e. does not scatter)
-	planKey := getPlanKey(ctx, vcursor, c.OriginQuery)
-	if err == nil && qo.cachePlan() && sqlparser.CachePlan(c.OriginStmt) {
-		e.plans.Set(planKey, planForCustomFunction)
-	}
 
 	return planForCustomFunction, nil
 }
