@@ -96,7 +96,10 @@ func (c *CustomFunctionPrimitive) RewriteQueryForCustomFunction(stmt sqlparser.S
 					newExprs = append(newExprs, expr)
 					c.TransferColName = append(c.TransferColName, true)
 
-					collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{expr}}
+					// remove the as in collation exprs, so there won't be cases like select collation(col as alias)
+					alias := *(expr.(*sqlparser.AliasedExpr))
+					alias.As = sqlparser.NewIdentifierCI("")
+					collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{&alias}}
 					collationExprs = append(collationExprs, &sqlparser.AliasedExpr{Expr: collationFunc})
 				}
 
