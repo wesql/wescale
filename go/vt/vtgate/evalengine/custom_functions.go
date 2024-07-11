@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package evalengine
 
 import "vitess.io/vitess/go/sqltypes"
@@ -12,17 +17,8 @@ func (f MyAdd) call(_ *ExpressionEnv, args []EvalResult, result *EvalResult) {
 	if len(args) != 2 {
 		throwArgError("myadd function need two parameters")
 	}
-
-	p0, err := args[0].value().ToInt64()
-	if err != nil {
-		throwArgError("myadd function deals only integer parameters")
-	}
-
-	p1, err := args[1].value().ToInt64()
-	if err != nil {
-		throwArgError("myadd function deals only integer parameters")
-	}
-
+	p0 := args[0].int64()
+	p1 := args[1].int64()
 	rst := p0 + p1
 	result.setInt64(rst)
 }

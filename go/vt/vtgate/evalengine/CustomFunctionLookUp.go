@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package evalengine
 
 import (
@@ -30,7 +35,13 @@ func (c *CustomFunctionLookup) ColumnLookup(col *sqlparser.ColName) (int, error)
 	return -1, nil
 }
 
-func (c *CustomFunctionLookup) CollationForExpr(_ sqlparser.Expr) collations.ID {
+func (c *CustomFunctionLookup) CollationForExpr(e sqlparser.Expr) collations.ID {
+	// If the expr is ColName type, look up its collation by c.CollationIdx because we already query it from mysql.
+	// Besides, the expr may also be Literal type inside a custom function expr, and we just return DefaultCollation for it.
+	if _, ok := e.(*sqlparser.Literal); ok {
+		return c.DefaultCollation()
+	}
+
 	if c.CollationIdx != nil && c.RowContainsCollation != nil {
 		tmp := *c.CollationIdx
 		collationName := c.RowContainsCollation[tmp].ToString()
@@ -46,5 +57,5 @@ func (c *CustomFunctionLookup) CollationForExpr(_ sqlparser.Expr) collations.ID 
 }
 
 func (c *CustomFunctionLookup) DefaultCollation() collations.ID {
-	return collations.Unknown
+	return collations.CollationUtf8mb4ID
 }
