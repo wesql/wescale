@@ -1271,7 +1271,6 @@ func getPlanKey(ctx context.Context, vcursor *vcursorImpl, query string) string 
 
 func (e *Executor) cacheAndBuildStatement(ctx context.Context, vcursor *vcursorImpl, query string, statement sqlparser.Statement, qo iQueryOption, logStats *logstats.LogStats, stmt sqlparser.Statement, reservedVars *sqlparser.ReservedVars, bindVarNeeds *sqlparser.BindVarNeeds) (*engine.Plan, sqlparser.Statement, error) {
 	planKey := getPlanKey(ctx, vcursor, query)
-	print("query:", query, "\n")
 
 	if sqlparser.CachePlan(statement) && qo.cachePlan() {
 		if plan, ok := e.plans.Get(planKey); ok {

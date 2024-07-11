@@ -94,12 +94,45 @@ func explainTabPlan(explain *sqlparser.ExplainTab, vschema plancontext.VSchema) 
 	}, singleTable(keyspace.Name, explain.Table.Name.String())), nil
 }
 
+func handleCustomFunctionVExplain(originStatement sqlparser.Statement) (*engine.PrimitiveDescription, sqlparser.Statement, error) {
+	has, err := engine.HasCustomFunction(originStatement)
+	if !has {
+		return nil, originStatement, nil
+	}
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("error when explaining custom function: %v", err)
+	}
+
+	originQuery := sqlparser.String(originStatement)
+
+	c, _ := engine.InitCustomFunctionPrimitive(originStatement)
+	customFunctionQuery, err := c.RewriteQueryForCustomFunction(originStatement)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error when explaining custom function: %v", err)
+	}
+	customFunctionStmt, _, err := sqlparser.Parse2(customFunctionQuery)
+	customPrimitiveDescription := &engine.PrimitiveDescription{OperatorType: "CustomFunction", Other: map[string]any{"Query": originQuery}}
+	return customPrimitiveDescription, customFunctionStmt, nil
+}
+
 func buildVExplainVtgatePlan(explainStatement sqlparser.Statement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
+	customPrimitiveDescription, explainStatement, err := handleCustomFunctionVExplain(explainStatement)
+	if err != nil {
+		return nil, err
+	}
+
 	innerInstruction, err := createInstructionFor(sqlparser.String(explainStatement), explainStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	if err != nil {
 		return nil, err
 	}
 	description := engine.PrimitiveToPlanDescription(innerInstruction.primitive)
+
+	if customPrimitiveDescription != nil {
+		customPrimitiveDescription.Inputs = []engine.PrimitiveDescription{description}
+		description = *customPrimitiveDescription
+	}
+
 	output, err := json.MarshalIndent(description, "", "\t")
 	if err != nil {
 		return nil, err
