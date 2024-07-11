@@ -61,7 +61,6 @@ var builtinFunctions = map[string]builtin{
 	"myadd":             MyAdd{},
 }
 
-// todo newborn22 0705, builtin func( custom func)
 var CustomFunctions = map[string]builtin{
 	"myadd": MyAdd{},
 }
