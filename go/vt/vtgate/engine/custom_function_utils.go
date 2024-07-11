@@ -1,9 +1,15 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package engine
 
 import (
 	"context"
 	"errors"
 	"fmt"
+
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
@@ -38,10 +44,10 @@ func HasCustomFunction(stmt sqlparser.Statement) (bool, error) {
 		sel, _ := stmt.(*sqlparser.Select)
 		exprs := sel.SelectExprs
 		for _, expr := range exprs {
-			switch expr.(type) {
+			switch tmpExpr := expr.(type) {
 			case *sqlparser.AliasedExpr:
 				lookup := &evalengine.CustomFunctionLookup{}
-				_, tmpErr := evalengine.Translate(expr.(*sqlparser.AliasedExpr).Expr, lookup)
+				_, tmpErr := evalengine.Translate(tmpExpr.Expr, lookup)
 				if lookup.HasCustomFunction {
 					has = true
 				}
@@ -69,7 +75,7 @@ func (c *CustomFunctionPrimitive) RewriteQueryForCustomFunction(stmt sqlparser.S
 		newExprs := make([]sqlparser.SelectExpr, 0)
 		collationExprs := make([]sqlparser.SelectExpr, 0)
 		for _, expr := range exprs {
-			switch expr.(type) {
+			switch tmpExpr := expr.(type) {
 			case *sqlparser.StarExpr:
 				newExprs = append(newExprs, expr)
 				c.TransferColName = append(c.TransferColName, true)
@@ -97,7 +103,7 @@ func (c *CustomFunctionPrimitive) RewriteQueryForCustomFunction(stmt sqlparser.S
 					c.TransferColName = append(c.TransferColName, true)
 
 					// remove the as in collation exprs, so there won't be cases like select collation(col as alias)
-					alias := *(expr.(*sqlparser.AliasedExpr))
+					alias := *tmpExpr
 					alias.As = sqlparser.NewIdentifierCI("")
 					collationFunc := &sqlparser.FuncExpr{Name: sqlparser.NewIdentifierCI("collation"), Exprs: []sqlparser.SelectExpr{&alias}}
 					collationExprs = append(collationExprs, &sqlparser.AliasedExpr{Expr: collationFunc})
@@ -198,7 +204,7 @@ func GetNamesOfTableExpr(tableExpr sqlparser.TableExpr) ([]string, []string, []s
 	if aliasTableExpr, ok := tableExpr.(*sqlparser.AliasedTableExpr); ok {
 		tmpTableName, ok := aliasTableExpr.Expr.(sqlparser.TableName)
 		if !ok {
-			return nil, nil, nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "BUG: the AST has changed. This should not be possible")
+			return nil, nil, nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "The table expr is not supported yet: %v", sqlparser.String(aliasTableExpr.Expr))
 		}
 		alias = append(alias, aliasTableExpr.As.String())
 		schemas = append(schemas, sqlparser.String(tmpTableName.Qualifier))
@@ -262,10 +268,9 @@ func GetColNamesForTable(ctx context.Context, send *Send, vcursor VCursor, table
 }
 
 func InitCustomFunctionPrimitive(originStmt sqlparser.Statement) (*CustomFunctionPrimitive, error) {
-	switch originStmt.(type) {
+	switch tmpStmt := originStmt.(type) {
 	case *sqlparser.Select:
-		sel, _ := originStmt.(*sqlparser.Select)
-		exprs := sel.SelectExprs
+		exprs := tmpStmt.SelectExprs
 		return &CustomFunctionPrimitive{OriginSelectExprs: exprs, OriginStmt: originStmt}, nil
 	default:
 		// will not be here
@@ -274,11 +279,10 @@ func InitCustomFunctionPrimitive(originStmt sqlparser.Statement) (*CustomFunctio
 }
 
 func (c *CustomFunctionPrimitive) SetSentExprs(stmt sqlparser.Statement) error {
-	switch stmt.(type) {
+	switch tmpStmt := stmt.(type) {
 	case *sqlparser.Select:
-		sel, _ := stmt.(*sqlparser.Select)
-		c.SentSelectExprs = sel.SelectExprs
-		c.SentTables = sel.From
+		c.SentSelectExprs = tmpStmt.SelectExprs
+		c.SentTables = tmpStmt.From
 		return nil
 	default:
 		return errors.New("SetSentExprs not support stmt type besides select")
