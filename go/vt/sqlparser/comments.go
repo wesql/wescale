@@ -476,7 +476,7 @@ func GetNodeType(stmt Statement) tabletpb.TabletType {
 	return tabletpb.TabletType_UNKNOWN
 }
 
-// todo newborn22 support insert...select, replace...select
+// todo support insert...select, replace...select
 func GetDMLJobCmd(stmt Statement) string {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
@@ -503,7 +503,7 @@ func GetDMLJobCmd(stmt Statement) string {
 func GetDMLJobArgs(stmt Statement) (timeGapInMs int64, batchSize int64, postponeLaunch bool, failPolicy, timePeriodStart, timePeriodEnd, timePeriodTimeZone, throttleDuration, throttleRatio string) {
 	var comments *ParsedComments
 	switch stmt := stmt.(type) {
-	// todo newborn22 support insert...select, replace...select
+	// todo support insert...select, replace...select
 	case *Update:
 		comments = stmt.Comments
 	case *Delete:

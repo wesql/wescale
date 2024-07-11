@@ -311,12 +311,10 @@ type WasmPluginAction struct {
 	skipFlag bool
 }
 
-// todo newborn22: add testcase
 type WasmPluginActionArgs struct {
 	WasmBinaryName string `toml:"wasm_binary_name"`
 }
 
-// todo newborn22: add testcase
 func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error) {
 	if stringParams == "" {
 		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "wasm bytes is empty")

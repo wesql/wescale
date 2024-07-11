@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"sync"
+
 	"vitess.io/vitess/go/vt/log"
 
 	"github.com/wasmerio/wasmer-go/wasmer"
@@ -90,7 +91,7 @@ type WasmerInstance struct {
 }
 
 func (ins *WasmerInstance) RunWASMPlugin() error {
-	// todo newborn22, fix wasmer
+	// todo fix wasmer
 
 	//writeBuf, _ := ins.instance.Exports.GetFunction("writeBuf")
 	//readBuf, _ := ins.instance.Exports.GetFunction("readBuf")
