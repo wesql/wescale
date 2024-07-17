@@ -182,9 +182,11 @@ func (t *Tracker) Start() {
 		for {
 			select {
 			case th := <-t.ch:
-				ksUpdater := t.getKeyspaceUpdateController(th)
-				if ksUpdater != nil {
-					ksUpdater.add(th)
+				ksUpdaters := t.getKeyspaceUpdateControllerArray(th)
+				if len(ksUpdaters) > 0 {
+					for _, ksUpdater := range ksUpdaters {
+						ksUpdater.add(th)
+					}
 				}
 			case <-ctx.Done():
 				// closing of the channel happens outside the scope of the tracker. It is the responsibility of the one who created this tracker.
@@ -215,6 +217,34 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	}
 	ksUpdater := t.tracked[th.Target.Keyspace]
 	return ksUpdater
+}
+
+// todo newborn22, add test cases. clean test case of getKeyspaceUpdateController
+// getKeyspaceUpdateController returns the updateController for all keyspaces
+// the updateController will be created if there was none.
+func (t *Tracker) getKeyspaceUpdateControllerArray(th *discovery.TabletHealth) []*updateController {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if th.Stats == nil {
+		return nil
+	}
+	// only primary tablets return schema info, see health_streamer.go#reload()
+	if th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+		return nil
+	}
+	// make sure we have the keyspace meta and the updateController
+	err := t.keyspaceMetaSync(th.Stats.DbList)
+	if err != nil {
+		log.Errorf("Error syncing keyspace meta", err)
+		return nil
+	}
+
+	rst := make([]*updateController, 0)
+	for _, ksUpdater := range t.tracked {
+		rst = append(rst, ksUpdater)
+	}
+	return rst
 }
 
 func (t *Tracker) keyspaceMetaSync(dbList []string) error {

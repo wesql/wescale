@@ -116,7 +116,7 @@ var (
 	queryTimeout             int
 
 	// vtgate views flags
-	enableViews bool
+	enableViews = true
 
 	// queryLogToFile controls whether query logs are sent to a file
 	queryLogToFile string

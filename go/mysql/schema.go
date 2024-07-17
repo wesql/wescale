@@ -55,17 +55,16 @@ const (
 	DetectSchemaChange = `
 SELECT DISTINCT table_name
 FROM (
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM information_schema.columns
-	WHERE table_schema = database()
 
 	UNION ALL
 
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM mysql.schemacopy
-	WHERE table_schema = database()
+
 ) _inner
-GROUP BY table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+GROUP BY table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 HAVING COUNT(*) = 1
 `
 
@@ -88,13 +87,12 @@ HAVING COUNT(*) = 1
 `
 
 	// ClearSchemaCopy query clears the schemacopy table.
-	ClearSchemaCopy = `delete from mysql.schemacopy where table_schema = database()`
+	ClearSchemaCopy = `delete from mysql.schemacopy`
 
 	// InsertIntoSchemaCopy query copies over the schema information from information_schema.columns table.
 	InsertIntoSchemaCopy = `insert mysql.schemacopy
 select table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
-from information_schema.columns
-where table_schema = database()`
+from information_schema.columns`
 
 	// fetchColumns are the columns we fetch
 	fetchColumns = "table_name, column_name, data_type, collation_name"
