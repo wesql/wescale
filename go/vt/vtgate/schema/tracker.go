@@ -24,10 +24,9 @@ package schema
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/strings/slices"
 	"sync"
 	"time"
-
-	"k8s.io/utils/strings/slices"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
@@ -129,7 +128,12 @@ func (t *Tracker) loadTables(conn queryservice.QueryService, target *querypb.Tar
 		return nil
 	}
 
-	ftRes, err := conn.ExecuteInternal(t.ctx, target, mysql.FetchTables, nil, 0, 0, nil)
+	keyspace, err := sqltypes.BuildBindVariable(target.Keyspace)
+	if err != nil {
+		return err
+	}
+	bv := map[string]*querypb.BindVariable{"table_schema": keyspace}
+	ftRes, err := conn.ExecuteInternal(t.ctx, target, mysql.FetchTables, bv, 0, 0, nil)
 	if err != nil {
 		return err
 	}
@@ -375,7 +379,12 @@ func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth, target *querypb
 		log.Errorf("failed to read updated tables from TabletHealth: %v", err)
 		return false
 	}
-	bv := map[string]*querypb.BindVariable{"tableNames": tables}
+	keyspace, err := sqltypes.BuildBindVariable(target.Keyspace)
+	if err != nil {
+		log.Errorf("failed to read updated tables from TabletHealth: %v", err)
+		return false
+	}
+	bv := map[string]*querypb.BindVariable{"table_names": tables, "table_schema": keyspace}
 	res, err := th.Conn.ExecuteInternal(t.ctx, target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
 	if err != nil {
 		t.tracked[target.Keyspace].setLoaded(false)

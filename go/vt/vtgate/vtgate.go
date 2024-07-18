@@ -111,7 +111,7 @@ var (
 	enableDirectDDL    = true
 
 	// vtgate schema tracking flags
-	enableSchemaChangeSignal = true
+	enableSchemaChangeSignal = global.TableSchemaTracking
 	schemaChangeUser         string
 	queryTimeout             int
 

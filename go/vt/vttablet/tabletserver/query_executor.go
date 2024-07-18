@@ -350,10 +350,14 @@ func (qre *QueryExecutor) execViewDDL(conn *StatefulConnection) (*sqltypes.Resul
 
 func (qre *QueryExecutor) execCreateViewDDL(conn *StatefulConnection, stmt *sqlparser.CreateView) (*sqltypes.Result, error) {
 	bindVars := generateBindVarsForViewDDLInsert(stmt)
+	if _, exist := bindVars["table_schema"]; !exist {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
+	}
 	sql, _, err := qre.generateFinalSQL(qre.plan.FullQuery, bindVars)
 	if err != nil {
 		return nil, err
 	}
+
 	qr, err := execWithDDLView(qre.ctx, conn, sql)
 	if err != nil {
 		sqlErr, isSQLErr := mysql.NewSQLErrorFromError(err).(*mysql.SQLError)
@@ -379,6 +383,9 @@ func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlpa
 		Comments:    stmt.Comments,
 	}
 	bindVars := generateBindVarsForViewDDLInsert(createViewDDL)
+	if _, exist := bindVars["table_schema"]; !exist {
+		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
+	}
 	sql, _, err := qre.generateFinalSQL(qre.plan.FullQuery, bindVars)
 	if err != nil {
 		return nil, err
@@ -394,30 +401,22 @@ func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlpa
 }
 
 func (qre *QueryExecutor) execDropViewDDL(conn *StatefulConnection) (*sqltypes.Result, error) {
-	viewsMap := make(map[string]int)
 	stmt := qre.plan.FullStmt.(*sqlparser.DropView)
-	var viewNames []string
-	for pos, view := range stmt.FromTables {
-		viewName := view.Name.String()
-		if _, exists := viewsMap[viewName]; exists {
-			return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "Not unique view: '%s'", viewName)
+
+	pairsOfTableSchemaAndName := " where "
+	first := true
+	for _, view := range stmt.FromTables {
+		subWhereClaus := ""
+		if !first {
+			subWhereClaus = " or "
 		}
-		viewNames = append(viewNames, viewName)
-		viewsMap[viewName] = pos
-	}
-	viewNamesBV, err := sqltypes.BuildBindVariable(viewNames)
-	if err != nil {
-		return nil, err
-	}
-	bindVars := map[string]*querypb.BindVariable{
-		"table_name": viewNamesBV,
+		subWhereClaus += fmt.Sprintf("(table_schema = '%s' and table_name = '%s')", view.Qualifier.String(), view.Name.String())
+		first = false
+		pairsOfTableSchemaAndName += subWhereClaus
 	}
 
-	sql, _, err := qre.generateFinalSQL(qre.plan.FullQuery, bindVars)
-	if err != nil {
-		return nil, err
-	}
-	_, err = execWithDDLView(qre.ctx, conn, sql)
+	finalQuery := mysql.DeleteFromViewsTableWithoutCondition + pairsOfTableSchemaAndName
+	_, err := execWithDDLView(qre.ctx, conn, finalQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -1397,25 +1396,31 @@ func generateBindVarsForViewDDLInsert(createView *sqlparser.CreateView) map[stri
 	bindVars := make(map[string]*querypb.BindVariable)
 	bindVars["table_name"] = sqltypes.StringBindVariable(createView.ViewName.Name.String())
 	bindVars["create_statement"] = sqltypes.StringBindVariable(sqlparser.String(createView))
+	if createView.ViewName.Qualifier.String() != "" {
+		bindVars["table_schema"] = sqltypes.StringBindVariable(createView.ViewName.Qualifier.String())
+	}
 	return bindVars
 }
 
-func (qre *QueryExecutor) GetSchemaDefinitions(tableType querypb.SchemaTableType, tableNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error {
+func (qre *QueryExecutor) GetSchemaDefinitions(keyspace string, tableType querypb.SchemaTableType, tableNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error {
 	switch tableType {
 	case querypb.SchemaTableType_VIEWS:
-		return qre.getViewDefinitions(tableNames, callback)
+		return qre.getViewDefinitions(keyspace, tableNames, callback)
 	}
 	return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid table type %v", tableType)
 }
 
-func (qre *QueryExecutor) getViewDefinitions(viewNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error {
+func (qre *QueryExecutor) getViewDefinitions(keyspace string, viewNames []string, callback func(schemaRes *querypb.GetSchemaResponse) error) error {
+	if keyspace == "" {
+		return vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "when getting information from mysql.views, table_schema of views is required")
+	}
+	bindVars := make(map[string]*querypb.BindVariable)
+	bindVars["table_schema"] = sqltypes.StringBindVariable(keyspace)
+
 	query := mysql.FetchViews
-	var bindVars map[string]*querypb.BindVariable
 	if len(viewNames) > 0 {
 		query = mysql.FetchUpdatedViews
-		bindVars = map[string]*querypb.BindVariable{
-			"viewnames": sqltypes.StringBindVariable(strings.Join(viewNames, ",")),
-		}
+		bindVars["viewnames"] = sqltypes.StringBindVariable(strings.Join(viewNames, ","))
 	}
 	return qre.generateFinalQueryAndStreamExecute(query, bindVars, func(result *sqltypes.Result) error {
 		schemaDef := make(map[string]string)
