@@ -240,49 +240,19 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] %s unexpected plan type", qre.plan.PlanID.String())
 }
 
-func (qre *QueryExecutor) txExecViewDDL(conn *StatefulConnection, record bool) (*sqltypes.Result, error) {
-	var queryOnViewsTable string
-	var userQuery string
-	var err error
-	switch stmt := qre.plan.FullStmt.(type) {
+func (qre *QueryExecutor) txExecViewDDL(conn *StatefulConnection) (*sqltypes.Result, error) {
+	// we should commit dml in transactions before executing view DDLs
+	_, err := conn.Exec(qre.ctx, "commit", 1000, false)
+	if err != nil {
+		return nil, err
+	}
+
+	switch qre.plan.FullStmt.(type) {
 	case *sqlparser.DropView:
-		queryOnViewsTable = getQueryDropViewFromViews(stmt)
-
-	case *sqlparser.CreateView:
-		queryOnViewsTable, err = qre.getQueryCreateViewFromViews(stmt)
-		if err != nil {
-			return nil, err
-		}
-
-	case *sqlparser.AlterView:
-		queryOnViewsTable, err = qre.getQueryAlterViewFromViews(stmt)
-		if err != nil {
-			return nil, err
-		}
-
+		return qre.execAutocommit(qre.execDropViewDDL)
 	default:
-		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "BUG: unexpected view DDL type: %T", qre.plan.FullStmt)
+		return qre.execAsTransaction(qre.execViewDDL)
 	}
-
-	userQuery = sqlparser.String(qre.plan.FullStmt)
-
-	_, err = qre.execStatefulConn(conn, queryOnViewsTable, false)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = qre.execStatefulConn(conn, userQuery, true)
-	if err != nil {
-		return nil, err
-	}
-
-	// Only record successful queries.
-	if record {
-		conn.TxProperties().RecordQuery(queryOnViewsTable)
-		conn.TxProperties().RecordQuery(userQuery)
-	}
-
-	return &sqltypes.Result{}, nil
 }
 
 func (qre *QueryExecutor) execAutocommit(f func(conn *StatefulConnection) (*sqltypes.Result, error)) (reply *sqltypes.Result, err error) {
@@ -365,7 +335,7 @@ func (qre *QueryExecutor) txConnExec(conn *StatefulConnection) (*sqltypes.Result
 	case p.PlanCallProc:
 		return qre.execProc(conn)
 	case p.PlanViewDDL:
-		return qre.txExecViewDDL(conn, true)
+		return qre.txExecViewDDL(conn)
 	}
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] %s unexpected plan type", qre.plan.PlanID.String())
 }
