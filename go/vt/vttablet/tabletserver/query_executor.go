@@ -240,6 +240,51 @@ func (qre *QueryExecutor) Execute() (reply *sqltypes.Result, err error) {
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] %s unexpected plan type", qre.plan.PlanID.String())
 }
 
+func (qre *QueryExecutor) txExecViewDDL(conn *StatefulConnection, record bool) (*sqltypes.Result, error) {
+	var queryOnViewsTable string
+	var userQuery string
+	var err error
+	switch stmt := qre.plan.FullStmt.(type) {
+	case *sqlparser.DropView:
+		queryOnViewsTable = getQueryDropViewFromViews(stmt)
+
+	case *sqlparser.CreateView:
+		queryOnViewsTable, err = qre.getQueryCreateViewFromViews(stmt)
+		if err != nil {
+			return nil, err
+		}
+
+	case *sqlparser.AlterView:
+		queryOnViewsTable, err = qre.getQueryAlterViewFromViews(stmt)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "BUG: unexpected view DDL type: %T", qre.plan.FullStmt)
+	}
+
+	userQuery = sqlparser.String(qre.plan.FullStmt)
+
+	_, err = qre.execStatefulConn(conn, queryOnViewsTable, false)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = qre.execStatefulConn(conn, userQuery, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only record successful queries.
+	if record {
+		conn.TxProperties().RecordQuery(queryOnViewsTable)
+		conn.TxProperties().RecordQuery(userQuery)
+	}
+
+	return &sqltypes.Result{}, nil
+}
+
 func (qre *QueryExecutor) execAutocommit(f func(conn *StatefulConnection) (*sqltypes.Result, error)) (reply *sqltypes.Result, err error) {
 	if qre.options == nil {
 		qre.options = &querypb.ExecuteOptions{}
@@ -319,6 +364,8 @@ func (qre *QueryExecutor) txConnExec(conn *StatefulConnection) (*sqltypes.Result
 		return qre.execLoad(conn)
 	case p.PlanCallProc:
 		return qre.execProc(conn)
+	case p.PlanViewDDL:
+		return qre.txExecViewDDL(conn, true)
 	}
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] %s unexpected plan type", qre.plan.PlanID.String())
 }
@@ -348,12 +395,20 @@ func (qre *QueryExecutor) execViewDDL(conn *StatefulConnection) (*sqltypes.Resul
 	return ddlConn.Exec(qre.ctx, sqlparser.String(qre.plan.FullStmt), 1000, true)
 }
 
-func (qre *QueryExecutor) execCreateViewDDL(conn *StatefulConnection, stmt *sqlparser.CreateView) (*sqltypes.Result, error) {
+func (qre *QueryExecutor) getQueryCreateViewFromViews(stmt *sqlparser.CreateView) (string, error) {
 	bindVars := generateBindVarsForViewDDLInsert(stmt)
 	if _, exist := bindVars["table_schema"]; !exist {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
+		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
 	}
 	sql, _, err := qre.generateFinalSQL(qre.plan.FullQuery, bindVars)
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+func (qre *QueryExecutor) execCreateViewDDL(conn *StatefulConnection, stmt *sqlparser.CreateView) (*sqltypes.Result, error) {
+	sql, err := qre.getQueryCreateViewFromViews(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +426,7 @@ func (qre *QueryExecutor) execCreateViewDDL(conn *StatefulConnection, stmt *sqlp
 	return qr, nil
 }
 
-func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlparser.AlterView) (*sqltypes.Result, error) {
+func (qre *QueryExecutor) getQueryAlterViewFromViews(stmt *sqlparser.AlterView) (string, error) {
 	createViewDDL := &sqlparser.CreateView{
 		ViewName:    stmt.ViewName,
 		Algorithm:   stmt.Algorithm,
@@ -384,9 +439,17 @@ func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlpa
 	}
 	bindVars := generateBindVarsForViewDDLInsert(createViewDDL)
 	if _, exist := bindVars["table_schema"]; !exist {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
+		return "", vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "table schema is not specified")
 	}
 	sql, _, err := qre.generateFinalSQL(qre.plan.FullQuery, bindVars)
+	if err != nil {
+		return "", err
+	}
+	return sql, nil
+}
+
+func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlparser.AlterView) (*sqltypes.Result, error) {
+	sql, err := qre.getQueryAlterViewFromViews(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -400,9 +463,7 @@ func (qre *QueryExecutor) execAlterViewDDL(conn *StatefulConnection, stmt *sqlpa
 	return qr, nil
 }
 
-func (qre *QueryExecutor) execDropViewDDL(conn *StatefulConnection) (*sqltypes.Result, error) {
-	stmt := qre.plan.FullStmt.(*sqlparser.DropView)
-
+func getQueryDropViewFromViews(stmt *sqlparser.DropView) string {
 	pairsOfTableSchemaAndName := " where "
 	first := true
 	for _, view := range stmt.FromTables {
@@ -416,6 +477,13 @@ func (qre *QueryExecutor) execDropViewDDL(conn *StatefulConnection) (*sqltypes.R
 	}
 
 	finalQuery := mysql.DeleteFromViewsTableWithoutCondition + pairsOfTableSchemaAndName
+	return finalQuery
+}
+
+func (qre *QueryExecutor) execDropViewDDL(conn *StatefulConnection) (*sqltypes.Result, error) {
+	stmt := qre.plan.FullStmt.(*sqlparser.DropView)
+
+	finalQuery := getQueryDropViewFromViews(stmt)
 	_, err := execWithDDLView(qre.ctx, conn, finalQuery)
 	if err != nil {
 		return nil, err

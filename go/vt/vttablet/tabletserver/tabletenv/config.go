@@ -588,6 +588,8 @@ var defaultConfig = TabletConfig{
 		MaxInnoDBTrxHistLen: 1000000,
 		MaxMySQLReplLagSecs: 43200,
 	},
+	EnableViews:      global.ViewSchemaTracking,
+	EnableTableTrack: global.TableSchemaTracking,
 }
 
 // defaultTxThrottlerConfig formats the default throttlerdata.Configuration
