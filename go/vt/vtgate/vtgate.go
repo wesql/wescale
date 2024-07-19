@@ -93,7 +93,7 @@ var (
 	// healthCheckRetryDelay is the time to wait before retrying healthcheck
 	healthCheckRetryDelay = 2 * time.Millisecond
 	// healthCheckTimeout is the timeout on the RPC call to tablets
-	healthCheckTimeout = time.Minute
+	healthCheckTimeout = global.HealthCheckTimeoutSeconds * time.Second
 
 	// System settings related flags
 	sysVarSetEnabled = true

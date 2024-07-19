@@ -53,7 +53,7 @@ const (
 
 	// DetectSchemaChange query detects if there is any schema change from previous copy.
 	DetectSchemaChange = `
-SELECT DISTINCT table_name
+SELECT DISTINCT table_schema,table_name
 FROM (
 	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM information_schema.columns
@@ -70,7 +70,7 @@ HAVING COUNT(*) = 1
 
 	// DetectSchemaChangeOnlyBaseTable query detects if there is any schema change from previous copy excluding view tables.
 	DetectSchemaChangeOnlyBaseTable = `
-SELECT DISTINCT table_name
+SELECT DISTINCT table_schema,table_name
 FROM (
 	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM information_schema.columns
@@ -130,7 +130,7 @@ order by table_name, ordinal_position`
 	// DeleteFromViewsTableWithoutCondition the sql should be added pairs of table_schema and table_name before execution
 	DeleteFromViewsTableWithoutCondition = `delete from mysql.views`
 
-	SelectAllViews = `select table_name, updated_at from mysql.views`
+	SelectAllViews = `select concat(table_schema,'.',table_name), updated_at from mysql.views`
 
 	// FetchUpdatedViews queries fetches information about updated views
 	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_name in ::viewnames and table_schema = :table_schema`

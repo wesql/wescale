@@ -399,11 +399,14 @@ func (hs *healthStreamer) reload() error {
 func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
 	var tables []string
 	var tableNames []string
+	var fullyQualifiedTableNames []string
 
 	callback := func(qr *sqltypes.Result) error {
 		for _, row := range qr.Rows {
-			table := row[0].ToString()
+			tableSchema := row[0].ToString()
+			table := row[1].ToString()
 			tables = append(tables, table)
+			fullyQualifiedTableNames = append(fullyQualifiedTableNames, fmt.Sprintf("%s.%s", tableSchema, table))
 
 			escapedTblName := sqlparser.String(sqlparser.NewStrLiteral(table))
 			tableNames = append(tableNames, escapedTblName)
@@ -429,6 +432,8 @@ func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpo
 		return nil, nil
 	}
 
+	// To simplify the sql, here we update all tables with the same name,
+	// even though some of them with different schema are not changed.
 	tableNamePredicate := fmt.Sprintf("table_name IN (%s)", strings.Join(tableNames, ", "))
 	del := fmt.Sprintf("%s WHERE %s", mysql.ClearSchemaCopy, tableNamePredicate)
 	upd := fmt.Sprintf("%s WHERE %s", mysql.InsertIntoSchemaCopy, tableNamePredicate)
@@ -454,7 +459,7 @@ func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpo
 	if err != nil {
 		return nil, err
 	}
-	return tables, nil
+	return fullyQualifiedTableNames, nil
 }
 
 func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
@@ -466,9 +471,9 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 
 	callback := func(qr *sqltypes.Result) error {
 		for _, row := range qr.Rows {
-			viewName := row[0].ToString()
+			fullyQualifiedViewName := row[0].ToString()
 			lastUpdTime := row[1].ToString()
-			views[viewName] = lastUpdTime
+			views[fullyQualifiedViewName] = lastUpdTime
 		}
 
 		return nil
@@ -485,21 +490,21 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 		return nil, nil
 	}
 
-	for viewName, lastUpdTime := range views {
-		t, exists := hs.views[viewName]
+	for fullyQualifiedViewName, lastUpdTime := range views {
+		t, exists := hs.views[fullyQualifiedViewName]
 		if !exists { // new view added
-			changedViews = append(changedViews, viewName)
+			changedViews = append(changedViews, fullyQualifiedViewName)
 			continue
 		}
 		if t != lastUpdTime { // view updated
-			changedViews = append(changedViews, viewName)
+			changedViews = append(changedViews, fullyQualifiedViewName)
 		}
-		delete(hs.views, viewName)
+		delete(hs.views, fullyQualifiedViewName)
 	}
 
 	// views deleted
-	for viewName := range hs.views {
-		changedViews = append(changedViews, viewName)
+	for fullyQualifiedViewName := range hs.views {
+		changedViews = append(changedViews, fullyQualifiedViewName)
 	}
 
 	// update hs.views with latest view info

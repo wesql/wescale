@@ -566,7 +566,7 @@ var defaultConfig = TabletConfig{
 	QueryCacheMemory:                        cache.DefaultConfig.MaxMemoryUsage,
 	QueryCacheLFU:                           cache.DefaultConfig.LFU,
 	SchemaReloadIntervalSeconds:             30 * 60,
-	SignalSchemaChangeReloadIntervalSeconds: 5,
+	SignalSchemaChangeReloadIntervalSeconds: global.SignalSchemaChangeReloadIntervalSeconds,
 	MessagePostponeParallelism:              4,
 	DeprecatedCacheResultFields:             true,
 	SignalWhenSchemaChange:                  true,

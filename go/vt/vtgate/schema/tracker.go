@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/utils/strings/slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -362,18 +363,39 @@ func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHeal
 	}
 	success := true
 	if th.Stats.TableSchemaChanged != nil {
+		print("table schemas update: ", th.Stats.TableSchemaChanged, "\n")
 		success = t.updatedTableSchema(th, target)
 	}
 	if !success || th.Stats.ViewSchemaChanged == nil {
 		return success
 	}
+	print("view schemas update: ", th.Stats.ViewSchemaChanged, "\n")
 	// there is view definition change in the tablet
 	return t.updatedViewSchema(th, target)
 }
 
 func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth, target *querypb.Target) bool {
-	// todo earayu: the tablesUpdated should be filtered by the keyspace
-	tablesUpdated := th.Stats.TableSchemaChanged
+	fullyQualifiedTablesUpdated := th.Stats.TableSchemaChanged
+	tablesUpdated := make([]string, 0)
+	for _, fullyQualifiedName := range fullyQualifiedTablesUpdated {
+		nameParts := strings.Split(fullyQualifiedName, ".")
+		if len(nameParts) != 2 {
+			log.Errorf("updatedTableSchema: invalid table name: %v", fullyQualifiedName)
+			return false
+		}
+		tableSchema := nameParts[0]
+		tableName := nameParts[1]
+		if tableSchema != target.Keyspace {
+			continue
+		}
+		tablesUpdated = append(tablesUpdated, tableName)
+	}
+
+	// success is set false so u.signal is not called if there are no tables to update.
+	if len(tablesUpdated) == 0 {
+		return false
+	}
+
 	tables, err := sqltypes.BuildBindVariable(tablesUpdated)
 	if err != nil {
 		log.Errorf("failed to read updated tables from TabletHealth: %v", err)
@@ -428,8 +450,26 @@ func (t *Tracker) updatedViewSchema(th *discovery.TabletHealth, target *querypb.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// todo earayu: the viewsUpdated should be filtered by the keyspace
-	viewsUpdated := th.Stats.ViewSchemaChanged
+	fullyQualifiedViewsUpdated := th.Stats.ViewSchemaChanged
+	viewsUpdated := make([]string, 0)
+	for _, fullyQualifiedName := range fullyQualifiedViewsUpdated {
+		nameParts := strings.Split(fullyQualifiedName, ".")
+		if len(nameParts) != 2 {
+			log.Errorf("updatedTableSchema: invalid table name: %v", fullyQualifiedName)
+			return false
+		}
+		viewSchema := nameParts[0]
+		viewName := nameParts[1]
+		if viewSchema != target.Keyspace {
+			continue
+		}
+		viewsUpdated = append(viewsUpdated, viewName)
+	}
+
+	// success is set false so u.signal is not called if there are no views to update.
+	if len(viewsUpdated) == 0 {
+		return false
+	}
 
 	// first we empty all prior schema. deleted tables will not show up in the result,
 	// so this is the only chance to delete
