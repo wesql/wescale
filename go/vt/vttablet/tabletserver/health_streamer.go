@@ -30,8 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
@@ -97,8 +95,9 @@ type healthStreamer struct {
 	conns                  *connpool.Pool
 	signalWhenSchemaChange bool
 
-	viewsEnabled bool
-	views        map[string]string
+	tableTrackEnable bool
+	viewsEnabled     bool
+	views            map[string]string
 }
 
 func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *healthStreamer {
@@ -132,6 +131,7 @@ func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *health
 		ticks:                  newTimer,
 		conns:                  pool,
 		signalWhenSchemaChange: env.Config().SignalWhenSchemaChange,
+		tableTrackEnable:       env.Config().EnableTableTrack,
 		viewsEnabled:           env.Config().EnableViews,
 		views:                  map[string]string{},
 	}
@@ -365,7 +365,8 @@ func (hs *healthStreamer) reload() error {
 	// Since current SQL layer doesn't need to know about the schema of the tables
 	// that are not sharded, we don't need to track the schema of those tables.
 	// So, we can disable the schema tracking by default.
-	if global.TableSchemaTracking {
+
+	if hs.tableTrackEnable {
 		tables, err = hs.getChangedTableNames(ctx, conn)
 		if err != nil {
 			return err
@@ -373,7 +374,7 @@ func (hs *healthStreamer) reload() error {
 	}
 
 	var views []string
-	if global.ViewSchemaTracking {
+	if hs.viewsEnabled {
 		views, err = hs.getChangedViewNames(ctx, conn)
 		if err != nil {
 			return err
