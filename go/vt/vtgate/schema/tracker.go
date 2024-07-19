@@ -24,10 +24,11 @@ package schema
 import (
 	"context"
 	"fmt"
-	"k8s.io/utils/strings/slices"
 	"strings"
 	"sync"
 	"time"
+
+	"k8s.io/utils/strings/slices"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
@@ -322,15 +323,19 @@ func (t *Tracker) Stop() {
 	t.cancel()
 }
 
-// GetColumns returns the column list for table in the given keyspace.
+// GetColumns returns the deep copy of column list for table in the given keyspace.
 func (t *Tracker) GetColumns(ks string, tbl string) []vindexes.Column {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	return t.tables.get(ks, tbl)
+	// return a deep copy of the slice, so there won't be a concurrency issue
+	cols := t.tables.get(ks, tbl)
+	rst := make([]vindexes.Column, len(cols))
+	copy(rst[:], cols[:])
+	return rst
 }
 
-// Tables returns a map with the columns for all known tables in the keyspace
+// Tables returns a deep copy of map with the columns for all known tables in the keyspace
 func (t *Tracker) Tables(ks string) map[string][]vindexes.Column {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -340,10 +345,17 @@ func (t *Tracker) Tables(ks string) map[string][]vindexes.Column {
 		return map[string][]vindexes.Column{} // we know nothing about this KS, so that is the info we can give out
 	}
 
-	return m
+	// return a deep copy of the map, so there won't be a concurrency issue
+	rst := make(map[string][]vindexes.Column)
+	for table, columns := range m {
+		rst[table] = make([]vindexes.Column, len(columns))
+		copy(rst[table][:], columns[:])
+	}
+
+	return rst
 }
 
-// Views returns all known views in the keyspace with their definition.
+// Views returns deep copy of all known views in the keyspace with their definition.
 func (t *Tracker) Views(ks string) map[string]sqlparser.SelectStatement {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -351,7 +363,14 @@ func (t *Tracker) Views(ks string) map[string]sqlparser.SelectStatement {
 	if t.views == nil {
 		return nil
 	}
-	return t.views.m[ks]
+
+	// return a deep copy of the map, so there won't be a concurrency issue
+	rst := make(map[string]sqlparser.SelectStatement)
+	for table, stmt := range t.views.m[ks] {
+		rst[table] = sqlparser.CloneSelectStatement(stmt)
+	}
+
+	return rst
 }
 
 func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool {
@@ -599,10 +618,11 @@ func (t *Tracker) clearKeyspaceViews(ks string) {
 	}
 }
 
-// GetViews returns the view statement for the given keyspace and view name.
+// GetViews return a deep copy the view statement for the given keyspace and view name.
 func (t *Tracker) GetViews(ks string, tbl string) sqlparser.SelectStatement {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	return t.views.get(ks, tbl)
+	// return a deep copy of the select statement, so there won't be a concurrency issue
+	return sqlparser.CloneSelectStatement(t.views.get(ks, tbl))
 }
