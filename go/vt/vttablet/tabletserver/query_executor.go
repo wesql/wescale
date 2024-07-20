@@ -1458,7 +1458,11 @@ func (qre *QueryExecutor) getViewDefinitions(keyspace string, viewNames []string
 	query := mysql.FetchViews
 	if len(viewNames) > 0 {
 		query = mysql.FetchUpdatedViews
-		bindVars["viewnames"] = sqltypes.StringBindVariable(strings.Join(viewNames, ","))
+		viewNamesBV, err := sqltypes.BuildBindVariable(viewNames)
+		if err != nil {
+			return err
+		}
+		bindVars["view_names"] = viewNamesBV
 	}
 	return qre.generateFinalQueryAndStreamExecute(query, bindVars, func(result *sqltypes.Result) error {
 		schemaDef := make(map[string]string)

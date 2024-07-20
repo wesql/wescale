@@ -133,7 +133,7 @@ order by table_name, ordinal_position`
 	SelectAllViews = `select concat(table_schema,'.',table_name), updated_at from mysql.views`
 
 	// FetchUpdatedViews queries fetches information about updated views
-	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_name in ::viewnames and table_schema = :table_schema`
+	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_name in ::view_names and table_schema = :table_schema`
 
 	// FetchViews queries fetches all views
 	FetchViews = `select table_name, create_statement from mysql.views where table_schema = :table_schema`
