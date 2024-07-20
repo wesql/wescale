@@ -23,7 +23,7 @@ const DefaultFlavor = "MySQL56"
 // Schema Management
 const (
 	TableSchemaTracking = true
-	ViewSchemaTracking  = true
+	ViewSchemaTracking  = false
 
 	SignalSchemaChangeReloadIntervalSeconds = 5
 	// should configure this in vtgate.cnf
