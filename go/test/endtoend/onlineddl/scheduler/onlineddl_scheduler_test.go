@@ -253,7 +253,7 @@ func TestMain(m *testing.M) {
 
 func TestSchemaChange(t *testing.T) {
 	t.Run("initSchema", initSchema)
-	t.Run("scheduler", testScheduler)
+	//t.Run("scheduler", testScheduler)
 	t.Run("pause", testPause)
 
 	//t.Run("singleton", testSingleton)

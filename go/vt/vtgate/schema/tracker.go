@@ -382,13 +382,11 @@ func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHeal
 	}
 	success := true
 	if th.Stats.TableSchemaChanged != nil {
-		print("table schemas update: ", th.Stats.TableSchemaChanged, "\n")
 		success = t.updatedTableSchema(th, target)
 	}
 	if !success || th.Stats.ViewSchemaChanged == nil {
 		return success
 	}
-	print("view schemas update: ", th.Stats.ViewSchemaChanged, "\n")
 	// there is view definition change in the tablet
 	return t.updatedViewSchema(th, target)
 }
