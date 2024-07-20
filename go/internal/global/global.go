@@ -27,7 +27,7 @@ const (
 
 	SignalSchemaChangeReloadIntervalSeconds = 5
 	// should configure this in vtgate.cnf
-	HealthCheckTimeoutSeconds = 10
+	HealthCheckTimeoutSeconds = 60
 )
 
 const (
