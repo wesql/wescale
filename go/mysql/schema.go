@@ -53,48 +53,46 @@ const (
 
 	// DetectSchemaChange query detects if there is any schema change from previous copy.
 	DetectSchemaChange = `
-SELECT DISTINCT table_name
+SELECT DISTINCT table_schema,table_name
 FROM (
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM information_schema.columns
-	WHERE table_schema = database()
 
 	UNION ALL
 
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM mysql.schemacopy
-	WHERE table_schema = database()
+
 ) _inner
-GROUP BY table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+GROUP BY table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 HAVING COUNT(*) = 1
 `
 
 	// DetectSchemaChangeOnlyBaseTable query detects if there is any schema change from previous copy excluding view tables.
 	DetectSchemaChangeOnlyBaseTable = `
-SELECT DISTINCT table_name
+SELECT DISTINCT table_schema,table_name
 FROM (
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM information_schema.columns
-	WHERE table_schema = database() and table_name in (select table_name from information_schema.tables where table_schema = database() and table_type = 'BASE TABLE')
+	WHERE table_name in (select table_name from information_schema.tables where table_type = 'BASE TABLE')
 
 	UNION ALL
 
-	SELECT table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+	SELECT table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 	FROM mysql.schemacopy
-	WHERE table_schema = database()
+	
 ) _inner
-GROUP BY table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
+GROUP BY table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
 HAVING COUNT(*) = 1
 `
 
 	// ClearSchemaCopy query clears the schemacopy table.
-	ClearSchemaCopy = `delete from mysql.schemacopy where table_schema = database()`
+	ClearSchemaCopy = `delete from mysql.schemacopy`
 
 	// InsertIntoSchemaCopy query copies over the schema information from information_schema.columns table.
 	InsertIntoSchemaCopy = `insert mysql.schemacopy
 select table_schema, table_name, column_name, ordinal_position, character_set_name, collation_name, data_type, column_key
-from information_schema.columns
-where table_schema = database()`
+from information_schema.columns`
 
 	// fetchColumns are the columns we fetch
 	fetchColumns = "table_name, column_name, data_type, collation_name"
@@ -102,14 +100,13 @@ where table_schema = database()`
 	// FetchUpdatedTables queries fetches all information about updated tables
 	FetchUpdatedTables = `select  ` + fetchColumns + `
 from mysql.schemacopy
-where table_schema = database() and
-	table_name in ::tableNames
+where table_name in ::table_names and table_schema = :table_schema
 order by table_name, ordinal_position`
 
 	// FetchTables queries fetches all information about tables
 	FetchTables = `select ` + fetchColumns + `
 from mysql.schemacopy
-where table_schema = database()
+where table_schema = :table_schema
 order by table_name, ordinal_position`
 
 	// GetColumnNamesQueryPatternForTable is used for mocking queries in unit tests
@@ -119,28 +116,27 @@ order by table_name, ordinal_position`
 	InsertIntoViewsTable = `insert into mysql.views (
     table_schema,
 	table_name,
-	create_statement) values (database(), :table_name, :create_statement)`
+	create_statement) values (:table_schema, :table_name, :create_statement)`
 
 	ReplaceIntoViewsTable = `replace into mysql.views (
 	table_schema,
 	table_name,
-	create_statement) values (database(), :table_name, :create_statement)`
+	create_statement) values (:table_schema, :table_name, :create_statement)`
 
 	UpdateViewsTable = `update mysql.views 
 	set create_statement = :create_statement 
-	where table_schema = database() and table_name = :table_name`
+	where table_schema = :table_schema and table_name = :table_name`
 
-	DeleteFromViewsTable = `delete from mysql.views where table_schema = database() and table_name in ::table_name`
+	// DeleteFromViewsTableWithoutCondition the sql should be added pairs of table_schema and table_name before execution
+	DeleteFromViewsTableWithoutCondition = `delete from mysql.views`
 
-	SelectFromViewsTable = `select table_name from mysql.views where table_schema = database() and table_name in ::table_name`
-
-	SelectAllViews = `select table_name, updated_at from mysql.views where table_schema = database()`
+	SelectAllViews = `select concat(table_schema,'.',table_name), updated_at from mysql.views`
 
 	// FetchUpdatedViews queries fetches information about updated views
-	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_schema = database() and table_name in ::viewnames`
+	FetchUpdatedViews = `select table_name, create_statement from mysql.views where table_name in ::view_names and table_schema = :table_schema`
 
 	// FetchViews queries fetches all views
-	FetchViews = `select table_name, create_statement from mysql.views where table_schema = database()`
+	FetchViews = `select table_name, create_statement from mysql.views where table_schema = :table_schema`
 
 	FetchDbList = `select schema_name from information_schema.schemata`
 

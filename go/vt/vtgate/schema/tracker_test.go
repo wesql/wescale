@@ -242,7 +242,7 @@ func TestTrackingUnHealthyTablet(t *testing.T) {
 		{
 			name:        "initial load",
 			serving:     true,
-			updatedTbls: []string{"a"},
+			updatedTbls: []string{"ks.a"},
 		},
 		{
 			name:    "non serving tablet",
@@ -352,21 +352,21 @@ func TestViewsTracking(t *testing.T) {
 		exp      map[string]string
 	}{{
 		testName: "new views",
-		updView:  []string{"prior", "t1", "t2"},
+		updView:  []string{"ks.prior", "ks.t1", "ks.t2"},
 		exp: map[string]string{
 			"t1":    "select 1 from tbl1",
 			"t2":    "select 1 from tbl2",
 			"prior": "select 1 from tbl"},
 	}, {
 		testName: "delete prior, updated t2 and new t3",
-		updView:  []string{"prior", "t2", "t3"},
+		updView:  []string{"ks.prior", "ks.t2", "ks.t3"},
 		exp: map[string]string{
 			"t1": "select 1 from tbl1",
 			"t2": "select 1, 2 from tbl2",
 			"t3": "select 1 from tbl3"},
 	}, {
 		testName: "new t4",
-		updView:  []string{"t4"},
+		updView:  []string{"ks.t4"},
 		exp: map[string]string{
 			"t1": "select 1 from tbl1",
 			"t2": "select 1, 2 from tbl2",

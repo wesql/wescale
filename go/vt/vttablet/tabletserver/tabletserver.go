@@ -1467,7 +1467,7 @@ func (tsv *TabletServer) GetSchema(ctx context.Context, target *querypb.Target, 
 				logStats: logStats,
 				tsv:      tsv,
 			}
-			return qre.GetSchemaDefinitions(tableType, tableNames, callback)
+			return qre.GetSchemaDefinitions(target.Keyspace, tableType, tableNames, callback)
 		},
 	)
 	return

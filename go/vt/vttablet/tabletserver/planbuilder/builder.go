@@ -259,11 +259,9 @@ func analyzeViewsDDL(stmt sqlparser.DDLStatement) (*Plan, error) {
 		}
 		return &Plan{PlanID: PlanViewDDL, FullQuery: GenerateFullQuery(update), FullStmt: viewDDL}, nil
 	case *sqlparser.DropView:
-		del, err := sqlparser.Parse(mysql.DeleteFromViewsTable)
-		if err != nil {
-			return nil, err
-		}
-		return &Plan{PlanID: PlanViewDDL, FullQuery: GenerateFullQuery(del), FullStmt: viewDDL}, nil
+		// the fullQuery is useless in this case, we will generate final query in execDropViewDDL
+		// without using the fullQuery
+		return &Plan{PlanID: PlanViewDDL, FullStmt: viewDDL}, nil
 	}
 	return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "[BUG] unknown view DDL type: %T", stmt)
 }

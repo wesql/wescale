@@ -1,6 +1,6 @@
 [vtgate]
 gateway_initial_tablet_timeout        = 30s
-healthcheck_timeout                   = 2s
+healthcheck_timeout                   = 10s
 srv_topo_timeout                      = 1s
 grpc_keepalive_time                   = 10s
 grpc_keepalive_timeout                = 10s
