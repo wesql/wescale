@@ -37,6 +37,7 @@ var weScaleUrl string
 var embeddingModel string
 var embeddingUrl string
 
+var vectorStoreType string
 var vectorStoreUrl string
 var vectorStoreCollectionName string
 
@@ -63,7 +64,10 @@ func main() {
 	}
 	defer closeFunc()
 	// 2. Initialize the embedding service and the vector store.
-	initVectorStore()
+	err = initVectorStore()
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
 
 	// 3. Create a VStream request.
 	vgtid := &binlogdatapb.VGtid{
@@ -103,24 +107,16 @@ func main() {
 		for _, event := range eventList {
 			switch event.Type {
 			case binlogdatapb.VEventType_FIELD:
-				fmt.Printf("%v\n", event.FieldEvent.Fields)
 				fields = event.FieldEvent.Fields
 			case binlogdatapb.VEventType_ROW:
-				vals := sqltypes.MakeRowTrusted(fields, event.RowEvent.RowChanges[0].After)
-				fmt.Printf("%v\n", event.RowEvent.RowChanges)
-				fmt.Printf("%v\n", vals)
-
+				// 5. Embed the text and add it to the vector store.
 				res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
 					Fields: fields,
 					Rows: []*querypb.Row{
 						event.RowEvent.RowChanges[0].After,
 					},
 				})
-				fmt.Printf("%v\n", res)
-				// 5. Embed the text and add it to the vector store.
 				upsertVector(store, res)
-			default:
-				fmt.Printf("event type: %v\n", event.Type)
 			}
 		}
 	}
@@ -134,6 +130,7 @@ func init() {
 	pflag.StringVar(&weScaleUrl, "we-scale-url", "", "The WeScale URL.")
 	pflag.StringVar(&embeddingModel, "embedding-model", "", "The embedding model.")
 	pflag.StringVar(&embeddingUrl, "embedding-url", "", "The embedding URL.")
+	pflag.StringVar(&vectorStoreType, "vector-store-type", "", "The vector store type.")
 	pflag.StringVar(&vectorStoreUrl, "vector-store-url", "", "The vector store URL.")
 	pflag.StringVar(&vectorStoreCollectionName, "vector-store-collection-name", "", "The vector store collection name.")
 }
@@ -157,6 +154,9 @@ func checkFlags() error {
 	if embeddingUrl == "" {
 		return fmt.Errorf("embedding-url is required")
 	}
+	if vectorStoreType == "" {
+		return fmt.Errorf("vector-store-type is required")
+	}
 	if vectorStoreUrl == "" {
 		return fmt.Errorf("vector-store-url is required")
 	}
@@ -174,6 +174,7 @@ func test() {
 	weScaleUrl = "localhost:15991"
 	embeddingModel = "text-embedding-3-large"
 	embeddingUrl = "https://api.gptsapi.net/v1"
+	vectorStoreType = "qdrant"
 	vectorStoreUrl = "http://127.0.0.1:6333/"
 	vectorStoreCollectionName = "t1_vector"
 }
@@ -190,9 +191,9 @@ func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
 	return client, closeFunc, nil
 }
 
-func initVectorStore() vectorstores.VectorStore {
+func initVectorStore() error {
 	if store != nil {
-		return store
+		return nil
 	}
 	opts := []openai.Option{
 		openai.WithEmbeddingModel(embeddingModel),
@@ -200,18 +201,18 @@ func initVectorStore() vectorstores.VectorStore {
 	}
 	llm, err := openai.New(opts...)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	e, err := embeddings.NewEmbedder(llm)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Create a new Qdrant vector store.
 	url, err := url.Parse(vectorStoreUrl)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	s, err := qdrant.New(
 		qdrant.WithURL(*url),
@@ -219,11 +220,11 @@ func initVectorStore() vectorstores.VectorStore {
 		qdrant.WithEmbedder(e),
 	)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	store = &s
-	return store
+	return nil
 }
 
 func upsertVector(store vectorstores.VectorStore, result *sqltypes.Result) {
