@@ -7,6 +7,8 @@ const AbiVersion = "v1alpha1"
 const WASMER = "wamser-go"
 const WAZERO = "wazero"
 
+const WasmBinaryTableName = "mysql.wasm_binary"
+
 func ptrToString(ptr uint32, size uint32) string {
 	return unsafe.String((*byte)(unsafe.Pointer(uintptr(ptr))), size)
 }
