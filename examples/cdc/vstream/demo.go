@@ -7,17 +7,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net/url"
+
 	"vitess.io/vitess/go/sqltypes"
 	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	_ "vitess.io/vitess/go/vt/vtctl/grpcvtctlclient"
-	_ "vitess.io/vitess/go/vt/vtgate/grpcvtgateconn"
-	"vitess.io/vitess/go/vt/vtgate/vtgateconn"
+	"vitess.io/vitess/go/vt/proto/vtgateservice"
 
 	"github.com/tmc/langchaingo/embeddings"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -25,13 +25,15 @@ import (
 	"github.com/tmc/langchaingo/vectorstores/qdrant"
 )
 
+var store *qdrant.Store
+
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
 // insert into t1 (c2) values ('I want you to act as an interviewer.');
 func main() {
 
-	getOrInitVectorStore()
+	initVectorStore()
 
 	vgtid := &binlogdatapb.VGtid{
 		ShardGtids: []*binlogdatapb.ShardGtid{{
@@ -46,20 +48,31 @@ func main() {
 			Filter: "select * from t1",
 		}},
 	}
-	conn, err := vtgateconn.DialProtocol(context.Background(), "grpc", "localhost:15991")
+	// 连接到 vtgate 服务
+	conn, err := grpc.Dial("127.0.0.1:15991", grpc.WithInsecure())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to connect to vtgate: %v", err)
 	}
+	defer conn.Close()
+
+	// 创建 vtgate 客户端
+	client := vtgateservice.NewVitessClient(conn)
 	defer conn.Close()
 	flags := &vtgatepb.VStreamFlags{
 		//MinimizeSkew:      false,
 		//HeartbeatInterval: 60, //seconds
 	}
-	reader, err := conn.VStream(context.Background(), topodatapb.TabletType_PRIMARY, vgtid, filter, flags)
+	req := &vtgatepb.VStreamRequest{
+		TabletType: topodatapb.TabletType_PRIMARY,
+		Vgtid:      vgtid,
+		Filter:     filter,
+		Flags:      flags,
+	}
+	reader, err := client.VStream(context.Background(), req)
 
 	var fields []*querypb.Field
 	for {
-		eventList, err := reader.Recv()
+		resp, err := reader.Recv()
 		if err == io.EOF {
 			fmt.Printf("stream ended\n")
 			return
@@ -68,6 +81,7 @@ func main() {
 			fmt.Printf("error: %v\n", err)
 			return
 		}
+		eventList := resp.Events
 		for _, event := range eventList {
 			switch event.Type {
 			case binlogdatapb.VEventType_FIELD:
@@ -93,9 +107,7 @@ func main() {
 	}
 }
 
-var store *qdrant.Store
-
-func getOrInitVectorStore() *qdrant.Store {
+func initVectorStore() *qdrant.Store {
 	if store != nil {
 		return store
 	}
