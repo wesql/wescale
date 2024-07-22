@@ -43,6 +43,9 @@ var vectorStoreCollectionName string
 
 var store vectorstores.VectorStore
 
+// GOOS=wasip1 GOARCH=wasm go build -o demo.wasm demo.go
+// wasmtime demo.wasm --env OPENAI_API_KEY=xxx
+
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
@@ -90,6 +93,9 @@ func main() {
 		Flags:      flags,
 	}
 	reader, err := client.VStream(context.Background(), req)
+	if err != nil {
+		log.Fatalf("failed to create vstream: %v", err)
+	}
 
 	// 4. Read the stream and process the events.
 	var fields []*querypb.Field
@@ -171,7 +177,7 @@ func test() {
 	tableName = "t1"
 	filterStatement = "select * from t1"
 	gtid = ""
-	weScaleUrl = "localhost:15991"
+	weScaleUrl = "127.0.0.1:15991"
 	embeddingModel = "text-embedding-3-large"
 	embeddingUrl = "https://api.gptsapi.net/v1"
 	vectorStoreType = "qdrant"
