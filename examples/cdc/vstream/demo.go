@@ -14,12 +14,12 @@ import (
 	"log"
 	"net/url"
 
-	"vitess.io/vitess/go/sqltypes"
-	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
-	querypb "vitess.io/vitess/go/vt/proto/query"
-	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
-	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
-	"vitess.io/vitess/go/vt/proto/vtgateservice"
+	"github.com/wesql/sqlparser/go/sqltypes"
+	binlogdatapb "github.com/wesql/sqlparser/go/vt/proto/binlogdata"
+	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
+	topodatapb "github.com/wesql/sqlparser/go/vt/proto/topodata"
+	vtgatepb "github.com/wesql/sqlparser/go/vt/proto/vtgate"
+	"github.com/wesql/sqlparser/go/vt/proto/vtgateservice"
 
 	"github.com/tmc/langchaingo/embeddings"
 	"github.com/tmc/langchaingo/llms/openai"

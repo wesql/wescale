@@ -20,6 +20,9 @@
 *.result
 *.y
 *.cnf
+*.mod
+*.sum
+
 go.mod
 go.sum
 .github/*
