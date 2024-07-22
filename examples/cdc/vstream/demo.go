@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/tmc/langchaingo/vectorstores"
 	"google.golang.org/grpc"
 	"io"
 	"log"
@@ -25,7 +26,7 @@ import (
 	"github.com/tmc/langchaingo/vectorstores/qdrant"
 )
 
-var store *qdrant.Store
+var store vectorstores.VectorStore
 
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
@@ -99,7 +100,7 @@ func main() {
 					},
 				})
 				fmt.Printf("%v\n", res)
-				upsertVector(*store, res)
+				upsertVector(store, res)
 			default:
 				fmt.Printf("event type: %v\n", event.Type)
 			}
@@ -107,7 +108,7 @@ func main() {
 	}
 }
 
-func initVectorStore() *qdrant.Store {
+func initVectorStore() vectorstores.VectorStore {
 	if store != nil {
 		return store
 	}
@@ -144,7 +145,7 @@ func initVectorStore() *qdrant.Store {
 	return store
 }
 
-func upsertVector(store qdrant.Store, result *sqltypes.Result) {
+func upsertVector(store vectorstores.VectorStore, result *sqltypes.Result) {
 	// Convert the row values to a single string.
 	text := ""
 	for s, value := range result.Named().Row() {
