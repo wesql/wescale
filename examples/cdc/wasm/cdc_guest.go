@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/tmc/langchaingo/vectorstores"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"net/url"
 
 	"github.com/wesql/sqlparser/go/sqltypes"
@@ -212,9 +214,15 @@ func initVectorStore() error {
 	if store != nil {
 		return nil
 	}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext:     wasip1.DialContext,
+	}
+	httpClient := &http.Client{Transport: tr}
 	opts := []openai.Option{
 		openai.WithEmbeddingModel(embeddingModel),
 		openai.WithBaseURL(embeddingUrl),
+		openai.WithHTTPClient(httpClient),
 	}
 	llm, err := openai.New(opts...)
 	if err != nil {
