@@ -798,3 +798,10 @@ func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
 	defaultReadWriteSplitForReadOnlyTxnUserInput = val
 	return nil
 }
+
+func GetExecutor() *Executor {
+	if rpcVTGate == nil {
+		return nil
+	}
+	return rpcVTGate.executor
+}

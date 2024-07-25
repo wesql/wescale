@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS mysql.wescale_plugin
     `name`                            varchar(256) NOT NULL,
     `description`                     text,
     `priority`                        int NOT NULL DEFAULT 1000,
-    `status`                          varchar(64) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE, INACTIVE, DRY_RUN',
+    `status`                          varchar(64) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE, INACTIVE',
     `plans`                           text,
     `fully_qualified_table_names`     text,
     `query_regex`                     text,
