@@ -7,6 +7,7 @@ import (
 	"time"
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
+	"vitess.io/vitess/go/vt/vtgate"
 )
 
 var (
@@ -24,7 +25,7 @@ func init() {
 			log.Info("CDC Consumer is disabled")
 			return
 		}
-		cdcConsumerController = NewCdcConsumerController()
+		cdcConsumerController = NewCdcConsumerController(vtgate.GetExecutor())
 		cdcConsumerController.start()
 	})
 
@@ -47,19 +48,28 @@ type CdcConsumerController struct {
 	mu         sync.Mutex
 
 	consumer map[string]*CdcConsumer
+	executor *vtgate.Executor
 }
 
 type CdcConsumer struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
 
+	id               int64
+	name             string
+	enable           bool
+	wasm_binary_name string
+	cdcType          string
+	env              string
+
 	wasiRuntimeContext *WasiRuntimeContext
 }
 
-func NewCdcConsumerController() *CdcConsumerController {
+func NewCdcConsumerController(e *vtgate.Executor) *CdcConsumerController {
 	w := &CdcConsumerController{}
 	w.ctx, w.cancelFunc = context.WithCancel(context.Background())
 	w.consumer = make(map[string]*CdcConsumer)
+	w.executor = e
 	return w
 }
 
@@ -91,14 +101,38 @@ func (cr *CdcConsumerController) stop() {
 func (cr *CdcConsumerController) reloadCdcConsumer() error {
 	cr.mu.Lock()
 
-	context.WithCancel(cr.ctx)
-	consumer := &CdcConsumer{}
-	consumer.ctx, consumer.cancelFunc = context.WithCancel(cr.ctx)
-	consumer.wasiRuntimeContext = NewWasiRuntimeContext()
-	cr.consumer["test"] = consumer
-	defer consumer.wasiRuntimeContext.run()
+	qr, err := cr.executor.QueryCdcConsumer()
+	if err != nil {
+		return err
+	}
+	for _, row := range qr.Named().Rows {
 
+		id := row.AsInt64("id", 0)
+		name := row.AsString("name", "")
+		enable := row.AsBool("enable", false)
+		wasm_binary_name := row.AsString("wasm_binary_name", "")
+		cdcType := row.AsString("type", "")
+		env := row.AsString("env", "")
+
+		if !enable || cdcType != "cdc_consumer" {
+			continue
+		}
+
+		consumer := &CdcConsumer{
+			id:               id,
+			name:             name,
+			enable:           enable,
+			wasm_binary_name: wasm_binary_name,
+			cdcType:          cdcType,
+			env:              env,
+		}
+		consumer.ctx, consumer.cancelFunc = context.WithCancel(cr.ctx)
+		//consumer.wasiRuntimeContext = NewWasiRuntimeContext()
+
+		cr.consumer[name] = consumer
+	}
+
+	//defer consumer.wasiRuntimeContext.run()
 	cr.mu.Unlock()
-
 	return nil
 }

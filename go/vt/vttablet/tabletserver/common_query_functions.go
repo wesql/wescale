@@ -34,6 +34,8 @@ func (tsv *TabletServer) CommonQuery(_ context.Context, queryFunctionName string
 		return tsv.qe.TabletsPlans(tsv.alias)
 	case "HandleWescaleFilterRequest":
 		return tsv.qe.HandleWescaleFilterRequest(queryFunctionArgs["sql"].(string), queryFunctionArgs["isPrimary"].(bool))
+	case "QueryCdcConsumer":
+		return tsv.qe.QueryCdcConsumer()
 	default:
 		return nil, fmt.Errorf("query function %s not found", queryFunctionName)
 	}
@@ -137,4 +139,9 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*
 	}
 
 	return nil, fmt.Errorf("stmt type is not support: %v", stmt)
+}
+
+func (qe *QueryEngine) QueryCdcConsumer() (*sqltypes.Result, error) {
+	queryString := "select * from mysql.cdc_consumer"
+	return qe.ExecuteQuery(context.Background(), queryString)
 }

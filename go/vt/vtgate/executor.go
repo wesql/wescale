@@ -1629,20 +1629,21 @@ func (e *Executor) SetFailPoint(command string, key string, value string) error 
 	return nil
 }
 
-func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
-	ctx := context.Background()
-	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
-	var th *discovery.TabletHealth
-	findPrimary := false
+func findHealthyPrimaryTablet(hc discovery.HealthCheck) (*discovery.TabletHealth, error) {
+	healthyTablets := hc.GetAllHealthyTabletStats()
 	for _, tablet := range healthyTablets {
 		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
-			th = tablet
-			findPrimary = true
-			break
+			return tablet, nil
 		}
 	}
-	if !findPrimary {
-		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
+	return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
+}
+
+func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error) {
+	ctx := context.Background()
+	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+	if err != nil {
+		return nil, err
 	}
 
 	return th.Conn.SubmitDMLJob(ctx, command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone, timeGapInMs, batchSize, postponeLaunch, failPolicy, throttleDuration, throttleRatio)
@@ -1650,52 +1651,46 @@ func (e *Executor) SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart
 
 func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, error) {
 	ctx := context.Background()
-	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
-	var th *discovery.TabletHealth
-	findPrimary := false
-	for _, tablet := range healthyTablets {
-		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
-			th = tablet
-			findPrimary = true
-			break
-		}
-	}
-	if !findPrimary {
-		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
+	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+	if err != nil {
+		return nil, err
 	}
 
 	return th.Conn.ShowDMLJob(ctx, uuid, showDetails)
 }
 
+func (e *Executor) QueryCdcConsumer() (*sqltypes.Result, error) {
+	ctx := context.Background()
+	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+	if err != nil {
+		return nil, err
+	}
+	rst, err := th.Conn.CommonQuery(ctx, "QueryCdcConsumer", nil)
+
+	return rst, nil
+}
+
 func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
 	ctx := context.Background()
-	healthyTablets := e.scatterConn.gateway.hc.GetAllHealthyTabletStats()
-
-	findPrimary := false
 	args := make(map[string]any)
 	args["sql"] = sql
 	args["isPrimary"] = true
 	var rst *sqltypes.Result
 	var rstErr error
 	var primaryAlias *topodatapb.TabletAlias
-	for _, tablet := range healthyTablets {
-		if tablet.Tablet.Type == topodatapb.TabletType_PRIMARY {
-			findPrimary = true
-			rst, rstErr = tablet.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
-			primaryAlias = tablet.Tablet.Alias
-			break
-		}
+
+	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+	if err != nil {
+		return nil, err
 	}
-	if !findPrimary {
-		return nil, vterrors.Errorf(vtrpcpb.Code_FAILED_PRECONDITION, "no primary tablet found")
-	}
+	rst, rstErr = th.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
 	if rstErr != nil {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "err when sending wescale filter request to primary: %v", rstErr)
+		return nil, rstErr
 	}
 
 	// after sending request to primary successfully, notify others (there may be two primary tablets in wescale at the same time, so we compare the tablet alias)
 	args["isPrimary"] = false
-	for _, tablet := range healthyTablets {
+	for _, tablet := range e.scatterConn.gateway.hc.GetAllHealthyTabletStats() {
 		if tablet.Tablet.Alias != primaryAlias {
 			_, rstErr = tablet.Conn.CommonQuery(ctx, "HandleWescaleFilterRequest", args)
 			if rstErr != nil {
