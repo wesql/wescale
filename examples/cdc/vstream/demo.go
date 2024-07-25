@@ -1,3 +1,5 @@
+//go:build wasip1
+
 /*
 Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
@@ -6,12 +8,16 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/tmc/langchaingo/vectorstores"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"log"
+	"net"
+	"net/http"
 	"net/url"
 
 	"github.com/wesql/sqlparser/go/sqltypes"
@@ -25,6 +31,9 @@ import (
 	"github.com/tmc/langchaingo/llms/openai"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/vectorstores/qdrant"
+
+	_ "github.com/stealthrocket/net/http"
+	"github.com/stealthrocket/net/wasip1"
 )
 
 var tableSchema string
@@ -32,7 +41,7 @@ var tableName string
 var filterStatement string
 var gtid string
 
-var weScaleUrl string
+var wescaleURL string
 
 var embeddingModel string
 var embeddingUrl string
@@ -44,7 +53,7 @@ var vectorStoreCollectionName string
 var store vectorstores.VectorStore
 
 // GOOS=wasip1 GOARCH=wasm go build -o demo.wasm demo.go
-// wasmtime demo.wasm --env OPENAI_API_KEY=xxx
+// wasirun --env OPENAI_API_KEY=xxx demo.wasm
 
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
@@ -122,6 +131,7 @@ func main() {
 						event.RowEvent.RowChanges[0].After,
 					},
 				})
+				print("row: ", res, "\n")
 				upsertVector(store, res)
 			}
 		}
@@ -133,7 +143,7 @@ func init() {
 	pflag.StringVar(&tableName, "table-name", "", "The table name.")
 	pflag.StringVar(&filterStatement, "filter-statement", "", "The filter statement.")
 	pflag.StringVar(&gtid, "gtid", "", "The GTID.")
-	pflag.StringVar(&weScaleUrl, "we-scale-url", "", "The WeScale URL.")
+	pflag.StringVar(&wescaleURL, "we-scale-url", "", "The WeScale URL.")
 	pflag.StringVar(&embeddingModel, "embedding-model", "", "The embedding model.")
 	pflag.StringVar(&embeddingUrl, "embedding-url", "", "The embedding URL.")
 	pflag.StringVar(&vectorStoreType, "vector-store-type", "", "The vector store type.")
@@ -151,7 +161,7 @@ func checkFlags() error {
 	if filterStatement == "" {
 		return fmt.Errorf("filter-statement is required")
 	}
-	if weScaleUrl == "" {
+	if wescaleURL == "" {
 		return fmt.Errorf("we-scale-url is required")
 	}
 	if embeddingModel == "" {
@@ -177,7 +187,7 @@ func test() {
 	tableName = "t1"
 	filterStatement = "select * from t1"
 	gtid = ""
-	weScaleUrl = "127.0.0.1:15991"
+	wescaleURL = "127.0.0.1:15991"
 	embeddingModel = "text-embedding-3-large"
 	embeddingUrl = "https://api.gptsapi.net/v1"
 	vectorStoreType = "qdrant"
@@ -186,7 +196,12 @@ func test() {
 }
 
 func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
-	conn, err := grpc.Dial(weScaleUrl, grpc.WithInsecure())
+	conn, err := grpc.Dial(wescaleURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, address string) (net.Conn, error) {
+			return wasip1.DialContext(ctx, "tcp", address)
+		}),
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to vtgate: %v", err)
 	}
@@ -201,9 +216,15 @@ func initVectorStore() error {
 	if store != nil {
 		return nil
 	}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		DialContext:     wasip1.DialContext,
+	}
+	httpClient := &http.Client{Transport: tr}
 	opts := []openai.Option{
 		openai.WithEmbeddingModel(embeddingModel),
 		openai.WithBaseURL(embeddingUrl),
+		openai.WithHTTPClient(httpClient),
 	}
 	llm, err := openai.New(opts...)
 	if err != nil {

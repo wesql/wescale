@@ -6,6 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/spf13/pflag v1.0.5
+	github.com/stealthrocket/net v0.2.1
 	github.com/tmc/langchaingo v0.1.12
 	github.com/wesql/sqlparser v0.1.7
 	google.golang.org/grpc v1.65.0
