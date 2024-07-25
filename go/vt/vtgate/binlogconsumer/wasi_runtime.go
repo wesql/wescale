@@ -10,7 +10,6 @@ import (
 	"github.com/tetratelabs/wazero"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 )
 
