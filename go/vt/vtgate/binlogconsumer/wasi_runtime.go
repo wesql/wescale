@@ -43,10 +43,11 @@ type WasiRuntimeContext struct {
 
 func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte, logger *log.Logger) *WasiRuntimeContext {
 	return &WasiRuntimeContext{
-		wasmName:         wasmBinaryName,
-		wasmProgram:      wasmBytes,
-		wasmArgs:         []string{},
-		envs:             envList,
+		wasmName:    wasmBinaryName,
+		wasmProgram: wasmBytes,
+		wasmArgs:    []string{},
+		envs:        envList,
+		// todo cdc: we need to provide minimal set of directories for CDC WASM Program
 		dirs:             stringList{"/"},
 		listens:          stringList{},
 		dials:            stringList{},
