@@ -131,7 +131,6 @@ func main() {
 						event.RowEvent.RowChanges[0].After,
 					},
 				})
-				print("row: ", res, "\n")
 				upsertVector(store, res)
 			}
 		}
@@ -139,16 +138,16 @@ func main() {
 }
 
 func init() {
-	pflag.StringVar(&tableSchema, "table-schema", "", "The table schema.")
-	pflag.StringVar(&tableName, "table-name", "", "The table name.")
-	pflag.StringVar(&filterStatement, "filter-statement", "", "The filter statement.")
-	pflag.StringVar(&gtid, "gtid", "", "The GTID.")
-	pflag.StringVar(&wescaleURL, "we-scale-url", "", "The WeScale URL.")
-	pflag.StringVar(&embeddingModel, "embedding-model", "", "The embedding model.")
-	pflag.StringVar(&embeddingUrl, "embedding-url", "", "The embedding URL.")
-	pflag.StringVar(&vectorStoreType, "vector-store-type", "", "The vector store type.")
-	pflag.StringVar(&vectorStoreUrl, "vector-store-url", "", "The vector store URL.")
-	pflag.StringVar(&vectorStoreCollectionName, "vector-store-collection-name", "", "The vector store collection name.")
+	pflag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
+	pflag.StringVar(&tableName, "TABLE_NAME", "", "The table name.")
+	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
+	pflag.StringVar(&gtid, "GTID", "", "The GTID.")
+	pflag.StringVar(&wescaleURL, "WESCALE_URL", "", "The WeScale URL.")
+	pflag.StringVar(&embeddingModel, "EMBEDDING_MODEL", "", "The embedding model.")
+	pflag.StringVar(&embeddingUrl, "EMBEDDING_URL", "", "The embedding URL.")
+	pflag.StringVar(&vectorStoreType, "VECTOR_STORE_TYPE", "", "The vector store type.")
+	pflag.StringVar(&vectorStoreUrl, "VECTOR_STORE_URL", "", "The vector store URL.")
+	pflag.StringVar(&vectorStoreCollectionName, "VECTOR_STORE_COLLECTION_NAME", "", "The vector store collection name.")
 }
 
 func checkFlags() error {
@@ -221,6 +220,8 @@ func initVectorStore() error {
 		DialContext:     wasip1.DialContext,
 	}
 	httpClient := &http.Client{Transport: tr}
+	// todo cdc: we need to let the user to choose the embedding provider. Currently, we only support OpenAI. We need to add support for other providers.
+	// see github.com/tmc/langchaingo/embeddings for more providers.
 	opts := []openai.Option{
 		openai.WithEmbeddingModel(embeddingModel),
 		openai.WithBaseURL(embeddingUrl),
@@ -241,6 +242,8 @@ func initVectorStore() error {
 	if err != nil {
 		return err
 	}
+	// todo cdc: we need to let the user to choose the vector store. Currently, we only support Qdrant. We need to add support for other vector stores.
+	// see github.com/tmc/langchaingo/vectorstores for more providers.
 	s, err := qdrant.New(
 		qdrant.WithURL(*url),
 		qdrant.WithCollectionName(vectorStoreCollectionName),

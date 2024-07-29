@@ -2,6 +2,8 @@ package binlogconsumer
 
 import (
 	"context"
+	"github.com/golang/glog"
+	stdLog "log"
 	"strings"
 	"sync"
 	"time"
@@ -55,6 +57,8 @@ type CdcConsumer struct {
 
 	wasiRuntimeContext *WasiRuntimeContext
 	err                error
+
+	logger *stdLog.Logger
 }
 
 func NewCdcConsumerController(svc queryservice.QueryService) *CdcConsumerController {
@@ -122,6 +126,7 @@ func (cr *CdcConsumerController) reloadCdcConsumer() error {
 			wasmBinaryName: wasmBinaryName,
 			tag:            tag,
 			env:            env,
+			logger:         glog.NewStandardLogger("INFO"),
 		}
 		consumer.ctx, consumer.cancelFunc = context.WithCancel(cr.ctx)
 		cr.consumer[name] = consumer
@@ -148,7 +153,7 @@ func (cc *CdcConsumer) loadAndRunWasm() {
 		return
 	}
 
-	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, strings.Split(cc.env, " "), bytes)
+	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, strings.Split(cc.env, " "), bytes, cc.logger)
 	cc.wasiRuntimeContext = wrc
 	err = wrc.run(cc.ctx)
 	if err != nil {
