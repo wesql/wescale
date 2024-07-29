@@ -4,13 +4,14 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/stealthrocket/wasi-go/imports/wasi_http"
 	"github.com/tetratelabs/wazero"
-	"net"
-	"net/http"
-	"os"
 )
 
 // WasiRuntimeContext is a struct that holds the configuration for the WASI runtime.
@@ -37,16 +38,12 @@ type WasiRuntimeContext struct {
 	maxOpenDirs      int
 }
 
-//go:embed demo.wasm
-var demo []byte
-
-// todo earayu: remove embed demo.wasm
-func NewWasiRuntimeContext() *WasiRuntimeContext {
+func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte) *WasiRuntimeContext {
 	return &WasiRuntimeContext{
-		wasmName:         "demo",
-		wasmProgram:      demo,
+		wasmName:         wasmBinaryName,
+		wasmProgram:      wasmBytes,
 		wasmArgs:         []string{},
-		envs:             stringList{""},
+		envs:             envList,
 		dirs:             stringList{"/"},
 		listens:          stringList{},
 		dials:            stringList{},
@@ -64,7 +61,7 @@ func NewWasiRuntimeContext() *WasiRuntimeContext {
 	}
 }
 
-func (config *WasiRuntimeContext) run() error {
+func (config *WasiRuntimeContext) run(ctx context.Context) error {
 	if config.dnsServer != "" {
 		_, dnsServerPort, _ := net.SplitHostPort(config.dnsServer)
 		net.DefaultResolver.PreferGo = true
@@ -86,8 +83,7 @@ func (config *WasiRuntimeContext) run() error {
 		go http.ListenAndServe(config.pprofAddr, nil)
 	}
 
-	ctx := context.Background()
-	runtime := wazero.NewRuntime(ctx)
+	runtime := wazero.NewRuntimeWithConfig(ctx, wazero.NewRuntimeConfig().WithCloseOnContextDone(true))
 	defer runtime.Close(ctx)
 
 	wasmModule, err := runtime.CompileModule(ctx, config.wasmProgram)

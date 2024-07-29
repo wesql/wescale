@@ -1659,17 +1659,6 @@ func (e *Executor) ShowDMLJob(uuid string, showDetails bool) (*sqltypes.Result, 
 	return th.Conn.ShowDMLJob(ctx, uuid, showDetails)
 }
 
-func (e *Executor) QueryCdcConsumer() (*sqltypes.Result, error) {
-	ctx := context.Background()
-	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
-	if err != nil {
-		return nil, err
-	}
-	rst, err := th.Conn.CommonQuery(ctx, "QueryCdcConsumer", nil)
-
-	return rst, nil
-}
-
 func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error) {
 	ctx := context.Background()
 	args := make(map[string]any)

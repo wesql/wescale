@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS mysql.cdc_consumer
     `enable`                          tinyint(1) NOT NULL DEFAULT 1,
     `name`                            varchar(256) NOT NULL,
     `wasm_binary_name`                varchar(256) NOT NULL,
-    `type`                            varchar(256) NOT NULL COMMENT 'vector,redis',
+    `tag`                             varchar(256) NOT NULL COMMENT 'vector,redis',
     `env`                             TEXT DEFAULT NULL,
---     todo start_position/pk, current_position/pk, end_position/pk, status
+--     todo begin_position/pk, current_position/pk, end_position/pk, status
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
 ) ENGINE = InnoDB;
