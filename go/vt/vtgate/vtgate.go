@@ -35,6 +35,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/vtgate/binlogconsumer"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/mysql"
@@ -57,7 +59,6 @@ import (
 	"vitess.io/vitess/go/vt/srvtopo"
 	"vitess.io/vitess/go/vt/topo/topoproto"
 	"vitess.io/vitess/go/vt/vterrors"
-	_ "vitess.io/vitess/go/vt/vtgate/binlogconsumer"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 	"vitess.io/vitess/go/vt/vtgate/vtgateservice"
 
@@ -314,6 +315,15 @@ func Init(
 	}
 	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
+	if binlogconsumer.EnableCdcConsumer {
+		cdcConsumerController := binlogconsumer.NewCdcConsumerController(gw)
+		servenv.OnRun(func() {
+			cdcConsumerController.Start()
+		})
+		servenv.OnTerm(func() {
+			cdcConsumerController.Stop()
+		})
 	}
 	cacheCfg := &cache.Config{
 		MaxEntries:     queryPlanCacheSize,
@@ -799,9 +809,9 @@ func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
 	return nil
 }
 
-func GetExecutor() *Executor {
+func GetGateway() *TabletGateway {
 	if rpcVTGate == nil {
 		return nil
 	}
-	return rpcVTGate.executor
+	return rpcVTGate.gw
 }

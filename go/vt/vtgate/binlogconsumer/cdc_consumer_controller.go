@@ -2,43 +2,31 @@ package binlogconsumer
 
 import (
 	"context"
-	"github.com/spf13/pflag"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/spf13/pflag"
+
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/vt/log"
+	querypb "vitess.io/vitess/go/vt/proto/query"
+	"vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/servenv"
-	"vitess.io/vitess/go/vt/vtgate"
+	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
 var (
-	enableCdcConsumer         = true
+	EnableCdcConsumer         = true
 	cdcConsumerReloadInterval = 10 * time.Second
 )
 
-var cdcConsumerController *CdcConsumerController
-
 func init() {
-	servenv.OnParseFor("vtgate", registerCdcConsumerFlags)
-
-	servenv.OnRun(func() {
-		if !enableCdcConsumer {
-			log.Info("CDC Consumer is disabled")
-			return
-		}
-		cdcConsumerController = NewCdcConsumerController(vtgate.GetExecutor())
-		cdcConsumerController.start()
-	})
-
-	servenv.OnClose(func() {
-		if !enableCdcConsumer {
-			return
-		}
-		cdcConsumerController.stop()
-	})
+	servenv.OnParseFor("vtgate", RegisterCdcConsumerFlags)
 }
 
-func registerCdcConsumerFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(&enableCdcConsumer, "enable_cdc_consumer", enableCdcConsumer, "enable CDC Consumer")
+func RegisterCdcConsumerFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&EnableCdcConsumer, "enable_cdc_consumer", EnableCdcConsumer, "enable CDC Consumer")
 	fs.DurationVar(&cdcConsumerReloadInterval, "cdc_consumer_reload_interval", cdcConsumerReloadInterval, "reload interval for CDC Consumer")
 }
 
@@ -48,32 +36,36 @@ type CdcConsumerController struct {
 	mu         sync.Mutex
 
 	consumer map[string]*CdcConsumer
-	executor *vtgate.Executor
+	svc      queryservice.QueryService
 }
 
 type CdcConsumer struct {
 	ctx        context.Context
 	cancelFunc context.CancelFunc
+	mu         sync.Mutex
 
-	id               int64
-	name             string
-	enable           bool
-	wasm_binary_name string
-	cdcType          string
-	env              string
+	svc queryservice.QueryService
+
+	id             int64
+	name           string
+	enable         bool
+	wasmBinaryName string
+	tag            string
+	env            string
 
 	wasiRuntimeContext *WasiRuntimeContext
+	err                error
 }
 
-func NewCdcConsumerController(e *vtgate.Executor) *CdcConsumerController {
+func NewCdcConsumerController(svc queryservice.QueryService) *CdcConsumerController {
 	w := &CdcConsumerController{}
 	w.ctx, w.cancelFunc = context.WithCancel(context.Background())
 	w.consumer = make(map[string]*CdcConsumer)
-	w.executor = e
+	w.svc = svc
 	return w
 }
 
-func (cr *CdcConsumerController) start() {
+func (cr *CdcConsumerController) Start() {
 	go func() {
 		intervalTicker := time.NewTicker(cdcConsumerReloadInterval)
 		defer intervalTicker.Stop()
@@ -93,15 +85,19 @@ func (cr *CdcConsumerController) start() {
 	}()
 }
 
-func (cr *CdcConsumerController) stop() {
+func (cr *CdcConsumerController) Stop() {
 	cr.cancelFunc()
 }
 
-// todo: implement this methods, currently it is just a stub
 func (cr *CdcConsumerController) reloadCdcConsumer() error {
 	cr.mu.Lock()
 
-	qr, err := cr.executor.QueryCdcConsumer()
+	target := &querypb.Target{
+		Keyspace:   global.DefaultKeyspace,
+		Shard:      global.DefaultShard,
+		TabletType: topodata.TabletType_PRIMARY,
+	}
+	qr, err := cr.svc.ExecuteInternal(cr.ctx, target, "select * from mysql.cdc_consumer", nil, 0, 0, nil)
 	if err != nil {
 		return err
 	}
@@ -110,29 +106,53 @@ func (cr *CdcConsumerController) reloadCdcConsumer() error {
 		id := row.AsInt64("id", 0)
 		name := row.AsString("name", "")
 		enable := row.AsBool("enable", false)
-		wasm_binary_name := row.AsString("wasm_binary_name", "")
-		cdcType := row.AsString("type", "")
+		wasmBinaryName := row.AsString("wasm_binary_name", "")
+		tag := row.AsString("tag", "")
 		env := row.AsString("env", "")
 
-		if !enable || cdcType != "cdc_consumer" {
+		if !enable {
 			continue
 		}
 
 		consumer := &CdcConsumer{
-			id:               id,
-			name:             name,
-			enable:           enable,
-			wasm_binary_name: wasm_binary_name,
-			cdcType:          cdcType,
-			env:              env,
+			svc:            cr.svc,
+			id:             id,
+			name:           name,
+			enable:         enable,
+			wasmBinaryName: wasmBinaryName,
+			tag:            tag,
+			env:            env,
 		}
 		consumer.ctx, consumer.cancelFunc = context.WithCancel(cr.ctx)
-		//consumer.wasiRuntimeContext = NewWasiRuntimeContext()
-
 		cr.consumer[name] = consumer
+
+		go consumer.loadAndRunWasm()
 	}
 
-	//defer consumer.wasiRuntimeContext.run()
 	cr.mu.Unlock()
 	return nil
+}
+
+func (cc *CdcConsumer) loadAndRunWasm() {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	if cc.wasiRuntimeContext != nil || cc.err != nil {
+		// already running or completed/failed
+		return
+	}
+
+	bytes, err := GetWasmBytesByBinaryName(cc.ctx, cc.wasmBinaryName, cc.svc)
+	if err != nil {
+		cc.err = err
+		log.Errorf("Failed to get cdc consumer wasm: %v", err)
+		return
+	}
+
+	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, strings.Split(cc.env, " "), bytes)
+	cc.wasiRuntimeContext = wrc
+	err = wrc.run(cc.ctx)
+	if err != nil {
+		cc.err = err
+		log.Errorf("Failed to run cdc consumer wasm: %v", err)
+	}
 }
