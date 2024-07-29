@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -36,9 +37,11 @@ type WasiRuntimeContext struct {
 	nonBlockingStdio bool
 	maxOpenFiles     int
 	maxOpenDirs      int
+
+	logger *log.Logger
 }
 
-func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte) *WasiRuntimeContext {
+func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte, logger *log.Logger) *WasiRuntimeContext {
 	return &WasiRuntimeContext{
 		wasmName:         wasmBinaryName,
 		wasmProgram:      wasmBytes,
@@ -58,6 +61,8 @@ func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []
 		nonBlockingStdio: false,
 		maxOpenFiles:     1024,
 		maxOpenDirs:      1024,
+
+		logger: logger,
 	}
 }
 
@@ -131,7 +136,11 @@ func (config *WasiRuntimeContext) run(ctx context.Context) error {
 		}
 	}
 
-	instance, err := runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig())
+	//todo cdc: we want every CDC WASM Program to log in its own file, it's not working now, need to solve this
+	moduleConfig := wazero.NewModuleConfig()
+	moduleConfig.WithStdout(config.logger.Writer())
+	moduleConfig.WithStderr(config.logger.Writer())
+	instance, err := runtime.InstantiateModule(ctx, wasmModule, moduleConfig)
 	if err != nil {
 		return err
 	}
