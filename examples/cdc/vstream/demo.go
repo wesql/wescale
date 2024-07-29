@@ -211,6 +211,14 @@ func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
 	return client, closeFunc, nil
 }
 
+func createVectorStoreCollectionNameIfNotExists() {
+	// todo cdc
+	// 1. Check if the collection exists.
+	// 2. If it does not exist, create the collection.
+	// 3. If it exists, do nothing.
+	// Need to Compatible with multiple vector stores.
+}
+
 func initVectorStore() error {
 	if store != nil {
 		return nil
