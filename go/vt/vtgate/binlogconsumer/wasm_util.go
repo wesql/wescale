@@ -49,26 +49,31 @@ func GetWasmBytesByBinaryName(ctx context.Context, wasmBinaryName string, svc qu
 		return nil, fmt.Errorf("get wasm binary by name %s failed : qr len is %v instead of 1", wasmBinaryName, len(qr.Named().Rows))
 	}
 
+	bytes, err := qr.Named().Rows[0].ToBytes("data")
+	if err != nil {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
+	}
+
 	compressAlgorithm := qr.Named().Rows[0].AsString("compress_algorithm", "")
-	if compressAlgorithm != wasmBinaryCompressAlgorithm {
+	if compressAlgorithm != "" && compressAlgorithm != wasmBinaryCompressAlgorithm {
 		return nil, fmt.Errorf("get wasm binary by name %s failed : compress algorithm is %v instead of %v",
 			wasmBinaryName, compressAlgorithm, wasmBinaryCompressAlgorithm)
 	}
 
-	compressedBytes, err := qr.Named().Rows[0].ToBytes("data")
-	if err != nil {
-		return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
+	if compressAlgorithm == wasmBinaryCompressAlgorithm {
+		bytes, err = UnCompressByBZip2(bytes)
+		if err != nil {
+			return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
+		}
 	}
 
-	originalBytes, err := UnCompressByBZip2(compressedBytes)
-	if err != nil {
-		return nil, fmt.Errorf("get wasm binary by name %s failed : uncompress data error: %v", wasmBinaryName, err)
-	}
-
-	hash := CalcMd5String32(originalBytes)
 	hashInTable := qr.Named().Rows[0].AsString("hash_before_compress", "")
-	if hash != hashInTable {
-		return nil, fmt.Errorf("get wasm binary by name %s failed : hash is not equal", wasmBinaryName)
+	if hashInTable != "" {
+		hash := CalcMd5String32(bytes)
+		if hash != hashInTable {
+			return nil, fmt.Errorf("get wasm binary by name %s failed : hash is not equal", wasmBinaryName)
+		}
 	}
-	return originalBytes, nil
+
+	return bytes, nil
 }
