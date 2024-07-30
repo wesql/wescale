@@ -119,14 +119,14 @@ func main() {
 					resultList = append(resultList, res)
 				}
 			case binlogdatapb.VEventType_VGTID:
-				if event.Gtid != "" {
-					currentGTID = event.Gtid
+				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
+					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
+					fmt.Println("currentGTID: ", currentGTID)
 				}
-				if event.LastPKEvent != nil && event.LastPKEvent.TableLastPK.Lastpk != nil {
-					currentPK = event.LastPKEvent.TableLastPK.Lastpk
+				if len(event.Vgtid.GetShardGtids()) > 0 && len(event.Vgtid.GetShardGtids()[0].TablePKs) > 0 {
+					currentPK = event.Vgtid.GetShardGtids()[0].TablePKs[0].Lastpk
+					fmt.Println("currentPK: ", currentPK)
 				}
-				fmt.Println("currentGTID: ", currentGTID)
-				fmt.Println("currentPK: ", currentPK)
 			case binlogdatapb.VEventType_COMMIT:
 				//put data
 				//put pk
