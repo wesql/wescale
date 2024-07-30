@@ -63,6 +63,7 @@ func main() {
 			Keyspace: tableSchema,
 			Shard:    "0",
 			Gtid:     gtid,
+			// todo cdc: add lastpk, see example at go/vt/vttablet/tabletserver/vstreamer/rowstreamer.go:237
 			//TablePKs: []*binlogdatapb.TableLastPK{{
 			//	TableName: tableName,
 			//	Lastpk:    sqltypes.ResultToProto3(sqltypes.MakeTestResult(resp.Result.Fields, "1")),
@@ -129,6 +130,7 @@ func main() {
 					fmt.Println("currentPK: ", currentPK)
 				}
 			case binlogdatapb.VEventType_COMMIT:
+				// todo cdc: record pk & gtid with data in the same transaction for crash recovery
 				//put data
 				//put pk
 
