@@ -109,6 +109,7 @@ func main() {
 				fields = event.FieldEvent.Fields
 				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
+				// todo cdc: process update & delete
 				for _, rowChange := range event.RowEvent.RowChanges {
 					res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
 						Fields: fields,
