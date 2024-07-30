@@ -151,7 +151,11 @@ func main() {
 				if err != nil {
 					log.Fatalf("failed to execute batch: %v", err)
 				}
-				fmt.Printf("results: %v\n", r.Results)
+				for i, result := range r.Results {
+					if result.Error != nil {
+						log.Printf("failed to execute query %d: %v", i, result.Error)
+					}
+				}
 				// clear the result list
 				resultList = make([]*sqltypes.Result, 0)
 
