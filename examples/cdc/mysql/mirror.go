@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/spf13/pflag"
+	"github.com/wesql/sqlparser"
 	"github.com/wesql/sqlparser/go/sqltypes"
 	binlogdatapb "github.com/wesql/sqlparser/go/vt/proto/binlogdata"
 	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
@@ -18,14 +19,22 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"io"
 	"log"
+	"strings"
 )
 
 var tableSchema string
 var tableName string
 var filterStatement string
 var gtid string
-
 var wescaleURL string
+
+func test() {
+	tableSchema = "d1"
+	tableName = "t1"
+	filterStatement = "select * from t1"
+	gtid = ""
+	wescaleURL = "127.0.0.1:15991"
+}
 
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
@@ -48,21 +57,16 @@ func main() {
 	}
 	defer closeFunc()
 
-	resp, err := client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: "select c1 from d1.t1"}})
-	if err != nil {
-		log.Fatalf("failed to connect to vtgate: %v", err)
-	}
-
 	// 3. Create a VStream request.
 	vgtid := &binlogdatapb.VGtid{
 		ShardGtids: []*binlogdatapb.ShardGtid{{
 			Keyspace: tableSchema,
 			Shard:    "0",
 			Gtid:     gtid,
-			TablePKs: []*binlogdatapb.TableLastPK{{
-				TableName: tableName,
-				Lastpk:    sqltypes.ResultToProto3(sqltypes.MakeTestResult(resp.Result.Fields, "2")),
-			}},
+			//TablePKs: []*binlogdatapb.TableLastPK{{
+			//	TableName: tableName,
+			//	Lastpk:    sqltypes.ResultToProto3(sqltypes.MakeTestResult(resp.Result.Fields, "1")),
+			//}},
 		}}}
 	filter := &binlogdatapb.Filter{
 		Rules: []*binlogdatapb.Rule{{
@@ -85,6 +89,9 @@ func main() {
 
 	// 4. Read the stream and process the events.
 	var fields []*querypb.Field
+	var currentGTID string
+	var currentPK *querypb.QueryResult
+	var resultList []*sqltypes.Result
 	for {
 		resp, err := reader.Recv()
 		if err == io.EOF {
@@ -97,18 +104,56 @@ func main() {
 		}
 		eventList := resp.Events
 		for _, event := range eventList {
-			fmt.Println(event)
 			switch event.Type {
 			case binlogdatapb.VEventType_FIELD:
 				fields = event.FieldEvent.Fields
+				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
-				_ = sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+				res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
 					Fields: fields,
 					Rows: []*querypb.Row{
 						event.RowEvent.RowChanges[0].After,
 					},
 				})
+				resultList = append(resultList, res)
+			case binlogdatapb.VEventType_VGTID:
+				if event.Gtid != "" {
+					currentGTID = event.Gtid
+				}
+				if event.LastPKEvent != nil && event.LastPKEvent.TableLastPK.Lastpk != nil {
+					currentPK = event.LastPKEvent.TableLastPK.Lastpk
+				}
+				fmt.Println("currentGTID: ", currentGTID)
+				fmt.Println("currentPK: ", currentPK)
+			case binlogdatapb.VEventType_COMMIT:
+				//put data
+				//put pk
 
+				if len(resultList) == 0 {
+					continue
+				}
+				insertQueryList := make([]*querypb.BoundQuery, 0)
+				for _, res := range resultList {
+					parsedInsert := generateInsertParsedQuery(tableSchema, "t2", res)
+					insertSql, err := parsedInsert.GenerateQuery(generateInsertQueryBindVariables(res), nil)
+					if err != nil {
+						log.Fatalf("failed to generate insert query: %v", err)
+					}
+					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
+						Sql: insertSql,
+					})
+				}
+
+				r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: insertQueryList})
+				if err != nil {
+					log.Fatalf("failed to execute batch: %v", err)
+				}
+				fmt.Printf("inserted %d rows\n", r.Results[0].Result.RowsAffected)
+				// clear the result list
+				resultList = make([]*sqltypes.Result, 0)
+
+			case binlogdatapb.VEventType_COPY_COMPLETED:
+				fmt.Printf("%v\n", event)
 			}
 		}
 	}
@@ -120,14 +165,6 @@ func init() {
 	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
 	pflag.StringVar(&gtid, "GTID", "", "The GTID.")
 	pflag.StringVar(&wescaleURL, "WESCALE_URL", "", "The WeScale URL.")
-}
-
-func test() {
-	tableSchema = "d1"
-	tableName = "t1"
-	filterStatement = "select * from t1"
-	gtid = ""
-	wescaleURL = "127.0.0.1:15991"
 }
 
 func checkFlags() error {
@@ -158,4 +195,27 @@ func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
 		conn.Close()
 	}
 	return client, closeFunc, nil
+}
+
+func generateInsertParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
+	vals := make([]string, 0)
+	vars := make([]any, 0)
+	for _, namedValues := range result.Named().Rows {
+		for colName := range namedValues {
+			vals = append(vals, "%a")
+			vars = append(vars, sqlparser.String(sqlparser.NewArgument(colName)))
+		}
+	}
+	queryTemplate := fmt.Sprintf("insert into %s.%s values (%s)", tableSchema, tableName, strings.Join(vals, ","))
+	return sqlparser.BuildParsedQuery(queryTemplate, vars...)
+}
+
+func generateInsertQueryBindVariables(result *sqltypes.Result) map[string]*querypb.BindVariable {
+	bindVars := make(map[string]*querypb.BindVariable)
+	for _, namedValues := range result.Named().Rows {
+		for colName, value := range namedValues {
+			bindVars[colName] = sqltypes.ValueBindVariable(value)
+		}
+	}
+	return bindVars
 }
