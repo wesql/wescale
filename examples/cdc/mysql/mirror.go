@@ -148,7 +148,7 @@ func main() {
 				if err != nil {
 					log.Fatalf("failed to execute batch: %v", err)
 				}
-				fmt.Printf("inserted %d rows\n", r.Results[0].Result.RowsAffected)
+				fmt.Printf("results: %v\n", r.Results)
 				// clear the result list
 				resultList = make([]*sqltypes.Result, 0)
 
@@ -198,16 +198,14 @@ func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
 }
 
 func generateInsertParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
-	vals := make([]string, 0)
-	vars := make([]any, 0)
-	for _, namedValues := range result.Named().Rows {
-		for colName := range namedValues {
-			vals = append(vals, "%a")
-			vars = append(vars, sqlparser.String(sqlparser.NewArgument(colName)))
-		}
+	fieldNameList := make([]string, 0)
+	vars := make([]string, 0)
+	for _, field := range result.Fields {
+		fieldNameList = append(fieldNameList, field.Name)
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument(field.Name)))
 	}
-	queryTemplate := fmt.Sprintf("insert into %s.%s values (%s)", tableSchema, tableName, strings.Join(vals, ","))
-	return sqlparser.BuildParsedQuery(queryTemplate, vars...)
+	queryTemplate := fmt.Sprintf("insert into %s.%s (%s) values (%s)", tableSchema, tableName, strings.Join(fieldNameList, ","), strings.Join(vars, ","))
+	return sqlparser.BuildParsedQuery(queryTemplate)
 }
 
 func generateInsertQueryBindVariables(result *sqltypes.Result) map[string]*querypb.BindVariable {
