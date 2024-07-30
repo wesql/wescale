@@ -109,13 +109,15 @@ func main() {
 				fields = event.FieldEvent.Fields
 				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
-				res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-					Fields: fields,
-					Rows: []*querypb.Row{
-						event.RowEvent.RowChanges[0].After,
-					},
-				})
-				resultList = append(resultList, res)
+				for _, rowChange := range event.RowEvent.RowChanges {
+					res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+						Fields: fields,
+						Rows: []*querypb.Row{
+							rowChange.After,
+						},
+					})
+					resultList = append(resultList, res)
+				}
 			case binlogdatapb.VEventType_VGTID:
 				if event.Gtid != "" {
 					currentGTID = event.Gtid
@@ -135,7 +137,8 @@ func main() {
 				insertQueryList := make([]*querypb.BoundQuery, 0)
 				for _, res := range resultList {
 					parsedInsert := generateInsertParsedQuery(tableSchema, "t2", res)
-					insertSql, err := parsedInsert.GenerateQuery(generateInsertQueryBindVariables(res), nil)
+					bindVars := generateInsertQueryBindVariables(res)
+					insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
 					if err != nil {
 						log.Fatalf("failed to generate insert query: %v", err)
 					}
@@ -199,13 +202,15 @@ func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
 
 func generateInsertParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
 	fieldNameList := make([]string, 0)
-	vars := make([]string, 0)
+	vals := make([]string, 0)
+	vars := make([]any, 0)
 	for _, field := range result.Fields {
 		fieldNameList = append(fieldNameList, field.Name)
 		vars = append(vars, sqlparser.String(sqlparser.NewArgument(field.Name)))
+		vals = append(vals, "%a")
 	}
-	queryTemplate := fmt.Sprintf("insert into %s.%s (%s) values (%s)", tableSchema, tableName, strings.Join(fieldNameList, ","), strings.Join(vars, ","))
-	return sqlparser.BuildParsedQuery(queryTemplate)
+	queryTemplate := fmt.Sprintf("insert into %s.%s (%s) values (%s)", tableSchema, tableName, strings.Join(fieldNameList, ","), strings.Join(vals, ","))
+	return sqlparser.BuildParsedQuery(queryTemplate, vars...)
 }
 
 func generateInsertQueryBindVariables(result *sqltypes.Result) map[string]*querypb.BindVariable {
