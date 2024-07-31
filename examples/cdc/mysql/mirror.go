@@ -57,6 +57,19 @@ func main() {
 	}
 	defer closeFunc()
 
+	// 2. Build ColumnInfo Map
+	colInfoMap, err := buildColInfoMap(tableSchema, tableName, func(sql string) (*sqltypes.Result, error) {
+		resp, err := client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
+		if err != nil {
+			return nil, err
+		}
+		if resp.Error != nil {
+			return nil, fmt.Errorf("failed to execute query: %v", resp.Error)
+		}
+		return sqltypes.Proto3ToResult(resp.Result), nil
+	})
+	pkColNames := getPkColumnsOrderBySeqInIndex(colInfoMap)
+
 	// 3. Create a VStream request.
 	vgtid := &binlogdatapb.VGtid{
 		ShardGtids: []*binlogdatapb.ShardGtid{{
@@ -90,6 +103,7 @@ func main() {
 
 	// 4. Read the stream and process the events.
 	var fields []*querypb.Field
+	var pkFields []*querypb.Field
 	var currentGTID string
 	var currentPK *querypb.QueryResult
 	var resultList []*sqltypes.Result
@@ -108,6 +122,7 @@ func main() {
 			switch event.Type {
 			case binlogdatapb.VEventType_FIELD:
 				fields = event.FieldEvent.Fields
+				pkFields = getPkFields(pkColNames, fields)
 				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
 				// todo cdc: process update & delete
@@ -121,6 +136,7 @@ func main() {
 					resultList = append(resultList, res)
 				}
 			case binlogdatapb.VEventType_VGTID:
+				fmt.Println(event)
 				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
 					fmt.Println("currentGTID: ", currentGTID)
@@ -128,6 +144,15 @@ func main() {
 				if len(event.Vgtid.GetShardGtids()) > 0 && len(event.Vgtid.GetShardGtids()[0].TablePKs) > 0 {
 					currentPK = event.Vgtid.GetShardGtids()[0].TablePKs[0].Lastpk
 					fmt.Println("currentPK: ", currentPK)
+					fullCurrentPK := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+						Fields: pkFields,
+						Rows: []*querypb.Row{
+							currentPK.Rows[0],
+						},
+					})
+					buf := sqlparser.NewTrackedBuffer(nil)
+					generatePKConstraint(buf, fullCurrentPK, colInfoMap)
+					fmt.Println(buf)
 				}
 			case binlogdatapb.VEventType_COMMIT:
 				// todo cdc: record pk & gtid with data in the same transaction for crash recovery
@@ -228,4 +253,35 @@ func generateInsertQueryBindVariables(result *sqltypes.Result) map[string]*query
 		}
 	}
 	return bindVars
+}
+
+func getCharsetAndCollation(columnName string, colInfoMap map[string]*ColumnInfo) (string, string) {
+	if colInfo, ok := colInfoMap[columnName]; ok {
+		return colInfo.CharSet, colInfo.Collation
+	}
+	return "", ""
+}
+
+func generatePKConstraint(buf *sqlparser.TrackedBuffer, lastpk *sqltypes.Result, colInfoMap map[string]*ColumnInfo) {
+	type charSetCollation struct {
+		charSet   string
+		collation string
+	}
+	var charSetCollations []*charSetCollation
+	separator := "("
+	for _, pkname := range lastpk.Fields {
+		charSet, collation := getCharsetAndCollation(pkname.Name, colInfoMap)
+		charSetCollations = append(charSetCollations, &charSetCollation{charSet: charSet, collation: collation})
+		buf.Myprintf("%s%s%v%s", separator, charSet, &sqlparser.ColName{Name: sqlparser.NewIdentifierCI(pkname.Name)}, collation)
+		separator = ","
+	}
+	separator = ") <= ("
+	for i, val := range lastpk.Rows[0] {
+		buf.WriteString(separator)
+		buf.WriteString(charSetCollations[i].charSet)
+		separator = ","
+		val.EncodeSQL(buf)
+		buf.WriteString(charSetCollations[i].collation)
+	}
+	buf.WriteString(")")
 }
