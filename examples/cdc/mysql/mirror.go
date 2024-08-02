@@ -23,23 +23,41 @@ import (
 )
 
 var tableSchema string
-var tableName string
+var sourceTableName string
+var targetTableName string
 var filterStatement string
 var gtid string
 var wescaleURL string
 
 func test() {
 	tableSchema = "d1"
-	tableName = "t1"
+	sourceTableName = "t1"
+	targetTableName = "t2"
 	filterStatement = "select * from t1"
 	gtid = ""
 	wescaleURL = "127.0.0.1:15991"
 }
 
+type RowEventType string
+
+const (
+	INSERT RowEventType = "insert"
+	DELETE RowEventType = "delete"
+	UPDATE RowEventType = "update"
+)
+
+type RowResult struct {
+	RowType RowEventType
+	Before  *sqltypes.Result
+	After   *sqltypes.Result
+}
+
 // create table t1 (c1 int primary key auto_increment, c2 text);
+// create table t2 (c1 int primary key auto_increment, c2 text);
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
 // insert into t1 (c2) values ('I want you to act as an interviewer.');
+// insert into t1 (c2) values ('I want you to act as an engineer.');
 func main() {
 
 	test()
@@ -58,7 +76,7 @@ func main() {
 	defer closeFunc()
 
 	// 2. Build ColumnInfo Map
-	colInfoMap, err := buildColInfoMap(tableSchema, tableName, func(sql string) (*sqltypes.Result, error) {
+	colInfoMap, err := buildColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
 		resp, err := client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 		if err != nil {
 			return nil, err
@@ -78,13 +96,13 @@ func main() {
 			Gtid:     gtid,
 			// todo cdc: add lastpk, see example at go/vt/vttablet/tabletserver/vstreamer/rowstreamer.go:237
 			//TablePKs: []*binlogdatapb.TableLastPK{{
-			//	TableName: tableName,
+			//	TableName: sourceTableName,
 			//	Lastpk:    sqltypes.ResultToProto3(sqltypes.MakeTestResult(resp.Result.Fields, "1")),
 			//}},
 		}}}
 	filter := &binlogdatapb.Filter{
 		Rules: []*binlogdatapb.Rule{{
-			Match:  tableName,
+			Match:  sourceTableName,
 			Filter: filterStatement,
 		}},
 	}
@@ -106,7 +124,7 @@ func main() {
 	var pkFields []*querypb.Field
 	var currentGTID string
 	var currentPK *querypb.QueryResult
-	var resultList []*sqltypes.Result
+	var resultList []*RowResult
 	for {
 		resp, err := reader.Recv()
 		if err == io.EOF {
@@ -127,13 +145,42 @@ func main() {
 			case binlogdatapb.VEventType_ROW:
 				// todo cdc: process update & delete
 				for _, rowChange := range event.RowEvent.RowChanges {
-					res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-						Fields: fields,
-						Rows: []*querypb.Row{
-							rowChange.After,
-						},
-					})
-					resultList = append(resultList, res)
+					before := false
+					after := false
+					if rowChange.Before != nil {
+						before = true
+					}
+					if rowChange.After != nil {
+						after = true
+					}
+					switch {
+					case !before && after:
+						// insert
+						res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+							Fields: fields,
+							Rows: []*querypb.Row{
+								rowChange.After,
+							},
+						})
+						resultList = append(resultList, &RowResult{RowType: INSERT, Before: nil, After: res})
+
+					case before && !after:
+						// delete
+						res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+							Fields: fields,
+							Rows: []*querypb.Row{
+								rowChange.Before,
+							},
+						})
+						resultList = append(resultList, &RowResult{RowType: DELETE, Before: res, After: nil})
+
+					case before && after:
+						// update
+
+					default:
+						panic("unreachable code")
+					}
+
 				}
 			case binlogdatapb.VEventType_VGTID:
 				fmt.Println(event)
@@ -163,15 +210,26 @@ func main() {
 					continue
 				}
 				insertQueryList := make([]*querypb.BoundQuery, 0)
-				for _, res := range resultList {
-					parsedInsert := generateInsertParsedQuery(tableSchema, "t2", res)
-					bindVars := generateInsertQueryBindVariables(res)
-					insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
-					if err != nil {
-						log.Fatalf("failed to generate insert query: %v", err)
+				for _, rowResult := range resultList {
+					var sql string
+					var err error
+					switch rowResult.RowType {
+					case INSERT:
+						sql, err = generateInsertSQL(rowResult)
+						if err != nil {
+							log.Fatalf("failed to generate insert query: %v", err)
+						}
+
+					case DELETE:
+						sql, err = generateDeleteSQL(rowResult)
+						if err != nil {
+							log.Fatalf("failed to generate delete query: %v", err)
+						}
+
+					case UPDATE:
 					}
 					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
-						Sql: insertSql,
+						Sql: sql,
 					})
 				}
 
@@ -185,7 +243,7 @@ func main() {
 					}
 				}
 				// clear the result list
-				resultList = make([]*sqltypes.Result, 0)
+				resultList = make([]*RowResult, 0)
 
 			case binlogdatapb.VEventType_COPY_COMPLETED:
 				fmt.Printf("%v\n", event)
@@ -196,7 +254,8 @@ func main() {
 
 func init() {
 	pflag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
-	pflag.StringVar(&tableName, "TABLE_NAME", "", "The table name.")
+	pflag.StringVar(&sourceTableName, "SOURCE_TABLE_NAME", "", "The source table name.")
+	pflag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
 	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
 	pflag.StringVar(&gtid, "GTID", "", "The GTID.")
 	pflag.StringVar(&wescaleURL, "WESCALE_URL", "", "The WeScale URL.")
@@ -206,7 +265,7 @@ func checkFlags() error {
 	if tableSchema == "" {
 		return fmt.Errorf("table-schema is required")
 	}
-	if tableName == "" {
+	if sourceTableName == "" {
 		return fmt.Errorf("table-name is required")
 	}
 	if filterStatement == "" {
@@ -284,4 +343,26 @@ func generatePKConstraint(buf *sqlparser.TrackedBuffer, lastpk *sqltypes.Result,
 		buf.WriteString(charSetCollations[i].collation)
 	}
 	buf.WriteString(")")
+}
+
+func generateInsertSQL(rowResult *RowResult) (string, error) {
+	parsedInsert := generateInsertParsedQuery(tableSchema, targetTableName, rowResult.After)
+	bindVars := generateInsertQueryBindVariables(rowResult.After)
+	insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
+	if err != nil {
+		return "", err
+	}
+	return insertSql, nil
+}
+
+func generateDeleteParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
+	return nil
+}
+
+func generateDeleteSQL(rowResult *RowResult) (string, error) {
+	return "", nil
+}
+
+func generateDeleteAndInsertSQL() (string, string, error) {
+	return "", "", nil
 }
