@@ -58,6 +58,9 @@ type RowResult struct {
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
 // insert into t1 (c2) values ('I want you to act as an interviewer.');
 // insert into t1 (c2) values ('I want you to act as an engineer.');
+
+// delete from t1 where c2 = 'I want you to act as an English translator, spelling corrector and improver.';
+
 func main() {
 
 	test()
@@ -76,6 +79,7 @@ func main() {
 	defer closeFunc()
 
 	// 2. Build ColumnInfo Map
+	// todo cdc: consider ddl during execution, then colInfoMap and pkColNames is out of date.
 	colInfoMap, err := buildColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
 		resp, err := client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 		if err != nil {
@@ -221,7 +225,7 @@ func main() {
 						}
 
 					case DELETE:
-						sql, err = generateDeleteSQL(rowResult)
+						sql, err = generateDeleteSQL(rowResult, pkFields)
 						if err != nil {
 							log.Fatalf("failed to generate delete query: %v", err)
 						}
@@ -355,12 +359,49 @@ func generateInsertSQL(rowResult *RowResult) (string, error) {
 	return insertSql, nil
 }
 
-func generateDeleteParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
-	return nil
+func generateDeleteParsedQuery(tableSchema, tableName string, pkFields []*querypb.Field) *sqlparser.ParsedQuery {
+	queryTemplate := fmt.Sprintf("delete from %s.%s", tableSchema, tableName)
+	vars := make([]any, 0)
+
+	buf := sqlparser.NewTrackedBuffer(nil)
+	buf.WriteString(" where ")
+	separator := ""
+	for _, col := range pkFields {
+		buf.Myprintf("%s%s=", separator, col.Name)
+		buf.Myprintf("%s", "%a")
+		separator = " and "
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument(col.Name)))
+	}
+
+	queryTemplate = fmt.Sprintf("%s%s", queryTemplate, buf.String())
+	return sqlparser.BuildParsedQuery(queryTemplate, vars...)
 }
 
-func generateDeleteSQL(rowResult *RowResult) (string, error) {
-	return "", nil
+func generateDeleteQueryBindVariables(result *sqltypes.Result, pkFields []*querypb.Field) map[string]*querypb.BindVariable {
+	pkMap := make(map[string]bool)
+	for _, pkField := range pkFields {
+		pkMap[pkField.Name] = true
+	}
+
+	bindVars := make(map[string]*querypb.BindVariable)
+	for _, namedValues := range result.Named().Rows {
+		for colName, value := range namedValues {
+			if _, ok := pkMap[colName]; ok {
+				bindVars[colName] = sqltypes.ValueBindVariable(value)
+			}
+		}
+	}
+	return bindVars
+}
+
+func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field) (string, error) {
+	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields)
+	bindVars := generateDeleteQueryBindVariables(rowResult.Before, pkFields)
+	deleteSQL, err := parsedDelete.GenerateQuery(bindVars, nil)
+	if err != nil {
+		return "", err
+	}
+	return deleteSQL, nil
 }
 
 func generateDeleteAndInsertSQL() (string, string, error) {
