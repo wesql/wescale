@@ -61,6 +61,7 @@ type RowResult struct {
 
 // delete from t1 where c2 = 'I want you to act as an English translator, spelling corrector and improver.';
 
+// update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 func main() {
 
 	test()
@@ -180,6 +181,19 @@ func main() {
 
 					case before && after:
 						// update
+						res1 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+							Fields: fields,
+							Rows: []*querypb.Row{
+								rowChange.Before,
+							},
+						})
+						res2 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+							Fields: fields,
+							Rows: []*querypb.Row{
+								rowChange.After,
+							},
+						})
+						resultList = append(resultList, &RowResult{RowType: UPDATE, Before: res1, After: res2})
 
 					default:
 						panic("unreachable code")
@@ -231,6 +245,10 @@ func main() {
 						}
 
 					case UPDATE:
+						sql, err = generateUpdateSQL(rowResult, pkFields)
+						if err != nil {
+							log.Fatalf("failed to generate update query: %v", err)
+						}
 					}
 					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
 						Sql: sql,
@@ -404,6 +422,64 @@ func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field) (string,
 	return deleteSQL, nil
 }
 
-func generateDeleteAndInsertSQL() (string, string, error) {
-	return "", "", nil
+func generateUpdateParsedQuery(tableSchema, tableName string, allFields []*querypb.Field, pkFields []*querypb.Field) *sqlparser.ParsedQuery {
+	queryTemplate := fmt.Sprintf("update %s.%s", tableSchema, tableName)
+	vars := make([]any, 0)
+
+	buf := sqlparser.NewTrackedBuffer(nil)
+	buf.WriteString(" set ")
+	separator := ""
+	for _, col := range allFields {
+		buf.Myprintf("%s%s=", separator, col.Name)
+		buf.Myprintf("%s", "%a")
+		separator = ","
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument(col.Name)))
+	}
+
+	separator = ""
+	buf.WriteString(" where ")
+	for _, col := range pkFields {
+		buf.Myprintf("%s%s=", separator, col.Name)
+		buf.Myprintf("%s", "%a")
+		separator = " and "
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument("pk_"+col.Name)))
+	}
+
+	queryTemplate = fmt.Sprintf("%s%s", queryTemplate, buf.String())
+	return sqlparser.BuildParsedQuery(queryTemplate, vars...)
+}
+
+func generateUpdateQueryBindVariables(before *sqltypes.Result, after *sqltypes.Result, pkFields []*querypb.Field) map[string]*querypb.BindVariable {
+	pkMap := make(map[string]bool)
+	for _, pkField := range pkFields {
+		pkMap[pkField.Name] = true
+	}
+
+	// bind vars of set value part
+	bindVars := make(map[string]*querypb.BindVariable)
+	for _, namedValues := range after.Named().Rows {
+		for colName, value := range namedValues {
+			bindVars[colName] = sqltypes.ValueBindVariable(value)
+		}
+	}
+
+	// bind vars of where part
+	for _, namedValues := range before.Named().Rows {
+		for colName, value := range namedValues {
+			if _, ok := pkMap[colName]; ok {
+				bindVars["pk_"+colName] = sqltypes.ValueBindVariable(value)
+			}
+		}
+	}
+	return bindVars
+}
+
+func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field) (string, error) {
+	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields)
+	bindVars := generateUpdateQueryBindVariables(rowResult.Before, rowResult.After, pkFields)
+	updateSQL, err := parsedUpdate.GenerateQuery(bindVars, nil)
+	if err != nil {
+		return "", err
+	}
+	return updateSQL, nil
 }
