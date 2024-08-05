@@ -6,6 +6,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/spf13/pflag"
 	"github.com/wesql/sqlparser"
@@ -17,6 +19,7 @@ import (
 	"github.com/wesql/sqlparser/go/vt/proto/vtgateservice"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/encoding/prototext"
 	"io"
 	"log"
 	"strings"
@@ -25,16 +28,19 @@ import (
 var tableSchema string
 var sourceTableName string
 var targetTableName string
+var targetMetaTableName string
 var filterStatement string
-var gtid string
 var wescaleURL string
+
+var gtid string
+var lastPK *querypb.QueryResult
 
 func test() {
 	tableSchema = "d1"
 	sourceTableName = "t1"
 	targetTableName = "t2"
+	targetMetaTableName = "t2_meta"
 	filterStatement = "select * from t1"
-	gtid = ""
 	wescaleURL = "127.0.0.1:15991"
 }
 
@@ -54,6 +60,8 @@ type RowResult struct {
 
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // create table t2 (c1 int primary key auto_increment, c2 text);
+// create table t2_meta (id bigint unsigned not null auto_increment, gtid varchar(128) DEFAULT NULL, lastpk varbinary(2000) DEFAULT NULL, lastpk_str varchar(512) DEFAULT NULL, primary key (id));
+
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
 // insert into t1 (c2) values ('I want you to act as an interviewer.');
@@ -94,16 +102,21 @@ func main() {
 	pkColNames := getPkColumnsOrderBySeqInIndex(colInfoMap)
 
 	// 3. Create a VStream request.
+	// todo cdc, use same ctx?
+	err = loadGTIDAndLastPK(context.Background(), client)
+	if err != nil {
+		log.Fatalf("failed to load gtid and lastpk: %v", err)
+	}
 	vgtid := &binlogdatapb.VGtid{
 		ShardGtids: []*binlogdatapb.ShardGtid{{
 			Keyspace: tableSchema,
 			Shard:    "0",
 			Gtid:     gtid,
 			// todo cdc: add lastpk, see example at go/vt/vttablet/tabletserver/vstreamer/rowstreamer.go:237
-			//TablePKs: []*binlogdatapb.TableLastPK{{
-			//	TableName: sourceTableName,
-			//	Lastpk:    sqltypes.ResultToProto3(sqltypes.MakeTestResult(resp.Result.Fields, "1")),
-			//}},
+			TablePKs: []*binlogdatapb.TableLastPK{{
+				TableName: sourceTableName,
+				Lastpk:    lastPK,
+			}},
 		}}}
 	filter := &binlogdatapb.Filter{
 		Rules: []*binlogdatapb.Rule{{
@@ -148,7 +161,6 @@ func main() {
 				pkFields = getPkFields(pkColNames, fields)
 				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
-				// todo cdc: process update & delete
 				for _, rowChange := range event.RowEvent.RowChanges {
 					before := false
 					after := false
@@ -201,29 +213,31 @@ func main() {
 
 				}
 			case binlogdatapb.VEventType_VGTID:
-				fmt.Println(event)
+				//fmt.Println(event)
 				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
-					fmt.Println("currentGTID: ", currentGTID)
+					//fmt.Println("currentGTID: ", currentGTID)
 				}
 				if len(event.Vgtid.GetShardGtids()) > 0 && len(event.Vgtid.GetShardGtids()[0].TablePKs) > 0 {
+					// todo cdc: in delta phase, how to update currentPK? in delta phase, currentPK can be got here
 					currentPK = event.Vgtid.GetShardGtids()[0].TablePKs[0].Lastpk
-					fmt.Println("currentPK: ", currentPK)
-					fullCurrentPK := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-						Fields: pkFields,
-						Rows: []*querypb.Row{
-							currentPK.Rows[0],
-						},
-					})
-					buf := sqlparser.NewTrackedBuffer(nil)
-					generatePKConstraint(buf, fullCurrentPK, colInfoMap)
-					fmt.Println(buf)
+					if currentPK != nil {
+						currentPK.Fields = pkFields
+					}
+					//fmt.Println("currentPK: ", currentPK)
+					//fullCurrentPK := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+					//	Fields: pkFields,
+					//	Rows: []*querypb.Row{
+					//		currentPK.Rows[0],
+					//	},
+					//})
+					//buf := sqlparser.NewTrackedBuffer(nil)
+					//generatePKConstraint(buf, fullCurrentPK, colInfoMap)
+					//fmt.Println(buf)
 				}
 			case binlogdatapb.VEventType_COMMIT:
 				// todo cdc: record pk & gtid with data in the same transaction for crash recovery
 				//put data
-				//put pk
-
 				if len(resultList) == 0 {
 					continue
 				}
@@ -255,6 +269,18 @@ func main() {
 					})
 				}
 
+				// put pk after data, provide at least once if target database does't support atomic operation
+				recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
+				if err != nil {
+					log.Fatalf("failed to generate record meta query: %v", err)
+				}
+				if recordMetaSQL != "" {
+					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
+						Sql: recordMetaSQL,
+					})
+				}
+
+				// todo cdc newborn22, execute batch is atomic?
 				r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: insertQueryList})
 				if err != nil {
 					log.Fatalf("failed to execute batch: %v", err)
@@ -482,4 +508,51 @@ func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field) (string,
 		return "", err
 	}
 	return updateSQL, nil
+}
+
+func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.QueryResult) (string, error) {
+	// todo cdc, during delta phase, current pk is nil
+	if currentPK == nil || currentPK.Fields == nil {
+		return "", nil
+	}
+	template := fmt.Sprintf("insert into %s.%s (gtid,lastpk,lastpk_str) values (%s,%s,%s)", tableSchema, targetMetaTableName, "%a", "%a", "%a")
+	bytes, err := prototext.Marshal(currentPK)
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := json.Marshal(currentPK)
+	if err != nil {
+		return "", err
+	}
+
+	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(string(jsonBytes)))
+}
+
+func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) error {
+	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
+	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
+	if err != nil || r.Error != nil {
+		return errors.New("failed to load gtid and lastpk")
+	}
+	res := sqltypes.CustomProto3ToResult(r.Result.Fields, r.Result)
+	if len(res.Rows) == 0 {
+		gtid = ""
+		lastPK = nil
+		return nil
+	}
+
+	gtid = res.Named().Rows[0]["gtid"].ToString()
+
+	lastPKBytes, err := res.Named().Rows[0]["lastpk"].ToBytes()
+	if err != nil {
+		return err
+	}
+	tmpLastPK := querypb.QueryResult{}
+	err = prototext.Unmarshal(lastPKBytes, &tmpLastPK)
+	if err != nil {
+		return err
+	}
+	lastPK = &tmpLastPK
+	return nil
 }
