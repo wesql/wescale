@@ -236,12 +236,17 @@ func main() {
 					//fmt.Println(buf)
 				}
 			case binlogdatapb.VEventType_COMMIT:
-				// todo cdc: record pk & gtid with data in the same transaction for crash recovery
-				//put data
 				if len(resultList) == 0 {
 					continue
 				}
 				insertQueryList := make([]*querypb.BoundQuery, 0)
+
+				// begin
+				insertQueryList = append(insertQueryList, &querypb.BoundQuery{
+					Sql: "begin",
+				})
+
+				//put data
 				for _, rowResult := range resultList {
 					var sql string
 					var err error
@@ -269,7 +274,7 @@ func main() {
 					})
 				}
 
-				// put pk after data, provide at least once if target database does't support atomic operation
+				// put gtid and pk
 				recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
 				if err != nil {
 					log.Fatalf("failed to generate record meta query: %v", err)
@@ -280,7 +285,11 @@ func main() {
 					})
 				}
 
-				// todo cdc newborn22, execute batch is atomic?
+				// commit
+				insertQueryList = append(insertQueryList, &querypb.BoundQuery{
+					Sql: "commit",
+				})
+
 				r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: insertQueryList})
 				if err != nil {
 					log.Fatalf("failed to execute batch: %v", err)
