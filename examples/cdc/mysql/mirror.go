@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/spf13/pflag"
@@ -42,6 +41,7 @@ func test() {
 	targetMetaTableName = "t2_meta"
 	filterStatement = "select * from t1"
 	wescaleURL = "127.0.0.1:15991"
+
 }
 
 type RowEventType string
@@ -223,6 +223,9 @@ func main() {
 					currentPK = event.Vgtid.GetShardGtids()[0].TablePKs[0].Lastpk
 					if currentPK != nil {
 						currentPK.Fields = pkFields
+						log.Printf("event VGTID, current pk is %v", currentPK)
+					} else {
+						log.Printf("event VGTID, but current pk is nil")
 					}
 					//fmt.Println("currentPK: ", currentPK)
 					//fullCurrentPK := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
@@ -239,12 +242,7 @@ func main() {
 				if len(resultList) == 0 {
 					continue
 				}
-				insertQueryList := make([]*querypb.BoundQuery, 0)
-
-				// begin
-				insertQueryList = append(insertQueryList, &querypb.BoundQuery{
-					Sql: "begin",
-				})
+				queryList := make([]*querypb.BoundQuery, 0)
 
 				//put data
 				for _, rowResult := range resultList {
@@ -269,38 +267,14 @@ func main() {
 							log.Fatalf("failed to generate update query: %v", err)
 						}
 					}
-					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
+					queryList = append(queryList, &querypb.BoundQuery{
 						Sql: sql,
 					})
 				}
-
-				// put gtid and pk
-				recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
-				if err != nil {
-					log.Fatalf("failed to generate record meta query: %v", err)
-				}
-				if recordMetaSQL != "" {
-					insertQueryList = append(insertQueryList, &querypb.BoundQuery{
-						Sql: recordMetaSQL,
-					})
-				}
-
-				// commit
-				insertQueryList = append(insertQueryList, &querypb.BoundQuery{
-					Sql: "commit",
-				})
-
-				r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: insertQueryList})
-				if err != nil {
-					log.Fatalf("failed to execute batch: %v", err)
-				}
-				for i, result := range r.Results {
-					if result.Error != nil {
-						log.Printf("failed to execute query %d: %v", i, result.Error)
-					}
-				}
 				// clear the result list
 				resultList = make([]*RowResult, 0)
+
+				executeBatch(client, queryList, currentGTID, currentPK)
 
 			case binlogdatapb.VEventType_COPY_COMPLETED:
 				fmt.Printf("%v\n", event)
@@ -530,12 +504,7 @@ func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.Query
 		return "", err
 	}
 
-	jsonBytes, err := json.Marshal(currentPK)
-	if err != nil {
-		return "", err
-	}
-
-	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(string(jsonBytes)))
+	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(fmt.Sprintf("%v", currentPK)))
 }
 
 func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) error {
@@ -564,4 +533,38 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) e
 	}
 	lastPK = &tmpLastPK
 	return nil
+}
+
+func executeBatch(client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
+
+	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
+
+	// put gtid and pk
+	recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
+	if err != nil {
+		log.Fatalf("failed to generate record meta query: %v", err)
+	}
+	if recordMetaSQL != "" {
+		log.Printf("record gtid and pk: %v", recordMetaSQL)
+		queryList = append(queryList, &querypb.BoundQuery{
+			Sql: recordMetaSQL,
+		})
+	}
+
+	queryList = append(queryList, &querypb.BoundQuery{
+		Sql: "commit",
+	})
+
+	r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
+	if err != nil {
+		log.Fatalf("failed to execute batch: %v", err)
+	}
+	for i, result := range r.Results {
+		if result.Error != nil {
+			log.Printf("failed to execute query %d: %v", i, result.Error)
+		}
+	}
+	for _, query := range queryList {
+		log.Printf("execute %s\n", query.Sql)
+	}
 }

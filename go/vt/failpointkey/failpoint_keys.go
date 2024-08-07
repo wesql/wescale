@@ -56,6 +56,11 @@ var (
 		Name:       "CreateErrorWhenExecutingBatch",
 		ExampleStr: "return(true)",
 	}
+	CrashVTGate = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/CrashVTGate",
+		Name:       "CrashVTGate",
+		ExampleStr: "return(true)",
+	}
 )
 
 func init() {
@@ -72,4 +77,5 @@ func init() {
 	FailpointTable[AssertRoutingTabletType.FullName] = AssertRoutingTabletType
 	FailpointTable[ModifyBatchSize.FullName] = ModifyBatchSize
 	FailpointTable[CreateErrorWhenExecutingBatch.FullName] = CreateErrorWhenExecutingBatch
+	FailpointTable[CrashVTGate.FullName] = CrashVTGate
 }
