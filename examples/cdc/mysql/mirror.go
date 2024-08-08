@@ -74,6 +74,7 @@ func main() {
 
 	test()
 
+	ctx := context.Background()
 	pflag.Parse()
 	err := checkFlags()
 	if err != nil {
@@ -90,7 +91,7 @@ func main() {
 	// 2. Build ColumnInfo Map
 	// todo cdc: consider ddl during execution, then colInfoMap and pkColNames is out of date.
 	colInfoMap, err := buildColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
-		resp, err := client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
+		resp, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +104,7 @@ func main() {
 
 	// 3. Create a VStream request.
 	// todo cdc, use same ctx?
-	err = loadGTIDAndLastPK(context.Background(), client)
+	err = loadGTIDAndLastPK(ctx, client)
 	if err != nil {
 		log.Fatalf("failed to load gtid and lastpk: %v", err)
 	}
@@ -112,7 +113,6 @@ func main() {
 			Keyspace: tableSchema,
 			Shard:    "0",
 			Gtid:     gtid,
-			// todo cdc: add lastpk, see example at go/vt/vttablet/tabletserver/vstreamer/rowstreamer.go:237
 			TablePKs: []*binlogdatapb.TableLastPK{{
 				TableName: sourceTableName,
 				Lastpk:    lastPK,
@@ -131,7 +131,7 @@ func main() {
 		Filter:     filter,
 		Flags:      flags,
 	}
-	reader, err := client.VStream(context.Background(), req)
+	reader, err := client.VStream(ctx, req)
 	if err != nil {
 		log.Fatalf("failed to create vstream: %v", err)
 	}
@@ -210,13 +210,10 @@ func main() {
 					default:
 						panic("unreachable code")
 					}
-
 				}
 			case binlogdatapb.VEventType_VGTID:
-				//fmt.Println(event)
 				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
-					//fmt.Println("currentGTID: ", currentGTID)
 				}
 				if len(event.Vgtid.GetShardGtids()) > 0 && len(event.Vgtid.GetShardGtids()[0].TablePKs) > 0 {
 					// todo cdc: in delta phase, how to update currentPK? in delta phase, currentPK can be got here
@@ -227,16 +224,6 @@ func main() {
 					} else {
 						log.Printf("event VGTID, but current pk is nil")
 					}
-					//fmt.Println("currentPK: ", currentPK)
-					//fullCurrentPK := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-					//	Fields: pkFields,
-					//	Rows: []*querypb.Row{
-					//		currentPK.Rows[0],
-					//	},
-					//})
-					//buf := sqlparser.NewTrackedBuffer(nil)
-					//generatePKConstraint(buf, fullCurrentPK, colInfoMap)
-					//fmt.Println(buf)
 				}
 			case binlogdatapb.VEventType_COMMIT:
 				if len(resultList) == 0 {
@@ -256,13 +243,13 @@ func main() {
 						}
 
 					case DELETE:
-						sql, err = generateDeleteSQL(rowResult, pkFields)
+						sql, err = generateDeleteSQL(rowResult, pkFields, colInfoMap)
 						if err != nil {
 							log.Fatalf("failed to generate delete query: %v", err)
 						}
 
 					case UPDATE:
-						sql, err = generateUpdateSQL(rowResult, pkFields)
+						sql, err = generateUpdateSQL(rowResult, pkFields, colInfoMap)
 						if err != nil {
 							log.Fatalf("failed to generate update query: %v", err)
 						}
@@ -274,7 +261,7 @@ func main() {
 				// clear the result list
 				resultList = make([]*RowResult, 0)
 
-				executeBatch(client, queryList, currentGTID, currentPK)
+				executeBatch(ctx, client, queryList, currentGTID, currentPK)
 
 			case binlogdatapb.VEventType_COPY_COMPLETED:
 				fmt.Printf("%v\n", event)
@@ -352,28 +339,30 @@ func getCharsetAndCollation(columnName string, colInfoMap map[string]*ColumnInfo
 	return "", ""
 }
 
-func generatePKConstraint(buf *sqlparser.TrackedBuffer, lastpk *sqltypes.Result, colInfoMap map[string]*ColumnInfo) {
+func generatePKConstraint(pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) string {
+	buf := sqlparser.NewTrackedBuffer(nil)
 	type charSetCollation struct {
 		charSet   string
 		collation string
 	}
 	var charSetCollations []*charSetCollation
 	separator := "("
-	for _, pkname := range lastpk.Fields {
+	for _, pkname := range pkFields {
 		charSet, collation := getCharsetAndCollation(pkname.Name, colInfoMap)
 		charSetCollations = append(charSetCollations, &charSetCollation{charSet: charSet, collation: collation})
 		buf.Myprintf("%s%s%v%s", separator, charSet, &sqlparser.ColName{Name: sqlparser.NewIdentifierCI(pkname.Name)}, collation)
 		separator = ","
 	}
-	separator = ") <= ("
-	for i, val := range lastpk.Rows[0] {
+	separator = ") = ("
+	for i := range pkFields {
 		buf.WriteString(separator)
 		buf.WriteString(charSetCollations[i].charSet)
 		separator = ","
-		val.EncodeSQL(buf)
+		buf.WriteString("%a")
 		buf.WriteString(charSetCollations[i].collation)
 	}
 	buf.WriteString(")")
+	return buf.String()
 }
 
 func generateInsertSQL(rowResult *RowResult) (string, error) {
@@ -386,18 +375,15 @@ func generateInsertSQL(rowResult *RowResult) (string, error) {
 	return insertSql, nil
 }
 
-func generateDeleteParsedQuery(tableSchema, tableName string, pkFields []*querypb.Field) *sqlparser.ParsedQuery {
+func generateDeleteParsedQuery(tableSchema, tableName string, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) *sqlparser.ParsedQuery {
 	queryTemplate := fmt.Sprintf("delete from %s.%s", tableSchema, tableName)
 	vars := make([]any, 0)
 
 	buf := sqlparser.NewTrackedBuffer(nil)
 	buf.WriteString(" where ")
-	separator := ""
-	for _, col := range pkFields {
-		buf.Myprintf("%s%s=", separator, col.Name)
-		buf.Myprintf("%s", "%a")
-		separator = " and "
-		vars = append(vars, sqlparser.String(sqlparser.NewArgument(col.Name)))
+	buf.WriteString(generatePKConstraint(pkFields, colInfoMap))
+	for _, field := range pkFields {
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument(field.Name)))
 	}
 
 	queryTemplate = fmt.Sprintf("%s%s", queryTemplate, buf.String())
@@ -421,8 +407,8 @@ func generateDeleteQueryBindVariables(result *sqltypes.Result, pkFields []*query
 	return bindVars
 }
 
-func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field) (string, error) {
-	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields)
+func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields, colInfoMap)
 	bindVars := generateDeleteQueryBindVariables(rowResult.Before, pkFields)
 	deleteSQL, err := parsedDelete.GenerateQuery(bindVars, nil)
 	if err != nil {
@@ -431,7 +417,7 @@ func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field) (string,
 	return deleteSQL, nil
 }
 
-func generateUpdateParsedQuery(tableSchema, tableName string, allFields []*querypb.Field, pkFields []*querypb.Field) *sqlparser.ParsedQuery {
+func generateUpdateParsedQuery(tableSchema, tableName string, allFields []*querypb.Field, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) *sqlparser.ParsedQuery {
 	queryTemplate := fmt.Sprintf("update %s.%s", tableSchema, tableName)
 	vars := make([]any, 0)
 
@@ -447,11 +433,9 @@ func generateUpdateParsedQuery(tableSchema, tableName string, allFields []*query
 
 	separator = ""
 	buf.WriteString(" where ")
-	for _, col := range pkFields {
-		buf.Myprintf("%s%s=", separator, col.Name)
-		buf.Myprintf("%s", "%a")
-		separator = " and "
-		vars = append(vars, sqlparser.String(sqlparser.NewArgument("pk_"+col.Name)))
+	buf.WriteString(generatePKConstraint(pkFields, colInfoMap))
+	for _, field := range pkFields {
+		vars = append(vars, sqlparser.String(sqlparser.NewArgument(field.Name)))
 	}
 
 	queryTemplate = fmt.Sprintf("%s%s", queryTemplate, buf.String())
@@ -483,8 +467,8 @@ func generateUpdateQueryBindVariables(before *sqltypes.Result, after *sqltypes.R
 	return bindVars
 }
 
-func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field) (string, error) {
-	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields)
+func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields, colInfoMap)
 	bindVars := generateUpdateQueryBindVariables(rowResult.Before, rowResult.After, pkFields)
 	updateSQL, err := parsedUpdate.GenerateQuery(bindVars, nil)
 	if err != nil {
@@ -508,6 +492,7 @@ func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.Query
 }
 
 func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) error {
+	// todo cdc: we should use cdc_consumer to store gtid and lastpk
 	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
 	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
@@ -535,7 +520,7 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) e
 	return nil
 }
 
-func executeBatch(client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
+func executeBatch(ctx context.Context, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
 
 	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
 
@@ -555,7 +540,7 @@ func executeBatch(client vtgateservice.VitessClient, queryList []*querypb.BoundQ
 		Sql: "commit",
 	})
 
-	r, err := client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
+	r, err := client.ExecuteBatch(ctx, &vtgatepb.ExecuteBatchRequest{Queries: queryList})
 	if err != nil {
 		log.Fatalf("failed to execute batch: %v", err)
 	}

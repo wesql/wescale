@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS mysql.cdc_consumer
     `tag`                             varchar(256) NOT NULL COMMENT 'vector,redis',
     `env`                             TEXT DEFAULT NULL,
 --     todo begin_position/pk, current_position/pk, end_position/pk, status
+    last_gtid                         TEXT DEFAULT NULL,
+    last_pk                           varbinary(2000) DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
 ) ENGINE = InnoDB;
