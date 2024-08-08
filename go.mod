@@ -213,10 +213,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.25.0
 	github.com/golang/protobuf v1.5.4
 	github.com/pingcap/failpoint v0.0.0-20220801062533-2eaa32854a6c
-	github.com/stealthrocket/net v0.2.1
 	github.com/stealthrocket/wasi-go v0.8.0
 	github.com/tetratelabs/wazero v1.7.1
-	github.com/tmc/langchaingo v0.1.12
-	github.com/wesql/sqlparser v0.1.7
 	gopkg.in/ini.v1 v1.67.0
 )
