@@ -35,6 +35,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/vtgate/binlogconsumer"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/mysql"
@@ -313,6 +315,15 @@ func Init(
 	}
 	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
+	if binlogconsumer.EnableCdcConsumer {
+		cdcConsumerController := binlogconsumer.NewCdcConsumerController(gw)
+		servenv.OnRun(func() {
+			cdcConsumerController.Start()
+		})
+		servenv.OnTerm(func() {
+			cdcConsumerController.Stop()
+		})
 	}
 	cacheCfg := &cache.Config{
 		MaxEntries:     queryPlanCacheSize,
@@ -796,4 +807,11 @@ func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
 	}
 	defaultReadWriteSplitForReadOnlyTxnUserInput = val
 	return nil
+}
+
+func GetGateway() *TabletGateway {
+	if rpcVTGate == nil {
+		return nil
+	}
+	return rpcVTGate.gw
 }

@@ -20,6 +20,10 @@
 *.result
 *.y
 *.cnf
+*.mod
+*.sum
+**/Makefile
+
 go.mod
 go.sum
 .github/*

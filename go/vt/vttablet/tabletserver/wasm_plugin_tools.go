@@ -5,10 +5,8 @@ import (
 	"fmt"
 )
 
-const wasmBinaryTableName = "mysql.wasm_binary"
-
 func getQueryByName(wasmBinaryName string) string {
-	return fmt.Sprintf("select * from %s where name = '%s'", wasmBinaryTableName, wasmBinaryName)
+	return fmt.Sprintf("select * from %s where name = '%s'", WasmBinaryTableName, wasmBinaryName)
 }
 
 func SetQueryToQre(qre *QueryExecutor, query string) (err error) {
