@@ -26,14 +26,6 @@ type LatestGTIDForTable struct {
 	wg          sync.WaitGroup             // WaitGroup to wait for the cleanup goroutine to finish.
 }
 
-// NewLatestGTIDForTable creates a new instance of LatestGTIDForTable.
-func NewLatestGTIDForTable(expireTime time.Duration) *LatestGTIDForTable {
-	return &LatestGTIDForTable{
-		latestGTIDs: make(map[string]LatestGTIDEntry),
-		expireTime:  expireTime,
-	}
-}
-
 // UpdateGTID updates the latest GTID and update time for a given table.
 func (m *LatestGTIDForTable) UpdateGTID(tableName, gtid string) {
 	m.mu.Lock()

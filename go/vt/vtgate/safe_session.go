@@ -70,6 +70,7 @@ type (
 		logging *executeLogger
 
 		*vtgatepb.Session
+		latestGTIDForTable *LatestGTIDForTable
 	}
 
 	executeLogger struct {
@@ -132,7 +133,14 @@ func NewSafeSession(sessn *vtgatepb.Session) *SafeSession {
 	if sessn == nil {
 		sessn = &vtgatepb.Session{}
 	}
-	return &SafeSession{Session: sessn}
+	gm := &LatestGTIDForTable{
+		latestGTIDs: make(map[string]LatestGTIDEntry),
+		expireTime:  10 * time.Second,
+		mu:          sync.RWMutex{},
+		wg:          sync.WaitGroup{},
+	}
+	gm.startCleaner()
+	return &SafeSession{Session: sessn, latestGTIDForTable: gm}
 }
 
 // NewAutocommitSession returns a SafeSession based on the original
