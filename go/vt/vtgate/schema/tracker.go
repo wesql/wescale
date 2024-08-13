@@ -225,7 +225,6 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	return ksUpdater
 }
 
-// todo newborn22, add test cases. clean test case of getKeyspaceUpdateController
 // getKeyspaceUpdateController returns the updateController for all keyspaces
 // the updateController will be created if there was none.
 func (t *Tracker) getKeyspaceUpdateControllerArray(th *discovery.TabletHealth) []*updateController {
