@@ -32,9 +32,6 @@ var filterStatement string
 var wescaleHost string
 var wescaleGrpcPort string
 
-var gtid string
-var lastPK *querypb.QueryResult
-
 func test() {
 	tableSchema = "d1"
 	sourceTableName = "t1"
@@ -103,38 +100,7 @@ func main() {
 	pkColNames := getPkColumnInfo(colInfoMap)
 
 	// 3. Create a VStream request.
-	err = loadGTIDAndLastPK(ctx, client)
-	if err != nil {
-		log.Fatalf("failed to load gtid and lastpk: %v", err)
-	}
-	vgtid := &binlogdatapb.VGtid{
-		ShardGtids: []*binlogdatapb.ShardGtid{{
-			Keyspace: tableSchema,
-			Shard:    "0",
-			Gtid:     gtid,
-			TablePKs: []*binlogdatapb.TableLastPK{{
-				TableName: sourceTableName,
-				Lastpk:    lastPK,
-			}},
-		}}}
-	filter := &binlogdatapb.Filter{
-		Rules: []*binlogdatapb.Rule{{
-			Match:  sourceTableName,
-			Filter: filterStatement,
-		}},
-	}
-	flags := &vtgatepb.VStreamFlags{}
-	req := &vtgatepb.VStreamRequest{
-		TabletType: topodatapb.TabletType_PRIMARY,
-		Vgtid:      vgtid,
-		Filter:     filter,
-		Flags:      flags,
-	}
-	reader, err := client.VStream(ctx, req)
-	if err != nil {
-		log.Fatalf("failed to create vstream: %v", err)
-	}
-	fmt.Printf("start streaming\n\n\n\n")
+	reader := startVStream(err, client, ctx)
 
 	// 4. Read the stream and process the events.
 	var fields []*querypb.Field
@@ -268,12 +234,47 @@ func main() {
 	}
 }
 
+func startVStream(err error, client vtgateservice.VitessClient, ctx context.Context) vtgateservice.Vitess_VStreamClient {
+	lastPK, lastGtid, err := loadGTIDAndLastPK(ctx, client)
+	if err != nil {
+		log.Fatalf("failed to load gtid and lastpk: %v", err)
+	}
+	vgtid := &binlogdatapb.VGtid{
+		ShardGtids: []*binlogdatapb.ShardGtid{{
+			Keyspace: tableSchema,
+			Shard:    "0",
+			Gtid:     lastGtid,
+			TablePKs: []*binlogdatapb.TableLastPK{{
+				TableName: sourceTableName,
+				Lastpk:    lastPK,
+			}},
+		}}}
+	filter := &binlogdatapb.Filter{
+		Rules: []*binlogdatapb.Rule{{
+			Match:  sourceTableName,
+			Filter: filterStatement,
+		}},
+	}
+	flags := &vtgatepb.VStreamFlags{}
+	req := &vtgatepb.VStreamRequest{
+		TabletType: topodatapb.TabletType_PRIMARY,
+		Vgtid:      vgtid,
+		Filter:     filter,
+		Flags:      flags,
+	}
+	reader, err := client.VStream(ctx, req)
+	if err != nil {
+		log.Fatalf("failed to create vstream: %v", err)
+	}
+	fmt.Printf("start streaming\n\n\n\n")
+	return reader
+}
+
 func init() {
 	pflag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
 	pflag.StringVar(&sourceTableName, "SOURCE_TABLE_NAME", "", "The source table name.")
 	pflag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
 	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
-	pflag.StringVar(&gtid, "GTID", "", "The GTID.")
 	pflag.StringVar(&wescaleHost, "WESCALE_HOST", "127.0.0.1", "The WeScale host.")
 	pflag.StringVar(&wescaleGrpcPort, "WESCALE_GRPC_PORT", "15991", "The WeScale GRPC port.")
 }
@@ -493,33 +494,30 @@ func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.Query
 	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(fmt.Sprintf("%v", currentPK)))
 }
 
-func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) error {
+func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (*querypb.QueryResult, string, error) {
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
 	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
 	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
-		return errors.New("failed to load gtid and lastpk")
+		return nil, "", errors.New("failed to load gtid and lastpk")
 	}
 	res := sqltypes.CustomProto3ToResult(r.Result.Fields, r.Result)
 	if len(res.Rows) == 0 {
-		gtid = ""
-		lastPK = nil
-		return nil
+		return nil, "", nil
 	}
 
-	gtid = res.Named().Rows[0]["gtid"].ToString()
+	gtid := res.Named().Rows[0]["gtid"].ToString()
 
 	lastPKBytes, err := res.Named().Rows[0]["lastpk"].ToBytes()
 	if err != nil {
-		return err
+		return nil, gtid, err
 	}
-	tmpLastPK := querypb.QueryResult{}
-	err = prototext.Unmarshal(lastPKBytes, &tmpLastPK)
+	lastPK := querypb.QueryResult{}
+	err = prototext.Unmarshal(lastPKBytes, &lastPK)
 	if err != nil {
-		return err
+		return nil, gtid, err
 	}
-	lastPK = &tmpLastPK
-	return nil
+	return &lastPK, gtid, nil
 }
 
 func ExecuteBatch(ctx context.Context, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
