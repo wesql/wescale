@@ -80,10 +80,7 @@ func main() {
 	}
 
 	// 1. Connect to the vtgate server.
-	client, closeFunc, err := openWeScaleClient()
-	if err != nil {
-		log.Fatalf("failed to connect to vtgate: %v", err)
-	}
+	client, closeFunc := openWeScaleClient()
 	defer closeFunc()
 
 	// 2. Build ColumnInfo Map
@@ -298,18 +295,18 @@ func checkFlags() error {
 	return nil
 }
 
-func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
+func openWeScaleClient() (vtgateservice.VitessClient, func()) {
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", wescaleHost, wescaleGrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect to vtgate: %v", err)
+		log.Fatalf("failed to connect to vtgate: %v", err)
 	}
 	client := vtgateservice.NewVitessClient(conn)
 	closeFunc := func() {
 		conn.Close()
 	}
-	return client, closeFunc, nil
+	return client, closeFunc
 }
 
 func generateInsertParsedQuery(tableSchema, tableName string, result *sqltypes.Result) *sqlparser.ParsedQuery {
