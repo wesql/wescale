@@ -29,7 +29,8 @@ var sourceTableName string
 var targetTableName string
 var targetMetaTableName string
 var filterStatement string
-var wescaleURL string
+var wescaleHost string
+var wescaleGrpcPort string
 
 var gtid string
 var lastPK *querypb.QueryResult
@@ -40,8 +41,8 @@ func test() {
 	targetTableName = "t2"
 	targetMetaTableName = "t2_meta"
 	filterStatement = "select * from t1"
-	wescaleURL = "127.0.0.1:15991"
-
+	wescaleHost = "127.0.0.1"
+	wescaleGrpcPort = "15991"
 }
 
 type RowEventType string
@@ -89,8 +90,7 @@ func main() {
 	defer closeFunc()
 
 	// 2. Build ColumnInfo Map
-	// todo cdc: consider ddl during execution, then colInfoMap and pkColNames is out of date.
-	colInfoMap, err := buildColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
+	colInfoMap, err := getColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
 		resp, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 		if err != nil {
 			return nil, err
@@ -100,10 +100,9 @@ func main() {
 		}
 		return sqltypes.Proto3ToResult(resp.Result), nil
 	})
-	pkColNames := getPkColumnsOrderBySeqInIndex(colInfoMap)
+	pkColNames := getPkColumnInfo(colInfoMap)
 
 	// 3. Create a VStream request.
-	// todo cdc, use same ctx?
 	err = loadGTIDAndLastPK(ctx, client)
 	if err != nil {
 		log.Fatalf("failed to load gtid and lastpk: %v", err)
@@ -216,7 +215,6 @@ func main() {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
 				}
 				if len(event.Vgtid.GetShardGtids()) > 0 && len(event.Vgtid.GetShardGtids()[0].TablePKs) > 0 {
-					// todo cdc: in delta phase, how to update currentPK? in delta phase, currentPK can be got here
 					currentPK = event.Vgtid.GetShardGtids()[0].TablePKs[0].Lastpk
 					if currentPK != nil {
 						currentPK.Fields = pkFields
@@ -237,19 +235,19 @@ func main() {
 					var err error
 					switch rowResult.RowType {
 					case INSERT:
-						sql, err = generateInsertSQL(rowResult)
+						sql, err = GenerateInsertSQL(rowResult)
 						if err != nil {
 							log.Fatalf("failed to generate insert query: %v", err)
 						}
 
 					case DELETE:
-						sql, err = generateDeleteSQL(rowResult, pkFields, colInfoMap)
+						sql, err = GenerateDeleteSQL(rowResult, pkFields, colInfoMap)
 						if err != nil {
 							log.Fatalf("failed to generate delete query: %v", err)
 						}
 
 					case UPDATE:
-						sql, err = generateUpdateSQL(rowResult, pkFields, colInfoMap)
+						sql, err = GenerateUpdateSQL(rowResult, pkFields, colInfoMap)
 						if err != nil {
 							log.Fatalf("failed to generate update query: %v", err)
 						}
@@ -261,7 +259,7 @@ func main() {
 				// clear the result list
 				resultList = make([]*RowResult, 0)
 
-				executeBatch(ctx, client, queryList, currentGTID, currentPK)
+				ExecuteBatch(ctx, client, queryList, currentGTID, currentPK)
 
 			case binlogdatapb.VEventType_COPY_COMPLETED:
 				fmt.Printf("%v\n", event)
@@ -276,7 +274,8 @@ func init() {
 	pflag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
 	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
 	pflag.StringVar(&gtid, "GTID", "", "The GTID.")
-	pflag.StringVar(&wescaleURL, "WESCALE_URL", "", "The WeScale URL.")
+	pflag.StringVar(&wescaleHost, "WESCALE_HOST", "127.0.0.1", "The WeScale host.")
+	pflag.StringVar(&wescaleGrpcPort, "WESCALE_GRPC_PORT", "15991", "The WeScale GRPC port.")
 }
 
 func checkFlags() error {
@@ -289,14 +288,17 @@ func checkFlags() error {
 	if filterStatement == "" {
 		return fmt.Errorf("filter-statement is required")
 	}
-	if wescaleURL == "" {
-		return fmt.Errorf("we-scale-url is required")
+	if wescaleHost == "" {
+		return fmt.Errorf("wescale-host is required")
+	}
+	if wescaleGrpcPort == "" {
+		return fmt.Errorf("wescale-grpc-port is required")
 	}
 	return nil
 }
 
 func openWeScaleClient() (vtgateservice.VitessClient, func(), error) {
-	conn, err := grpc.Dial(wescaleURL,
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", wescaleHost, wescaleGrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -365,7 +367,7 @@ func generatePKConstraint(pkFields []*querypb.Field, colInfoMap map[string]*Colu
 	return buf.String()
 }
 
-func generateInsertSQL(rowResult *RowResult) (string, error) {
+func GenerateInsertSQL(rowResult *RowResult) (string, error) {
 	parsedInsert := generateInsertParsedQuery(tableSchema, targetTableName, rowResult.After)
 	bindVars := generateInsertQueryBindVariables(rowResult.After)
 	insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
@@ -407,7 +409,7 @@ func generateDeleteQueryBindVariables(result *sqltypes.Result, pkFields []*query
 	return bindVars
 }
 
-func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+func GenerateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
 	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields, colInfoMap)
 	bindVars := generateDeleteQueryBindVariables(rowResult.Before, pkFields)
 	deleteSQL, err := parsedDelete.GenerateQuery(bindVars, nil)
@@ -467,7 +469,7 @@ func generateUpdateQueryBindVariables(before *sqltypes.Result, after *sqltypes.R
 	return bindVars
 }
 
-func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+func GenerateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
 	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields, colInfoMap)
 	bindVars := generateUpdateQueryBindVariables(rowResult.Before, rowResult.After, pkFields)
 	updateSQL, err := parsedUpdate.GenerateQuery(bindVars, nil)
@@ -520,7 +522,7 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) e
 	return nil
 }
 
-func executeBatch(ctx context.Context, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
+func ExecuteBatch(ctx context.Context, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
 
 	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
 

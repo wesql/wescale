@@ -19,7 +19,7 @@ type ColumnInfo struct {
 	SeqInIndex  int
 }
 
-func buildColInfoMap(tableSchema, tableName string, executor func(sql string) (*sqltypes.Result, error)) (map[string]*ColumnInfo, error) {
+func getColInfoMap(tableSchema, tableName string, executor func(sql string) (*sqltypes.Result, error)) (map[string]*ColumnInfo, error) {
 	colInfoMap := make(map[string]*ColumnInfo)
 	query := fmt.Sprintf(`SELECT
             c.COLUMN_NAME,
@@ -76,7 +76,7 @@ func buildColInfoMap(tableSchema, tableName string, executor func(sql string) (*
 	return colInfoMap, nil
 }
 
-func getPkColumnsOrderBySeqInIndex(colInfoMap map[string]*ColumnInfo) []*ColumnInfo {
+func getPkColumnInfo(colInfoMap map[string]*ColumnInfo) []*ColumnInfo {
 	pkColumns := make([]*ColumnInfo, 0)
 	for _, colInfo := range colInfoMap {
 		if colInfo.IsPK {
