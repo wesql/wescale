@@ -190,40 +190,9 @@ func main() {
 				if len(resultList) == 0 {
 					continue
 				}
-				queryList := make([]*querypb.BoundQuery, 0)
-
-				//put data
-				for _, rowResult := range resultList {
-					var sql string
-					var err error
-					switch rowResult.RowType {
-					case INSERT:
-						sql, err = GenerateInsertSQL(rowResult)
-						if err != nil {
-							log.Fatalf("failed to generate insert query: %v", err)
-						}
-
-					case DELETE:
-						sql, err = GenerateDeleteSQL(rowResult, pkFields, colInfoMap)
-						if err != nil {
-							log.Fatalf("failed to generate delete query: %v", err)
-						}
-
-					case UPDATE:
-						sql, err = GenerateUpdateSQL(rowResult, pkFields, colInfoMap)
-						if err != nil {
-							log.Fatalf("failed to generate update query: %v", err)
-						}
-					}
-					queryList = append(queryList, &querypb.BoundQuery{
-						Sql: sql,
-					})
-				}
+				ExecuteBatch(ctx, client, resultList, currentGTID, currentPK, pkFields, colInfoMap)
 				// clear the result list
 				resultList = make([]*RowResult, 0)
-
-				ExecuteBatch(ctx, client, queryList, currentGTID, currentPK)
-
 			case binlogdatapb.VEventType_COPY_COMPLETED:
 				fmt.Printf("%v\n", event)
 			}
@@ -232,7 +201,7 @@ func main() {
 }
 
 func startVStream(err error, client vtgateservice.VitessClient, ctx context.Context) vtgateservice.Vitess_VStreamClient {
-	lastPK, lastGtid, err := loadGTIDAndLastPK(ctx, client)
+	lastGtid, lastPK, err := loadGTIDAndLastPK(ctx, client)
 	if err != nil {
 		log.Fatalf("failed to load gtid and lastpk: %v", err)
 	}
@@ -477,6 +446,33 @@ func GenerateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoM
 	return updateSQL, nil
 }
 
+func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
+	// todo cdc: we should use cdc_consumer to store gtid and lastpk
+	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
+	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
+	if err != nil || r.Error != nil {
+		return "", nil, errors.New("failed to load gtid and lastpk")
+	}
+	res := sqltypes.CustomProto3ToResult(r.Result.Fields, r.Result)
+	if len(res.Rows) == 0 {
+		return "", nil, nil
+	}
+
+	gtid := res.Named().Rows[0]["gtid"].ToString()
+
+	lastPKBytes, err := res.Named().Rows[0]["lastpk"].ToBytes()
+	if err != nil {
+		return gtid, nil, err
+	}
+	lastPK := querypb.QueryResult{}
+	err = prototext.Unmarshal(lastPKBytes, &lastPK)
+	if err != nil {
+		return gtid, nil, err
+	}
+	return gtid, &lastPK, nil
+}
+
+// todo cdc refactor
 func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.QueryResult) (string, error) {
 	// todo cdc, during delta phase, current pk is nil
 	if currentPK == nil || currentPK.Fields == nil {
@@ -491,40 +487,11 @@ func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.Query
 	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(fmt.Sprintf("%v", currentPK)))
 }
 
-func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (*querypb.QueryResult, string, error) {
-	// todo cdc: we should use cdc_consumer to store gtid and lastpk
-	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
-	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
-	if err != nil || r.Error != nil {
-		return nil, "", errors.New("failed to load gtid and lastpk")
-	}
-	res := sqltypes.CustomProto3ToResult(r.Result.Fields, r.Result)
-	if len(res.Rows) == 0 {
-		return nil, "", nil
-	}
-
-	gtid := res.Named().Rows[0]["gtid"].ToString()
-
-	lastPKBytes, err := res.Named().Rows[0]["lastpk"].ToBytes()
-	if err != nil {
-		return nil, gtid, err
-	}
-	lastPK := querypb.QueryResult{}
-	err = prototext.Unmarshal(lastPKBytes, &lastPK)
-	if err != nil {
-		return nil, gtid, err
-	}
-	return &lastPK, gtid, nil
-}
-
-func ExecuteBatch(ctx context.Context, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, currentGTID string, currentPK *querypb.QueryResult) {
-
-	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
-
-	// put gtid and pk
+// todo cdc refactor
+func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery) error {
 	recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
 	if err != nil {
-		log.Fatalf("failed to generate record meta query: %v", err)
+		return err
 	}
 	if recordMetaSQL != "" {
 		log.Printf("record gtid and pk: %v", recordMetaSQL)
@@ -532,11 +499,66 @@ func ExecuteBatch(ctx context.Context, client vtgateservice.VitessClient, queryL
 			Sql: recordMetaSQL,
 		})
 	}
+	return nil
+}
 
+func storeTableData(resultList []*RowResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) error {
+	for _, rowResult := range resultList {
+		var sql string
+		var err error
+		switch rowResult.RowType {
+		case INSERT:
+			sql, err = GenerateInsertSQL(rowResult)
+			if err != nil {
+				return fmt.Errorf("failed to generate insert query: %v", err)
+			}
+
+		case DELETE:
+			sql, err = GenerateDeleteSQL(rowResult, pkFields, colInfoMap)
+			if err != nil {
+				return fmt.Errorf("failed to generate delete query: %v", err)
+			}
+
+		case UPDATE:
+			sql, err = GenerateUpdateSQL(rowResult, pkFields, colInfoMap)
+			if err != nil {
+				return fmt.Errorf("failed to generate update query: %v", err)
+			}
+		}
+		queryList = append(queryList, &querypb.BoundQuery{
+			Sql: sql,
+		})
+	}
+	return nil
+}
+
+func ExecuteBatch(
+	ctx context.Context,
+	client vtgateservice.VitessClient,
+	resultList []*RowResult,
+	currentGTID string,
+	currentPK *querypb.QueryResult,
+	pkFields []*querypb.Field,
+	colInfoMap map[string]*ColumnInfo,
+) {
+	queryList := make([]*querypb.BoundQuery, 0)
+	// begin
+	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
+	// store gtid and pk
+	err := storeGtidAndLastPK(currentGTID, currentPK, client, queryList)
+	if err != nil {
+		log.Fatalf("failed to store gtid and lastpk: %v", err)
+	}
+	// store table data
+	err = storeTableData(resultList, client, queryList, pkFields, colInfoMap)
+	if err != nil {
+		log.Fatalf("failed to store table data: %v", err)
+	}
+	// commit
 	queryList = append(queryList, &querypb.BoundQuery{
 		Sql: "commit",
 	})
-
+	// todo cdc: make sure it's actually in the same transaction
 	r, err := client.ExecuteBatch(ctx, &vtgatepb.ExecuteBatchRequest{Queries: queryList})
 	if err != nil {
 		log.Fatalf("failed to execute batch: %v", err)
