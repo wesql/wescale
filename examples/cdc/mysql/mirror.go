@@ -104,6 +104,7 @@ func main() {
 	var pkFields []*querypb.Field
 	var currentGTID string
 	var currentPK *querypb.QueryResult
+	// todo cdc: consider replace it with a channel
 	var resultList []*RowResult
 	for {
 		resp, err := reader.Recv()
@@ -123,56 +124,7 @@ func main() {
 				pkFields = getPkFields(pkColNames, fields)
 				fmt.Printf("%v\n", event)
 			case binlogdatapb.VEventType_ROW:
-				for _, rowChange := range event.RowEvent.RowChanges {
-					before := false
-					after := false
-					if rowChange.Before != nil {
-						before = true
-					}
-					if rowChange.After != nil {
-						after = true
-					}
-					switch {
-					case !before && after:
-						// insert
-						res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-							Fields: fields,
-							Rows: []*querypb.Row{
-								rowChange.After,
-							},
-						})
-						resultList = append(resultList, &RowResult{RowType: INSERT, Before: nil, After: res})
-
-					case before && !after:
-						// delete
-						res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-							Fields: fields,
-							Rows: []*querypb.Row{
-								rowChange.Before,
-							},
-						})
-						resultList = append(resultList, &RowResult{RowType: DELETE, Before: res, After: nil})
-
-					case before && after:
-						// update
-						res1 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-							Fields: fields,
-							Rows: []*querypb.Row{
-								rowChange.Before,
-							},
-						})
-						res2 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
-							Fields: fields,
-							Rows: []*querypb.Row{
-								rowChange.After,
-							},
-						})
-						resultList = append(resultList, &RowResult{RowType: UPDATE, Before: res1, After: res2})
-
-					default:
-						panic("unreachable code")
-					}
-				}
+				resultList = processRowEvent(event, fields, resultList)
 			case binlogdatapb.VEventType_VGTID:
 				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
@@ -198,6 +150,60 @@ func main() {
 			}
 		}
 	}
+}
+
+func processRowEvent(event *binlogdatapb.VEvent, fields []*querypb.Field, resultList []*RowResult) []*RowResult {
+	for _, rowChange := range event.RowEvent.RowChanges {
+		before := false
+		after := false
+		if rowChange.Before != nil {
+			before = true
+		}
+		if rowChange.After != nil {
+			after = true
+		}
+		switch {
+		case !before && after:
+			// insert
+			res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+				Fields: fields,
+				Rows: []*querypb.Row{
+					rowChange.After,
+				},
+			})
+			resultList = append(resultList, &RowResult{RowType: INSERT, Before: nil, After: res})
+
+		case before && !after:
+			// delete
+			res := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+				Fields: fields,
+				Rows: []*querypb.Row{
+					rowChange.Before,
+				},
+			})
+			resultList = append(resultList, &RowResult{RowType: DELETE, Before: res, After: nil})
+
+		case before && after:
+			// update
+			res1 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+				Fields: fields,
+				Rows: []*querypb.Row{
+					rowChange.Before,
+				},
+			})
+			res2 := sqltypes.CustomProto3ToResult(fields, &querypb.QueryResult{
+				Fields: fields,
+				Rows: []*querypb.Row{
+					rowChange.After,
+				},
+			})
+			resultList = append(resultList, &RowResult{RowType: UPDATE, Before: res1, After: res2})
+
+		default:
+			panic("unreachable code")
+		}
+	}
+	return resultList
 }
 
 func startVStream(err error, client vtgateservice.VitessClient, ctx context.Context) vtgateservice.Vitess_VStreamClient {
