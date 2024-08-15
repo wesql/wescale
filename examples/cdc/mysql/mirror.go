@@ -142,7 +142,7 @@ func main() {
 				if len(resultList) == 0 {
 					continue
 				}
-				ExecuteBatch(ctx, client, resultList, currentGTID, currentPK, pkFields, colInfoMap)
+				ExecuteBatch(ctx, client, colInfoMap, pkFields, currentGTID, currentPK, resultList)
 				// clear the result list
 				resultList = make([]*RowResult, 0)
 			case binlogdatapb.VEventType_COPY_COMPLETED:
@@ -340,7 +340,7 @@ func generatePKConstraint(pkFields []*querypb.Field, colInfoMap map[string]*Colu
 	return buf.String()
 }
 
-func GenerateInsertSQL(rowResult *RowResult) (string, error) {
+func generateInsertSQL(rowResult *RowResult) (string, error) {
 	parsedInsert := generateInsertParsedQuery(tableSchema, targetTableName, rowResult.After)
 	bindVars := generateInsertQueryBindVariables(rowResult.After)
 	insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
@@ -382,7 +382,7 @@ func generateDeleteQueryBindVariables(result *sqltypes.Result, pkFields []*query
 	return bindVars
 }
 
-func GenerateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
 	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields, colInfoMap)
 	bindVars := generateDeleteQueryBindVariables(rowResult.Before, pkFields)
 	deleteSQL, err := parsedDelete.GenerateQuery(bindVars, nil)
@@ -442,7 +442,7 @@ func generateUpdateQueryBindVariables(before *sqltypes.Result, after *sqltypes.R
 	return bindVars
 }
 
-func GenerateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
+func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
 	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields, colInfoMap)
 	bindVars := generateUpdateQueryBindVariables(rowResult.Before, rowResult.After, pkFields)
 	updateSQL, err := parsedUpdate.GenerateQuery(bindVars, nil)
@@ -502,19 +502,19 @@ func storeTableData(resultList []*RowResult, client vtgateservice.VitessClient, 
 		var err error
 		switch rowResult.RowType {
 		case INSERT:
-			sql, err = GenerateInsertSQL(rowResult)
+			sql, err = generateInsertSQL(rowResult)
 			if err != nil {
 				return fmt.Errorf("failed to generate insert query: %v", err)
 			}
 
 		case DELETE:
-			sql, err = GenerateDeleteSQL(rowResult, pkFields, colInfoMap)
+			sql, err = generateDeleteSQL(rowResult, pkFields, colInfoMap)
 			if err != nil {
 				return fmt.Errorf("failed to generate delete query: %v", err)
 			}
 
 		case UPDATE:
-			sql, err = GenerateUpdateSQL(rowResult, pkFields, colInfoMap)
+			sql, err = generateUpdateSQL(rowResult, pkFields, colInfoMap)
 			if err != nil {
 				return fmt.Errorf("failed to generate update query: %v", err)
 			}
@@ -529,11 +529,11 @@ func storeTableData(resultList []*RowResult, client vtgateservice.VitessClient, 
 func ExecuteBatch(
 	ctx context.Context,
 	client vtgateservice.VitessClient,
-	resultList []*RowResult,
+	colInfoMap map[string]*ColumnInfo,
+	pkFields []*querypb.Field,
 	currentGTID string,
 	currentPK *querypb.QueryResult,
-	pkFields []*querypb.Field,
-	colInfoMap map[string]*ColumnInfo,
+	resultList []*RowResult,
 ) {
 	queryList := make([]*querypb.BoundQuery, 0)
 	// begin
