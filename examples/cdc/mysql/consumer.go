@@ -110,16 +110,6 @@ func (cc *CdcConsumer) Run() {
 	}
 }
 
-func main() {
-	mockConfig()
-
-	cc := NewCdcConsumer()
-	cc.Open()
-	defer cc.Close()
-
-	cc.Run()
-}
-
 func ProcessRowEvent(event *binlogdatapb.VEvent, fields []*querypb.Field, resultList []*RowResult) []*RowResult {
 	for _, rowChange := range event.RowEvent.RowChanges {
 		before := false
