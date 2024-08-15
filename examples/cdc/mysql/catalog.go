@@ -100,3 +100,17 @@ func getPkFields(pkColumns []*ColumnInfo, fields []*querypb.Field) []*querypb.Fi
 	}
 	return pkFields
 }
+
+type RowEventType string
+
+const (
+	INSERT RowEventType = "insert"
+	DELETE RowEventType = "delete"
+	UPDATE RowEventType = "update"
+)
+
+type RowResult struct {
+	RowType RowEventType
+	Before  *sqltypes.Result
+	After   *sqltypes.Result
+}
