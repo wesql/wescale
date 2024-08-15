@@ -22,51 +22,43 @@ import (
 	"strings"
 )
 
-// create table t1 (c1 int primary key auto_increment, c2 text);
-// create table t2 (c1 int primary key auto_increment, c2 text);
-// create table t2_meta (id bigint unsigned not null auto_increment, last_gtid varchar(128) DEFAULT NULL, last_pk varbinary(2000) DEFAULT NULL, lastpk_str varchar(512) DEFAULT NULL, primary key (id));
+type CdcConsumer struct {
+	Ctx             context.Context
+	VtgateClient    vtgateservice.VitessClient
+	VtgateCloseFunc func()
 
-// insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
-// insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
-// insert into t1 (c2) values ('I want you to act as an interviewer.');
-// insert into t1 (c2) values ('I want you to act as an engineer.');
+	EventReader vtgateservice.Vitess_VStreamClient
 
-// delete from t1 where c2 = 'I want you to act as an English translator, spelling corrector and improver.';
+	ColumnInfoMap map[string]*ColumnInfo
+}
 
-// update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
-func main() {
-
-	mockConfig()
-
-	ctx := context.Background()
+func NewCdcConsumer() (cc *CdcConsumer) {
 	flag.Parse()
 	err := checkFlags()
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+	return &CdcConsumer{
+		Ctx: context.Background(),
+	}
+}
 
+func (cc *CdcConsumer) Open() {
 	// 1. Connect to the vtgate server.
-	client, closeFunc := openWeScaleClient()
-	defer closeFunc()
-
-	SpiOpen(client)
-	defer SpiClose(client)
-
+	cc.VtgateClient, cc.VtgateCloseFunc = openWeScaleClient()
+	SpiOpen(cc.VtgateClient)
 	// 2. Build ColumnInfo Map
-	colInfoMap, err := getColInfoMap(DefaultConfig.TableSchema, DefaultConfig.SourceTableName, func(sql string) (*sqltypes.Result, error) {
-		resp, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
-		if err != nil {
-			return nil, err
-		}
-		if resp.Error != nil {
-			return nil, fmt.Errorf("failed to execute query: %v", resp.Error)
-		}
-		return sqltypes.Proto3ToResult(resp.Result), nil
-	})
-	pkColNames := getPkColumnInfo(colInfoMap)
+	cc.ReloadColInfoMap(DefaultConfig.TableSchema, DefaultConfig.SourceTableName)
+}
 
+func (cc *CdcConsumer) Close() {
+	cc.VtgateCloseFunc()
+	SpiClose(cc.VtgateClient)
+}
+
+func (cc *CdcConsumer) Run() {
 	// 3. Create a VStream request.
-	reader := startVStream(err, client, ctx)
+	cc.StartVStream()
 
 	// 4. Read the stream and process the events.
 	var fields []*querypb.Field
@@ -76,7 +68,7 @@ func main() {
 	// todo cdc: consider replace it with a channel
 	var resultList []*RowResult
 	for {
-		resp, err := reader.Recv()
+		resp, err := cc.EventReader.Recv()
 		if err == io.EOF {
 			fmt.Printf("stream ended\n")
 			return
@@ -90,9 +82,9 @@ func main() {
 			switch event.Type {
 			case binlogdatapb.VEventType_FIELD:
 				fields = event.FieldEvent.Fields
-				pkFields = getPkFields(pkColNames, fields)
+				pkFields = getPkFields(cc.ColumnInfoMap, fields)
 			case binlogdatapb.VEventType_ROW:
-				resultList = processRowEvent(event, fields, resultList)
+				resultList = ProcessRowEvent(event, fields, resultList)
 			case binlogdatapb.VEventType_VGTID:
 				if len(event.Vgtid.GetShardGtids()) > 0 && event.Vgtid.GetShardGtids()[0].Gtid != "" {
 					currentGTID = event.Vgtid.GetShardGtids()[0].Gtid
@@ -108,7 +100,7 @@ func main() {
 				if len(resultList) == 0 {
 					continue
 				}
-				ExecuteBatch(ctx, client, colInfoMap, pkFields, currentGTID, currentPK, resultList)
+				ExecuteBatch(cc.Ctx, cc.VtgateClient, cc.ColumnInfoMap, pkFields, currentGTID, currentPK, resultList)
 				// clear the result list
 				resultList = make([]*RowResult, 0)
 			case binlogdatapb.VEventType_COPY_COMPLETED:
@@ -118,7 +110,17 @@ func main() {
 	}
 }
 
-func processRowEvent(event *binlogdatapb.VEvent, fields []*querypb.Field, resultList []*RowResult) []*RowResult {
+func main() {
+	mockConfig()
+
+	cc := NewCdcConsumer()
+	cc.Open()
+	defer cc.Close()
+
+	cc.Run()
+}
+
+func ProcessRowEvent(event *binlogdatapb.VEvent, fields []*querypb.Field, resultList []*RowResult) []*RowResult {
 	for _, rowChange := range event.RowEvent.RowChanges {
 		before := false
 		after := false
@@ -172,8 +174,8 @@ func processRowEvent(event *binlogdatapb.VEvent, fields []*querypb.Field, result
 	return resultList
 }
 
-func startVStream(err error, client vtgateservice.VitessClient, ctx context.Context) vtgateservice.Vitess_VStreamClient {
-	lastGtid, lastPK, err := SpiLoadGTIDAndLastPK(ctx, client)
+func (cc *CdcConsumer) StartVStream() {
+	lastGtid, lastPK, err := SpiLoadGTIDAndLastPK(cc.Ctx, cc.VtgateClient)
 	if err != nil {
 		log.Fatalf("failed to load gtid and lastpk: %v", err)
 	}
@@ -200,12 +202,11 @@ func startVStream(err error, client vtgateservice.VitessClient, ctx context.Cont
 		Filter:     filter,
 		Flags:      flags,
 	}
-	reader, err := client.VStream(ctx, req)
+	cc.EventReader, err = cc.VtgateClient.VStream(cc.Ctx, req)
 	if err != nil {
 		log.Fatalf("failed to create vstream: %v", err)
 	}
 	fmt.Printf("start streaming\n\n\n\n")
-	return reader
 }
 
 func openWeScaleClient() (vtgateservice.VitessClient, func()) {

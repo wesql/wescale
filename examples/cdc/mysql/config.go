@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-type Config struct {
+type CdcConfig struct {
 	TableSchema         string
 	SourceTableName     string
 	TargetTableName     string
@@ -15,7 +15,7 @@ type Config struct {
 	WeScaleGrpcPort     string
 }
 
-var DefaultConfig Config
+var DefaultConfig CdcConfig
 
 func init() {
 	flag.StringVar(&DefaultConfig.TableSchema, "TABLE_SCHEMA", "", "The table schema.")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/wesql/sqlparser/go/sqltypes"
 	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
+	vtgatepb "github.com/wesql/sqlparser/go/vt/proto/vtgate"
 	"sort"
 )
 
@@ -19,7 +20,7 @@ type ColumnInfo struct {
 	SeqInIndex  int
 }
 
-func getColInfoMap(tableSchema, tableName string, executor func(sql string) (*sqltypes.Result, error)) (map[string]*ColumnInfo, error) {
+func (cc *CdcConsumer) ReloadColInfoMap(tableSchema, tableName string) (map[string]*ColumnInfo, error) {
 	colInfoMap := make(map[string]*ColumnInfo)
 	query := fmt.Sprintf(`SELECT
             c.COLUMN_NAME,
@@ -43,11 +44,14 @@ func getColInfoMap(tableSchema, tableName string, executor func(sql string) (*sq
             c.ORDINAL_POSITION
     `, tableSchema, tableName)
 
-	qr, err := executor(query)
+	resp, err := cc.VtgateClient.Execute(cc.Ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
 	if err != nil {
 		return nil, err
 	}
-
+	if resp.Error != nil {
+		return nil, fmt.Errorf("failed to execute query: %v", resp.Error)
+	}
+	qr := sqltypes.CustomProto3ToResult(resp.Result.Fields, resp.Result)
 	for _, row := range qr.Rows {
 		isPk, err := row[5].ToBool()
 		if err != nil {
@@ -89,7 +93,10 @@ func getPkColumnInfo(colInfoMap map[string]*ColumnInfo) []*ColumnInfo {
 	return pkColumns
 }
 
-func getPkFields(pkColumns []*ColumnInfo, fields []*querypb.Field) []*querypb.Field {
+func getPkFields(colInfoMap map[string]*ColumnInfo, fields []*querypb.Field) []*querypb.Field {
+
+	pkColumns := getPkColumnInfo(colInfoMap)
+
 	pkFields := make([]*querypb.Field, 0)
 	for _, colInfo := range pkColumns {
 		for _, field := range fields {
