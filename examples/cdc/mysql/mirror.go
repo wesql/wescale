@@ -22,11 +22,11 @@ func init() {
 }
 
 func Open(client vtgateservice.VitessClient) {
-
+	query := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", DefaultConfig.TableSchema, DefaultConfig.TargetMetaTableName)
+	client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
 }
 
 func Close(client vtgateservice.VitessClient) {
-
 }
 
 func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
