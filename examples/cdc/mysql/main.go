@@ -45,11 +45,12 @@ func main() {
 		log.Fatalf("error: %v", err)
 	}
 
-	SpiOpen()
-
 	// 1. Connect to the vtgate server.
 	client, closeFunc := openWeScaleClient()
 	defer closeFunc()
+
+	SpiOpen(client)
+	defer SpiClose(client)
 
 	// 2. Build ColumnInfo Map
 	colInfoMap, err := getColInfoMap(DefaultConfig.TableSchema, DefaultConfig.SourceTableName, func(sql string) (*sqltypes.Result, error) {
@@ -402,12 +403,12 @@ func ExecuteBatch(
 	// begin
 	queryList = append([]*querypb.BoundQuery{{Sql: "begin"}}, queryList...)
 	// store gtid and pk
-	err := SpiStoreGtidAndLastPK(currentGTID, currentPK, client, queryList)
+	err := SpiStoreGtidAndLastPK(currentGTID, currentPK, client)
 	if err != nil {
 		log.Fatalf("failed to store gtid and lastpk: %v", err)
 	}
 	// store table data
-	err = SpiStoreTableData(resultList, client, queryList, pkFields, colInfoMap)
+	err = SpiStoreTableData(resultList, colInfoMap, pkFields, client)
 	if err != nil {
 		log.Fatalf("failed to store table data: %v", err)
 	}

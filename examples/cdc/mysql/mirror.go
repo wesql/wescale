@@ -18,9 +18,14 @@ func init() {
 	SpiLoadGTIDAndLastPK = loadGTIDAndLastPK
 	SpiStoreGtidAndLastPK = storeGtidAndLastPK
 	SpiStoreTableData = storeTableData
+	SpiClose = Close
 }
 
-func Open() {
+func Open(client vtgateservice.VitessClient) {
+
+}
+
+func Close(client vtgateservice.VitessClient) {
 
 }
 
@@ -48,11 +53,11 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (
 	return gtid, &lastPK, nil
 }
 
-func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery) error {
+func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient) error {
 	if currentGTID == "" && currentPK == nil {
 		return nil
 	}
-	template := fmt.Sprintf("insert into %s.%s (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", DefaultConfig.TableSchema, DefaultConfig.TargetMetaTableName, "%a", "%a", "%a")
+	template := fmt.Sprintf("insert into `%s`.`%s` (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", DefaultConfig.TableSchema, DefaultConfig.TargetMetaTableName, "%a", "%a", "%a")
 	bytes, err := prototext.Marshal(currentPK)
 	if err != nil {
 		return nil
@@ -61,14 +66,13 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, clie
 	if err != nil {
 		return err
 	}
-	queryList = append(queryList, &querypb.BoundQuery{
-		Sql: recordMetaSQL,
-	})
+	client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
 	log.Printf("record gtid and pk: %v", recordMetaSQL)
 	return nil
 }
 
-func storeTableData(resultList []*RowResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) error {
+func storeTableData(resultList []*RowResult, colInfoMap map[string]*ColumnInfo, pkFields []*querypb.Field, client vtgateservice.VitessClient) error {
+	queryList := make([]*querypb.BoundQuery, 0)
 	for _, rowResult := range resultList {
 		var sql string
 		var err error
@@ -95,5 +99,6 @@ func storeTableData(resultList []*RowResult, client vtgateservice.VitessClient, 
 			Sql: sql,
 		})
 	}
+	client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
 	return nil
 }
