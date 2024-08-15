@@ -3,7 +3,7 @@ module github.com/wesql/wescale/examples/cdc/mysql
 go 1.22.5
 
 require (
-	github.com/wesql/sqlparser v0.1.10
+	github.com/wesql/sqlparser v0.1.12
 	google.golang.org/protobuf v1.34.2
 )
 

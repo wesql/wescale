@@ -9,7 +9,6 @@ import (
 	"github.com/wesql/sqlparser/go/sqltypes"
 	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
 	vtgatepb "github.com/wesql/sqlparser/go/vt/proto/vtgate"
-	"github.com/wesql/sqlparser/go/vt/proto/vtgateservice"
 	"google.golang.org/protobuf/encoding/prototext"
 	"log"
 )
@@ -22,18 +21,18 @@ func init() {
 	cdc.SpiClose = Close
 }
 
-func Open(client vtgateservice.VitessClient) {
+func Open(cc *cdc.CdcConsumer) {
 	query := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetMetaTableName)
-	client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
+	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
 }
 
-func Close(client vtgateservice.VitessClient) {
+func Close(cc *cdc.CdcConsumer) {
 }
 
-func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
+func loadGTIDAndLastPK(cc *cdc.CdcConsumer) (string, *querypb.QueryResult, error) {
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
 	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetMetaTableName)
-	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
+	r, err := cc.VtgateClient.Execute(cc.Ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
 		return "", nil, errors.New("failed to load gtid and lastpk")
 	}
@@ -54,7 +53,7 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (
 	return gtid, &lastPK, nil
 }
 
-func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient) error {
+func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *cdc.CdcConsumer) error {
 	if currentGTID == "" && currentPK == nil {
 		return nil
 	}
@@ -67,12 +66,12 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, clie
 	if err != nil {
 		return err
 	}
-	client.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
+	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
 	log.Printf("record gtid and pk: %v", recordMetaSQL)
 	return nil
 }
 
-func storeTableData(resultList []*cdc.RowResult, colInfoMap map[string]*cdc.ColumnInfo, pkFields []*querypb.Field, client vtgateservice.VitessClient) error {
+func storeTableData(resultList []*cdc.RowResult, cc *cdc.CdcConsumer) error {
 	queryList := make([]*querypb.BoundQuery, 0)
 	for _, rowResult := range resultList {
 		var sql string
@@ -85,13 +84,13 @@ func storeTableData(resultList []*cdc.RowResult, colInfoMap map[string]*cdc.Colu
 			}
 
 		case cdc.DELETE:
-			sql, err = cdc.GenerateDeleteSQL(rowResult, pkFields, colInfoMap)
+			sql, err = cdc.GenerateDeleteSQL(rowResult, cc.PkFields, cc.ColumnInfoMap)
 			if err != nil {
 				return fmt.Errorf("failed to generate delete query: %v", err)
 			}
 
 		case cdc.UPDATE:
-			sql, err = cdc.GenerateUpdateSQL(rowResult, pkFields, colInfoMap)
+			sql, err = cdc.GenerateUpdateSQL(rowResult, cc.PkFields, cc.ColumnInfoMap)
 			if err != nil {
 				return fmt.Errorf("failed to generate update query: %v", err)
 			}
@@ -100,7 +99,7 @@ func storeTableData(resultList []*cdc.RowResult, colInfoMap map[string]*cdc.Colu
 			Sql: sql,
 		})
 	}
-	client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
+	cc.VtgateClient.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
 	return nil
 }
 

@@ -6,8 +6,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/wesql/sqlparser v0.1.10 h1:QLLeIfbVcuFj3W10ee3MigCIrDlQ5Izl5xFfV6xlkVw=
-github.com/wesql/sqlparser v0.1.10/go.mod h1:Ax8T0JCj9o+axOwZ8tYazsUj3O8Y4myvLQRFWXJMmyQ=
+github.com/wesql/sqlparser v0.1.12 h1:DnLGUxyGN78nQ4u9GJqcIiVqs7/rmTIhbfAoVhlVLLE=
+github.com/wesql/sqlparser v0.1.12/go.mod h1:Ax8T0JCj9o+axOwZ8tYazsUj3O8Y4myvLQRFWXJMmyQ=
 golang.org/x/net v0.25.0 h1:d/OCCoBEUq33pjydKrGQhw7IlUPI2Oylr+8qLx49kac=
 golang.org/x/net v0.25.0/go.mod h1:JkAGAh7GEvH74S6FOH42FLoXpXbE/aqXSrIQjXgsiwM=
 golang.org/x/sys v0.20.0 h1:Od9JTbYCk261bKm4M/mw7AklTlFYIa0bIp9BgSm1S8Y=
