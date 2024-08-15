@@ -58,7 +58,7 @@ type RowResult struct {
 
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // create table t2 (c1 int primary key auto_increment, c2 text);
-// create table t2_meta (id bigint unsigned not null auto_increment, gtid varchar(128) DEFAULT NULL, lastpk varbinary(2000) DEFAULT NULL, lastpk_str varchar(512) DEFAULT NULL, primary key (id));
+// create table t2_meta (id bigint unsigned not null auto_increment, last_gtid varchar(128) DEFAULT NULL, last_pk varbinary(2000) DEFAULT NULL, lastpk_str varchar(512) DEFAULT NULL, primary key (id));
 
 // insert into t1 (c2) values ('I want you to act as a linux terminal. I will type commands and you will reply with what the terminal should show.');
 // insert into t1 (c2) values ('I want you to act as an English translator, spelling corrector and improver.');
@@ -448,7 +448,7 @@ func GenerateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoM
 
 func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
-	sql := fmt.Sprintf("select gtid, lastpk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
+	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
 	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
 		return "", nil, errors.New("failed to load gtid and lastpk")
@@ -457,10 +457,8 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (
 	if len(res.Rows) == 0 {
 		return "", nil, nil
 	}
-
-	gtid := res.Named().Rows[0]["gtid"].ToString()
-
-	lastPKBytes, err := res.Named().Rows[0]["lastpk"].ToBytes()
+	gtid := res.Named().Rows[0]["last_gtid"].ToString()
+	lastPKBytes, err := res.Named().Rows[0]["last_pk"].ToBytes()
 	if err != nil {
 		return gtid, nil, err
 	}
@@ -472,33 +470,23 @@ func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (
 	return gtid, &lastPK, nil
 }
 
-// todo cdc refactor
-func generateGTIDAndLastPKRecordSQL(currentGTID string, currentPK *querypb.QueryResult) (string, error) {
-	// todo cdc, during delta phase, current pk is nil
-	if currentPK == nil || currentPK.Fields == nil {
-		return "", nil
+func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery) error {
+	if currentGTID == "" && currentPK == nil {
+		return nil
 	}
-	template := fmt.Sprintf("insert into %s.%s (gtid,lastpk,lastpk_str) values (%s,%s,%s)", tableSchema, targetMetaTableName, "%a", "%a", "%a")
+	template := fmt.Sprintf("insert into %s.%s (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", tableSchema, targetMetaTableName, "%a", "%a", "%a")
 	bytes, err := prototext.Marshal(currentPK)
 	if err != nil {
-		return "", err
+		return nil
 	}
-
-	return sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(fmt.Sprintf("%v", currentPK)))
-}
-
-// todo cdc refactor
-func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient, queryList []*querypb.BoundQuery) error {
-	recordMetaSQL, err := generateGTIDAndLastPKRecordSQL(currentGTID, currentPK)
+	recordMetaSQL, err := sqlparser.ParseAndBind(template, sqltypes.StringBindVariable(currentGTID), sqltypes.BytesBindVariable(bytes), sqltypes.StringBindVariable(fmt.Sprintf("%v", currentPK)))
 	if err != nil {
 		return err
 	}
-	if recordMetaSQL != "" {
-		log.Printf("record gtid and pk: %v", recordMetaSQL)
-		queryList = append(queryList, &querypb.BoundQuery{
-			Sql: recordMetaSQL,
-		})
-	}
+	queryList = append(queryList, &querypb.BoundQuery{
+		Sql: recordMetaSQL,
+	})
+	log.Printf("record gtid and pk: %v", recordMetaSQL)
 	return nil
 }
 
