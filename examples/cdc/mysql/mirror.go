@@ -102,3 +102,13 @@ func storeTableData(resultList []*RowResult, colInfoMap map[string]*ColumnInfo, 
 	client.ExecuteBatch(context.Background(), &vtgatepb.ExecuteBatchRequest{Queries: queryList})
 	return nil
 }
+
+func main() {
+	mockConfig()
+
+	cc := NewCdcConsumer()
+	cc.Open()
+	defer cc.Close()
+
+	cc.Run()
+}
