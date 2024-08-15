@@ -6,12 +6,22 @@ import (
 	"github.com/wesql/sqlparser/go/vt/proto/vtgateservice"
 )
 
-var SpiOpen func(client vtgateservice.VitessClient)
+var SpiOpen = func(client vtgateservice.VitessClient) {
 
-var SpiLoadGTIDAndLastPK func(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error)
+}
 
-var SpiStoreGtidAndLastPK func(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient) error
+var SpiLoadGTIDAndLastPK = func(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
+	return "", nil, nil
+}
 
-var SpiStoreTableData func(resultList []*RowResult, colInfoMap map[string]*ColumnInfo, pkFields []*querypb.Field, client vtgateservice.VitessClient) error
+var SpiStoreGtidAndLastPK = func(currentGTID string, currentPK *querypb.QueryResult, client vtgateservice.VitessClient) error {
+	return nil
+}
 
-var SpiClose func(client vtgateservice.VitessClient)
+var SpiStoreTableData = func(resultList []*RowResult, colInfoMap map[string]*ColumnInfo, pkFields []*querypb.Field, client vtgateservice.VitessClient) error {
+	return nil
+}
+
+var SpiClose = func(client vtgateservice.VitessClient) {
+
+}
