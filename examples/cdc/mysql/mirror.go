@@ -7,8 +7,8 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
-	"github.com/spf13/pflag"
 	"github.com/wesql/sqlparser"
 	"github.com/wesql/sqlparser/go/sqltypes"
 	binlogdatapb "github.com/wesql/sqlparser/go/vt/proto/binlogdata"
@@ -73,7 +73,7 @@ func main() {
 	test()
 
 	ctx := context.Background()
-	pflag.Parse()
+	flag.Parse()
 	err := checkFlags()
 	if err != nil {
 		log.Fatalf("error: %v", err)
@@ -243,12 +243,12 @@ func startVStream(err error, client vtgateservice.VitessClient, ctx context.Cont
 }
 
 func init() {
-	pflag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
-	pflag.StringVar(&sourceTableName, "SOURCE_TABLE_NAME", "", "The source table name.")
-	pflag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
-	pflag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
-	pflag.StringVar(&wescaleHost, "WESCALE_HOST", "127.0.0.1", "The WeScale host.")
-	pflag.StringVar(&wescaleGrpcPort, "WESCALE_GRPC_PORT", "15991", "The WeScale GRPC port.")
+	flag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
+	flag.StringVar(&sourceTableName, "SOURCE_TABLE_NAME", "", "The source table name.")
+	flag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
+	flag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
+	flag.StringVar(&wescaleHost, "WESCALE_HOST", "127.0.0.1", "The WeScale host.")
+	flag.StringVar(&wescaleGrpcPort, "WESCALE_GRPC_PORT", "15991", "The WeScale GRPC port.")
 }
 
 func checkFlags() error {
