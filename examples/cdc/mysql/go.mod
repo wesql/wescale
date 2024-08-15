@@ -3,7 +3,6 @@ module github.com/wesql/wescale/examples/cdc/mysql
 go 1.22.5
 
 require (
-	github.com/spf13/pflag v1.0.5
 	github.com/wesql/sqlparser v0.1.7
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
