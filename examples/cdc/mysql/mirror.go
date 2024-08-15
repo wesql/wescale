@@ -24,38 +24,6 @@ import (
 	"strings"
 )
 
-var tableSchema string
-var sourceTableName string
-var targetTableName string
-var targetMetaTableName string
-var filterStatement string
-var wescaleHost string
-var wescaleGrpcPort string
-
-func test() {
-	tableSchema = "d1"
-	sourceTableName = "t1"
-	targetTableName = "t2"
-	targetMetaTableName = "t2_meta"
-	filterStatement = "select * from t1"
-	wescaleHost = "127.0.0.1"
-	wescaleGrpcPort = "15991"
-}
-
-type RowEventType string
-
-const (
-	INSERT RowEventType = "insert"
-	DELETE RowEventType = "delete"
-	UPDATE RowEventType = "update"
-)
-
-type RowResult struct {
-	RowType RowEventType
-	Before  *sqltypes.Result
-	After   *sqltypes.Result
-}
-
 // create table t1 (c1 int primary key auto_increment, c2 text);
 // create table t2 (c1 int primary key auto_increment, c2 text);
 // create table t2_meta (id bigint unsigned not null auto_increment, last_gtid varchar(128) DEFAULT NULL, last_pk varbinary(2000) DEFAULT NULL, lastpk_str varchar(512) DEFAULT NULL, primary key (id));
@@ -70,7 +38,7 @@ type RowResult struct {
 // update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 func main() {
 
-	test()
+	mockConfig()
 
 	ctx := context.Background()
 	flag.Parse()
@@ -84,7 +52,7 @@ func main() {
 	defer closeFunc()
 
 	// 2. Build ColumnInfo Map
-	colInfoMap, err := getColInfoMap(tableSchema, sourceTableName, func(sql string) (*sqltypes.Result, error) {
+	colInfoMap, err := getColInfoMap(DefaultConfig.TableSchema, DefaultConfig.SourceTableName, func(sql string) (*sqltypes.Result, error) {
 		resp, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 		if err != nil {
 			return nil, err
@@ -213,18 +181,18 @@ func startVStream(err error, client vtgateservice.VitessClient, ctx context.Cont
 	}
 	vgtid := &binlogdatapb.VGtid{
 		ShardGtids: []*binlogdatapb.ShardGtid{{
-			Keyspace: tableSchema,
+			Keyspace: DefaultConfig.TableSchema,
 			Shard:    "0",
 			Gtid:     lastGtid,
 			TablePKs: []*binlogdatapb.TableLastPK{{
-				TableName: sourceTableName,
+				TableName: DefaultConfig.SourceTableName,
 				Lastpk:    lastPK,
 			}},
 		}}}
 	filter := &binlogdatapb.Filter{
 		Rules: []*binlogdatapb.Rule{{
-			Match:  sourceTableName,
-			Filter: filterStatement,
+			Match:  DefaultConfig.SourceTableName,
+			Filter: DefaultConfig.FilterStatement,
 		}},
 	}
 	flags := &vtgatepb.VStreamFlags{}
@@ -242,36 +210,8 @@ func startVStream(err error, client vtgateservice.VitessClient, ctx context.Cont
 	return reader
 }
 
-func init() {
-	flag.StringVar(&tableSchema, "TABLE_SCHEMA", "", "The table schema.")
-	flag.StringVar(&sourceTableName, "SOURCE_TABLE_NAME", "", "The source table name.")
-	flag.StringVar(&targetTableName, "TARGET_TABLE_NAME", "", "The target table name.")
-	flag.StringVar(&filterStatement, "FILTER_STATEMENT", "", "The filter statement.")
-	flag.StringVar(&wescaleHost, "WESCALE_HOST", "127.0.0.1", "The WeScale host.")
-	flag.StringVar(&wescaleGrpcPort, "WESCALE_GRPC_PORT", "15991", "The WeScale GRPC port.")
-}
-
-func checkFlags() error {
-	if tableSchema == "" {
-		return fmt.Errorf("table-schema is required")
-	}
-	if sourceTableName == "" {
-		return fmt.Errorf("table-name is required")
-	}
-	if filterStatement == "" {
-		return fmt.Errorf("filter-statement is required")
-	}
-	if wescaleHost == "" {
-		return fmt.Errorf("wescale-host is required")
-	}
-	if wescaleGrpcPort == "" {
-		return fmt.Errorf("wescale-grpc-port is required")
-	}
-	return nil
-}
-
 func openWeScaleClient() (vtgateservice.VitessClient, func()) {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", wescaleHost, wescaleGrpcPort),
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", DefaultConfig.WeScaleHost, DefaultConfig.WeScaleGrpcPort),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -341,7 +281,7 @@ func generatePKConstraint(pkFields []*querypb.Field, colInfoMap map[string]*Colu
 }
 
 func generateInsertSQL(rowResult *RowResult) (string, error) {
-	parsedInsert := generateInsertParsedQuery(tableSchema, targetTableName, rowResult.After)
+	parsedInsert := generateInsertParsedQuery(DefaultConfig.TableSchema, DefaultConfig.TargetTableName, rowResult.After)
 	bindVars := generateInsertQueryBindVariables(rowResult.After)
 	insertSql, err := parsedInsert.GenerateQuery(bindVars, nil)
 	if err != nil {
@@ -383,7 +323,7 @@ func generateDeleteQueryBindVariables(result *sqltypes.Result, pkFields []*query
 }
 
 func generateDeleteSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
-	parsedDelete := generateDeleteParsedQuery(tableSchema, targetTableName, pkFields, colInfoMap)
+	parsedDelete := generateDeleteParsedQuery(DefaultConfig.TableSchema, DefaultConfig.TargetTableName, pkFields, colInfoMap)
 	bindVars := generateDeleteQueryBindVariables(rowResult.Before, pkFields)
 	deleteSQL, err := parsedDelete.GenerateQuery(bindVars, nil)
 	if err != nil {
@@ -443,7 +383,7 @@ func generateUpdateQueryBindVariables(before *sqltypes.Result, after *sqltypes.R
 }
 
 func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoMap map[string]*ColumnInfo) (string, error) {
-	parsedUpdate := generateUpdateParsedQuery(tableSchema, targetTableName, rowResult.Before.Fields, pkFields, colInfoMap)
+	parsedUpdate := generateUpdateParsedQuery(DefaultConfig.TableSchema, DefaultConfig.TargetTableName, rowResult.Before.Fields, pkFields, colInfoMap)
 	bindVars := generateUpdateQueryBindVariables(rowResult.Before, rowResult.After, pkFields)
 	updateSQL, err := parsedUpdate.GenerateQuery(bindVars, nil)
 	if err != nil {
@@ -454,7 +394,7 @@ func generateUpdateSQL(rowResult *RowResult, pkFields []*querypb.Field, colInfoM
 
 func loadGTIDAndLastPK(ctx context.Context, client vtgateservice.VitessClient) (string, *querypb.QueryResult, error) {
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
-	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", tableSchema, targetMetaTableName)
+	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", DefaultConfig.TableSchema, DefaultConfig.TargetMetaTableName)
 	r, err := client.Execute(ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
 		return "", nil, errors.New("failed to load gtid and lastpk")
@@ -480,7 +420,7 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, clie
 	if currentGTID == "" && currentPK == nil {
 		return nil
 	}
-	template := fmt.Sprintf("insert into %s.%s (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", tableSchema, targetMetaTableName, "%a", "%a", "%a")
+	template := fmt.Sprintf("insert into %s.%s (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", DefaultConfig.TableSchema, DefaultConfig.TargetMetaTableName, "%a", "%a", "%a")
 	bytes, err := prototext.Marshal(currentPK)
 	if err != nil {
 		return nil
