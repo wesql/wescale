@@ -154,7 +154,6 @@ func mockConfig() {
 	cdc.DefaultConfig.TableSchema = "d1"
 	cdc.DefaultConfig.SourceTableName = "t1"
 	cdc.DefaultConfig.TargetTableName = "t2"
-	cdc.DefaultConfig.TargetMetaTableName = "t2_meta"
 	cdc.DefaultConfig.FilterStatement = "select * from t1"
 	cdc.DefaultConfig.WeScaleHost = "127.0.0.1"
 	cdc.DefaultConfig.WeScaleGrpcPort = "15991"
