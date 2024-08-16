@@ -1,5 +1,3 @@
-//go:build !wasip1
-
 /*
 Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
@@ -33,12 +31,6 @@ var vectorStoreCollectionName string
 var store vectorstores.VectorStore
 
 func main() {
-	flag.StringVar(&embeddingModel, "EMBEDDING_MODEL", "", "The embedding model.")
-	flag.StringVar(&embeddingUrl, "EMBEDDING_URL", "", "The embedding URL.")
-	flag.StringVar(&vectorStoreType, "VECTOR_STORE_TYPE", "", "The vector store type.")
-	flag.StringVar(&vectorStoreUrl, "VECTOR_STORE_URL", "", "The vector store URL.")
-	flag.StringVar(&vectorStoreCollectionName, "VECTOR_STORE_COLLECTION_NAME", "", "The vector store collection name.")
-
 	mockConfig()
 
 	cc := cdc.NewCdcConsumer()
@@ -49,6 +41,13 @@ func main() {
 }
 
 func init() {
+
+	flag.StringVar(&embeddingModel, "EMBEDDING_MODEL", "", "The embedding model.")
+	flag.StringVar(&embeddingUrl, "EMBEDDING_URL", "", "The embedding URL.")
+	flag.StringVar(&vectorStoreType, "VECTOR_STORE_TYPE", "", "The vector store type.")
+	flag.StringVar(&vectorStoreUrl, "VECTOR_STORE_URL", "", "The vector store URL.")
+	flag.StringVar(&vectorStoreCollectionName, "VECTOR_STORE_COLLECTION_NAME", "", "The vector store collection name.")
+
 	cdc.SpiOpen = Open
 	cdc.SpiLoadGTIDAndLastPK = loadGTIDAndLastPK
 	cdc.SpiStoreGtidAndLastPK = storeGtidAndLastPK
