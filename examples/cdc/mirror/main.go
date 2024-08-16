@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/wesql/sqlparser"
 	"github.com/wesql/sqlparser/cdc"
@@ -39,7 +40,10 @@ func main() {
 	cc.Run()
 }
 
+var targetMetaTableName string
+
 func init() {
+	flag.StringVar(&targetMetaTableName, "target_meta_table_name", "t2_meta", "target meta table name")
 	cdc.SpiOpen = Open
 	cdc.SpiLoadGTIDAndLastPK = loadGTIDAndLastPK
 	cdc.SpiStoreGtidAndLastPK = storeGtidAndLastPK
@@ -48,7 +52,7 @@ func init() {
 }
 
 func Open(cc *cdc.CdcConsumer) {
-	query := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetMetaTableName)
+	query := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
 }
 
@@ -57,7 +61,7 @@ func Close(cc *cdc.CdcConsumer) {
 
 func loadGTIDAndLastPK(cc *cdc.CdcConsumer) (string, *querypb.QueryResult, error) {
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
-	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetMetaTableName)
+	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	r, err := cc.VtgateClient.Execute(cc.Ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil || r.Error != nil {
 		return "", nil, errors.New("failed to load gtid and lastpk")
@@ -83,7 +87,7 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 	if currentGTID == "" && currentPK == nil {
 		return nil
 	}
-	template := fmt.Sprintf("insert into `%s`.`%s` (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetMetaTableName, "%a", "%a", "%a")
+	template := fmt.Sprintf("insert into `%s`.`%s` (last_gtid,last_pk,lastpk_str) values (%s,%s,%s)", cdc.DefaultConfig.TableSchema, targetMetaTableName, "%a", "%a", "%a")
 	bytes, err := prototext.Marshal(currentPK)
 	if err != nil {
 		return nil
@@ -133,8 +137,9 @@ func mockConfig() {
 	cdc.DefaultConfig.TableSchema = "d1"
 	cdc.DefaultConfig.SourceTableName = "t1"
 	cdc.DefaultConfig.TargetTableName = "t2"
-	cdc.DefaultConfig.TargetMetaTableName = "t2_meta"
 	cdc.DefaultConfig.FilterStatement = "select * from t1"
 	cdc.DefaultConfig.WeScaleHost = "127.0.0.1"
 	cdc.DefaultConfig.WeScaleGrpcPort = "15991"
+
+	targetMetaTableName = "t2_meta"
 }

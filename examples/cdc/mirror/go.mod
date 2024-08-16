@@ -1,4 +1,4 @@
-module github.com/wesql/wescale/examples/cdc/mysql
+module github.com/wesql/wescale/examples/cdc/mirror
 
 go 1.22.5
 
