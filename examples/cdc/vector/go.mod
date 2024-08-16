@@ -1,15 +1,13 @@
-module github.com/wesql/wescale/examples/cdc/vstream
+module github.com/wesql/wescale/examples/cdc/vector
 
 go 1.22.4
 
 toolchain go1.22.5
 
 require (
-	github.com/spf13/pflag v1.0.5
 	github.com/stealthrocket/net v0.2.1
 	github.com/tmc/langchaingo v0.1.12
-	github.com/wesql/sqlparser v0.1.7
-	google.golang.org/grpc v1.65.0
+	github.com/wesql/sqlparser v0.1.12
 )
 
 require (
@@ -35,6 +33,7 @@ require (
 	google.golang.org/api v0.182.0 // indirect
 	google.golang.org/genproto v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240528184218-531527333157 // indirect
+	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
