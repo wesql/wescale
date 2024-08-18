@@ -2207,6 +2207,53 @@ func (node *ShowWescaleFilter) Format(buf *TrackedBuffer) {
 }
 
 // Format formats the node.
+func (node *CreateWescaleCDC) Format(buf *TrackedBuffer) {
+	buf.literal("create cdc ")
+
+	if node.IfNotExists {
+		buf.literal("if not exists ")
+	}
+
+	buf.astPrintf(node, "%s with (\n", node.Name)
+	buf.astPrintf(node, "\tdesc='%s',\n", node.Description)
+	buf.astPrintf(node, "\tenable='%s',\n", node.Enable)
+	buf.astPrintf(node, "\twasm_binary_name='%s'\n", node.WasmBinaryName)
+	buf.astPrintf(node, "\tenv='%s'\n", node.Env)
+	buf.literal(")")
+}
+
+// Format formats the node.
+func (node *DropWescaleCDC) Format(buf *TrackedBuffer) {
+	buf.astPrintf(node, "drop cdc %s", node.Name)
+}
+
+// Format formats the node.
+func (node *ShowWescaleCDC) Format(buf *TrackedBuffer) {
+	if node.ShowCreate {
+		buf.astPrintf(node, "show create cdc %s", node.Name)
+		return
+	}
+	if node.ShowAll {
+		buf.literal("show cdcs")
+		return
+	}
+	buf.astPrintf(node, "show cdc %s", node.Name)
+}
+
+// Format formats the node.
+func (node *AlterWescaleCDC) Format(buf *TrackedBuffer) {
+	buf.literal("alter cdc ")
+
+	buf.astPrintf(node, "%s with (\n", node.OriginName)
+	buf.astPrintf(node, "\tname='%s',\n", node.Name)
+	buf.astPrintf(node, "\tdesc='%s',\n", node.Description)
+	buf.astPrintf(node, "\tenable='%s',\n", node.Enable)
+	buf.astPrintf(node, "\twasm_binary_name='%s'\n", node.WasmBinaryName)
+	buf.astPrintf(node, "\tenv='%s'\n", node.Env)
+	buf.literal(")")
+}
+
+// Format formats the node.
 func (node *CreateView) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "create %v", node.Comments)
 	if node.IsReplace {

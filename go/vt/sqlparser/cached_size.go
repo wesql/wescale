@@ -323,6 +323,28 @@ func (cached *AlterVschema) CachedSize(alloc bool) int64 {
 	size += cached.AutoIncSpec.CachedSize(true)
 	return size
 }
+func (cached *AlterWescaleCDC) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(96)
+	}
+	// field OriginName string
+	size += hack.RuntimeAllocSize(int64(len(cached.OriginName)))
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
+	// field Description string
+	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
+	// field Enable string
+	size += hack.RuntimeAllocSize(int64(len(cached.Enable)))
+	// field WasmBinaryName string
+	size += hack.RuntimeAllocSize(int64(len(cached.WasmBinaryName)))
+	// field Env string
+	size += hack.RuntimeAllocSize(int64(len(cached.Env)))
+	return size
+}
 func (cached *AlterWescaleFilter) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -1025,6 +1047,26 @@ func (cached *CreateView) CachedSize(alloc bool) int64 {
 	size += cached.Comments.CachedSize(true)
 	return size
 }
+func (cached *CreateWescaleCDC) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(96)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
+	// field Description string
+	size += hack.RuntimeAllocSize(int64(len(cached.Description)))
+	// field Enable string
+	size += hack.RuntimeAllocSize(int64(len(cached.Enable)))
+	// field WasmBinaryName string
+	size += hack.RuntimeAllocSize(int64(len(cached.WasmBinaryName)))
+	// field Env string
+	size += hack.RuntimeAllocSize(int64(len(cached.Env)))
+	return size
+}
 func (cached *CreateWescaleFilter) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -1251,6 +1293,18 @@ func (cached *DropView) CachedSize(alloc bool) int64 {
 	}
 	// field Comments *vitess.io/vitess/go/vt/sqlparser.ParsedComments
 	size += cached.Comments.CachedSize(true)
+	return size
+}
+func (cached *DropWescaleCDC) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
 	return size
 }
 func (cached *DropWescaleFilter) CachedSize(alloc bool) int64 {
@@ -3529,6 +3583,18 @@ func (cached *ShowThrottlerStatus) CachedSize(alloc bool) int64 {
 			size += hack.RuntimeAllocSize(int64(len(elem)))
 		}
 	}
+	return size
+}
+func (cached *ShowWescaleCDC) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(24)
+	}
+	// field Name string
+	size += hack.RuntimeAllocSize(int64(len(cached.Name)))
 	return size
 }
 func (cached *ShowWescaleFilter) CachedSize(alloc bool) int64 {

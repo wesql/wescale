@@ -97,6 +97,7 @@ type iExecute interface {
 	SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error)
 	ShowDMLJob(uuid string, showDetail bool) (*sqltypes.Result, error)
 	HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error)
+	HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.Result, error)
 }
 
 // VSchemaOperator is an interface to Vschema Operations

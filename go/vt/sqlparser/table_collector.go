@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package sqlparser
 
 type TableSchemaAndName struct {
@@ -136,7 +141,7 @@ func removeDuplicateTables(tables []TableSchemaAndName) []TableSchemaAndName {
 	var result []TableSchemaAndName
 
 	for v := range tables {
-		if encountered[tables[v]] == true {
+		if encountered[tables[v]] {
 			// Do not add duplicate.
 		} else {
 			encountered[tables[v]] = true

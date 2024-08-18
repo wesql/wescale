@@ -38,6 +38,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+
 	"github.com/pingcap/failpoint"
 
 	"github.com/uber/jaeger-client-go"
@@ -1689,6 +1691,53 @@ func (e *Executor) HandleWescaleFilterRequest(sql string) (*sqltypes.Result, err
 	}
 
 	return rst, nil
+}
+
+func (e *Executor) HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.Result, error) {
+	th, err := findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+	if err != nil {
+		return nil, err
+	}
+
+	target := &querypb.Target{
+		Keyspace:   global.DefaultKeyspace,
+		Shard:      global.DefaultShard,
+		TabletType: topodatapb.TabletType_PRIMARY,
+	}
+
+	query := ""
+	switch s := stmt.(type) {
+	case *sqlparser.CreateWescaleCDC:
+		query = generateCreateWescaleCDCQuery(s)
+	case *sqlparser.AlterWescaleCDC:
+		query = generateAlterWescaleCDCQuery(s)
+	case *sqlparser.DropWescaleCDC:
+		query = generateDropWescaleCDCQuery(s)
+	case *sqlparser.ShowWescaleCDC:
+		query = generateShowWescaleCDCQuery(s)
+	}
+
+	return th.Conn.ExecuteInternal(context.Background(), target, query, nil, 0, 0, nil)
+}
+
+func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) string {
+	// todo newbron22 do things about create cdc
+	return ""
+}
+
+func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) string {
+	// todo newbron22 do things about alter cdc
+	return ""
+}
+
+func generateDropWescaleCDCQuery(cdc *sqlparser.DropWescaleCDC) string {
+	// todo newbron22 do things about drop cdc
+	return ""
+}
+
+func generateShowWescaleCDCQuery(cdc *sqlparser.ShowWescaleCDC) string {
+	// todo newbron22 do things about show cdc
+	return ""
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {

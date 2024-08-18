@@ -135,6 +135,14 @@ func (e *Executor) newExecute(
 		return recResult(plan.Type, rst)
 	}
 
+	rst, err = HandleWescaleCDCRequest(stmt, vcursor)
+	if err != nil {
+		return err
+	}
+	if rst != nil {
+		return recResult(plan.Type, rst)
+	}
+
 	if plan.Type != sqlparser.StmtShow {
 		safeSession.ClearWarnings()
 	}
@@ -528,6 +536,29 @@ func IsWescaleFilterRequest(stmt sqlparser.Statement) bool {
 func HandleWescaleFilterRequest(stmt sqlparser.Statement, vcursor *vcursorImpl, sql string) (*sqltypes.Result, error) {
 	if IsWescaleFilterRequest(stmt) {
 		return vcursor.executor.HandleWescaleFilterRequest(sql)
+	}
+	return nil, nil
+}
+
+func IsWescaleCDCRequest(stmt sqlparser.Statement) bool {
+	if _, ok := stmt.(*sqlparser.CreateWescaleCDC); ok {
+		return true
+	}
+	if _, ok := stmt.(*sqlparser.AlterWescaleCDC); ok {
+		return true
+	}
+	if _, ok := stmt.(*sqlparser.DropWescaleCDC); ok {
+		return true
+	}
+	if _, ok := stmt.(*sqlparser.ShowWescaleCDC); ok {
+		return true
+	}
+	return false
+}
+
+func HandleWescaleCDCRequest(stmt sqlparser.Statement, vcursor *vcursorImpl) (*sqltypes.Result, error) {
+	if IsWescaleCDCRequest(stmt) {
+		return vcursor.executor.HandleWescaleCDCRequest(stmt)
 	}
 	return nil, nil
 }

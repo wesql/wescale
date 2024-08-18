@@ -24,6 +24,7 @@ package sqlparser
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 )
 
@@ -2904,6 +2905,76 @@ func (node *ShowWescaleFilter) formatFast(buf *TrackedBuffer) {
 	}
 	buf.WriteString("show filter ")
 	buf.WriteString(node.Name)
+}
+
+// formatFast formats the node.
+func (node *CreateWescaleCDC) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("create cdc ")
+
+	if node.IfNotExists {
+		buf.WriteString("if not exists ")
+	}
+
+	buf.WriteString(node.Name)
+	buf.WriteString(" with (\n")
+	buf.WriteString("\tdesc='")
+	buf.WriteString(node.Description)
+	buf.WriteString("',\n")
+	buf.WriteString("\tenable='")
+	buf.WriteString(node.Enable)
+	buf.WriteString("',\n")
+	buf.WriteString("\twasm_binary_name='")
+	buf.WriteString(node.WasmBinaryName)
+	buf.WriteString("'\n")
+	buf.WriteString("\tenv='")
+	buf.WriteString(node.Env)
+	buf.WriteString("'\n")
+	buf.WriteString(")")
+}
+
+// formatFast formats the node.
+func (node *DropWescaleCDC) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("drop cdc ")
+	buf.WriteString(node.Name)
+}
+
+// formatFast formats the node.
+func (node *ShowWescaleCDC) formatFast(buf *TrackedBuffer) {
+	if node.ShowCreate {
+		buf.WriteString("show create cdc ")
+		buf.WriteString(node.Name)
+		return
+	}
+	if node.ShowAll {
+		buf.WriteString("show cdcs")
+		return
+	}
+	buf.WriteString("show cdc ")
+	buf.WriteString(node.Name)
+}
+
+// formatFast formats the node.
+func (node *AlterWescaleCDC) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("alter cdc ")
+
+	buf.WriteString(node.OriginName)
+	buf.WriteString(" with (\n")
+	buf.WriteString("\tname='")
+	buf.WriteString(node.Name)
+	buf.WriteString("',\n")
+	buf.WriteString("\tdesc='")
+	buf.WriteString(node.Description)
+	buf.WriteString("',\n")
+	buf.WriteString("\tenable='")
+	buf.WriteString(node.Enable)
+	buf.WriteString("',\n")
+	buf.WriteString("\twasm_binary_name='")
+	buf.WriteString(node.WasmBinaryName)
+	buf.WriteString("'\n")
+	buf.WriteString("\tenv='")
+	buf.WriteString(node.Env)
+	buf.WriteString("'\n")
+	buf.WriteString(")")
 }
 
 // formatFast formats the node.
