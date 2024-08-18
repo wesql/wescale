@@ -2,7 +2,7 @@
 title: WebAssembly in WeScale
 ---
 
-# Filters
+# WasmPlugin
 
 - Feature: WasmPlugin
 - Start Date: 2024-05-31
