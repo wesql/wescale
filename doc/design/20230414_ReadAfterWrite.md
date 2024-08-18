@@ -7,8 +7,8 @@ title: ReadAfterWrite
 - Feature: ReadAfterWrite
 - Start Date: 2023-04-14
 - Authors: @earayu
-- RFC PR: https://github.com/apecloud/WeSQL WeScale/pull/23
-- WeSQL WeScale Issue: https://github.com/apecloud/WeSQL WeScale/issues/20
+- RFC PR: https://github.com/WeSQL/WeScale/pull/23
+- WeSQL WeScale Issue: https://github.com/WeSQL/WeScale/issues/20
 
 # Summary
 

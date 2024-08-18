@@ -5,8 +5,8 @@ title: Least Busy Connection Load Balance Policy
 - Feature Name:
 - Start Date: 2023-08-09
 - Authors: lyq10085
-- Issue: https://github.com/apecloud/WeSQL WeScale/issues/220
-- PR: https://github.com/apecloud/WeSQL WeScale/pull/230
+- Issue: https://github.com/WeSQL/WeScale/issues/220
+- PR: https://github.com/WeSQL/WeScale/pull/230
 
 # Summary
 
@@ -54,4 +54,4 @@ Enable vtgate to actively check vttablet connection pools' usage status.
 
 # References
 
-[WeSQL WeScale load balancer](https://github.com/apecloud/WeSQL WeScale/issues/64)
+[WeSQL WeScale load balancer](https://github.com/WeSQL/WeScale/issues/64)

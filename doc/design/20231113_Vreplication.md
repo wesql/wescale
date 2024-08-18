@@ -10,7 +10,7 @@ Vitess incorporates a fundamental feature known as VReplication. It is extensive
 
 ## **Structure**
 
-The architecture of VStream is illustrated below. It creates a target table, synchronizes all data, and then replaces the source table.
+The architecture of VStream is illustrated below. 
 
 ![structure](images/Vreplication_1.png)
 
@@ -95,7 +95,7 @@ Then, SNAPSHOT 2 can continue the copying process.
 
 ## **Algorithm Flow Chart**
 
-As described above, a typical VStream process is as follows, experiencing one crash recovery during the process. The numbers in parentheses indicate the order of operations.
+As described above, a typical VReplication process is as follows, experiencing one crash recovery during the process. The numbers in parentheses indicate the order of operations.
 
 ![Algorithm Flow](images/Vreplication_2.jpeg)
 
@@ -119,7 +119,11 @@ Note: Snapshot 2 in (6) targets only data with PK>300. Hence, it's necessary to 
 
 Note: The pk<= numbers in (8)(9) in the diagram should not all be 400. These two processes represent continuing the replication from PK>300 after the fast-forward is completed.
 
-## References
+## The relationship between VReplication and VStream
+
+VStream implements the ETL process mentioned above, including full replication and the execution of algorithms like catch up and fast forward to ensure the correctness of the ETL process in case of program crashes. VReplication invokes VStream and makes modifications based on it. For example, during the catch up and fast forward stages, VStream does not filter data by primary key (PK), whereas VReplication adds PK filtering based on the data returned by VStream.
+
+# References
 [Life of a Stream: How VReplication Replicates Data](https://vitess.io/docs/16.0/reference/vreplication/internal/life-of-a-stream/)
 
 [Analyzing VReplication behavior](https://github.com/vitessio/vitess/issues/8056)
