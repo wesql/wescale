@@ -563,6 +563,34 @@ type (
 		Name       string
 	}
 
+	CreateWescaleCDC struct {
+		IfNotExists    bool
+		Name           string
+		Description    string
+		Enable         string
+		WasmBinaryName string
+		Env            string
+	}
+
+	AlterWescaleCDC struct {
+		OriginName     string
+		Name           string
+		Description    string
+		Enable         string
+		WasmBinaryName string
+		Env            string
+	}
+
+	DropWescaleCDC struct {
+		Name string
+	}
+
+	ShowWescaleCDC struct {
+		ShowAll    bool
+		ShowCreate bool
+		Name       string
+	}
+
 	// CreateTable represents a CREATE TABLE statement.
 	CreateTable struct {
 		Temp        bool
@@ -836,6 +864,10 @@ func (*CreateWescaleFilter) iStatement() {}
 func (*AlterWescaleFilter) iStatement()  {}
 func (*DropWescaleFilter) iStatement()   {}
 func (*ShowWescaleFilter) iStatement()   {}
+func (*CreateWescaleCDC) iStatement()    {}
+func (*AlterWescaleCDC) iStatement()     {}
+func (*DropWescaleCDC) iStatement()      {}
+func (*ShowWescaleCDC) iStatement()      {}
 
 func (*CreateView) iDDLStatement()    {}
 func (*AlterView) iDDLStatement()     {}

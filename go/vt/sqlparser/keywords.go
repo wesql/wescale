@@ -725,6 +725,10 @@ var keywords = []keyword{
 	{"trailing_comment_regex", TRAILING_COMMENT_REGEX},
 	{"bind_var_conds", BIND_VAR_CONDS},
 	{"action_args", ACTION_ARGS},
+	{"cdc", CDC},
+	{"cdcs", CDCS},
+	{"env", ENV},
+	{"wasm_binary_name", WASM_BINARY_NAME},
 }
 
 // keywordStrings contains the reverse mapping of token to keyword strings

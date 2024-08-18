@@ -54,6 +54,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfAlterView(parent, node, replacer)
 	case *AlterVschema:
 		return a.rewriteRefOfAlterVschema(parent, node, replacer)
+	case *AlterWescaleCDC:
+		return a.rewriteRefOfAlterWescaleCDC(parent, node, replacer)
 	case *AlterWescaleFilter:
 		return a.rewriteRefOfAlterWescaleFilter(parent, node, replacer)
 	case *AndExpr:
@@ -130,6 +132,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:
 		return a.rewriteRefOfCreateView(parent, node, replacer)
+	case *CreateWescaleCDC:
+		return a.rewriteRefOfCreateWescaleCDC(parent, node, replacer)
 	case *CreateWescaleFilter:
 		return a.rewriteRefOfCreateWescaleFilter(parent, node, replacer)
 	case *CurTimeFuncExpr:
@@ -154,6 +158,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfDropTable(parent, node, replacer)
 	case *DropView:
 		return a.rewriteRefOfDropView(parent, node, replacer)
+	case *DropWescaleCDC:
+		return a.rewriteRefOfDropWescaleCDC(parent, node, replacer)
 	case *DropWescaleFilter:
 		return a.rewriteRefOfDropWescaleFilter(parent, node, replacer)
 	case *ExecuteStmt:
@@ -426,6 +432,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfShowThrottledApps(parent, node, replacer)
 	case *ShowThrottlerStatus:
 		return a.rewriteRefOfShowThrottlerStatus(parent, node, replacer)
+	case *ShowWescaleCDC:
+		return a.rewriteRefOfShowWescaleCDC(parent, node, replacer)
 	case *ShowWescaleFilter:
 		return a.rewriteRefOfShowWescaleFilter(parent, node, replacer)
 	case *StarExpr:
@@ -1035,6 +1043,30 @@ func (a *application) rewriteRefOfAlterVschema(parent SQLNode, node *AlterVschem
 		a.cur.replacer = replacer
 		a.cur.parent = parent
 		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfAlterWescaleCDC(parent SQLNode, node *AlterWescaleCDC, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
 		if !a.post(&a.cur) {
 			return false
 		}
@@ -2165,6 +2197,30 @@ func (a *application) rewriteRefOfCreateView(parent SQLNode, node *CreateView, r
 	}
 	return true
 }
+func (a *application) rewriteRefOfCreateWescaleCDC(parent SQLNode, node *CreateWescaleCDC, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfCreateWescaleFilter(parent SQLNode, node *CreateWescaleFilter, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -2542,6 +2598,30 @@ func (a *application) rewriteRefOfDropView(parent SQLNode, node *DropView, repla
 		a.cur.replacer = replacer
 		a.cur.parent = parent
 		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfDropWescaleCDC(parent SQLNode, node *DropWescaleCDC, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
 		if !a.post(&a.cur) {
 			return false
 		}
@@ -6819,6 +6899,30 @@ func (a *application) rewriteRefOfShowThrottlerStatus(parent SQLNode, node *Show
 	}
 	return true
 }
+func (a *application) rewriteRefOfShowWescaleCDC(parent SQLNode, node *ShowWescaleCDC, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfShowWescaleFilter(parent SQLNode, node *ShowWescaleFilter, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -9142,6 +9246,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfAlterView(parent, node, replacer)
 	case *AlterVschema:
 		return a.rewriteRefOfAlterVschema(parent, node, replacer)
+	case *AlterWescaleCDC:
+		return a.rewriteRefOfAlterWescaleCDC(parent, node, replacer)
 	case *AlterWescaleFilter:
 		return a.rewriteRefOfAlterWescaleFilter(parent, node, replacer)
 	case *Begin:
@@ -9160,6 +9266,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfCreateTable(parent, node, replacer)
 	case *CreateView:
 		return a.rewriteRefOfCreateView(parent, node, replacer)
+	case *CreateWescaleCDC:
+		return a.rewriteRefOfCreateWescaleCDC(parent, node, replacer)
 	case *CreateWescaleFilter:
 		return a.rewriteRefOfCreateWescaleFilter(parent, node, replacer)
 	case *DeallocateStmt:
@@ -9172,6 +9280,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfDropTable(parent, node, replacer)
 	case *DropView:
 		return a.rewriteRefOfDropView(parent, node, replacer)
+	case *DropWescaleCDC:
+		return a.rewriteRefOfDropWescaleCDC(parent, node, replacer)
 	case *DropWescaleFilter:
 		return a.rewriteRefOfDropWescaleFilter(parent, node, replacer)
 	case *ExecuteStmt:
@@ -9222,6 +9332,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfShowThrottledApps(parent, node, replacer)
 	case *ShowThrottlerStatus:
 		return a.rewriteRefOfShowThrottlerStatus(parent, node, replacer)
+	case *ShowWescaleCDC:
+		return a.rewriteRefOfShowWescaleCDC(parent, node, replacer)
 	case *ShowWescaleFilter:
 		return a.rewriteRefOfShowWescaleFilter(parent, node, replacer)
 	case *Stream:

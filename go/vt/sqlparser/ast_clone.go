@@ -55,6 +55,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfAlterView(in)
 	case *AlterVschema:
 		return CloneRefOfAlterVschema(in)
+	case *AlterWescaleCDC:
+		return CloneRefOfAlterWescaleCDC(in)
 	case *AlterWescaleFilter:
 		return CloneRefOfAlterWescaleFilter(in)
 	case *AndExpr:
@@ -131,6 +133,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfCreateTable(in)
 	case *CreateView:
 		return CloneRefOfCreateView(in)
+	case *CreateWescaleCDC:
+		return CloneRefOfCreateWescaleCDC(in)
 	case *CreateWescaleFilter:
 		return CloneRefOfCreateWescaleFilter(in)
 	case *CurTimeFuncExpr:
@@ -155,6 +159,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfDropTable(in)
 	case *DropView:
 		return CloneRefOfDropView(in)
+	case *DropWescaleCDC:
+		return CloneRefOfDropWescaleCDC(in)
 	case *DropWescaleFilter:
 		return CloneRefOfDropWescaleFilter(in)
 	case *ExecuteStmt:
@@ -427,6 +433,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfShowThrottledApps(in)
 	case *ShowThrottlerStatus:
 		return CloneRefOfShowThrottlerStatus(in)
+	case *ShowWescaleCDC:
+		return CloneRefOfShowWescaleCDC(in)
 	case *ShowWescaleFilter:
 		return CloneRefOfShowWescaleFilter(in)
 	case *StarExpr:
@@ -705,6 +713,15 @@ func CloneRefOfAlterVschema(n *AlterVschema) *AlterVschema {
 	out.VindexSpec = CloneRefOfVindexSpec(n.VindexSpec)
 	out.VindexCols = CloneSliceOfIdentifierCI(n.VindexCols)
 	out.AutoIncSpec = CloneRefOfAutoIncSpec(n.AutoIncSpec)
+	return &out
+}
+
+// CloneRefOfAlterWescaleCDC creates a deep clone of the input.
+func CloneRefOfAlterWescaleCDC(n *AlterWescaleCDC) *AlterWescaleCDC {
+	if n == nil {
+		return nil
+	}
+	out := *n
 	return &out
 }
 
@@ -1098,6 +1115,15 @@ func CloneRefOfCreateView(n *CreateView) *CreateView {
 	return &out
 }
 
+// CloneRefOfCreateWescaleCDC creates a deep clone of the input.
+func CloneRefOfCreateWescaleCDC(n *CreateWescaleCDC) *CreateWescaleCDC {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfCreateWescaleFilter creates a deep clone of the input.
 func CloneRefOfCreateWescaleFilter(n *CreateWescaleFilter) *CreateWescaleFilter {
 	if n == nil {
@@ -1226,6 +1252,15 @@ func CloneRefOfDropView(n *DropView) *DropView {
 	out := *n
 	out.FromTables = CloneTableNames(n.FromTables)
 	out.Comments = CloneRefOfParsedComments(n.Comments)
+	return &out
+}
+
+// CloneRefOfDropWescaleCDC creates a deep clone of the input.
+func CloneRefOfDropWescaleCDC(n *DropWescaleCDC) *DropWescaleCDC {
+	if n == nil {
+		return nil
+	}
+	out := *n
 	return &out
 }
 
@@ -2675,6 +2710,15 @@ func CloneRefOfShowThrottlerStatus(n *ShowThrottlerStatus) *ShowThrottlerStatus 
 	return &out
 }
 
+// CloneRefOfShowWescaleCDC creates a deep clone of the input.
+func CloneRefOfShowWescaleCDC(n *ShowWescaleCDC) *ShowWescaleCDC {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	return &out
+}
+
 // CloneRefOfShowWescaleFilter creates a deep clone of the input.
 func CloneRefOfShowWescaleFilter(n *ShowWescaleFilter) *ShowWescaleFilter {
 	if n == nil {
@@ -3882,6 +3926,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfAlterView(in)
 	case *AlterVschema:
 		return CloneRefOfAlterVschema(in)
+	case *AlterWescaleCDC:
+		return CloneRefOfAlterWescaleCDC(in)
 	case *AlterWescaleFilter:
 		return CloneRefOfAlterWescaleFilter(in)
 	case *Begin:
@@ -3900,6 +3946,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfCreateTable(in)
 	case *CreateView:
 		return CloneRefOfCreateView(in)
+	case *CreateWescaleCDC:
+		return CloneRefOfCreateWescaleCDC(in)
 	case *CreateWescaleFilter:
 		return CloneRefOfCreateWescaleFilter(in)
 	case *DeallocateStmt:
@@ -3912,6 +3960,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfDropTable(in)
 	case *DropView:
 		return CloneRefOfDropView(in)
+	case *DropWescaleCDC:
+		return CloneRefOfDropWescaleCDC(in)
 	case *DropWescaleFilter:
 		return CloneRefOfDropWescaleFilter(in)
 	case *ExecuteStmt:
@@ -3962,6 +4012,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfShowThrottledApps(in)
 	case *ShowThrottlerStatus:
 		return CloneRefOfShowThrottlerStatus(in)
+	case *ShowWescaleCDC:
+		return CloneRefOfShowWescaleCDC(in)
 	case *ShowWescaleFilter:
 		return CloneRefOfShowWescaleFilter(in)
 	case *Stream:

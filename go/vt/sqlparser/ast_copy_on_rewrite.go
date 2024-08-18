@@ -54,6 +54,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfAlterView(n, parent)
 	case *AlterVschema:
 		return c.copyOnRewriteRefOfAlterVschema(n, parent)
+	case *AlterWescaleCDC:
+		return c.copyOnRewriteRefOfAlterWescaleCDC(n, parent)
 	case *AlterWescaleFilter:
 		return c.copyOnRewriteRefOfAlterWescaleFilter(n, parent)
 	case *AndExpr:
@@ -130,6 +132,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:
 		return c.copyOnRewriteRefOfCreateView(n, parent)
+	case *CreateWescaleCDC:
+		return c.copyOnRewriteRefOfCreateWescaleCDC(n, parent)
 	case *CreateWescaleFilter:
 		return c.copyOnRewriteRefOfCreateWescaleFilter(n, parent)
 	case *CurTimeFuncExpr:
@@ -154,6 +158,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfDropTable(n, parent)
 	case *DropView:
 		return c.copyOnRewriteRefOfDropView(n, parent)
+	case *DropWescaleCDC:
+		return c.copyOnRewriteRefOfDropWescaleCDC(n, parent)
 	case *DropWescaleFilter:
 		return c.copyOnRewriteRefOfDropWescaleFilter(n, parent)
 	case *ExecuteStmt:
@@ -426,6 +432,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfShowThrottledApps(n, parent)
 	case *ShowThrottlerStatus:
 		return c.copyOnRewriteRefOfShowThrottlerStatus(n, parent)
+	case *ShowWescaleCDC:
+		return c.copyOnRewriteRefOfShowWescaleCDC(n, parent)
 	case *ShowWescaleFilter:
 		return c.copyOnRewriteRefOfShowWescaleFilter(n, parent)
 	case *StarExpr:
@@ -911,6 +919,18 @@ func (c *cow) copyOnRewriteRefOfAlterVschema(n *AlterVschema, parent SQLNode) (o
 			}
 			changed = true
 		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfAlterWescaleCDC(n *AlterWescaleCDC, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -1738,6 +1758,18 @@ func (c *cow) copyOnRewriteRefOfCreateView(n *CreateView, parent SQLNode) (out S
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfCreateWescaleCDC(n *CreateWescaleCDC, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfCreateWescaleFilter(n *CreateWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -2002,6 +2034,18 @@ func (c *cow) copyOnRewriteRefOfDropView(n *DropView, parent SQLNode) (out SQLNo
 			}
 			changed = true
 		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfDropWescaleCDC(n *DropWescaleCDC, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
 	}
 	if c.post != nil {
 		out, changed = c.postVisit(out, parent, changed)
@@ -5028,6 +5072,18 @@ func (c *cow) copyOnRewriteRefOfShowThrottlerStatus(n *ShowThrottlerStatus, pare
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfShowWescaleCDC(n *ShowWescaleCDC, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfShowWescaleFilter(n *ShowWescaleFilter, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6857,6 +6913,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfAlterView(n, parent)
 	case *AlterVschema:
 		return c.copyOnRewriteRefOfAlterVschema(n, parent)
+	case *AlterWescaleCDC:
+		return c.copyOnRewriteRefOfAlterWescaleCDC(n, parent)
 	case *AlterWescaleFilter:
 		return c.copyOnRewriteRefOfAlterWescaleFilter(n, parent)
 	case *Begin:
@@ -6875,6 +6933,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfCreateTable(n, parent)
 	case *CreateView:
 		return c.copyOnRewriteRefOfCreateView(n, parent)
+	case *CreateWescaleCDC:
+		return c.copyOnRewriteRefOfCreateWescaleCDC(n, parent)
 	case *CreateWescaleFilter:
 		return c.copyOnRewriteRefOfCreateWescaleFilter(n, parent)
 	case *DeallocateStmt:
@@ -6887,6 +6947,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfDropTable(n, parent)
 	case *DropView:
 		return c.copyOnRewriteRefOfDropView(n, parent)
+	case *DropWescaleCDC:
+		return c.copyOnRewriteRefOfDropWescaleCDC(n, parent)
 	case *DropWescaleFilter:
 		return c.copyOnRewriteRefOfDropWescaleFilter(n, parent)
 	case *ExecuteStmt:
@@ -6937,6 +6999,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfShowThrottledApps(n, parent)
 	case *ShowThrottlerStatus:
 		return c.copyOnRewriteRefOfShowThrottlerStatus(n, parent)
+	case *ShowWescaleCDC:
+		return c.copyOnRewriteRefOfShowWescaleCDC(n, parent)
 	case *ShowWescaleFilter:
 		return c.copyOnRewriteRefOfShowWescaleFilter(n, parent)
 	case *Stream:

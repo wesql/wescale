@@ -122,6 +122,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfAlterVschema(a, b)
+	case *AlterWescaleCDC:
+		b, ok := inB.(*AlterWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterWescaleCDC(a, b)
 	case *AlterWescaleFilter:
 		b, ok := inB.(*AlterWescaleFilter)
 		if !ok {
@@ -350,6 +356,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfCreateView(a, b)
+	case *CreateWescaleCDC:
+		b, ok := inB.(*CreateWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateWescaleCDC(a, b)
 	case *CreateWescaleFilter:
 		b, ok := inB.(*CreateWescaleFilter)
 		if !ok {
@@ -422,6 +434,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfDropView(a, b)
+	case *DropWescaleCDC:
+		b, ok := inB.(*DropWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfDropWescaleCDC(a, b)
 	case *DropWescaleFilter:
 		b, ok := inB.(*DropWescaleFilter)
 		if !ok {
@@ -1238,6 +1256,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfShowThrottlerStatus(a, b)
+	case *ShowWescaleCDC:
+		b, ok := inB.(*ShowWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowWescaleCDC(a, b)
 	case *ShowWescaleFilter:
 		b, ok := inB.(*ShowWescaleFilter)
 		if !ok {
@@ -1769,6 +1793,22 @@ func (cmp *Comparator) RefOfAlterVschema(a, b *AlterVschema) bool {
 		cmp.RefOfAutoIncSpec(a.AutoIncSpec, b.AutoIncSpec)
 }
 
+// RefOfAlterWescaleCDC does deep equals between the two objects.
+func (cmp *Comparator) RefOfAlterWescaleCDC(a, b *AlterWescaleCDC) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.OriginName == b.OriginName &&
+		a.Name == b.Name &&
+		a.Description == b.Description &&
+		a.Enable == b.Enable &&
+		a.WasmBinaryName == b.WasmBinaryName &&
+		a.Env == b.Env
+}
+
 // RefOfAlterWescaleFilter does deep equals between the two objects.
 func (cmp *Comparator) RefOfAlterWescaleFilter(a, b *AlterWescaleFilter) bool {
 	if a == b {
@@ -2232,6 +2272,22 @@ func (cmp *Comparator) RefOfCreateView(a, b *CreateView) bool {
 		cmp.RefOfParsedComments(a.Comments, b.Comments)
 }
 
+// RefOfCreateWescaleCDC does deep equals between the two objects.
+func (cmp *Comparator) RefOfCreateWescaleCDC(a, b *CreateWescaleCDC) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.IfNotExists == b.IfNotExists &&
+		a.Name == b.Name &&
+		a.Description == b.Description &&
+		a.Enable == b.Enable &&
+		a.WasmBinaryName == b.WasmBinaryName &&
+		a.Env == b.Env
+}
+
 // RefOfCreateWescaleFilter does deep equals between the two objects.
 func (cmp *Comparator) RefOfCreateWescaleFilter(a, b *CreateWescaleFilter) bool {
 	if a == b {
@@ -2389,6 +2445,17 @@ func (cmp *Comparator) RefOfDropView(a, b *DropView) bool {
 	return a.IfExists == b.IfExists &&
 		cmp.TableNames(a.FromTables, b.FromTables) &&
 		cmp.RefOfParsedComments(a.Comments, b.Comments)
+}
+
+// RefOfDropWescaleCDC does deep equals between the two objects.
+func (cmp *Comparator) RefOfDropWescaleCDC(a, b *DropWescaleCDC) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Name == b.Name
 }
 
 // RefOfDropWescaleFilter does deep equals between the two objects.
@@ -4058,6 +4125,19 @@ func (cmp *Comparator) RefOfShowThrottlerStatus(a, b *ShowThrottlerStatus) bool 
 		return false
 	}
 	return cmp.Comments(a.Comments, b.Comments)
+}
+
+// RefOfShowWescaleCDC does deep equals between the two objects.
+func (cmp *Comparator) RefOfShowWescaleCDC(a, b *ShowWescaleCDC) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.ShowAll == b.ShowAll &&
+		a.ShowCreate == b.ShowCreate &&
+		a.Name == b.Name
 }
 
 // RefOfShowWescaleFilter does deep equals between the two objects.
@@ -6316,6 +6396,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfAlterVschema(a, b)
+	case *AlterWescaleCDC:
+		b, ok := inB.(*AlterWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfAlterWescaleCDC(a, b)
 	case *AlterWescaleFilter:
 		b, ok := inB.(*AlterWescaleFilter)
 		if !ok {
@@ -6370,6 +6456,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfCreateView(a, b)
+	case *CreateWescaleCDC:
+		b, ok := inB.(*CreateWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfCreateWescaleCDC(a, b)
 	case *CreateWescaleFilter:
 		b, ok := inB.(*CreateWescaleFilter)
 		if !ok {
@@ -6406,6 +6498,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfDropView(a, b)
+	case *DropWescaleCDC:
+		b, ok := inB.(*DropWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfDropWescaleCDC(a, b)
 	case *DropWescaleFilter:
 		b, ok := inB.(*DropWescaleFilter)
 		if !ok {
@@ -6556,6 +6654,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfShowThrottlerStatus(a, b)
+	case *ShowWescaleCDC:
+		b, ok := inB.(*ShowWescaleCDC)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfShowWescaleCDC(a, b)
 	case *ShowWescaleFilter:
 		b, ok := inB.(*ShowWescaleFilter)
 		if !ok {

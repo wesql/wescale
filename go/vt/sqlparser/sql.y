@@ -123,6 +123,10 @@ func bindVariable(yylex yyLexer, bvar string) {
   alterWescaleFilter       *AlterWescaleFilter
   dropWescaleFilter        *DropWescaleFilter
   showWescaleFilter        *ShowWescaleFilter
+  createWescaleCDC      *CreateWescaleCDC
+  alterWescaleCDC       *AlterWescaleCDC
+  dropWescaleCDC        *DropWescaleCDC
+  showWescaleCDC        *ShowWescaleCDC
   wescaleFilterPattern     *WescaleFilterPattern
   wescaleFilterAction     *WescaleFilterAction
   tableAndLockType *TableAndLockType
@@ -334,6 +338,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> REQUEST_IP_REGEX USER_REGEX LEADING_COMMENT_REGEX TRAILING_COMMENT_REGEX BIND_VAR_CONDS
 %token <str> ACTION_ARGS
 
+// CDC Tokens
+%token <str> CDC CDCS WASM_BINARY_NAME ENV
+
 // Migration tokens
 %token <str> VITESS_MIGRATION CANCEL RETRY LAUNCH COMPLETE CLEANUP THROTTLE UNTHROTTLE EXPIRE RATIO PAUSE RESUME SCHEMA_MIGRATION
 // Throttler tokens
@@ -448,6 +455,10 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <statement> alter_filter_statement
 %type <statement> drop_filter_statement
 %type <statement> show_filter_statement
+%type <statement> create_cdc_statement
+%type <statement> alter_cdc_statement
+%type <statement> drop_cdc_statement
+%type <statement> show_cdc_statement
 %type <with> with_clause_opt with_clause
 %type <cte> common_table_expr
 %type <ctes> with_list
@@ -649,6 +660,11 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <str> wescale_filter_pattern_info_field
 %type <str> wescale_filter_action_info_field
 
+%type <createWescaleCDC> wescale_cdc_info
+%type <alterWescaleCDC> alter_wescale_cdc_info
+%type <str> wescale_cdc_info_field
+%type <str> alter_wescale_cdc_info_field
+
 %start any_command
 
 %%
@@ -716,6 +732,10 @@ command:
 | alter_filter_statement
 | drop_filter_statement
 | show_filter_statement
+| create_cdc_statement
+| alter_cdc_statement
+| drop_cdc_statement
+| show_cdc_statement
 | /*empty*/
 {
   setParseTree(yylex, nil)
@@ -1184,6 +1204,154 @@ set_session_or_global:
   {
     $$ = GlobalScope
   }
+
+
+show_cdc_statement:
+  SHOW comment_opt CDC ID
+  {
+    $$ = &ShowWescaleCDC{Name:$4}
+  }
+  | SHOW CREATE CDC ID
+  {
+    $$ = &ShowWescaleCDC{Name:$4,ShowCreate:true}
+  }
+  | SHOW comment_opt CDCS
+  {
+    $$ = &ShowWescaleCDC{ShowAll:true}
+  }
+
+drop_cdc_statement:
+  DROP comment_opt CDC ID
+  {
+    $$ = &DropWescaleCDC{Name:$4}
+  }
+
+create_cdc_statement:
+  CREATE comment_opt CDC not_exists_opt ID WITH '(' wescale_cdc_info ')'
+  {
+    $$ = &CreateWescaleCDC{IfNotExists:$4, Name:$5, Description:$8.Description, Enable:$8.Enable, WasmBinaryName:$8.WasmBinaryName, Env:$8.Env}
+  }
+
+alter_cdc_statement:
+  ALTER comment_opt CDC ID WITH '(' alter_wescale_cdc_info ')'
+  {
+    $$ = &AlterWescaleCDC{OriginName:$4, Name: $7.Name, Description:$7.Description, Enable:$7.Enable, WasmBinaryName:$7.WasmBinaryName, Env:$7.Env}
+  }
+
+wescale_cdc_info:
+  wescale_cdc_info_field '=' STRING
+  {
+    $$ = &CreateWescaleCDC{Name:"-75516781",Description:"-75516781",Enable:"-75516781",WasmBinaryName:"-75516781",Env:"-75516781"}
+    if $1 == "description" {
+        $$.Description = $3
+    }
+    if $1 == "enable" {
+        $$.Enable = $3
+    }
+    if $1 == "wasm_binary_name" {
+        $$.WasmBinaryName = $3
+    }
+    if $1 == "env" {
+        $$.Env = $3
+    }
+  }
+  | wescale_cdc_info ',' wescale_cdc_info_field '=' STRING
+  {
+    if $3 == "description" {
+        $$.Description = $5
+    }
+    if $3 == "enable" {
+        $$.Enable = $5
+    }
+    if $3 == "wasm_binary_name" {
+        $$.WasmBinaryName = $5
+    }
+    if $3 == "env" {
+        $$.Env = $5
+    }
+  }
+
+
+alter_wescale_cdc_info:
+  alter_wescale_cdc_info_field '=' STRING
+  {
+    $$ = &AlterWescaleCDC{Name:"-75516781",Description:"-75516781",Enable:"-75516781",WasmBinaryName:"-75516781",Env:"-75516781"}
+    if $1 == "name" {
+        $$.Name = $3
+    }
+    if $1 == "description" {
+        $$.Description = $3
+    }
+    if $1 == "enable" {
+        $$.Enable = $3
+    }
+    if $1 == "wasm_binary_name" {
+        $$.WasmBinaryName = $3
+    }
+    if $1 == "env" {
+        $$.Env = $3
+    }
+  }
+  | alter_wescale_cdc_info ',' alter_wescale_cdc_info_field '=' STRING
+  {
+    if $3 == "name" {
+        $$.Name = $5
+    }
+    if $3 == "description" {
+        $$.Description = $5
+    }
+    if $3 == "enable" {
+        $$.Enable = $5
+    }
+    if $3 == "wasm_binary_name" {
+        $$.WasmBinaryName = $5
+    }
+    if $3 == "env" {
+        $$.Env = $5
+    }
+  }
+
+wescale_cdc_info_field:
+  DESC
+  {
+    $$ = "description"
+  }
+  | ENABLE
+  {
+   $$ = "enable"
+  }
+  | WASM_BINARY_NAME
+  {
+   $$ = "wasm_binary_name"
+  }
+  | ENV
+  {
+    $$ = "env"
+  }
+
+alter_wescale_cdc_info_field:
+    NAME
+    {
+     $$ = "name"
+    }
+    | DESC
+    {
+      $$ = "description"
+    }
+    | ENABLE
+    {
+     $$ = "enable"
+    }
+    | WASM_BINARY_NAME
+    {
+     $$ = "wasm_binary_name"
+    }
+    | ENV
+    {
+      $$ = "env"
+    }
+
+
 
 create_filter_statement:
   CREATE comment_opt FILTER not_exists_opt ID wescale_filter_info_opt wescale_filter_pattern_info_opt EXECUTE '(' wescale_filter_action_info ')'
@@ -8738,7 +8906,9 @@ non_reserved_keyword:
 | TRAILING_COMMENT_REGEX
 | BIND_VAR_CONDS
 | ACTION_ARGS
-| WEIGHT_STRING %prec FUNCTION_CALL_NON_KEYWORD
+| WEIGHT_STRING
+| WASM_BINARY_NAME
+| ENV %prec FUNCTION_CALL_NON_KEYWORD
 
 
 

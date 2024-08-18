@@ -54,6 +54,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfAlterView(in, f)
 	case *AlterVschema:
 		return VisitRefOfAlterVschema(in, f)
+	case *AlterWescaleCDC:
+		return VisitRefOfAlterWescaleCDC(in, f)
 	case *AlterWescaleFilter:
 		return VisitRefOfAlterWescaleFilter(in, f)
 	case *AndExpr:
@@ -130,6 +132,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:
 		return VisitRefOfCreateView(in, f)
+	case *CreateWescaleCDC:
+		return VisitRefOfCreateWescaleCDC(in, f)
 	case *CreateWescaleFilter:
 		return VisitRefOfCreateWescaleFilter(in, f)
 	case *CurTimeFuncExpr:
@@ -154,6 +158,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfDropTable(in, f)
 	case *DropView:
 		return VisitRefOfDropView(in, f)
+	case *DropWescaleCDC:
+		return VisitRefOfDropWescaleCDC(in, f)
 	case *DropWescaleFilter:
 		return VisitRefOfDropWescaleFilter(in, f)
 	case *ExecuteStmt:
@@ -426,6 +432,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfShowThrottledApps(in, f)
 	case *ShowThrottlerStatus:
 		return VisitRefOfShowThrottlerStatus(in, f)
+	case *ShowWescaleCDC:
+		return VisitRefOfShowWescaleCDC(in, f)
 	case *ShowWescaleFilter:
 		return VisitRefOfShowWescaleFilter(in, f)
 	case *StarExpr:
@@ -770,6 +778,15 @@ func VisitRefOfAlterVschema(in *AlterVschema, f Visit) error {
 		}
 	}
 	if err := VisitRefOfAutoIncSpec(in.AutoIncSpec, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfAlterWescaleCDC(in *AlterWescaleCDC, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
 	return nil
@@ -1288,6 +1305,15 @@ func VisitRefOfCreateView(in *CreateView, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfCreateWescaleCDC(in *CreateWescaleCDC, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfCreateWescaleFilter(in *CreateWescaleFilter, f Visit) error {
 	if in == nil {
 		return nil
@@ -1461,6 +1487,15 @@ func VisitRefOfDropView(in *DropView, f Visit) error {
 		return err
 	}
 	if err := VisitRefOfParsedComments(in.Comments, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfDropWescaleCDC(in *DropWescaleCDC, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
 		return err
 	}
 	return nil
@@ -3393,6 +3428,15 @@ func VisitRefOfShowThrottlerStatus(in *ShowThrottlerStatus, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfShowWescaleCDC(in *ShowWescaleCDC, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfShowWescaleFilter(in *ShowWescaleFilter, f Visit) error {
 	if in == nil {
 		return nil
@@ -4756,6 +4800,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfAlterView(in, f)
 	case *AlterVschema:
 		return VisitRefOfAlterVschema(in, f)
+	case *AlterWescaleCDC:
+		return VisitRefOfAlterWescaleCDC(in, f)
 	case *AlterWescaleFilter:
 		return VisitRefOfAlterWescaleFilter(in, f)
 	case *Begin:
@@ -4774,6 +4820,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfCreateTable(in, f)
 	case *CreateView:
 		return VisitRefOfCreateView(in, f)
+	case *CreateWescaleCDC:
+		return VisitRefOfCreateWescaleCDC(in, f)
 	case *CreateWescaleFilter:
 		return VisitRefOfCreateWescaleFilter(in, f)
 	case *DeallocateStmt:
@@ -4786,6 +4834,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfDropTable(in, f)
 	case *DropView:
 		return VisitRefOfDropView(in, f)
+	case *DropWescaleCDC:
+		return VisitRefOfDropWescaleCDC(in, f)
 	case *DropWescaleFilter:
 		return VisitRefOfDropWescaleFilter(in, f)
 	case *ExecuteStmt:
@@ -4836,6 +4886,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfShowThrottledApps(in, f)
 	case *ShowThrottlerStatus:
 		return VisitRefOfShowThrottlerStatus(in, f)
+	case *ShowWescaleCDC:
+		return VisitRefOfShowWescaleCDC(in, f)
 	case *ShowWescaleFilter:
 		return VisitRefOfShowWescaleFilter(in, f)
 	case *Stream:

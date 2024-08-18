@@ -105,6 +105,55 @@ func (cached *Concatenate) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
+func (cached *CustomFunctionPrimitive) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(128)
+	}
+	// field Input vitess.io/vitess/go/vt/vtgate/engine.Primitive
+	if cc, ok := cached.Input.(cachedObject); ok {
+		size += cc.CachedSize(true)
+	}
+	// field OriginStmt vitess.io/vitess/go/vt/sqlparser.Statement
+	if cc, ok := cached.OriginStmt.(cachedObject); ok {
+		size += cc.CachedSize(true)
+	}
+	// field OriginSelectExprs vitess.io/vitess/go/vt/sqlparser.SelectExprs
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.OriginSelectExprs)) * int64(16))
+		for _, elem := range cached.OriginSelectExprs {
+			if cc, ok := elem.(cachedObject); ok {
+				size += cc.CachedSize(true)
+			}
+		}
+	}
+	// field SentSelectExprs vitess.io/vitess/go/vt/sqlparser.SelectExprs
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.SentSelectExprs)) * int64(16))
+		for _, elem := range cached.SentSelectExprs {
+			if cc, ok := elem.(cachedObject); ok {
+				size += cc.CachedSize(true)
+			}
+		}
+	}
+	// field SentTables vitess.io/vitess/go/vt/sqlparser.TableExprs
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.SentTables)) * int64(16))
+		for _, elem := range cached.SentTables {
+			if cc, ok := elem.(cachedObject); ok {
+				size += cc.CachedSize(true)
+			}
+		}
+	}
+	// field TransferColName []bool
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.TransferColName)))
+	}
+	return size
+}
 func (cached *DBDDL) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)

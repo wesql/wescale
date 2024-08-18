@@ -112,6 +112,9 @@ func handleCustomFunctionVExplain(originStatement sqlparser.Statement) (*engine.
 		return nil, nil, fmt.Errorf("error when explaining custom function: %v", err)
 	}
 	customFunctionStmt, _, err := sqlparser.Parse2(customFunctionQuery)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error when explaining custom function: %v", err)
+	}
 	customPrimitiveDescription := &engine.PrimitiveDescription{OperatorType: "CustomFunction", Other: map[string]any{"Query": originQuery}}
 	return customPrimitiveDescription, customFunctionStmt, nil
 }
