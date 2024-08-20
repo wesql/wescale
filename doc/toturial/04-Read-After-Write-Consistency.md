@@ -23,8 +23,9 @@ set global read_after_write_consistency='SESSION'
 
 Currently, WeSQL WeScale supports these consistency levels:
 
-| EVENTUAL | No guarantee of consistency. |
+| policy | description |
 | --- | --- |
+| EVENTUAL | No guarantee of consistency. |
 | SESSION | Within the same connection, ensure that subsequent read requests can read previous write operations. (recommend) |
 | INSTANCE | Within the same instance (VTGate), ensure that subsequent read requests can read previous write operations, even if the read and write requests are not initiated by the same connection. |
 | GLOBAL | Within the same WeSQL WeScale cluster, ensure that any read request can read previous write operations. |
