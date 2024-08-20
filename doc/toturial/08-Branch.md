@@ -75,7 +75,7 @@ Prepare
 + include         : Specify tables to include from the source database.
 + exclude         : Specify tables to exclude from the source database.
 + skip_copy_phase :  Only copy the schema, not the data.
-+ stop_after_copy : Continuously synchronize data between source and target if true.
++ stop_after_copy : Continuously synchronize data between source and target if false.
 + default_filter_rules : Append conditions to the 'where' clause to filter specific data.
 ### Usage
 ```shell
@@ -123,7 +123,7 @@ vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test Stop
 
 Start workflow branch_test successfully
 ```
-Note : If the branch copy date is complete and stop_after_copy is set to true, the Stop function will become ineffective.
+Note : If the branch copy step is complete and stop_after_copy is set to true, the Stop function will become ineffective.
 ## SchemaDiff
 `SchemaDiff` displays the differences between two database schemas. This tool aids in deciding whether to merge changes back into the source schema.
 ```

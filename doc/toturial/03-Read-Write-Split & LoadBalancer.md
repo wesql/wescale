@@ -25,8 +25,9 @@ set global read_write_splitting_policy='random';
 
 Currently, WeSQL WeScale supports these load balancing policies:
 
-| disable | Do not enable read/write separation |
+| policy | description |
 | --- | --- |
+| disable | Do not enable read/write separation |
 | random | Randomly allocate read traffic |
 | least_qps | WeSQL WeScale will record the QPS sent to backend MySQL in its own memory and redirect requests to the MySQL with the lowest QPS. |
 | least_global_qps | WeSQL WeScale will periodically pull the QPS of all MySQLs and redirect requests to the MySQL with the lowest QPS. The difference with least_qps is that least_global_qps obtains QPS from the backend MySQL instead of tracking it themselves. |

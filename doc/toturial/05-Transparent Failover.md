@@ -27,8 +27,9 @@ vtgate \
 
 # Params Explained
 
-| enable_buffer | Enables buffering. Not enabled by default |
+| params | descrpition |
 | --- | --- |
+| enable_buffer | Enables buffering. Not enabled by default |
 | buffer_size | Default: 10000 This should be sized to the appropriate number of expected request during a buffering event. Typically, if each connection has one request then, each connection will consume one buffer slot of the buffer_size and be put in a "pause" state as it is buffered on the vtgate. The resource considerations for setting this flag are memory resources. |
 | buffer_window | Default: 10s. The maximum time any individual request should be buffered for. Should probably be less than the value for --buffer_max_failover_duration. Adjust according to your application requirements. Be aware, if your MySQL client has write_timeout or read_timeout settings, those values should be greater than the buffer_max_failover_duration. |
 | buffer_max_failover_duration | Default: 20s. If buffering is active longer than this set duration, stop buffering and return errors to the client. |
