@@ -1708,36 +1708,63 @@ func (e *Executor) HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.
 	query := ""
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleCDC:
-		query = generateCreateWescaleCDCQuery(s)
+		query, err = generateCreateWescaleCDCQuery(s)
 	case *sqlparser.AlterWescaleCDC:
-		query = generateAlterWescaleCDCQuery(s)
+		query, err = generateAlterWescaleCDCQuery(s)
 	case *sqlparser.DropWescaleCDC:
-		query = generateDropWescaleCDCQuery(s)
+		query, err = generateDropWescaleCDCQuery(s)
 	case *sqlparser.ShowWescaleCDC:
-		query = generateShowWescaleCDCQuery(s)
+		query, err = generateShowWescaleCDCQuery(s)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	return th.Conn.ExecuteInternal(context.Background(), target, query, nil, 0, 0, nil)
 }
 
-func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) string {
+func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, error) {
+	if cdc.Name == "" {
+		return "", fmt.Errorf("cdc name is required")
+	}
+	if cdc.WasmBinaryName == "" {
+		return "", fmt.Errorf("wasm binary name is required")
+	}
 	// todo newbron22 do things about create cdc
-	return ""
+	template := "insert into mysql.cdc_consumer (name, description, enable, wasm_binary_name, env, last_gtid, last_pk) values ('%s', '%s', %d, '%s', '%s', null, null);"
+	enableVal := 0
+	if cdc.Enable == "true" {
+		enableVal = 1
+	}
+	return fmt.Sprintf(template, cdc.Name, cdc.Description, enableVal, cdc.WasmBinaryName, cdc.Env), nil
 }
 
-func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) string {
+func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) (string, error) {
 	// todo newbron22 do things about alter cdc
-	return ""
+	// todo if a field is not set, it will not be updated
+	template := "update mysql.cdc_consumer set description = '%s', enable = %d, wasm_binary_name = '%s', env = '%s' where name = '%s';"
+	enableVal := 0
+	if cdc.Enable == "true" {
+		enableVal = 1
+	}
+	return fmt.Sprintf(template, cdc.Description, enableVal, cdc.WasmBinaryName, cdc.Env, cdc.OriginName), nil
 }
 
-func generateDropWescaleCDCQuery(cdc *sqlparser.DropWescaleCDC) string {
+func generateDropWescaleCDCQuery(cdc *sqlparser.DropWescaleCDC) (string, error) {
+	if cdc.Name == "" {
+		return "", fmt.Errorf("cdc name is required")
+	}
 	// todo newbron22 do things about drop cdc
-	return ""
+	return fmt.Sprintf("delete from mysql.cdc_consumer where name = '%s';", cdc.Name), nil
 }
 
-func generateShowWescaleCDCQuery(cdc *sqlparser.ShowWescaleCDC) string {
+func generateShowWescaleCDCQuery(cdc *sqlparser.ShowWescaleCDC) (string, error) {
 	// todo newbron22 do things about show cdc
-	return ""
+	if cdc.Name == "" {
+		return "select * from mysql.cdc_consumer", nil
+	}
+	return fmt.Sprintf("select * from mysql.cdc_consumer where name = '%s';", cdc.Name), nil
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {

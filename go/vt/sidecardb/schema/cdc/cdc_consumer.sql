@@ -14,3 +14,4 @@ CREATE TABLE IF NOT EXISTS mysql.cdc_consumer
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
 ) ENGINE = InnoDB;
+
