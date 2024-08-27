@@ -808,10 +808,3 @@ func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
 	defaultReadWriteSplitForReadOnlyTxnUserInput = val
 	return nil
 }
-
-func GetGateway() *TabletGateway {
-	if rpcVTGate == nil {
-		return nil
-	}
-	return rpcVTGate.gw
-}

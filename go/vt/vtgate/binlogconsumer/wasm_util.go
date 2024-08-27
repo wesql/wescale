@@ -14,7 +14,7 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
-//todo: refactor this file, it's duplicated with go/vt/vttablet/tabletserver/wasm_plugin_controller.go
+//todo cdc: refactor this file, it's duplicated with go/vt/vttablet/tabletserver/wasm_plugin_controller.go
 
 func UnCompressByBZip2(compressedData []byte) ([]byte, error) {
 	r := bzip2.NewReader(bytes.NewReader(compressedData))
