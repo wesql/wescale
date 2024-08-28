@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/wesql/sqlparser"
@@ -43,7 +42,7 @@ func main() {
 var targetMetaTableName string
 
 func init() {
-	flag.StringVar(&targetMetaTableName, "target_meta_table_name", "t2_meta", "target meta table name")
+	flag.StringVar(&targetMetaTableName, "TARGET_META_TABLE_NAME", "t2_meta", "target meta table name")
 	cdc.SpiOpen = Open
 	cdc.SpiLoadGTIDAndLastPK = loadGTIDAndLastPK
 	cdc.SpiStoreGtidAndLastPK = storeGtidAndLastPK
@@ -52,8 +51,23 @@ func init() {
 }
 
 func Open(cc *cdc.CdcConsumer) {
-	query := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, targetMetaTableName)
-	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: query}})
+	createTargetTableQuery := fmt.Sprintf("create table if not exists %s.%s like %s.%s", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetTableName, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName)
+	resp, err := cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createTargetTableQuery}})
+	if err != nil {
+		log.Printf("failed to create target table: %v\n", err)
+	}
+	if resp != nil && resp.Error != nil {
+		log.Printf("failed to create target table: %v\n", resp.Error)
+	}
+
+	createMetaTableQuery := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, targetMetaTableName)
+	resp, err = cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createMetaTableQuery}})
+	if err != nil {
+		log.Printf("failed to create meta table: %v\n", err)
+	}
+	if resp != nil && resp.Error != nil {
+		log.Printf("failed to create meta table: %v\n", resp.Error)
+	}
 }
 
 func Close(cc *cdc.CdcConsumer) {
@@ -63,8 +77,11 @@ func loadGTIDAndLastPK(cc *cdc.CdcConsumer) (string, *querypb.QueryResult, error
 	// todo cdc: we should use cdc_consumer to store gtid and lastpk
 	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	r, err := cc.VtgateClient.Execute(cc.Ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
-	if err != nil || r.Error != nil {
-		return "", nil, errors.New("failed to load gtid and lastpk")
+	if err != nil {
+		return "", nil, err
+	}
+	if r.Error != nil {
+		return "", nil, fmt.Errorf("failed to load gtid and lastpk: %v", r.Error)
 	}
 	res := sqltypes.CustomProto3ToResult(r.Result.Fields, r.Result)
 	if len(res.Rows) == 0 {

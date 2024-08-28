@@ -45,6 +45,9 @@ func GetWasmBytesByBinaryName(ctx context.Context, wasmBinaryName string, svc qu
 		TabletType: topodata.TabletType_PRIMARY,
 	}
 	qr, err := svc.ExecuteInternal(ctx, target, query, nil, 0, 0, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get wasm binary by name %s failed : %v", wasmBinaryName, err)
+	}
 	if len(qr.Named().Rows) != 1 {
 		return nil, fmt.Errorf("get wasm binary by name %s failed : qr len is %v instead of 1", wasmBinaryName, len(qr.Named().Rows))
 	}

@@ -2,6 +2,7 @@ package binlogconsumer
 
 import (
 	"context"
+	"fmt"
 	"github.com/golang/glog"
 	stdLog "log"
 	"strings"
@@ -153,7 +154,9 @@ func (cc *CdcConsumer) loadAndRunWasm() {
 		return
 	}
 
-	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, strings.Split(cc.env, " "), bytes, cc.logger)
+	envList := strings.Split(cc.env, " ")
+	envList = append(envList, fmt.Sprintf("CDC_CONSUMER_ID=%d", cc.id))
+	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, envList, bytes, cc.logger)
 	cc.wasiRuntimeContext = wrc
 	err = wrc.run(cc.ctx)
 	if err != nil {
