@@ -1,9 +1,9 @@
 .PHONY: build
 build:
-	GOOS=wasip1 GOARCH=wasm go build -o main.wasm main.go
+	GOOS=wasip1 GOARCH=wasm go build -o vector.wasm main.go
 
 run-wasm:
-	wasirun --dir / --env-inherit ./main.wasm
+	wasirun --dir / --env-inherit ./vector.wasm
 
 clean:
-	rm -f main.wasm
+	rm -f vector.wasm

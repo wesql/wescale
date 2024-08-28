@@ -37,6 +37,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 
 	"vitess.io/vitess/go/internal/global"
 
@@ -1743,11 +1744,11 @@ func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) (string, error
 	query := "update mysql.cdc_consumer set "
 	var updates []string
 
-	if cdc.Description != "" {
+	if cdc.Description != rules.UnsetValueOfStmt {
 		updates = append(updates, fmt.Sprintf("description = '%s'", cdc.Description))
 	}
 
-	if cdc.Enable != "" {
+	if cdc.Enable != rules.UnsetValueOfStmt {
 		enableVal := 0
 		if cdc.Enable == "true" {
 			enableVal = 1
@@ -1755,11 +1756,11 @@ func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) (string, error
 		updates = append(updates, fmt.Sprintf("enable = %d", enableVal))
 	}
 
-	if cdc.WasmBinaryName != "" {
+	if cdc.WasmBinaryName != rules.UnsetValueOfStmt {
 		updates = append(updates, fmt.Sprintf("wasm_binary_name = '%s'", cdc.WasmBinaryName))
 	}
 
-	if cdc.Env != "" {
+	if cdc.Env != rules.UnsetValueOfStmt {
 		updates = append(updates, fmt.Sprintf("env = '%s'", cdc.Env))
 	}
 
