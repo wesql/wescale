@@ -1,3 +1,5 @@
+//go:build wasip1
+
 /*
 Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
@@ -9,14 +11,13 @@ import (
 	"flag"
 	"fmt"
 	_ "github.com/stealthrocket/net/http"
-	//"github.com/stealthrocket/net/wasip1"
 	"github.com/tmc/langchaingo/embeddings"
 	"github.com/tmc/langchaingo/llms/openai"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/vectorstores"
 	"github.com/tmc/langchaingo/vectorstores/qdrant"
-	"github.com/wesql/sqlparser/cdc"
 	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
+	cdc "github.com/wesql/wescale-cdc"
 	"log"
 	"net/http"
 	"net/url"
@@ -34,6 +35,9 @@ func main() {
 	mockConfig()
 
 	cc := cdc.NewCdcConsumer()
+	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
+		return wasip1.DialContext(ctx, "tcp", address)
+	}
 	cc.Open()
 	defer cc.Close()
 
@@ -109,7 +113,7 @@ func initVectorStore() error {
 	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		//DialContext:     wasip1.DialContext,
+		DialContext:     wasip1.DialContext,
 	}
 	httpClient := &http.Client{Transport: tr}
 	// todo cdc: we need to let the user to choose the embedding provider. Currently, we only support OpenAI. We need to add support for other providers.

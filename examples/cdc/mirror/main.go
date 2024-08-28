@@ -1,16 +1,20 @@
+//go:build wasip1
+
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/stealthrocket/net/wasip1"
 	"github.com/wesql/sqlparser"
-	"github.com/wesql/sqlparser/cdc"
 	"github.com/wesql/sqlparser/go/sqltypes"
 	querypb "github.com/wesql/sqlparser/go/vt/proto/query"
 	vtgatepb "github.com/wesql/sqlparser/go/vt/proto/vtgate"
+	cdc "github.com/wesql/wescale-cdc"
 	"google.golang.org/protobuf/encoding/prototext"
 	"log"
+	"net"
 )
 
 /*
@@ -33,6 +37,9 @@ func main() {
 	mockConfig()
 
 	cc := cdc.NewCdcConsumer()
+	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
+		return wasip1.DialContext(ctx, "tcp", address)
+	}
 	cc.Open()
 	defer cc.Close()
 
