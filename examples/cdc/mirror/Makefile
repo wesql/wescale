@@ -1,6 +1,12 @@
-.PHONY: build
+.PHONY: clean build run
+
+clean:
+	rm -f mirror.wasm
+
+
 build:
 	GOOS=wasip1 GOARCH=wasm go build -o mirror.wasm main.go
+
 
 run:
 	export TABLE_SCHEMA=d1; \
@@ -11,5 +17,3 @@ run:
 	export WESCALE_GRPC_PORT=15991; \
 	wasirun --dir / --env-inherit ./mirror.wasm
 
-clean:
-	rm -f mirror.wasm
