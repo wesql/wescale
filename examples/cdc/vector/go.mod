@@ -8,7 +8,7 @@ require (
 	github.com/stealthrocket/net v0.2.1
 	github.com/tmc/langchaingo v0.1.12
 	github.com/wesql/sqlparser v0.1.13
-	github.com/wesql/wescale-cdc v0.1.5
+	github.com/wesql/wescale-cdc v0.1.8
 )
 
 require (

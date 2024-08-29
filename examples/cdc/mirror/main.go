@@ -4,8 +4,8 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
+	"github.com/golang/glog"
 	"github.com/stealthrocket/net/wasip1"
 	"github.com/wesql/sqlparser"
 	"github.com/wesql/sqlparser/go/sqltypes"
@@ -36,6 +36,12 @@ update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 func main() {
 	mockConfig()
 
+	logger := glog.NewStandardLogger("INFO")
+	log.SetOutput(logger.Writer())
+
+	glog.Infoln("Starting CDC consumer")
+	glog.Flush()
+
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
 		return wasip1.DialContext(ctx, "tcp", address)
@@ -49,7 +55,7 @@ func main() {
 var targetMetaTableName string
 
 func init() {
-	flag.StringVar(&targetMetaTableName, "TARGET_META_TABLE_NAME", "t2_meta", "target meta table name")
+	cdc.RegisterStringVar(&targetMetaTableName, "TARGET_META_TABLE_NAME", "t2_meta", "target meta table name")
 	cdc.SpiOpen = Open
 	cdc.SpiLoadGTIDAndLastPK = loadGTIDAndLastPK
 	cdc.SpiStoreGtidAndLastPK = storeGtidAndLastPK

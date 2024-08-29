@@ -4,15 +4,12 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"log"
-	"net"
-	"net/http"
-	"os"
-
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/stealthrocket/wasi-go/imports/wasi_http"
 	"github.com/tetratelabs/wazero"
+	"net"
+	"net/http"
 )
 
 // WasiRuntimeContext is a struct that holds the configuration for the WASI runtime.
@@ -37,11 +34,9 @@ type WasiRuntimeContext struct {
 	nonBlockingStdio bool
 	maxOpenFiles     int
 	maxOpenDirs      int
-
-	logger *log.Logger
 }
 
-func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte, logger *log.Logger) *WasiRuntimeContext {
+func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []byte) *WasiRuntimeContext {
 	return &WasiRuntimeContext{
 		wasmName:    wasmBinaryName,
 		wasmProgram: wasmBytes,
@@ -62,8 +57,6 @@ func NewWasiRuntimeContext(wasmBinaryName string, envList []string, wasmBytes []
 		nonBlockingStdio: false,
 		maxOpenFiles:     1024,
 		maxOpenDirs:      1024,
-
-		logger: logger,
 	}
 }
 
@@ -107,7 +100,7 @@ func (config *WasiRuntimeContext) run(ctx context.Context) error {
 		WithDials(config.dials...).
 		WithNonBlockingStdio(config.nonBlockingStdio).
 		WithSocketsExtension(config.socketExt, wasmModule).
-		WithTracer(config.trace, os.Stderr, wasi.WithTracerStringSize(config.tracerStringSize)).
+		//WithTracer(config.trace, os.Stderr, wasi.WithTracerStringSize(config.tracerStringSize)).
 		WithMaxOpenFiles(config.maxOpenFiles).
 		WithMaxOpenDirs(config.maxOpenDirs)
 
@@ -137,10 +130,7 @@ func (config *WasiRuntimeContext) run(ctx context.Context) error {
 		}
 	}
 
-	//todo cdc: we want every CDC WASM Program to log in its own file, it's not working now, need to solve this
 	moduleConfig := wazero.NewModuleConfig()
-	moduleConfig.WithStdout(config.logger.Writer())
-	moduleConfig.WithStderr(config.logger.Writer())
 	instance, err := runtime.InstantiateModule(ctx, wasmModule, moduleConfig)
 	if err != nil {
 		return err
