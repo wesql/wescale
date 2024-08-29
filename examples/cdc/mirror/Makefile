@@ -1,19 +1,20 @@
 .PHONY: clean build run
 
 clean:
-	rm -f mirror.wasm
-
+	rm -f main/mirror
+	rm -f wasm/mirror.wasm
 
 build:
-	GOOS=wasip1 GOARCH=wasm go build -o mirror.wasm main.go
+	go build -o main/mirror main/main.go
+	GOOS=wasip1 GOARCH=wasm go build -o wasm/mirror.wasm wasm/main.go
 
 
-run:
+runwasm:
 	export TABLE_SCHEMA=d1; \
 	export SOURCE_TABLE_NAME=t1; \
 	export TARGET_TABLE_NAME=t2; \
 	export TARGET_META_TABLE_NAME=t2_meta; \
 	export WESCALE_HOST=127.0.0.1; \
 	export WESCALE_GRPC_PORT=15991; \
-	wasirun --dir / --env-inherit ./mirror.wasm
+	wasirun --dir / --env-inherit ./wasm/mirror.wasm
 
