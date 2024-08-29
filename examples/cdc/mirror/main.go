@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/golang/glog"
 	"github.com/stealthrocket/net/wasip1"
 	"github.com/wesql/sqlparser"
 	"github.com/wesql/sqlparser/go/sqltypes"
@@ -13,8 +12,8 @@ import (
 	vtgatepb "github.com/wesql/sqlparser/go/vt/proto/vtgate"
 	cdc "github.com/wesql/wescale-cdc"
 	"google.golang.org/protobuf/encoding/prototext"
-	"log"
 	"net"
+	"os"
 )
 
 /*
@@ -36,12 +35,6 @@ update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 func main() {
 	mockConfig()
 
-	logger := glog.NewStandardLogger("INFO")
-	log.SetOutput(logger.Writer())
-
-	glog.Infoln("Starting CDC consumer")
-	glog.Flush()
-
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
 		return wasip1.DialContext(ctx, "tcp", address)
@@ -61,25 +54,32 @@ func init() {
 	cdc.SpiStoreGtidAndLastPK = storeGtidAndLastPK
 	cdc.SpiStoreTableData = storeTableData
 	cdc.SpiClose = Close
+	cdc.SpiInfof = func(format string, args ...any) {
+		fmt.Printf(format, args...)
+	}
+	cdc.SpiFatalf = func(format string, args ...any) {
+		fmt.Errorf(format, args...)
+		os.Exit(1)
+	}
 }
 
 func Open(cc *cdc.CdcConsumer) {
 	createTargetTableQuery := fmt.Sprintf("create table if not exists %s.%s like %s.%s", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetTableName, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName)
 	resp, err := cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createTargetTableQuery}})
 	if err != nil {
-		log.Printf("failed to create target table: %v\n", err)
+		cdc.SpiInfof("failed to create target table: %v\n", err)
 	}
 	if resp != nil && resp.Error != nil {
-		log.Printf("failed to create target table: %v\n", resp.Error)
+		cdc.SpiInfof("failed to create target table: %v\n", resp.Error)
 	}
 
 	createMetaTableQuery := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	resp, err = cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createMetaTableQuery}})
 	if err != nil {
-		log.Printf("failed to create meta table: %v\n", err)
+		cdc.SpiInfof("failed to create meta table: %v\n", err)
 	}
 	if resp != nil && resp.Error != nil {
-		log.Printf("failed to create meta table: %v\n", resp.Error)
+		cdc.SpiInfof("failed to create meta table: %v\n", resp.Error)
 	}
 }
 
@@ -87,7 +87,6 @@ func Close(cc *cdc.CdcConsumer) {
 }
 
 func loadGTIDAndLastPK(cc *cdc.CdcConsumer) (string, *querypb.QueryResult, error) {
-	// todo cdc: we should use cdc_consumer to store gtid and lastpk
 	sql := fmt.Sprintf("select last_gtid, last_pk from %s.%s order by id desc limit 1", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	r, err := cc.VtgateClient.Execute(cc.Ctx, &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: sql}})
 	if err != nil {
@@ -127,13 +126,14 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 		return err
 	}
 	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
-	log.Printf("record gtid and pk: %v", recordMetaSQL)
+	cdc.SpiInfof("record gtid and pk: %v", recordMetaSQL)
 	return nil
 }
 
 func storeTableData(resultList []*cdc.RowResult, cc *cdc.CdcConsumer) error {
 	queryList := make([]*querypb.BoundQuery, 0)
 	for _, rowResult := range resultList {
+		cdc.SpiInfof("rowResult: %v\n", rowResult)
 		var sql string
 		var err error
 		switch rowResult.RowType {

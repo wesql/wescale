@@ -3,10 +3,9 @@ module github.com/wesql/wescale/examples/cdc/mirror
 go 1.22.4
 
 require (
-	github.com/golang/glog v1.2.1
 	github.com/stealthrocket/net v0.2.1
 	github.com/wesql/sqlparser v0.1.13
-	github.com/wesql/wescale-cdc v0.1.8
+	github.com/wesql/wescale-cdc v0.1.10
 	google.golang.org/protobuf v1.34.2
 )
 
