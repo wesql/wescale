@@ -160,8 +160,8 @@ github.com/tmc/langchaingo v0.1.12 h1:yXwSu54f3b1IKw0jJ5/DWu+qFVH1NBblwC0xddBzGJ
 github.com/tmc/langchaingo v0.1.12/go.mod h1:cd62xD6h+ouk8k/QQFhOsjRYBSA1JJ5UVKXSIgm7Ni4=
 github.com/wesql/sqlparser v0.1.13 h1:qSMPmkrkfluCJYRwqOAD+soLgwA/LQjQcFthxxZr0Lo=
 github.com/wesql/sqlparser v0.1.13/go.mod h1:Ax8T0JCj9o+axOwZ8tYazsUj3O8Y4myvLQRFWXJMmyQ=
-github.com/wesql/wescale-cdc v0.1.8 h1:kqHxgh2THreQlowNbZ7uZp5RRy84nPtmFK9MeYeGWYY=
-github.com/wesql/wescale-cdc v0.1.8/go.mod h1:pbFK2EFEDNquxqvCHCEKrlPDFdlNhrR9C06/tCgpfkc=
+github.com/wesql/wescale-cdc v0.1.9 h1:6AgOFdSJ1aXrkUuPMMoaFnqgzYpwclNBLHoxFWdS160=
+github.com/wesql/wescale-cdc v0.1.9/go.mod h1:pbFK2EFEDNquxqvCHCEKrlPDFdlNhrR9C06/tCgpfkc=
 github.com/yargevad/filepathx v1.0.0 h1:SYcT+N3tYGi+NvazubCNlvgIPbzAk7i7y2dwg3I5FYc=
 github.com/yargevad/filepathx v1.0.0/go.mod h1:BprfX/gpYNJHJfc35GjRRpVcwWXS89gGulUIU5tK3tA=
 github.com/yusufpapurcu/wmi v1.2.3 h1:E1ctvB7uKFMOJw3fdOW32DwGE9I7t++CRUEMKvFoFiw=
