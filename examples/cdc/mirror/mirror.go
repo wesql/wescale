@@ -25,7 +25,7 @@ func init() {
 		fmt.Printf(format, args...)
 	}
 	cdc.SpiFatalf = func(format string, args ...any) {
-		fmt.Errorf(format, args...)
+		fmt.Printf(format, args...)
 		os.Exit(1)
 	}
 }

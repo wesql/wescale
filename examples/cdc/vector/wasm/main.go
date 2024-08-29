@@ -6,12 +6,12 @@ import (
 	"context"
 	"github.com/stealthrocket/net/wasip1"
 	cdc "github.com/wesql/wescale-cdc"
-	_ "github.com/wesql/wescale/examples/cdc/mirror"
+	_ "github.com/wesql/wescale/examples/cdc/vector"
 	"net"
 )
 
 func main() {
-	cdc.SpiInfof("cdc consumer:[mirror] is running\n")
+	cdc.SpiInfof("cdc consumer:[vector] is running\n")
 
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
