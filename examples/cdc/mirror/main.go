@@ -33,6 +33,8 @@ update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 * You can compare the data in the source table and the target table to see if the program works as expected.
 */
 func main() {
+	//mockConfig()
+
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
 		return wasip1.DialContext(ctx, "tcp", address)
@@ -65,19 +67,19 @@ func Open(cc *cdc.CdcConsumer) {
 	createTargetTableQuery := fmt.Sprintf("create table if not exists %s.%s like %s.%s", cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.TargetTableName, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName)
 	resp, err := cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createTargetTableQuery}})
 	if err != nil {
-		cdc.SpiInfof("failed to create target table: %v\n", err)
+		cdc.SpiInfof("cdc consumer failed to create target table: %v\n", err)
 	}
 	if resp != nil && resp.Error != nil {
-		cdc.SpiInfof("failed to create target table: %v\n", resp.Error)
+		cdc.SpiInfof("cdc consumer failed to create target table: %v\n", resp.Error)
 	}
 
 	createMetaTableQuery := fmt.Sprintf("create table if not exists %s.%s (id bigint primary key auto_increment, last_gtid varchar(255), last_pk blob, lastpk_str varchar(255))", cdc.DefaultConfig.TableSchema, targetMetaTableName)
 	resp, err = cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: createMetaTableQuery}})
 	if err != nil {
-		cdc.SpiInfof("failed to create meta table: %v\n", err)
+		cdc.SpiInfof("cdc consumer failed to create meta table: %v\n", err)
 	}
 	if resp != nil && resp.Error != nil {
-		cdc.SpiInfof("failed to create meta table: %v\n", resp.Error)
+		cdc.SpiInfof("cdc consumer failed to create meta table: %v\n", resp.Error)
 	}
 }
 
@@ -124,7 +126,7 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 		return err
 	}
 	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
-	cdc.SpiInfof("record gtid and pk: %v", recordMetaSQL)
+	cdc.SpiInfof("cdc consumer record gtid and pk: %v", recordMetaSQL)
 	return nil
 }
 
