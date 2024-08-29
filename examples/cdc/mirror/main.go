@@ -33,8 +33,6 @@ update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 * You can compare the data in the source table and the target table to see if the program works as expected.
 */
 func main() {
-	mockConfig()
-
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
 		return wasip1.DialContext(ctx, "tcp", address)
@@ -133,7 +131,6 @@ func storeGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 func storeTableData(resultList []*cdc.RowResult, cc *cdc.CdcConsumer) error {
 	queryList := make([]*querypb.BoundQuery, 0)
 	for _, rowResult := range resultList {
-		cdc.SpiInfof("rowResult: %v\n", rowResult)
 		var sql string
 		var err error
 		switch rowResult.RowType {
