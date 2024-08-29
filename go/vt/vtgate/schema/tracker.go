@@ -24,6 +24,7 @@ package schema
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -129,7 +130,12 @@ func (t *Tracker) loadTables(conn queryservice.QueryService, target *querypb.Tar
 		return nil
 	}
 
-	ftRes, err := conn.ExecuteInternal(t.ctx, target, mysql.FetchTables, nil, 0, 0, nil)
+	keyspace, err := sqltypes.BuildBindVariable(target.Keyspace)
+	if err != nil {
+		return err
+	}
+	bv := map[string]*querypb.BindVariable{"table_schema": keyspace}
+	ftRes, err := conn.ExecuteInternal(t.ctx, target, mysql.FetchTables, bv, 0, 0, nil)
 	if err != nil {
 		return err
 	}
@@ -182,9 +188,11 @@ func (t *Tracker) Start() {
 		for {
 			select {
 			case th := <-t.ch:
-				ksUpdater := t.getKeyspaceUpdateController(th)
-				if ksUpdater != nil {
-					ksUpdater.add(th)
+				ksUpdaters := t.getKeyspaceUpdateControllerArray(th)
+				if len(ksUpdaters) > 0 {
+					for _, ksUpdater := range ksUpdaters {
+						ksUpdater.add(th)
+					}
 				}
 			case <-ctx.Done():
 				// closing of the channel happens outside the scope of the tracker. It is the responsibility of the one who created this tracker.
@@ -215,6 +223,33 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	}
 	ksUpdater := t.tracked[th.Target.Keyspace]
 	return ksUpdater
+}
+
+// getKeyspaceUpdateController returns the updateController for all keyspaces
+// the updateController will be created if there was none.
+func (t *Tracker) getKeyspaceUpdateControllerArray(th *discovery.TabletHealth) []*updateController {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if th.Stats == nil {
+		return nil
+	}
+	// only primary tablets return schema info, see health_streamer.go#reload()
+	if th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+		return nil
+	}
+	// make sure we have the keyspace meta and the updateController
+	err := t.keyspaceMetaSync(th.Stats.DbList)
+	if err != nil {
+		log.Errorf("Error syncing keyspace meta", err)
+		return nil
+	}
+
+	rst := make([]*updateController, 0)
+	for _, ksUpdater := range t.tracked {
+		rst = append(rst, ksUpdater)
+	}
+	return rst
 }
 
 func (t *Tracker) keyspaceMetaSync(dbList []string) error {
@@ -287,15 +322,19 @@ func (t *Tracker) Stop() {
 	t.cancel()
 }
 
-// GetColumns returns the column list for table in the given keyspace.
+// GetColumns returns the deep copy of column list for table in the given keyspace.
 func (t *Tracker) GetColumns(ks string, tbl string) []vindexes.Column {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	return t.tables.get(ks, tbl)
+	// return a deep copy of the slice, so there won't be a concurrency issue
+	cols := t.tables.get(ks, tbl)
+	rst := make([]vindexes.Column, len(cols))
+	copy(rst[:], cols[:])
+	return rst
 }
 
-// Tables returns a map with the columns for all known tables in the keyspace
+// Tables returns a deep copy of map with the columns for all known tables in the keyspace
 func (t *Tracker) Tables(ks string) map[string][]vindexes.Column {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -305,10 +344,17 @@ func (t *Tracker) Tables(ks string) map[string][]vindexes.Column {
 		return map[string][]vindexes.Column{} // we know nothing about this KS, so that is the info we can give out
 	}
 
-	return m
+	// return a deep copy of the map, so there won't be a concurrency issue
+	rst := make(map[string][]vindexes.Column)
+	for table, columns := range m {
+		rst[table] = make([]vindexes.Column, len(columns))
+		copy(rst[table][:], columns[:])
+	}
+
+	return rst
 }
 
-// Views returns all known views in the keyspace with their definition.
+// Views returns deep copy of all known views in the keyspace with their definition.
 func (t *Tracker) Views(ks string) map[string]sqlparser.SelectStatement {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -316,7 +362,14 @@ func (t *Tracker) Views(ks string) map[string]sqlparser.SelectStatement {
 	if t.views == nil {
 		return nil
 	}
-	return t.views.m[ks]
+
+	// return a deep copy of the map, so there won't be a concurrency issue
+	rst := make(map[string]sqlparser.SelectStatement)
+	for table, stmt := range t.views.m[ks] {
+		rst[table] = sqlparser.CloneSelectStatement(stmt)
+	}
+
+	return rst
 }
 
 func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHealth) bool {
@@ -338,14 +391,38 @@ func (t *Tracker) updateSchema(keyspaceStr keyspaceStr, th *discovery.TabletHeal
 }
 
 func (t *Tracker) updatedTableSchema(th *discovery.TabletHealth, target *querypb.Target) bool {
-	// todo earayu: the tablesUpdated should be filtered by the keyspace
-	tablesUpdated := th.Stats.TableSchemaChanged
+	fullyQualifiedTablesUpdated := th.Stats.TableSchemaChanged
+	tablesUpdated := make([]string, 0)
+	for _, fullyQualifiedName := range fullyQualifiedTablesUpdated {
+		nameParts := strings.Split(fullyQualifiedName, ".")
+		if len(nameParts) != 2 {
+			log.Errorf("updatedTableSchema: invalid table name: %v", fullyQualifiedName)
+			return false
+		}
+		tableSchema := nameParts[0]
+		tableName := nameParts[1]
+		if tableSchema != target.Keyspace {
+			continue
+		}
+		tablesUpdated = append(tablesUpdated, tableName)
+	}
+
+	// success is set false so u.signal is not called if there are no tables to update.
+	if len(tablesUpdated) == 0 {
+		return false
+	}
+
 	tables, err := sqltypes.BuildBindVariable(tablesUpdated)
 	if err != nil {
 		log.Errorf("failed to read updated tables from TabletHealth: %v", err)
 		return false
 	}
-	bv := map[string]*querypb.BindVariable{"tableNames": tables}
+	keyspace, err := sqltypes.BuildBindVariable(target.Keyspace)
+	if err != nil {
+		log.Errorf("failed to read updated tables from TabletHealth: %v", err)
+		return false
+	}
+	bv := map[string]*querypb.BindVariable{"table_names": tables, "table_schema": keyspace}
 	res, err := th.Conn.ExecuteInternal(t.ctx, target, mysql.FetchUpdatedTables, bv, 0, 0, nil)
 	if err != nil {
 		t.tracked[target.Keyspace].setLoaded(false)
@@ -389,8 +466,26 @@ func (t *Tracker) updatedViewSchema(th *discovery.TabletHealth, target *querypb.
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	// todo earayu: the viewsUpdated should be filtered by the keyspace
-	viewsUpdated := th.Stats.ViewSchemaChanged
+	fullyQualifiedViewsUpdated := th.Stats.ViewSchemaChanged
+	viewsUpdated := make([]string, 0)
+	for _, fullyQualifiedName := range fullyQualifiedViewsUpdated {
+		nameParts := strings.Split(fullyQualifiedName, ".")
+		if len(nameParts) != 2 {
+			log.Errorf("updatedTableSchema: invalid table name: %v", fullyQualifiedName)
+			return false
+		}
+		viewSchema := nameParts[0]
+		viewName := nameParts[1]
+		if viewSchema != target.Keyspace {
+			continue
+		}
+		viewsUpdated = append(viewsUpdated, viewName)
+	}
+
+	// success is set false so u.signal is not called if there are no views to update.
+	if len(viewsUpdated) == 0 {
+		return false
+	}
 
 	// first we empty all prior schema. deleted tables will not show up in the result,
 	// so this is the only chance to delete
@@ -520,10 +615,11 @@ func (t *Tracker) clearKeyspaceViews(ks string) {
 	}
 }
 
-// GetViews returns the view statement for the given keyspace and view name.
+// GetViews return a deep copy the view statement for the given keyspace and view name.
 func (t *Tracker) GetViews(ks string, tbl string) sqlparser.SelectStatement {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	return t.views.get(ks, tbl)
+	// return a deep copy of the select statement, so there won't be a concurrency issue
+	return sqlparser.CloneSelectStatement(t.views.get(ks, tbl))
 }

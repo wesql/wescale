@@ -30,8 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"vitess.io/vitess/go/internal/global"
-
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
@@ -97,8 +95,9 @@ type healthStreamer struct {
 	conns                  *connpool.Pool
 	signalWhenSchemaChange bool
 
-	viewsEnabled bool
-	views        map[string]string
+	tableTrackEnable bool
+	viewsEnabled     bool
+	views            map[string]string
 }
 
 func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *healthStreamer {
@@ -132,6 +131,7 @@ func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *health
 		ticks:                  newTimer,
 		conns:                  pool,
 		signalWhenSchemaChange: env.Config().SignalWhenSchemaChange,
+		tableTrackEnable:       env.Config().EnableTableTrack,
 		viewsEnabled:           env.Config().EnableViews,
 		views:                  map[string]string{},
 	}
@@ -365,7 +365,8 @@ func (hs *healthStreamer) reload() error {
 	// Since current SQL layer doesn't need to know about the schema of the tables
 	// that are not sharded, we don't need to track the schema of those tables.
 	// So, we can disable the schema tracking by default.
-	if global.TableSchemaTracking {
+
+	if hs.tableTrackEnable {
 		tables, err = hs.getChangedTableNames(ctx, conn)
 		if err != nil {
 			return err
@@ -373,7 +374,7 @@ func (hs *healthStreamer) reload() error {
 	}
 
 	var views []string
-	if global.ViewSchemaTracking {
+	if hs.viewsEnabled {
 		views, err = hs.getChangedViewNames(ctx, conn)
 		if err != nil {
 			return err
@@ -399,11 +400,14 @@ func (hs *healthStreamer) reload() error {
 func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
 	var tables []string
 	var tableNames []string
+	var fullyQualifiedTableNames []string
 
 	callback := func(qr *sqltypes.Result) error {
 		for _, row := range qr.Rows {
-			table := row[0].ToString()
+			tableSchema := row[0].ToString()
+			table := row[1].ToString()
 			tables = append(tables, table)
+			fullyQualifiedTableNames = append(fullyQualifiedTableNames, fmt.Sprintf("%s.%s", tableSchema, table))
 
 			escapedTblName := sqlparser.String(sqlparser.NewStrLiteral(table))
 			tableNames = append(tableNames, escapedTblName)
@@ -429,9 +433,11 @@ func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpo
 		return nil, nil
 	}
 
+	// To simplify the sql, here we update all tables with the same name,
+	// even though some of them with different schema are not changed.
 	tableNamePredicate := fmt.Sprintf("table_name IN (%s)", strings.Join(tableNames, ", "))
-	del := fmt.Sprintf("%s AND %s", mysql.ClearSchemaCopy, tableNamePredicate)
-	upd := fmt.Sprintf("%s AND %s", mysql.InsertIntoSchemaCopy, tableNamePredicate)
+	del := fmt.Sprintf("%s WHERE %s", mysql.ClearSchemaCopy, tableNamePredicate)
+	upd := fmt.Sprintf("%s WHERE %s", mysql.InsertIntoSchemaCopy, tableNamePredicate)
 
 	// Reload the schema in a transaction.
 	_, err = conn.Exec(ctx, "begin", 1, false)
@@ -454,7 +460,7 @@ func (hs *healthStreamer) getChangedTableNames(ctx context.Context, conn *connpo
 	if err != nil {
 		return nil, err
 	}
-	return tables, nil
+	return fullyQualifiedTableNames, nil
 }
 
 func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpool.DBConn) ([]string, error) {
@@ -466,9 +472,9 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 
 	callback := func(qr *sqltypes.Result) error {
 		for _, row := range qr.Rows {
-			viewName := row[0].ToString()
+			fullyQualifiedViewName := row[0].ToString()
 			lastUpdTime := row[1].ToString()
-			views[viewName] = lastUpdTime
+			views[fullyQualifiedViewName] = lastUpdTime
 		}
 
 		return nil
@@ -485,21 +491,21 @@ func (hs *healthStreamer) getChangedViewNames(ctx context.Context, conn *connpoo
 		return nil, nil
 	}
 
-	for viewName, lastUpdTime := range views {
-		t, exists := hs.views[viewName]
+	for fullyQualifiedViewName, lastUpdTime := range views {
+		t, exists := hs.views[fullyQualifiedViewName]
 		if !exists { // new view added
-			changedViews = append(changedViews, viewName)
+			changedViews = append(changedViews, fullyQualifiedViewName)
 			continue
 		}
 		if t != lastUpdTime { // view updated
-			changedViews = append(changedViews, viewName)
+			changedViews = append(changedViews, fullyQualifiedViewName)
 		}
-		delete(hs.views, viewName)
+		delete(hs.views, fullyQualifiedViewName)
 	}
 
 	// views deleted
-	for viewName := range hs.views {
-		changedViews = append(changedViews, viewName)
+	for fullyQualifiedViewName := range hs.views {
+		changedViews = append(changedViews, fullyQualifiedViewName)
 	}
 
 	// update hs.views with latest view info

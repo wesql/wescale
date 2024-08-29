@@ -117,8 +117,8 @@ func TestChangeSchemaIsNoticed(t *testing.T) {
 				tables = append(tables, "table_name = "+sqlparser.String(apa))
 			}
 			tableNamePredicates := strings.Join(tables, " OR ")
-			del := fmt.Sprintf("%s AND %s", mysql.ClearSchemaCopy, tableNamePredicates)
-			upd := fmt.Sprintf("%s AND %s", mysql.InsertIntoSchemaCopy, tableNamePredicates)
+			del := fmt.Sprintf("%s WHERE %s", mysql.ClearSchemaCopy, tableNamePredicates)
+			upd := fmt.Sprintf("%s WHERE %s", mysql.InsertIntoSchemaCopy, tableNamePredicates)
 
 			_, err = conn.ExecuteFetch(del, 1000, true)
 			require.NoError(t, err)
