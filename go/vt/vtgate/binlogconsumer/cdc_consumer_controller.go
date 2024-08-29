@@ -3,8 +3,6 @@ package binlogconsumer
 import (
 	"context"
 	"fmt"
-	"github.com/golang/glog"
-	stdLog "log"
 	"strings"
 	"sync"
 	"time"
@@ -58,8 +56,6 @@ type CdcConsumer struct {
 
 	wasiRuntimeContext *WasiRuntimeContext
 	err                error
-
-	logger *stdLog.Logger
 }
 
 func NewCdcConsumerController(svc queryservice.QueryService) *CdcConsumerController {
@@ -118,6 +114,9 @@ func (cr *CdcConsumerController) reloadCdcConsumer() error {
 		if !enable {
 			continue
 		}
+		if _, ok := cr.consumer[name]; ok {
+			continue
+		}
 
 		consumer := &CdcConsumer{
 			svc:            cr.svc,
@@ -127,7 +126,6 @@ func (cr *CdcConsumerController) reloadCdcConsumer() error {
 			wasmBinaryName: wasmBinaryName,
 			tag:            tag,
 			env:            env,
-			logger:         glog.NewStandardLogger("INFO"),
 		}
 		consumer.ctx, consumer.cancelFunc = context.WithCancel(cr.ctx)
 		cr.consumer[name] = consumer
@@ -147,6 +145,7 @@ func (cc *CdcConsumer) loadAndRunWasm() {
 		return
 	}
 
+	log.Infof("Loading cdc consumer wasm: %s\n", cc.wasmBinaryName)
 	bytes, err := GetWasmBytesByBinaryName(cc.ctx, cc.wasmBinaryName, cc.svc)
 	if err != nil {
 		cc.err = err
@@ -156,7 +155,9 @@ func (cc *CdcConsumer) loadAndRunWasm() {
 
 	envList := strings.Split(cc.env, " ")
 	envList = append(envList, fmt.Sprintf("CDC_CONSUMER_ID=%d", cc.id))
-	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, envList, bytes, cc.logger)
+	envList = append(envList, fmt.Sprintf("LOG_DIR=%s", pflag.Lookup("log_dir").Value.String()))
+	log.Infof("Running cdc consumer wasm: %s\n", cc.wasmBinaryName)
+	wrc := NewWasiRuntimeContext(cc.wasmBinaryName, envList, bytes)
 	cc.wasiRuntimeContext = wrc
 	err = wrc.run(cc.ctx)
 	if err != nil {

@@ -34,6 +34,9 @@ var store vectorstores.VectorStore
 func main() {
 	mockConfig()
 
+	logger := glog.NewStandardLogger("INFO")
+	log.SetOutput(logger.Writer())
+
 	cc := cdc.NewCdcConsumer()
 	cc.DialContextFunc = func(ctx context.Context, address string) (net.Conn, error) {
 		return wasip1.DialContext(ctx, "tcp", address)
