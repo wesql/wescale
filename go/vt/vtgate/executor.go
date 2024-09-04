@@ -1737,6 +1737,7 @@ const (
 	WescaleCDCEmptyValue         = rules.UnsetValueOfStmt
 	WescaleCDCDescDefaultValue   = ""
 	WescaleCDCEnableDefaultValue = "false"
+	WescaleCDCEnvDefaultValue    = ""
 )
 
 func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, error) {
@@ -1763,6 +1764,9 @@ func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, err
 	}
 	if cdc.Enable == WescaleCDCEmptyValue {
 		cdc.Enable = WescaleCDCEnableDefaultValue
+	}
+	if cdc.Env == WescaleCDCEmptyValue {
+		cdc.Env = WescaleCDCEnvDefaultValue
 	}
 
 	templatePrefix := "insert"
