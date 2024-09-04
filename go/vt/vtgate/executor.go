@@ -1749,6 +1749,9 @@ func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, err
 		return "", fmt.Errorf("wasm binary name is required")
 	}
 
+	if cdc.Enable == WescaleCDCEmptyValue {
+		cdc.Enable = WescaleCDCEnableDefaultValue
+	}
 	enable, err := strconv.ParseBool(cdc.Enable)
 	if err != nil {
 		return "", fmt.Errorf("enable field can't be parse as bool type, %v", err)
@@ -1762,14 +1765,11 @@ func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, err
 	if cdc.Description == WescaleCDCEmptyValue {
 		cdc.Description = WescaleCDCDescDefaultValue
 	}
-	if cdc.Enable == WescaleCDCEmptyValue {
-		cdc.Enable = WescaleCDCEnableDefaultValue
-	}
 	if cdc.Env == WescaleCDCEmptyValue {
 		cdc.Env = WescaleCDCEnvDefaultValue
 	}
 
-	templatePrefix := "insert"
+	templatePrefix := "insert "
 	if cdc.IfNotExists {
 		templatePrefix += "ignore "
 	}
@@ -1828,10 +1828,12 @@ func generateDropWescaleCDCQuery(cdc *sqlparser.DropWescaleCDC) (string, error) 
 }
 
 func generateShowWescaleCDCQuery(cdc *sqlparser.ShowWescaleCDC) (string, error) {
+	selectAll := "select * from mysql.cdc_consumer"
+
 	if cdc.Name == "" {
-		return "select * from mysql.cdc_consumer", nil
+		return selectAll, nil
 	}
-	return fmt.Sprintf("select * from mysql.cdc_consumer where name = '%s';", cdc.Name), nil
+	return selectAll + fmt.Sprintf(" where name = '%s';", cdc.Name), nil
 }
 
 func generateShowCreateCDCResult(th *discovery.TabletHealth, target *querypb.Target, showCreateCDC *sqlparser.ShowWescaleCDC) (*sqltypes.Result, error) {
@@ -1839,7 +1841,7 @@ func generateShowCreateCDCResult(th *discovery.TabletHealth, target *querypb.Tar
 		return nil, fmt.Errorf("ShowCreate or Name is not set in generateShowCreateCDCResult")
 	}
 
-	query := fmt.Sprintf("select * FROM mysql.cdc_consumer where `name` = %s", showCreateCDC.Name)
+	query := fmt.Sprintf("select * FROM mysql.cdc_consumer where `name` = '%s'", showCreateCDC.Name)
 	qr, err := th.Conn.ExecuteInternal(context.Background(), target, query, nil, 0, 0, nil)
 	if err != nil {
 		return nil, fmt.Errorf("err when select cdc info in generateShowCreateCDCResult: %v", err)

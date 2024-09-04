@@ -2217,7 +2217,7 @@ func (node *CreateWescaleCDC) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "%s with (\n", node.Name)
 	buf.astPrintf(node, "\tdesc='%s',\n", node.Description)
 	buf.astPrintf(node, "\tenable='%s',\n", node.Enable)
-	buf.astPrintf(node, "\twasm_binary_name='%s'\n", node.WasmBinaryName)
+	buf.astPrintf(node, "\twasm_binary_name='%s',\n", node.WasmBinaryName)
 	buf.astPrintf(node, "\tenv='%s'\n", node.Env)
 	buf.literal(")")
 }
