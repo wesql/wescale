@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	EnableCdcConsumer         = true
+	EnableCdcConsumer         = false
 	cdcConsumerReloadInterval = 10 * time.Second
 )
 
