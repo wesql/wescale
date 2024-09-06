@@ -37,6 +37,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 
 	"vitess.io/vitess/go/internal/global"
@@ -1715,6 +1716,9 @@ func (e *Executor) HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.
 	case *sqlparser.DropWescaleCDC:
 		query, err = generateDropWescaleCDCQuery(s)
 	case *sqlparser.ShowWescaleCDC:
+		if s.ShowCreate {
+			return generateShowCreateCDCResult(th, target, s)
+		}
 		query, err = generateShowWescaleCDCQuery(s)
 	}
 
@@ -1725,18 +1729,52 @@ func (e *Executor) HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.
 	return th.Conn.ExecuteInternal(context.Background(), target, query, nil, 0, 0, nil)
 }
 
+// WescaleCDCEmptyValue If user didn't set the field value of CDC task in sql cmd,
+// the default filed value will be set to rules.UnsetValueOfStmt in sql.y.
+// If we use "" as default value, we won't recognize the situation
+// that user alter the value to "" during alter cmd.
+const (
+	WescaleCDCEmptyValue         = rules.UnsetValueOfStmt
+	WescaleCDCDescDefaultValue   = ""
+	WescaleCDCEnableDefaultValue = "false"
+	WescaleCDCEnvDefaultValue    = ""
+)
+
 func generateCreateWescaleCDCQuery(cdc *sqlparser.CreateWescaleCDC) (string, error) {
-	if cdc.Name == "" {
+	// check validity of fields
+	if cdc.Name == WescaleCDCEmptyValue {
 		return "", fmt.Errorf("cdc name is required")
 	}
-	if cdc.WasmBinaryName == "" {
+	if cdc.WasmBinaryName == WescaleCDCEmptyValue {
 		return "", fmt.Errorf("wasm binary name is required")
 	}
-	template := "insert into mysql.cdc_consumer (name, description, enable, wasm_binary_name, env, last_gtid, last_pk) values ('%s', '%s', %d, '%s', '%s', null, null);"
+
+	if cdc.Enable == WescaleCDCEmptyValue {
+		cdc.Enable = WescaleCDCEnableDefaultValue
+	}
+	enable, err := strconv.ParseBool(cdc.Enable)
+	if err != nil {
+		return "", fmt.Errorf("enable field can't be parse as bool type, %v", err)
+	}
 	enableVal := 0
-	if cdc.Enable == "true" {
+	if enable {
 		enableVal = 1
 	}
+
+	// set default value for rest fields
+	if cdc.Description == WescaleCDCEmptyValue {
+		cdc.Description = WescaleCDCDescDefaultValue
+	}
+	if cdc.Env == WescaleCDCEmptyValue {
+		cdc.Env = WescaleCDCEnvDefaultValue
+	}
+
+	templatePrefix := "insert "
+	if cdc.IfNotExists {
+		templatePrefix += "ignore "
+	}
+	template := templatePrefix + "into mysql.cdc_consumer (name, description, enable, wasm_binary_name, env, last_gtid, last_pk) values ('%s', '%s', %d, '%s', '%s', null, null);"
+
 	return fmt.Sprintf(template, cdc.Name, cdc.Description, enableVal, cdc.WasmBinaryName, cdc.Env), nil
 }
 
@@ -1744,23 +1782,31 @@ func generateAlterWescaleCDCQuery(cdc *sqlparser.AlterWescaleCDC) (string, error
 	query := "update mysql.cdc_consumer set "
 	var updates []string
 
-	if cdc.Description != rules.UnsetValueOfStmt {
+	if cdc.Name != WescaleCDCEmptyValue {
+		updates = append(updates, fmt.Sprintf("name = '%s'", cdc.Name))
+	}
+
+	if cdc.Description != WescaleCDCEmptyValue {
 		updates = append(updates, fmt.Sprintf("description = '%s'", cdc.Description))
 	}
 
-	if cdc.Enable != rules.UnsetValueOfStmt {
+	if cdc.Enable != WescaleCDCEmptyValue {
+		enable, err := strconv.ParseBool(cdc.Enable)
+		if err != nil {
+			return "", fmt.Errorf("enable field can't be parse as bool type, %v", err)
+		}
 		enableVal := 0
-		if cdc.Enable == "true" {
+		if enable {
 			enableVal = 1
 		}
 		updates = append(updates, fmt.Sprintf("enable = %d", enableVal))
 	}
 
-	if cdc.WasmBinaryName != rules.UnsetValueOfStmt {
+	if cdc.WasmBinaryName != WescaleCDCEmptyValue {
 		updates = append(updates, fmt.Sprintf("wasm_binary_name = '%s'", cdc.WasmBinaryName))
 	}
 
-	if cdc.Env != rules.UnsetValueOfStmt {
+	if cdc.Env != WescaleCDCEmptyValue {
 		updates = append(updates, fmt.Sprintf("env = '%s'", cdc.Env))
 	}
 
@@ -1782,10 +1828,52 @@ func generateDropWescaleCDCQuery(cdc *sqlparser.DropWescaleCDC) (string, error) 
 }
 
 func generateShowWescaleCDCQuery(cdc *sqlparser.ShowWescaleCDC) (string, error) {
+	selectAll := "select * from mysql.cdc_consumer"
+
 	if cdc.Name == "" {
-		return "select * from mysql.cdc_consumer", nil
+		return selectAll, nil
 	}
-	return fmt.Sprintf("select * from mysql.cdc_consumer where name = '%s';", cdc.Name), nil
+	return selectAll + fmt.Sprintf(" where name = '%s';", cdc.Name), nil
+}
+
+func generateShowCreateCDCResult(th *discovery.TabletHealth, target *querypb.Target, showCreateCDC *sqlparser.ShowWescaleCDC) (*sqltypes.Result, error) {
+	if !showCreateCDC.ShowCreate || showCreateCDC.Name == "" {
+		return nil, fmt.Errorf("ShowCreate or Name is not set in generateShowCreateCDCResult")
+	}
+
+	query := fmt.Sprintf("select * FROM mysql.cdc_consumer where `name` = '%s'", showCreateCDC.Name)
+	qr, err := th.Conn.ExecuteInternal(context.Background(), target, query, nil, 0, 0, nil)
+	if err != nil {
+		return nil, fmt.Errorf("err when select cdc info in generateShowCreateCDCResult: %v", err)
+	}
+	if len(qr.Named().Rows) != 1 {
+		return nil, fmt.Errorf("in generateShowCreateCDCResult: the expected cdc num is 1 but got %d", len(qr.Named().Rows))
+	}
+
+	// transfer query result to create cdc stmt
+	cdcStmt := &sqlparser.CreateWescaleCDC{}
+	row := qr.Named().Rows[0]
+	cdcStmt.Name = row.AsString("name", "")
+	cdcStmt.Description = row.AsString("description", "")
+	cdcStmt.WasmBinaryName = row.AsString("wasm_binary_name", "")
+	cdcStmt.Env = row.AsString("env", "")
+	enable := row.AsInt64("enable", 0)
+	if enable == 1 {
+		cdcStmt.Enable = "true"
+	} else {
+		cdcStmt.Enable = "false"
+	}
+
+	// construct create cdc query result
+	rows := [][]sqltypes.Value{}
+	rows = append(rows, buildVarCharRow(
+		cdcStmt.Name,
+		"\n"+sqlparser.String(cdcStmt),
+	))
+	return &sqltypes.Result{
+		Fields: buildVarCharFields("CDC", "Create CDC"),
+		Rows:   rows,
+	}, nil
 }
 
 func (e *Executor) checkThatPlanIsValid(stmt sqlparser.Statement, plan *engine.Plan) error {

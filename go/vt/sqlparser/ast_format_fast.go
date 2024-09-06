@@ -2925,7 +2925,7 @@ func (node *CreateWescaleCDC) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("',\n")
 	buf.WriteString("\twasm_binary_name='")
 	buf.WriteString(node.WasmBinaryName)
-	buf.WriteString("'\n")
+	buf.WriteString("',\n")
 	buf.WriteString("\tenv='")
 	buf.WriteString(node.Env)
 	buf.WriteString("'\n")
