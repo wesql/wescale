@@ -6,6 +6,7 @@ toolchain go1.22.5
 
 require (
 	github.com/stealthrocket/net v0.2.1
+	github.com/stretchr/testify v1.9.0
 	github.com/tmc/langchaingo v0.1.12
 	github.com/wesql/sqlparser v0.1.13
 	github.com/wesql/wescale-cdc v0.1.12
@@ -36,5 +37,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117 // indirect
 	google.golang.org/grpc v1.66.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

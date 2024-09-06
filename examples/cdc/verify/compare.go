@@ -43,7 +43,7 @@ func main() {
 	if equal {
 		fmt.Printf("Tables %s.%s and %s.%s are identical.", table1Schema, table1, table2Schema, table2)
 	} else {
-		fmt.Println("Tables %s.%s and %s.%s are not identical.", table1Schema, table1, table2Schema, table2)
+		fmt.Printf("Tables %s.%s and %s.%s are not identical.", table1Schema, table1, table2Schema, table2)
 	}
 }
 
