@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 package main
 
 import (
@@ -20,8 +19,8 @@ const (
 	port         = 15306
 	table1Schema = "d1"
 	table2Schema = "d1"
-	table1       = "t1"
-	table2       = "t2"
+	table1       = "accounts1"
+	table2       = "accounts2"
 )
 
 func main() {
@@ -42,9 +41,9 @@ func main() {
 	}
 
 	if equal {
-		fmt.Println("Tables t1 and t2 are identical.")
+		fmt.Printf("Tables %s.%s and %s.%s are identical.", table1Schema, table1, table2Schema, table2)
 	} else {
-		fmt.Println("Tables t1 and t2 are not identical.")
+		fmt.Println("Tables %s.%s and %s.%s are not identical.", table1Schema, table1, table2Schema, table2)
 	}
 }
 
@@ -126,7 +125,7 @@ func compareTableSchema(db *sql.DB, table1, table2 string) (bool, error) {
 	for table1ColName, table1ColInfo := range table1ColInfos {
 		if table2ColInfo, ok := table2ColInfos[table1ColName]; !ok || table1ColInfo.Type != table2ColInfo.Type ||
 			table1ColInfo.IsPrimary != table2ColInfo.IsPrimary {
-			log.Printf("Schema mismatch in column %s: (%s,%s) vs (%s.%s)", table1ColName, table1ColInfo.Type, table1ColInfo.IsPrimary, table2ColInfo.Type, table2ColInfo.IsPrimary)
+			log.Printf("Schema mismatch in column %s: (%s,%v) vs (%s.%v)", table1ColName, table1ColInfo.Type, table1ColInfo.IsPrimary, table2ColInfo.Type, table2ColInfo.IsPrimary)
 			return false, nil
 		}
 	}
