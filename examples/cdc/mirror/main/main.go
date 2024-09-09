@@ -1,3 +1,9 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
 package main
 
 import (
@@ -20,6 +26,7 @@ delete from t1 where c2 = 'I want you to act as an English translator, spelling 
 update t1 set c1 = 12345 where c2 = 'I want you to act as an interviewer.';
 
 * You can compare the data in the source table and the target table to see if the program works as expected.
+* You can also use transfer_test.go to generate mock data and use compare.go to compare the data.
 */
 func main() {
 	mockConfig()
@@ -33,11 +40,11 @@ func main() {
 
 func mockConfig() {
 	cdc.DefaultConfig.TableSchema = "d1"
-	cdc.DefaultConfig.SourceTableName = "t1"
-	cdc.DefaultConfig.TargetTableName = "t2"
+	cdc.DefaultConfig.SourceTableName = "accounts1"
+	cdc.DefaultConfig.TargetTableName = "accounts2"
 	cdc.DefaultConfig.FilterStatement = "select * from t1"
 	cdc.DefaultConfig.WeScaleHost = "127.0.0.1"
 	cdc.DefaultConfig.WeScaleGrpcPort = "15991"
 
-	mirror.TargetMetaTableName = "t2_meta"
+	mirror.TargetMetaTableName = "accounts2_meta"
 }

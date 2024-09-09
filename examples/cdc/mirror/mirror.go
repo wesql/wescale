@@ -93,7 +93,7 @@ func StoreGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 		return err
 	}
 	cc.VtgateClient.Execute(context.Background(), &vtgatepb.ExecuteRequest{Query: &querypb.BoundQuery{Sql: recordMetaSQL}})
-	cdc.SpiInfof("cdc consumer record gtid and pk: %v", recordMetaSQL)
+	cdc.SpiInfof("cdc consumer record gtid and pk: %v\n", recordMetaSQL)
 	return nil
 }
 

@@ -1,3 +1,9 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+
 package main
 
 import (
@@ -33,13 +39,16 @@ func main() {
 
 func mockConfig() {
 	cdc.DefaultConfig.TableSchema = "d1"
-	cdc.DefaultConfig.SourceTableName = "t1"
+	cdc.DefaultConfig.SourceTableName = "movies"
 	cdc.DefaultConfig.WeScaleHost = "127.0.0.1"
 	cdc.DefaultConfig.WeScaleGrpcPort = "15991"
 
 	vector.EmbeddingModel = "text-embedding-3-large"
 	vector.EmbeddingUrl = "https://api.gptsapi.net/v1"
-	vector.VectorStoreType = "qdrant"
+	vector.VectorStoreType = vector.VectorStoreTypeQdrant
 	vector.VectorStoreUrl = "http://127.0.0.1:6333/"
-	vector.VectorStoreCollectionName = "t1_vector"
+	vector.VectorStoreCollectionName = "movies_vector"
+	vector.VectorDistanceMethod = "Dot"
+	vector.EmbeddingCols = "title,overview,genres,"
+	vector.MetaCols = "title,overview,genres,producer,cast"
 }
