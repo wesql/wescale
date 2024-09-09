@@ -117,7 +117,7 @@ jobs:
         mv dist/etcd-v3.3.10-linux-amd64/{etcd,etcdctl} bin/
 
         go mod download
-        go install golang.org/x/tools/cmd/goimports@latest
+        go install golang.org/x/tools/cmd/goimports@0.24.0
         
         # install JUnit report formatter
         go install github.com/vitessio/go-junit-report@HEAD
