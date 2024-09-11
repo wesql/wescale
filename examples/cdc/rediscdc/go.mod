@@ -7,6 +7,7 @@ toolchain go1.22.5
 require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/redis/go-redis/v9 v9.6.1
+	github.com/stealthrocket/net v0.2.1
 	github.com/stretchr/testify v1.9.0
 	github.com/wesql/sqlparser v0.1.13
 	github.com/wesql/wescale-cdc v0.1.12

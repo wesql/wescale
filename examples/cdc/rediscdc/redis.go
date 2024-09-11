@@ -3,7 +3,6 @@ Copyright ApeCloud, Inc.
 Licensed under the Apache v2(found in the LICENSE file in the root directory).
 */
 
-
 package rediscdc
 
 import (
@@ -29,7 +28,7 @@ var RedisDB string
 func init() {
 	cdc.RegisterStringVar(&RedisAddr, "REDIS_ADDRESS", "", "The redis host:port address, for example, 127.0.0.1:6379.")
 	cdc.RegisterStringVar(&RedisPWD, "REDIS_PASSWORD", "", "The redis password.")
-	cdc.RegisterStringVar(&RedisPWD, "REDIS_DB", "", "The redis db number.")
+	cdc.RegisterStringVar(&RedisDB, "REDIS_DB", "", "The redis db number.")
 
 	cdc.SpiOpen = Open
 	cdc.SpiLoadGTIDAndLastPK = LoadGTIDAndLastPK
@@ -91,8 +90,8 @@ const (
 	LastPKKey   = "last_pk"
 )
 
-func GenerateRedisKey(keyType RedisKeyType, pkValue string) (string, error) {
-	prefix := fmt.Sprintf("%s_%s_%s", RedisTargetPrefix, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName)
+func GenerateRedisKey(keyType RedisKeyType, tableSchema, tableName, pkValue string) (string, error) {
+	prefix := fmt.Sprintf("%s_%s_%s", RedisTargetPrefix, tableSchema, tableName)
 	switch keyType {
 	case Meta:
 		lastPKKey := fmt.Sprintf("%s_%s", prefix, Meta)
@@ -108,7 +107,7 @@ func GenerateRedisKey(keyType RedisKeyType, pkValue string) (string, error) {
 }
 
 func StoreGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *cdc.CdcConsumer) error {
-	metaKey, _ := GenerateRedisKey(Meta, "")
+	metaKey, _ := GenerateRedisKey(Meta, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName, "")
 	metaData := make(map[string]string)
 
 	pkBytes, err := prototext.Marshal(currentPK)
@@ -133,7 +132,7 @@ func StoreGtidAndLastPK(currentGTID string, currentPK *querypb.QueryResult, cc *
 }
 
 func LoadGTIDAndLastPK(cc *cdc.CdcConsumer) (string, *querypb.QueryResult, error) {
-	metaKey, _ := GenerateRedisKey(Meta, "")
+	metaKey, _ := GenerateRedisKey(Meta, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName, "")
 	val, err := RDBClient.Get(cc.Ctx, metaKey).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -216,7 +215,7 @@ func insertRowInRedis(rowResult *sqltypes.Result, cc *cdc.CdcConsumer) error {
 	if err != nil {
 		return err
 	}
-	rowPK, err := GenerateRedisKey(TableData, pkValue)
+	rowPK, err := GenerateRedisKey(TableData, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName, pkValue)
 	if err != nil {
 		return err
 	}
@@ -228,7 +227,7 @@ func deleteRowInRedis(rowResult *sqltypes.Result, cc *cdc.CdcConsumer) error {
 	if err != nil {
 		return err
 	}
-	rowPK, err := GenerateRedisKey(TableData, pkValue)
+	rowPK, err := GenerateRedisKey(TableData, cdc.DefaultConfig.TableSchema, cdc.DefaultConfig.SourceTableName, pkValue)
 	if err != nil {
 		return err
 	}
