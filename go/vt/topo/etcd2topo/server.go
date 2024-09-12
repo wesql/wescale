@@ -38,6 +38,7 @@ import (
 	"crypto/x509"
 	"strings"
 	"time"
+	"vitess.io/vitess/go/vt/log"
 
 	"github.com/spf13/pflag"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
@@ -167,5 +168,6 @@ func NewServerWithOpts(serverAddr, root, certPath, keyPath, caPath string) (*Ser
 func NewServer(serverAddr, root string) (*Server, error) {
 	// TODO: Rename this to a name to signifies this function uses the process-wide TLS settings.
 
+	log.Infof("Creating etcd topo server for %v, root: %v", serverAddr, root)
 	return NewServerWithOpts(serverAddr, root, clientCertPath, clientKeyPath, serverCaPath)
 }
