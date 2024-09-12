@@ -87,6 +87,7 @@ type TabletGateway struct {
 	retryCount           int
 	defaultConnCollation uint32
 	lastSeenGtid         *LastSeenGtid
+	latestGTIDForTable   *LatestGTIDForTable
 
 	// mu protects the fields of this group.
 	mu sync.Mutex
@@ -120,13 +121,23 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 	if err != nil {
 		log.Exitf("Unable to create new TabletGateway: %v", err)
 	}
+
+	latestGTIDForTable := &LatestGTIDForTable{
+		latestGTIDs: make(map[string]LatestGTIDEntry),
+		expireTime:  10 * time.Second,
+		mu:          sync.RWMutex{},
+		wg:          sync.WaitGroup{},
+	}
+	latestGTIDForTable.startCleaner()
+
 	gw := &TabletGateway{
-		hc:                hc,
-		srvTopoServer:     serv,
-		localCell:         localCell,
-		retryCount:        retryCount,
-		lastSeenGtid:      lastSeenGtid,
-		statusAggregators: make(map[string]*TabletStatusAggregator),
+		hc:                 hc,
+		srvTopoServer:      serv,
+		localCell:          localCell,
+		retryCount:         retryCount,
+		lastSeenGtid:       lastSeenGtid,
+		latestGTIDForTable: latestGTIDForTable,
+		statusAggregators:  make(map[string]*TabletStatusAggregator),
 	}
 	gw.setupBuffering(ctx)
 	gw.QueryService = queryservice.Wrap(nil, gw.withRetry)
