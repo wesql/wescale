@@ -7,14 +7,12 @@ package role
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"vitess.io/vitess/go/vt/dbconfigs"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/topo"
@@ -27,19 +25,12 @@ import (
 )
 
 var (
-	mysqlRoleProbeEnable      = true
-	mysqlRoleProbeInterval    = 1 * time.Second
-	mysqlRoleProbeTimeout     = 1 * time.Second
-	mysqlRoleProbeUrlTemplate = "http://%s:%d/v1.0/getrole"
+	mysqlRoleProbeEnable   = true
+	mysqlRoleProbeInterval = 1 * time.Second
+	mysqlRoleProbeTimeout  = 1 * time.Second
+	// http, wesql
+	mysqlRoleProbeImplementation = "http"
 )
-
-var (
-	mysqlProbeServicePort int64 = 3501
-	mysqlProbeServiceHost       = "localhost"
-)
-
-const LORRY_HTTP_PORT_ENV_NAME = "LORRY_HTTP_PORT"
-const LORRY_HTTP_HOST_ENV_NAME = "LORRY_HTTP_HOST"
 
 const (
 	PRIMARY   = "primary"
@@ -74,35 +65,14 @@ func transitionRoleType(role string) topodatapb.TabletType {
 }
 
 func init() {
-	servenv.OnParseFor("vttablet", registerGCFlags)
+	servenv.OnParseFor("vttablet", registerRoleListenerFlags)
 }
 
-func setUpMysqlProbeServicePort() {
-	portStr, ok := os.LookupEnv(LORRY_HTTP_PORT_ENV_NAME)
-	if !ok {
-		return
-	}
-	// parse portStr to int
-	portFromEnv, err := strconv.ParseInt(portStr, 10, 64)
-	if err != nil {
-		return
-	}
-	mysqlProbeServicePort = portFromEnv
-}
-
-func setUpMysqlProbeServiceHost() {
-	host, ok := os.LookupEnv(LORRY_HTTP_HOST_ENV_NAME)
-	if !ok {
-		return
-	}
-	mysqlProbeServiceHost = host
-}
-
-func registerGCFlags(fs *pflag.FlagSet) {
+func registerRoleListenerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&mysqlRoleProbeEnable, "mysql_role_probe_enable", mysqlRoleProbeEnable, "enable mysql role probe. default is true")
 	fs.DurationVar(&mysqlRoleProbeInterval, "mysql_role_probe_interval", mysqlRoleProbeInterval, "mysql role probe interval")
 	fs.DurationVar(&mysqlRoleProbeTimeout, "mysql_role_probe_timeout", mysqlRoleProbeTimeout, "mysql role probe timeout")
-	fs.StringVar(&mysqlRoleProbeUrlTemplate, "mysql_role_probe_url_template", mysqlRoleProbeUrlTemplate, "mysql role probe url template")
+	fs.StringVar(&mysqlRoleProbeImplementation, "mysql_role_probe_implementation", mysqlRoleProbeImplementation, "mysql role probe implementation")
 }
 
 type Listener struct {
@@ -115,12 +85,23 @@ type Listener struct {
 	lastUpdate time.Time
 
 	changeTypeFunc func(ctx context.Context, lastUpdate time.Time, targetTabletType topodatapb.TabletType) (bool, error)
+
+	probeFunc func(ctx context.Context) (string, error)
 }
 
-func NewListener(changeTypeFunc func(ctx context.Context, lastUpdate time.Time, tabletType topodatapb.TabletType) (bool, error)) *Listener {
+func NewListener(changeTypeFunc func(ctx context.Context, lastUpdate time.Time, tabletType topodatapb.TabletType) (bool, error), dbcfgs *dbconfigs.DBConfigs) *Listener {
+	var probeFunc func(ctx context.Context) (string, error)
+	switch mysqlRoleProbeImplementation {
+	case "http":
+		probeFunc = httpProbe
+	case "wesql":
+		weSqlDbConfigs = dbcfgs
+		probeFunc = wesqlProbe
+	}
 	l := &Listener{
 		isOpen:         0,
 		changeTypeFunc: changeTypeFunc,
+		probeFunc:      probeFunc,
 	}
 	return l
 }
@@ -188,30 +169,16 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 		return
 	}
 
-	setUpMysqlProbeServicePort()
-	setUpMysqlProbeServiceHost()
-	// curl -X GET -H 'Content-Type: application/json' 'http://localhost:3501/v1.0/getrole'
-	getRoleUrl := fmt.Sprintf(mysqlRoleProbeUrlTemplate, mysqlProbeServiceHost, mysqlProbeServicePort)
+	timeoutCtx, cancel := context.WithTimeout(ctx, mysqlRoleProbeTimeout)
+	defer cancel()
 
-	kvResp, err := probe(ctx, mysqlRoleProbeTimeout, http.MethodGet, getRoleUrl, nil)
+	role, err := collector.probeFunc(timeoutCtx)
 	if err != nil {
-		log.Errorf("try to probe mysql role, but error happened: %v", err)
-		return
-	}
-	role, ok := kvResp["role"]
-	if !ok {
-		log.Errorf("unable to get mysql role from probe response, response content: %v", kvResp)
+		log.Errorf("failed to probe mysql role, error:%v", err)
 		return
 	}
 
-	// Safely assert the type of role to string.
-	roleStr, ok := role.(string)
-	if !ok {
-		log.Error("role value is not a string, role:%v", role)
-		return
-	}
-
-	tabletType := transitionRoleType(roleStr)
+	tabletType := transitionRoleType(role)
 
 	switch tabletType {
 	case topodatapb.TabletType_PRIMARY, topodatapb.TabletType_REPLICA, topodatapb.TabletType_RDONLY:
@@ -228,8 +195,4 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 	default:
 		log.Errorf("role value is not a string, role:%v", role)
 	}
-}
-
-func SetMysqlRoleProbeUrlTemplate(urlTemplate string) {
-	mysqlRoleProbeUrlTemplate = urlTemplate
 }
