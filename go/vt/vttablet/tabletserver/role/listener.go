@@ -29,7 +29,7 @@ var (
 	mysqlRoleProbeInterval = 1 * time.Second
 	mysqlRoleProbeTimeout  = 1 * time.Second
 	// http, wesql
-	mysqlRoleProbeImplementation = "http"
+	mysqlRoleProbeImplementation = "wesql"
 )
 
 const (
