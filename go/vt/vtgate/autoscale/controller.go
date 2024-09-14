@@ -2,7 +2,6 @@ package autoscale
 
 import (
 	"context"
-	"fmt"
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -62,6 +61,7 @@ type AutoScaleController struct {
 }
 
 func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController {
+	log.Infof("NewAutoScaleController")
 	w := &AutoScaleController{}
 	w.ctx, w.cancelFunc = context.WithCancel(context.Background())
 	w.svc = svc
@@ -70,11 +70,12 @@ func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController 
 		log.Errorf("Error building in-cluster config: %s", err.Error())
 	}
 	w.config = config
-
+	log.Infof("AutoScaleController config: %v", w.config)
 	return w
 }
 
 func (cr *AutoScaleController) Start() {
+	log.Infof("AutoScaleController started")
 	go func() {
 		intervalTicker := time.NewTicker(AutoScaleDecisionMakingInterval)
 		defer intervalTicker.Stop()
@@ -104,13 +105,13 @@ func (cr *AutoScaleController) Start() {
 				log.Errorf("get request and limit metrics error: %v", err)
 				continue
 			}
-			fmt.Printf("totalCPURequest: %v, totalMemoryRequest: %v, totalCPULimit: %v, totalMemoryLimit :%v\n",
+			log.Infof("totalCPURequest: %v, totalMemoryRequest: %v, totalCPULimit: %v, totalMemoryLimit :%v\n",
 				totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit)
 
 			// 2. 判断是否需要scale up/down, scale in/out
 			// todo scale in
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
-			fmt.Printf("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
+			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
 			e := NaiveEstimator{CPUUpperMargin: 500,
 				CPULowerMargin:    500,
@@ -120,7 +121,7 @@ func (cr *AutoScaleController) Start() {
 				MemoryDelta:       500}
 			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, 4000, 500,
 				memoryHistory, totalMemoryLimit, totalMemoryRequest, 5000, 500)
-			fmt.Printf("cpuUpper: %v, cpuLower: %v,"+
+			log.Infof("cpuUpper: %v, cpuLower: %v,"+
 				"memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
 			// 3. 执行scale up/down, scale in/out
