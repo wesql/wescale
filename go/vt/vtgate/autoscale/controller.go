@@ -2,7 +2,10 @@ package autoscale
 
 import (
 	"context"
+	"fmt"
 	"github.com/spf13/pflag"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"sync"
 	"time"
 	"vitess.io/vitess/go/vt/log"
@@ -13,7 +16,7 @@ import (
 // System Config
 var (
 	EnableAutoScale                 = false
-	AutoScaleDecisionMakingInterval = 1 * time.Second
+	AutoScaleDecisionMakingInterval = 5 * time.Second
 )
 
 // User Config
@@ -54,13 +57,20 @@ type AutoScaleController struct {
 	cancelFunc context.CancelFunc
 	mu         sync.Mutex
 
-	svc queryservice.QueryService
+	svc    queryservice.QueryService
+	config *rest.Config
 }
 
 func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController {
 	w := &AutoScaleController{}
 	w.ctx, w.cancelFunc = context.WithCancel(context.Background())
 	w.svc = svc
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Errorf("Error building in-cluster config: %s", err.Error())
+	}
+	w.config = config
+
 	return w
 }
 
@@ -77,12 +87,53 @@ func (cr *AutoScaleController) Start() {
 			case <-intervalTicker.C:
 			}
 
+			if cr.config == nil {
+				log.Errorf("scale controller config is nil")
+				continue
+			}
+
 			// todo do something
 			// 1. 获取metrics
+			err := TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+			if err != nil {
+				log.Errorf("track cpu and memory error: %v", err)
+				continue
+			}
+			totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit, err := GetRequestAndLimitMetrics(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+			if err != nil {
+				log.Errorf("get request and limit metrics error: %v", err)
+				continue
+			}
+			fmt.Printf("totalCPURequest: %v, totalMemoryRequest: %v, totalCPULimit: %v, totalMemoryLimit :%v\n",
+				totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit)
 
 			// 2. 判断是否需要scale up/down, scale in/out
+			// todo scale in
+			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
+			fmt.Printf("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
+
+			e := NaiveEstimator{CPUUpperMargin: 500,
+				CPULowerMargin:    500,
+				MemoryUpperMargin: 500,
+				MemoryLowerMargin: 500,
+				CPUDelta:          500,
+				MemoryDelta:       500}
+			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, 4000, 500,
+				memoryHistory, totalMemoryLimit, totalMemoryRequest, 5000, 500)
+			fmt.Printf("cpuUpper: %v, cpuLower: %v,"+
+				"memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
 			// 3. 执行scale up/down, scale in/out
+			clientset, err := kubernetes.NewForConfig(cr.config)
+			if err != nil {
+				log.Errorf("Error creating clientset: %s", err.Error())
+				continue
+			}
+			err = scaleUpDownStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
+			if err != nil {
+				log.Errorf("scale up/down stateful set error: %v", err)
+			}
+			log.Infof("scale up and down successfully")
 		}
 	}()
 }
