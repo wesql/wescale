@@ -14,7 +14,7 @@ import (
 
 // System Config
 var (
-	EnableAutoScale                 = false
+	EnableAutoScale                 = true
 	AutoScaleDecisionMakingInterval = 5 * time.Second
 )
 
