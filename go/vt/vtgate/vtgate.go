@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
 	"vitess.io/vitess/go/vt/vtgate/binlogconsumer"
 
@@ -315,6 +316,15 @@ func Init(
 	}
 	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
+	}
+	if autoscale.EnableAutoScale {
+		autoScaleController := autoscale.NewAutoScaleController(gw)
+		servenv.OnRun(func() {
+			autoScaleController.Start()
+		})
+		servenv.OnTerm(func() {
+			autoScaleController.Stop()
+		})
 	}
 	if binlogconsumer.EnableCdcConsumer {
 		cdcConsumerController := binlogconsumer.NewCdcConsumerController(gw)
