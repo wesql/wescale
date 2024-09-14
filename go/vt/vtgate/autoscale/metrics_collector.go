@@ -8,9 +8,38 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	"vitess.io/vitess/go/stats"
 )
 
-func getRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, error) {
+const (
+	HistorySize = 10
+)
+
+var (
+	CPUHistory    stats.RingInt64
+	MemoryHistory stats.RingInt64
+)
+
+func init() {
+	CPUHistory = *stats.NewRingInt64(HistorySize)
+	MemoryHistory = *stats.NewRingInt64(HistorySize)
+}
+
+func TrackCPUAndMemory(config *rest.Config, namespae, targetPod string) error {
+	totalCPUUsage, totalMemoryUsage, err := GetRealtimeMetrics(config, namespae, targetPod)
+	if err != nil {
+		return err
+	}
+	CPUHistory.Add(totalCPUUsage)
+	MemoryHistory.Add(totalMemoryUsage)
+	return nil
+}
+
+func GetCPUAndMemoryHistory() ([]int64, []int64) {
+	return CPUHistory.Values(), MemoryHistory.Values()
+}
+
+func GetRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, error) {
 	// 创建 Metrics 客户端
 	metricsClientset, err := metricsclientset.NewForConfig(config)
 	if err != nil {
@@ -37,7 +66,7 @@ func getRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64
 	return totalCPUUsage, totalMemoryUsage, nil
 }
 
-func getRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, int64, int64, error) {
+func GetRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, int64, int64, error) {
 	// 创建 Kubernetes 客户端
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

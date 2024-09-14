@@ -26,7 +26,8 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 	return err
 }
 
-func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, podName string, cpuRequest, memoryRequest, cpuLimit, memoryLimit string) error {
+func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, podName string,
+	cpuRequest, memoryRequest, cpuLimit, memoryLimit int64) error {
 	podsClient := clientset.CoreV1().Pods(namespace)
 
 	// 获取当前的 Pod
@@ -41,12 +42,12 @@ func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, p
 		if container.Name == "mysql" { // todo magic string
 			// 设置新的资源请求和限制
 			pod.Spec.Containers[i].Resources.Requests = v1.ResourceList{
-				v1.ResourceCPU:    resource.MustParse(cpuRequest),
-				v1.ResourceMemory: resource.MustParse(memoryRequest),
+				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuRequest, resource.DecimalSI),
+				v1.ResourceMemory: *resource.NewMilliQuantity(memoryRequest, resource.BinarySI),
 			}
 			pod.Spec.Containers[i].Resources.Limits = v1.ResourceList{
-				v1.ResourceCPU:    resource.MustParse(cpuLimit),
-				v1.ResourceMemory: resource.MustParse(memoryLimit),
+				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
+				v1.ResourceMemory: *resource.NewMilliQuantity(memoryRequest, resource.BinarySI),
 			}
 		}
 	}
