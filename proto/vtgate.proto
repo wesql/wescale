@@ -219,6 +219,7 @@ message ReadAfterWrite {
   double read_after_write_timeout = 2;
   bool session_track_gtids = 3;
   ReadAfterWriteConsistency read_after_write_consistency = 4;
+  bool table_level = 5;
 }
 
 // ExecuteRequest is the payload to Execute.
