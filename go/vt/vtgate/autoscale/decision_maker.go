@@ -1,8 +1,8 @@
 package autoscale
 
 type Estimator interface {
-	Estimate(cpuHistory []int64, cpuUpperLimit, cpuLowerLimit, cpuMax, cpuMin int64,
-		memoryHistory []int64, memoryUpperLimit, memoryLowerLimit, memoryMax, memoryMin int64) (int64, int64, int64, int64)
+	Estimate(cpuHistory CPUHistory, cpuUpperLimit, cpuLowerLimit, cpuMax, cpuMin int64,
+		memoryHistory MemoryHistory, memoryUpperLimit, memoryLowerLimit, memoryMax, memoryMin int64) (int64, int64, int64, int64)
 }
 
 type NaiveEstimator struct {
@@ -16,8 +16,8 @@ type NaiveEstimator struct {
 	MemoryDelta int64
 }
 
-func (n *NaiveEstimator) Estimate(cpuHistory []int64, cpuUpperLimit, cpuLowerLimit, cpuMax, cpuMin int64,
-	memoryHistory []int64, memoryUpperLimit, memoryLowerLimit, memoryMax, memoryMin int64) (int64, int64, int64, int64) {
+func (n *NaiveEstimator) Estimate(cpuHistory CPUHistory, cpuUpperLimit, cpuLowerLimit, cpuMax, cpuMin int64,
+	memoryHistory MemoryHistory, memoryUpperLimit, memoryLowerLimit, memoryMax, memoryMin int64) (int64, int64, int64, int64) {
 	cpuTotal := int64(0)
 	memoryTotal := int64(0)
 	for i, _ := range cpuHistory {
@@ -60,4 +60,13 @@ func (n *NaiveEstimator) Estimate(cpuHistory []int64, cpuUpperLimit, cpuLowerLim
 		}
 	}
 	return suggestCPUUpper, suggestCPULower, suggestMemoryUpper, suggestMemoryLower
+}
+
+func NeedScaleInZero(history QPSHistory) bool {
+	for _, v := range history {
+		if v > 0 {
+			return false
+		}
+	}
+	return true
 }

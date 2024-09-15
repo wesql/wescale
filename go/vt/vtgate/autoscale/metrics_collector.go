@@ -11,18 +11,23 @@ import (
 	"vitess.io/vitess/go/stats"
 )
 
+type QPSHistory []float64
+type CPUHistory []int64
+type MemoryHistory []int64
+
 const (
 	HistorySize = 10
 )
 
 var (
-	CPUHistory    stats.RingInt64
-	MemoryHistory stats.RingInt64
+	cpuHistoryRing    stats.RingInt64
+	memoryHistoryRing stats.RingInt64
+	QPSByDbType       *stats.Rates
 )
 
 func init() {
-	CPUHistory = *stats.NewRingInt64(HistorySize)
-	MemoryHistory = *stats.NewRingInt64(HistorySize)
+	cpuHistoryRing = *stats.NewRingInt64(HistorySize)
+	memoryHistoryRing = *stats.NewRingInt64(HistorySize)
 }
 
 func TrackCPUAndMemory(config *rest.Config, namespae, targetPod string) error {
@@ -30,13 +35,13 @@ func TrackCPUAndMemory(config *rest.Config, namespae, targetPod string) error {
 	if err != nil {
 		return err
 	}
-	CPUHistory.Add(totalCPUUsage)
-	MemoryHistory.Add(totalMemoryUsage)
+	cpuHistoryRing.Add(totalCPUUsage)
+	memoryHistoryRing.Add(totalMemoryUsage)
 	return nil
 }
 
-func GetCPUAndMemoryHistory() ([]int64, []int64) {
-	return CPUHistory.Values(), MemoryHistory.Values()
+func GetCPUAndMemoryHistory() (CPUHistory, MemoryHistory) {
+	return cpuHistoryRing.Values(), memoryHistoryRing.Values()
 }
 
 func GetRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, error) {
@@ -99,4 +104,8 @@ func GetRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string)
 	}
 
 	return totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit, nil
+}
+
+func GetQPSHistory() QPSHistory {
+	return QPSByDbType.Get()["All"]
 }
