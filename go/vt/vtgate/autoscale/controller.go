@@ -87,15 +87,30 @@ func (cr *AutoScaleController) Start() {
 				return
 			case <-intervalTicker.C:
 			}
+			// 1. 搜集qps，判断是否需要scale in
+			qpsHistory := GetQPSHistory()
+			log.Infof("qpsHistory: %v\n", qpsHistory)
 
 			if cr.config == nil {
 				log.Errorf("scale controller config is nil")
 				continue
 			}
 
-			// todo do something
-			// 1. 获取metrics
-			err := TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+			clientset, err := kubernetes.NewForConfig(cr.config)
+			if err != nil {
+				log.Errorf("Error creating clientset: %s", err.Error())
+				continue
+			}
+			if NeedScaleInZero(qpsHistory) {
+				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, 0)
+				if err != nil {
+					log.Errorf("Error scale in to zero: %s", err.Error())
+					continue
+				}
+			}
+
+			// 2. 搜集cpu和memory，判断是否需要scale up/down
+			err = TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
 			if err != nil {
 				log.Errorf("track cpu and memory error: %v", err)
 				continue
@@ -108,8 +123,6 @@ func (cr *AutoScaleController) Start() {
 			log.Infof("totalCPURequest: %v, totalMemoryRequest: %v, totalCPULimit: %v, totalMemoryLimit :%v\n",
 				totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit)
 
-			// 2. 判断是否需要scale up/down, scale in/out
-			// todo scale in
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
@@ -124,12 +137,6 @@ func (cr *AutoScaleController) Start() {
 			log.Infof("cpuUpper: %v, cpuLower: %v,"+
 				"memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
-			// 3. 执行scale up/down, scale in/out
-			clientset, err := kubernetes.NewForConfig(cr.config)
-			if err != nil {
-				log.Errorf("Error creating clientset: %s", err.Error())
-				continue
-			}
 			err = scaleUpDownStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
 			if err != nil {
 				log.Errorf("scale up/down stateful set error: %v", err)
