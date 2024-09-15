@@ -26,6 +26,18 @@ type LatestGTIDForTable struct {
 	wg          sync.WaitGroup             // WaitGroup to wait for the cleanup goroutine to finish.
 }
 
+func (m *LatestGTIDForTable) GetGTIDMap() map[string]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	gtidMap := make(map[string]string)
+	for tableName, entry := range m.latestGTIDs {
+		gtidMap[tableName] = entry.GTID
+	}
+
+	return gtidMap
+}
+
 // UpdateGTID updates the latest GTID and update time for a given table.
 func (m *LatestGTIDForTable) UpdateGTID(tableName, gtid string) {
 	m.mu.Lock()
