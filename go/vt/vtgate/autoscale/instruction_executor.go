@@ -26,7 +26,7 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 	return err
 }
 
-func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, podName string,
+func scaleUpDownPod(clientset *kubernetes.Clientset, namespace string, podName string,
 	cpuRequest, memoryRequest, cpuLimit, memoryLimit int64) error {
 	podsClient := clientset.CoreV1().Pods(namespace)
 
@@ -47,7 +47,7 @@ func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, p
 			}
 			pod.Spec.Containers[i].Resources.Limits = v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewMilliQuantity(memoryRequest, resource.BinarySI),
+				v1.ResourceMemory: *resource.NewMilliQuantity(memoryLimit, resource.BinarySI),
 			}
 		}
 	}
@@ -58,4 +58,39 @@ func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, p
 		fmt.Printf("Successfully updated resources for Pod %s.\n", podName)
 	}
 	return err
+}
+
+func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, statefulSetName string,
+	cpuRequest, memoryRequest, cpuLimit, memoryLimit int64) error {
+	// 获取 StatefulSet
+	statefulSetClient := clientset.AppsV1().StatefulSets(namespace)
+	statefulSet, err := statefulSetClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get StatefulSet: %v", err)
+	}
+
+	// 修改 StatefulSet 中的容器资源配置
+	for i, container := range statefulSet.Spec.Template.Spec.Containers {
+		// 假设容器名称为 "mysql" （如果有多个容器，可以使用特定名称匹配）
+		if container.Name == "mysql" { // todo magic string
+			// 设置新的资源请求和限制
+			statefulSet.Spec.Template.Spec.Containers[i].Resources.Requests = v1.ResourceList{
+				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuRequest, resource.DecimalSI),
+				v1.ResourceMemory: *resource.NewQuantity(memoryRequest, resource.BinarySI),
+			}
+			statefulSet.Spec.Template.Spec.Containers[i].Resources.Limits = v1.ResourceList{
+				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
+				v1.ResourceMemory: *resource.NewQuantity(memoryLimit, resource.BinarySI),
+			}
+		}
+	}
+
+	// 更新 StatefulSet 模板
+	_, err = statefulSetClient.Update(context.TODO(), statefulSet, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update StatefulSet: %v", err)
+	}
+
+	fmt.Printf("Successfully updated resources for StatefulSet %s.\n", statefulSetName)
+	return nil
 }
