@@ -62,7 +62,15 @@ func (n *NaiveEstimator) Estimate(cpuHistory CPUHistory, cpuUpperLimit, cpuLower
 	return suggestCPUUpper, suggestCPULower, suggestMemoryUpper, suggestMemoryLower
 }
 
+var (
+	QpsSampleIntervalSeconds = 10
+	QpsSampleHistoryLength   = 5 * 60 / QpsSampleIntervalSeconds
+)
+
 func NeedScaleInZero(history QPSHistory) bool {
+	if len(history) < QpsSampleHistoryLength {
+		return false
+	}
 	for _, v := range history {
 		if v > 0 {
 			return false
