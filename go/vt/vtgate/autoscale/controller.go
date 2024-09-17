@@ -105,8 +105,8 @@ func (cr *AutoScaleController) Start() {
 				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, 0)
 				if err != nil {
 					log.Errorf("Error scale in to zero: %s", err.Error())
-					continue
 				}
+				continue
 			}
 
 			// 2. 搜集cpu和memory，判断是否需要scale up/down
