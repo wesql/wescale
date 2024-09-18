@@ -110,6 +110,8 @@ func (cr *AutoScaleController) Start() {
 
 			if NeedScaleInZero(qpsHistory) {
 				DataNodeStatefulSetReplicas = 0
+			} else {
+				DataNodeStatefulSetReplicas = 1
 			}
 
 			CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)

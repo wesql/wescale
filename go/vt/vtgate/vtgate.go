@@ -245,9 +245,10 @@ type VTGate struct {
 	// stats objects.
 	// TODO(sougou): This needs to be cleaned up. There
 	// are global vars that depend on this member var.
-	timings      *stats.MultiTimings
-	rowsReturned *stats.CountersWithMultiLabels
-	rowsAffected *stats.CountersWithMultiLabels
+	timings         *stats.MultiTimings
+	incomingTimings *stats.MultiTimings
+	rowsReturned    *stats.CountersWithMultiLabels
+	rowsAffected    *stats.CountersWithMultiLabels
 
 	// the throttled loggers for all errors, one per API entry
 	logExecute       *logutil.ThrottledLogger
@@ -377,6 +378,10 @@ func Init(
 			"VtgateApi",
 			"VtgateApi timings",
 			[]string{"Operation", "Keyspace", "DbType"}),
+		incomingTimings: stats.NewMultiTimings(
+			"VtgateApiIncoming",
+			"VtgateApi incoming timings",
+			[]string{"Operation", "Keyspace", "DbType"}),
 		rowsReturned: stats.NewCountersWithMultiLabels(
 			"VtgateApiRowsReturned",
 			"Rows returned through the VTgate API",
@@ -393,7 +398,7 @@ func Init(
 	_ = stats.NewRates("QPSByOperation", stats.CounterForDimension(rpcVTGate.timings, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByKeyspace", stats.CounterForDimension(rpcVTGate.timings, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByDbType", stats.CounterForDimension(rpcVTGate.timings, "DbType"), 15*60/5, 5*time.Second)
-	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.timings, "DbType"), autoscale.QpsSampleHistoryLength, time.Duration(autoscale.QpsSampleIntervalSeconds)*time.Second)
+	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.QpsSampleHistoryLength, time.Duration(autoscale.QpsSampleIntervalSeconds)*time.Second)
 
 	_ = stats.NewRates("ErrorsByOperation", stats.CounterForDimension(errorCounts, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByKeyspace", stats.CounterForDimension(errorCounts, "Keyspace"), 15, 1*time.Minute)
@@ -518,6 +523,7 @@ func (vtg *VTGate) Execute(ctx context.Context, session *vtgatepb.Session, sql s
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {
@@ -547,6 +553,7 @@ func (vtg *VTGate) ExecuteBatch(ctx context.Context, session *vtgatepb.Session, 
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"ExecuteBatch", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	for _, bindVariables := range bindVariablesList {
@@ -577,7 +584,7 @@ func (vtg *VTGate) StreamExecute(ctx context.Context, session *vtgatepb.Session,
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"StreamExecute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
-
+	vtg.incomingTimings.Record(statsKey, time.Now())
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	var err error
@@ -626,6 +633,7 @@ func (vtg *VTGate) Prepare(ctx context.Context, session *vtgatepb.Session, sql s
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {
