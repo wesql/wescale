@@ -1421,8 +1421,7 @@ type ExecuteOptions struct {
 	AccountVerificationEnabled           bool                 `protobuf:"varint,19,opt,name=account_verification_enabled,json=accountVerificationEnabled,proto3" json:"account_verification_enabled,omitempty"`
 	TabletInfoToDisplay                  *TabletInfoToDisplay `protobuf:"bytes,20,opt,name=tablet_info_to_display,json=tabletInfoToDisplay,proto3" json:"tablet_info_to_display,omitempty"`
 	CanLoadBalanceBetweenReplicAndRdonly bool                 `protobuf:"varint,21,opt,name=can_load_balance_between_replic_and_rdonly,json=canLoadBalanceBetweenReplicAndRdonly,proto3" json:"can_load_balance_between_replic_and_rdonly,omitempty"`
-	// ReadAfterWriteTimeout is the timeout for the read-after-write.
-	TableReadAfterWriteGtidMap map[string]string `protobuf:"bytes,22,rep,name=TableReadAfterWriteGtidMap,proto3" json:"TableReadAfterWriteGtidMap,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	TableReadAfterWriteGtidMap           map[string]string    `protobuf:"bytes,22,rep,name=TableReadAfterWriteGtidMap,proto3" json:"TableReadAfterWriteGtidMap,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *ExecuteOptions) Reset() {
