@@ -22,6 +22,7 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
 	"vitess.io/vitess/go/vt/vtgate/errorsanitizer"
 
@@ -227,6 +228,10 @@ func (sb *shardBuffer) waitForFailoverEnd(ctx context.Context, keyspace, shard s
 		requestsBufferedDryRun.Add(sb.statsKey, 1)
 		return nil, nil
 	}
+
+	//  todo wesql autoscale scale out
+	autoscale.DataNodeStatefulSetReplicas = 1
+	autoscale.QPSByDbType.AddManually()
 
 	// Buffer request.
 	entry, err := sb.bufferRequestLocked(ctx)
