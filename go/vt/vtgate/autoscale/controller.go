@@ -33,7 +33,11 @@ var (
 	AutoScaleLoggerNodePodName         = []string{"mycluster-mysql-1-0", "mycluster-mysql-2-0"}
 )
 
-var StatefulSetReplicas int32 = 1
+// The number of replicas of the DataNode's StatefulSet that we want to have
+var DataNodeStatefulSetReplicas int32 = 1
+
+// The number of replicas of the DataNode's StatefulSet that currently exist
+var CurrentDataNodeStatefulSetReplicas int32 = 1
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
@@ -90,32 +94,36 @@ func (cr *AutoScaleController) Start() {
 			case <-intervalTicker.C:
 			}
 
-			// 1. 搜集qps，判断是否需要scale in
-			qpsHistory := GetQPSHistory()
-			log.Infof("qpsHistory: %v\n", qpsHistory)
-
 			if cr.config == nil {
 				log.Errorf("scale controller config is nil")
 				continue
 			}
-
 			clientset, err := kubernetes.NewForConfig(cr.config)
 			if err != nil {
 				log.Errorf("Error creating clientset: %s", err.Error())
 				continue
 			}
-			StatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
+
+			// 1. 搜集qps，判断是否需要scale in
+			qpsHistory := GetQPSHistory()
+			log.Infof("qpsHistory: %v\n", qpsHistory)
+
+			if NeedScaleInZero(qpsHistory) {
+				DataNodeStatefulSetReplicas = 0
+			}
+
+			CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
 			if err != nil {
 				log.Errorf("Error getting stateful set replicas: %s", err.Error())
 			}
-			log.Infof("StatefulSetReplicas: %v\n", StatefulSetReplicas)
+			log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
 
-			if NeedScaleInZero(qpsHistory) {
-				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, 0)
+			if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
+				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
 				if err != nil {
 					log.Errorf("Error scale in to zero: %s", err.Error())
 				} else {
-					log.Infof("scale in to zero successfully")
+					log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
 				}
 				continue
 			}
