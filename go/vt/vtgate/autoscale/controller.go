@@ -33,6 +33,8 @@ var (
 	AutoScaleLoggerNodePodName         = []string{"mycluster-mysql-1-0", "mycluster-mysql-2-0"}
 )
 
+var StatefulSetReplicas int32 = 1
+
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
 	fs.BoolVar(&EnableAutoScale, "enable_auto_scale", EnableAutoScale, "enable auto scaling")
@@ -87,6 +89,7 @@ func (cr *AutoScaleController) Start() {
 				return
 			case <-intervalTicker.C:
 			}
+
 			// 1. 搜集qps，判断是否需要scale in
 			qpsHistory := GetQPSHistory()
 			log.Infof("qpsHistory: %v\n", qpsHistory)
@@ -101,6 +104,12 @@ func (cr *AutoScaleController) Start() {
 				log.Errorf("Error creating clientset: %s", err.Error())
 				continue
 			}
+			StatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
+			if err != nil {
+				log.Errorf("Error getting stateful set replicas: %s", err.Error())
+			}
+			log.Infof("StatefulSetReplicas: %v\n", StatefulSetReplicas)
+
 			if NeedScaleInZero(qpsHistory) {
 				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, 0)
 				if err != nil {
