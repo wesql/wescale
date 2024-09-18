@@ -76,11 +76,11 @@ func scaleUpDownStatefulSet(clientset *kubernetes.Clientset, namespace string, s
 			// 设置新的资源请求和限制
 			statefulSet.Spec.Template.Spec.Containers[i].Resources.Requests = v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuRequest, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(memoryRequest, resource.BinarySI),
+				v1.ResourceMemory: *resource.NewMilliQuantity(memoryRequest, resource.BinarySI),
 			}
 			statefulSet.Spec.Template.Spec.Containers[i].Resources.Limits = v1.ResourceList{
 				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuLimit, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(memoryLimit, resource.BinarySI),
+				v1.ResourceMemory: *resource.NewMilliQuantity(memoryLimit, resource.BinarySI),
 			}
 		}
 	}
