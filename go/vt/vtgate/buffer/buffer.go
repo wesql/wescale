@@ -35,6 +35,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
 	"vitess.io/vitess/go/internal/global"
 
@@ -150,6 +151,7 @@ func (b *Buffer) WaitForFailoverEnd(ctx context.Context, keyspace, shard string,
 		return nil, nil
 	}
 
+	autoscale.DataNodeStatefulSetReplicas = 1
 	return sb.waitForFailoverEnd(ctx, keyspace, shard, err)
 }
 
