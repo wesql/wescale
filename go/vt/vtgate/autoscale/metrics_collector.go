@@ -109,3 +109,12 @@ func GetRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string)
 func GetQPSHistory() QPSHistory {
 	return QPSByDbType.Get()["All"]
 }
+
+func GetStatefulSetReplicaCount(clientset *kubernetes.Clientset, namespace string, statefulSetName string) (int32, error) {
+	statefulSetClient := clientset.AppsV1().StatefulSets(namespace)
+	statefulSet, err := statefulSetClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
+	if err != nil {
+		return 0, fmt.Errorf("failed to get StatefulSet: %v", err)
+	}
+	return *statefulSet.Spec.Replicas, nil
+}
