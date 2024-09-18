@@ -105,6 +105,8 @@ func (cr *AutoScaleController) Start() {
 				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, 0)
 				if err != nil {
 					log.Errorf("Error scale in to zero: %s", err.Error())
+				} else {
+					log.Infof("scale in to zero successfully")
 				}
 				continue
 			}
@@ -137,7 +139,8 @@ func (cr *AutoScaleController) Start() {
 			log.Infof("cpuUpper: %v, cpuLower: %v,"+
 				"memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
-			err = scaleUpDownStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
+			// todo, here we just scale up/down cpu
+			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
 			if err != nil {
 				log.Errorf("scale up/down stateful set error: %v", err)
 				continue
