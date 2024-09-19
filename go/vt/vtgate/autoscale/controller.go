@@ -164,12 +164,14 @@ func (cr *AutoScaleController) Start() {
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
-			e := NaiveEstimator{CPUUpperMargin: 500,
+			e := NaiveEstimator{
+				CPUUpperMargin:    500,
 				CPULowerMargin:    500,
 				MemoryUpperMargin: 500,
 				MemoryLowerMargin: 500,
 				CPUDelta:          500,
-				MemoryDelta:       500}
+				MemoryDelta:       500,
+			}
 			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBound, AutoScaleCpuLowerBound,
 				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBound, AutoScaleMemoryLowerBound)
 			log.Infof("cpuUpper: %v, cpuLower: %v, memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
