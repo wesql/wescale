@@ -23,6 +23,14 @@ var (
 	AutoSuspendTimeout = 5 * time.Minute
 )
 
+// Resource Config
+var (
+	AutoScaleCpuUpperBound    int64 = 4000
+	AutoScaleCpuLowerBound    int64 = 500
+	AutoScaleMemoryUpperBound int64 = 5000
+	AutoScaleMemoryLowerBound int64 = 500
+)
+
 // Cluster Config
 var (
 	AutoScaleClusterNamespace        = "default"
@@ -43,6 +51,11 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
 	fs.BoolVar(&EnableAutoScale, "enable_auto_scale", EnableAutoScale, "enable auto scaling")
 	fs.DurationVar(&AutoScaleDecisionMakingInterval, "auto_scale_decision_making_interval", AutoScaleDecisionMakingInterval, "auto scale decision making interval")
+	// Resource Config
+	fs.Int64Var(&AutoScaleCpuUpperBound, "auto_scale_cpu_upper_bound", AutoScaleCpuUpperBound, "auto scale will not set cpu more than auto_scale_cpu_upper_bound")
+	fs.Int64Var(&AutoScaleCpuLowerBound, "auto_scale_cpu_lower_bound", AutoScaleCpuLowerBound, "auto scale will not set cpu less than auto_scale_cpu_lower_bound")
+	fs.Int64Var(&AutoScaleMemoryUpperBound, "auto_scale_memory_upper_bound", AutoScaleMemoryUpperBound, "auto scale will not set memory more than auto_scale_memory_upper_bound")
+	fs.Int64Var(&AutoScaleMemoryLowerBound, "auto_scale_memory_lower_bound", AutoScaleMemoryLowerBound, "auto scale will not set memory less than auto_scale_memory_lower_bound")
 	// User Config
 	fs.DurationVar(&AutoSuspendTimeout, "auto_suspend_timeout", AutoSuspendTimeout, "auto suspend timeout. default is 5m")
 	// Cluster Config
@@ -129,6 +142,10 @@ func (cr *AutoScaleController) Start() {
 				}
 				continue
 			}
+			if CurrentDataNodeStatefulSetReplicas == 0 {
+				// no need to scale up or down
+				continue
+			}
 
 			// 2. 搜集cpu和memory，判断是否需要scale up/down
 			err = TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
@@ -153,10 +170,9 @@ func (cr *AutoScaleController) Start() {
 				MemoryLowerMargin: 500,
 				CPUDelta:          500,
 				MemoryDelta:       500}
-			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, 4000, 500,
-				memoryHistory, totalMemoryLimit, totalMemoryRequest, 5000, 500)
-			log.Infof("cpuUpper: %v, cpuLower: %v,"+
-				"memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
+			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBound, AutoScaleCpuLowerBound,
+				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBound, AutoScaleMemoryLowerBound)
+			log.Infof("cpuUpper: %v, cpuLower: %v, memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
 			// todo, here we just scale up/down cpu
 			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
