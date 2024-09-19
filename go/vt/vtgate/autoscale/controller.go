@@ -29,6 +29,13 @@ var (
 	AutoScaleCpuLowerBound    int64 = 500
 	AutoScaleMemoryUpperBound int64 = 5000
 	AutoScaleMemoryLowerBound int64 = 500
+
+	AutoScaleCpuUpperMargin    int64 = 500
+	AutoScaleCpuLowerMargin    int64 = 500
+	AutoScaleMemoryUpperMargin int64 = 500
+	AutoScaleMemoryLowerMargin int64 = 500
+	AutoScaleCpuDelta          int64 = 500
+	AutoScaleMemoryDelta       int64 = 500
 )
 
 // Cluster Config
@@ -56,6 +63,14 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	fs.Int64Var(&AutoScaleCpuLowerBound, "auto_scale_cpu_lower_bound", AutoScaleCpuLowerBound, "auto scale will not set cpu less than auto_scale_cpu_lower_bound")
 	fs.Int64Var(&AutoScaleMemoryUpperBound, "auto_scale_memory_upper_bound", AutoScaleMemoryUpperBound, "auto scale will not set memory more than auto_scale_memory_upper_bound")
 	fs.Int64Var(&AutoScaleMemoryLowerBound, "auto_scale_memory_lower_bound", AutoScaleMemoryLowerBound, "auto scale will not set memory less than auto_scale_memory_lower_bound")
+
+	fs.Int64Var(&AutoScaleCpuUpperMargin, "auto_scale_cpu_upper_margin", AutoScaleCpuUpperMargin, "Auto scale will not increase CPU more than this upper margin")
+	fs.Int64Var(&AutoScaleCpuLowerMargin, "auto_scale_cpu_lower_margin", AutoScaleCpuLowerMargin, "Auto scale will not decrease CPU less than this lower margin")
+	fs.Int64Var(&AutoScaleMemoryUpperMargin, "auto_scale_memory_upper_margin", AutoScaleMemoryUpperMargin, "Auto scale will not increase memory more than this upper margin")
+	fs.Int64Var(&AutoScaleMemoryLowerMargin, "auto_scale_memory_lower_margin", AutoScaleMemoryLowerMargin, "Auto scale will not decrease memory less than this lower margin")
+	fs.Int64Var(&AutoScaleCpuDelta, "auto_scale_cpu_delta", AutoScaleCpuDelta, "The CPU amount to adjust during each auto scaling step")
+	fs.Int64Var(&AutoScaleMemoryDelta, "auto_scale_memory_delta", AutoScaleMemoryDelta, "The memory amount to adjust during each auto scaling step")
+
 	// User Config
 	fs.DurationVar(&AutoSuspendTimeout, "auto_suspend_timeout", AutoSuspendTimeout, "auto suspend timeout. default is 5m")
 	// Cluster Config
@@ -165,12 +180,12 @@ func (cr *AutoScaleController) Start() {
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
 			e := NaiveEstimator{
-				CPUUpperMargin:    500,
-				CPULowerMargin:    500,
-				MemoryUpperMargin: 500,
-				MemoryLowerMargin: 500,
-				CPUDelta:          500,
-				MemoryDelta:       500,
+				CPUUpperMargin:    AutoScaleCpuUpperMargin,
+				CPULowerMargin:    AutoScaleCpuLowerMargin,
+				MemoryUpperMargin: AutoScaleMemoryUpperMargin,
+				MemoryLowerMargin: AutoScaleMemoryLowerMargin,
+				CPUDelta:          AutoScaleCpuDelta,
+				MemoryDelta:       AutoScaleMemoryDelta,
 			}
 			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBound, AutoScaleCpuLowerBound,
 				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBound, AutoScaleMemoryLowerBound)

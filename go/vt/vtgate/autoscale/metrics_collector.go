@@ -25,6 +25,19 @@ var (
 	QPSByDbType       *stats.Rates
 )
 
+var qpsHistoryChanged = make(chan struct{}, 1)
+
+func NotifyQPSHistoryChange() {
+	select {
+	case qpsHistoryChanged <- struct{}{}:
+	default:
+	}
+}
+
+func WatchQPSHistoryChange() <-chan struct{} {
+	return qpsHistoryChanged
+}
+
 func init() {
 	cpuHistoryRing = *stats.NewRingInt64(HistorySize)
 	memoryHistoryRing = *stats.NewRingInt64(HistorySize)
