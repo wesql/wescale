@@ -212,10 +212,6 @@ func (rf *RatesFunc) String() string {
 	return string(data)
 }
 
-func (rf *Rates) AddManually() {
-	if rf != nil && rf.counts["All"] != nil {
-		if _, exists := rf.counts["All"]; exists {
-			rf.counts["All"].Add(1)
-		}
-	}
+func (rt *Rates) Snapshot() {
+	rt.snapshot()
 }
