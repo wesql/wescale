@@ -23,19 +23,25 @@ var (
 	AutoSuspendTimeout = 5 * time.Minute
 )
 
+const (
+	Gi = 1024 * 1024 * 1024
+	Mi = 1024 * 1024
+	Ki = 1024
+)
+
 // Resource Config
 var (
-	AutoScaleCpuUpperBound    int64 = 4000
-	AutoScaleCpuLowerBound    int64 = 500
-	AutoScaleMemoryUpperBound int64 = 5000
-	AutoScaleMemoryLowerBound int64 = 500
+	AutoScaleCpuUpperBound    int64 = 4000     // mCore
+	AutoScaleCpuLowerBound    int64 = 500      // mCore
+	AutoScaleMemoryUpperBound int64 = 5 * Gi   // bytes
+	AutoScaleMemoryLowerBound int64 = 0.5 * Gi // bytes
 
-	AutoScaleCpuUpperMargin    int64 = 500
-	AutoScaleCpuLowerMargin    int64 = 500
-	AutoScaleMemoryUpperMargin int64 = 500
-	AutoScaleMemoryLowerMargin int64 = 500
-	AutoScaleCpuDelta          int64 = 500
-	AutoScaleMemoryDelta       int64 = 500
+	AutoScaleCpuUpperMargin    int64 = 500      // mCore
+	AutoScaleCpuLowerMargin    int64 = 500      // mCore
+	AutoScaleMemoryUpperMargin int64 = 500 * Mi // bytes
+	AutoScaleMemoryLowerMargin int64 = 500 * Mi // bytes
+	AutoScaleCpuDelta          int64 = 500      // mCore
+	AutoScaleMemoryDelta       int64 = 500 * Mi // bytes
 )
 
 // Cluster Config
@@ -120,6 +126,8 @@ func (cr *AutoScaleController) Start() {
 				log.Infof("AutoScaleController stopped")
 				return
 			case <-intervalTicker.C:
+			case <-WatchQPSHistoryChange():
+				QPSByDbType.Snapshot()
 			}
 
 			if cr.config == nil {
@@ -173,7 +181,7 @@ func (cr *AutoScaleController) Start() {
 				log.Errorf("get request and limit metrics error: %v", err)
 				continue
 			}
-			log.Infof("totalCPURequest: %v, totalMemoryRequest: %v, totalCPULimit: %v, totalMemoryLimit :%v\n",
+			log.Infof("totalCPURequest: %v mCore, totalMemoryRequest: %v bytes, totalCPULimit: %v mCore, totalMemoryLimit :%v bytes\n",
 				totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit)
 
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
@@ -189,10 +197,9 @@ func (cr *AutoScaleController) Start() {
 			}
 			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBound, AutoScaleCpuLowerBound,
 				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBound, AutoScaleMemoryLowerBound)
-			log.Infof("cpuUpper: %v, cpuLower: %v, memoryUpper: %v, memoryLower:%v \n", cpuUpper, cpuLower, memoryUpper, memoryLower)
+			log.Infof("cpuUpper: %v mCore, cpuLower: %v mCore, memoryUpper: %v bytes, memoryLower:%v bytes\n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
-			// todo, here we just scale up/down cpu
-			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, totalMemoryRequest, cpuUpper, totalMemoryLimit)
+			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, memoryLower, cpuUpper, memoryUpper)
 			if err != nil {
 				log.Errorf("scale up/down stateful set error: %v", err)
 				continue
