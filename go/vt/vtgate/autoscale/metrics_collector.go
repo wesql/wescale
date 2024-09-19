@@ -78,8 +78,8 @@ func GetRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64
 		cpuQuantity := container.Usage.Cpu()
 		memQuantity := container.Usage.Memory()
 
-		totalCPUUsage += cpuQuantity.MilliValue()    // CPU 使用量（单位：毫核）
-		totalMemoryUsage += memQuantity.MilliValue() // 内存使用量（单位：字节）
+		totalCPUUsage += cpuQuantity.MilliValue() // CPU 使用量（单位：毫核）
+		totalMemoryUsage += memQuantity.Value()   // 内存使用量（单位：字节）
 	}
 	return totalCPUUsage, totalMemoryUsage, nil
 }
@@ -112,8 +112,8 @@ func GetRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string)
 		// 转换为毫核和字节单位
 		totalCPURequest += cpuRequest.MilliValue()
 		totalCPULimit += cpuLimit.MilliValue()
-		totalMemoryRequest += memRequest.MilliValue()
-		totalMemoryLimit += memLimit.MilliValue()
+		totalMemoryRequest += memRequest.Value()
+		totalMemoryLimit += memLimit.Value()
 	}
 
 	return totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit, nil
