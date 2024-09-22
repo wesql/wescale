@@ -903,7 +903,7 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 	gtid := qre.getReadAfterWriteGtid(sql)
 
 	var buf strings.Builder
-	buf.Grow(len(qre.options.GetReadAfterWriteGtid()) + len(sql) + 64)
+	buf.Grow(len(gtid) + len(sql) + 64)
 	buf.WriteString(fmt.Sprintf("SELECT WAIT_FOR_EXECUTED_GTID_SET('%s', %v);",
 		gtid, qre.options.GetReadAfterWriteTimeout()))
 	buf.WriteString(sql)

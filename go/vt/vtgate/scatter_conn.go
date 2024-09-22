@@ -294,15 +294,16 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				qr.AppendResult(innerqr)
 			}
 			if qr.SessionStateChanges != "" {
+				tableName := primitive.GetTableName()
+
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
 				stc.gateway.AddGtid(qr.SessionStateChanges)
 
 				// table level RAW
-				tableName := primitive.GetTableName()
 				// session
-				session.latestGTIDForTable.UpdateGTID(tableName, qr.SessionStateChanges)
+				session.latestGTIDForTable.UpdateGTID(tableName, session.GetReadAfterWrite().GetReadAfterWriteGtid())
 				// instance
-				stc.gateway.latestGTIDForTable.UpdateGTID(tableName, qr.SessionStateChanges)
+				stc.gateway.latestGTIDForTable.UpdateGTID(tableName, stc.gateway.LastSeenGtidString())
 			}
 
 			// add sql execution tablet info to qr.info if the switch is on

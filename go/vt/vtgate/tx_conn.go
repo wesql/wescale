@@ -138,10 +138,12 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 			tableSchemaAndNames := sqlparser.CollectTables(stmt, "db")
 			for _, tableSchemaAndName := range tableSchemaAndNames {
 				tableName := tableSchemaAndName.GetName()
-				// session 
-				session.latestGTIDForTable.UpdateGTID(tableName, sessionStateChange)
-				// instance 
-				txc.tabletGateway.latestGTIDForTable.UpdateGTID(tableName, sessionStateChange)
+				// session
+				session.latestGTIDForTable.UpdateGTID(tableName,
+					session.GetReadAfterWrite().GetReadAfterWriteGtid())
+				// instance
+				txc.tabletGateway.latestGTIDForTable.UpdateGTID(tableName,
+					txc.tabletGateway.LastSeenGtidString())
 			}
 		}
 	}
