@@ -16,6 +16,7 @@ import (
 var (
 	EnableAutoScale                 = true
 	AutoScaleDecisionMakingInterval = 5 * time.Second
+	EnableAutoScaleUpDown           = true
 )
 
 // User Config
@@ -64,6 +65,7 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
 	fs.BoolVar(&EnableAutoScale, "enable_auto_scale", EnableAutoScale, "enable auto scaling")
 	fs.DurationVar(&AutoScaleDecisionMakingInterval, "auto_scale_decision_making_interval", AutoScaleDecisionMakingInterval, "auto scale decision making interval")
+	fs.BoolVar(&EnableAutoScaleUpDown, "enable_auto_scale_up_down", EnableAutoScaleUpDown, "enable auto scaling up and down, valid only when EnableAutoScale is set true")
 	// Resource Config
 	fs.Int64Var(&AutoScaleCpuUpperBound, "auto_scale_cpu_upper_bound", AutoScaleCpuUpperBound, "auto scale will not set cpu more than auto_scale_cpu_upper_bound")
 	fs.Int64Var(&AutoScaleCpuLowerBound, "auto_scale_cpu_lower_bound", AutoScaleCpuLowerBound, "auto scale will not set cpu less than auto_scale_cpu_lower_bound")
@@ -165,7 +167,7 @@ func (cr *AutoScaleController) Start() {
 				}
 				continue
 			}
-			if CurrentDataNodeStatefulSetReplicas == 0 {
+			if CurrentDataNodeStatefulSetReplicas == 0 || !EnableAutoScaleUpDown {
 				// no need to scale up or down
 				continue
 			}
