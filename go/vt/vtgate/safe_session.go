@@ -133,14 +133,7 @@ func NewSafeSession(sessn *vtgatepb.Session) *SafeSession {
 	if sessn == nil {
 		sessn = &vtgatepb.Session{}
 	}
-	gm := &LatestGTIDForTable{
-		latestGTIDs: make(map[string]LatestGTIDEntry),
-		expireTime:  10 * time.Second,
-		mu:          sync.RWMutex{},
-		wg:          sync.WaitGroup{},
-	}
-	gm.startCleaner()
-	return &SafeSession{Session: sessn, latestGTIDForTable: gm}
+	return &SafeSession{Session: sessn}
 }
 
 // NewAutocommitSession returns a SafeSession based on the original
@@ -811,6 +804,15 @@ func (session *SafeSession) SetReadAfterWriteGTID(vtgtid string) {
 	defer session.mu.Unlock()
 	if session.ReadAfterWrite == nil {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
+	}
+	if session.latestGTIDForTable == nil {
+		session.latestGTIDForTable = &LatestGTIDForTable{
+			latestGTIDs: make(map[string]LatestGTIDEntry),
+			expireTime:  10 * time.Second,
+			mu:          sync.RWMutex{},
+			wg:          sync.WaitGroup{},
+		}
+		session.latestGTIDForTable.startCleaner()
 	}
 	session.ReadAfterWrite.ReadAfterWriteGtid = vtgtid
 }
