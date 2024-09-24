@@ -70,7 +70,7 @@ type (
 		logging *executeLogger
 
 		*vtgatepb.Session
-		latestGTIDForTable *LatestGTIDForTable
+		// latestGTIDForTable *LatestGTIDForTable
 	}
 
 	executeLogger struct {
@@ -805,16 +805,25 @@ func (session *SafeSession) SetReadAfterWriteGTID(vtgtid string) {
 	if session.ReadAfterWrite == nil {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
 	}
-	if session.latestGTIDForTable == nil {
-		session.latestGTIDForTable = &LatestGTIDForTable{
-			latestGTIDs: make(map[string]LatestGTIDEntry),
-			expireTime:  10 * time.Second,
-			mu:          sync.RWMutex{},
-			wg:          sync.WaitGroup{},
-		}
-		session.latestGTIDForTable.startCleaner()
-	}
+	// if session.latestGTIDForTable == nil {
+	// 	session.latestGTIDForTable = &LatestGTIDForTable{
+	// 		latestGTIDs: make(map[string]LatestGTIDEntry),
+	// 		expireTime:  10 * time.Second,
+	// 		mu:          sync.RWMutex{},
+	// 		wg:          sync.WaitGroup{},
+	// 	}
+	// 	session.latestGTIDForTable.startCleaner()
+	// }
 	session.ReadAfterWrite.ReadAfterWriteGtid = vtgtid
+}
+
+func (session *SafeSession) UpdateReadAfterReadGTIDMap(tableName string, vtgtid string) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if session.ReadAfterWrite == nil {
+		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
+	}
+	session.ReadAfterWrite.LatestGtidForTable[tableName] = vtgtid
 }
 
 // SetReadAfterWriteTimeout set the ReadAfterWriteTimeout setting.
