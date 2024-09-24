@@ -913,6 +913,8 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 
 func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid string) {
 
+	return qre.options.GetReadAfterWriteGtid()
+
 	if qre.options.TableReadAfterWriteGtidMap == nil {
 		return qre.options.GetReadAfterWriteGtid()
 	}

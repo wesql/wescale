@@ -302,7 +302,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				// table level RAW
 				// session
 				// session.latestGTIDForTable.UpdateGTID(tableName, session.GetReadAfterWrite().GetReadAfterWriteGtid())
-				session.UpdateReadAfterReadGTIDMap(tableName, qr.SessionStateChanges)
+				// session.UpdateReadAfterReadGTIDMap(tableName, qr.SessionStateChanges)
 				// instance
 				stc.gateway.latestGTIDForTable.UpdateGTID(tableName, stc.gateway.LastSeenGtidString())
 			}
@@ -953,7 +953,7 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 		if session.GetReadAfterWrite().TableLevel {
-			opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
+			// opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
 		}
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
 		gtid, err := queryGTIDFromPrimary(ctx, qs, target)
