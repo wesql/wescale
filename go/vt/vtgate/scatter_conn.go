@@ -949,11 +949,15 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
 		if session.GetReadAfterWrite().TableLevel {
 			opts.TableReadAfterWriteGtidMap = gateway.latestGTIDForTable.GetGTIDMap()
+		} else {
+			opts.TableReadAfterWriteGtidMap = nil
 		}
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 		if session.GetReadAfterWrite().TableLevel {
 			// opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
+		} else {
+			opts.TableReadAfterWriteGtidMap = nil
 		}
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
 		gtid, err := queryGTIDFromPrimary(ctx, qs, target)
