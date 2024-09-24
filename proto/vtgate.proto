@@ -220,7 +220,7 @@ message ReadAfterWrite {
   bool session_track_gtids = 3;
   ReadAfterWriteConsistency read_after_write_consistency = 4;
   bool table_level = 5;
-  map<string, string> latest_gtid_for_table = 6;
+  map<string, string> latest_gtid_for_table_map = 6;
 }
 
 // ExecuteRequest is the payload to Execute.

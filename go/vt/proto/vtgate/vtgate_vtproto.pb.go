@@ -564,9 +564,9 @@ func (m *ReadAfterWrite) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.LatestGtidForTable) > 0 {
-		for k := range m.LatestGtidForTable {
-			v := m.LatestGtidForTable[k]
+	if len(m.LatestGtidForTableMap) > 0 {
+		for k := range m.LatestGtidForTableMap {
+			v := m.LatestGtidForTableMap[k]
 			baseI := i
 			i -= len(v)
 			copy(dAtA[i:], v)
@@ -1715,8 +1715,8 @@ func (m *ReadAfterWrite) SizeVT() (n int) {
 	if m.TableLevel {
 		n += 2
 	}
-	if len(m.LatestGtidForTable) > 0 {
-		for k, v := range m.LatestGtidForTable {
+	if len(m.LatestGtidForTableMap) > 0 {
+		for k, v := range m.LatestGtidForTableMap {
 			_ = k
 			_ = v
 			mapEntrySize := 1 + len(k) + sov(uint64(len(k))) + 1 + len(v) + sov(uint64(len(v)))
@@ -3668,7 +3668,7 @@ func (m *ReadAfterWrite) UnmarshalVT(dAtA []byte) error {
 			m.TableLevel = bool(v != 0)
 		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LatestGtidForTable", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field LatestGtidForTableMap", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3695,8 +3695,8 @@ func (m *ReadAfterWrite) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.LatestGtidForTable == nil {
-				m.LatestGtidForTable = make(map[string]string)
+			if m.LatestGtidForTableMap == nil {
+				m.LatestGtidForTableMap = make(map[string]string)
 			}
 			var mapkey string
 			var mapvalue string
@@ -3791,7 +3791,7 @@ func (m *ReadAfterWrite) UnmarshalVT(dAtA []byte) error {
 					iNdEx += skippy
 				}
 			}
-			m.LatestGtidForTable[mapkey] = mapvalue
+			m.LatestGtidForTableMap[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

@@ -823,7 +823,7 @@ func (session *SafeSession) UpdateReadAfterReadGTIDMap(tableName string, vtgtid 
 	if session.ReadAfterWrite == nil {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
 	}
-	session.ReadAfterWrite.LatestGtidForTable[tableName] = vtgtid
+	session.ReadAfterWrite.LatestGtidForTableMap[tableName] = vtgtid
 }
 
 // SetReadAfterWriteTimeout set the ReadAfterWriteTimeout setting.
