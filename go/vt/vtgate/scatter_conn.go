@@ -947,8 +947,14 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 	switch session.GetReadAfterWrite().GetReadAfterWriteConsistency() {
 	case vtgatepb.ReadAfterWriteConsistency_INSTANCE:
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
+		if session.GetReadAfterWrite().TableLevel {
+			opts.TableReadAfterWriteGtidMap = gateway.latestGTIDForTable.GetGTIDMap()
+		}
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
+		if session.GetReadAfterWrite().TableLevel {
+			opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTable()
+		}
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
 		gtid, err := queryGTIDFromPrimary(ctx, qs, target)
 		if err != nil {
@@ -957,11 +963,11 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 		opts.ReadAfterWriteGtid = gtid
 	}
 
-	if session.GetReadAfterWrite().TableLevel {
-		opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTable()
-	} else {
-		opts.TableReadAfterWriteGtidMap = nil
-	}
+	// if session.GetReadAfterWrite().TableLevel {
+	// 	opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTable()
+	// } else {
+	// 	opts.TableReadAfterWriteGtidMap = nil
+	// }
 
 	return nil
 }
