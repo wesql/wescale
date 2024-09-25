@@ -87,6 +87,7 @@ var (
 	ReadAfterWriteConsistency = SystemVariable{Name: "read_after_write_consistency"}
 	ReadAfterWriteTimeOut     = SystemVariable{Name: "read_after_write_timeout"}
 	SessionTrackGTIDs         = SystemVariable{Name: "session_track_gtids", IdentifierAsString: true}
+	TableLevel                = SystemVariable{Name: "table_level", IdentifierAsString: true}
 
 	// Read Write Splitting
 	ReadWriteSplittingPolicy = SystemVariable{Name: "read_write_splitting_policy", IdentifierAsString: true}
@@ -121,6 +122,7 @@ var (
 		ReadAfterWriteConsistency,
 		ReadAfterWriteTimeOut,
 		SessionTrackGTIDs,
+		TableLevel,
 		QueryTimeout,
 		ReadWriteSplittingPolicy,
 		ReadWriteSplittingRatio,

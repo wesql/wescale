@@ -846,6 +846,16 @@ func (session *SafeSession) SetSessionTrackGtids(enable bool) {
 	session.ReadAfterWrite.SessionTrackGtids = enable
 }
 
+// SetTableLevel set the TableLevel setting.
+func (session *SafeSession) SetTableLevel(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if session.ReadAfterWrite == nil {
+		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
+	}
+	session.ReadAfterWrite.TableLevel = enable
+}
+
 // SetReadAfterWriteConsistency set the ReadAfterWriteConsistency setting.
 func (session *SafeSession) SetReadAfterWriteConsistency(scope vtgatepb.ReadAfterWriteConsistency) {
 	session.mu.Lock()

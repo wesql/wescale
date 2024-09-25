@@ -1018,6 +1018,11 @@ func (vc *vcursorImpl) SetSessionTrackGTIDs(enable bool) {
 	vc.safeSession.SetSessionTrackGtids(enable)
 }
 
+// SetTableLevel implements the SessionActions interface
+func (vc *vcursorImpl) SetTableLevel(enable bool) {
+	vc.safeSession.SetTableLevel(enable)
+}
+
 // SetReadAfterWriteConsistency implements the SessionActions interface
 func (vc *vcursorImpl) SetReadAfterWriteConsistency(vtgtid vtgatepb.ReadAfterWriteConsistency) {
 	vc.safeSession.SetReadAfterWriteConsistency(vtgtid)
