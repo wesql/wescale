@@ -803,7 +803,9 @@ func (session *SafeSession) SetReadAfterWriteGTID(vtgtid string) {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 	if session.ReadAfterWrite == nil {
-		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
+		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{
+			LatestGtidForTableMap: make(map[string]string),
+		}
 	}
 	// if session.latestGTIDForTable == nil {
 	// 	session.latestGTIDForTable = &LatestGTIDForTable{
