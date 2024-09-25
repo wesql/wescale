@@ -955,7 +955,7 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
 		if session.GetReadAfterWrite().TableLevel {
-			opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
+			// opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
 		} else {
 			opts.TableReadAfterWriteGtidMap = nil
 		}
