@@ -135,7 +135,7 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 			query := entry.Query
 
 			stmt, _ := sqlparser.Parse(query)
-			tableSchemaAndNames := sqlparser.CollectTables(stmt, "db")
+			tableSchemaAndNames := sqlparser.CollectTables(stmt, "")
 			for _, tableSchemaAndName := range tableSchemaAndNames {
 				tableName := tableSchemaAndName.GetName()
 				// session
