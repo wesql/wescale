@@ -973,7 +973,7 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	if err != nil {
 		return err
 	}
-	wr.Logger().Printf("cleanup workflow:%v successfully", branchJob.workflowName)
+	wr.Logger().Printf("cleanup workflow:%v successfully\n", branchJob.workflowName)
 	return nil
 	// delete from branch_table_rules
 }
