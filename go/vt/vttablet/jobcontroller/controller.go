@@ -505,12 +505,12 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 	conn, err := jc.pool.Get(ctx, &setting)
 	defer conn.Recycle()
-	failpoint.Inject(failpointkey.CreateErrorWhenExecutingBatch.Name, func(val failpoint.Value) {
+	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.CreateErrorWhenExecutingBatch.Name)); _err_ == nil {
 		temp, ok := val.(bool)
 		if ok && temp {
 			err = errors.New("error created by failpoint")
 		}
-	})
+	}
 
 	if err != nil {
 		return err
@@ -560,12 +560,12 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	}
 
 	// this failpoint is used to test splitBatchIntoTwo
-	failpoint.Inject(failpointkey.ModifyBatchSize.Name, func(val failpoint.Value) {
+	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.ModifyBatchSize.Name)); _err_ == nil {
 		temp, ok := val.(int)
 		if ok {
 			batchSize = int64(temp)
 		}
-	})
+	}
 	if expectedRow > batchSize {
 		batchSQL, err = jc.splitBatchIntoTwo(ctx, tableSchema, table, batchTable, batchSQL, batchCountSQL, batchID, conn, batchSize, expectedRow)
 		if err != nil {
