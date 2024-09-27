@@ -2,11 +2,12 @@ package autoscale
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"sync"
-	"time"
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
@@ -142,37 +143,14 @@ func (cr *AutoScaleController) Start() {
 				continue
 			}
 
-			// 1. 搜集qps，判断是否需要scale in
-			if EnableAutoSuspend {
-				qpsHistory := GetQPSHistory()
-				log.Infof("qpsHistory: %v\n", qpsHistory)
-
-				if NeedScaleInZero(qpsHistory) {
-					DataNodeStatefulSetReplicas = 0
-				} else {
-					DataNodeStatefulSetReplicas = 1
-				}
-
-				CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
-				if err != nil {
-					log.Errorf("Error getting stateful set replicas: %s", err.Error())
-				}
-				log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
-
-				if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
-					err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
-					if err != nil {
-						log.Errorf("Error scale in to zero: %s", err.Error())
-					} else {
-						log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
-					}
-					continue
-				}
+			// Extracted code into doAutoSuspend function
+			if cr.doAutoSuspend(clientset) {
+				continue
 			}
 
-			// 2. 搜集cpu和memory，判断是否需要scale up/down
+			// 2. Collect CPU and memory metrics to determine if scaling up/down is needed
 			if CurrentDataNodeStatefulSetReplicas == 0 || !EnableAutoScale {
-				// no need to scale up or down
+				// No need to scale up or down
 				continue
 			}
 
@@ -216,4 +194,39 @@ func (cr *AutoScaleController) Start() {
 
 func (cr *AutoScaleController) Stop() {
 	cr.cancelFunc()
+}
+
+func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) bool {
+	if !EnableAutoSuspend {
+		return false
+	}
+
+	// 1. Collect QPS to determine if scaling in is needed
+	qpsHistory := GetQPSHistory()
+	log.Infof("qpsHistory: %v\n", qpsHistory)
+
+	if NeedScaleInZero(qpsHistory) {
+		DataNodeStatefulSetReplicas = 0
+	} else {
+		DataNodeStatefulSetReplicas = 1
+	}
+
+	var err error
+	CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
+	if err != nil {
+		log.Errorf("Error getting stateful set replicas: %s", err.Error())
+	}
+	log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
+
+	if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
+		err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
+		if err != nil {
+			log.Errorf("Error scale in to zero: %s", err.Error())
+		} else {
+			log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
+		}
+		return true // Indicate that we should continue the loop
+	}
+
+	return false
 }
