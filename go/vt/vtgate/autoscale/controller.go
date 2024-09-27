@@ -14,9 +14,9 @@ import (
 
 // System Config
 var (
-	EnableAutoScale                 = true
+	EnableAutoSuspend               = true
 	AutoScaleDecisionMakingInterval = 5 * time.Second
-	EnableAutoScaleUpDown           = true
+	EnableAutoScale                 = true
 )
 
 // User Config
@@ -63,9 +63,9 @@ var CurrentDataNodeStatefulSetReplicas int32 = 1
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
-	fs.BoolVar(&EnableAutoScale, "enable_auto_scale", EnableAutoScale, "enable auto scaling")
+	fs.BoolVar(&EnableAutoSuspend, "enable_auto_scale", EnableAutoSuspend, "enable auto suspend")
 	fs.DurationVar(&AutoScaleDecisionMakingInterval, "auto_scale_decision_making_interval", AutoScaleDecisionMakingInterval, "auto scale decision making interval")
-	fs.BoolVar(&EnableAutoScaleUpDown, "enable_auto_scale_up_down", EnableAutoScaleUpDown, "enable auto scaling up and down, valid only when EnableAutoScale is set true")
+	fs.BoolVar(&EnableAutoScale, "enable_auto_scale_up_down", EnableAutoScale, "enable auto scaling up and down")
 	// Resource Config
 	fs.Int64Var(&AutoScaleCpuUpperBound, "auto_scale_cpu_upper_bound", AutoScaleCpuUpperBound, "auto scale will not set cpu more than auto_scale_cpu_upper_bound")
 	fs.Int64Var(&AutoScaleCpuLowerBound, "auto_scale_cpu_lower_bound", AutoScaleCpuLowerBound, "auto scale will not set cpu less than auto_scale_cpu_lower_bound")
@@ -143,36 +143,39 @@ func (cr *AutoScaleController) Start() {
 			}
 
 			// 1. 搜集qps，判断是否需要scale in
-			qpsHistory := GetQPSHistory()
-			log.Infof("qpsHistory: %v\n", qpsHistory)
+			if EnableAutoSuspend {
+				qpsHistory := GetQPSHistory()
+				log.Infof("qpsHistory: %v\n", qpsHistory)
 
-			if NeedScaleInZero(qpsHistory) {
-				DataNodeStatefulSetReplicas = 0
-			} else {
-				DataNodeStatefulSetReplicas = 1
-			}
-
-			CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
-			if err != nil {
-				log.Errorf("Error getting stateful set replicas: %s", err.Error())
-			}
-			log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
-
-			if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
-				err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
-				if err != nil {
-					log.Errorf("Error scale in to zero: %s", err.Error())
+				if NeedScaleInZero(qpsHistory) {
+					DataNodeStatefulSetReplicas = 0
 				} else {
-					log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
+					DataNodeStatefulSetReplicas = 1
 				}
-				continue
+
+				CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
+				if err != nil {
+					log.Errorf("Error getting stateful set replicas: %s", err.Error())
+				}
+				log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
+
+				if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
+					err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
+					if err != nil {
+						log.Errorf("Error scale in to zero: %s", err.Error())
+					} else {
+						log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
+					}
+					continue
+				}
 			}
-			if CurrentDataNodeStatefulSetReplicas == 0 || !EnableAutoScaleUpDown {
+
+			// 2. 搜集cpu和memory，判断是否需要scale up/down
+			if CurrentDataNodeStatefulSetReplicas == 0 || !EnableAutoScale {
 				// no need to scale up or down
 				continue
 			}
 
-			// 2. 搜集cpu和memory，判断是否需要scale up/down
 			err = TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
 			if err != nil {
 				log.Errorf("track cpu and memory error: %v", err)
