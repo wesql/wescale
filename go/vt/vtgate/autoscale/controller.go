@@ -24,8 +24,8 @@ var (
 
 // User Config
 var (
-	AutoSuspendQpsSampleInterval = 10 * time.Second
-	AutoSuspendTimeout           = 5 * time.Minute
+	AutoSuspendQpsSampleInterval = 10 * time.Second //todo need to larger than 1s, otherwise vtgate will panic
+	AutoSuspendTimeout           = 5 * time.Minute  //todo must larger than AutoSuspendQpsSampleInterval
 )
 
 const (
