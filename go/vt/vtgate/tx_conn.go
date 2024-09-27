@@ -129,6 +129,23 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 	if sessionStateChange != "" {
 		session.SetReadAfterWriteGTID(sessionStateChange)
 		txc.tabletGateway.AddGtid(sessionStateChange)
+
+		// table level RAW
+		for _, entry := range logging.entries {
+			query := entry.Query
+
+			stmt, _ := sqlparser.Parse(query)
+			tableSchemaAndNames := sqlparser.CollectTables(stmt, "")
+			for _, tableSchemaAndName := range tableSchemaAndNames {
+				tableName := tableSchemaAndName.GetName()
+				// session
+				session.UpdateReadAfterReadGTIDMap(tableName,
+					txc.tabletGateway.LastSeenGtidString())
+				// instance
+				txc.tabletGateway.latestGTIDForTable.UpdateGTID(tableName,
+					txc.tabletGateway.LastSeenGtidString())
+			}
+		}
 	}
 	logging.log(nil, s.Target, nil, "commit", false, nil)
 	return nil

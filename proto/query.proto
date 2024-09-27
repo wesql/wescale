@@ -355,6 +355,7 @@ message ExecuteOptions {
 
   // ReadAfterWriteGtid is a list of GTIDs that the client has already seen.
   string ReadAfterWriteGtid = 15;
+
   // ReadAfterWriteTimeout is the timeout for the read-after-write.
   double ReadAfterWriteTimeout = 16;
 
@@ -380,6 +381,8 @@ message ExecuteOptions {
   TabletInfoToDisplay tablet_info_to_display = 20;
 
   bool can_load_balance_between_replic_and_rdonly = 21;
+
+  map<string, string> TableReadAfterWriteGtidMap = 22;
 }
 
 message TabletInfoToDisplay{

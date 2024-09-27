@@ -190,6 +190,7 @@ type (
 		SetReadAfterWriteGTID(string)
 		SetReadAfterWriteTimeout(float64)
 		SetSessionTrackGTIDs(bool)
+		SetTableLevel(bool)
 		SetReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency)
 
 		// HasCreatedTempTable will mark the session as having created temp tables

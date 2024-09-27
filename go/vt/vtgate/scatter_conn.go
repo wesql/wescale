@@ -294,8 +294,17 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				qr.AppendResult(innerqr)
 			}
 			if qr.SessionStateChanges != "" {
+				tableName := primitive.GetTableName()
+
 				session.SetReadAfterWriteGTID(qr.SessionStateChanges)
 				stc.gateway.AddGtid(qr.SessionStateChanges)
+
+				// table level RAW
+				// session
+				// session.latestGTIDForTable.UpdateGTID(tableName, session.GetReadAfterWrite().GetReadAfterWriteGtid())
+				session.UpdateReadAfterReadGTIDMap(tableName, qr.SessionStateChanges)
+				// instance
+				stc.gateway.latestGTIDForTable.UpdateGTID(tableName, stc.gateway.LastSeenGtidString())
 			}
 
 			// add sql execution tablet info to qr.info if the switch is on
@@ -938,8 +947,18 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 	switch session.GetReadAfterWrite().GetReadAfterWriteConsistency() {
 	case vtgatepb.ReadAfterWriteConsistency_INSTANCE:
 		opts.ReadAfterWriteGtid = gateway.LastSeenGtidString()
+		if session.GetReadAfterWrite().TableLevel {
+			opts.TableReadAfterWriteGtidMap = gateway.latestGTIDForTable.GetGTIDMap()
+		} else {
+			opts.TableReadAfterWriteGtidMap = nil
+		}
 	case vtgatepb.ReadAfterWriteConsistency_SESSION:
 		opts.ReadAfterWriteGtid = session.GetReadAfterWrite().GetReadAfterWriteGtid()
+		if session.GetReadAfterWrite().TableLevel {
+			opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTableMap()
+		} else {
+			opts.TableReadAfterWriteGtidMap = nil
+		}
 	case vtgatepb.ReadAfterWriteConsistency_GLOBAL:
 		gtid, err := queryGTIDFromPrimary(ctx, qs, target)
 		if err != nil {
@@ -947,6 +966,13 @@ func setReadAfterWriteOpts(ctx context.Context, opts *querypb.ExecuteOptions, se
 		}
 		opts.ReadAfterWriteGtid = gtid
 	}
+
+	// if session.GetReadAfterWrite().TableLevel {
+	// 	opts.TableReadAfterWriteGtidMap = session.GetReadAfterWrite().GetLatestGtidForTable()
+	// } else {
+	// 	opts.TableReadAfterWriteGtidMap = nil
+	// }
+
 	return nil
 }
 

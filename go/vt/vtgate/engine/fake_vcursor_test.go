@@ -234,6 +234,10 @@ func (t *noopVCursor) SetSessionTrackGTIDs(_ bool) {
 	panic("implement me")
 }
 
+func (t *noopVCursor) SetTableLevel(_ bool) {
+	panic("implement me")
+}
+
 func (t *noopVCursor) SetReadAfterWriteConsistency(_ vtgatepb.ReadAfterWriteConsistency) {
 	panic("implement me")
 }

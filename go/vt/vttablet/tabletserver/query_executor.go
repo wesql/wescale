@@ -30,6 +30,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/internal/global"
+	"vitess.io/vitess/go/vt/vtgate"
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 
 	"google.golang.org/protobuf/proto"
@@ -934,13 +936,43 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 	if qre.options == nil || qre.options.ReadAfterWriteGtid == "" {
 		return sql, false
 	}
+
+	gtid := qre.getReadAfterWriteGtid(sql)
+
 	var buf strings.Builder
-	buf.Grow(len(qre.options.GetReadAfterWriteGtid()) + len(sql) + 64)
+	buf.Grow(len(gtid) + len(sql) + 64)
 	buf.WriteString(fmt.Sprintf("SELECT WAIT_FOR_EXECUTED_GTID_SET('%s', %v);",
-		qre.options.GetReadAfterWriteGtid(), qre.options.GetReadAfterWriteTimeout()))
+		gtid, qre.options.GetReadAfterWriteTimeout()))
 	buf.WriteString(sql)
 	newSQL = buf.String()
 	return newSQL, true
+}
+
+func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid string) {
+
+	// return qre.options.GetReadAfterWriteGtid()
+
+	if qre.options.TableReadAfterWriteGtidMap == nil {
+		return qre.options.GetReadAfterWriteGtid()
+	}
+
+	lastSeenGtid, err := vtgate.NewLastSeenGtid(global.DefaultFlavor)
+
+	if err != nil {
+		log.Exitf("Unable to create new LastSeenGtid: %v", err)
+	}
+
+	stmt, _ := sqlparser.Parse(sql)
+	allTables := sqlparser.CollectTables(stmt, "")
+	for _, table := range allTables {
+		tableName := table.GetName()
+		gtid, ok := qre.options.TableReadAfterWriteGtidMap[tableName]
+		if ok {
+			lastSeenGtid.AddGtid(gtid)
+		}
+	}
+
+	return lastSeenGtid.String()
 }
 
 const WaitGtidTimeoutFlag = "1"

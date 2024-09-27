@@ -546,6 +546,7 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.ReadAfterWriteTimeOut.Name,
 		sysvars.SessionEnableSystemSettings.Name,
 		sysvars.SessionTrackGTIDs.Name,
+		sysvars.TableLevel.Name,
 		sysvars.SessionUUID.Name,
 		sysvars.SkipQueryPlanCache.Name,
 		sysvars.Socket.Name,

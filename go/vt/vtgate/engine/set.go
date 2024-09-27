@@ -614,6 +614,20 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 		default:
 			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "variable 'session_track_gtids' can't be set to the value of '%s'", str)
 		}
+	case sysvars.TableLevel.Name:
+		str, err := svss.evalAsString(env)
+		if err != nil {
+			return err
+		}
+		switch strings.ToLower(str) {
+		case "off":
+			vcursor.Session().SetTableLevel(false)
+		case "on":
+			vcursor.Session().SetTableLevel(true)
+		default:
+			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar,
+				"variable 'table_level' can't be set to the value of '%s'", str)
+		}
 	default:
 		return vterrors.NewErrorf(vtrpcpb.Code_NOT_FOUND, vterrors.UnknownSystemVariable, "unknown system variable '%s'", svss.Name)
 	}

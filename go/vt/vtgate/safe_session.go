@@ -70,6 +70,7 @@ type (
 		logging *executeLogger
 
 		*vtgatepb.Session
+		// latestGTIDForTable *LatestGTIDForTable
 	}
 
 	executeLogger struct {
@@ -804,7 +805,25 @@ func (session *SafeSession) SetReadAfterWriteGTID(vtgtid string) {
 	if session.ReadAfterWrite == nil {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
 	}
+	// if session.latestGTIDForTable == nil {
+	// 	session.latestGTIDForTable = &LatestGTIDForTable{
+	// 		latestGTIDs: make(map[string]LatestGTIDEntry),
+	// 		expireTime:  10 * time.Second,
+	// 		mu:          sync.RWMutex{},
+	// 		wg:          sync.WaitGroup{},
+	// 	}
+	// 	session.latestGTIDForTable.startCleaner()
+	// }
 	session.ReadAfterWrite.ReadAfterWriteGtid = vtgtid
+}
+
+func (session *SafeSession) UpdateReadAfterReadGTIDMap(tableName string, vtgtid string) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if session.ReadAfterWrite.LatestGtidForTableMap == nil {
+		session.ReadAfterWrite.LatestGtidForTableMap = make(map[string]string)
+	}
+	session.ReadAfterWrite.LatestGtidForTableMap[tableName] = vtgtid
 }
 
 // SetReadAfterWriteTimeout set the ReadAfterWriteTimeout setting.
@@ -825,6 +844,16 @@ func (session *SafeSession) SetSessionTrackGtids(enable bool) {
 		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
 	}
 	session.ReadAfterWrite.SessionTrackGtids = enable
+}
+
+// SetTableLevel set the TableLevel setting.
+func (session *SafeSession) SetTableLevel(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	if session.ReadAfterWrite == nil {
+		session.ReadAfterWrite = &vtgatepb.ReadAfterWrite{}
+	}
+	session.ReadAfterWrite.TableLevel = enable
 }
 
 // SetReadAfterWriteConsistency set the ReadAfterWriteConsistency setting.
