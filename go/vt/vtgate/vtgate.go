@@ -397,7 +397,7 @@ func Init(
 	_ = stats.NewRates("QPSByOperation", stats.CounterForDimension(rpcVTGate.timings, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByKeyspace", stats.CounterForDimension(rpcVTGate.timings, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByDbType", stats.CounterForDimension(rpcVTGate.timings, "DbType"), 15*60/5, 5*time.Second)
-	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.GetQpsSampleHistoryLength(), autoscale.AutoSuspendQpsSampleInterval*time.Second)
+	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.GetQpsSampleHistoryLength(), autoscale.AutoSuspendQpsSampleInterval)
 
 	_ = stats.NewRates("ErrorsByOperation", stats.CounterForDimension(errorCounts, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByKeyspace", stats.CounterForDimension(errorCounts, "Keyspace"), 15, 1*time.Minute)
