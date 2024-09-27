@@ -320,7 +320,7 @@ func Init(
 	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
 	}
-	if autoscale.EnableAutoScale {
+	if autoscale.EnableAutoSuspend || autoscale.EnableAutoScale {
 		autoScaleController := autoscale.NewAutoScaleController(gw)
 		servenv.OnRun(func() {
 			autoScaleController.Start()
