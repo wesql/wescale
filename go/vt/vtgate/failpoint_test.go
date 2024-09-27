@@ -14,9 +14,9 @@ import (
 )
 
 func GetValueOfFailPoint(fpName string) failpoint.Value {
-	if v, _err_ := failpoint.Eval(_curpkg_(fpName)); _err_ == nil {
-		return v
-	}
+	failpoint.Inject(fpName, func(v failpoint.Value) {
+		failpoint.Return(v)
+	})
 	return 0
 }
 
