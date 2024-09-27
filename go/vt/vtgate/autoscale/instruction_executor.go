@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"vitess.io/vitess/go/vt/log"
 )
 
 func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, statefulSetName string, replicas int32) error {
@@ -15,6 +16,7 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 	// 获取当前的 StatefulSet
 	statefulSet, err := statefulSetsClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
+		log.Errorf("Error getting StatefulSet %s: %s", statefulSetName, err.Error())
 		return err
 	}
 
@@ -23,6 +25,11 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 
 	// 更新 StatefulSet
 	_, err = statefulSetsClient.Update(context.TODO(), statefulSet, metav1.UpdateOptions{})
+	if err != nil {
+		fmt.Printf("Successfully updated StatefulSet %s.\n", statefulSetName)
+	} else {
+		log.Errorf("Error updating StatefulSet %s: %s", statefulSetName, err.Error())
+	}
 	return err
 }
 
