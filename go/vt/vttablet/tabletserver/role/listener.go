@@ -60,6 +60,7 @@ func transitionRoleType(role string) topodatapb.TabletType {
 	case strings.ToLower(LOGGER):
 		return topodatapb.TabletType_SPARE
 	default:
+		log.Errorf("unknown role value: %s\n", role)
 		return topodatapb.TabletType_UNKNOWN
 	}
 }
@@ -174,7 +175,7 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 
 	role, err := collector.probeFunc(timeoutCtx)
 	if err != nil {
-		log.Errorf("failed to probe mysql role, error:%v", err)
+		log.Errorf("failed to probe mysql role, error:%v\n", err)
 		return
 	}
 
@@ -186,13 +187,13 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 		defer cancel()
 		changed, err := collector.changeTypeFunc(changeTypeCtx, collector.lastUpdate, tabletType)
 		if err != nil {
-			log.Errorf("change vttablet role to %s, error:%w", tabletType.String(), err)
+			log.Errorf("change vttablet role to %s, error:%w\n", tabletType.String(), err)
 		}
 		if changed {
 			collector.lastUpdate = time.Now()
-			log.Infof("change vttablet role to %s successfully", tabletType.String())
+			log.Infof("change vttablet role to %s successfully\n", tabletType.String())
 		}
 	default:
-		log.Errorf("role value is not a string, role:%v", role)
+		log.Errorf("role value is not a string, role:%v\n", role)
 	}
 }

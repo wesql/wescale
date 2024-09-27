@@ -3,6 +3,7 @@ package role
 import (
 	"os"
 	"testing"
+
 	"vitess.io/vitess/go/vt/proto/topodata"
 )
 
@@ -142,6 +143,10 @@ func Test_transitionRoleType(t *testing.T) {
 		},
 		{
 			role: "SLAVE2",
+			want: topodata.TabletType_UNKNOWN,
+		},
+		{
+			role: "NOT ROLE",
 			want: topodata.TabletType_UNKNOWN,
 		},
 	}

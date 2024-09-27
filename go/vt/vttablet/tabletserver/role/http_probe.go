@@ -12,6 +12,8 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/vt/log"
+
 	"vitess.io/vitess/go/vt/servenv"
 )
 
@@ -54,7 +56,7 @@ func httpProbe(ctx context.Context) (string, error) {
 	// Safely assert the type of role to string.
 	roleStr, ok := role.(string)
 	if !ok {
-		return "", fmt.Errorf("role value is not a string, role:%v\n", role)
+		return "", fmt.Errorf("role value is not a string, role:%v", role)
 	}
 	return roleStr, nil
 }
@@ -102,6 +104,7 @@ func parseBody(body io.Reader) (map[string]any, error) {
 	}
 	err = json.Unmarshal(data, &result)
 	if err != nil {
+		log.Errorf("error unmarshalling response body, data: %v\n", data)
 		return nil, fmt.Errorf("decode body failed: %w", err)
 	}
 	return result, nil
