@@ -880,20 +880,20 @@ func (e *Executor) cutOverVReplMigration(ctx context.Context, s *VReplStream) er
 	go log.Infof("cutOverVReplMigration %v: done waiting for position %v", s.workflow, mysql.EncodePosition(postWritesPos))
 	// Stop vreplication
 	e.updateMigrationStage(ctx, onlineDDL.UUID, "stopping vreplication")
-	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.WaitJustBeforeStopVreplication.Name)); _err_ == nil {
+	failpoint.Inject(failpointkey.WaitJustBeforeStopVreplication.Name, func(val failpoint.Value) {
 		if val.(bool) {
 			time.Sleep(1 * time.Minute)
 		}
-	}
+	})
 	if _, err := e.vreplicationExec(ctx, tablet.Tablet, binlogplayer.StopVReplication(uint32(s.id), "stopped for online DDL cutover")); err != nil {
 		return err
 	}
 	go log.Infof("cutOverVReplMigration %v: stopped vreplication", s.workflow)
-	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.WaitJustAfterStopVreplication.Name)); _err_ == nil {
+	failpoint.Inject(failpointkey.WaitJustAfterStopVreplication.Name, func(val failpoint.Value) {
 		if val.(bool) {
 			time.Sleep(1 * time.Minute)
 		}
-	}
+	})
 
 	// rename tables atomically (remember, writes on source tables are stopped)
 	{
@@ -3216,9 +3216,9 @@ func (e *Executor) readVReplStream(ctx context.Context, uuid string, okIfMissing
 // isVReplMigrationReadyToCutOver sees if the vreplication migration has completed the row copy
 // and is up to date with the binlogs.
 func (e *Executor) isVReplMigrationReadyToCutOver(ctx context.Context, s *VReplStream) (isReady bool, err error) {
-	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.IsVReplMigrationReadyToCutOver.Name)); _err_ == nil {
-		return val.(bool), nil
-	}
+	failpoint.Inject(failpointkey.IsVReplMigrationReadyToCutOver.Name, func(val failpoint.Value) {
+		failpoint.Return(val.(bool), nil)
+	})
 	// Check all the cases where migration is still running:
 	{
 		// when ready to cut-over, pos must have some value

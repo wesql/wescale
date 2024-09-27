@@ -58,12 +58,12 @@ func (e *Executor) newExecute(
 	recResult txResult, // used when it's something simple like begin/commit/rollback/savepoint
 ) error {
 	// fail point to crash vtgate
-	if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.CrashVTGate.Name)); _err_ == nil {
+	failpoint.Inject(failpointkey.CrashVTGate.Name, func(val failpoint.Value) {
 		temp, ok := val.(bool)
 		if ok && temp {
 			os.Exit(-1)
 		}
-	}
+	})
 
 	// 1: Prepare before planning and execution
 	// Start an implicit transaction if necessary.
