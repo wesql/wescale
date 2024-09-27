@@ -127,7 +127,20 @@ func GetStatefulSetReplicaCount(clientset *kubernetes.Clientset, namespace strin
 	statefulSetClient := clientset.AppsV1().StatefulSets(namespace)
 	statefulSet, err := statefulSetClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
+
 		return 0, fmt.Errorf("failed to get StatefulSet: %v", err)
 	}
 	return *statefulSet.Spec.Replicas, nil
+}
+
+func calcAvgCpuMemory(cpuHistory CPUHistory, memoryHistory MemoryHistory) (int64, int64) {
+	cpuTotal := int64(0)
+	memoryTotal := int64(0)
+	for i, _ := range cpuHistory {
+		cpuTotal += cpuHistory[i]
+		memoryTotal += memoryHistory[i]
+	}
+	cpuAvg := cpuTotal / int64(len(cpuHistory))
+	memoryAvg := memoryTotal / int64(len(memoryHistory))
+	return cpuAvg, memoryAvg
 }
