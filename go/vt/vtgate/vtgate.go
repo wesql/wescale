@@ -188,8 +188,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&defaultEnableInterceptionForDMLWithoutWhere, "enable_interception_for_dml_without_where", defaultEnableInterceptionForDMLWithoutWhere, "Enable interception for DELETE and UPDATE DMLs that are without WHERE condition")
 	fs.BoolVar(&defaultEnableDisplaySQLExecutionVTTablet, "enable_display_sql_execution_vttablets", defaultEnableDisplaySQLExecutionVTTablet, "Enable the function of displaying SQL execution vttablets")
 	fs.BoolVar(&defaultReadWriteSplitForReadOnlyTxnUserInput, "enable_read_write_split_for_read_only_txn", defaultReadWriteSplitForReadOnlyTxnUserInput, "Enable the function of read write splitting for read only txn")
-	fs.IntVar(&autoscale.QpsSampleIntervalSeconds, "qps_sample_interval_seconds", autoscale.QpsSampleIntervalSeconds, "The interval seconds of vtgate QPS sampling.")
-	fs.IntVar(&autoscale.QpsSampleHistoryLength, "qps_sample_history_length", autoscale.QpsSampleHistoryLength, "The history array length of vtgate QPS sampling.")
+	fs.DurationVar(&autoscale.AutoSuspendQpsSampleInterval, "qps_sample_interval", autoscale.AutoSuspendQpsSampleInterval, "The interval to sample vtgate QPS.")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -398,7 +397,7 @@ func Init(
 	_ = stats.NewRates("QPSByOperation", stats.CounterForDimension(rpcVTGate.timings, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByKeyspace", stats.CounterForDimension(rpcVTGate.timings, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByDbType", stats.CounterForDimension(rpcVTGate.timings, "DbType"), 15*60/5, 5*time.Second)
-	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.QpsSampleHistoryLength, time.Duration(autoscale.QpsSampleIntervalSeconds)*time.Second)
+	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.GetQpsSampleHistoryLength(), autoscale.AutoSuspendQpsSampleInterval*time.Second)
 
 	_ = stats.NewRates("ErrorsByOperation", stats.CounterForDimension(errorCounts, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByKeyspace", stats.CounterForDimension(errorCounts, "Keyspace"), 15, 1*time.Minute)

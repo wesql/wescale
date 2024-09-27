@@ -13,16 +13,19 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 )
 
+//global todo: need to validate all variables
+
 // System Config
 var (
+	EnableAutoScale                 = true
 	EnableAutoSuspend               = true
 	AutoScaleDecisionMakingInterval = 5 * time.Second
-	EnableAutoScale                 = true
 )
 
 // User Config
 var (
-	AutoSuspendTimeout = 5 * time.Minute
+	AutoSuspendQpsSampleInterval = 10 * time.Second
+	AutoSuspendTimeout           = 5 * time.Minute
 )
 
 const (
@@ -33,6 +36,7 @@ const (
 
 // Cluster Config
 var (
+	//todo All these variables should be read from the environment
 	AutoScaleClusterNamespace        = "default"
 	AutoScaleDataNodeStatefulSetName = "mycluster-wesql-0"
 	AutoScaleDataNodePodName         = "mycluster-wesql-0-0"
@@ -40,12 +44,6 @@ var (
 	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-wesql-1", "mycluster-wesql-2"}
 	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
 )
-
-// The number of replicas of the DataNode's StatefulSet that we want to have
-var DataNodeStatefulSetReplicas int32 = 1
-
-// The number of replicas of the DataNode's StatefulSet that currently exist
-var CurrentDataNodeStatefulSetReplicas int32 = 1
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
@@ -67,6 +65,12 @@ func init() {
 	servenv.OnParseFor("vtgate", RegisterAutoScaleFlags)
 	servenv.OnParseFor("vtgate", RegisterAutoScaleEstimatorFlags)
 }
+
+// The number of replicas of the DataNode's StatefulSet that we want to have
+var ExpectedDataNodeStatefulSetReplicas int32 = 1
+
+// The number of replicas of the DataNode's StatefulSet that currently exist
+var CurrentDataNodeStatefulSetReplicas int32 = 1
 
 type AutoScaleController struct {
 	ctx        context.Context
@@ -118,12 +122,10 @@ func (cr *AutoScaleController) Start() {
 			}
 
 			// Extracted code into doAutoSuspend function
-			if cr.doAutoSuspend(clientset) {
-				continue
-			}
+			cr.doAutoSuspend(clientset)
 
 			// 2. Collect CPU and memory metrics to determine if scaling up/down is needed
-			if CurrentDataNodeStatefulSetReplicas == 0 || !EnableAutoScale {
+			if ExpectedDataNodeStatefulSetReplicas == 0 || !EnableAutoScale {
 				// No need to scale up or down
 				continue
 			}
@@ -133,30 +135,23 @@ func (cr *AutoScaleController) Start() {
 				log.Errorf("track cpu and memory error: %v", err)
 				continue
 			}
-			totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit, err := GetRequestAndLimitMetrics(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+			currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit, err := GetRequestAndLimitMetrics(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
 			if err != nil {
 				log.Errorf("get request and limit metrics error: %v", err)
 				continue
 			}
-			log.Infof("totalCPURequest: %v mCore, totalMemoryRequest: %v bytes, totalCPULimit: %v mCore, totalMemoryLimit :%v bytes\n",
-				totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit)
+			log.Infof("currentCPURequest: %v mCore, currentMemoryRequest: %v bytes, currentCPULimit: %v mCore, currentMemoryLimit :%v bytes\n",
+				currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit)
 
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
-			e := EstimatorByDelta{
-				CPUUpperMargin:    AutoScaleCpuUpperMarginInMillicores,
-				CPULowerMargin:    AutoScaleCpuLowerMarginInMillicores,
-				MemoryUpperMargin: AutoScaleMemoryUpperMarginInBytes,
-				MemoryLowerMargin: AutoScaleMemoryLowerMarginInBytes,
-				CPUDelta:          AutoScaleCpuDeltaInMillicores,
-				MemoryDelta:       AutoScaleMemoryDeltaInBytes,
-			}
-			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBoundInMillicores, AutoScaleCpuLowerBoundInMillicores,
-				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBoundInBytes, AutoScaleMemoryLowerBoundInBytes)
-			log.Infof("cpuUpper: %v mCore, cpuLower: %v mCore, memoryUpper: %v bytes, memoryLower:%v bytes\n", cpuUpper, cpuLower, memoryUpper, memoryLower)
+			e := EstimatorByRatio{}
+			newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, currentCPULimit, currentCPURequest,
+				memoryHistory, currentMemoryLimit, currentMemoryRequest)
+			log.Infof("newCpuLimit: %v mCore, newCpuRequest: %v mCore, newMemoryLimit: %v bytes, newMemoryRequest:%v bytes\n", newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest)
 
-			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, memoryLower, cpuUpper, memoryUpper)
+			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, newCpuRequest, newMemoryRequest, newCpuLimit, newMemoryLimit)
 			if err != nil {
 				log.Errorf("scale up/down stateful set error: %v", err)
 				continue
@@ -170,9 +165,9 @@ func (cr *AutoScaleController) Stop() {
 	cr.cancelFunc()
 }
 
-func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) bool {
-	if !EnableAutoSuspend {
-		return false
+func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
+	if EnableAutoSuspend == false {
+		return
 	}
 
 	// 1. Collect QPS to determine if scaling in is needed
@@ -180,27 +175,15 @@ func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) bo
 	log.Infof("qpsHistory: %v\n", qpsHistory)
 
 	if NeedScaleInZero(qpsHistory) {
-		DataNodeStatefulSetReplicas = 0
+		ExpectedDataNodeStatefulSetReplicas = 0
 	} else {
-		DataNodeStatefulSetReplicas = 1
+		ExpectedDataNodeStatefulSetReplicas = 1
 	}
 
-	var err error
-	CurrentDataNodeStatefulSetReplicas, err = GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
-	if err != nil {
-		log.Errorf("Error getting stateful set replicas: %s", err.Error())
+	// todo: don't do this every time
+	scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
+	// Scale in or out the Logger Node
+	for _, loggerStatefulSetName := range AutoScaleLoggerNodeStatefulSetName {
+		scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, loggerStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
 	}
-	log.Infof("CurrentDataNodeStatefulSetReplicas: %v\n", CurrentDataNodeStatefulSetReplicas)
-
-	if CurrentDataNodeStatefulSetReplicas != DataNodeStatefulSetReplicas {
-		err = scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, DataNodeStatefulSetReplicas)
-		if err != nil {
-			log.Errorf("Error scale in to zero: %s", err.Error())
-		} else {
-			log.Infof("scale in/out from %v to %v successfully", CurrentDataNodeStatefulSetReplicas, DataNodeStatefulSetReplicas)
-		}
-		return true // Indicate that we should continue the loop
-	}
-
-	return false
 }
