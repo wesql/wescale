@@ -31,21 +31,6 @@ const (
 	Ki = 1024
 )
 
-// Resource Config
-var (
-	AutoScaleCpuUpperBound    int64 = 4000     // mCore
-	AutoScaleCpuLowerBound    int64 = 500      // mCore
-	AutoScaleMemoryUpperBound int64 = 5 * Gi   // bytes
-	AutoScaleMemoryLowerBound int64 = 0.5 * Gi // bytes
-
-	AutoScaleCpuUpperMargin    int64 = 500      // mCore
-	AutoScaleCpuLowerMargin    int64 = 500      // mCore
-	AutoScaleMemoryUpperMargin int64 = 500 * Mi // bytes
-	AutoScaleMemoryLowerMargin int64 = 500 * Mi // bytes
-	AutoScaleCpuDelta          int64 = 500      // mCore
-	AutoScaleMemoryDelta       int64 = 500 * Mi // bytes
-)
-
 // Cluster Config
 var (
 	AutoScaleClusterNamespace        = "default"
@@ -67,18 +52,6 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&EnableAutoSuspend, "enable_auto_scale", EnableAutoSuspend, "enable auto suspend")
 	fs.DurationVar(&AutoScaleDecisionMakingInterval, "auto_scale_decision_making_interval", AutoScaleDecisionMakingInterval, "auto scale decision making interval")
 	fs.BoolVar(&EnableAutoScale, "enable_auto_scale_up_down", EnableAutoScale, "enable auto scaling up and down")
-	// Resource Config
-	fs.Int64Var(&AutoScaleCpuUpperBound, "auto_scale_cpu_upper_bound", AutoScaleCpuUpperBound, "auto scale will not set cpu more than auto_scale_cpu_upper_bound")
-	fs.Int64Var(&AutoScaleCpuLowerBound, "auto_scale_cpu_lower_bound", AutoScaleCpuLowerBound, "auto scale will not set cpu less than auto_scale_cpu_lower_bound")
-	fs.Int64Var(&AutoScaleMemoryUpperBound, "auto_scale_memory_upper_bound", AutoScaleMemoryUpperBound, "auto scale will not set memory more than auto_scale_memory_upper_bound")
-	fs.Int64Var(&AutoScaleMemoryLowerBound, "auto_scale_memory_lower_bound", AutoScaleMemoryLowerBound, "auto scale will not set memory less than auto_scale_memory_lower_bound")
-
-	fs.Int64Var(&AutoScaleCpuUpperMargin, "auto_scale_cpu_upper_margin", AutoScaleCpuUpperMargin, "Auto scale will not increase CPU more than this upper margin")
-	fs.Int64Var(&AutoScaleCpuLowerMargin, "auto_scale_cpu_lower_margin", AutoScaleCpuLowerMargin, "Auto scale will not decrease CPU less than this lower margin")
-	fs.Int64Var(&AutoScaleMemoryUpperMargin, "auto_scale_memory_upper_margin", AutoScaleMemoryUpperMargin, "Auto scale will not increase memory more than this upper margin")
-	fs.Int64Var(&AutoScaleMemoryLowerMargin, "auto_scale_memory_lower_margin", AutoScaleMemoryLowerMargin, "Auto scale will not decrease memory less than this lower margin")
-	fs.Int64Var(&AutoScaleCpuDelta, "auto_scale_cpu_delta", AutoScaleCpuDelta, "The CPU amount to adjust during each auto scaling step")
-	fs.Int64Var(&AutoScaleMemoryDelta, "auto_scale_memory_delta", AutoScaleMemoryDelta, "The memory amount to adjust during each auto scaling step")
 
 	// User Config
 	fs.DurationVar(&AutoSuspendTimeout, "auto_suspend_timeout", AutoSuspendTimeout, "auto suspend timeout. default is 5m")
@@ -92,6 +65,7 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 
 func init() {
 	servenv.OnParseFor("vtgate", RegisterAutoScaleFlags)
+	servenv.OnParseFor("vtgate", RegisterAutoScaleEstimatorFlags)
 }
 
 type AutoScaleController struct {
@@ -170,16 +144,16 @@ func (cr *AutoScaleController) Start() {
 			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
-			e := NaiveEstimator{
-				CPUUpperMargin:    AutoScaleCpuUpperMargin,
-				CPULowerMargin:    AutoScaleCpuLowerMargin,
-				MemoryUpperMargin: AutoScaleMemoryUpperMargin,
-				MemoryLowerMargin: AutoScaleMemoryLowerMargin,
-				CPUDelta:          AutoScaleCpuDelta,
-				MemoryDelta:       AutoScaleMemoryDelta,
+			e := EstimatorByDelta{
+				CPUUpperMargin:    AutoScaleCpuUpperMarginInMillicores,
+				CPULowerMargin:    AutoScaleCpuLowerMarginInMillicores,
+				MemoryUpperMargin: AutoScaleMemoryUpperMarginInBytes,
+				MemoryLowerMargin: AutoScaleMemoryLowerMarginInBytes,
+				CPUDelta:          AutoScaleCpuDeltaInMillicores,
+				MemoryDelta:       AutoScaleMemoryDeltaInBytes,
 			}
-			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBound, AutoScaleCpuLowerBound,
-				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBound, AutoScaleMemoryLowerBound)
+			cpuUpper, cpuLower, memoryUpper, memoryLower := e.Estimate(cpuHistory, totalCPULimit, totalCPURequest, AutoScaleCpuUpperBoundInMillicores, AutoScaleCpuLowerBoundInMillicores,
+				memoryHistory, totalMemoryLimit, totalMemoryRequest, AutoScaleMemoryUpperBoundInBytes, AutoScaleMemoryLowerBoundInBytes)
 			log.Infof("cpuUpper: %v mCore, cpuLower: %v mCore, memoryUpper: %v bytes, memoryLower:%v bytes\n", cpuUpper, cpuLower, memoryUpper, memoryLower)
 
 			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, cpuLower, memoryLower, cpuUpper, memoryUpper)
