@@ -397,7 +397,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			}
 			break
 		}
-		if val, _err_ := failpoint.Eval(_curpkg_(failpointkey.AssertRoutingTabletType.Name)); _err_ == nil {
+		failpoint.Inject(failpointkey.AssertRoutingTabletType.Name, func(val failpoint.Value) {
 			if val.(string) == "primary" && th.Tablet.Type != topodatapb.TabletType_PRIMARY {
 				os.Exit(-1)
 			}
@@ -410,7 +410,7 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			if (val.(string) == "replica or rdonly" || val.(string) == "rdonly or replica") && th.Tablet.Type != topodatapb.TabletType_RDONLY && th.Tablet.Type != topodatapb.TabletType_REPLICA {
 				os.Exit(-1)
 			}
-		}
+		})
 
 		// record the info of the tablet that the sql will be routed to
 		if options != nil && th != nil && th.Tablet != nil {

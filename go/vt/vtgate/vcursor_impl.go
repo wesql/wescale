@@ -727,36 +727,36 @@ func (vc *vcursorImpl) SetUDV(key string, value any) error {
 	if err != nil {
 		return err
 	}
-	if _, _err_ := failpoint.Eval(_curpkg_("OpenSetFailPoint")); _err_ == nil {
+	failpoint.Inject("OpenSetFailPoint", func(_ failpoint.Value) {
 		setValue := string(bindValue.GetValue())
 		if key == global.PutFailPoint {
 			keyAndValue := strings.Split(setValue, "=")
 			if len(keyAndValue) != 2 {
-				return fmt.Errorf("PutFailPoint error format key=value,but got %v", string(bindValue.GetValue()))
+				failpoint.Return(fmt.Errorf("PutFailPoint error format key=value,but got %v", string(bindValue.GetValue())))
 			}
 			fpName := keyAndValue[0]
 			retValue := keyAndValue[1]
 			err = failpoint.Enable(fpName, retValue)
 			if err != nil {
-				return err
+				failpoint.Return(err)
 			}
 			err = vc.executor.SetFailPoint(global.PutFailPoint, fpName, retValue)
 			if err != nil {
-				return err
+				failpoint.Return(err)
 			}
 		}
 		if key == global.RemoveFailPoint {
 			fpName := string(bindValue.GetValue())
 			err = failpoint.Disable(fpName)
 			if err != nil {
-				return err
+				failpoint.Return(err)
 			}
 			err = vc.executor.SetFailPoint(global.RemoveFailPoint, fpName, "")
 			if err != nil {
-				return err
+				failpoint.Return(err)
 			}
 		}
-	}
+	})
 	vc.safeSession.SetUserDefinedVariable(key, bindValue)
 	return nil
 }

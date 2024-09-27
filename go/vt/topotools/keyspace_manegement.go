@@ -65,11 +65,11 @@ func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error
 		return fmt.Errorf("CreateKeyspace(%v:%v) failed: %v", keyspaceName, defaultShardName, err)
 	}
 
-	if v, _err_ := failpoint.Eval(_curpkg_(failpointkey.CreateDatabaseErrorOnDbname.Name)); _err_ == nil {
+	failpoint.Inject(failpointkey.CreateDatabaseErrorOnDbname.Name, func(v failpoint.Value) {
 		if v != nil && v.(string) == keyspaceName {
-			return fmt.Errorf("create-database-error-on-dbname error injected")
+			failpoint.Return(fmt.Errorf("create-database-error-on-dbname error injected"))
 		}
-	}
+	})
 
 	err = f()
 	if err != nil {
