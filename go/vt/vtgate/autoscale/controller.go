@@ -49,11 +49,11 @@ var (
 // Cluster Config
 var (
 	AutoScaleClusterNamespace        = "default"
-	AutoScaleDataNodeStatefulSetName = "mycluster-mysql-0"
-	AutoScaleDataNodePodName         = "mycluster-mysql-0-0"
+	AutoScaleDataNodeStatefulSetName = "mycluster-wesql-0"
+	AutoScaleDataNodePodName         = "mycluster-wesql-0-0"
 
-	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-mysql-1", "mycluster-mysql-2"}
-	AutoScaleLoggerNodePodName         = []string{"mycluster-mysql-1-0", "mycluster-mysql-2-0"}
+	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-wesql-1", "mycluster-wesql-2"}
+	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
 )
 
 // The number of replicas of the DataNode's StatefulSet that we want to have
