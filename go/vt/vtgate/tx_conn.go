@@ -133,7 +133,7 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 		// table level RAW
 		for tableName, _ := range txc.tabletGateway.tableNamesMap {
 			// session
-			session.UpdateReadAfterReadGTIDMap(tableName,
+			session.UpdateReadAfterWriteGTIDMap(tableName,
 				txc.tabletGateway.LastSeenGtidString())
 			// instance
 			txc.tabletGateway.latestGTIDForTable.UpdateGTID(tableName,
