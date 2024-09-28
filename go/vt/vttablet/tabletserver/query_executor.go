@@ -896,7 +896,7 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 // addPrefixWaitGtid adds a prefix to the query to wait for the gtid to be replicated.
 // make sure to call discardWaitGtidResponse if waitGtidPrefixAdded returns true.
 func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtidPrefixAdded bool) {
-	if qre.options == nil || qre.options.ReadAfterWriteGtid == "" {
+	if qre.options == nil || (qre.options.ReadAfterWriteGtid == "" && qre.options.TableReadAfterWriteGtidMap == nil) {
 		return sql, false
 	}
 
@@ -912,8 +912,6 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 }
 
 func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid string) {
-
-	// return qre.options.GetReadAfterWriteGtid()
 
 	if qre.options.TableReadAfterWriteGtidMap == nil {
 		return qre.options.GetReadAfterWriteGtid()

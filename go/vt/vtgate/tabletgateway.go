@@ -95,6 +95,8 @@ type TabletGateway struct {
 	statusAggregators map[string]*TabletStatusAggregator
 	tabletStatusMap   map[string]*TabletCacheStatus
 
+	tableNamesMap map[string]bool
+
 	// buffer, if enabled, buffers requests during a detected PRIMARY failover.
 	buffer *buffer.Buffer
 }
@@ -124,11 +126,12 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 
 	latestGTIDForTable := &LatestGTIDForTable{
 		latestGTIDs: make(map[string]LatestGTIDEntry),
-		expireTime:  10 * time.Second,
+
+		expireTime:  1000 * time.Second,
 		mu:          sync.RWMutex{},
 		wg:          sync.WaitGroup{},
 	}
-	latestGTIDForTable.startCleaner()
+	// latestGTIDForTable.startCleaner()
 
 	gw := &TabletGateway{
 		hc:                 hc,

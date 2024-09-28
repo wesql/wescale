@@ -302,7 +302,7 @@ func (stc *ScatterConn) ExecuteMultiShard(
 				// table level RAW
 				// session
 				// session.latestGTIDForTable.UpdateGTID(tableName, session.GetReadAfterWrite().GetReadAfterWriteGtid())
-				session.UpdateReadAfterReadGTIDMap(tableName, qr.SessionStateChanges)
+				session.UpdateReadAfterWriteGTIDMap(tableName, qr.SessionStateChanges)
 				// instance
 				stc.gateway.latestGTIDForTable.UpdateGTID(tableName, stc.gateway.LastSeenGtidString())
 			}
