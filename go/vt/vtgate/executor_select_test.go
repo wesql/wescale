@@ -443,6 +443,7 @@ func TestSelectSystemVariables(t *testing.T) {
 		ReadAfterWriteGtid:    "a fine gtid",
 		ReadAfterWriteTimeout: 13,
 		SessionTrackGtids:     true,
+		TableLevel:            false,
 	}
 	executor.normalize = true
 	logChan := QueryLogger.Subscribe("Test")
