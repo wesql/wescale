@@ -139,7 +139,6 @@ func (txc *TxConn) commitShard(ctx context.Context, session *SafeSession, s *vtg
 			txc.tabletGateway.latestGTIDForTable.UpdateGTID(tableName,
 				txc.tabletGateway.LastSeenGtidString())
 		}
-
 	}
 	txc.tabletGateway.tableNamesMap = make(map[string]bool)
 	logging.log(nil, s.Target, nil, "commit", false, nil)

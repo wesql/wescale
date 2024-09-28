@@ -913,6 +913,7 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 }
 
 func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid string) {
+
 	if qre.options.TableReadAfterWriteGtidMap == nil {
 		return qre.options.GetReadAfterWriteGtid()
 	}
@@ -922,6 +923,7 @@ func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid 
 	if err != nil {
 		log.Exitf("Unable to create new LastSeenGtid: %v", err)
 	}
+
 
 	for tableName, _ := range qre.tableNamesMap {
 		gtid, ok := qre.options.TableReadAfterWriteGtidMap[tableName]

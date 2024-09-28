@@ -126,6 +126,7 @@ func NewTabletGateway(ctx context.Context, hc discovery.HealthCheck, serv srvtop
 
 	latestGTIDForTable := &LatestGTIDForTable{
 		latestGTIDs: make(map[string]LatestGTIDEntry),
+
 		expireTime:  1000 * time.Second,
 		mu:          sync.RWMutex{},
 		wg:          sync.WaitGroup{},
