@@ -73,7 +73,6 @@ type QueryExecutor struct {
 	setting           *pools.Setting
 	matchedActionList []ActionInterface
 	calledActionList  []ActionInterface
-	tableNamesMap     map[string]bool
 }
 
 const (
@@ -924,15 +923,16 @@ func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid 
 		log.Exitf("Unable to create new LastSeenGtid: %v", err)
 	}
 
-
-	for tableName, _ := range qre.tableNamesMap {
+	stmt, _ := sqlparser.Parse(sql)
+	allTables := sqlparser.CollectTables(stmt, "")
+	for _, table := range allTables {
+		tableName := table.GetName()
 		gtid, ok := qre.options.TableReadAfterWriteGtidMap[tableName]
 		if ok {
 			lastSeenGtid.AddGtid(gtid)
 		}
 	}
 
-	qre.tableNamesMap = make(map[string]bool)
 	return lastSeenGtid.String()
 }
 
@@ -1463,16 +1463,6 @@ func (qre *QueryExecutor) generateFinalQueryAndStreamExecute(query string, bindV
 		if err != nil {
 			return err
 		}
-
-		tableSchemaAndNames := sqlparser.CollectTables(stmt, "")
-		if qre.tableNamesMap == nil {
-			qre.tableNamesMap = make(map[string]bool)
-		}
-		for _, tableSchemaAndName := range tableSchemaAndNames {
-			tableName := tableSchemaAndName.GetName()
-			qre.tableNamesMap[tableName] = true
-		}
-
 		sql, _, err = qre.generateFinalSQL(sqlparser.NewParsedQuery(stmt), bindVars)
 		if err != nil {
 			return err
