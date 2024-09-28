@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
 	topoprotopb "vitess.io/vitess/go/vt/topo/topoproto"
@@ -66,6 +67,16 @@ func (e *Executor) newExecute(
 	// parse sql
 	query, comments := sqlparser.SplitMarginComments(sql)
 	stmt, reserved, err := sqlparser.Parse2(query)
+
+	tableSchemaAndNames := sqlparser.CollectTables(stmt, "")
+	if e.txConn.tabletGateway.tableNamesMap == nil {
+		e.txConn.tabletGateway.tableNamesMap = make(map[string]bool)
+	}
+	for _, tableSchemaAndName := range tableSchemaAndNames {
+		tableName := tableSchemaAndName.GetName()
+		e.txConn.tabletGateway.tableNamesMap[tableName] = true
+	}
+
 	if err != nil {
 		return err
 	}

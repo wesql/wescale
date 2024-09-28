@@ -73,6 +73,7 @@ type QueryExecutor struct {
 	setting           *pools.Setting
 	matchedActionList []ActionInterface
 	calledActionList  []ActionInterface
+	tableNamesMap     map[string]bool
 }
 
 const (
@@ -896,7 +897,7 @@ func (qre *QueryExecutor) execSelect() (*sqltypes.Result, error) {
 // addPrefixWaitGtid adds a prefix to the query to wait for the gtid to be replicated.
 // make sure to call discardWaitGtidResponse if waitGtidPrefixAdded returns true.
 func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtidPrefixAdded bool) {
-	if qre.options == nil || qre.options.ReadAfterWriteGtid == "" {
+	if qre.options == nil || (qre.options.ReadAfterWriteGtid == "" && qre.options.TableReadAfterWriteGtidMap == nil) {
 		return sql, false
 	}
 
@@ -912,9 +913,6 @@ func (qre *QueryExecutor) addPrefixWaitGtid(sql string) (newSQL string, waitGtid
 }
 
 func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid string) {
-
-	// return qre.options.GetReadAfterWriteGtid()
-
 	if qre.options.TableReadAfterWriteGtidMap == nil {
 		return qre.options.GetReadAfterWriteGtid()
 	}
@@ -925,16 +923,14 @@ func (qre *QueryExecutor) getReadAfterWriteGtid(sql string) (readAfterWriteGtid 
 		log.Exitf("Unable to create new LastSeenGtid: %v", err)
 	}
 
-	stmt, _ := sqlparser.Parse(sql)
-	allTables := sqlparser.CollectTables(stmt, "")
-	for _, table := range allTables {
-		tableName := table.GetName()
+	for tableName, _ := range qre.tableNamesMap {
 		gtid, ok := qre.options.TableReadAfterWriteGtidMap[tableName]
 		if ok {
 			lastSeenGtid.AddGtid(gtid)
 		}
 	}
 
+	qre.tableNamesMap = make(map[string]bool)
 	return lastSeenGtid.String()
 }
 
@@ -1465,6 +1461,16 @@ func (qre *QueryExecutor) generateFinalQueryAndStreamExecute(query string, bindV
 		if err != nil {
 			return err
 		}
+
+		tableSchemaAndNames := sqlparser.CollectTables(stmt, "")
+		if qre.tableNamesMap == nil {
+			qre.tableNamesMap = make(map[string]bool)
+		}
+		for _, tableSchemaAndName := range tableSchemaAndNames {
+			tableName := tableSchemaAndName.GetName()
+			qre.tableNamesMap[tableName] = true
+		}
+
 		sql, _, err = qre.generateFinalSQL(sqlparser.NewParsedQuery(stmt), bindVars)
 		if err != nil {
 			return err
