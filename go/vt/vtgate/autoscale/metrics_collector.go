@@ -6,8 +6,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	versioned "k8s.io/metrics/pkg/client/clientset/versioned"
 	"vitess.io/vitess/go/stats"
 )
 
@@ -43,8 +42,8 @@ func init() {
 	memoryHistoryRing = *stats.NewRingInt64(HistorySize)
 }
 
-func TrackCPUAndMemory(config *rest.Config, namespae, targetPod string) error {
-	totalCPUUsage, totalMemoryUsage, err := GetRealtimeMetrics(config, namespae, targetPod)
+func TrackCPUAndMemory(metricsClientset *versioned.Clientset, namespae, targetPod string) error {
+	totalCPUUsage, totalMemoryUsage, err := GetRealtimeMetrics(metricsClientset, namespae, targetPod)
 	if err != nil {
 		return err
 	}
@@ -57,13 +56,7 @@ func GetCPUAndMemoryHistory() (CPUHistory, MemoryHistory) {
 	return cpuHistoryRing.Values(), memoryHistoryRing.Values()
 }
 
-func GetRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, error) {
-	// 创建 Metrics 客户端
-	metricsClientset, err := metricsclientset.NewForConfig(config)
-	if err != nil {
-		return 0, 0, fmt.Errorf("fail to create metrics client: %v", err)
-	}
-
+func GetRealtimeMetrics(metricsClientset *versioned.Clientset, namespace, targetPod string) (int64, int64, error) {
 	// 获取 Pod 的指标信息
 	podMetrics, err := metricsClientset.MetricsV1beta1().PodMetricses(namespace).Get(context.TODO(), targetPod, metav1.GetOptions{})
 	if err != nil {
@@ -84,13 +77,7 @@ func GetRealtimeMetrics(config *rest.Config, namespace, targetPod string) (int64
 	return totalCPUUsage, totalMemoryUsage, nil
 }
 
-func GetRequestAndLimitMetrics(config *rest.Config, namespace, targetPod string) (int64, int64, int64, int64, error) {
-	// 创建 Kubernetes 客户端
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-
+func GetRequestAndLimitMetrics(clientset *kubernetes.Clientset, namespace, targetPod string) (int64, int64, int64, int64, error) {
 	// 获取指定 Pod
 	pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), targetPod, metav1.GetOptions{})
 	if err != nil {

@@ -2,6 +2,8 @@ package autoscale
 
 import (
 	"context"
+	"k8s.io/metrics/pkg/client/clientset/versioned"
+	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 	"sync"
 	"time"
 
@@ -77,8 +79,7 @@ type AutoScaleController struct {
 	cancelFunc context.CancelFunc
 	mu         sync.Mutex
 
-	svc    queryservice.QueryService
-	config *rest.Config
+	svc queryservice.QueryService
 }
 
 func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController {
@@ -86,12 +87,6 @@ func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController 
 	w := &AutoScaleController{}
 	w.ctx, w.cancelFunc = context.WithCancel(context.Background())
 	w.svc = svc
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Errorf("Error building in-cluster config: %s", err.Error())
-	}
-	w.config = config
-	log.Infof("AutoScaleController config: %v", w.config)
 	return w
 }
 
@@ -100,6 +95,8 @@ func (cr *AutoScaleController) Start() {
 	go func() {
 		intervalTicker := time.NewTicker(AutoScaleDecisionMakingInterval)
 		defer intervalTicker.Stop()
+
+		clientset, metricsClientset := initK8sClients()
 
 		for {
 			select {
@@ -111,51 +108,18 @@ func (cr *AutoScaleController) Start() {
 				QPSByDbType.Snapshot()
 			}
 
-			if cr.config == nil {
-				log.Errorf("scale controller config is nil")
-				continue
-			}
-			clientset, err := kubernetes.NewForConfig(cr.config)
-			if err != nil {
-				log.Errorf("Error creating clientset: %s", err.Error())
+			if EnableAutoScale == false && EnableAutoSuspend == false {
+				// both auto scale and auto suspend are disabled
 				continue
 			}
 
-			// Extracted code into doAutoSuspend function
+			if clientset == nil || metricsClientset == nil {
+				log.Errorf("clientset or metricsClientset is nil, reinit them...")
+				clientset, metricsClientset = initK8sClients()
+			}
+
 			cr.doAutoSuspend(clientset)
-
-			// 2. Collect CPU and memory metrics to determine if scaling up/down is needed
-			if ExpectedDataNodeStatefulSetReplicas == 0 || !EnableAutoScale {
-				// No need to scale up or down
-				continue
-			}
-
-			err = TrackCPUAndMemory(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
-			if err != nil {
-				log.Errorf("track cpu and memory error: %v", err)
-				continue
-			}
-			currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit, err := GetRequestAndLimitMetrics(cr.config, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
-			if err != nil {
-				log.Errorf("get request and limit metrics error: %v", err)
-				continue
-			}
-			log.Infof("currentCPURequest: %v mCore, currentMemoryRequest: %v bytes, currentCPULimit: %v mCore, currentMemoryLimit :%v bytes\n",
-				currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit)
-
-			cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
-			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
-
-			e := EstimatorByRatio{}
-			newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, memoryHistory)
-			log.Infof("newCpuLimit: %v mCore, newCpuRequest: %v mCore, newMemoryLimit: %v bytes, newMemoryRequest:%v bytes\n", newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest)
-
-			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, newCpuRequest, newMemoryRequest, newCpuLimit, newMemoryLimit)
-			if err != nil {
-				log.Errorf("scale up/down stateful set error: %v", err)
-				continue
-			}
-			log.Infof("scale up and down successfully")
+			cr.doAutoScale(metricsClientset, clientset)
 		}
 	}()
 }
@@ -164,7 +128,29 @@ func (cr *AutoScaleController) Stop() {
 	cr.cancelFunc()
 }
 
+func initK8sClients() (*kubernetes.Clientset, *metricsclientset.Clientset) {
+	k8sRestConfig, err := rest.InClusterConfig()
+	if err != nil {
+		log.Errorf("Error building in-cluster config: %v", err)
+		return nil, nil
+	}
+	clientset, err := kubernetes.NewForConfig(k8sRestConfig)
+	if err != nil {
+		log.Errorf("Error creating clientset: %v", err)
+	}
+	// 创建 Metrics 客户端
+	metricsClientset, err := metricsclientset.NewForConfig(k8sRestConfig)
+	if err != nil {
+		log.Errorf("Error creating metrics clientset: %v", err)
+	}
+	return clientset, metricsClientset
+}
+
 func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
+	if clientset == nil {
+		log.Errorf("clientset is nil in doAutoSuspend")
+		return
+	}
 	if EnableAutoSuspend == false {
 		return
 	}
@@ -185,4 +171,40 @@ func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
 	for _, loggerStatefulSetName := range AutoScaleLoggerNodeStatefulSetName {
 		scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, loggerStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
 	}
+}
+
+func (cr *AutoScaleController) doAutoScale(metricsClientset *versioned.Clientset, clientset *kubernetes.Clientset) {
+	if metricsClientset == nil || clientset == nil {
+		log.Errorf("metricsClientset or clientset is nil in doAutoScale")
+		return
+	}
+	if ExpectedDataNodeStatefulSetReplicas == 0 || EnableAutoScale == false {
+		return
+	}
+
+	err := TrackCPUAndMemory(metricsClientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+	if err != nil {
+		log.Errorf("track cpu and memory error: %v", err)
+		return
+	}
+	currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit, err := GetRequestAndLimitMetrics(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName)
+	if err != nil {
+		log.Errorf("get request and limit metrics error: %v", err)
+		return
+	}
+	log.Infof("currentCPURequest: %v mCore, currentMemoryRequest: %v bytes, currentCPULimit: %v mCore, currentMemoryLimit :%v bytes\n",
+		currentCPURequest, currentMemoryRequest, currentCPULimit, currentMemoryLimit)
+
+	cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
+	log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
+	e := EstimatorByRatio{}
+	newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, memoryHistory)
+	log.Infof("newCpuLimit: %v mCore, newCpuRequest: %v mCore, newMemoryLimit: %v bytes, newMemoryRequest:%v bytes\n", newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest)
+
+	err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, newCpuRequest, newMemoryRequest, newCpuLimit, newMemoryLimit)
+	if err != nil {
+		log.Errorf("scale up/down stateful set error: %v", err)
+		return
+	}
+	log.Infof("scale up and down successfully")
 }
