@@ -172,35 +172,11 @@ func (branchJob *BranchJob) generateRulesInsert() (string, error) {
 // PrepareBranch should insert BranchSettings data into mysql.branch_setting
 func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase, targetDatabase,
 	cell, tabletTypes string, includeTables, excludeTables string, stopAfterCopy bool, defaultFilterRules string, skipCopyPhase bool, externalCluster string) error {
-	err := wr.CreateDatabase(ctx, targetDatabase)
-	if err != nil {
-		return err
-	}
-	branchJob := &BranchJob{
-		status:           BranchStatusOfPrePare,
-		workflowName:     workflow,
-		sourceDatabase:   sourceDatabase,
-		targetDatabase:   targetDatabase,
-		sourceTabletType: tabletTypes,
-		externalCluster:  externalCluster,
-		includeTables:    includeTables,
-		excludeTables:    excludeTables,
-		stopAfterCopy:    stopAfterCopy,
-		cells:            cell,
-	}
-	branchJob.status = BranchStatusOfPrePare
-	branchJob.bs = &vtctldatapb.BranchSettings{}
-	insert, err := branchJob.generateInsert()
-	if err != nil {
-		return err
-	}
-	alias, err := wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
-	if err != nil {
-		return err
-	}
-	var tables []string
-	var vschema *vschemapb.Keyspace
+	// 1.get source vschema
 	var externalTopo *topo.Server
+	var vschema *vschemapb.Keyspace
+	var tables []string
+	var err error
 	if externalCluster != "" {
 		// when the source is an external mysql cluster mounted using the Mount command
 		externalTopo, err = wr.ts.OpenExternalVitessClusterServer(ctx, externalCluster)
@@ -212,19 +188,20 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 	}
 	if externalCluster != "" {
 		vschema, err = wr.sourceTs.GetVSchema(ctx, sourceDatabase)
-		if err != nil {
-			return err
-		}
 	} else {
 		vschema, err = wr.ts.GetVSchema(ctx, sourceDatabase)
-		if err != nil {
-			return err
+	}
+	if err != nil {
+		if topo.IsErrType(err, topo.NoNode) {
+			return fmt.Errorf("source database %s not found", sourceDatabase)
 		}
+		return err
 	}
 	if vschema == nil {
 		return fmt.Errorf("no vschema found for target keyspace %s", targetDatabase)
 	}
-	// get source keyspace tables
+
+	// 2.get source keyspace tables
 	if strings.HasPrefix(includeTables, "{") {
 		if vschema.Tables == nil {
 			vschema.Tables = make(map[string]*vschemapb.Table)
@@ -276,7 +253,38 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 		log.Infof("Found tables to move: %s", strings.Join(tables, ","))
 	}
 	createDDLMode := createDDLAsCopy
-	//generate filterTableRule
+
+	// create target database
+	err = wr.CreateDatabase(ctx, targetDatabase)
+
+	// create branch job
+	if err != nil {
+		return err
+	}
+	branchJob := &BranchJob{
+		status:           BranchStatusOfPrePare,
+		workflowName:     workflow,
+		sourceDatabase:   sourceDatabase,
+		targetDatabase:   targetDatabase,
+		sourceTabletType: tabletTypes,
+		externalCluster:  externalCluster,
+		includeTables:    includeTables,
+		excludeTables:    excludeTables,
+		stopAfterCopy:    stopAfterCopy,
+		cells:            cell,
+	}
+	branchJob.status = BranchStatusOfPrePare
+	branchJob.bs = &vtctldatapb.BranchSettings{}
+	insert, err := branchJob.generateInsert()
+	if err != nil {
+		return err
+	}
+	alias, err := wr.GetPrimaryTabletAlias(ctx, branchJob.cells)
+	if err != nil {
+		return err
+	}
+
+	// generate filterTableRule
 	for _, table := range tables {
 		buf := sqlparser.NewTrackedBuffer(nil)
 		buf.Myprintf("select * from %v ", sqlparser.NewIdentifierCS(table))
@@ -294,7 +302,7 @@ func (wr *Wrangler) PrepareBranch(ctx context.Context, workflow, sourceDatabase,
 		}
 		branchJob.bs.FilterTableRules = append(branchJob.bs.FilterTableRules, filterTableRule)
 	}
-	//get insert filterTableRule sql
+	// get insert filterTableRule sql
 	rulesInsert, err := branchJob.generateRulesInsert()
 	if err != nil {
 		return err
