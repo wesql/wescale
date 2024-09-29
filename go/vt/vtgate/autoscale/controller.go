@@ -47,9 +47,9 @@ var (
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	// System Config
-	fs.BoolVar(&EnableAutoSuspend, "enable_auto_scale", EnableAutoSuspend, "enable auto suspend")
+	fs.BoolVar(&EnableAutoSuspend, "enable_auto_suspend", EnableAutoSuspend, "enable auto suspend")
 	fs.DurationVar(&AutoScaleDecisionMakingInterval, "auto_scale_decision_making_interval", AutoScaleDecisionMakingInterval, "auto scale decision making interval")
-	fs.BoolVar(&EnableAutoScale, "enable_auto_scale_up_down", EnableAutoScale, "enable auto scaling up and down")
+	fs.BoolVar(&EnableAutoScale, "enable_auto_scale", EnableAutoScale, "enable auto scaling up and down")
 
 	// User Config
 	fs.DurationVar(&AutoSuspendTimeout, "auto_suspend_timeout", AutoSuspendTimeout, "auto suspend timeout. default is 5m")
@@ -147,8 +147,7 @@ func (cr *AutoScaleController) Start() {
 			log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 
 			e := EstimatorByRatio{}
-			newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, currentCPULimit, currentCPURequest,
-				memoryHistory, currentMemoryLimit, currentMemoryRequest)
+			newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, memoryHistory)
 			log.Infof("newCpuLimit: %v mCore, newCpuRequest: %v mCore, newMemoryLimit: %v bytes, newMemoryRequest:%v bytes\n", newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest)
 
 			err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, newCpuRequest, newMemoryRequest, newCpuLimit, newMemoryLimit)
