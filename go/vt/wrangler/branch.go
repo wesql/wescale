@@ -100,6 +100,8 @@ const DropTableAndDropViewTemplate = "DROP TABLE IF EXISTS `%s`"
 
 const DeleteBranchJobByWorkflow = "DELETE FROM mysql.branch_jobs where workflow_name='%s'"
 
+const DeleteBranchSnapshotByWorkflow = "DELETE FROM mysql.branch_snapshots where workflow_name='%s'"
+
 const DeleteBranchTableRuleByWorkflow = "DELETE FROM mysql.branch_table_rules where workflow_name='%s'"
 
 const DeleteVReplicationByWorkFlow = "DELETE FROM mysql.vreplication where workflow='%s'"
@@ -951,6 +953,11 @@ func (wr *Wrangler) CleanupBranch(ctx context.Context, workflow string) error {
 	}
 	deleteBranchJob := fmt.Sprintf(DeleteBranchJobByWorkflow, branchJob.workflowName)
 	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteBranchJob, 1, false, false)
+	if err != nil {
+		return err
+	}
+	deleteBranchSnapshot := fmt.Sprintf(DeleteBranchSnapshotByWorkflow, branchJob.workflowName)
+	_, err = wr.ExecuteFetchAsDba(ctx, alias, deleteBranchSnapshot, 1, false, false)
 	if err != nil {
 		return err
 	}
