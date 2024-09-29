@@ -16,6 +16,21 @@ import (
 // RegisterReloadHandlersForVtGate
 // viper_config will call these handlers when viper reloads a config file, even if the value remains the same
 func RegisterReloadHandlersForVtGate(v *ViperConfig) {
+	v.ReloadHandler.AddReloadHandler("enable_auto_suspend", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_suspend_timeout", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("enable_auto_scale", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_decision_making_interval", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_compute_unit_lower_bound", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_compute_unit_upper_bound", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_cpu_ratio", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_memory_ratio", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_use_relaxed_cpu_memory_ratio", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_cluster_namespace", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_data_node_pod_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_data_node_stateful_set_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_pod_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_stateful_set_name", DefaultFsReloadHandler)
+
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {
 			if err = fs.Set("read_write_splitting_policy", value); err != nil {

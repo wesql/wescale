@@ -19,6 +19,12 @@ func NewConfigReloader() *Reloader {
 	}
 }
 
+func DefaultFsReloadHandler(key string, value string, fs *pflag.FlagSet) {
+	if err := fs.Set(key, value); err != nil {
+		log.Errorf("fail to set config %v=%v, err: %v", key, value, err)
+	}
+}
+
 func (r *Reloader) AddReloadHandler(key string, handler func(key string, value string, fs *pflag.FlagSet)) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
