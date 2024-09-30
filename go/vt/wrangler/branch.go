@@ -684,15 +684,14 @@ func (wr *Wrangler) GenerateUpdateOrInsertNewTable(ctx context.Context, diffEntr
 }
 func (wr *Wrangler) PrepareMergeBackBranch(ctx context.Context, workflow string, mergeOption string) error {
 	sourceSchema, targetSchema, snapshotSchema, branchJob, err := wr.getSchemas(ctx, workflow)
+	if err != nil {
+		return err
+	}
 
 	if branchJob.mergeTimestamp != "" {
 		wr.Logger().Printf("branch workflow %s has been merged back at %s, can not be merged again\n",
 			workflow, branchJob.mergeTimestamp)
 		return nil
-	}
-
-	if err != nil {
-		return err
 	}
 
 	// we set all table entries' need_merge_back field of this workflow to false,
