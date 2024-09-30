@@ -16,7 +16,7 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 	// 获取当前的 StatefulSet
 	statefulSet, err := statefulSetsClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
-		log.Errorf("Error getting StatefulSet %s: %s", statefulSetName, err.Error())
+		log.Errorf("Error getting StatefulSet %s: %s", statefulSetName, err)
 		return err
 	}
 
@@ -26,9 +26,9 @@ func scaleInOutStatefulSet(clientset *kubernetes.Clientset, namespace string, st
 	// 更新 StatefulSet
 	_, err = statefulSetsClient.Update(context.TODO(), statefulSet, metav1.UpdateOptions{})
 	if err != nil {
-		fmt.Printf("Successfully updated StatefulSet %s.\n", statefulSetName)
+		log.Errorf("Error updating StatefulSet %s: %s", statefulSetName, err)
 	} else {
-		log.Errorf("Error updating StatefulSet %s: %s", statefulSetName, err.Error())
+		fmt.Printf("Successfully updated StatefulSet %s.\n", statefulSetName)
 	}
 	return err
 }
