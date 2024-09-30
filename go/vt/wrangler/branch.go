@@ -917,7 +917,7 @@ func (wr *Wrangler) StartMergeBackBranch(ctx context.Context, workflow string) e
 		}
 
 		sqlUpdateWorkflowMergeTimestamp, err := sqlparser.ParseAndBind(UpdateWorkflowMergeTimestamp,
-			sqltypes.StringBindVariable(time.Now().Format(time.RFC3339)),
+			sqltypes.StringBindVariable(time.Now().Format(time.DateTime)),
 			sqltypes.StringBindVariable(branchJob.workflowName))
 		if err != nil {
 			return err
