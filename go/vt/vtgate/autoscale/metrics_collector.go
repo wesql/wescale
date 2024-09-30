@@ -114,7 +114,6 @@ func GetStatefulSetReplicaCount(clientset *kubernetes.Clientset, namespace strin
 	statefulSetClient := clientset.AppsV1().StatefulSets(namespace)
 	statefulSet, err := statefulSetClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
 	if err != nil {
-
 		return 0, fmt.Errorf("failed to get StatefulSet: %v", err)
 	}
 	return *statefulSet.Spec.Replicas, nil
