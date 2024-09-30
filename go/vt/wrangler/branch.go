@@ -1060,7 +1060,7 @@ func (wr *Wrangler) restoreSchemaSnapshot(ctx context.Context, workflow string) 
 	}
 
 	if len(qr.Rows) != 1 {
-		return nil, fmt.Errorf("the len of query result of snapshot is not 1 but %v", len(qr.Rows))
+		return nil, fmt.Errorf("the len of query result of snapshot is not 1 but %v, it means maybe branch hasn't been started yet", len(qr.Rows))
 	}
 
 	schemaSnapshot := &tabletmanagerdatapb.SchemaDefinition{}
