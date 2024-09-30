@@ -1002,6 +1002,7 @@ func (wr *Wrangler) SchemaDiff(ctx context.Context, workflow, outputTypeFlag, co
 
 	switch outputTypeFlag {
 	case OutputTypeCreateTable:
+		// todo: newborn22 analyse charset difference
 		return wr.analyseSchemaDiffAndOutputCreateTable(targetSchema, sourceSchema, snapshotSchema, targetDatabase, sourceDatabase, compareObjectsFlag)
 	case OutputTypeDDL:
 		return wr.analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, snapshotSchema, compareObjectsFlag)
