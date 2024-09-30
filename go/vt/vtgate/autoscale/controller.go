@@ -165,11 +165,27 @@ func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
 		ExpectedDataNodeStatefulSetReplicas = 1
 	}
 
-	// todo: don't do this every time
-	scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
+	currentDataNodeReplicas, err := GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName)
+	if err != nil {
+		log.Errorf("get data node stateful set replica count error: %v", err)
+		return
+	}
+	if currentDataNodeReplicas != ExpectedDataNodeStatefulSetReplicas {
+		log.Infof("currentDataNodeReplicas: %v, ExpectedDataNodeStatefulSetReplicas: %v\n", currentDataNodeReplicas, ExpectedDataNodeStatefulSetReplicas)
+		scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, AutoScaleDataNodeStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
+	}
+
 	// Scale in or out the Logger Node
 	for _, loggerStatefulSetName := range AutoScaleLoggerNodeStatefulSetName {
-		scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, loggerStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
+		currentLoggerNodeReplicas, err := GetStatefulSetReplicaCount(clientset, AutoScaleClusterNamespace, loggerStatefulSetName)
+		if err != nil {
+			log.Errorf("get logger node stateful set replica count error: %v", err)
+			return
+		}
+		if currentLoggerNodeReplicas != ExpectedDataNodeStatefulSetReplicas {
+			log.Infof("currentLoggerNodeName: %v, currentLoggerNodeReplicas: %v, ExpectedDataNodeStatefulSetReplicas: %v\n", loggerStatefulSetName, currentLoggerNodeReplicas, ExpectedDataNodeStatefulSetReplicas)
+			scaleInOutStatefulSet(clientset, AutoScaleClusterNamespace, loggerStatefulSetName, ExpectedDataNodeStatefulSetReplicas)
+		}
 	}
 }
 
