@@ -31,10 +31,10 @@ var (
 )
 
 const (
-	MilliCore = 1000
-	Gi        = 1024 * 1024 * 1024
-	Mi        = 1024 * 1024
-	Ki        = 1024
+	Core = 1000
+	Gi   = 1024 * 1024 * 1024
+	Mi   = 1024 * 1024
+	Ki   = 1024
 )
 
 // Cluster Config

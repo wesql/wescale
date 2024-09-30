@@ -12,7 +12,7 @@ var (
 	AutoScaleComputeUnitUpperBound float64 = 10
 	AutoScaleComputeUnitLowerBound float64 = 0.25
 
-	AutoScaleCpuComputeUnitRatio      float64 = MilliCore * 1
+	AutoScaleCpuComputeUnitRatio      float64 = Core * 1
 	AutoScaleMemoryComputeUnitRatio   float64 = Gi * 4
 	AutoScaleUseRelaxedCpuMemoryRatio         = false
 
