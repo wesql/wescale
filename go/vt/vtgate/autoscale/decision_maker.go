@@ -12,9 +12,9 @@ var (
 	AutoScaleComputeUnitUpperBound float64 = 10
 	AutoScaleComputeUnitLowerBound float64 = 0.25
 
-	AutoScaleCpuComputeUnitRatio      float64 = Core * 1
-	AutoScaleMemoryComputeUnitRatio   float64 = Gi * 4
-	AutoScaleUseRelaxedCpuMemoryRatio         = false
+	AutoScaleCpuMilliCoreComputeUnitRatio float64 = Milli * 1
+	AutoScaleMemoryByteComputeUnitRatio   float64 = Gi * 4
+	AutoScaleUseRelaxedCpuMemoryRatio             = false
 
 	// Used by EstimatorByRatio
 	AutoScaleCpuRatio    float64 = 0.9
@@ -106,17 +106,17 @@ func GetSuitableComputeUnit(cu float64) float64 {
 }
 
 func GetComputeUnitByCpu(cpu float64) float64 {
-	return cpu / AutoScaleCpuComputeUnitRatio
+	return cpu / AutoScaleCpuMilliCoreComputeUnitRatio
 }
 
 func GetComputeUnitByMemory(memory float64) float64 {
-	return memory / AutoScaleMemoryComputeUnitRatio
+	return memory / AutoScaleMemoryByteComputeUnitRatio
 }
 
 func GetCpuByComputeUnit(cu float64) int64 {
-	return int64(cu * AutoScaleCpuComputeUnitRatio)
+	return int64(cu * AutoScaleCpuMilliCoreComputeUnitRatio)
 }
 
 func GetMemoryByComputeUnit(cu float64) int64 {
-	return int64(cu * AutoScaleMemoryComputeUnitRatio)
+	return int64(cu * AutoScaleMemoryByteComputeUnitRatio)
 }
