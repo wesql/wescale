@@ -2,8 +2,12 @@ package autoscale
 
 import (
 	"context"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/metrics/pkg/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
+	"os"
 	"sync"
 	"time"
 
@@ -46,6 +50,11 @@ var (
 
 	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-wesql-1", "mycluster-wesql-2"}
 	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
+
+	AutoSuspendLeaseDuration = 15 * time.Second
+	AutoSuspendRenewDeadline = 20 * time.Second
+	AutoSuspendRetryPeriod   = 2 * time.Second
+	AutoSuspendLeaseName     = "vtgate-autosuspend-leader-election"
 )
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
@@ -62,6 +71,10 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&AutoScaleDataNodePodName, "auto_scale_data_node_pod_name", AutoScaleDataNodePodName, "auto scale data node pod name")
 	fs.StringSliceVar(&AutoScaleLoggerNodeStatefulSetName, "auto_scale_logger_node_stateful_set_name", AutoScaleLoggerNodeStatefulSetName, "auto scale logger node stateful set name")
 	fs.StringSliceVar(&AutoScaleLoggerNodePodName, "auto_scale_logger_node_pod_name", AutoScaleLoggerNodePodName, "auto scale logger node pod name")
+
+	fs.DurationVar(&AutoSuspendLeaseDuration, "auto_suspend_lease_duration", AutoSuspendLeaseDuration, "lease duration is the duration that non-leader candidates will wait to force acquire leadership. ")
+	fs.DurationVar(&AutoSuspendRenewDeadline, "auto_suspend_renew_deadline", AutoSuspendRenewDeadline, "renew deadline is the duration that the acting master will retry refreshing leadership before giving up.")
+	fs.DurationVar(&AutoSuspendRetryPeriod, "auto_suspend_retry_period", AutoSuspendRetryPeriod, "retry period is the duration the LeaderElector clients should wait between tries of actions.")
 }
 
 func init() {
@@ -93,36 +106,52 @@ func NewAutoScaleController(svc queryservice.QueryService) *AutoScaleController 
 
 func (cr *AutoScaleController) Start() {
 	log.Infof("AutoScaleController started")
-	go func() {
-		intervalTicker := time.NewTicker(AutoScaleDecisionMakingInterval)
-		defer intervalTicker.Stop()
+	clientset, metricsClientset := initK8sClients()
 
-		clientset, metricsClientset := initK8sClients()
+	id, _ := os.Hostname()
 
-		for {
-			select {
-			case <-cr.ctx.Done():
-				log.Infof("AutoScaleController stopped")
-				return
-			case <-intervalTicker.C:
-			case <-WatchQPSHistoryChange():
-				QPSByDbType.Snapshot()
-			}
+	// use Lease as resource lock
+	lock := &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      AutoSuspendLeaseName,
+			Namespace: AutoScaleClusterNamespace,
+		},
+		Client: clientset.CoordinationV1(),
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: id,
+		},
+	}
 
-			if EnableAutoScale == false && EnableAutoSuspend == false {
-				// both auto scale and auto suspend are disabled
-				continue
-			}
+	leaderElectionConfig := leaderelection.LeaderElectionConfig{
+		Lock:            lock,
+		ReleaseOnCancel: true,
+		LeaseDuration:   AutoSuspendLeaseDuration,
+		RenewDeadline:   AutoSuspendRenewDeadline,
+		RetryPeriod:     AutoSuspendRetryPeriod,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				// as leader, do auto suspend and auto scale after resetting context
+				cr.ctx, cr.cancelFunc = context.WithCancel(context.Background())
+				cr.doAutoSuspendAndAutoScale(clientset, metricsClientset)
+			},
+			OnStoppedLeading: func() {
+				// cancel context when losing leadership
+				cr.cancelFunc()
+				log.Infof("%s: I am no longer the leader!", id)
+			},
+			OnNewLeader: func(identity string) {
+				if identity == id {
+					log.Infof("%s: I am the new leader", id)
+				} else {
+					log.Infof("%s: %s is the new leader", id, identity)
+				}
+			},
+		},
+	}
 
-			if clientset == nil || metricsClientset == nil {
-				log.Errorf("clientset or metricsClientset is nil, reinit them...")
-				clientset, metricsClientset = initK8sClients()
-			}
+	// start leader election
+	go leaderelection.RunOrDie(context.TODO(), leaderElectionConfig)
 
-			cr.doAutoSuspend(clientset)
-			cr.doAutoScale(metricsClientset, clientset)
-		}
-	}()
 }
 
 func (cr *AutoScaleController) Stop() {
@@ -145,6 +174,34 @@ func initK8sClients() (*kubernetes.Clientset, *metricsclientset.Clientset) {
 		log.Errorf("Error creating metrics clientset: %v", err)
 	}
 	return clientset, metricsClientset
+}
+
+func (cr *AutoScaleController) doAutoSuspendAndAutoScale(clientset *kubernetes.Clientset, metricsClientset *versioned.Clientset) {
+	for {
+		intervalTicker := time.NewTicker(AutoScaleDecisionMakingInterval)
+		defer intervalTicker.Stop()
+		select {
+		case <-cr.ctx.Done():
+			log.Infof("AutoScaleController stopped")
+			return
+		case <-intervalTicker.C:
+		case <-WatchQPSHistoryChange():
+			QPSByDbType.Snapshot()
+		}
+
+		if EnableAutoScale == false && EnableAutoSuspend == false {
+			// both auto scale and auto suspend are disabled
+			continue
+		}
+
+		if clientset == nil || metricsClientset == nil {
+			log.Errorf("clientset or metricsClientset is nil, reinit them...")
+			clientset, metricsClientset = initK8sClients()
+		}
+
+		cr.doAutoSuspend(clientset)
+		cr.doAutoScale(metricsClientset, clientset)
+	}
 }
 
 func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
