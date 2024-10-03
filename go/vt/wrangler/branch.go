@@ -777,7 +777,7 @@ func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJo
 			}
 			sqlBuf.WriteString(sqlInsertQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("extratable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+			logBuf.WriteString(fmt.Sprintf("Extratable: %v \nDDL: %v\n", tableName, entry.CanonicalStatementString()))
 		case *sqlparser.CreateView:
 			tableName := entryStatement.ViewName.Name.String()
 			sqlInsertQuery, err := wr.GenerateUpdateOrInsertNewTable(ctx, entry, branchJob)
@@ -786,7 +786,7 @@ func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJo
 			}
 			sqlBuf.WriteString(sqlInsertQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("extratable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+			logBuf.WriteString(fmt.Sprintf("Extratable: %v \nDDL: %v\n", tableName, entry.CanonicalStatementString()))
 		case *sqlparser.AlterTable:
 			tableName := entryStatement.Table.Name.String()
 			sql := entry.CanonicalStatementString()
@@ -800,7 +800,7 @@ func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJo
 			}
 			sqlBuf.WriteString(sqlUpdateQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("table: %v entry: %v\n", tableName, sql))
+			logBuf.WriteString(fmt.Sprintf("Table: %v \nDDL: %v\n", tableName, sql))
 		case *sqlparser.AlterView:
 			ViewName := entryStatement.ViewName.Name.String()
 			sql := entry.CanonicalStatementString()
@@ -814,7 +814,7 @@ func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJo
 			}
 			sqlBuf.WriteString(sqlUpdateQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("table: %v entry: %v\n", ViewName, sql))
+			logBuf.WriteString(fmt.Sprintf("Table: %v \nDDL: %v\n", ViewName, sql))
 		case *sqlparser.DropTable:
 			tableName := entryStatement.FromTables[0].Name
 			entryStatement.IfExists = true
@@ -824,7 +824,7 @@ func (wr *Wrangler) analyseAndStoreDiff(ctx context.Context, branchJob *BranchJo
 			}
 			sqlBuf.WriteString(sqlInsertQuery)
 			sqlBuf.WriteString("\n")
-			logBuf.WriteString(fmt.Sprintf("dropTable: %v entry: %v\n", tableName, entry.CanonicalStatementString()))
+			logBuf.WriteString(fmt.Sprintf("DropTable: %v \nDDL: %v\n", tableName, entry.CanonicalStatementString()))
 		default:
 			return fmt.Errorf("unsupport diff entry %v", entry)
 		}
