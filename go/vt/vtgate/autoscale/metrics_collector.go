@@ -3,14 +3,15 @@ package autoscale
 import (
 	"context"
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	versioned "k8s.io/metrics/pkg/client/clientset/versioned"
+
 	"vitess.io/vitess/go/stats"
 )
 
-type QPSHistory []float64
 type CPUHistory []int64
 type MemoryHistory []int64
 
@@ -21,21 +22,7 @@ const (
 var (
 	cpuHistoryRing    stats.RingInt64
 	memoryHistoryRing stats.RingInt64
-	QPSByDbType       *stats.Rates
 )
-
-var qpsHistoryChanged = make(chan struct{}, 1)
-
-func NotifyQPSHistoryChange() {
-	select {
-	case qpsHistoryChanged <- struct{}{}:
-	default:
-	}
-}
-
-func WatchQPSHistoryChange() <-chan struct{} {
-	return qpsHistoryChanged
-}
 
 func init() {
 	cpuHistoryRing = *stats.NewRingInt64(HistorySize)
@@ -106,10 +93,6 @@ func GetRequestAndLimitMetrics(clientset *kubernetes.Clientset, namespace, targe
 	return totalCPURequest, totalMemoryRequest, totalCPULimit, totalMemoryLimit, nil
 }
 
-func GetQPSHistory() QPSHistory {
-	return QPSByDbType.Get()["All"]
-}
-
 func GetStatefulSetReplicaCount(clientset *kubernetes.Clientset, namespace string, statefulSetName string) (int32, error) {
 	statefulSetClient := clientset.AppsV1().StatefulSets(namespace)
 	statefulSet, err := statefulSetClient.Get(context.TODO(), statefulSetName, metav1.GetOptions{})
@@ -122,7 +105,7 @@ func GetStatefulSetReplicaCount(clientset *kubernetes.Clientset, namespace strin
 func calcAvgCpuMemory(cpuHistory CPUHistory, memoryHistory MemoryHistory) (int64, int64) {
 	cpuTotal := int64(0)
 	memoryTotal := int64(0)
-	for i, _ := range cpuHistory {
+	for i := range cpuHistory {
 		cpuTotal += cpuHistory[i]
 		memoryTotal += memoryHistory[i]
 	}

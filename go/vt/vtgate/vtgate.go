@@ -34,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
 	"vitess.io/vitess/go/vt/vtgate/binlogconsumer"
@@ -396,12 +397,13 @@ func Init(
 	_ = stats.NewRates("QPSByOperation", stats.CounterForDimension(rpcVTGate.timings, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByKeyspace", stats.CounterForDimension(rpcVTGate.timings, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("QPSByDbType", stats.CounterForDimension(rpcVTGate.timings, "DbType"), 15*60/5, 5*time.Second)
-	autoscale.QPSByDbType = stats.NewRates("QPSByDbTypeCustom", stats.CounterForDimension(rpcVTGate.incomingTimings, "DbType"), autoscale.GetQpsSampleHistoryLength(), autoscale.AutoSuspendQpsSampleInterval)
 
 	_ = stats.NewRates("ErrorsByOperation", stats.CounterForDimension(errorCounts, "Operation"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByKeyspace", stats.CounterForDimension(errorCounts, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByDbType", stats.CounterForDimension(errorCounts, "DbType"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByCode", stats.CounterForDimension(errorCounts, "Code"), 15, 1*time.Minute)
+
+	autoscale.LastActiveTimestamp = stats.NewGauge("LastActiveTimestamp", "last vtgate active timestamp")
 
 	servenv.OnRun(func() {
 		for _, f := range RegisterVTGates {
@@ -522,7 +524,7 @@ func (vtg *VTGate) Execute(ctx context.Context, session *vtgatepb.Session, sql s
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
 	vtg.incomingTimings.Record(statsKey, time.Now())
-	autoscale.NotifyQPSHistoryChange()
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {
@@ -553,7 +555,7 @@ func (vtg *VTGate) ExecuteBatch(ctx context.Context, session *vtgatepb.Session, 
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"ExecuteBatch", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
 	vtg.incomingTimings.Record(statsKey, time.Now())
-	autoscale.NotifyQPSHistoryChange()
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	for _, bindVariables := range bindVariablesList {
@@ -585,7 +587,7 @@ func (vtg *VTGate) StreamExecute(ctx context.Context, session *vtgatepb.Session,
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"StreamExecute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
 	vtg.incomingTimings.Record(statsKey, time.Now())
-	autoscale.NotifyQPSHistoryChange()
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	var err error
@@ -635,7 +637,7 @@ func (vtg *VTGate) Prepare(ctx context.Context, session *vtgatepb.Session, sql s
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
 	vtg.incomingTimings.Record(statsKey, time.Now())
-	autoscale.NotifyQPSHistoryChange()
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {

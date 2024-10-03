@@ -1,9 +1,11 @@
 package autoscale
 
 import (
-	"github.com/spf13/pflag"
 	"math"
 	"time"
+
+	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/vt/log"
 )
 
@@ -72,16 +74,27 @@ func GetQpsSampleHistoryLength() int {
 	return GetSecondsByDuration(&AutoSuspendTimeout) / GetSecondsByDuration(&AutoSuspendQpsSampleInterval)
 }
 
-func NeedScaleInZero(history QPSHistory) bool {
-	if len(history) < GetQpsSampleHistoryLength() {
+func NeedSuspend(lastActiveTimestampsFromAllVTGates []int64) bool {
+	lastActiveTimeOfCurrentVTGate := time.Unix(LastActiveTimestamp.Get(), 0)
+	if time.Since(lastActiveTimeOfCurrentVTGate) < AutoSuspendTimeout {
 		return false
 	}
-	for _, v := range history {
-		if v > 0 {
-			return false
+
+	if len(lastActiveTimestampsFromAllVTGates) == 0 {
+		log.Errorf("lastActiveTimestampsFromAllVTGates is empty")
+		return false
+	}
+	// If at least one of vtgate received queries in the last AutoSuspendTimeout duration,
+	// don't need to suspend
+	needSuspend := true
+	for _, lastTimestamp := range lastActiveTimestampsFromAllVTGates {
+		lastTime := time.Unix(lastTimestamp, 0)
+		if time.Since(lastTime) < AutoSuspendTimeout {
+			needSuspend = false
 		}
 	}
-	return true
+
+	return needSuspend
 }
 
 // GetSuitableComputeUnit returns the ceil of the suitable compute unit

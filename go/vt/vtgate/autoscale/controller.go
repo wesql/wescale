@@ -2,18 +2,20 @@ package autoscale
 
 import (
 	"context"
+	"os"
+	"sync"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/metrics/pkg/client/clientset/versioned"
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
-	"os"
-	"sync"
-	"time"
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
@@ -44,9 +46,10 @@ const (
 // Cluster Config
 var (
 	//todo All these variables should be read from the environment
-	AutoScaleClusterNamespace        = "default"
-	AutoScaleDataNodeStatefulSetName = "mycluster-wesql-0"
-	AutoScaleDataNodePodName         = "mycluster-wesql-0-0"
+	AutoScaleClusterNamespace          = "default"
+	AutoScaleDataNodeStatefulSetName   = "mycluster-wesql-0"
+	AutoScaleDataNodePodName           = "mycluster-wesql-0-0"
+	AutoScaleVTGateHeadlessServiceName = "wesql-vtgate-headless.default.svc.cluster.local"
 
 	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-wesql-1", "mycluster-wesql-2"}
 	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
@@ -71,6 +74,7 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&AutoScaleDataNodePodName, "auto_scale_data_node_pod_name", AutoScaleDataNodePodName, "auto scale data node pod name")
 	fs.StringSliceVar(&AutoScaleLoggerNodeStatefulSetName, "auto_scale_logger_node_stateful_set_name", AutoScaleLoggerNodeStatefulSetName, "auto scale logger node stateful set name")
 	fs.StringSliceVar(&AutoScaleLoggerNodePodName, "auto_scale_logger_node_pod_name", AutoScaleLoggerNodePodName, "auto scale logger node pod name")
+	fs.StringVar(&AutoScaleVTGateHeadlessServiceName, "auto_scale_vtgate_headless_service_name", AutoScaleVTGateHeadlessServiceName, "auto scale vtgate headless service name")
 
 	fs.DurationVar(&AutoSuspendLeaseDuration, "auto_suspend_lease_duration", AutoSuspendLeaseDuration, "lease duration is the duration that non-leader candidates will wait to force acquire leadership. ")
 	fs.DurationVar(&AutoSuspendRenewDeadline, "auto_suspend_renew_deadline", AutoSuspendRenewDeadline, "renew deadline is the duration that the acting master will retry refreshing leadership before giving up.")
@@ -111,12 +115,18 @@ func (cr *AutoScaleController) Start() {
 	id, _ := os.Hostname()
 
 	// use Lease as resource lock
+	cli := clientset.CoordinationV1()
+	if cli == nil {
+		log.Errorf("clientset.CoordinationV1() is nil, AutoScaleController start failed")
+		return
+	}
 	lock := &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      AutoSuspendLeaseName,
 			Namespace: AutoScaleClusterNamespace,
 		},
-		Client: clientset.CoordinationV1(),
+
+		Client: cli,
 		LockConfig: resourcelock.ResourceLockConfig{
 			Identity: id,
 		},
@@ -185,8 +195,7 @@ func (cr *AutoScaleController) doAutoSuspendAndAutoScale(clientset *kubernetes.C
 			log.Infof("AutoScaleController stopped")
 			return
 		case <-intervalTicker.C:
-		case <-WatchQPSHistoryChange():
-			QPSByDbType.Snapshot()
+		case <-WatchActivity():
 		}
 
 		if EnableAutoScale == false && EnableAutoSuspend == false {
@@ -213,11 +222,11 @@ func (cr *AutoScaleController) doAutoSuspend(clientset *kubernetes.Clientset) {
 		return
 	}
 
-	// 1. Collect QPS to determine if scaling in is needed
-	qpsHistory := GetQPSHistory()
-	log.Infof("qpsHistory: %v\n", qpsHistory)
+	// 1. Collect last active time from all VTGates to determine if suspend is needed
+	lastActiveTimesFromVTGates := GetLastActiveTimestampsFromVTGates()
+	log.Infof("lastActiveTimesFromVTGates: %v\n", lastActiveTimesFromVTGates)
 
-	if NeedScaleInZero(qpsHistory) {
+	if NeedSuspend(lastActiveTimesFromVTGates) {
 		ExpectedDataNodeStatefulSetReplicas = 0
 	} else {
 		ExpectedDataNodeStatefulSetReplicas = 1
