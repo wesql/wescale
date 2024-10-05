@@ -40,7 +40,7 @@ func GetLastActiveTimestampsFromVTGates() []int64 {
 
 	ips, err := net.LookupIP(serviceName)
 	if err != nil {
-		log.Error("Failed to lookup IP addresses for service %s: %v", serviceName, err)
+		log.Errorf("Failed to lookup IP addresses for service %s: %v", serviceName, err)
 		return nil
 	}
 
