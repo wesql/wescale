@@ -55,7 +55,7 @@ var (
 	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
 
 	AutoSuspendLeaseDuration = 15 * time.Second
-	AutoSuspendRenewDeadline = 20 * time.Second
+	AutoSuspendRenewDeadline = 10 * time.Second
 	AutoSuspendRetryPeriod   = 2 * time.Second
 	AutoSuspendLeaseName     = "vtgate-autosuspend-leader-election"
 )
