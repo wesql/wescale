@@ -281,7 +281,7 @@ func (cr *AutoScaleController) doAutoScale(metricsClientset *versioned.Clientset
 	cpuHistory, memoryHistory := GetCPUAndMemoryHistory()
 	log.Infof("cpuHistory: %v, memoryHistory: %v\n", cpuHistory, memoryHistory)
 	e := EstimatorByRatio{}
-	newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, memoryHistory)
+	newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest := e.Estimate(cpuHistory, memoryHistory, currentCPURequest, currentMemoryRequest)
 	log.Infof("newCpuLimit: %v mCore, newCpuRequest: %v mCore, newMemoryLimit: %v bytes, newMemoryRequest:%v bytes\n", newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest)
 
 	err = scaleUpDownPod(clientset, AutoScaleClusterNamespace, AutoScaleDataNodePodName, newCpuRequest, newMemoryRequest, newCpuLimit, newMemoryLimit)

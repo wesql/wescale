@@ -19,8 +19,17 @@ var (
 	AutoScaleUseRelaxedCpuMemoryRatio             = false
 
 	// Used by EstimatorByRatio
-	AutoScaleCpuRatio    float64 = 0.9
-	AutoScaleMemoryRatio float64 = 0.75
+	AutoScaleCpuRatio float64 = 0.9
+	// cpu request will remains the same if (the average cpu load) / (current cpu request)
+	// is between upper bound and lower bound, upper bound should be greater than lower bound,
+	// what's more, AutoScaleCpuNoAdjustUpperBoundRatio / AutoScaleCpuRatio should be greather than 1,
+	// and AutoScaleCpuNoAdjustLowerBoundRatio / AutoScaleCpuRatio should be less than 1.
+	AutoScaleCpuNoAdjustUpperBoundRatio float64 = 0.9
+	AutoScaleCpuNoAdjustLowerBoundRatio float64 = 0.8
+
+	AutoScaleMemoryRatio                   float64 = 0.75
+	AutoScaleMemoryNoAdjustUpperBoundRatio float64 = 0.75
+	AutoScaleMemoryNoAdjustLowerBoundRatio float64 = 0.6
 )
 
 func RegisterAutoScaleEstimatorFlags(fs *pflag.FlagSet) {
@@ -31,6 +40,10 @@ func RegisterAutoScaleEstimatorFlags(fs *pflag.FlagSet) {
 	fs.Float64Var(&AutoScaleCpuRatio, "auto_scale_cpu_ratio", AutoScaleCpuRatio, "The ratio of CPU to adjust during each auto scaling step")
 	fs.Float64Var(&AutoScaleMemoryRatio, "auto_scale_memory_ratio", AutoScaleMemoryRatio, "The ratio of memory to adjust during each auto scaling step")
 	fs.BoolVar(&AutoScaleUseRelaxedCpuMemoryRatio, "auto_scale_use_relaxed_cpu_memory_ratio", AutoScaleUseRelaxedCpuMemoryRatio, "If true, cpu and memory will be adjusted independently")
+	fs.Float64Var(&AutoScaleCpuNoAdjustUpperBoundRatio, "auto_scale_cpu_no_adjust_upper_bound_ratio", AutoScaleCpuNoAdjustUpperBoundRatio, "cpu request will remains the same if (the average cpu load) / (current cpu request) is between upper bound and lower bound")
+	fs.Float64Var(&AutoScaleCpuNoAdjustLowerBoundRatio, "auto_scale_cpu_no_adjust_lower_bound_ratio", AutoScaleCpuNoAdjustLowerBoundRatio, "cpu request will remains the same if (the average cpu load) / (current cpu request) is between upper bound and lower bound")
+	fs.Float64Var(&AutoScaleMemoryNoAdjustUpperBoundRatio, "auto_scale_memory_no_adjust_upper_bound_ratio", AutoScaleMemoryNoAdjustUpperBoundRatio, "memory request will remains the same if (the average memory load) / (current memory request) is between upper bound and lower bound")
+	fs.Float64Var(&AutoScaleMemoryNoAdjustLowerBoundRatio, "auto_scale_memory_no_adjust_lower_bound_ratio", AutoScaleMemoryNoAdjustLowerBoundRatio, "memory request will remains the same if (the average memory load) / (current memory request) is between upper bound and lower bound")
 }
 
 type EstimatorByRatio struct {
@@ -38,10 +51,25 @@ type EstimatorByRatio struct {
 
 // goalCU := max(cpuGoalCU, memGoalCU, lfcGoalCU)
 // 1CU = 1CPU + 4G Memory
-func (n *EstimatorByRatio) Estimate(cpuHistory CPUHistory, memoryHistory MemoryHistory) (newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest int64) {
+func (n *EstimatorByRatio) Estimate(cpuHistory CPUHistory, memoryHistory MemoryHistory, currentCPURequest, currentMemoryRequest int64) (newCpuLimit, newCpuRequest, newMemoryLimit, newMemoryRequest int64) {
 	cpuAvg, memoryAvg := calcAvgCpuMemory(cpuHistory, memoryHistory)
-	cpuGoalCU := GetSuitableComputeUnit(GetComputeUnitByCpu(float64(cpuAvg) / AutoScaleCpuRatio))
-	memGoalCU := GetSuitableComputeUnit(GetComputeUnitByMemory(float64(memoryAvg) / AutoScaleMemoryRatio))
+
+	var cpuGoalCU float64
+	var memGoalCU float64
+	// don't need adjust
+	if int64(float64(currentCPURequest)*AutoScaleCpuNoAdjustLowerBoundRatio) < cpuAvg &&
+		cpuAvg < int64(float64(currentCPURequest)*AutoScaleCpuNoAdjustUpperBoundRatio) {
+		cpuGoalCU = GetSuitableComputeUnit(GetComputeUnitByCpu(float64(currentCPURequest) / AutoScaleCpuRatio))
+	} else {
+		cpuGoalCU = GetSuitableComputeUnit(GetComputeUnitByCpu(float64(cpuAvg) / AutoScaleCpuRatio))
+	}
+
+	if int64(float64(currentMemoryRequest)*AutoScaleMemoryNoAdjustLowerBoundRatio) < memoryAvg &&
+		memoryAvg < int64(float64(currentMemoryRequest)*AutoScaleMemoryNoAdjustUpperBoundRatio) {
+		memGoalCU = GetSuitableComputeUnit(GetComputeUnitByCpu(float64(currentMemoryRequest) / AutoScaleMemoryRatio))
+	} else {
+		memGoalCU = GetSuitableComputeUnit(GetComputeUnitByMemory(float64(memoryAvg) / AutoScaleMemoryRatio))
+	}
 
 	if AutoScaleUseRelaxedCpuMemoryRatio {
 		newCpuLimit = GetCpuByComputeUnit(AutoScaleComputeUnitUpperBound)
