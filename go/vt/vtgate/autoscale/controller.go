@@ -2,6 +2,7 @@ package autoscale
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -115,21 +116,10 @@ func (cr *AutoScaleController) Start() {
 	id, _ := os.Hostname()
 
 	// use Lease as resource lock
-	cli := clientset.CoordinationV1()
-	if cli == nil {
-		log.Errorf("clientset.CoordinationV1() is nil, AutoScaleController start failed")
+	lock, err := initK8sLeaseLock(id, clientset)
+	if err != nil {
+		log.Errorf("Error creating lease lock: %v", err)
 		return
-	}
-	lock := &resourcelock.LeaseLock{
-		LeaseMeta: metav1.ObjectMeta{
-			Name:      AutoSuspendLeaseName,
-			Namespace: AutoScaleClusterNamespace,
-		},
-
-		Client: cli,
-		LockConfig: resourcelock.ResourceLockConfig{
-			Identity: id,
-		},
 	}
 
 	leaderElectionConfig := leaderelection.LeaderElectionConfig{
@@ -184,6 +174,27 @@ func initK8sClients() (*kubernetes.Clientset, *metricsclientset.Clientset) {
 		log.Errorf("Error creating metrics clientset: %v", err)
 	}
 	return clientset, metricsClientset
+}
+
+func initK8sLeaseLock(id string, clientset *kubernetes.Clientset) (*resourcelock.LeaseLock, error) {
+	if clientset == nil {
+		return nil, errors.New("k8s clientset is nil, can not init k8s lease lock")
+	}
+	cli := clientset.CoordinationV1()
+	if cli == nil {
+		return nil, errors.New("clientset.CoordinationV1() is nil, can not init k8s lease lock")
+	}
+	return &resourcelock.LeaseLock{
+		LeaseMeta: metav1.ObjectMeta{
+			Name:      AutoSuspendLeaseName,
+			Namespace: AutoScaleClusterNamespace,
+		},
+
+		Client: cli,
+		LockConfig: resourcelock.ResourceLockConfig{
+			Identity: id,
+		},
+	}, nil
 }
 
 func (cr *AutoScaleController) doAutoSuspendAndAutoScale(clientset *kubernetes.Clientset, metricsClientset *versioned.Clientset) {
