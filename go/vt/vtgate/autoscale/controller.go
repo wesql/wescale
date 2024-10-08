@@ -181,9 +181,6 @@ func initK8sLeaseLock(id string, clientset *kubernetes.Clientset) (*resourcelock
 		return nil, errors.New("k8s clientset is nil, can not init k8s lease lock")
 	}
 	cli := clientset.CoordinationV1()
-	if cli == nil {
-		return nil, errors.New("clientset.CoordinationV1() is nil, can not init k8s lease lock")
-	}
 	return &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
 			Name:      AutoSuspendLeaseName,
