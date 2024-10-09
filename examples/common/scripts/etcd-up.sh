@@ -20,6 +20,7 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env.sh"
 
 cell=${CELL:-'test'}
 export ETCDCTL_API=2
+ETCD_SERVER=${ETCD_SERVER:-"localhost:2379"}
 
 # Check that etcd is not already running
 curl "http://${ETCD_SERVER}" > /dev/null 2>&1 && fail "etcd is already running. Exiting."

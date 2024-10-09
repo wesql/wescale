@@ -21,8 +21,8 @@ source "$(dirname "${BASH_SOURCE[0]:-$0}")/../env-apecloud.sh"
 
 cell=${CELL:-'test'}
 uid=$TABLET_UID
-mysql_root="root"
-mysql_root_passwd=""
+mysql_root=${MYSQL_ROOT:-'root'}
+mysql_root_passwd=${MYSQL_ROOT_PASSWD:-'1234'}
 mysql_port=$[17000 + $uid]
 port=$[15100 + $uid]
 grpc_port=$[16000 + $uid]
