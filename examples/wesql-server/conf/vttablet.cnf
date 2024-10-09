@@ -28,4 +28,4 @@ non_transactional_dml_batch_size_threshold=10000
 # final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
 non_transactional_dml_batch_size_threshold_ratio=0.5
 
-mysql_role_probe_enable = false
+mysql_role_probe_enable = true
