@@ -99,6 +99,7 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
     cp /vt/src/vitess/bin/etcd  /vt/bin && \
     cp /vt/src/vitess/bin/etcdctl  /vt/bin && \
     cp -rf $VTSOURCEROOT/web /vt && \
+    cp -rf $VTSOURCEROOT/examples /vt && \
     rm -rf /vt/src
 
 # Use alpine
