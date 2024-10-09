@@ -44,6 +44,8 @@ const (
 	Ki    = 1024
 )
 
+const AutoSuspendLeaseName = "vtgate-autosuspend-leader-election"
+
 // Cluster Config
 var (
 	//todo All these variables should be read from the environment
@@ -58,7 +60,6 @@ var (
 	AutoSuspendLeaseDuration = 15 * time.Second
 	AutoSuspendRenewDeadline = 10 * time.Second
 	AutoSuspendRetryPeriod   = 2 * time.Second
-	AutoSuspendLeaseName     = "vtgate-autosuspend-leader-election"
 )
 
 func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
