@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,12 +87,8 @@ func (v *versionInfo) Print() {
 }
 
 func (v *versionInfo) String() string {
-	jenkins := ""
-	if v.jenkinsBuildNumber != 0 {
-		jenkins = fmt.Sprintf(" (Jenkins build %d)", v.jenkinsBuildNumber)
-	}
-	return fmt.Sprintf("Version: %s%s (Git revision %s branch '%s') built on %s by %s@%s using %s %s/%s",
-		v.version, jenkins, v.buildGitRev, v.buildGitBranch, v.buildTimePretty, v.buildUser, v.buildHost, v.goVersion, v.goOS, v.goArch)
+	return fmt.Sprintf("\nWeScale version: (git revision %s branch '%s') built on %s by %s@%s using %s %s/%s",
+		v.buildGitRev, v.buildGitBranch, v.buildTimePretty, v.buildUser, v.buildHost, v.goVersion, v.goOS, v.goArch)
 }
 
 func (v *versionInfo) MySQLVersion() string {
