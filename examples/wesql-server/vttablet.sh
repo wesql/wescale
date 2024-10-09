@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "正在启动 vttablet..."
+
 cell=${CELL:-'zone1'}
 uid="${UID##*-}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
@@ -15,41 +17,40 @@ printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
-topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
+topology_flags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
+
+echo "等待 vtctld 服务..."
 
 ./wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
 
-echo "starting vttablet for $alias..."
-
 VTDATAROOT=$VTDATAROOT/vttablet
-su vitess
 mkdir -p $VTDATAROOT
 
-exec vttablet \
-$topology_fags \
---alsologtostderr \
---log_dir $VTDATAROOT \
---log_queries_to_file $VTDATAROOT/$tablet_logfile \
---tablet-path $alias \
---tablet_hostname "$tablet_hostname" \
---init_tablet_type replica \
---enable_replication_reporter \
---backup_storage_implementation file \
---file_backup_storage_root $VTDATAROOT/backups \
---port $port \
---db_port $mysql_port \
---db_host 127.0.0.1 \
---db_allprivs_user $mysql_root \
---db_allprivs_password $mysql_root_passwd \
---db_dba_user $mysql_root \
---db_dba_password $mysql_root_passwd \
---db_app_user $mysql_root \
---db_app_password $mysql_root_passwd \
---db_filtered_user $mysql_root \
---db_filtered_password $mysql_root_passwd \
---grpc_port $grpc_port \
---service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
---pid_file $VTDATAROOT/vttablet.pid \
---vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
---disable_active_reparents \
-> $VTDATAROOT/$tablet_dir/vttablet.out 2>&1 &
+vttablet \
+  $topology_flags \
+  --alsologtostderr \
+  --log_dir $VTDATAROOT \
+  --log_queries_to_file $VTDATAROOT/$tablet_logfile \
+  --tablet-path $alias \
+  --tablet_hostname "$tablet_hostname" \
+  --init_tablet_type replica \
+  --enable_replication_reporter \
+  --backup_storage_implementation file \
+  --file_backup_storage_root $VTDATAROOT/backups \
+  --port $port \
+  --db_port $mysql_port \
+  --db_host 127.0.0.1 \
+  --db_allprivs_user $mysql_root \
+  --db_allprivs_password $mysql_root_passwd \
+  --db_dba_user $mysql_root \
+  --db_dba_password $mysql_root_passwd \
+  --db_app_user $mysql_root \
+  --db_app_password $mysql_root_passwd \
+  --db_filtered_user $mysql_root \
+  --db_filtered_password $mysql_root_passwd \
+  --grpc_port $grpc_port \
+  --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
+  --pid_file $VTDATAROOT/vttablet.pid \
+  --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
+  --disable_active_reparents \
+  --config_path ./conf
