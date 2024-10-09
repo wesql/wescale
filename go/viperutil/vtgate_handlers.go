@@ -30,6 +30,10 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 	v.ReloadHandler.AddReloadHandler("auto_scale_data_node_stateful_set_name", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_pod_name", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_stateful_set_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_vtgate_headless_service_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_suspend_lease_duration", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_suspend_renew_deadline", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_suspend_retry_period", DefaultFsReloadHandler)
 
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {
