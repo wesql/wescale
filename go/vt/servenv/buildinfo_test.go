@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,11 +44,11 @@ func TestVersionString(t *testing.T) {
 		version:         "v1.2.3-SNAPSHOT",
 	}
 
-	assert.Equal(t, "Version: v1.2.3-SNAPSHOT (Git revision d54b87ca0be09b678bb4490060e8f23f890ddb92 branch 'gitBranch') built on time is now by user@host using 1.19.3 amiga/amd64", v.String())
+	assert.Equal(t, "\nWeScale version: (git revision d54b87ca0be09b678bb4490060e8f23f890ddb92 branch 'gitBranch') built on time is now by user@host using 1.19.3 amiga/amd64", v.String())
 
 	v.jenkinsBuildNumber = 422
 
-	assert.Equal(t, "Version: v1.2.3-SNAPSHOT (Jenkins build 422) (Git revision d54b87ca0be09b678bb4490060e8f23f890ddb92 branch 'gitBranch') built on time is now by user@host using 1.19.3 amiga/amd64", v.String())
+	assert.Equal(t, "\nWeScale version: (git revision d54b87ca0be09b678bb4490060e8f23f890ddb92 branch 'gitBranch') built on time is now by user@host using 1.19.3 amiga/amd64", v.String())
 
-	assert.Equal(t, "8.0.30-Vitess", v.MySQLVersion())
+	assert.Equal(t, "8.0.30", v.MySQLVersion())
 }
