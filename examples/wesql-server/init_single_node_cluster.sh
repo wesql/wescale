@@ -1,4 +1,5 @@
 #!/bin/bash
+set -m
 
 # Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
@@ -18,7 +19,10 @@ export VTDATAROOT=${VTDATAROOT:-$(pwd)/vtdataroot}
 # Define a function to catch script exit signals and clean up background processes
 cleanup() {
   echo "Cleaning up background processes..."
-  kill $(jobs -p)
+  pkill -f etcd
+  pkill -f vtctld
+  pkill -f vttablet
+  pkill -f vtgate
   exit 0
 }
 
