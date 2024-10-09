@@ -4,6 +4,7 @@ set -m
 # Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
 export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}
+export MYSQL_HOST=${MYSQL_HOST:-'127.0.0.1'}
 export MYSQL_PORT=${MYSQL_PORT:-'3306'}
 
 export VTTABLET_ID="${VTTABLET_ID:-'100'}"
