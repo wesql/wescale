@@ -20,6 +20,8 @@ import (
 // RegisterReloadHandlersForVtTablet
 // viper_config will call these handlers when viper reloads a config file, even if the value remains the same
 func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletServer) {
+	v.ReloadHandler.AddReloadHandler("mysql_role_probe_enable", DefaultFsReloadHandler)
+
 	v.ReloadHandler.AddReloadHandler("mysql_role_probe_url_template", func(key string, value string, fs *pflag.FlagSet) {
 		role.SetMysqlRoleProbeUrlTemplate(value)
 		err := fs.Set("mysql_role_probe_url_template", value)
