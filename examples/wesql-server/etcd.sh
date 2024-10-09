@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "正在启动 etcd..."
+echo "Starting etcd..."
 
 etcd_port=${ETCD_PORT:-'2379'}
 etcd_server=${ETCD_SERVER:-'127.0.0.1'}

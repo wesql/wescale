@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 设置默认值
+# Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
 export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}
 export MYSQL_PORT=${MYSQL_PORT:-'3306'}
@@ -15,68 +15,64 @@ export VTGATE_MYSQL_PORT=${VTGATE_MYSQL_PORT:-'15306'}
 
 export VTDATAROOT=${VTDATAROOT:-$(pwd)/vtdataroot}
 
-# 定义日志目录
-LOG_DIR="$VTDATAROOT/logs"
-mkdir -p "$LOG_DIR"
-
-# 定义一个函数来捕获脚本退出信号，清理后台进程
+# Define a function to catch script exit signals and clean up background processes
 cleanup() {
-  echo "正在清理后台进程..."
+  echo "Cleaning up background processes..."
   kill $(jobs -p)
   exit 0
 }
 
-# 捕获退出信号
+# Catch exit signals
 trap cleanup SIGINT SIGTERM EXIT
 
-# 定义一个函数，为输出添加前缀
+# Define a function to add prefix to output
 run_with_prefix() {
   prefix=$1
   shift
-  "$@" 2>&1 | sed "s/^/[$prefix] /" | tee "$LOG_DIR/$prefix.log" &
+  "$@" 2>&1 | sed "s/^/[$prefix] /" &
 }
 
-echo "初始化单节点集群..."
+echo "Initializing single-node cluster..."
 
-# 启动 etcd
-echo "启动 etcd..."
+# Start etcd
+echo "Starting etcd..."
 run_with_prefix "etcd" ./etcd.sh
-echo "等待 etcd 服务启动..."
+echo "Waiting for etcd service to start..."
 ./wait-for-service.sh etcd 127.0.0.1 2379
-echo "etcd 已启动。"
+echo "etcd has started."
 
-# etcd 后续配置
-echo "执行 etcd 后续配置..."
+# etcd post-start configuration
+echo "Executing etcd post-start configuration..."
 ./etcd-post-start.sh
 
-# 启动 vtctld
-echo "启动 vtctld..."
+# Start vtctld
+echo "Starting vtctld..."
 run_with_prefix "vtctld" ./vtctld.sh
-echo "等待 vtctld 服务启动..."
+echo "Waiting for vtctld service to start..."
 ./wait-for-service.sh vtctld 127.0.0.1 15999
-echo "vtctld 已启动。"
+echo "vtctld has started."
 
-# 启动 vttablet
-echo "启动 vttablet..."
+# Start vttablet
+echo "Starting vttablet..."
 run_with_prefix "vttablet" ./vttablet.sh
-echo "等待 vttablet 服务启动..."
+echo "Waiting for vttablet service to start..."
 ./wait-for-service.sh vttablet 127.0.0.1 $VTTABLET_GRPC_PORT
-echo "vttablet 已启动。"
+echo "vttablet has started."
 
-# 启动 vtgate
-echo "启动 vtgate..."
+# Start vtgate
+echo "Starting vtgate..."
 run_with_prefix "vtgate" ./vtgate.sh
-echo "等待 vtgate 服务启动..."
+echo "Waiting for vtgate service to start..."
 ./wait-for-service.sh vtgate 127.0.0.1 $VTGATE_MYSQL_PORT
-echo "vtgate 已启动。"
+echo "vtgate has started."
 
 echo "
 ------------------------------------------------------------------------
 "
 
-echo "VTGate 访问入口：
+echo "VTGate endpoint:
 mysql -h127.0.0.1 -P$VTGATE_MYSQL_PORT
 "
 
-# 保持脚本运行，以便捕获退出信号
+# Keep the script running to catch exit signals
 wait

@@ -10,15 +10,15 @@ if [[ $? -eq 1 ]]; then
   exit 0
 fi
 
-echo "add /vitess/global"
+echo "Adding /vitess/global"
 etcdctl --endpoints "http://127.0.0.1:${etcd_port}" mkdir /vitess/global
 
-echo "add /vitess/$cell"
+echo "Adding /vitess/$cell"
 etcdctl --endpoints "http://127.0.0.1:${etcd_port}" mkdir /vitess/$cell
 
 # And also add the CellInfo description for the cell.
-# If the node already exists, it's fine, means we used existing data.
-echo "add $cell CellInfo"
+# If the node already exists, it's fine, meaning we are using existing data.
+echo "Adding $cell CellInfo"
 set +e
 vtctl --topo_implementation etcd2 \
   --topo_global_server_address "127.0.0.1:${etcd_port}" \

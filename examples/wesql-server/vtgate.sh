@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "正在启动 vtgate..."
+echo "Starting vtgate..."
 
 cell=${CELL:-'zone1'}
 web_port=${VTGATE_WEB_PORT:-'15001'}

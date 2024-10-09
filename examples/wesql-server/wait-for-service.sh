@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "wait for $1 at port $2"
+echo "Waiting for $1 at port $2"
 while ! nc -z $2 $3
 do sleep 1
 printf "-"

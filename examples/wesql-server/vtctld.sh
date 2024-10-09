@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "正在启动 vtctld..."
+echo "Starting vtctld..."
 
 cell=${CELL:-'zone1'}
 grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
