@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "正在启动 vttablet..."
+echo "Starting vttablet..."
 
 cell=${CELL:-'zone1'}
 uid="${UID##*-}"
@@ -19,7 +19,7 @@ printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 topology_flags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
 
-echo "等待 vtctld 服务..."
+echo "Waiting for vtctld service..."
 
 ./wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
 
