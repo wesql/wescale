@@ -3,7 +3,7 @@
 echo "Starting vttablet..."
 
 cell=${CELL:-'zone1'}
-uid="${VTTABLET_ID:-'100'}"
+uid="${VTTABLET_ID:-0}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
 mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
 mysql_host=${MYSQL_HOST:-'127.0.0.1'}
@@ -12,7 +12,7 @@ port=${VTTABLET_PORT:-'15100'}
 grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
 vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
-tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
+tablet_hostname='127.0.0.1'
 
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
