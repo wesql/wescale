@@ -6,6 +6,7 @@ cell=${CELL:-'zone1'}
 uid="${VTTABLET_ID:-'100'}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
 mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
+mysql_host=${MYSQL_HOST:-'127.0.0.1'}
 mysql_port=${MYSQL_PORT:-'3306'}
 port=${VTTABLET_PORT:-'15100'}
 grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
@@ -35,7 +36,7 @@ vttablet \
   --file_backup_storage_root $VTDATAROOT/backups \
   --port $port \
   --db_port $mysql_port \
-  --db_host 127.0.0.1 \
+  --db_host $mysql_host \
   --db_allprivs_user $mysql_root \
   --db_allprivs_password $mysql_root_passwd \
   --db_dba_user $mysql_root \
