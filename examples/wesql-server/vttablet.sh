@@ -3,7 +3,7 @@
 echo "Starting vttablet..."
 
 cell=${CELL:-'zone1'}
-uid="${VTTABLET_ID##*-}"
+uid="${VTTABLET_ID:-'100'}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
 mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
 mysql_port=${MYSQL_PORT:-'3306'}
