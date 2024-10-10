@@ -41,6 +41,32 @@ run_with_prefix() {
   "$@" 2>&1 | sed "s/^/[$prefix] /" &
 }
 
+# Function to wait for MySQL to become available using mysql command
+wait_for_mysql() {
+  echo "Checking MySQL connection..."
+  local MAX_WAIT_TIME=300  # Maximum wait time in seconds (5 minutes)
+  local WAIT_INTERVAL=5    # Interval between connection attempts in seconds
+  local ELAPSED_TIME=0
+
+  while true; do
+    if mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" >/dev/null 2>&1; then
+      echo "MySQL is available."
+      break
+    else
+      echo "MySQL is not available yet. Waiting..."
+      sleep $WAIT_INTERVAL
+      ELAPSED_TIME=$((ELAPSED_TIME + WAIT_INTERVAL))
+      if [ $ELAPSED_TIME -ge $MAX_WAIT_TIME ]; then
+        echo "Error: Unable to connect to MySQL after $MAX_WAIT_TIME seconds."
+        exit 1
+      fi
+    fi
+  done
+}
+
+# Wait for MySQL to be available
+wait_for_mysql
+
 echo "Initializing single-node cluster..."
 
 # Start etcd
