@@ -1,6 +1,10 @@
 #!/bin/bash
 set -m
 
+if [ "$(id -u)" -eq 0 ]; then
+  exec su -s /bin/bash vitess "$0" "$@"
+fi
+
 # Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
 export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}
