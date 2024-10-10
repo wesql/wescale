@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2023 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,4 +24,5 @@ package servenv
 // THIS FILE IS AUTO-GENERATED DURING NEW RELEASES BY ./tools/do_releases.sh
 // DO NOT EDIT
 
-const versionName = "16.0.0"
+// Set by build_version_flags.sh during compiling
+var versionName = ""

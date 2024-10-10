@@ -87,8 +87,8 @@ func (v *versionInfo) Print() {
 }
 
 func (v *versionInfo) String() string {
-	return fmt.Sprintf("\nWeScale version: (git revision %s branch '%s') built on %s by %s@%s using %s %s/%s",
-		v.buildGitRev, v.buildGitBranch, v.buildTimePretty, v.buildUser, v.buildHost, v.goVersion, v.goOS, v.goArch)
+	return fmt.Sprintf("WeScale version: %s (git revision %s branch '%s') built on %s by %s@%s using %s %s/%s",
+		v.version, v.buildGitRev, v.buildGitBranch, v.buildTimePretty, v.buildUser, v.buildHost, v.goVersion, v.goOS, v.goArch)
 }
 
 func (v *versionInfo) MySQLVersion() string {

@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -210,7 +215,6 @@ func waitForVTGateAndVTTablet() error {
 
 func TestAddColumn(t *testing.T) {
 	defer cluster.PanicHandler(t)
-	utils.SkipIfBinaryIsBelowVersion(t, 14, "vtgate")
 	ctx := context.Background()
 	conn, err := mysql.Connect(ctx, &vtParams)
 	require.NoError(t, err)

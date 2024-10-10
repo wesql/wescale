@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,12 +100,7 @@ func TestNewUnshardedTable(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	vtgateVersion, err := cluster.GetMajorVersion("vtgate")
-	require.NoError(t, err)
 	expected := `[[VARCHAR("dual")] [VARCHAR("main")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("main")]]`
-	}
 
 	// ensuring our initial table "main" is in the schema
 	utils.AssertMatchesWithTimeout(t, conn,
@@ -114,9 +114,6 @@ func TestNewUnshardedTable(t *testing.T) {
 	utils.Exec(t, conn, `create table new_table_tracked(id bigint, name varchar(100), primary key(id)) Engine=InnoDB`)
 
 	expected = `[[VARCHAR("dual")] [VARCHAR("main")] [VARCHAR("new_table_tracked")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("main")] [VARCHAR("new_table_tracked")]]`
-	}
 
 	// waiting for the vttablet's schema_reload interval to kick in
 	utils.AssertMatchesWithTimeout(t, conn,
@@ -139,9 +136,7 @@ func TestNewUnshardedTable(t *testing.T) {
 
 	// waiting for the vttablet's schema_reload interval to kick in
 	expected = `[[VARCHAR("dual")] [VARCHAR("main")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("main")]]`
-	}
+
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
 		expected,
