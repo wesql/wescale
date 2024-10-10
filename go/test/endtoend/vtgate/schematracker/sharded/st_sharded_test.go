@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,18 +83,8 @@ func TestMain(m *testing.M) {
 			"--queryserver-config-acl-exempt-acl", "userData1",
 			"--table-acl-config", "dummy.json"}
 
-		vtgateVer, err := cluster.GetMajorVersion("vtgate")
-		if err != nil {
-			return 1
-		}
-		vttabletVer, err := cluster.GetMajorVersion("vttablet")
-		if err != nil {
-			return 1
-		}
-		if vtgateVer >= 16 && vttabletVer >= 16 {
-			clusterInstance.VtGateExtraArgs = append(clusterInstance.VtGateExtraArgs, "--enable-views")
-			clusterInstance.VtTabletExtraArgs = append(clusterInstance.VtTabletExtraArgs, "--queryserver-enable-views")
-		}
+		clusterInstance.VtGateExtraArgs = append(clusterInstance.VtGateExtraArgs, "--enable-views")
+		clusterInstance.VtTabletExtraArgs = append(clusterInstance.VtTabletExtraArgs, "--queryserver-enable-views")
 
 		err = clusterInstance.StartKeyspace(*keyspace, []string{"-80", "80-"}, 0, false)
 		if err != nil {
@@ -160,13 +155,8 @@ func TestInitAndUpdate(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	vtgateVersion, err := cluster.GetMajorVersion("vtgate")
-	require.NoError(t, err)
-
 	expected := `[[VARCHAR("dual")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	}
+
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
 		expected,
@@ -177,9 +167,7 @@ func TestInitAndUpdate(t *testing.T) {
 	// Init
 	_ = utils.Exec(t, conn, "create table test_sc (id bigint primary key)")
 	expected = `[[VARCHAR("dual")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")] [VARCHAR("test_sc")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")] [VARCHAR("test_sc")]]`
-	}
+
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
 		expected,
@@ -190,9 +178,7 @@ func TestInitAndUpdate(t *testing.T) {
 	// Tables Update via health check.
 	_ = utils.Exec(t, conn, "create table test_sc1 (id bigint primary key)")
 	expected = `[[VARCHAR("dual")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")] [VARCHAR("test_sc")] [VARCHAR("test_sc1")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")] [VARCHAR("test_sc")] [VARCHAR("test_sc1")]]`
-	}
+
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
 		expected,
@@ -202,9 +188,7 @@ func TestInitAndUpdate(t *testing.T) {
 
 	_ = utils.Exec(t, conn, "drop table test_sc, test_sc1")
 	expected = `[[VARCHAR("dual")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	}
+
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
 		expected,
@@ -223,12 +207,8 @@ func TestDMLOnNewTable(t *testing.T) {
 	// create a new table which is not part of the VSchema
 	utils.Exec(t, conn, `create table new_table_tracked(id bigint, name varchar(100), primary key(id)) Engine=InnoDB`)
 
-	vtgateVersion, err := cluster.GetMajorVersion("vtgate")
-	require.NoError(t, err)
 	expected := `[[VARCHAR("dual")] [VARCHAR("new_table_tracked")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	if vtgateVersion >= 17 {
-		expected = `[[VARCHAR("new_table_tracked")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")]]`
-	}
+
 	// wait for vttablet's schema reload interval to pass
 	utils.AssertMatchesWithTimeout(t, conn,
 		"SHOW VSCHEMA TABLES",
@@ -259,9 +239,6 @@ func TestDMLOnNewTable(t *testing.T) {
 
 // TestNewView validates that view tracking works as expected.
 func TestNewView(t *testing.T) {
-	utils.SkipIfBinaryIsBelowVersion(t, 16, "vtgate")
-	utils.SkipIfBinaryIsBelowVersion(t, 16, "vttablet")
-
 	ctx := context.Background()
 	conn, err := mysql.Connect(ctx, &vtParams)
 	require.NoError(t, err)
@@ -284,9 +261,6 @@ func TestNewView(t *testing.T) {
 
 // TestViewAndTable validates that new column added in table is present in the view definition
 func TestViewAndTable(t *testing.T) {
-	utils.SkipIfBinaryIsBelowVersion(t, 16, "vtgate")
-	utils.SkipIfBinaryIsBelowVersion(t, 16, "vttablet")
-
 	ctx := context.Background()
 	conn, err := mysql.Connect(ctx, &vtParams)
 	require.NoError(t, err)
