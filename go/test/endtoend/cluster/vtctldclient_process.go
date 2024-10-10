@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2022 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,12 +33,11 @@ import (
 // VtctldClientProcess is a generic handle for a running vtctldclient command .
 // It can be spawned manually
 type VtctldClientProcess struct {
-	Name                     string
-	Binary                   string
-	Server                   string
-	TempDirectory            string
-	ZoneName                 string
-	VtctldClientMajorVersion int
+	Name          string
+	Binary        string
+	Server        string
+	TempDirectory string
+	ZoneName      string
 }
 
 // ExecuteCommand executes any vtctldclient command
@@ -62,7 +66,8 @@ func (vtctldclient *VtctldClientProcess) ExecuteCommandWithOutput(args ...string
 	for i := 1; i <= retries; i++ {
 		tmpProcess := exec.Command(
 			vtctldclient.Binary,
-			filterDoubleDashArgs(pArgs, vtctldclient.VtctldClientMajorVersion)...,
+			//filterDoubleDashArgs(pArgs, vtctldclient.VtctldClientMajorVersion)...,
+			pArgs...,
 		)
 		log.Infof("Executing vtctldclient with command: %v (attempt %d of %d)", strings.Join(tmpProcess.Args, " "), i, retries)
 		resultByte, err = tmpProcess.CombinedOutput()
@@ -78,17 +83,11 @@ func (vtctldclient *VtctldClientProcess) ExecuteCommandWithOutput(args ...string
 // VtctldClientProcessInstance returns a VtctldProcess handle for vtctldclient process
 // configured with the given Config.
 func VtctldClientProcessInstance(hostname string, grpcPort int, tmpDirectory string) *VtctldClientProcess {
-	version, err := GetMajorVersion("vtctld") // `vtctldclient` does not have a --version flag, so we assume both vtctl/vtctldclient have the same version
-	if err != nil {
-		log.Warningf("failed to get major vtctldclient version; interop with CLI changes for VEP-4 may not work: %s", err)
-	}
-
 	vtctldclient := &VtctldClientProcess{
-		Name:                     "vtctldclient",
-		Binary:                   "vtctldclient",
-		Server:                   fmt.Sprintf("%s:%d", hostname, grpcPort),
-		TempDirectory:            tmpDirectory,
-		VtctldClientMajorVersion: version,
+		Name:          "vtctldclient",
+		Binary:        "vtctldclient",
+		Server:        fmt.Sprintf("%s:%d", hostname, grpcPort),
+		TempDirectory: tmpDirectory,
 	}
 	return vtctldclient
 }

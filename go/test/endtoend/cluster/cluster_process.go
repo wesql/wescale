@@ -97,10 +97,6 @@ type LocalProcessCluster struct {
 	VtgateGrpcPort   int
 	VtctldHTTPPort   int
 
-	// major version numbers
-	VtTabletMajorVersion int
-	VtctlMajorVersion    int
-
 	// standalone executable
 	VtctlclientProcess  VtctlClientProcess
 	VtctldClientProcess VtctldClientProcess
@@ -764,22 +760,7 @@ func NewBareCluster(cell string, hostname string) *LocalProcessCluster {
 func NewCluster(cell string, hostname string) *LocalProcessCluster {
 	cluster := NewBareCluster(cell, hostname)
 
-	err := cluster.populateVersionInfo()
-	if err != nil {
-		log.Errorf("Error populating version information - %v", err)
-	}
 	return cluster
-}
-
-// populateVersionInfo is used to populate the version information for the binaries used to setup the cluster.
-func (cluster *LocalProcessCluster) populateVersionInfo() error {
-	var err error
-	cluster.VtTabletMajorVersion, err = GetMajorVersion("vttablet")
-	if err != nil {
-		return err
-	}
-	cluster.VtctlMajorVersion, err = GetMajorVersion("vtctl")
-	return err
 }
 
 func GetMajorVersion(binaryName string) (int, error) {
@@ -787,7 +768,7 @@ func GetMajorVersion(binaryName string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	versionRegex := regexp.MustCompile(`Version: ([0-9]+)\.([0-9]+)\.([0-9]+)`)
+	versionRegex := regexp.MustCompile(`version: ([0-9]+)\.([0-9]+)\.([0-9]+)`)
 	v := versionRegex.FindStringSubmatch(string(version))
 	if len(v) != 4 {
 		return 0, fmt.Errorf("could not parse server version from: %s", version)

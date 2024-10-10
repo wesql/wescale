@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,15 +116,8 @@ func TestVSchema(t *testing.T) {
 
 	utils.AssertMatches(t, conn, "delete from vt_user", `[]`)
 
-	vtgateVersion, err := cluster.GetMajorVersion("vtgate")
-	require.NoError(t, err)
-
 	// Test empty vschema
-	if vtgateVersion >= 17 {
-		utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[]`)
-	} else {
-		utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[[VARCHAR("dual")]]`)
-	}
+	utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[[VARCHAR("dual")]]`)
 
 	// Use the DDL to create an unsharded vschema and test again
 
@@ -135,11 +133,7 @@ func TestVSchema(t *testing.T) {
 	utils.Exec(t, conn, "commit")
 
 	// Test Showing Tables
-	if vtgateVersion >= 17 {
-		utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[[VARCHAR("main")] [VARCHAR("vt_user")]]`)
-	} else {
-		utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[[VARCHAR("dual")] [VARCHAR("main")] [VARCHAR("vt_user")]]`)
-	}
+	utils.AssertMatches(t, conn, "SHOW VSCHEMA TABLES", `[[VARCHAR("dual")] [VARCHAR("main")] [VARCHAR("vt_user")]]`)
 
 	// Test Showing Vindexes
 	utils.AssertMatches(t, conn, "SHOW VSCHEMA VINDEXES", `[]`)

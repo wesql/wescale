@@ -23,6 +23,7 @@ source $DIR/shell_functions.inc
 # this information instead.
 DEFAULT_BUILD_GIT_REV=$(git rev-parse HEAD)
 DEFAULT_BUILD_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DEFAULT_BUILD_GIT_TAG=$(git describe --tags --exact-match 2>/dev/null)
 
 echo "\
   -X 'vitess.io/vitess/go/vt/servenv.buildHost=$(hostname)' \
@@ -31,4 +32,5 @@ echo "\
   -X 'vitess.io/vitess/go/vt/servenv.buildGitBranch=${BUILD_GIT_BRANCH:-$DEFAULT_BUILD_GIT_BRANCH}' \
   -X 'vitess.io/vitess/go/vt/servenv.buildTime=$(LC_ALL=C date)' \
   -X 'vitess.io/vitess/go/vt/servenv.jenkinsBuildNumberStr=${BUILD_NUMBER}' \
+  -X 'vitess.io/vitess/go/vt/servenv.versionName=${DEFAULT_BUILD_GIT_TAG:-$DEFAULT_BUILD_GIT_BRANCH}' \
 "
