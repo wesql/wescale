@@ -90,7 +90,7 @@ func TestReadAfterWrite_Session_Transaction_OLAP_CrossVTGate_And_Except_Failure(
 }
 
 func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool, setTimeZone bool) {
-	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
+	createDbExecDropDb(t, "readafterwrite_session_test1", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
 		roConn := rwConn
 		if separateConn {
@@ -134,7 +134,7 @@ func runReadAfterWriteTest(t *testing.T, enableReadWriteSplitting bool, readAfte
 }
 
 func runReadAfterWriteGlobalTest(t *testing.T, enableReadWriteSplitting bool, readAfterWriteConsistency string, separateConn, enableTransaction bool, olap bool) {
-	createDbExecDropDb(t, "readafterwrite_session_test", func(getConn func() *mysql.Conn) {
+	createDbExecDropDb(t, "readafterwrite_session_test2", func(getConn func() *mysql.Conn) {
 		rwConn := getConn()
 		roConn := rwConn
 		if separateConn {
