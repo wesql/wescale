@@ -1,15 +1,21 @@
 [vttablet]
-health_check_interval               = 1s
-shard_sync_retry_delay              = 1s
-remote_operation_timeout            = 1s
-db_connect_timeout_ms               = 500
-table_acl_config_mode               = simple
-enable_logs                         = true
-enable_query_log                    = true
-table_acl_config                    = 
-queryserver_config_strict_table_acl = false
-table_acl_config_reload_interval    = 30s
-enforce_tableacl_config             = false
+health_check_interval=1s
+shard_sync_retry_delay=1s
+remote_operation_timeout=1s
+db_connect_timeout_ms=500
+table_acl_config_mode=simple
+enable_logs=true
+enable_query_log=true
+table_acl_config=
+queryserver_config_strict_table_acl=false
+table_acl_config_reload_interval=5s
+enforce_tableacl_config=false
+
+queryserver_config_transaction_cap=75
+# OltpReadPool
+queryserver_config_pool_size=35
+# OlapReadPool
+queryserver_config_stream_pool_size=2
 
 # the size of database connection pool in non transaction dml
 non_transactional_dml_database_pool_size=3
@@ -27,5 +33,3 @@ non_transactional_dml_throttle_check_interval=250
 non_transactional_dml_batch_size_threshold=10000
 # final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
 non_transactional_dml_batch_size_threshold_ratio=0.5
-
-mysql_role_probe_enable = true

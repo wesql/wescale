@@ -1,24 +1,44 @@
 [vtgate]
-gateway_initial_tablet_timeout        = 30s
-healthcheck_timeout                   = 10s
-srv_topo_timeout                      = 1s
-grpc_keepalive_time                   = 10s
-grpc_keepalive_timeout                = 10s
-tablet_refresh_interval               = 1m
-read_write_splitting_policy           = disable
-read_write_splitting_ratio            = 100
-read_after_write_consistency          = SESSION
-read_after_write_timeout              = 30.1
-enable_buffer                         = true
-buffer_size                           = 10000
-buffer_window                         = 30s
-buffer_max_failover_duration          = 60s
-buffer_min_time_between_failovers     = 60s
-mysql_auth_server_impl                = none
-mysql_server_require_secure_transport = false
-mysql_auth_server_static_file         =
-mysql_server_ssl_key                  =
-mysql_server_ssl_cert                 =
-enable_display_sql_execution_vttablets    = false
-enable_read_write_split_for_read_only_txn = true
+gateway_initial_tablet_timeout=30s
+healthcheck_timeout=2s
+srv_topo_timeout=1s
+grpc_keepalive_time=10s
+grpc_keepalive_timeout=10s
+tablet_refresh_interval=1m
+read_write_splitting_policy=disable
+read_write_splitting_ratio=100
+read_after_write_consistency=SESSION
+read_after_write_timeout=30.0
+enable_buffer=true
+buffer_size=10000
+buffer_window=180s
+buffer_max_failover_duration=360s
+buffer_min_time_between_failovers=0s
+mysql_auth_server_impl=none
+mysql_auth_server_static_file=
+mysql_server_require_secure_transport=false
+ddl_strategy=direct
+enable_display_sql_execution_vttablets=false
+enable_read_write_split_for_read_only_txn=false
+enable_interception_for_dml_without_where=true
+mysql_server_ssl_ca=
+mysql_server_ssl_cert=
+mysql_server_ssl_key=
 
+# AutoScale & AutoSuspend Params
+enable_auto_suspend=false
+auto_suspend_timeout=5m
+
+enable_auto_scale=false
+auto_scale_decision_making_interval=5s
+auto_scale_compute_unit_lower_bound=0.5
+auto_scale_compute_unit_upper_bound=10
+auto_scale_cpu_ratio=0.9
+auto_scale_memory_ratio=0.75
+auto_scale_use_relaxed_cpu_memory_ratio=false
+
+auto_scale_cluster_namespace=default
+auto_scale_data_node_pod_name=mycluster-wesql-0-0
+auto_scale_data_node_stateful_set_name=mycluster-wesql-0
+auto_scale_logger_node_pod_name=mycluster-wesql-1-0,mycluster-wesql-2-0
+auto_scale_logger_node_stateful_set_name=mycluster-wesql-1,mycluster-wesql-2
