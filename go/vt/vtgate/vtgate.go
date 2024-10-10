@@ -35,6 +35,8 @@ import (
 	"strings"
 	"time"
 
+	"vitess.io/vitess/go/vt/vtgate/autoscale"
+
 	"vitess.io/vitess/go/vt/vtgate/binlogconsumer"
 
 	"github.com/spf13/pflag"
@@ -187,6 +189,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&defaultEnableInterceptionForDMLWithoutWhere, "enable_interception_for_dml_without_where", defaultEnableInterceptionForDMLWithoutWhere, "Enable interception for DELETE and UPDATE DMLs that are without WHERE condition")
 	fs.BoolVar(&defaultEnableDisplaySQLExecutionVTTablet, "enable_display_sql_execution_vttablets", defaultEnableDisplaySQLExecutionVTTablet, "Enable the function of displaying SQL execution vttablets")
 	fs.BoolVar(&defaultReadWriteSplitForReadOnlyTxnUserInput, "enable_read_write_split_for_read_only_txn", defaultReadWriteSplitForReadOnlyTxnUserInput, "Enable the function of read write splitting for read only txn")
+	fs.DurationVar(&autoscale.AutoSuspendQpsSampleInterval, "qps_sample_interval", autoscale.AutoSuspendQpsSampleInterval, "The interval to sample vtgate QPS.")
 }
 func init() {
 	servenv.OnParseFor("vtgate", registerFlags)
@@ -242,9 +245,10 @@ type VTGate struct {
 	// stats objects.
 	// TODO(sougou): This needs to be cleaned up. There
 	// are global vars that depend on this member var.
-	timings      *stats.MultiTimings
-	rowsReturned *stats.CountersWithMultiLabels
-	rowsAffected *stats.CountersWithMultiLabels
+	timings         *stats.MultiTimings
+	incomingTimings *stats.MultiTimings
+	rowsReturned    *stats.CountersWithMultiLabels
+	rowsAffected    *stats.CountersWithMultiLabels
 
 	// the throttled loggers for all errors, one per API entry
 	logExecute       *logutil.ThrottledLogger
@@ -316,6 +320,14 @@ func Init(
 	if mysqlAuthServerImpl == global.AuthServerMysqlBased {
 		mysql.GetAuthServerMysqlBase().SetQueryService(gw)
 	}
+	// Init AutoScale & AutoSuspend
+	autoScaleController := autoscale.NewAutoScaleController(gw)
+	servenv.OnRun(func() {
+		autoScaleController.Start()
+	})
+	servenv.OnTerm(func() {
+		autoScaleController.Stop()
+	})
 	if binlogconsumer.EnableCdcConsumer {
 		cdcConsumerController := binlogconsumer.NewCdcConsumerController(gw)
 		servenv.OnRun(func() {
@@ -365,6 +377,10 @@ func Init(
 			"VtgateApi",
 			"VtgateApi timings",
 			[]string{"Operation", "Keyspace", "DbType"}),
+		incomingTimings: stats.NewMultiTimings(
+			"VtgateApiIncoming",
+			"VtgateApi incoming timings",
+			[]string{"Operation", "Keyspace", "DbType"}),
 		rowsReturned: stats.NewCountersWithMultiLabels(
 			"VtgateApiRowsReturned",
 			"Rows returned through the VTgate API",
@@ -386,6 +402,8 @@ func Init(
 	_ = stats.NewRates("ErrorsByKeyspace", stats.CounterForDimension(errorCounts, "Keyspace"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByDbType", stats.CounterForDimension(errorCounts, "DbType"), 15, 1*time.Minute)
 	_ = stats.NewRates("ErrorsByCode", stats.CounterForDimension(errorCounts, "Code"), 15, 1*time.Minute)
+
+	autoscale.LastActiveTimestamp = stats.NewGauge("LastActiveTimestamp", "last vtgate active timestamp")
 
 	servenv.OnRun(func() {
 		for _, f := range RegisterVTGates {
@@ -505,6 +523,8 @@ func (vtg *VTGate) Execute(ctx context.Context, session *vtgatepb.Session, sql s
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {
@@ -534,6 +554,8 @@ func (vtg *VTGate) ExecuteBatch(ctx context.Context, session *vtgatepb.Session, 
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"ExecuteBatch", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	for _, bindVariables := range bindVariablesList {
@@ -564,7 +586,8 @@ func (vtg *VTGate) StreamExecute(ctx context.Context, session *vtgatepb.Session,
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"StreamExecute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
-
+	vtg.incomingTimings.Record(statsKey, time.Now())
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	var err error
@@ -613,6 +636,8 @@ func (vtg *VTGate) Prepare(ctx context.Context, session *vtgatepb.Session, sql s
 	// In this context, we don't care if we can't fully parse destination
 	destKeyspace, destTabletType, _, _ := vtg.executor.ParseDestinationTarget(session.TargetString)
 	statsKey := []string{"Execute", destKeyspace, topoproto.TabletTypeLString(destTabletType)}
+	vtg.incomingTimings.Record(statsKey, time.Now())
+	autoscale.RecordActivity()
 	defer vtg.timings.Record(statsKey, time.Now())
 
 	if bvErr := sqltypes.ValidateBindVariables(bindVariables); bvErr != nil {

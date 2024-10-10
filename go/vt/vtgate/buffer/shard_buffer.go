@@ -22,7 +22,6 @@ import (
 	"runtime/debug"
 	"sync"
 	"time"
-
 	"vitess.io/vitess/go/vt/vtgate/errorsanitizer"
 
 	"vitess.io/vitess/go/vt/log"

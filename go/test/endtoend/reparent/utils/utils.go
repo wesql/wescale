@@ -153,11 +153,6 @@ func setupCluster(ctx context.Context, t *testing.T, shardName string, cells []s
 			require.FailNow(t, "Error starting mysql: %s", err.Error())
 		}
 	}
-	if clusterInstance.VtctlMajorVersion >= 14 {
-		clusterInstance.VtctldClientProcess = *cluster.VtctldClientProcessInstance("localhost", clusterInstance.VtctldProcess.GrpcPort, clusterInstance.TmpDirectory)
-		out, err := clusterInstance.VtctldClientProcess.ExecuteCommandWithOutput("SetKeyspaceDurabilityPolicy", KeyspaceName, fmt.Sprintf("--durability-policy=%s", durability))
-		require.NoError(t, err, out)
-	}
 
 	setupShard(ctx, t, clusterInstance, shardName, tablets)
 	return clusterInstance

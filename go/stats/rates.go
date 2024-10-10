@@ -211,3 +211,7 @@ func (rf *RatesFunc) String() string {
 	}
 	return string(data)
 }
+
+func (rt *Rates) Snapshot() {
+	rt.snapshot()
+}

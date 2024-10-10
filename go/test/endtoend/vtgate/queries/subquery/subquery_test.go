@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2021 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +65,6 @@ func TestSubqueriesHasValues(t *testing.T) {
 
 // Test only supported in >= v16.0.0
 func TestSubqueriesExists(t *testing.T) {
-	utils.SkipIfBinaryIsBelowVersion(t, 16, "vtgate")
 	mcmp, closer := start(t)
 	defer closer()
 
@@ -97,7 +101,6 @@ func TestSubqueryInINClause(t *testing.T) {
 }
 
 func TestSubqueryInUpdate(t *testing.T) {
-	utils.SkipIfBinaryIsBelowVersion(t, 14, "vtgate")
 	mcmp, closer := start(t)
 	defer closer()
 
@@ -112,7 +115,6 @@ func TestSubqueryInUpdate(t *testing.T) {
 }
 
 func TestSubqueryInReference(t *testing.T) {
-	utils.SkipIfBinaryIsBelowVersion(t, 14, "vtgate")
 	mcmp, closer := start(t)
 	defer closer()
 

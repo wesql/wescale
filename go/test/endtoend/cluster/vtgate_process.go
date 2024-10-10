@@ -132,6 +132,7 @@ func (vtgate *VtgateProcess) Setup() (err error) {
 
 	err = vtgate.proc.Start()
 	if err != nil {
+		log.Infof("Error starting vtgate: %v", err)
 		return
 	}
 	vtgate.exit = make(chan error)

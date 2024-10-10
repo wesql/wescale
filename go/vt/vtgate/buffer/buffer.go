@@ -35,7 +35,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
 	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/sync2"
