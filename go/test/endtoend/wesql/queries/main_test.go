@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
 	"vitess.io/vitess/go/test/endtoend/utils"
 
 	"github.com/stretchr/testify/require"
@@ -159,7 +158,6 @@ func execWithConnByVtgate(t *testing.T, db string, vtgateID int, f func(conn *my
 }
 
 func createDbExecDropDb(t *testing.T, db string, f func(getConn func() *mysql.Conn)) {
-	time.Sleep(1 * time.Second)
 	defer cluster.PanicHandler(t)
 	ctx := context.Background()
 	vtParams := mysql.ConnParams{
@@ -170,7 +168,9 @@ func createDbExecDropDb(t *testing.T, db string, f func(getConn func() *mysql.Co
 	require.Nil(t, err)
 	defer conn.Close()
 
+	time.Sleep(1 * time.Second)
 	utils.Exec(t, conn, "create database "+db)
+	time.Sleep(1 * time.Second)
 	defer utils.Exec(t, conn, "drop database "+db)
 
 	getConn := func() *mysql.Conn {
