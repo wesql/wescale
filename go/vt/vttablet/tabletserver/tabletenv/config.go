@@ -512,18 +512,18 @@ func (c *TabletConfig) verifyTransactionLimitConfig() error {
 var defaultConfig = TabletConfig{
 	OltpReadPool: ConnPoolConfig{
 		Size:               30,
-		MaxSize:            500,
+		MaxSize:            2000,
 		IdleTimeoutSeconds: 30 * 60,
 		MaxWaiters:         5000,
 	},
 	OlapReadPool: ConnPoolConfig{
 		Size:               30,
-		MaxSize:            500,
+		MaxSize:            2000,
 		IdleTimeoutSeconds: 30 * 60,
 	},
 	TxPool: ConnPoolConfig{
 		Size:               50,
-		MaxSize:            500,
+		MaxSize:            2000,
 		TimeoutSeconds:     1,
 		IdleTimeoutSeconds: 30 * 60,
 		MaxWaiters:         5000,
