@@ -65,7 +65,7 @@ wait_for_mysql() {
 }
 
 # Wait for MySQL to be available
-wait_for_mysql
+./wait-for-service.sh mysql $MYSQL_HOST $MYSQL_PORT
 
 echo "Initializing single-node cluster..."
 
