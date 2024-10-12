@@ -44,7 +44,7 @@ run_with_prefix() {
 # Function to wait for MySQL to become available using mysql command
 wait_for_mysql() {
   echo "Checking MySQL connection..."
-  local MAX_WAIT_TIME=300  # Maximum wait time in seconds (5 minutes)
+  local MAX_WAIT_TIME=600  # Maximum wait time in seconds (5 minutes)
   local WAIT_INTERVAL=5    # Interval between connection attempts in seconds
   local ELAPSED_TIME=0
 
