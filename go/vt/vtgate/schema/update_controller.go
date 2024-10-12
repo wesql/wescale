@@ -22,6 +22,7 @@ limitations under the License.
 package schema
 
 import (
+	"log"
 	"sync"
 	"time"
 
@@ -53,6 +54,7 @@ type (
 )
 
 func (u *updateController) consume() {
+	log.Printf("enter tracker consueme")
 	for {
 		time.Sleep(u.consumeDelay)
 
@@ -71,17 +73,22 @@ func (u *updateController) consume() {
 		var success bool
 		if loaded {
 			success = u.update(u.keyspaceStr, item)
+			log.Printf("loaded: tracker consume update, success: %v", success)
 		} else {
 			if err := u.reloadKeyspace(u.keyspaceStr, item); err == nil {
 				success = true
+				log.Printf("reload: tracker consume update, success: %v", success)
 			} else {
 				if checkIfWeShouldIgnoreKeyspace(err) {
+					log.Printf("tracker: set ignore true")
 					u.setIgnore(true)
 				}
 				success = false
+				log.Printf("tracker consume update, failed to reload keyspace %s: %v, success is false", u.keyspaceStr, err)
 			}
 		}
 		if success && u.signal != nil {
+			log.Printf("tracker consume update, execute u.signal now.")
 			u.signal()
 		}
 	}
@@ -166,7 +173,8 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 
 	if u.ignore {
 		// keyspace marked as not working correctly, so we are ignoring it for now
-		return
+		//return
+		log.Printf("tracker: ignoring keyspace %s, but we won't return now", th.Target.Keyspace)
 	}
 
 	if u.queue == nil {
