@@ -7,6 +7,7 @@ package topotools
 
 import (
 	"fmt"
+	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/vt/failpointkey"
 
@@ -60,6 +61,7 @@ func DropDatabaseMeta(ctx context.Context, ts *topo.Server, keyspaceName string,
 }
 
 func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error, keyspaceName string, cells []string) error {
+	log.Infof("Creating database %v", keyspaceName)
 	_, err := ts.GetOrCreateShard(ctx, keyspaceName, defaultShardName)
 	if err != nil {
 		return fmt.Errorf("CreateKeyspace(%v:%v) failed: %v", keyspaceName, defaultShardName, err)
@@ -87,6 +89,7 @@ func createDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error
 }
 
 func dropDatabaseInternal(ctx context.Context, ts *topo.Server, f func() error, keyspaceName string, cells []string) error {
+	log.Info("Dropping database %v", keyspaceName)
 	if err := ts.DeleteShard(ctx, keyspaceName, defaultShardName); err != nil {
 		return err
 	}
