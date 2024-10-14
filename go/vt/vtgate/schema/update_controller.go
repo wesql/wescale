@@ -22,7 +22,6 @@ limitations under the License.
 package schema
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -31,6 +30,8 @@ import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
 	"vitess.io/vitess/go/vt/discovery"
+
+	"vitess.io/vitess/go/vt/log"
 )
 
 type (
@@ -54,7 +55,6 @@ type (
 )
 
 func (u *updateController) consume() {
-	log.Printf("enter tracker consueme")
 	for {
 		time.Sleep(u.consumeDelay)
 
@@ -73,22 +73,20 @@ func (u *updateController) consume() {
 		var success bool
 		if loaded {
 			success = u.update(u.keyspaceStr, item)
-			log.Printf("loaded: tracker consume update, success: %v", success)
+			log.Infof("tracker consume update, success: %v", success)
 		} else {
 			if err := u.reloadKeyspace(u.keyspaceStr, item); err == nil {
 				success = true
-				log.Printf("reload: tracker consume update, success: %v", success)
 			} else {
 				if checkIfWeShouldIgnoreKeyspace(err) {
-					log.Printf("tracker: set ignore true")
 					u.setIgnore(true)
 				}
 				success = false
-				log.Printf("tracker consume update, failed to reload keyspace %s: %v, success is false", u.keyspaceStr, err)
+				log.Errorf("tracker consume update, failed to load keyspace: %v", err)
 			}
 		}
 		if success && u.signal != nil {
-			log.Printf("tracker consume update, execute u.signal now.")
+			log.Infof("call signal")
 			u.signal()
 		}
 	}
@@ -147,6 +145,7 @@ func (u *updateController) getItemFromQueueLocked() *discovery.TabletHealth {
 func (u *updateController) add(th *discovery.TabletHealth) {
 	// For non-primary tablet health, there is no schema tracking.
 	if th.Target.TabletType != topodatapb.TabletType_PRIMARY {
+		log.Infof("return because is not primary")
 		return
 	}
 
@@ -157,6 +156,7 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 	// The connection will get reset and the tracker needs to reload the schema for the keyspace.
 	if !th.Serving {
 		u.loaded = false
+		log.Infof("%v is not serving, return", u)
 		return
 	}
 
@@ -172,9 +172,9 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 	}
 
 	if u.ignore {
+		log.Infof("%v is ignore", u)
 		// keyspace marked as not working correctly, so we are ignoring it for now
 		//return
-		log.Printf("tracker: ignoring keyspace %s, but we won't return now", th.Target.Keyspace)
 	}
 
 	if u.queue == nil {
@@ -182,6 +182,7 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 		go u.consume()
 	}
 	u.queue.items = append(u.queue.items, th)
+	log.Infof("add th %v to queues: %v", th, u.queue)
 }
 
 func (u *updateController) setLoaded(loaded bool) {
