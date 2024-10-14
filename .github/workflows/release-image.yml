@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        registry: [ "dockerhub", "aliyun", "aliyunnew" ]
+        registry: [ "dockerhub", "aliyun" ]
     needs: image-tag
     uses: wesql/wesql-cd/.github/workflows/release-image.yml@v0.2.0
     with:
