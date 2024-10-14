@@ -194,8 +194,10 @@ func (t *Tracker) Start() {
 						ksUpdater.add(th)
 					}
 				}
+				log.Infof("got a schema change for keyspace %s", th.Target.Keyspace)
 			case <-ctx.Done():
 				// closing of the channel happens outside the scope of the tracker. It is the responsibility of the one who created this tracker.
+				log.Infof("stopping schema tracking")
 				return
 			}
 		}

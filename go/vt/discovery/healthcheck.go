@@ -562,6 +562,7 @@ func (hc *HealthCheckImpl) updateHealth(th *TabletHealth, prevTarget *query.Targ
 
 	// broadcast to subscribers
 	hc.broadcast(th)
+	log.Infof("updateHealth broadcast %v to subscribers", th)
 }
 
 func (hc *HealthCheckImpl) recomputeHealthy(key KeyspaceShardTabletType) {
