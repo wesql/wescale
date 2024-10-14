@@ -392,6 +392,7 @@ func (hs *healthStreamer) reload() error {
 	hs.state.RealtimeStats.ViewSchemaChanged = views
 	hs.state.RealtimeStats.DbList = dbList
 	shr := proto.Clone(hs.state).(*querypb.StreamHealthResponse)
+	log.Infof("database list: %v", dbList)
 	hs.broadCastToClients(shr)
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil

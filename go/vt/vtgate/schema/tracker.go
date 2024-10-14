@@ -188,13 +188,14 @@ func (t *Tracker) Start() {
 		for {
 			select {
 			case th := <-t.ch:
+				log.Infof("got a schema change for db_list %v", th.Stats.DbList)
 				ksUpdaters := t.getKeyspaceUpdateControllerArray(th)
 				if len(ksUpdaters) > 0 {
 					for _, ksUpdater := range ksUpdaters {
 						ksUpdater.add(th)
 					}
 				}
-				log.Infof("got a schema change for keyspace %s", th.Target.Keyspace)
+				log.Infof("ksUpdaters %v", ksUpdaters)
 			case <-ctx.Done():
 				// closing of the channel happens outside the scope of the tracker. It is the responsibility of the one who created this tracker.
 				log.Infof("stopping schema tracking")
