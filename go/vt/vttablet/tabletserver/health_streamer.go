@@ -205,6 +205,7 @@ func (hs *healthStreamer) Stream(ctx context.Context, callback func(*querypb.Str
 				}
 				return err
 			}
+			log.Info("stream is called, and shr: %v is sent", shr)
 		}
 	}
 }
@@ -276,6 +277,7 @@ func (hs *healthStreamer) broadCastToClients(shr *querypb.StreamHealthResponse) 
 	for ch := range hs.clients {
 		select {
 		case ch <- shr:
+			log.Infof("Sent health update to streaming client, %v", shr)
 		default:
 			// We can't block this state change on broadcasting to a streaming health client, but we
 			// also don't want to silently fail to inform a streaming health client of a state change
