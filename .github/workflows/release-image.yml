@@ -31,11 +31,17 @@ jobs:
           echo tag_name=$TAG_NAME >> $GITHUB_OUTPUT
 
   release-image:
+    strategy:
+      fail-fast: false
+      matrix:
+        registry: [ "dockerhub", "aliyun", "aliyunnew" ]
     needs: image-tag
-    uses: wesql/wesql-cd/.github/workflows/release-image.yml@v0.1.0
+    uses: wesql/wesql-cd/.github/workflows/release-image.yml@v0.2.0
     with:
       MAKE_OPS: "push-images"
       IMG: "apecloud/apecloud-mysql-scale"
       VERSION: "${{ needs.image-tag.outputs.tag-name }}"
-      GO_VERSION: "1.20"
+      GO_VERSION: "1.21"
+      SET_REGISTRY: "${{ matrix.registry }}"
     secrets: inherit
+
