@@ -215,7 +215,7 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 		return nil
 	}
 	// only primary tablets return schema info, see health_streamer.go#reload()
-	if th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+	if th.Target.TabletType != topodatapb.TabletType_PRIMARY {
 		return nil
 	}
 	// make sure we have the keyspace meta and the updateController
