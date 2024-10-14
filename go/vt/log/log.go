@@ -29,12 +29,18 @@ import (
 // Level is used with V() to test log verbosity.
 type Level = glog.Level
 
+const DebugVerbosity = 5
+
 var (
 	// V quickly checks if the logging verbosity meets a threshold.
 	V = glog.V
 
 	// Flush ensures any pending I/O is written.
 	Flush = glog.Flush
+
+	Debug      = glog.V(DebugVerbosity).Info
+	Debugf     = glog.V(DebugVerbosity).Infof
+	DebugDepth = glog.V(DebugVerbosity).InfoDepth
 
 	// Info formats arguments like fmt.Print.
 	Info = glog.Info
