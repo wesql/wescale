@@ -295,7 +295,7 @@ func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
 	tracker.tracked["ks2"] = tracker.newUpdateController("ks2")
 
 	th1 := &discovery.TabletHealth{
-		Target: &querypb.Target{Keyspace: "ks1"},
+		Target: &querypb.Target{Keyspace: "ks1", TabletType: topodatapb.TabletType_PRIMARY},
 		Stats:  &querypb.RealtimeStats{},
 		Tablet: &topodatapb.Tablet{
 			Type: topodatapb.TabletType_PRIMARY,
@@ -304,7 +304,7 @@ func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
 	ks1 := tracker.getKeyspaceUpdateController(th1)
 
 	th2 := &discovery.TabletHealth{
-		Target: &querypb.Target{Keyspace: "ks2"},
+		Target: &querypb.Target{Keyspace: "ks2", TabletType: topodatapb.TabletType_PRIMARY},
 		Stats:  &querypb.RealtimeStats{},
 		Tablet: &topodatapb.Tablet{
 			Type: topodatapb.TabletType_PRIMARY,
@@ -313,7 +313,7 @@ func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
 	ks2 := tracker.getKeyspaceUpdateController(th2)
 
 	th3 := &discovery.TabletHealth{
-		Target: &querypb.Target{Keyspace: "ks3"},
+		Target: &querypb.Target{Keyspace: "ks3", TabletType: topodatapb.TabletType_PRIMARY},
 		Stats:  &querypb.RealtimeStats{},
 		Tablet: &topodatapb.Tablet{
 			Type: topodatapb.TabletType_PRIMARY,

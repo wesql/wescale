@@ -360,9 +360,9 @@ func Init(
 	engine.RegisterPushdownDbOp(serv, gw)
 
 	// connect the schema tracker with the vschema manager
-	if enableSchemaChangeSignal {
-		st.RegisterSignalReceiver(executor.vm.Rebuild)
-	}
+	//if enableSchemaChangeSignal {
+	//	st.RegisterSignalReceiver(executor.vm.Rebuild)
+	//}
 
 	// TODO: call serv.WatchSrvVSchema here
 
