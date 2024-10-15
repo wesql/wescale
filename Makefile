@@ -312,11 +312,15 @@ define buildx_docker_image
 	chmod -R o=rx *;
 	echo "Building docker using amd64/arm64 buildx";
 	docker buildx build --squash --platform ${BUILDX_PLATFORMS} -f ${1} \
-		-t ${IMG}:${VERSION} ${BUILDX_ARGS} --push .;
+		-t ${IMG}:${VERSION} ${BUILDX_ARGS} ${2} .;
 endef
 
 push-images:
-	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release}
+	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release,--push}
+
+#make build-image IMG=apecloud/apecloud-mysql-scale VERSION=local-latest BUILDX_PLATFORMS=linux/amd64,linux/arm64
+build-image:
+	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release,}
 
 tools/bin/failpoint-ctl:
 	GOBIN=$(shell pwd)/tools/bin go install github.com/pingcap/failpoint/failpoint-ctl@2eaa328
