@@ -398,16 +398,16 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 			break
 		}
 		failpoint.Inject(failpointkey.AssertRoutingTabletType.Name, func(val failpoint.Value) {
-			if val.(string) == "primary" && th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+			if val.(string) == "primary" && th.Target.TabletType != topodatapb.TabletType_PRIMARY {
 				os.Exit(-1)
 			}
-			if val.(string) == "replica" && th.Tablet.Type != topodatapb.TabletType_REPLICA {
+			if val.(string) == "replica" && th.Target.TabletType != topodatapb.TabletType_REPLICA {
 				os.Exit(-1)
 			}
-			if val.(string) == "rdonly" && th.Tablet.Type != topodatapb.TabletType_RDONLY {
+			if val.(string) == "rdonly" && th.Target.TabletType != topodatapb.TabletType_RDONLY {
 				os.Exit(-1)
 			}
-			if (val.(string) == "replica or rdonly" || val.(string) == "rdonly or replica") && th.Tablet.Type != topodatapb.TabletType_RDONLY && th.Tablet.Type != topodatapb.TabletType_REPLICA {
+			if (val.(string) == "replica or rdonly" || val.(string) == "rdonly or replica") && th.Target.TabletType != topodatapb.TabletType_RDONLY && th.Tablet.Type != topodatapb.TabletType_REPLICA {
 				os.Exit(-1)
 			}
 		})

@@ -83,6 +83,7 @@ var (
 	// visible to the healthcheck. By default the healthcheck will watch all keyspaces.
 	KeyspacesToWatch []string
 
+	//todo earayu: tabletFilters is useless now, remove it
 	// tabletFilters are the keyspace|shard or keyrange filters to apply to the full set of tablets.
 	tabletFilters []string
 
