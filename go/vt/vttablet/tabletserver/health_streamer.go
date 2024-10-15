@@ -205,7 +205,7 @@ func (hs *healthStreamer) Stream(ctx context.Context, callback func(*querypb.Str
 				}
 				return err
 			}
-			log.Info("stream is called, and shr: %v is sent", shr)
+			log.Debugf("stream is called, and shr: %v is sent", shr)
 		}
 	}
 }
@@ -277,7 +277,7 @@ func (hs *healthStreamer) broadCastToClients(shr *querypb.StreamHealthResponse) 
 	for ch := range hs.clients {
 		select {
 		case ch <- shr:
-			log.Infof("Sent health update to streaming client, %v", shr)
+			log.Debugf("Sent health update to streaming client, %v", shr)
 		default:
 			// We can't block this state change on broadcasting to a streaming health client, but we
 			// also don't want to silently fail to inform a streaming health client of a state change
@@ -392,7 +392,7 @@ func (hs *healthStreamer) reload() error {
 	hs.state.RealtimeStats.ViewSchemaChanged = views
 	hs.state.RealtimeStats.DbList = dbList
 	shr := proto.Clone(hs.state).(*querypb.StreamHealthResponse)
-	log.Infof("database list: %v", dbList)
+	log.Debugf("database list: %v", dbList)
 	hs.broadCastToClients(shr)
 	hs.state.RealtimeStats.TableSchemaChanged = nil
 	hs.state.RealtimeStats.ViewSchemaChanged = nil

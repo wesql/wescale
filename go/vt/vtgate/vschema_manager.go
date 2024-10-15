@@ -162,7 +162,7 @@ func (vm *VSchemaManager) Rebuild() {
 	v := vm.currentSrvVschema
 	vm.mu.Unlock()
 
-	log.Infof("Rebuild: Received schema update")
+	log.Debugf("Rebuild: Received schema update")
 	if v == nil {
 		log.Infof("No vschema to enhance")
 		return

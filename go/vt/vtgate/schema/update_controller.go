@@ -73,7 +73,7 @@ func (u *updateController) consume() {
 		var success bool
 		if loaded {
 			success = u.update(u.keyspaceStr, item)
-			log.Infof("tracker consume update, success: %v", success)
+			log.Debugf("tracker consume update, success: %v", success)
 		} else {
 			if err := u.reloadKeyspace(u.keyspaceStr, item); err == nil {
 				success = true
@@ -82,11 +82,11 @@ func (u *updateController) consume() {
 					u.setIgnore(true)
 				}
 				success = false
-				log.Errorf("tracker consume update, failed to load keyspace: %v", err)
+				log.Debugf("tracker consume update, failed to load keyspace: %v", err)
 			}
 		}
 		if success && u.signal != nil {
-			log.Infof("call signal")
+			log.Debugf("call signal")
 			u.signal()
 		}
 	}
@@ -145,7 +145,7 @@ func (u *updateController) getItemFromQueueLocked() *discovery.TabletHealth {
 func (u *updateController) add(th *discovery.TabletHealth) {
 	// For non-primary tablet health, there is no schema tracking.
 	if th.Target.TabletType != topodatapb.TabletType_PRIMARY {
-		log.Infof("return because is not primary")
+		log.Debugf("return because is not primary")
 		return
 	}
 
@@ -156,7 +156,7 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 	// The connection will get reset and the tracker needs to reload the schema for the keyspace.
 	if !th.Serving {
 		u.loaded = false
-		log.Infof("%v is not serving, return", u)
+		log.Debugf("%v is not serving, return", u)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 	}
 
 	if u.ignore {
-		log.Infof("%v is ignore", u)
+		log.Debugf("%v is ignore", u)
 		// keyspace marked as not working correctly, so we are ignoring it for now
 		//return
 	}
@@ -182,7 +182,7 @@ func (u *updateController) add(th *discovery.TabletHealth) {
 		go u.consume()
 	}
 	u.queue.items = append(u.queue.items, th)
-	log.Infof("add th %v to queues: %v", th, u.queue)
+	log.Debugf("add th %v to queues: %v", th, u.queue)
 }
 
 func (u *updateController) setLoaded(loaded bool) {
