@@ -562,7 +562,6 @@ func (hc *HealthCheckImpl) updateHealth(th *TabletHealth, prevTarget *query.Targ
 	}
 
 	// broadcast to subscribers
-	th.Tablet.Type = th.Target.TabletType
 	hc.broadcast(th)
 	log.Infof("updateHealth broadcast %v to subscribers", th)
 }

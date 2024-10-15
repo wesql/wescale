@@ -217,6 +217,7 @@ func (thc *tabletHealthCheck) processResponse(hc *HealthCheckImpl, shr *query.St
 			log.Errorf("Error decoding position: %v, position str: %s", err, shr.Position)
 		}
 	}
+	thc.Tablet.Type = thc.Target.TabletType
 
 	// notify downstream for primary change
 	hc.updateHealth(thc.SimpleCopy(), prevTarget, trivialUpdate, thc.Serving)

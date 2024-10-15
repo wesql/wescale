@@ -205,6 +205,7 @@ func (t *Tracker) Start() {
 	}(ctx, t)
 }
 
+// todo newborn22 remove this
 // getKeyspaceUpdateController returns the updateController for the given keyspace
 // the updateController will be created if there was none.
 func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updateController {
@@ -228,6 +229,7 @@ func (t *Tracker) getKeyspaceUpdateController(th *discovery.TabletHealth) *updat
 	return ksUpdater
 }
 
+// todo newborn22 add UT
 // getKeyspaceUpdateController returns the updateController for all keyspaces
 // the updateController will be created if there was none.
 func (t *Tracker) getKeyspaceUpdateControllerArray(th *discovery.TabletHealth) []*updateController {
@@ -238,7 +240,7 @@ func (t *Tracker) getKeyspaceUpdateControllerArray(th *discovery.TabletHealth) [
 		return nil
 	}
 	// only primary tablets return schema info, see health_streamer.go#reload()
-	if th.Tablet.Type != topodatapb.TabletType_PRIMARY {
+	if th.Target.TabletType != topodatapb.TabletType_PRIMARY {
 		return nil
 	}
 	// make sure we have the keyspace meta and the updateController
