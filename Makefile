@@ -318,7 +318,7 @@ endef
 push-images:
 	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release,--push}
 
-#make build-image IMG=apecloud/apecloud-mysql-scale VERSION=local-latest BUILDX_PLATFORMS=linux/amd64,linux/arm64
+# make build-image IMG=apecloud/apecloud-mysql-scale VERSION=local-latest BUILDX_PLATFORMS=linux/arm64
 build-image:
 	${call buildx_docker_image,docker/wesqlscale/Dockerfile.release,}
 
