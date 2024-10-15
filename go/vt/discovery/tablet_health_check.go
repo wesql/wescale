@@ -299,10 +299,10 @@ func (thc *tabletHealthCheck) checkConn(hc *HealthCheckImpl) {
 			// Don't block on send to avoid deadlocks.
 			select {
 			case servingStatus <- shr.Serving:
-				log.Infof("health check get tablet serving status: %v", shr.Serving)
+				log.Debugf("health check get tablet serving status: %v", shr.Serving)
 			default:
 			}
-			log.Infof("tablet %v healthcheck response: %+v", thc.Tablet, shr)
+			log.Debugf("tablet %v healthcheck response: %+v", thc.Tablet, shr)
 			return thc.processResponse(hc, shr)
 		})
 
@@ -310,7 +310,7 @@ func (thc *tabletHealthCheck) checkConn(hc *HealthCheckImpl) {
 		streamCancel()
 
 		if err != nil {
-			log.Errorf("healthcheck error for tablet %v: %v", thc.Tablet, err)
+			log.Debugf("healthcheck error for tablet %v: %v", thc.Tablet, err)
 			hcErrorCounters.Add([]string{thc.Target.Keyspace, thc.Target.Shard, topoproto.TabletTypeLString(thc.Target.TabletType)}, 1)
 			// This means that another tablet has taken over the host:port that we were connected to.
 			// So let's remove the tablet's data from the healthcheck, and if it is still a part of the

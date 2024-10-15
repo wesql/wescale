@@ -284,33 +284,33 @@ func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	}
 }
 
-func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
+func TestTrackerGetKeyspaceUpdateControllerArray(t *testing.T) {
 	ks3 := &updateController{keyspaceStr: "ks3"}
 	tracker := Tracker{
 		tracked: map[keyspaceStr]*updateController{
 			"ks3": ks3,
 		},
 	}
-	tracker.tracked["ks1"] = tracker.newUpdateController("ks1")
-	tracker.tracked["ks2"] = tracker.newUpdateController("ks2")
+	tracker.tracked["ksArray1"] = tracker.newUpdateController("ksArray1")
+	tracker.tracked["ksArray2"] = tracker.newUpdateController("ksArray2")
 
 	th1 := &discovery.TabletHealth{
-		Target: &querypb.Target{Keyspace: "ks1", TabletType: topodatapb.TabletType_PRIMARY},
+		Target: &querypb.Target{Keyspace: "ksArray1", TabletType: topodatapb.TabletType_PRIMARY},
 		Stats:  &querypb.RealtimeStats{},
 		Tablet: &topodatapb.Tablet{
 			Type: topodatapb.TabletType_PRIMARY,
 		},
 	}
-	ks1 := tracker.getKeyspaceUpdateController(th1)
+	ksArray1 := tracker.getKeyspaceUpdateControllerArray(th1)
 
 	th2 := &discovery.TabletHealth{
-		Target: &querypb.Target{Keyspace: "ks2", TabletType: topodatapb.TabletType_PRIMARY},
+		Target: &querypb.Target{Keyspace: "ksArray2", TabletType: topodatapb.TabletType_PRIMARY},
 		Stats:  &querypb.RealtimeStats{},
 		Tablet: &topodatapb.Tablet{
 			Type: topodatapb.TabletType_PRIMARY,
 		},
 	}
-	ks2 := tracker.getKeyspaceUpdateController(th2)
+	ksArray2 := tracker.getKeyspaceUpdateControllerArray(th2)
 
 	th3 := &discovery.TabletHealth{
 		Target: &querypb.Target{Keyspace: "ks3", TabletType: topodatapb.TabletType_PRIMARY},
@@ -320,14 +320,22 @@ func TestTrackerGetKeyspaceUpdateController(t *testing.T) {
 		},
 	}
 
-	assert.NotEqual(t, ks1, ks2, "ks1 and ks2 should not be equal, belongs to different keyspace")
-	assert.Equal(t, ks1, tracker.getKeyspaceUpdateController(th1), "received different updateController")
-	assert.Equal(t, ks2, tracker.getKeyspaceUpdateController(th2), "received different updateController")
-	assert.Equal(t, ks3, tracker.getKeyspaceUpdateController(th3), "received different updateController")
+	ksArray3 := tracker.getKeyspaceUpdateControllerArray(th3)
 
-	assert.NotNil(t, ks1.reloadKeyspace, "ks1 needs to be initialized")
-	assert.NotNil(t, ks2.reloadKeyspace, "ks2 needs to be initialized")
-	assert.Nil(t, ks3.reloadKeyspace, "ks3 already initialized")
+	for _, v := range ksArray1 {
+		assert.Contains(t, ksArray2, v)
+	}
+	for _, v := range ksArray2 {
+		assert.Contains(t, ksArray1, v)
+	}
+
+	for _, v := range ksArray3 {
+		assert.Contains(t, ksArray2, v)
+	}
+	for _, v := range ksArray2 {
+		assert.Contains(t, ksArray3, v)
+	}
+
 }
 
 // TestViewsTracking tests that the tracker is able to track views.
