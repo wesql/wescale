@@ -97,40 +97,40 @@ func detectGroupReplicationRole(conn *mysql.Conn) (string, error) {
 	groupName, err := getGlobalVariable(conn, "group_replication_group_name")
 	if err != nil || groupName == "" {
 		// Not using Group Replication
-		return "", nil
+		return UNKNOWN, nil
 	}
 
 	// Check if Single-Primary Mode is enabled
 	singlePrimaryMode, err := getGlobalVariable(conn, "group_replication_single_primary_mode")
 	if err != nil {
-		return "", fmt.Errorf("failed to get group_replication_single_primary_mode: %v", err)
+		return UNKNOWN, fmt.Errorf("failed to get group_replication_single_primary_mode: %v", err)
 	}
 
 	// Get the member role and state
 	query := "SELECT MEMBER_ROLE, MEMBER_STATE FROM performance_schema.replication_group_members WHERE MEMBER_ID = @@server_uuid"
 	qr, err := conn.ExecuteFetch(query, 1, true)
 	if err != nil || len(qr.Rows) == 0 {
-		return "", fmt.Errorf("failed to get group replication member info: %v", err)
+		return UNKNOWN, fmt.Errorf("failed to get group replication member info: %v", err)
 	}
 	memberRole := qr.Rows[0][0].ToString()
 	memberState := qr.Rows[0][1].ToString()
 
 	if memberState != "ONLINE" {
-		return "", nil
+		return UNKNOWN, nil
 	}
 
 	if singlePrimaryMode == "ON" {
 		if memberRole == "PRIMARY" {
-			return "MASTER", nil
+			return PRIMARY, nil
 		} else if memberRole == "SECONDARY" {
-			return "REPLICA", nil
+			return FOLLOWER, nil
 		}
 	} else {
 		// Multi-Primary Mode is not supported; return UNKNOWN
-		return "", nil
+		return UNKNOWN, nil
 	}
 
-	return "", nil
+	return UNKNOWN, nil
 }
 
 // getGlobalVariable fetches the value of a MySQL global system variable.
