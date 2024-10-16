@@ -28,8 +28,8 @@ var (
 	mysqlRoleProbeEnable   = true
 	mysqlRoleProbeInterval = 1 * time.Second
 	mysqlRoleProbeTimeout  = 1 * time.Second
-	// http, wesql, mysql
-	mysqlRoleProbeImplementation = "wesql"
+	// auto, http, wesql, mysql
+	mysqlRoleProbeImplementation = "auto"
 )
 
 const (
@@ -77,6 +77,10 @@ func registerRoleListenerFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&mysqlRoleProbeImplementation, "mysql_role_probe_implementation", mysqlRoleProbeImplementation, "mysql role probe implementation")
 }
 
+type ProbeFunc func(ctx context.Context) (string, error)
+
+var ProbeFuncMap = make(map[string]ProbeFunc)
+
 type Listener struct {
 	isOpen          int64
 	cancelOperation context.CancelFunc
@@ -88,25 +92,21 @@ type Listener struct {
 
 	changeTypeFunc func(ctx context.Context, lastUpdate time.Time, targetTabletType topodatapb.TabletType) (bool, error)
 
-	probeFunc func(ctx context.Context) (string, error)
+	probeFunc ProbeFunc
 }
 
 func NewListener(changeTypeFunc func(ctx context.Context, lastUpdate time.Time, tabletType topodatapb.TabletType) (bool, error), dbcfgs *dbconfigs.DBConfigs) *Listener {
-	var probeFunc func(ctx context.Context) (string, error)
-	switch mysqlRoleProbeImplementation {
-	case "http":
-		probeFunc = httpProbe
-	case "wesql":
-		weSqlDbConfigs = dbcfgs
-		probeFunc = wesqlProbe
-	case "mysql":
-		mysqlDbConfigs = dbcfgs
-		probeFunc = mysqlProbe
-	}
+	ProbeFuncMap["http"] = httpProbe
+	weSqlDbConfigs = dbcfgs
+	ProbeFuncMap["wesql"] = wesqlProbe
+	mysqlDbConfigs = dbcfgs
+	ProbeFuncMap["mysql"] = mysqlProbe
+	ProbeFuncMap["auto"] = autoProbe
+
 	l := &Listener{
 		isOpen:         0,
 		changeTypeFunc: changeTypeFunc,
-		probeFunc:      probeFunc,
+		probeFunc:      ProbeFuncMap[mysqlRoleProbeImplementation],
 	}
 	return l
 }
