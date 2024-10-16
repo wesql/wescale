@@ -69,11 +69,36 @@ func mysqlProbe(ctx context.Context) (string, error) {
 
 // checkIfReplica checks if the instance is configured as a replica.
 func checkIfReplica(conn *mysql.Conn) (bool, error) {
-	qr, err := conn.ExecuteFetch("SHOW SLAVE STATUS", 1, true)
-	if err != nil {
-		return false, fmt.Errorf("failed to execute SHOW SLAVE STATUS: %v", err)
+	// First, try "SHOW REPLICA STATUS" (new in MySQL 8.0.22)
+	qr, err := conn.ExecuteFetch("SHOW REPLICA STATUS", 1, true)
+	if err == nil {
+		return len(qr.Rows) > 0, nil
 	}
-	return len(qr.Rows) > 0, nil
+
+	// Check if the error is due to syntax error (command not recognized)
+	if isSyntaxError(err) {
+		// Try the deprecated "SHOW SLAVE STATUS"
+		qr, err = conn.ExecuteFetch("SHOW SLAVE STATUS", 1, true)
+		if err != nil {
+			return false, fmt.Errorf("failed to execute SHOW REPLICA STATUS or SHOW SLAVE STATUS: %v", err)
+		}
+		return len(qr.Rows) > 0, nil
+	}
+
+	// If the error is not a syntax error, return it
+	return false, fmt.Errorf("failed to execute SHOW REPLICA STATUS: %v", err)
+}
+
+// isSyntaxError checks if the error is a syntax error indicating an unrecognized command.
+func isSyntaxError(err error) bool {
+	// You might need to inspect the error message or code to determine if it's a syntax error.
+	// This is a simplified example; adjust the condition based on actual error handling.
+	mysqlErr, ok := err.(*mysql.SQLError)
+	if !ok {
+		return false
+	}
+	// MySQL error code 1064 indicates a syntax error.
+	return mysqlErr.Num == 1064
 }
 
 // isReadOnly checks if the instance is in read-only mode.
