@@ -8,57 +8,132 @@ jobs:
   cherry-pick:
     if: startsWith(github.event.comment.body, '/cherry-pick ')
     runs-on: ubuntu-latest
+
     steps:
       - name: Extract information
         id: extract
         run: |
-          echo "::set-output name=RELEASE_BRANCH::$(echo '${{ github.event.comment.body }}' | sed -n 's/\/cherry-pick\s\+\(.*\)/\1/p')"
-          echo "::set-output name=PR_NUMBER::${{ github.event.issue.number }}"
+          RELEASE_BRANCH=$(echo '${{ github.event.comment.body }}' | sed -E 's#/cherry-pick\s+(\S+)#\1#')
+          echo "RELEASE_BRANCH=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          echo "COMMENT_USER=${{ github.event.comment.user.login }}" >> $GITHUB_OUTPUT
+
+      - name: Check user permissions
+        id: permission
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const username = '${{ steps.extract.outputs.COMMENT_USER }}';
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username,
+            });
+            const permitted = ['admin', 'write', 'maintain'].includes(data.permission);
+            core.setOutput('permitted', permitted.toString());
+
+      - name: Verify user permissions
+        if: steps.permission.outputs.permitted != 'true'
+        run: |
+          echo "User ${{ steps.extract.outputs.COMMENT_USER }} does not have write permissions."
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Determine PR merge status
-        id: pr_status
-        uses: octokit/request-action@v2
-        with:
-          route: GET /repos/${{ github.repository }}/pulls/${{ steps.extract.outputs.PR_NUMBER }}
-          mediaType: '{"format":"json"}'
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Get commits to cherry-pick
-        id: get_commits
+
+      - name: Check if release branch exists
         run: |
-          if [ "${{ steps.pr_status.outputs.data.merged }}" = "true" ]; then
-            # PR 已合并，获取合并提交的哈希值
-            echo "::set-output name=COMMITS::${{ steps.pr_status.outputs.data.merge_commit_sha }}"
+          if git ls-remote --heads origin "${{ steps.extract.outputs.RELEASE_BRANCH }}" | grep -q "${{ steps.extract.outputs.RELEASE_BRANCH }}"; then
+            echo "Release branch exists."
           else
-            # PR 未合并，获取 PR 的提交哈希值
-            COMMITS=$(git log origin/${{ steps.extract.outputs.RELEASE_BRANCH }}..origin/pull/${{ steps.extract.outputs.PR_NUMBER }}/head --pretty=format:"%H" | tac)
-            echo "::set-output name=COMMITS::$COMMITS"
+            echo "Release branch '${{ steps.extract.outputs.RELEASE_BRANCH }}' does not exist."
+            exit 1
           fi
-      - name: Cherry-pick commits
+
+      - name: Get PR merge details
+        id: pr_info
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10);
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            core.setOutput('merged', pr.merged ? 'true' : 'false');
+            core.setOutput('merge_commit_sha', pr.merge_commit_sha || '');
+            core.setOutput('merge_method', pr.merge_commit_sha ? 'merge_or_squash' : 'rebase');
+
+      - name: Cherry-pick the merge commit (Merge or Squash)
+        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash'
         run: |
-          git checkout ${{ steps.extract.outputs.RELEASE_BRANCH }}
-          for commit in ${{ steps.get_commits.outputs.COMMITS }}; do
-            git cherry-pick $commit || { git cherry-pick --abort; exit 1; }
-          done
+          git checkout "${{ steps.extract.outputs.RELEASE_BRANCH }}"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git cherry-pick "${{ steps.pr_info.outputs.merge_commit_sha }}" || {
+            git cherry-pick --abort
+            echo "Cherry-pick failed due to conflicts."
+            exit 1
+          }
+
       - name: Push changes
-        if: success()
+        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && success()
         run: |
-          git push origin HEAD:${{ steps.extract.outputs.RELEASE_BRANCH }}
-      - name: Comment on PR
-        if: success()
-        uses: actions-ecosystem/action-add-comment@v1
+          git push origin HEAD:"${{ steps.extract.outputs.RELEASE_BRANCH }}"
+
+      - name: Comment on PR (Success)
+        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && success()
+        uses: actions/github-script@v6
         with:
-          issue-number: ${{ steps.extract.outputs.PR_NUMBER }}
-          body: |
-            Successfully cherry-picked to `${{ steps.extract.outputs.RELEASE_BRANCH }}` branch.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Comment on PR (Conflict)
-        if: failure()
-        uses: actions-ecosystem/action-add-comment@v1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
+              body: `✅ Successfully cherry-picked to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch.`
+            });
+
+      - name: Comment on PR (Failure)
+        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && failure()
+        uses: actions/github-script@v6
         with:
-          issue-number: ${{ steps.extract.outputs.PR_NUMBER }}
-          body: |
-            Failed to cherry-pick to `${{ steps.extract.outputs.RELEASE_BRANCH }}` branch due to conflicts. Please resolve manually.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
+              body: `❌ Failed to cherry-pick to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch due to conflicts. Please resolve manually.`
+            });
+
+      - name: Comment on PR (Rebase Merge Not Supported)
+        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'rebase'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
+              body: `⚠️ This PR was merged using **Rebase and Merge** strategy. Automatic cherry-pick is not supported for Rebase merges. Please cherry-pick manually.`
+            });
+
+      - name: Comment on PR (Not Merged)
+        if: steps.pr_info.outputs.merged != 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
+              body: `❌ This PR has not been merged yet. Please merge the PR before attempting to cherry-pick.`
+            });
