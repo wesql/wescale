@@ -4,6 +4,11 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: write
+  pull-requests: read
+  issues: write
+
 jobs:
   cherry-pick:
     if: startsWith(github.event.comment.body, '/cherry-pick ')
@@ -13,8 +18,7 @@ jobs:
       - name: Extract information
         id: extract
         run: |
-          RELEASE_BRANCH=$(echo '${{ github.event.comment.body }}' | sed -E 's#/cherry-pick\s+(\S+)#\1#')
-          echo "RELEASE_BRANCH=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "RELEASE_BRANCH=$(echo '${{ github.event.comment.body }}' | sed -E 's#/cherry-pick\s+(\S+)#\1#')" >> $GITHUB_OUTPUT
           echo "PR_NUMBER=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           echo "COMMENT_USER=${{ github.event.comment.user.login }}" >> $GITHUB_OUTPUT
 
@@ -53,54 +57,53 @@ jobs:
             exit 1
           fi
 
-      - name: Get PR merge details
-        id: pr_info
+      - name: Fetch PR commits
+        id: fetch_commits
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const prNumber = parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10);
-            const { data: pr } = await github.rest.pulls.get({
+            const { data: commits } = await github.rest.pulls.listCommits({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
+              per_page: 250, // Adjust if PRs have more than 250 commits
             });
-            core.setOutput('merged', pr.merged ? 'true' : 'false');
-            core.setOutput('merge_commit_sha', pr.merge_commit_sha || '');
-            core.setOutput('merge_method', pr.merge_commit_sha ? 'merge_or_squash' : 'rebase');
+            const commitSHAs = commits.map(commit => commit.sha).join(' ');
+            core.setOutput('commit_shas', commitSHAs);
 
-      - name: Cherry-pick the merge commit (Merge or Squash)
-        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash'
+      - name: Cherry-pick commits
         run: |
           git checkout "${{ steps.extract.outputs.RELEASE_BRANCH }}"
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git cherry-pick "${{ steps.pr_info.outputs.merge_commit_sha }}" || {
-            git cherry-pick --abort
-            echo "Cherry-pick failed due to conflicts."
-            exit 1
-          }
+          for commit in ${{ steps.fetch_commits.outputs.commit_shas }}; do
+            echo "Cherry-picking commit $commit"
+            git cherry-pick $commit || { git cherry-pick --abort; exit 1; }
+          done
 
       - name: Push changes
-        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && success()
         run: |
           git push origin HEAD:"${{ steps.extract.outputs.RELEASE_BRANCH }}"
 
       - name: Comment on PR (Success)
-        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && success()
+        if: success()
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const commits = '${{ steps.fetch_commits.outputs.commit_shas }}'.split(' ');
+            let commitList = commits.map(sha => `- [\`${sha.substring(0,7)}\`](https://github.com/${{ github.repository }}/commit/${sha})`).join('\n');
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
-              body: `✅ Successfully cherry-picked to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch.`
+              body: `✅ Successfully cherry-picked to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch.\n\n**Cherry-picked Commits:**\n${commitList}`
             });
 
       - name: Comment on PR (Failure)
-        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'merge_or_squash' && failure()
+        if: failure()
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -109,31 +112,5 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
-              body: `❌ Failed to cherry-pick to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch due to conflicts. Please resolve manually.`
-            });
-
-      - name: Comment on PR (Rebase Merge Not Supported)
-        if: steps.pr_info.outputs.merged == 'true' && steps.pr_info.outputs.merge_method == 'rebase'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
-              body: `⚠️ This PR was merged using **Rebase and Merge** strategy. Automatic cherry-pick is not supported for Rebase merges. Please cherry-pick manually.`
-            });
-
-      - name: Comment on PR (Not Merged)
-        if: steps.pr_info.outputs.merged != 'true'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: parseInt('${{ steps.extract.outputs.PR_NUMBER }}', 10),
-              body: `❌ This PR has not been merged yet. Please merge the PR before attempting to cherry-pick.`
+              body: `❌ Failed to cherry-pick to \`${{ steps.extract.outputs.RELEASE_BRANCH }}\` branch due to conflicts or errors. Please resolve manually.`
             });
