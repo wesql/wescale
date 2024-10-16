@@ -1,0 +1,64 @@
+name: Cherry-pick PR to Release Branch
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  cherry-pick:
+    if: startsWith(github.event.comment.body, '/cherry-pick ')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract information
+        id: extract
+        run: |
+          echo "::set-output name=RELEASE_BRANCH::$(echo '${{ github.event.comment.body }}' | sed -n 's/\/cherry-pick\s\+\(.*\)/\1/p')"
+          echo "::set-output name=PR_NUMBER::${{ github.event.issue.number }}"
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Determine PR merge status
+        id: pr_status
+        uses: octokit/request-action@v2
+        with:
+          route: GET /repos/${{ github.repository }}/pulls/${{ steps.extract.outputs.PR_NUMBER }}
+          mediaType: '{"format":"json"}'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get commits to cherry-pick
+        id: get_commits
+        run: |
+          if [ "${{ steps.pr_status.outputs.data.merged }}" = "true" ]; then
+            # PR 已合并，获取合并提交的哈希值
+            echo "::set-output name=COMMITS::${{ steps.pr_status.outputs.data.merge_commit_sha }}"
+          else
+            # PR 未合并，获取 PR 的提交哈希值
+            COMMITS=$(git log origin/${{ steps.extract.outputs.RELEASE_BRANCH }}..origin/pull/${{ steps.extract.outputs.PR_NUMBER }}/head --pretty=format:"%H" | tac)
+            echo "::set-output name=COMMITS::$COMMITS"
+          fi
+      - name: Cherry-pick commits
+        run: |
+          git checkout ${{ steps.extract.outputs.RELEASE_BRANCH }}
+          for commit in ${{ steps.get_commits.outputs.COMMITS }}; do
+            git cherry-pick $commit || { git cherry-pick --abort; exit 1; }
+          done
+      - name: Push changes
+        if: success()
+        run: |
+          git push origin HEAD:${{ steps.extract.outputs.RELEASE_BRANCH }}
+      - name: Comment on PR
+        if: success()
+        uses: actions-ecosystem/action-add-comment@v1
+        with:
+          issue-number: ${{ steps.extract.outputs.PR_NUMBER }}
+          body: |
+            Successfully cherry-picked to `${{ steps.extract.outputs.RELEASE_BRANCH }}` branch.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Comment on PR (Conflict)
+        if: failure()
+        uses: actions-ecosystem/action-add-comment@v1
+        with:
+          issue-number: ${{ steps.extract.outputs.PR_NUMBER }}
+          body: |
+            Failed to cherry-pick to `${{ steps.extract.outputs.RELEASE_BRANCH }}` branch due to conflicts. Please resolve manually.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
