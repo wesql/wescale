@@ -27,7 +27,7 @@ var (
 )
 
 // mysqlProbe determines the role of a MySQL instance.
-// Possible roles: "PRIMARY", "FOLLOWER", ", "UNKNOWN".
+// Possible roles: "PRIMARY", "FOLLOWER", "UNKNOWN".
 func mysqlProbe(ctx context.Context) (string, error) {
 	connector := mysqlDbConfigs.AllPrivsConnector()
 	conn, err := connector.Connect(ctx)
@@ -35,6 +35,16 @@ func mysqlProbe(ctx context.Context) (string, error) {
 		return UNKNOWN, fmt.Errorf("failed to connect to database: %v", err)
 	}
 	defer conn.Close()
+
+	// Check if we are in wesql-server by checking for the existence of the wesql_cluster_local table
+	// If the table exists, return UNKNOWN
+	exists, err := checkTableExists(conn, "information_schema", "wesql_cluster_local")
+	if err != nil {
+		return UNKNOWN, fmt.Errorf("failed to check for table information_schema.wesql_cluster_local: %v", err)
+	}
+	if exists {
+		return UNKNOWN, fmt.Errorf("mysql probe is not supported on wesql-server")
+	}
 
 	// If enabled, check for Group Replication role
 	if mysqlProbeEnableMgr {
@@ -80,6 +90,20 @@ func mysqlProbe(ctx context.Context) (string, error) {
 	return UNKNOWN, nil
 }
 
+// checkTableExists checks if a specific table exists in a given schema.
+func checkTableExists(conn *mysql.Conn, schema string, table string) (bool, error) {
+	query := fmt.Sprintf("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s'", schema, table)
+	qr, err := conn.ExecuteFetch(query, 1, true)
+	if err != nil {
+		return false, err
+	}
+	count, err := qr.Rows[0][0].ToInt64()
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // checkIfReplica checks if the instance is configured as a replica.
 func checkIfReplica(conn *mysql.Conn) (bool, error) {
 	// First, try "SHOW REPLICA STATUS" (new in MySQL 8.0.22)
@@ -104,8 +128,6 @@ func checkIfReplica(conn *mysql.Conn) (bool, error) {
 
 // isSyntaxError checks if the error is a syntax error indicating an unrecognized command.
 func isSyntaxError(err error) bool {
-	// You might need to inspect the error message or code to determine if it's a syntax error.
-	// This is a simplified example; adjust the condition based on actual error handling.
 	mysqlErr, ok := err.(*mysql.SQLError)
 	if !ok {
 		return false
