@@ -17,20 +17,20 @@ func wesqlProbe(ctx context.Context) (string, error) {
 	connector := weSqlDbConfigs.AllPrivsConnector()
 	conn, err := connector.Connect(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to connect to database: %v", err)
+		return UNKNOWN, fmt.Errorf("failed to connect to database: %v", err)
 	}
 	defer conn.Close()
 
 	qr, err := conn.ExecuteFetch(weSqlProbeStatement, 1, true)
 	if err != nil {
-		return "", fmt.Errorf("failed to execute weSqlProbeStatement: %v", err)
+		return UNKNOWN, fmt.Errorf("failed to execute weSqlProbeStatement: %v", err)
 	}
 	if len(qr.Rows) != 1 {
 		log.Errorf("unexpected number of rows returned by weSqlProbeStatement: %d\n", len(qr.Rows))
-		return "", nil
+		return UNKNOWN, nil
 	}
 	if qr.Named() == nil || qr.Named().Row() == nil {
-		return "", fmt.Errorf("unexpected result from weSqlProbeStatement: %v", qr)
+		return UNKNOWN, fmt.Errorf("unexpected result from weSqlProbeStatement: %v", qr)
 	}
 	role, err := qr.Named().Row().ToString("role")
 	return role, err
