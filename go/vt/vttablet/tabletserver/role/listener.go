@@ -28,7 +28,7 @@ var (
 	mysqlRoleProbeEnable   = true
 	mysqlRoleProbeInterval = 1 * time.Second
 	mysqlRoleProbeTimeout  = 1 * time.Second
-	// http, wesql
+	// http, wesql, mysql
 	mysqlRoleProbeImplementation = "wesql"
 )
 
@@ -42,6 +42,7 @@ const (
 	LEARNER   = "Learner"
 	CANDIDATE = "Candidate"
 	LOGGER    = "Logger"
+	UNKNOWN   = "unknown"
 )
 
 func transitionRoleType(role string) topodatapb.TabletType {
@@ -98,6 +99,9 @@ func NewListener(changeTypeFunc func(ctx context.Context, lastUpdate time.Time, 
 	case "wesql":
 		weSqlDbConfigs = dbcfgs
 		probeFunc = wesqlProbe
+	case "mysql":
+		mysqlDbConfigs = dbcfgs
+		probeFunc = mysqlProbe
 	}
 	l := &Listener{
 		isOpen:         0,
