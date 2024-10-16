@@ -90,3 +90,4 @@ users.json
 report
 
 tools/bin/
+**/vtdataroot
