@@ -3,10 +3,24 @@ package role
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/pflag"
 	"vitess.io/vitess/go/mysql"
+	"vitess.io/vitess/go/vt/servenv"
 
 	"vitess.io/vitess/go/vt/dbconfigs"
 )
+
+var (
+	mysqlProbeEnableMgr = false
+)
+
+func init() {
+	servenv.OnParseFor("vttablet", registerMySqlProbeFlags)
+}
+
+func registerMySqlProbeFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(&mysqlProbeEnableMgr, "mysql_probe_enable_mgr", mysqlProbeEnableMgr, "enable mysql probe. default is false")
+}
 
 var (
 	mysqlDbConfigs *dbconfigs.DBConfigs
@@ -22,9 +36,8 @@ func mysqlProbe(ctx context.Context) (string, error) {
 	}
 	defer conn.Close()
 
-	checkGroupReplication := false
 	// If enabled, check for Group Replication role
-	if checkGroupReplication {
+	if mysqlProbeEnableMgr {
 		role, err := detectGroupReplicationRole(conn)
 		if err != nil {
 			return UNKNOWN, err
