@@ -1,4 +1,5 @@
 [vtgate]
+v=100
 gateway_initial_tablet_timeout=30s
 healthcheck_timeout=2s
 srv_topo_timeout=1s

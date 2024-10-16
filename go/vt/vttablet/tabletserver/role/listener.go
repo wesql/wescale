@@ -182,6 +182,7 @@ func (collector *Listener) reconcileLeadership(ctx context.Context) {
 		log.Errorf("failed to probe mysql role, error:%v\n", err)
 		return
 	}
+	log.Debugf("mysqlRoleProbeImplementation: %s, probed role: %s\n", mysqlRoleProbeImplementation, role)
 
 	tabletType := transitionRoleType(role)
 
