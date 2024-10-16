@@ -14,6 +14,10 @@ type probeFuncEntry struct {
 	fn   ProbeFunc
 }
 
+func (p *probeFuncEntry) String() string {
+	return p.name
+}
+
 var (
 	autoRoleProbeImplementationList = []string{"http", "wesql", "mysql"}
 	currentProbeFuncEntryList       = make([]probeFuncEntry, 0)
@@ -28,6 +32,7 @@ func registerAutoProbeFlags(fs *pflag.FlagSet) {
 }
 
 func reloadAutoProbeFuncList() {
+	currentProbeFuncEntryList = make([]probeFuncEntry, 0)
 	log.Infof("Reloading auto probe function list: %s", autoRoleProbeImplementationList)
 	for _, probeFuncName := range autoRoleProbeImplementationList {
 		probeFunc, ok := ProbeFuncMap[probeFuncName]
@@ -47,6 +52,8 @@ func autoProbe(ctx context.Context) (string, error) {
 		// Reload the probe function list if it is empty, this may happen if the probe function all failed at least once
 		reloadAutoProbeFuncList()
 	}
+
+	log.Debugf("Current probe function list: %v", currentProbeFuncEntryList)
 
 	var lastErr error
 	// use probeFunc in currentProbeFuncEntryList to probe the role, if failed, remove it from the list
