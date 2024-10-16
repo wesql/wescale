@@ -46,17 +46,17 @@ func httpProbe(ctx context.Context) (string, error) {
 
 	kvResp, err := doHttpProbe(ctx, http.MethodGet, getRoleUrl, nil)
 	if err != nil {
-		return "", fmt.Errorf("try to probe mysql role, but error happened: %v", err)
+		return UNKNOWN, fmt.Errorf("try to probe mysql role, but error happened: %v", err)
 	}
 	role, ok := kvResp["role"]
 	if !ok {
-		return "", fmt.Errorf("unable to get mysql role from probe response, response content: %v", kvResp)
+		return UNKNOWN, fmt.Errorf("unable to get mysql role from probe response, response content: %v", kvResp)
 	}
 
 	// Safely assert the type of role to string.
 	roleStr, ok := role.(string)
 	if !ok {
-		return "", fmt.Errorf("role value is not a string, role:%v", role)
+		return UNKNOWN, fmt.Errorf("role value is not a string, role:%v", role)
 	}
 	return roleStr, nil
 }
