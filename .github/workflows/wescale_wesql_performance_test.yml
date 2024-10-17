@@ -123,6 +123,7 @@ jobs:
             kubectl get configmaps --namespace default
             kubectl get secrets --namespace default
             kubectl describe pod mycluster-wesql-1-0 --namespace default
+            kubectl describe pvc data-mycluster-wesql-2-0 --namespace default
             
             sleep $INTERVAL
 
