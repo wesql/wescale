@@ -112,7 +112,9 @@ jobs:
           START_TIME=$(date +%s)
 
           while true; do
+            kubectl get pods
             kubectl logs $POD_NAME --namespace default || echo "Pod $POD_NAME not found or still initializing"
+            kubectl describe pod $POD_NAME --namespace default
             sleep $INTERVAL
 
             # Check if timeout is reached
