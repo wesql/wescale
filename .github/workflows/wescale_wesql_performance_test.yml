@@ -56,7 +56,7 @@ jobs:
       # Step 6: echo image tag
       - name: Get Secret Information
         run: |
-          echo "${{inputs.wescale_image_tag}}"
+          echo "${{github.event.inputs.wescale_image_tag}}"
 
       # Step 7: Delete the S3 Bucket
       - name: Delete S3 Bucket
