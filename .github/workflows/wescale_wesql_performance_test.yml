@@ -107,24 +107,44 @@ jobs:
       - name: Print Logs of the Pod
         run: |
           POD_NAME="mycluster-wesql-0-0"
+          CONTAINER_NAME="mysql"
+          FILE_PATH="/etc/mysql/auto.conf.d/01_my_custom.cnf"
+          LOCAL_PATH="./01_my_custom.cnf"
           TIMEOUT=600  # 10 minutes
-          INTERVAL=10  # 10 seconds
+          INTERVAL=1  # 1 second
+
           START_TIME=$(date +%s)
 
           while true; do
-            sleep $INTERVAL
-            kubectl get pods
-            kubectl cp mycluster-wesql-0-0:/etc/mysql/auto.conf.d/01_my_custom.cnf ./01_my_custom.cnf -c mysql
-            cat 01_my_custom.cnf
-          
-            # Check if timeout is reached
             CURRENT_TIME=$(date +%s)
             ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-            if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
-              echo "Timeout reached while waiting for logs."
+
+            # Check if timeout is reached
+            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+              echo "Timeout reached while waiting for the container."
               break
             fi
+
+            # Check if the pod is running
+            POD_STATUS=$(kubectl get pod "$POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
+            if [ "$POD_STATUS" == "Running" ]; then
+              echo "Pod is running. Trying to copy the file..."
+
+              # Attempt to copy the file
+              if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
+                echo "File copied successfully:"
+                cat "$LOCAL_PATH"
+                break
+              else
+                echo "File copy failed. Retrying in $INTERVAL second(s)..."
+              fi
+            else
+              echo "Pod is not running yet. Current status: $POD_STATUS"
+            fi
+
+            sleep "$INTERVAL"
           done
+      
 
       # Step 7: Delete the S3 Bucket And Kind Cluster
       - name: Clean up
