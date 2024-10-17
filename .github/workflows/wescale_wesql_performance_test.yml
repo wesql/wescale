@@ -48,6 +48,7 @@ jobs:
           cluster_name: "wescale-cluster"
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
+      # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
       - name: Create Secret in Kind Cluster
         run: |
           kubectl apply -f - <<EOF
@@ -69,7 +70,8 @@ jobs:
               log_slave_updates=ON
               binlog_format=ROW
               skip_name_resolve=ON
-            EOF
+          EOF
+
           kubectl get configmap wesql-server-config --namespace default -o yaml
           
           kubectl create secret generic wesql-server-secret \
@@ -78,6 +80,7 @@ jobs:
             --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }} \
             --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }} \
             --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          
           kubectl get secret wesql-server-secret --namespace default -o yaml
 
       # Step 6: Generate Cluster YAML File And Create Cluster
