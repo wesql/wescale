@@ -67,7 +67,7 @@ jobs:
           echo "Using Wescale Image Tag: $WESCALE_IMAGE_TAG"
           echo "Using WeSQL Server Image Tag: $WESQL_SERVER_IMAGE_TAG"
           
-          sed -e 's|$${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g' -e 's|$${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g' wescale-standard-tag-template.yaml > wescale-standard-tag.yaml
+          sed -e 's|$${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g' -e 's|$${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g' cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
           echo "Content of wescale-standard-tag.yaml:"
           cat cluster/wescale-standard-tag.yaml
 
