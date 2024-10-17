@@ -29,7 +29,7 @@ jobs:
           BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
           echo "Bucket name: $BUCKET_NAME"
           aws s3 mb s3://$BUCKET_NAME
-          echo "::set-output name=bucket_name::$BUCKET_NAME"
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       # Step 4: Start Kind Cluster using kind-action
       - name: Start Kind Cluster
@@ -58,11 +58,11 @@ jobs:
           kubectl get secret wesql-server-secret --namespace default -o yaml
 
       # Step 7: Delete the S3 Bucket
-#      - name: Delete S3 Bucket
-#        run: |
-#          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
-#          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
-#          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
+      - name: Delete S3 Bucket
+        run: |
+          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
+          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
+          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
 
       # Step 8: Delete the Kind Cluster
       - name: Delete Kind Cluster
