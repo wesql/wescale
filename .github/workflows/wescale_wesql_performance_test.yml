@@ -9,6 +9,10 @@ on:
         description: "WeScale Image Tag"
         required: true
         default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.25"
 jobs:
   setup:
     name: "Setup WeScale WeSQL Server Cluster"
@@ -53,10 +57,21 @@ jobs:
             --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
           kubectl get secret wesql-server-secret --namespace default -o yaml
 
-      # Step 6: echo image tag
-      - name: Get Secret Information
+      # todo: if no image tag is input, use current branch to build wescale image
+      # todo: dynamic fetch template yaml file from deploy repo
+      # Step 6: Generate Cluster YAML File
+      - name: Generate Cluster YAML File
         run: |
-          echo "${{github.event.inputs.wescale_image_tag}}"
+          WESCALE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
+          WESQL_SERVER_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.25' }}
+      
+          echo "Using Wescale Image Tag: $WESCALE_TAG"
+          echo "Using WeSQL Server Image Tag: $WESQL_SERVER_TAG"
+          
+          sed -e "s|\${{WESQL_SERVER_TAG}}|$WESQL_IMAGE_TAG|g" -e "s|\${{WESCALE_TAG}}|$WESCALE_IMAGE_TAG|g" cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
+          echo "Content of wescale-standard-tag.yaml:"
+          cat cluster/wescale-standard-tag.yaml
+          
 
       # Step 7: Delete the S3 Bucket
       - name: Delete S3 Bucket

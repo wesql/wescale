@@ -1,0 +1,940 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wesql-autoscale-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: statefulset-manager
+  namespace: default
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - watch
+  - list
+  - create
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: statefulset-manager-binding
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: statefulset-manager
+subjects:
+- kind: ServiceAccount
+  name: wesql-autoscale-sa
+  namespace: default
+---
+apiVersion: v1
+data:
+  vtgate.cnf: |-
+    [vtgate]
+    gateway_initial_tablet_timeout=30s
+    healthcheck_timeout=2s
+    srv_topo_timeout=1s
+    grpc_keepalive_time=10s
+    grpc_keepalive_timeout=10s
+    tablet_refresh_interval=1m
+    read_write_splitting_policy=disable
+    read_write_splitting_ratio=100
+    read_after_write_consistency=SESSION
+    read_after_write_timeout=30.0
+    enable_buffer=true
+    buffer_size=10000
+    buffer_window=180s
+    buffer_max_failover_duration=360s
+    buffer_min_time_between_failovers=0s
+    mysql_auth_server_impl=none
+    mysql_auth_server_static_file=
+    mysql_server_require_secure_transport=false
+    ddl_strategy=direct
+    enable_display_sql_execution_vttablets=false
+    enable_read_write_split_for_read_only_txn=false
+    enable_interception_for_dml_without_where=true
+    mysql_server_ssl_ca=
+    mysql_server_ssl_cert=
+    mysql_server_ssl_key=
+
+    # AutoScale & AutoSuspend Params
+    enable_auto_suspend=false
+    auto_suspend_timeout=5m
+
+    enable_auto_scale=false
+    auto_scale_decision_making_interval=5s
+    auto_scale_compute_unit_lower_bound=0.5
+    auto_scale_compute_unit_upper_bound=10
+    auto_scale_cpu_ratio=0.9
+    auto_scale_memory_ratio=0.75
+    auto_scale_use_relaxed_cpu_memory_ratio=false
+
+    auto_scale_cluster_namespace=default
+    auto_scale_data_node_pod_name=mycluster-wesql-0-0
+    auto_scale_data_node_stateful_set_name=mycluster-wesql-0
+    auto_scale_logger_node_pod_name=mycluster-wesql-1-0,mycluster-wesql-2-0
+    auto_scale_logger_node_stateful_set_name=mycluster-wesql-1,mycluster-wesql-2
+  vttablet.cnf: |-
+    [vttablet]
+    health_check_interval=1s
+    shard_sync_retry_delay=1s
+    remote_operation_timeout=1s
+    db_connect_timeout_ms=500
+    table_acl_config_mode=simple
+    enable_logs=true
+    enable_query_log=true
+    table_acl_config=
+    queryserver_config_strict_table_acl=false
+    table_acl_config_reload_interval=5s
+    enforce_tableacl_config=false
+    # max_connections=83
+    # 10 percentage
+    # TxPool
+    queryserver_config_transaction_cap=20
+    # OltpReadPool
+    queryserver_config_pool_size=16
+    # OlapReadPool
+    queryserver_config_stream_pool_size=4
+    # the size of database connection pool in non transaction dml
+    non_transactional_dml_database_pool_size=3
+    # the number of rows to be processed in one batch by default
+    non_transactional_dml_default_batch_size=2000
+    # the interval of batch processing in milliseconds by default
+    non_transactional_dml_default_batch_interval=1
+    # the interval of table GC in hours
+    non_transactional_dml_table_gc_interval=24
+    # the interval of job scheduler running in seconds
+    non_transactional_dml_job_manager_running_interval=24
+    # the interval of throttle check in milliseconds
+    non_transactional_dml_throttle_check_interval=250
+    # the threshold of batch size
+    non_transactional_dml_batch_size_threshold=10000
+    # final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
+    non_transactional_dml_batch_size_threshold_ratio=0.5
+kind: ConfigMap
+metadata:
+  name: wescale-config
+  namespace: default
+---
+apiVersion: v1
+data:
+  etcd-post-start.sh: |-
+    #!/bin/bash
+    etcd_port=${ETCD_PORT:-'2379'}
+    etcd_server=${ETCD_SERVER:-'127.0.0.1'}
+
+    cell=${CELL:-'zone1'}
+    export ETCDCTL_API=2
+
+    etcdctl --endpoints "http://127.0.0.1:${etcd_port}" get "/vitess/global" >/dev/null 2>&1
+    if [[ $? -eq 1 ]]; then
+      exit 0
+    fi
+
+    echo "add /vitess/global"
+    etcdctl --endpoints "http://127.0.0.1:${etcd_port}" mkdir /vitess/global
+
+    echo "add /vitess/$cell"
+    etcdctl --endpoints "http://127.0.0.1:${etcd_port}" mkdir /vitess/$cell
+
+    # And also add the CellInfo description for the cell.
+    # If the node already exists, it's fine, means we used existing data.
+    echo "add $cell CellInfo"
+    set +e
+    vtctl --topo_implementation etcd2 \
+      --topo_global_server_address "127.0.0.1:${etcd_port}" \
+      --topo_global_root /vitess/global VtctldCommand AddCellInfo \
+      --root /vitess/$cell \
+      --server-address "${etcd_server}:${etcd_port}" \
+      $cell
+  etcd.sh: |-
+    #!/bin/bash
+    echo "staring etcd."
+    etcd_port=${ETCD_PORT:-'2379'}
+    etcd_server=${ETCD_SERVER:-'127.0.0.1'}
+
+    cell=${CELL:-'zone1'}
+    export ETCDCTL_API=2
+
+    etcd --enable-v2=true --data-dir "${VTDATAROOT}/etcd/"  \
+      --listen-client-urls "http://0.0.0.0:${etcd_port}" \
+      --advertise-client-urls "http://0.0.0.0:${etcd_port}" 2>&1 | tee "${VTDATAROOT}/etcd.log"
+  vtctld.sh: "#!/bin/bash    \necho \"starting vtctld\"\ncell=${CELL:-'zone1'}\ngrpc_port=${VTCTLD_GRPC_PORT:-'15999'}\nvtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}\ntopology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation
+    etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}\n\n/scripts/wait-for-service.sh
+    etcd 127.0.0.1 2379\n\nVTDATAROOT=$VTDATAROOT/vtctld\nsu vitess <<EOF\nmkdir -p
+    $VTDATAROOT\nexec vtctld \\\n$topology_fags \\\n--alsologtostderr \\\n--cell $cell
+    \\\n--service_map 'grpc-vtctl,grpc-vtctld' \\\n--backup_storage_implementation
+    file \\\n--file_backup_storage_root $VTDATAROOT/backups \\\n--log_dir $VTDATAROOT
+    \\\n--port $vtctld_web_port \\\n--grpc_port $grpc_port \\\n--pid_file $VTDATAROOT/vtctld.pid\nEOF"
+  vtgate.sh: |-
+    #!/bin/bash
+
+    cell=${CELL:-'zone1'}
+    web_port=${VTGATE_WEB_PORT:-'15001'}
+    grpc_port=${VTGATE_GRPC_PORT:-'15991'}
+    mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
+    mysql_server_socket_path="/tmp/mysql.sock"
+
+    echo "starting vtgate."
+    su vitess <<EOF
+    exec vtgate \
+      $TOPOLOGY_FLAGS \
+      --alsologtostderr \
+      --log_dir $VTDATAROOT \
+      --log_queries_to_file $VTDATAROOT/vtgate_querylog.txt \
+      --port $web_port \
+      --grpc_port $grpc_port \
+      --mysql_server_port $mysql_server_port \
+      --mysql_server_socket_path $mysql_server_socket_path \
+      --cell $cell \
+      --cells_to_watch $cell \
+      --tablet_types_to_wait PRIMARY,REPLICA \
+      --service_map 'grpc-vtgateservice' \
+      --pid_file $VTDATAROOT/vtgate.pid
+    EOF
+  vttablet.sh: |-
+    #!/bin/bash
+
+    cell=${CELL:-'zone1'}
+    uid="${KB_POD_NAME##*-}"
+    mysql_root=${MYSQL_ROOT_USER:-'root'}
+    mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
+    mysql_host=${MYSQL_HOST:-'127.0.0.1'}
+    mysql_port=${MYSQL_PORT:-'3306'}
+    port=${VTTABLET_PORT:-'15100'}
+    grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
+    vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
+    vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
+    tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
+
+    printf -v alias '%s-%010d' $cell $uid
+    printf -v tablet_dir 'vt_%010d' $uid
+    printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
+
+    topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
+
+    /scripts/wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
+    /scripts/wait-for-service.sh mysql $mysql_host $mysql_port
+
+    echo "starting vttablet for $alias..."
+
+    VTDATAROOT=$VTDATAROOT/vttablet
+    su vitess <<EOF
+    mkdir -p $VTDATAROOT
+
+    exec vttablet \
+    $topology_fags \
+    --alsologtostderr \
+    --log_dir $VTDATAROOT \
+    --log_queries_to_file $VTDATAROOT/$tablet_logfile \
+    --tablet-path $alias \
+    --tablet_hostname "$tablet_hostname" \
+    --init_tablet_type replica \
+    --enable_replication_reporter \
+    --backup_storage_implementation file \
+    --file_backup_storage_root $VTDATAROOT/backups \
+    --port $port \
+    --db_port $mysql_port \
+    --db_host $mysql_host \
+    --db_allprivs_user $mysql_root \
+    --db_allprivs_password $mysql_root_passwd \
+    --db_dba_user $mysql_root \
+    --db_dba_password $mysql_root_passwd \
+    --db_app_user $mysql_root \
+    --db_app_password $mysql_root_passwd \
+    --db_filtered_user $mysql_root \
+    --db_filtered_password $mysql_root_passwd \
+    --grpc_port $grpc_port \
+    --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
+    --pid_file $VTDATAROOT/vttablet.pid \
+    --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
+    --disable_active_reparents
+    EOF
+  wait-for-service.sh: |-
+    #!/bin/sh
+    echo "wait for $1"
+    while ! nc -z $2 $3
+    do sleep 1
+    printf "-"
+    done
+    echo -e "  >> $1 has started"
+kind: ConfigMap
+metadata:
+  name: wescale-scripts
+  namespace: default
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: wesql
+    app.kubernetes.io/instance: mycluster
+  name: mycluster-wesql-headless
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: wesql
+    port: 3306
+    protocol: TCP
+    targetPort: wesql
+  - name: raft
+    port: 13306
+    protocol: TCP
+    targetPort: raft
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/component: wesql
+    app.kubernetes.io/instance: mycluster
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wesql-vtcontroller-headless
+  namespace: default
+spec:
+  clusterIP: None
+  clusterIPs:
+  - None
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: etcd-client
+    port: 2379
+    protocol: TCP
+    targetPort: etcd-client
+  - name: vtctld-webport
+    port: 15000
+    protocol: TCP
+    targetPort: vtctld-webport
+  - name: vtctld-grpcport
+    port: 15999
+    protocol: TCP
+    targetPort: vtctld-grpcport
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: wesql-vtcontroller
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wesql-vtgate-headless
+  namespace: default
+spec:
+  clusterIP: None
+  clusterIPs:
+  - None
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: webport
+    port: 15001
+    protocol: TCP
+    targetPort: webport
+  - name: grpcport
+    port: 15991
+    protocol: TCP
+    targetPort: grpcport
+  - name: serverport
+    port: 15306
+    protocol: TCP
+    targetPort: serverport
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: wesql-vtgate
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: wesql-vtgate
+  name: wesql-vtgate
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wesql-vtgate
+  template:
+    metadata:
+      annotations:
+        apps.kubeblocks.io/component-replicas: "1"
+      labels:
+        app.kubernetes.io/name: wesql-vtgate
+    spec:
+      containers:
+      - command:
+        - /scripts/vtgate.sh
+        env:
+        - name: VTGATE_WEB_PORT
+          value: "15001"
+        - name: VTGATE_GRPC_PORT
+          value: "15991"
+        - name: VTGATE_MYSQL_PORT
+          value: "15306"
+        - name: TOPOLOGY_FLAGS
+          value: --topo_implementation etcd2 --topo_global_server_address wesql-vtcontroller-headless:2379
+            --topo_global_root /vitess/global
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        name: vtgate
+        ports:
+        - containerPort: 15001
+          name: webport
+          protocol: TCP
+        - containerPort: 15991
+          name: grpcport
+          protocol: TCP
+        - containerPort: 15306
+          name: serverport
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: serverport
+        resizePolicy:
+        - resourceName: cpu
+          restartPolicy: NotRequired
+        - resourceName: memory
+          restartPolicy: NotRequired
+        resources:
+          limits:
+            cpu: "0"
+            memory: "0"
+          requests:
+            cpu: "0"
+            memory: "0"
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+        - mountPath: /conf
+          name: wescale-config
+        - mountPath: /vtdataroot
+          name: vtgate-log
+      initContainers:
+      - command:
+        - /scripts/wait-for-service.sh
+        - vtctld
+        - $(VTCTLD_HOST)
+        - $(VTCTLD_GRPC_PORT)
+        env:
+        - name: VTCTLD_HOST
+          value: wesql-vtcontroller-headless
+        - name: VTCTLD_GRPC_PORT
+          value: "15999"
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        name: wait-vtctld-ready
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+      - command:
+        - /scripts/wait-for-service.sh
+        - vttablet
+        - $(VTTABLET_HOST)
+        - $(VTTABLET_GRPC_PORT)
+        env:
+        - name: VTTABLET_HOST
+          value: mycluster-wesql-headless
+        - name: VTTABLET_GRPC_PORT
+          value: "16100"
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        name: wait-vttablet-ready
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+      serviceAccountName: wesql-autoscale-sa
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - emptyDir: {}
+        name: vtgate-log
+      - configMap:
+          defaultMode: 365
+          name: wescale-scripts
+        name: scripts
+      - configMap:
+          name: wescale-config
+        name: wescale-config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: mycluster-wesql-0
+    app.kubernetes.io/storageclass: standard
+  name: mycluster-wesql-0
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mycluster-wesql-0
+  serviceName: mycluster-wesql-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: wesql
+        app.kubernetes.io/instance: mycluster
+        app.kubernetes.io/name: mycluster-wesql-0
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: wesql-server-secret
+        - name: WESQL_CLUSTER_MEMBERS
+          value: mycluster-wesql-0-0.mycluster-wesql-headless:13306;mycluster-wesql-1-0.mycluster-wesql-headless:13306;mycluster-wesql-2-0.mycluster-wesql-headless:13306
+        - name: WESQL_CLUSTER_MEMBER_INDEX
+          value: "0"
+        - name: MYSQL_CUSTOM_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              key: MYSQL_CUSTOM_CONFIG
+              name: wesql-server-config
+        - name: WESQL_OBJECTSTORE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_ACCESS_KEY
+              name: wesql-server-secret
+        - name: WESQL_OBJECTSTORE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_SECRET_KEY
+              name: wesql-server-secret
+        image: apecloud/wesql-server:${WESQL_SERVER_TAG}
+        imagePullPolicy: IfNotPresent
+        name: mysql
+        ports:
+        - containerPort: 3306
+          name: wesql
+          protocol: TCP
+        - containerPort: 13306
+          name: raft
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: wesql
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+        - mountPath: /data/mysql
+          name: data
+      - command:
+        - /scripts/vttablet.sh
+        env:
+        - name: KB_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MYSQL_ROOT_USER
+          value: root
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: wesql-server-secret
+        - name: MYSQL_HOST
+          value: 127.0.0.1
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: VTTABLET_PORT
+          value: "15100"
+        - name: VTTABLET_GRPC_PORT
+          value: "16100"
+        - name: VTCTLD_HOST
+          value: wesql-vtcontroller-headless
+        - name: VTCTLD_WEB_PORT
+          value: "15000"
+        - name: TOPOLOGY_FLAGS
+          value: --topo_implementation etcd2 --topo_global_server_address wesql-vtcontroller-headless:2379
+            --topo_global_root /vitess/global
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        name: vttablet
+        ports:
+        - containerPort: 15100
+          name: vttabletport
+          protocol: TCP
+        - containerPort: 16100
+          name: vttabletgrpc
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: vttabletgrpc
+        resources:
+          limits:
+            cpu: "0"
+            memory: "0"
+          requests:
+            cpu: "0"
+            memory: "0"
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+        - mountPath: /conf
+          name: wescale-config
+        - mountPath: /vtdataroot
+          name: data
+      volumes:
+      - configMap:
+          defaultMode: 365
+          name: wescale-scripts
+        name: scripts
+      - configMap:
+          name: wescale-config
+        name: wescale-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: standard
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: mycluster-wesql-1
+    app.kubernetes.io/storageclass: standard
+  name: mycluster-wesql-1
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mycluster-wesql-1
+  serviceName: mycluster-wesql-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: wesql
+        app.kubernetes.io/instance: mycluster
+        app.kubernetes.io/name: mycluster-wesql-1
+    spec:
+      containers:
+      - env:
+        - name: WESQL_LOGGER_MODE
+          value: "1"
+        - name: WESQL_CLUSTER_MEMBERS
+          value: mycluster-wesql-0-0.mycluster-wesql-headless:13306;mycluster-wesql-1-0.mycluster-wesql-headless:13306;mycluster-wesql-2-0.mycluster-wesql-headless:13306
+        - name: WESQL_CLUSTER_MEMBER_INDEX
+          value: "1"
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: wesql-server-secret
+        - name: MYSQL_CUSTOM_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              key: MYSQL_CUSTOM_CONFIG
+              name: wesql-server-config
+        - name: WESQL_OBJECTSTORE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_ACCESS_KEY
+              name: wesql-server-secret
+        - name: WESQL_OBJECTSTORE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_SECRET_KEY
+              name: wesql-server-secret
+        image: apecloud/wesql-server:${WESQL_SERVER_TAG}
+        imagePullPolicy: IfNotPresent
+        name: mysql
+        ports:
+        - containerPort: 3306
+          name: wesql
+          protocol: TCP
+        - containerPort: 13306
+          name: raft
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: wesql
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /data/mysql
+          name: data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: standard
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: mycluster-wesql-2
+    app.kubernetes.io/storageclass: standard
+  name: mycluster-wesql-2
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mycluster-wesql-2
+  serviceName: mycluster-wesql-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: wesql
+        app.kubernetes.io/instance: mycluster
+        app.kubernetes.io/name: mycluster-wesql-2
+    spec:
+      containers:
+      - env:
+        - name: WESQL_LOGGER_MODE
+          value: "1"
+        - name: WESQL_CLUSTER_MEMBERS
+          value: mycluster-wesql-0-0.mycluster-wesql-headless:13306;mycluster-wesql-1-0.mycluster-wesql-headless:13306;mycluster-wesql-2-0.mycluster-wesql-headless:13306
+        - name: WESQL_CLUSTER_MEMBER_INDEX
+          value: "2"
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: wesql-server-secret
+        - name: MYSQL_CUSTOM_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              key: MYSQL_CUSTOM_CONFIG
+              name: wesql-server-config
+        - name: WESQL_OBJECTSTORE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_ACCESS_KEY
+              name: wesql-server-secret
+        - name: WESQL_OBJECTSTORE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              key: WESQL_OBJECTSTORE_SECRET_KEY
+              name: wesql-server-secret
+        image: apecloud/wesql-server:${WESQL_SERVER_TAG}
+        imagePullPolicy: IfNotPresent
+        name: mysql
+        ports:
+        - containerPort: 3306
+          name: wesql
+          protocol: TCP
+        - containerPort: 13306
+          name: raft
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: wesql
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "1"
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /data/mysql
+          name: data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: standard
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: wesql-vtcontroller
+  name: wesql-vtcontroller
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wesql-vtcontroller
+  serviceName: wesql-vtcontroller-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wesql-vtcontroller
+    spec:
+      containers:
+      - command:
+        - /scripts/etcd.sh
+        env:
+        - name: ETCD_SERVER
+          value: wesql-vtcontroller-headless
+        - name: ETCD_PORT
+          value: "2379"
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /scripts/etcd-post-start.sh
+        name: etcd
+        ports:
+        - containerPort: 2379
+          name: etcd-client
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: etcd-client
+        resources:
+          limits:
+            cpu: "0"
+            memory: "0"
+          requests:
+            cpu: "0"
+            memory: "0"
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+        - mountPath: /vtdataroot
+          name: data
+      - command:
+        - /scripts/vtctld.sh
+        env:
+        - name: VTCTLD_GRPC_PORT
+          value: "15999"
+        - name: VTCTLD_WEB_PORT
+          value: "15000"
+        - name: TOPOLOGY_FLAGS
+          value: --topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379
+            --topo_global_root /vitess/global
+        image: apecloud/apecloud-mysql-scale:${WESCALE_TAG}
+        imagePullPolicy: IfNotPresent
+        name: vtctld
+        ports:
+        - containerPort: 15000
+          name: vtctld-webport
+          protocol: TCP
+        - containerPort: 15999
+          name: vtctld-grpcport
+          protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: vtctld-grpcport
+        resources:
+          limits:
+            cpu: "0"
+            memory: "0"
+          requests:
+            cpu: "0"
+            memory: "0"
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /scripts
+          name: scripts
+        - mountPath: /vtdataroot
+          name: data
+      volumes:
+      - configMap:
+          defaultMode: 365
+          name: wescale-scripts
+        name: scripts
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Mi
+      storageClassName: standard
