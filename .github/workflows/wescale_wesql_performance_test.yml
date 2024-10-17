@@ -1,0 +1,70 @@
+name: "Setup WeScale WeSQL Server Cluster"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  setup:
+    name: "Setup WeScale WeSQL Server Cluster"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure AWS CLI
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region cn-northwest-1
+
+      # Step 3: Generate S3 bucket name and create bucket
+      - name: Create S3 Bucket
+        env:
+          BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
+        run: |
+          echo "Bucket name: $BUCKET_NAME"
+          aws s3api create-bucket --bucket $BUCKET_NAME
+
+      # Step 4: Start Kind Cluster using kind-action
+      - name: Start Kind Cluster
+        uses: helm/kind-action@v1.4.0
+        with:
+          version: "v0.23.0"
+          cluster_name: "wescale-cluster"
+
+      # Step 5: Create Kubernetes Secret in Kind Cluster
+      - name: Create Secret in Kind Cluster
+        env:
+          WESQL_OBJECTSTORE_ACCESS_KEY: ${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}
+          WESQL_OBJECTSTORE_SECRET_KEY: ${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+        run: |
+          kubectl create secret generic wesql-server-secret \
+            --namespace default \
+            --type Opaque \
+            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=$WESQL_OBJECTSTORE_ACCESS_KEY \
+            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=$WESQL_OBJECTSTORE_SECRET_KEY \
+            --from-literal=MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+
+      # Step 6: Output the Secret Information
+      - name: Get Secret Information
+        run: |
+          kubectl get secret wesql-server-secret --namespace default -o yaml
+
+      # Step 7: Delete the S3 Bucket
+#      - name: Delete S3 Bucket
+#        env:
+#          BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
+#        run: |
+#          echo "Deleting bucket: $BUCKET_NAME"
+#          aws s3api delete-bucket --bucket $BUCKET_NAME --region cn-northwest-1
+
+      # Step 8: Delete the Kind Cluster
+      - name: Delete Kind Cluster
+        run: |
+          kind delete cluster --name wescale-cluster
