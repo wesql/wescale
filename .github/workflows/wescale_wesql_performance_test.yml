@@ -24,11 +24,12 @@ jobs:
 
       # Step 3: Generate S3 bucket name and create bucket
       - name: Create S3 Bucket
-        env:
-          BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
+        id: create_bucket
         run: |
+          BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
           echo "Bucket name: $BUCKET_NAME"
           aws s3 mb $BUCKET_NAME
+          echo "::set-output name=bucket_name::$BUCKET_NAME"
 
       # Step 4: Start Kind Cluster using kind-action
       - name: Start Kind Cluster
@@ -58,12 +59,10 @@ jobs:
 
       # Step 7: Delete the S3 Bucket
 #      - name: Delete S3 Bucket
-#        env:
-#          BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
 #        run: |
-#          echo "Deleting bucket: $BUCKET_NAME"
-#          aws s3 rm $BUCKET_NAME --recursive
-#          aws s3 rb $BUCKET_NAME
+#          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
+#          aws s3 rm ${{ steps.create_bucket.outputs.bucket_name }} --recursive
+#          aws s3 rb ${{ steps.create_bucket.outputs.bucket_name }}
 
       # Step 8: Delete the Kind Cluster
       - name: Delete Kind Cluster
