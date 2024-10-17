@@ -100,7 +100,29 @@ jobs:
           kubectl apply -f cluster/wescale-standard-tag.yaml
           kubectl get pods
           
-          kubectl wait --for=condition=ready pod --all --timeout=600s
+#          kubectl wait --for=condition=ready pod --all --timeout=600s
+#
+#          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
+
+      - name: Print Logs of the Pod
+        run: |
+          POD_NAME="mycluster-wesql-0-0"
+          TIMEOUT=600  # 10 minutes
+          INTERVAL=10  # 10 seconds
+          START_TIME=$(date +%s)
+
+          while true; do
+            kubectl logs $POD_NAME --namespace default || echo "Pod $POD_NAME not found or still initializing"
+            sleep $INTERVAL
+
+            # Check if timeout is reached
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+            if [ $ELAPSED_TIME -ge $TIMEOUT ]; then
+              echo "Timeout reached while waiting for logs."
+              break
+            fi
+          done
 
       # Step 7: Delete the S3 Bucket And Kind Cluster
       - name: Clean up
