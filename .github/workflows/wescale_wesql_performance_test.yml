@@ -114,7 +114,7 @@ jobs:
           while true; do
             kubectl get pods
             kubectl describe pod $POD_NAME --namespace default
-            kubectl logs $POD_NAME --namespace default || echo "Pod $POD_NAME not found or still initializing"
+            kubectl logs $POD_NAME -c mysql --namespace default || echo "Pod $POD_NAME not found or still initializing"
             kubectl get pvc --namespace default
             kubectl get configmaps --namespace default
             kubectl get secrets --namespace default
