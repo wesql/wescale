@@ -108,30 +108,30 @@ jobs:
         run: |
           POD_NAME="mycluster-wesql-0-0"
           TIMEOUT=600  # 10 minutes
-          INTERVAL=10  # 10 seconds
+          INTERVAL=10  # 60 seconds
           START_TIME=$(date +%s)
 
           while true; do
             kubectl get pods
-            kubectl describe pod $POD_NAME --namespace default
-            kubectl logs $POD_NAME -c mysql --namespace default || echo "Pod $POD_NAME not found or still initializing"
-            kubectl get pvc --namespace default
-            kubectl get pv --namespace default
-            kubectl get resourcequotas --all-namespaces
-            kubectl logs -l app=csi-controller -n kube-system
-            kubectl get storageclass
-            kubectl get configmaps --namespace default
-            kubectl get secrets --namespace default
-            kubectl describe pod mycluster-wesql-1-0 --namespace default
-            echo "mycluster-wesql-2-0 log"
-            kubectl describe pod mycluster-wesql-2-0 --namespace default
-            kubectl describe pvc data-mycluster-wesql-2-0 --namespace default
+#            kubectl describe pod $POD_NAME --namespace default
+#            kubectl logs $POD_NAME -c mysql --namespace default || echo "Pod $POD_NAME not found or still initializing"
+#            kubectl get pvc --namespace default
+#            kubectl get pv --namespace default
+#            kubectl get resourcequotas --all-namespaces
+#            kubectl logs -l app=csi-controller -n kube-system
+#            kubectl get storageclass
+#            kubectl get configmaps --namespace default
+#            kubectl get secrets --namespace default
+#            kubectl describe pod mycluster-wesql-1-0 --namespace default
+#            echo "mycluster-wesql-2-0 log"
+#            kubectl describe pod mycluster-wesql-2-0 --namespace default
+#            kubectl describe pvc data-mycluster-wesql-2-0 --namespace default
+
+            sleep $INTERVAL
           
             kubectl exec mycluster-wesql-0-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
             kubectl exec mycluster-wesql-1-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
             kubectl exec mycluster-wesql-2-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
-            
-            sleep $INTERVAL
 
             # Check if timeout is reached
             CURRENT_TIME=$(date +%s)
