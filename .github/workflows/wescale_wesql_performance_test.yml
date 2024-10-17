@@ -28,7 +28,7 @@ jobs:
           BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
         run: |
           echo "Bucket name: $BUCKET_NAME"
-          aws s3api create-bucket --bucket $BUCKET_NAME
+          aws s3 mb $BUCKET_NAME
 
       # Step 4: Start Kind Cluster using kind-action
       - name: Start Kind Cluster
@@ -62,7 +62,8 @@ jobs:
 #          BUCKET_NAME: "wescale-$(date +'%Y%m%d%H%M%S')"
 #        run: |
 #          echo "Deleting bucket: $BUCKET_NAME"
-#          aws s3api delete-bucket --bucket $BUCKET_NAME --region cn-northwest-1
+#          aws s3 rm $BUCKET_NAME --recursive
+#          aws s3 rb $BUCKET_NAME
 
       # Step 8: Delete the Kind Cluster
       - name: Delete Kind Cluster
