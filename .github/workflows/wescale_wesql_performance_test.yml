@@ -134,6 +134,8 @@ jobs:
               if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
                 echo "File copied successfully:"
                 cat "$LOCAL_PATH"
+                kubectl logs "$POD_NAME" -c "$CONTAINER_NAME"
+                kubectl get pods
                 break
               else
                 echo "File copy failed. Retrying in $INTERVAL second(s)..."
