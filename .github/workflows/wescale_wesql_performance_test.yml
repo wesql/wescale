@@ -127,6 +127,9 @@ jobs:
             kubectl describe pod mycluster-wesql-2-0 --namespace default
             kubectl describe pvc data-mycluster-wesql-2-0 --namespace default
           
+            kubectl exec mycluster-wesql-0-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
+            kubectl exec mycluster-wesql-1-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
+            kubectl exec mycluster-wesql-2-0 -c mysql -- cat /etc/mysql/auto.conf.d/01_my_custom.cnf
             
             sleep $INTERVAL
 
