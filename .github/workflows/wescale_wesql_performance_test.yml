@@ -47,9 +47,31 @@ jobs:
           version: "v0.23.0"
           cluster_name: "wescale-cluster"
 
-      # Step 5: Create Kubernetes Secret in Kind Cluster
+      # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       - name: Create Secret in Kind Cluster
         run: |
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: wesql-server-config
+          data:
+            MYSQL_CUSTOM_CONFIG: |
+              [mysqld]
+              objectstore_provider=aws
+              objectstore_region=cn-northwest-1
+              objectstore_bucket=${{ steps.create_bucket.outputs.bucket_name }}
+              datadir=/data/mysql/data
+              log-error=/data/mysql/log/mysqld-error.log
+              log-bin=binlog
+              gtid_mode=ON
+              enforce_gtid_consistency=ON
+              log_slave_updates=ON
+              binlog_format=ROW
+              skip_name_resolve=ON
+            EOF
+          kubectl get configmap wesql-server-config --namespace default -o yaml
+          
           kubectl create secret generic wesql-server-secret \
             --namespace default \
             --type Opaque \
@@ -58,8 +80,8 @@ jobs:
             --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
           kubectl get secret wesql-server-secret --namespace default -o yaml
 
-      # Step 6: Generate Cluster YAML File
-      - name: Generate Cluster YAML File
+      # Step 6: Generate Cluster YAML File And Create Cluster
+      - name: Generate Cluster YAML File And Create Cluster
         run: |
           WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
           WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.25' }}
@@ -70,15 +92,19 @@ jobs:
           sed -e "s|\${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g" -e "s|\${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g" cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
           echo "Content of wescale-standard-tag.yaml:"
           cat cluster/wescale-standard-tag.yaml
+          
+          echo "Creating Cluster..."
+          kubectl apply -f cluster/wescale-standard-tag.yaml
+          kubectl get pods
+          
+          kubectl wait --for=condition=ready pod --all --timeout=600s
 
-      # Step 7: Delete the S3 Bucket
-      - name: Delete S3 Bucket
+      # Step 7: Delete the S3 Bucket And Kind Cluster
+      - name: Clean up
+        if: always()
         run: |
           echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
           aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
           aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
-
-      # Step 8: Delete the Kind Cluster
-      - name: Delete Kind Cluster
-        run: |
+          
           kind delete cluster --name wescale-cluster 
