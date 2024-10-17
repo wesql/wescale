@@ -571,11 +571,11 @@ spec:
             port: wesql
         resources:
           limits:
-            cpu: "2"
-            memory: 4Gi
+            cpu: "0"
+            memory: "0"
           requests:
-            cpu: "2"
-            memory: 4Gi
+            cpu: "0"
+            memory: "0"
         volumeMounts:
         - mountPath: /data/mysql
           name: data
@@ -654,7 +654,7 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
-          storage: 0.5Gi
+          storage: 3Gi
       storageClassName: standard
 ---
 apiVersion: apps/v1
@@ -723,11 +723,11 @@ spec:
             port: wesql
         resources:
           limits:
-            cpu: "1"
-            memory: 1Gi
+            cpu: "0"
+            memory: "0"
           requests:
-            cpu: "1"
-            memory: 1Gi
+            cpu: "0"
+            memory: "0"
         volumeMounts:
         - mountPath: /data/mysql
           name: data
@@ -739,7 +739,7 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
-          storage: 0.5Gi
+          storage: 3Gi
       storageClassName: standard
 ---
 apiVersion: apps/v1
@@ -808,11 +808,11 @@ spec:
             port: wesql
         resources:
           limits:
-            cpu: "1"
-            memory: 1Gi
+            cpu: "0"
+            memory: "0"
           requests:
-            cpu: "1"
-            memory: 1Gi
+            cpu: "0"
+            memory: "0"
         volumeMounts:
         - mountPath: /data/mysql
           name: data
@@ -824,7 +824,7 @@ spec:
       - ReadWriteOnce
       resources:
         requests:
-          storage: 0.5Gi
+          storage: 3Gi
       storageClassName: standard
 ---
 apiVersion: apps/v1
