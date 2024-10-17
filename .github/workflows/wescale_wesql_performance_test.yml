@@ -4,7 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
-
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
 jobs:
   setup:
     name: "Setup WeScale WeSQL Server Cluster"
@@ -40,22 +44,19 @@ jobs:
 
       # Step 5: Create Kubernetes Secret in Kind Cluster
       - name: Create Secret in Kind Cluster
-        env:
-          WESQL_OBJECTSTORE_ACCESS_KEY: ${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}
-          WESQL_OBJECTSTORE_SECRET_KEY: ${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
         run: |
           kubectl create secret generic wesql-server-secret \
             --namespace default \
             --type Opaque \
-            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=$WESQL_OBJECTSTORE_ACCESS_KEY \
-            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=$WESQL_OBJECTSTORE_SECRET_KEY \
-            --from-literal=MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }} \
+            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }} \
+            --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          kubectl get secret wesql-server-secret --namespace default -o yaml
 
-      # Step 6: Output the Secret Information
+      # Step 6: echo image tag
       - name: Get Secret Information
         run: |
-          kubectl get secret wesql-server-secret --namespace default -o yaml
+          echo "${{inputs.wescale_image_tag}}"
 
       # Step 7: Delete the S3 Bucket
       - name: Delete S3 Bucket
