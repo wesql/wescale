@@ -29,7 +29,7 @@ jobs:
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set default.region cn-northwest-1
+          aws configure set default.region us-east-2
 
       # Step 3: Generate S3 bucket name and create bucket
       - name: Create S3 Bucket
@@ -64,7 +64,7 @@ jobs:
             MYSQL_CUSTOM_CONFIG: |
               [mysqld]
               objectstore_provider=aws
-              objectstore_region=cn-northwest-1
+              objectstore_region=us-east-2
               objectstore_bucket=${{ steps.create_bucket.outputs.bucket_name }}
               datadir=/data/mysql/data
               log-error=/data/mysql/log/mysqld-error.log
