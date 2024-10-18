@@ -25,12 +25,14 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/pingcap/failpoint"
 	"io/fs"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
+	"vitess.io/vitess/go/vt/failpointkey"
 
 	"vitess.io/vitess/go/history"
 	"vitess.io/vitess/go/mysql"
@@ -319,6 +321,10 @@ func (si *schemaInit) doesSidecarDBExist() (bool, error) {
 }
 
 func (si *schemaInit) createSidecarDB() error {
+	failpoint.Inject(failpointkey.CreateSidecarDbError.Name, func() {
+		failpoint.Return(fmt.Errorf("error creating sidecar database"))
+	})
+
 	_, err := si.exec(si.ctx, CreateSidecarDatabaseQuery, 1, false)
 	if err != nil {
 		log.Error(err)
