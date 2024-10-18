@@ -158,10 +158,6 @@ func (se *Engine) syncSidecarDB(ctx context.Context, conn *dbconnpool.DBConnecti
 	}
 	if err := sidecardb.Init(ctx, exec); err != nil {
 		log.Errorf("Error in sidecardb.Init: %+v", err)
-		if se.env.Config().DB.HasGlobalSettings() {
-			log.Warning("Ignoring sidecardb.Init error for unmanaged tablets")
-			return nil
-		}
 		log.Errorf("syncSidecarDB error %+v", err)
 		return err
 	}
