@@ -108,48 +108,63 @@ jobs:
 #
 #          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
 
-      - name: Print Logs of the Pod
+      - name: Install ngrok
         run: |
-          POD_NAME="mycluster-wesql-0-0"
-          CONTAINER_NAME="mysql"
-          FILE_PATH="/etc/mysql/auto.conf.d/01_my_custom.cnf"
-          LOCAL_PATH="./01_my_custom.cnf"
-          TIMEOUT=600  # 10 minutes
-          INTERVAL=1  # 1 second
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list >/dev/null
+          sudo apt update && sudo apt install ngrok
 
-          START_TIME=$(date +%s)
+      - name: Start ngrok SSH tunnel
+        run: |
+          ngrok authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+          ngrok tcp 22 &
 
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+      - name: Display ngrok public address
+        run: sleep 5 && curl -s http://127.0.0.1:4040/api/tunnels | jq '.tunnels[0].public_url'
 
-            # Check if timeout is reached
-            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-              echo "Timeout reached while waiting for the container."
-              break
-            fi
 
-            # Check if the pod is running
-            POD_STATUS=$(kubectl get pod "$POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
-            if [ "$POD_STATUS" == "Running" ]; then
-              echo "Pod is running. Trying to copy the file..."
-
-              # Attempt to copy the file
-              if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
-                echo "File copied successfully:"
-                cat "$LOCAL_PATH"
-                kubectl logs "$POD_NAME" -c "$CONTAINER_NAME"
-                kubectl get pods
-                break
-              else
-                echo "File copy failed. Retrying in $INTERVAL second(s)..."
-              fi
-            else
-              echo "Pod is not running yet. Current status: $POD_STATUS"
-            fi
-
-            sleep "$INTERVAL"
-          done
+#      - name: Print Logs of the Pod
+#        run: |
+#          POD_NAME="mycluster-wesql-0-0"
+#          CONTAINER_NAME="mysql"
+#          FILE_PATH="/etc/mysql/auto.conf.d/01_my_custom.cnf"
+#          LOCAL_PATH="./01_my_custom.cnf"
+#          TIMEOUT=600  # 10 minutes
+#          INTERVAL=1  # 1 second
+#
+#          START_TIME=$(date +%s)
+#
+#          while true; do
+#            CURRENT_TIME=$(date +%s)
+#            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+#
+#            # Check if timeout is reached
+#            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+#              echo "Timeout reached while waiting for the container."
+#              break
+#            fi
+#
+#            # Check if the pod is running
+#            POD_STATUS=$(kubectl get pod "$POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
+#            if [ "$POD_STATUS" == "Running" ]; then
+#              echo "Pod is running. Trying to copy the file..."
+#
+#              # Attempt to copy the file
+#              if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
+#                echo "File copied successfully:"
+#                cat "$LOCAL_PATH"
+#                kubectl logs "$POD_NAME" -c "$CONTAINER_NAME"
+#                kubectl get pods
+#                break
+#              else
+#                echo "File copy failed. Retrying in $INTERVAL second(s)..."
+#              fi
+#            else
+#              echo "Pod is not running yet. Current status: $POD_STATUS"
+#            fi
+#
+#            sleep "$INTERVAL"
+#          done
       
 
       # Step 7: Delete the S3 Bucket And Kind Cluster
