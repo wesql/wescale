@@ -61,6 +61,11 @@ var (
 		Name:       "CrashVTGate",
 		ExampleStr: "return(true)",
 	}
+	CreateSidecarDbError = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/sidecardb/CreateSidecarDbError",
+		Name:       "CreateSidecarDbError",
+		ExampleStr: "return(true)",
+	}
 )
 
 func init() {
@@ -78,4 +83,5 @@ func init() {
 	FailpointTable[ModifyBatchSize.FullName] = ModifyBatchSize
 	FailpointTable[CreateErrorWhenExecutingBatch.FullName] = CreateErrorWhenExecutingBatch
 	FailpointTable[CrashVTGate.FullName] = CrashVTGate
+	FailpointTable[CreateSidecarDbError.FullName] = CreateSidecarDbError
 }
