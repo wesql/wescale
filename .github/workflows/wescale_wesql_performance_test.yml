@@ -117,6 +117,21 @@ jobs:
           tmate -S /tmp/tmate.sock wait tmate-ready
           echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
           echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+          
+          
+          TIMEOUT=1800  # 30 minutes
+          INTERVAL=1  # 1 second
+          START_TIME=$(date +%s)
+          while true; do
+            sleep "$INTERVAL"
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+
+            # Check if timeout is reached
+            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+              echo "Timeout reached while waiting for the container."
+              break
+            fi
         continue-on-error: true
 
 
