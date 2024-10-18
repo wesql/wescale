@@ -530,6 +530,8 @@ spec:
     spec:
       containers:
       - env:
+        - name: DEBUG_POINTS
+          value: "docker_mysql_setup,sleep 3600"
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -589,8 +591,6 @@ spec:
               fieldPath: metadata.name
         - name: MYSQL_ROOT_USER
           value: root
-        - name: DEBUG_POINTS
-          value: "docker_mysql_setup,sleep 3600"
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -682,6 +682,8 @@ spec:
     spec:
       containers:
       - env:
+        - name: DEBUG_POINTS
+          value: "docker_mysql_setup,sleep 3600"
         - name: WESQL_LOGGER_MODE
           value: "1"
         - name: WESQL_CLUSTER_MEMBERS
@@ -767,6 +769,8 @@ spec:
     spec:
       containers:
       - env:
+        - name: DEBUG_POINTS
+          value: "docker_mysql_setup,sleep 3600"
         - name: WESQL_LOGGER_MODE
           value: "1"
         - name: WESQL_CLUSTER_MEMBERS
