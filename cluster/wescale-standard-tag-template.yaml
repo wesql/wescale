@@ -589,6 +589,8 @@ spec:
               fieldPath: metadata.name
         - name: MYSQL_ROOT_USER
           value: root
+        - name: DEBUG_POINTS
+          value: "docker_mysql_setup,sleep 3600"
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:

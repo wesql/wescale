@@ -12,7 +12,7 @@ on:
       wesql_image_tag:
         description: "WeSQL Server Image Tag"
         required: true
-        default: "8.0.35-6.alpha10.20240918.g18ad68b.25"
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
 
 jobs:
   setup:
@@ -91,7 +91,7 @@ jobs:
       - name: Generate Cluster YAML File And Create Cluster
         run: |
           WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
-          WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.25' }}
+          WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.27' }}
           
           echo "Using Wescale Image Tag: $WESCALE_IMAGE_TAG"
           echo "Using WeSQL Server Image Tag: $WESQL_SERVER_IMAGE_TAG"
