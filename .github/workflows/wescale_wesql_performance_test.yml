@@ -41,15 +41,15 @@ jobs:
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       # Step 4: Start Kind Cluster using kind-action
-#      - name: Start Kind Cluster
-#        uses: helm/kind-action@v1.4.0
-#        with:
-#          version: "v0.23.0"
-#          cluster_name: "wescale-cluster"
+      - name: Start Kind Cluster
+        uses: helm/kind-action@v1.4.0
+        with:
+          version: "v0.23.0"
+          cluster_name: "wescale-cluster"
 
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@latest
+#      - name: start minikube
+#        id: minikube
+#        uses: medyagh/setup-minikube@latest
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
@@ -108,19 +108,16 @@ jobs:
 #
 #          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
 
-      - name: Install ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list >/dev/null
-          sudo apt update && sudo apt install ngrok
+      - name: Install Tmate
+        run: sudo apt-get install tmate
 
-      - name: Start ngrok SSH tunnel
+      - name: Start Tmate session
         run: |
-          ngrok authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
-          ngrok tcp 22 &
-
-      - name: Display ngrok public address
-        run: sleep 5 && curl -s http://127.0.0.1:4040/api/tunnels | jq '.tunnels[0].public_url'
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+        continue-on-error: true
 
 
 #      - name: Print Logs of the Pod
