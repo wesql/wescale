@@ -42,9 +42,6 @@ jobs:
 
       - name: Create WeSQL Cluster in Docker
         run: |
-          # 创建 Docker 网络
-          docker network create wesql-network
-
           # 创建本地数据目录并设置权限
           mkdir -p ~/wesql-local-dir-0
           chmod 777 ~/wesql-local-dir-0
