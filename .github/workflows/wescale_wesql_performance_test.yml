@@ -42,10 +42,14 @@ jobs:
 
       - name: Create WeSQL Cluster in Docker
         run: |
+          # 创建 Docker 网络
           docker network create -d bridge --subnet=172.21.0.0/16 wesql-network
           docker network inspect wesql-network
+
+          # 创建本地数据目录
           mkdir -p ~/wesql-local-dir-0 ~/wesql-local-dir-1 ~/wesql-local-dir-2
-          
+
+          # 启动 wesql-server-0
           docker run -itd --name wesql-server-0 --net=wesql-network --ip=172.21.0.2 \
             -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
             port=3306\n\
@@ -62,44 +66,44 @@ jobs:
             -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
             -e MYSQL_ROOT_PASSWORD=passwd \
             apecloud/wesql-server:8.0.35-0.1.0_beta1.gb294e69.28
-          
-          
+
+          # 启动 wesql-server-1
           docker run -itd --name wesql-server-1 --net=wesql-network --ip=172.21.0.3 \
-          -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-          port=3306\n\
-          log-bin=binlog\n\
-          objectstore_provider='aws'\n\
-          objectstore_region='cn-northwest-1'\n\
-          objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
-          datadir=/data/mysql/data\n\
-          log-error=/data/mysql/log/mysqld-error.log" \
-          -v ~/wesql-local-dir-1:/data/mysql \
-          -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
-          -e WESQL_CLUSTER_MEMBER_INDEX=1 \
-          -e WESQL_LOGGER_MODE=1 \
-          -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-          -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-          -e MYSQL_ROOT_PASSWORD=passwd \
-          apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
-          
-          
+            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+            port=3306\n\
+            log-bin=binlog\n\
+            objectstore_provider='aws'\n\
+            objectstore_region='cn-northwest-1'\n\
+            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
+            datadir=/data/mysql/data\n\
+            log-error=/data/mysql/log/mysqld-error.log" \
+            -v ~/wesql-local-dir-1:/data/mysql \
+            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
+            -e WESQL_CLUSTER_MEMBER_INDEX=1 \
+            -e WESQL_LOGGER_MODE=1 \
+            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+            -e MYSQL_ROOT_PASSWORD=passwd \
+            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
+
+          # 启动 wesql-server-2
           docker run -itd --name wesql-server-2 --net=wesql-network --ip=172.21.0.4 \
-          -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-          port=3306\n\
-          log-bin=binlog\n\
-          objectstore_provider='aws'\n\
-          objectstore_region='cn-northwest-1'\n\
-          objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
-          datadir=/data/mysql/data\n\
-          log-error=/data/mysql/log/mysqld-error.log" \
-          -v ~/wesql-local-dir-1:/data/mysql \
-          -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
-          -e WESQL_CLUSTER_MEMBER_INDEX=2 \
-          -e WESQL_LOGGER_MODE=1 \
-          -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-          -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-          -e MYSQL_ROOT_PASSWORD=passwd \
-          apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
+            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+            port=3306\n\
+            log-bin=binlog\n\
+            objectstore_provider='aws'\n\
+            objectstore_region='cn-northwest-1'\n\
+            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
+            datadir=/data/mysql/data\n\
+            log-error=/data/mysql/log/mysqld-error.log" \
+            -v ~/wesql-local-dir-2:/data/mysql \
+            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
+            -e WESQL_CLUSTER_MEMBER_INDEX=2 \
+            -e WESQL_LOGGER_MODE=1 \
+            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+            -e MYSQL_ROOT_PASSWORD=passwd \
+            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
 
       # Step 4: Start Kind Cluster using kind-action
 #      - name: Start Kind Cluster
