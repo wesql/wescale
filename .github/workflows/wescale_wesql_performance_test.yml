@@ -44,20 +44,25 @@ jobs:
         run: |
           # 创建 Docker 网络
           docker network create wesql-network
-#          docker network inspect wesql-network
 
-          # 创建本地数据目录
+          # 创建本地数据目录并设置权限
           mkdir -p ~/wesql-local-dir-0
           chmod 777 ~/wesql-local-dir-0
-          
 
-          # 启动 wesql-server-0
-          docker run -itd --name wesql-server-0 --net=wesql-network --ip=172.21.0.2 \
+          # 启动 wesql-server-0 容器
+          docker network create wesql-network
+          mkdir -p ~/wesql-local-dir-0
+          chmod 777 ~/wesql-local-dir-0
+
+      - name: Run WeSQL Server Container
+        run: |
+          docker run -itd --name wesql-server-0 \
+            --net=wesql-network --ip=172.21.0.2 \
             -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
             port=3306\n\
             objectstore_provider='aws'\n\
             objectstore_region='us-east-1'\n\
-            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
+            objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
             repo_objectstore_id='tutorial'\n\
             branch_objectstore_id='main'\n\
             datadir=/data/mysql/data\n\
@@ -69,7 +74,8 @@ jobs:
             -e MYSQL_ROOT_PASSWORD=passwd \
             apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
 
-#           启动 wesql-server-1
+
+      #           启动 wesql-server-1
 #          docker run -itd --name wesql-server-1 --net=wesql-network --ip=172.21.0.3 \
 #            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
 #            port=3306\n\
