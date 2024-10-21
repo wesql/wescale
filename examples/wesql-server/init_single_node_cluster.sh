@@ -5,19 +5,14 @@ if [ "$(id -u)" -eq 0 ]; then
   exec su -s /bin/bash vitess "$0" "$@"
 fi
 
+export START_VTTABLET=${START_VTTABLET:-1}
+export START_VTGATE=${START_VTGATE:-1}
+
 # Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
 export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}
 export MYSQL_HOST=${MYSQL_HOST:-'127.0.0.1'}
 export MYSQL_PORT=${MYSQL_PORT:-'3306'}
-
-export VTTABLET_ID="${VTTABLET_ID:-0}"
-export VTTABLET_PORT=${VTTABLET_PORT:-'15100'}
-export VTTABLET_GRPC_PORT=${VTTABLET_GRPC_PORT:-'16100'}
-
-export VTGATE_WEB_PORT=${VTGATE_WEB_PORT:-'15001'}
-export VTGATE_GRPC_PORT=${VTGATE_GRPC_PORT:-'15991'}
-export VTGATE_MYSQL_PORT=${VTGATE_MYSQL_PORT:-'15306'}
 
 export VTDATAROOT=${VTDATAROOT:-$(pwd)/vtdataroot}
 
@@ -87,27 +82,39 @@ echo "Waiting for vtctld service to start..."
 ./wait-for-service.sh vtctld 127.0.0.1 15999
 echo "vtctld has started."
 
-# Start vttablet
-echo "Starting vttablet..."
-run_with_prefix "vttablet" ./vttablet.sh
-echo "Waiting for vttablet service to start..."
-./wait-for-service.sh vttablet 127.0.0.1 $VTTABLET_GRPC_PORT
-echo "vttablet has started."
+# Start vttablet 0
+if [ "$START_VTTABLET" -eq 1 ]; then
+  export VTTABLET_ID="${VTTABLET_ID:-0}"
+  export VTTABLET_PORT=${VTTABLET_PORT:-'15100'}
+  export VTTABLET_GRPC_PORT=${VTTABLET_GRPC_PORT:-'16100'}
+  echo "Starting vttablet..."
+  run_with_prefix "vttablet" ./vttablet.sh
+  echo "Waiting for vttablet service to start..."
+  ./wait-for-service.sh vttablet 127.0.0.1 $VTTABLET_GRPC_PORT
+  echo "vttablet has started."
+fi
 
 # Start vtgate
-echo "Starting vtgate..."
-run_with_prefix "vtgate" ./vtgate.sh
-echo "Waiting for vtgate service to start..."
-./wait-for-service.sh vtgate 127.0.0.1 $VTGATE_MYSQL_PORT
-echo "vtgate has started."
+if [ "$START_VTGATE" -eq 1 ]; then
+  export VTGATE_WEB_PORT=${VTGATE_WEB_PORT:-'15001'}
+  export VTGATE_GRPC_PORT=${VTGATE_GRPC_PORT:-'15991'}
+  export VTGATE_MYSQL_PORT=${VTGATE_MYSQL_PORT:-'15306'}
+  echo "Starting vtgate..."
+  run_with_prefix "vtgate" ./vtgate.sh
+  echo "Waiting for vtgate service to start..."
+  ./wait-for-service.sh vtgate 127.0.0.1 $VTGATE_MYSQL_PORT
+  echo "vtgate has started."
 
-echo "
-------------------------------------------------------------------------
-"
+  echo "
+  ------------------------------------------------------------------------
+  "
 
-echo "VTGate endpoint:
-mysql -h127.0.0.1 -P$VTGATE_MYSQL_PORT
-"
+  echo "VTGate endpoint:
+  mysql -h127.0.0.1 -P$VTGATE_MYSQL_PORT
+  "
+fi
+
+
 
 # Keep the script running to catch exit signals
 wait
