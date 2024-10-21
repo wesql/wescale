@@ -8,6 +8,8 @@ package viperutil
 import (
 	"github.com/spf13/pflag"
 
+	"vitess.io/vitess/go/vt/vtgate/autoscale"
+
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/vtgate"
@@ -31,6 +33,11 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_pod_name", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_logger_node_stateful_set_name", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_vtgate_headless_service_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_mysql_container_name", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_cpu_no_adjust_upper_bound_ratio", autoscale.UpdateAutoScaleCpuNoAdjustUpperBoundRatioHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_cpu_no_adjust_lower_bound_ratio", autoscale.UpdateAutoScaleCpuNoAdjustLowerBoundRatioHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_upper_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustUpperBoundRatioHandler)
+	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_lower_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustLowerBoundRatioHandler)
 
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {

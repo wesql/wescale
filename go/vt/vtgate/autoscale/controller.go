@@ -53,6 +53,7 @@ var (
 	AutoScaleDataNodeStatefulSetName   = "mycluster-wesql-0"
 	AutoScaleDataNodePodName           = "mycluster-wesql-0-0"
 	AutoScaleVTGateHeadlessServiceName = "wesql-vtgate-headless.default.svc.cluster.local"
+	AutoScaleMysqlContainerName        = "mysql"
 
 	AutoScaleLoggerNodeStatefulSetName = []string{"mycluster-wesql-1", "mycluster-wesql-2"}
 	AutoScaleLoggerNodePodName         = []string{"mycluster-wesql-1-0", "mycluster-wesql-2-0"}
@@ -77,6 +78,7 @@ func RegisterAutoScaleFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&AutoScaleLoggerNodeStatefulSetName, "auto_scale_logger_node_stateful_set_name", AutoScaleLoggerNodeStatefulSetName, "auto scale logger node stateful set name")
 	fs.StringSliceVar(&AutoScaleLoggerNodePodName, "auto_scale_logger_node_pod_name", AutoScaleLoggerNodePodName, "auto scale logger node pod name")
 	fs.StringVar(&AutoScaleVTGateHeadlessServiceName, "auto_scale_vtgate_headless_service_name", AutoScaleVTGateHeadlessServiceName, "auto scale vtgate headless service name")
+	fs.StringVar(&AutoScaleMysqlContainerName, "auto_scale_mysql_container_name", AutoScaleMysqlContainerName, "auto scale mysql container name")
 
 	fs.DurationVar(&AutoSuspendLeaseDuration, "auto_suspend_lease_duration", AutoSuspendLeaseDuration, "lease duration is the duration that non-leader candidates will wait to force acquire leadership. ")
 	fs.DurationVar(&AutoSuspendRenewDeadline, "auto_suspend_renew_deadline", AutoSuspendRenewDeadline, "renew deadline is the duration that the acting master will retry refreshing leadership before giving up.")
@@ -169,7 +171,7 @@ func initK8sClients() (*kubernetes.Clientset, *metricsclientset.Clientset) {
 	if err != nil {
 		log.Errorf("Error creating clientset: %v", err)
 	}
-	// 创建 Metrics 客户端
+
 	metricsClientset, err := metricsclientset.NewForConfig(k8sRestConfig)
 	if err != nil {
 		log.Errorf("Error creating metrics clientset: %v", err)
