@@ -52,8 +52,24 @@ jobs:
 #        uses: medyagh/setup-minikube@latest
       - name : Install Kind
         run: |
+          brew install --cask docker
+          open /Applications/Docker.app
+
+          # 等待 Docker 启动完成
+          while ! docker system info > /dev/null 2>&1; do
+            echo "Waiting for Docker to start..."
+            sleep 5
+          done
+
+          echo "Docker is ready!"
+          docker --version
+
           brew install kind
+          kind --version
+          
           kind create cluster --name wescale-cluster
+          
+          brew install kubectl
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
