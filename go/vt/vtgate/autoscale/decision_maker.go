@@ -2,6 +2,7 @@ package autoscale
 
 import (
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -22,8 +23,8 @@ var (
 	AutoScaleCpuRatio float64 = 0.9
 	// cpu request will remains the same if (the average cpu load) / (current cpu request)
 	// is between upper bound and lower bound, upper bound should be greater than lower bound,
-	// what's more, AutoScaleCpuNoAdjustUpperBoundRatio / AutoScaleCpuRatio should be greather than 1,
-	// and AutoScaleCpuNoAdjustLowerBoundRatio / AutoScaleCpuRatio should be less than 1.
+	// what's more, AutoScaleCpuNoAdjustUpperBoundRatio should be greather than AutoScaleCpuRatio,
+	// and AutoScaleCpuNoAdjustLowerBoundRatio should be less than AutoScaleCpuRatio.
 	AutoScaleCpuNoAdjustUpperBoundRatio float64 = 0.9
 	AutoScaleCpuNoAdjustLowerBoundRatio float64 = 0.8
 
@@ -160,4 +161,72 @@ func GetCpuByComputeUnit(cu float64) int64 {
 
 func GetMemoryByComputeUnit(cu float64) int64 {
 	return int64(cu * AutoScaleMemoryByteComputeUnitRatio)
+}
+
+func UpdateAutoScaleCpuNoAdjustUpperBoundRatioHandler(key string, value string, fs *pflag.FlagSet) {
+	newVal, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Errorf("fail to parse config %v=%v, err: %v", key, value, err)
+		return
+	}
+	if newVal < AutoScaleCpuRatio {
+		log.Errorf("AutoScaleCpuNoAdjustUpperBoundRatio %v should be greater than AutoScaleCpuRatio %v, or may lead:"+
+			" the CPU usage has exceeded the upper bound, but the newly allocated CPU resources may be less than the originally assigned amount.", newVal, AutoScaleCpuRatio)
+		return
+	}
+
+	if err := fs.Set(key, value); err != nil {
+		log.Errorf("fail to set config %v=%v, err: %v", key, value, err)
+	}
+}
+
+func UpdateAutoScaleCpuNoAdjustLowerBoundRatioHandler(key string, value string, fs *pflag.FlagSet) {
+	newVal, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Errorf("fail to parse config %v=%v, err: %v", key, value, err)
+		return
+	}
+	if newVal > AutoScaleCpuRatio {
+		log.Errorf("AutoScaleCpuNoAdjustLowerBoundRatio %v should be less than AutoScaleCpuRatio %v, or may lead: "+
+			"the CPU usage is below the lower bound, but the newly allocated CPU resources may be greater than the originally assigned amount.", newVal, AutoScaleCpuRatio)
+		return
+	}
+
+	if err := fs.Set(key, value); err != nil {
+		log.Errorf("fail to set config %v=%v, err: %v", key, value, err)
+	}
+}
+
+func UpdateAutoScaleMemoryNoAdjustUpperBoundRatioHandler(key string, value string, fs *pflag.FlagSet) {
+	newVal, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Errorf("fail to parse config %v=%v, err: %v", key, value, err)
+		return
+	}
+	if newVal < AutoScaleMemoryRatio {
+		log.Errorf("AutoScaleMemoryNoAdjustUpperBoundRatio %v should be greater than AutoScaleMemoryRatio %v, or may lead:"+
+			" the memory usage has exceeded the upper bound, but the newly allocated memory resources may be less than the originally assigned amount.", newVal, AutoScaleMemoryRatio)
+		return
+	}
+
+	if err := fs.Set(key, value); err != nil {
+		log.Errorf("fail to set config %v=%v, err: %v", key, value, err)
+	}
+}
+
+func UpdateAutoScaleMemoryNoAdjustLowerBoundRatioHandler(key string, value string, fs *pflag.FlagSet) {
+	newVal, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Errorf("fail to parse config %v=%v, err: %v", key, value, err)
+		return
+	}
+	if newVal > AutoScaleMemoryRatio {
+		log.Errorf("AutoScaleMemoryNoAdjustLowerBoundRatio %v should be less than AutoScaleMemoryRatio %v, or may lead:"+
+			" the memory usage is below the lower bound, but the newly allocated memory resources may be greater than the originally assigned amount.", newVal, AutoScaleMemoryRatio)
+		return
+	}
+
+	if err := fs.Set(key, value); err != nil {
+		log.Errorf("fail to set config %v=%v, err: %v", key, value, err)
+	}
 }

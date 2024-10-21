@@ -536,7 +536,7 @@ func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
 			return err
 		}
 	}
-	wr.Logger().Printf("Start workflow:%v successfully.", workflow)
+	wr.Logger().Printf("Start workflow:%v successfully.\n", workflow)
 	return nil
 }
 
@@ -559,7 +559,7 @@ func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
 			return err
 		}
 	}
-	wr.Logger().Printf("Start workflow %v successfully", workflow)
+	wr.Logger().Printf("Stop workflow %v successfully.\n", workflow)
 	return nil
 }
 func analyzeDiffSchema(source *tabletmanagerdatapb.SchemaDefinition, target *tabletmanagerdatapb.SchemaDefinition) ([]schemadiff.EntityDiff, error) {
@@ -1229,7 +1229,7 @@ func (wr *Wrangler) analyseSchemaDiffAndOutputDDL(targetSchema, sourceSchema, sn
 		wr.Logger().Printf("the schemas are the same\n")
 	} else {
 		for _, entityDiff := range entityDiffs {
-			wr.Logger().Printf("entity %v\n", entityDiff.StatementString())
+			wr.Logger().Printf("%v\n", entityDiff.StatementString())
 		}
 	}
 	return nil
