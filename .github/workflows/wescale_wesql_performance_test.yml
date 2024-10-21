@@ -54,7 +54,7 @@ jobs:
             -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
             port=3306\n\
             objectstore_provider='aws'\n\
-            objectstore_region='cn-northwest-1'\n\
+            objectstore_region='us-east-1'\n\
             objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
             repo_objectstore_id='tutorial'\n\
             branch_objectstore_id='main'\n\
@@ -73,7 +73,7 @@ jobs:
             port=3306\n\
             log-bin=binlog\n\
             objectstore_provider='aws'\n\
-            objectstore_region='cn-northwest-1'\n\
+            objectstore_region='us-east-1'\n\
             objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
             datadir=/data/mysql/data\n\
             log-error=/data/mysql/log/mysqld-error.log" \
@@ -92,7 +92,7 @@ jobs:
             port=3306\n\
             log-bin=binlog\n\
             objectstore_provider='aws'\n\
-            objectstore_region='cn-northwest-1'\n\
+            objectstore_region='us-east-1'\n\
             objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
             datadir=/data/mysql/data\n\
             log-error=/data/mysql/log/mysqld-error.log" \
