@@ -47,9 +47,12 @@ jobs:
 #          version: "v0.23.0"
 #          cluster_name: "wescale-cluster"
 
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@latest
+#      - name: start minikube
+#        id: minikube
+#        uses: medyagh/setup-minikube@latest
+      - name : Install Kind
+        run: |
+          brew install kind
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
