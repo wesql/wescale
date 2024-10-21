@@ -41,15 +41,15 @@ jobs:
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       # Step 4: Start Kind Cluster using kind-action
-      - name: Start Kind Cluster
-        uses: helm/kind-action@v1.4.0
-        with:
-          version: "v0.23.0"
-          cluster_name: "wescale-cluster"
+#      - name: Start Kind Cluster
+#        uses: helm/kind-action@v1.4.0
+#        with:
+#          version: "v0.23.0"
+#          cluster_name: "wescale-cluster"
 
-#      - name: start minikube
-#        id: minikube
-#        uses: medyagh/setup-minikube@latest
+      - name: start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
@@ -109,7 +109,7 @@ jobs:
 #          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
 
       - name: Install Tmate
-        run: sudo apt-get install tmate
+        run: brew install tmate
 
       - name: Start Tmate session
         run: |
@@ -188,4 +188,4 @@ jobs:
           aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
           aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
           
-          kind delete cluster --name wescale-cluster 
+#          kind delete cluster --name wescale-cluster
