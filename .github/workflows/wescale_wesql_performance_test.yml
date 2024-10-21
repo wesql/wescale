@@ -53,6 +53,7 @@ jobs:
       - name : Install Kind
         run: |
           brew install kind
+          kind create cluster --name wescale-cluster
 
       # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
