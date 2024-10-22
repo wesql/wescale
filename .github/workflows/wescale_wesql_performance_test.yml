@@ -43,8 +43,8 @@ jobs:
       - name: Create WeSQL Cluster in Docker
         run: |
           docker network create my-network
-          mkdir -p ~/wesql-local-dir-0
-          chmod 777 ~/wesql-local-dir-0
+          mkdir -p ./wesql-local-dir
+          chmod 777 ./wesql-local-dir
 
       - name: Run WeSQL Server Container
         run: |
@@ -63,7 +63,7 @@ jobs:
           datadir=/data/mysql/data\n\
           log-error=/data/mysql/log/mysqld-error.log" \
           -p 3306:3306 \
-          -v ~/wesql-local-dir:/data/mysql \
+          -v ./wesql-local-dir:/data/mysql \
           -e WESQL_CLUSTER_MEMBERS='127.0.0.1:13306' \
           -e WESQL_CLUSTER_MEMBER_INDEX=0 \
           -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
