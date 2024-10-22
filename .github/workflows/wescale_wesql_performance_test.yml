@@ -53,8 +53,7 @@ jobs:
 
       - name: Run WeSQL Server Container
         run: |
-          docker run -itd --name wesql-server-0 \
-            --net=wesql-network \
+          docker run -itd --name wesql-server-0 --net=wesql-network \
             -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
             port=3306\n\
             log-bin=binlog\n\
@@ -66,15 +65,7 @@ jobs:
             objectstore_region='us-east-1'\n\
             objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
             datadir=/data/mysql/data\n\
-            log-error=/data/mysql/log/mysqld-error.log" \
-            -p 3306:3306 \
-            -v ~/wesql-local-dir-0:/data/mysql \
-            -e WESQL_CLUSTER_MEMBER='127.0.0.1:13306' \
-            -e WESQL_CLUSTER_MEMBER_INDEX=0 \
-            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-            -e MYSQL_ROOT_PASSWORD=passwd \
-            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
+            log-error=/data/mysql/log/mysqld-error.log" -p 3306:3306 -v ~/wesql-local-dir-0:/data/mysql -e WESQL_CLUSTER_MEMBER='127.0.0.1:13306' -e WESQL_CLUSTER_MEMBER_INDEX=0 -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' -e MYSQL_ROOT_PASSWORD=passwd apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
 
 
       #           启动 wesql-server-1
