@@ -263,6 +263,8 @@ func (svci *SysVarCheckAndIgnore) Execute(ctx context.Context, vcursor VCursor, 
 	switch svci.Name {
 	case sysvars.DDLStrategy.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
+	case sysvars.EnableDeclarativeDDL.Name:
+		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return vcursor.SetExec(ctx, svci.Name, strings.Replace(svci.Expr, "'", "", -1))
 	case sysvars.ReadAfterWriteConsistency.Name:
@@ -523,6 +525,8 @@ func (svss *SysVarSetAware) Execute(ctx context.Context, vcursor VCursor, env *e
 			return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid DDL strategy: %s", str)
 		}
 		vcursor.Session().SetDDLStrategy(str)
+	case sysvars.EnableDeclarativeDDL.Name:
+		err = svss.setBoolSysVar(ctx, env, vcursor.Session().SetEnableDeclarativeDDL)
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		str, err := svss.evalAsString(env)
 		if err != nil {

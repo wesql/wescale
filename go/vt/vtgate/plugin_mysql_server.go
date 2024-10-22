@@ -392,6 +392,7 @@ func (vh *vtgateHandler) session(c *mysql.Conn) *vtgatepb.Session {
 			},
 			Autocommit:               true,
 			DDLStrategy:              defaultDDLStrategy,
+			EnableDeclarativeDDL:     defaultEnableDeclarativeDDL,
 			SessionUUID:              u.String(),
 			EnableSystemSettings:     sysVarSetEnabled,
 			ReadWriteSplittingPolicy: defaultReadWriteSplittingPolicy,

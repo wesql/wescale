@@ -539,6 +539,7 @@ func (er *astRewriter) sysVarRewrite(cursor *Cursor, node *Variable) {
 		sysvars.Charset.Name,
 		sysvars.ClientFoundRows.Name,
 		sysvars.DDLStrategy.Name,
+		sysvars.EnableDeclarativeDDL.Name,
 		sysvars.Names.Name,
 		sysvars.TransactionMode.Name,
 		sysvars.ReadAfterWriteGTID.Name,

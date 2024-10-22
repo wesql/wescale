@@ -25,6 +25,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -931,6 +932,17 @@ func (vc *vcursorImpl) GetDDLStrategy() string {
 	return vc.safeSession.GetDDLStrategy()
 }
 
+// SetEnableDeclarativeDDL implements the SessionActions interface
+func (vc *vcursorImpl) SetEnableDeclarativeDDL(_ context.Context, enable bool) error {
+	vc.safeSession.SetEnableDeclarativeDDL(enable)
+	return nil
+}
+
+// GetEnableDeclarativeDDL implements the SessionActions interface
+func (vc *vcursorImpl) GetEnableDeclarativeDDL() bool {
+	return vc.safeSession.GetEnableDeclarativeDDL()
+}
+
 // SetReadWriteSplittingPolicy implements the SessionActions interface
 func (vc *vcursorImpl) SetReadWriteSplittingPolicy(strategy string) {
 	vc.safeSession.SetReadWriteSplittingPolicy(strategy)
@@ -1205,21 +1217,83 @@ func (vc *vcursorImpl) GetSrvVschema() *vschemapb.SrvVSchema {
 func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) error {
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
-		return SetDefaultReadWriteSplittingPolicy(value)
+		err := SetDefaultReadWriteSplittingPolicy(value)
+		if err != nil {
+			return err
+		}
+		vc.safeSession.SetReadWriteSplittingPolicy(value)
+		return nil
+
 	case sysvars.ReadWriteSplittingRatio.Name:
-		return SetDefaultReadWriteSplittingRatio(value)
+		err := SetDefaultReadWriteSplittingRatio(value)
+		if err != nil {
+			return err
+		}
+		ratio, _ := strconv.Atoi(value)
+		vc.safeSession.SetReadWriteSplittingRatio(int32(ratio))
+		return nil
+
 	case sysvars.ReadAfterWriteConsistency.Name:
-		return SetDefaultReadAfterWriteConsistency(value)
+		err := SetDefaultReadAfterWriteConsistency(value)
+		if err != nil {
+			return err
+		}
+		vc.safeSession.SetReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency_value[strings.ToUpper(value)]))
+		return nil
+
 	case sysvars.ReadAfterWriteTimeOut.Name:
-		return SetDefaultReadAfterWriteTimeout(value)
+		err := SetDefaultReadAfterWriteTimeout(value)
+		if err != nil {
+			return err
+		}
+		timeout, _ := strconv.ParseFloat(value, 64)
+		vc.safeSession.SetReadAfterWriteTimeout(timeout)
+		return nil
+
 	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
-		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
+		err := SetDefaultRewriteTableNameWithDbNamePrefix(value)
+		if err != nil {
+			return err
+		}
+		val, _ := strconv.ParseBool(value)
+		vc.safeSession.SetRewriteTableNameWithDbNamePrefix(val)
+		return nil
+
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
-		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
+		err := SetDefaultEnableInterceptionForDMLWithoutWhere(value)
+		if err != nil {
+			return err
+		}
+		enable, _ := strconv.ParseBool(value)
+		vc.safeSession.SetEnableInterceptionForDMLWithoutWhere(enable)
+		return nil
+
 	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
-		return SetDefaultEnableDisplaySQLExecutionVTTablet(value)
+		err := SetDefaultEnableDisplaySQLExecutionVTTablet(value)
+		if err != nil {
+			return err
+		}
+		enable, _ := strconv.ParseBool(value)
+		vc.safeSession.SetEnableDisplaySQLExecutionVTTablet(enable)
+		return nil
+
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
-		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
+		err := SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
+		if err != nil {
+			return err
+		}
+		val, _ := strconv.ParseBool(value)
+		vc.safeSession.SetReadWriteSplitForReadOnlyTxnUserInput(val)
+		return nil
+
+	case sysvars.EnableDeclarativeDDL.Name:
+		err := SetDefaultEnableDeclarativeDDL(value)
+		if err != nil {
+			return err
+		}
+		enable, _ := strconv.ParseBool(value)
+		vc.safeSession.SetEnableDeclarativeDDL(enable)
+		return nil
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }

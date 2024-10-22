@@ -529,6 +529,8 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[key] = sqltypes.StringBindVariable(v)
 		case sysvars.DDLStrategy.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.DDLStrategy)
+		case sysvars.EnableDeclarativeDDL.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.EnableDeclarativeDDL)
 		case sysvars.ReadWriteSplittingPolicy.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
