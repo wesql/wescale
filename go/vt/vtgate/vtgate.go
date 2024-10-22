@@ -110,11 +110,12 @@ var (
 	warnShardedOnly   bool
 
 	// ddl related flags
-	foreignKeyMode     = "allow"
-	dbDDLPlugin        = global.Pushdown
-	defaultDDLStrategy = string(schema.DDLStrategyDirect)
-	enableOnlineDDL    = true
-	enableDirectDDL    = true
+	foreignKeyMode              = "allow"
+	dbDDLPlugin                 = global.Pushdown
+	defaultDDLStrategy          = string(schema.DDLStrategyDirect)
+	enableOnlineDDL             = true
+	enableDirectDDL             = true
+	defaultEnableDeclarativeDDL = false
 
 	// vtgate schema tracking flags
 	enableSchemaChangeSignal bool
@@ -161,6 +162,7 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&maxMemoryRows, "max_memory_rows", maxMemoryRows, "Maximum number of rows that will be held in memory for intermediate results as well as the final result.")
 	fs.IntVar(&warnMemoryRows, "warn_memory_rows", warnMemoryRows, "Warning threshold for in-memory results. A row count higher than this amount will cause the VtGateWarnings.ResultsExceeded counter to be incremented.")
 	fs.StringVar(&defaultDDLStrategy, "ddl_strategy", defaultDDLStrategy, "Set default strategy for DDL statements. Override with @@ddl_strategy session variable")
+	fs.BoolVar(&defaultEnableDeclarativeDDL, "enable_declarative_ddl", defaultEnableDeclarativeDDL, "Enable declarative DDL or not. Override with @@enable_declarative_ddl session variable")
 	fs.StringVar(&dbDDLPlugin, "dbddl_plugin", dbDDLPlugin, "controls how to handle CREATE/DROP DATABASE. use it if you are using your own database provisioning service")
 	fs.BoolVar(&noScatter, "no_scatter", noScatter, "when set to true, the planner will fail instead of producing a plan that includes scatter queries")
 	fs.BoolVar(&enableShardRouting, "enable-partial-keyspace-migration", enableShardRouting, "(Experimental) Follow shard routing rules: enable only while migrating a keyspace shard by shard. See documentation on Partial MoveTables for more. (default false)")
