@@ -839,3 +839,12 @@ func SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value string) error {
 	defaultReadWriteSplitForReadOnlyTxnUserInput = val
 	return nil
 }
+
+func SetDefaultEnableDeclarativeDDL(value string) error {
+	val, err := strconv.ParseBool(value)
+	if err != nil {
+		return vterrors.NewErrorf(vtrpcpb.Code_INVALID_ARGUMENT, vterrors.WrongValueForVar, "invalid enable_declarative_ddl value: %s", value)
+	}
+	defaultEnableDeclarativeDDL = val
+	return nil
+}
