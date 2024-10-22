@@ -1,0 +1,51 @@
+name: Pick and Release
+on:
+  issue_comment:
+    types: [created]
+
+
+jobs:
+  pick-and-release:
+    name: Pick and Release
+    if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/pick-and-release')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Automatic Cherry Pick
+        uses: apecloud-inc/gha-cherry-pick@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name : Add Tag to Target Branch And Release Image
+        run : |
+          COMMENT="${{ github.event.comment.body }}"
+          TARGET_BRANCH=$(echo "$COMMENT" | awk '{print $2}')
+          TAG_NAME=$(echo "$COMMENT" | awk '{print $3}')
+          
+          if [ -z "$TARGET_BRANCH" ] || [ -z "$TAG_NAME" ]; then
+            gh pr comment ${{ github.event.issue.number }} --body "🤖 says: TARGET_BRANCH or TAG_NAME is empty, input format is /pick-and-release <target-branch> <tag>"
+            exit 1
+          fi
+          
+          git fetch origin $TARGET_BRANCH
+          git checkout $TARGET_BRANCH
+          
+          if git tag | grep -q "^$TAG_NAME$"; then
+            git tag -d $TAG_NAME
+            git push origin :refs/tags/$TAG_NAME
+          fi
+          
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          
+          gh workflow run release-image.yml --ref $TAG_NAME$ -f image_tag=$TAG_NAME$
+          gh pr comment ${{ github.event.issue.number }} --body "🤖 says: tag is added, and image release starts running."
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+
