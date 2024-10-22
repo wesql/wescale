@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - name: Automatic Cherry Pick
-        uses: apecloud-inc/gha-cherry-pick@v1
+        uses: vendoo/gha-cherry-pick@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
