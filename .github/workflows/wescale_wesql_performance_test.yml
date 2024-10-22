@@ -42,30 +42,34 @@ jobs:
 
       - name: Create WeSQL Cluster in Docker
         run: |
-          # 创建本地数据目录并设置权限
-          mkdir -p ~/wesql-local-dir-0
-          chmod 777 ~/wesql-local-dir-0
-
-          # 启动 wesql-server-0 容器
-          docker network create wesql-network
+          docker network create my-network
           mkdir -p ~/wesql-local-dir-0
           chmod 777 ~/wesql-local-dir-0
 
       - name: Run WeSQL Server Container
         run: |
-          docker run -itd --name wesql-server-0 --net=wesql-network \
-            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-            port=3306\n\
-            log-bin=binlog\n\
-            gtid_mode=ON\n\
-            enforce_gtid_consistency=ON\n\
-            log_slave_updates=ON\n\
-            binlog_format=ROW\n\
-            objectstore_provider='aws'\n\
-            objectstore_region='us-east-1'\n\
-            objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
-            datadir=/data/mysql/data\n\
-            log-error=/data/mysql/log/mysqld-error.log" -p 3306:3306 -v ~/wesql-local-dir-0:/data/mysql -e WESQL_CLUSTER_MEMBER='127.0.0.1:13306' -e WESQL_CLUSTER_MEMBER_INDEX=0 -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' -e MYSQL_ROOT_PASSWORD=passwd apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
+          docker run -itd --name wesql-server \
+          --network my-network \
+          -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+          port=3306\n\
+          log-bin=binlog\n\
+          gtid_mode=ON\n\
+          enforce_gtid_consistency=ON\n\
+          log_slave_updates=ON\n\
+          binlog_format=ROW\n\
+          objectstore_provider='aws'\n\
+          objectstore_region='us-east-1'\n\
+          objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
+          datadir=/data/mysql/data\n\
+          log-error=/data/mysql/log/mysqld-error.log" \
+          -p 3306:3306 \
+          -v ~/wesql-local-dir:/data/mysql \
+          -e WESQL_CLUSTER_MEMBERS='127.0.0.1:13306' \
+          -e WESQL_CLUSTER_MEMBER_INDEX=0 \
+          -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+          -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
 
 
       #           启动 wesql-server-1
