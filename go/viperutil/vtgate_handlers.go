@@ -39,6 +39,8 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_upper_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustUpperBoundRatioHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_lower_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustLowerBoundRatioHandler)
 
+	v.ReloadHandler.AddReloadHandler("enable_declarative_ddl", DefaultFsReloadHandler)
+
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {
 			if err = fs.Set("read_write_splitting_policy", value); err != nil {
