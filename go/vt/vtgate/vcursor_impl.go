@@ -25,7 +25,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -1215,85 +1214,27 @@ func (vc *vcursorImpl) GetSrvVschema() *vschemapb.SrvVSchema {
 }
 
 func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) error {
+	// The global setting will not be applied to current session immediately,
+	// which is the same as mysql behavior.
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
-		err := SetDefaultReadWriteSplittingPolicy(value)
-		if err != nil {
-			return err
-		}
-		vc.safeSession.SetReadWriteSplittingPolicy(value)
-		return nil
-
+		return SetDefaultReadWriteSplittingPolicy(value)
 	case sysvars.ReadWriteSplittingRatio.Name:
-		err := SetDefaultReadWriteSplittingRatio(value)
-		if err != nil {
-			return err
-		}
-		ratio, _ := strconv.Atoi(value)
-		vc.safeSession.SetReadWriteSplittingRatio(int32(ratio))
-		return nil
-
+		return SetDefaultReadWriteSplittingRatio(value)
 	case sysvars.ReadAfterWriteConsistency.Name:
-		err := SetDefaultReadAfterWriteConsistency(value)
-		if err != nil {
-			return err
-		}
-		vc.safeSession.SetReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency(vtgatepb.ReadAfterWriteConsistency_value[strings.ToUpper(value)]))
-		return nil
-
+		return SetDefaultReadAfterWriteConsistency(value)
 	case sysvars.ReadAfterWriteTimeOut.Name:
-		err := SetDefaultReadAfterWriteTimeout(value)
-		if err != nil {
-			return err
-		}
-		timeout, _ := strconv.ParseFloat(value, 64)
-		vc.safeSession.SetReadAfterWriteTimeout(timeout)
-		return nil
-
+		return SetDefaultReadAfterWriteTimeout(value)
 	case sysvars.RewriteTableNameWithDbNamePrefix.Name:
-		err := SetDefaultRewriteTableNameWithDbNamePrefix(value)
-		if err != nil {
-			return err
-		}
-		val, _ := strconv.ParseBool(value)
-		vc.safeSession.SetRewriteTableNameWithDbNamePrefix(val)
-		return nil
-
+		return SetDefaultRewriteTableNameWithDbNamePrefix(value)
 	case sysvars.EnableInterceptionForDMLWithoutWhere.Name:
-		err := SetDefaultEnableInterceptionForDMLWithoutWhere(value)
-		if err != nil {
-			return err
-		}
-		enable, _ := strconv.ParseBool(value)
-		vc.safeSession.SetEnableInterceptionForDMLWithoutWhere(enable)
-		return nil
-
+		return SetDefaultEnableInterceptionForDMLWithoutWhere(value)
 	case sysvars.EnableDisplaySQLExecutionVTTablet.Name:
-		err := SetDefaultEnableDisplaySQLExecutionVTTablet(value)
-		if err != nil {
-			return err
-		}
-		enable, _ := strconv.ParseBool(value)
-		vc.safeSession.SetEnableDisplaySQLExecutionVTTablet(enable)
-		return nil
-
+		return SetDefaultEnableDisplaySQLExecutionVTTablet(value)
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
-		err := SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
-		if err != nil {
-			return err
-		}
-		val, _ := strconv.ParseBool(value)
-		vc.safeSession.SetReadWriteSplitForReadOnlyTxnUserInput(val)
-		return nil
-
+		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
 	case sysvars.EnableDeclarativeDDL.Name:
-		err := SetDefaultEnableDeclarativeDDL(value)
-		if err != nil {
-			return err
-		}
-		enable, _ := strconv.ParseBool(value)
-		vc.safeSession.SetEnableDeclarativeDDL(enable)
-		return nil
+		return SetDefaultEnableDeclarativeDDL(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }
