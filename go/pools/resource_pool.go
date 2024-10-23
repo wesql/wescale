@@ -40,28 +40,98 @@ import (
 )
 
 type (
+	// IResourcePool defines the interface for managing a pool of resources.
+	// It provides methods for acquiring, releasing, and monitoring resources.
 	IResourcePool interface {
+		// Close gracefully shuts down the resource pool.
+		// It releases all resources and prevents any further Get operations.
 		Close()
+
+		// Name returns the name of the resource pool.
+		// This is useful for identification and logging purposes.
 		Name() string
+
+		// Get retrieves a resource from the pool based on the provided context and settings.
+		// If no resources are available and the pool hasn't reached its capacity,
+		// it creates a new resource using the factory. It may wait for a resource to become available.
+		// Returns the acquired Resource or an error if the operation fails.
 		Get(ctx context.Context, setting *Setting) (resource Resource, err error)
+
+		// Put returns a resource to the pool.
+		// Every successful Get call should be paired with a corresponding Put call.
+		// Passing nil will signal that the resource is no longer needed and should be replaced.
 		Put(resource Resource)
+
+		// SetCapacity adjusts the capacity of the resource pool.
+		// It allows resizing the pool within the bounds of the maximum capacity.
+		// If reducing capacity, it waits for resources to be returned before closing excess ones.
+		// Returns an error if the new capacity is out of allowed range.
 		SetCapacity(capacity int) error
+
+		// SetIdleTimeout configures the duration after which idle resources are considered expired.
+		// Resources exceeding this idle time will be closed and removed from the pool.
 		SetIdleTimeout(idleTimeout time.Duration)
+
+		// StatsJSON provides the current statistics of the resource pool in JSON format.
+		// This includes metrics like capacity, available resources, active resources, etc.
 		StatsJSON() string
+
+		// Capacity returns the current capacity of the resource pool.
+		// This indicates the maximum number of resources the pool can hold.
 		Capacity() int64
+
+		// Available returns the number of resources that are currently available for use.
+		// These resources are not currently in use and can be acquired immediately.
 		Available() int64
+
+		// Active returns the total number of active resources in the pool.
+		// This includes both available and in-use resources.
 		Active() int64
+
+		// InUse returns the number of resources that are currently being used.
+		// These resources have been acquired via Get and not yet returned via Put.
 		InUse() int64
+
+		// MaxCap returns the maximum capacity of the resource pool.
+		// This is the upper limit to which the pool can be resized.
 		MaxCap() int64
+
+		// WaitCount returns the total number of times resource acquisition had to wait.
+		// This metric indicates how often requests for resources were blocked due to unavailability.
 		WaitCount() int64
+
+		// WaitTime returns the cumulative duration that resource acquisition requests have waited.
+		// This provides insight into the total blocking time experienced by requests.
 		WaitTime() time.Duration
+
+		// IdleTimeout returns the currently set idle timeout duration.
+		// This is the duration after which idle resources are closed and removed.
 		IdleTimeout() time.Duration
+
+		// IdleClosed returns the count of resources that have been closed due to exceeding the idle timeout.
 		IdleClosed() int64
+
+		// MaxLifetimeClosed returns the count of resources closed because they reached their maximum lifetime.
 		MaxLifetimeClosed() int64
+
+		// Exhausted returns the number of times the pool was fully utilized, causing resource acquisition to wait.
+		// This metric indicates how often the pool ran out of available resources.
 		Exhausted() int64
+
+		// GetCount returns the total number of times the Get method has been called.
+		// This provides a measure of how frequently resources are being requested.
 		GetCount() int64
+
+		// GetSettingCount returns the number of times the Get method was called with specific settings.
+		// This indicates how often resources are being acquired with particular configurations.
 		GetSettingCount() int64
+
+		// DiffSettingCount returns the number of times different settings were applied to resources.
+		// This metric tracks how often resources needed to be reset due to setting changes.
 		DiffSettingCount() int64
+
+		// ResetSettingCount returns the total number of times resource settings have been reset.
+		// This indicates how frequently resources undergo configuration changes.
 		ResetSettingCount() int64
 	}
 

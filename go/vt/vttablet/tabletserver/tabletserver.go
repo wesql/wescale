@@ -36,6 +36,8 @@ import (
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool/pool_manager"
 
 	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
@@ -111,22 +113,24 @@ type TabletServer struct {
 	topoServer             *topo.Server
 
 	// These are sub-components of TabletServer.
-	statelessql  *QueryList
-	statefulql   *QueryList
-	olapql       *QueryList
-	se           *schema.Engine
-	rt           *repltracker.ReplTracker
-	vstreamer    *vstreamer.Engine
-	tracker      *schema.Tracker
-	watcher      *BinlogWatcher
-	qe           *QueryEngine
-	txThrottler  *txthrottler.TxThrottler
-	te           *TxEngine
-	messager     *messager.Engine
-	hs           *healthStreamer
-	lagThrottler *throttle.Throttler
-	tableGC      *gc.TableGC
-	branchWatch  *BranchWatcher
+	statelessql        *QueryList
+	statefulql         *QueryList
+	olapql             *QueryList
+	se                 *schema.Engine
+	rt                 *repltracker.ReplTracker
+	vstreamer          *vstreamer.Engine
+	tracker            *schema.Tracker
+	watcher            *BinlogWatcher
+	qe                 *QueryEngine
+	txThrottler        *txthrottler.TxThrottler
+	te                 *TxEngine
+	messager           *messager.Engine
+	hs                 *healthStreamer
+	lagThrottler       *throttle.Throttler
+	tableGC            *gc.TableGC
+	branchWatch        *BranchWatcher
+	taskPool           *background.TaskPool
+	poolSizeController *pool_manager.PoolSizeController
 
 	// sm manages state transitions.
 	sm                *stateManager
@@ -200,6 +204,8 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
 	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
+	tsv.taskPool = background.NewTaskPool(tsv)
+	tsv.poolSizeController = pool_manager.NewPoolSizeController(tsv.taskPool)
 
 	tsv.sm = &stateManager{
 		statelessql:      tsv.statelessql,
@@ -221,6 +227,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 		throttler:        tsv.lagThrottler,
 		tableGC:          tsv.tableGC,
 		tableACL:         tableacl.GetCurrentACL(),
+		taskPool:         tsv.taskPool,
 	}
 
 	tsv.exporter.NewGaugeFunc("TabletState", "Tablet server state", func() int64 { return int64(tsv.sm.State()) })
