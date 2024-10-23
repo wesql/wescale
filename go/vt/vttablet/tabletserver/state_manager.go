@@ -115,22 +115,24 @@ type stateManager struct {
 	// Open must be done in forward order.
 	// Close must be done in reverse order.
 	// All Close functions must be called before Open.
-	hs               *healthStreamer
-	se               schemaEngine
-	rt               replTracker
-	vstreamer        subComponent
-	tracker          subComponent
-	watcher          subComponent
-	branchWatch      subComponent
-	qe               queryEngine
-	txThrottler      txThrottler
-	te               txEngine
-	messager         subComponent
-	ddle             onlineDDLExecutor
-	dmlJobController jobController
-	throttler        lagThrottler
-	tableGC          tableGarbageCollector
-	tableACL         tableACLController
+	hs                 *healthStreamer
+	se                 schemaEngine
+	rt                 replTracker
+	vstreamer          subComponent
+	tracker            subComponent
+	watcher            subComponent
+	branchWatch        subComponent
+	qe                 queryEngine
+	txThrottler        txThrottler
+	te                 txEngine
+	messager           subComponent
+	ddle               onlineDDLExecutor
+	dmlJobController   jobController
+	throttler          lagThrottler
+	tableGC            tableGarbageCollector
+	tableACL           tableACLController
+	taskPool           taskPool
+	poolSizeController subComponent
 
 	// hcticks starts on initialiazation and runs forever.
 	hcticks *timer.Timer
@@ -173,6 +175,12 @@ type (
 	txEngine interface {
 		AcceptReadWrite()
 		AcceptReadOnly()
+		Close()
+		InUse() int64
+	}
+
+	taskPool interface {
+		Open()
 		Close()
 		InUse() int64
 	}
@@ -554,6 +562,8 @@ func (sm *stateManager) connect(tabletType topodatapb.TabletType) error {
 	if err := sm.qe.Open(); err != nil {
 		return err
 	}
+	sm.taskPool.Open()
+	sm.poolSizeController.Open()
 	return sm.txThrottler.Open()
 }
 
@@ -608,6 +618,8 @@ func (sm *stateManager) closeAll() {
 	sm.unserveCommon()
 	sm.txThrottler.Close()
 	sm.qe.Close()
+	sm.poolSizeController.Close()
+	sm.taskPool.Close()
 	sm.watcher.Close()
 	sm.vstreamer.Close()
 	sm.rt.Close()
@@ -696,7 +708,7 @@ func (sm *stateManager) Broadcast() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
-	tabletThreads := sm.qe.InUse() + sm.te.InUse()
+	tabletThreads := sm.qe.InUse() + sm.te.InUse() + sm.taskPool.InUse()
 	dbThreads, err := sm.rt.ThreadsStatus()
 	lag, er := sm.refreshReplHealthLocked()
 	p, e := sm.rt.GtidExecuted()
