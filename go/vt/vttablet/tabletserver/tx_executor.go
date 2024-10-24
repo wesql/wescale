@@ -147,7 +147,7 @@ func (txe *TxExecutor) markFailed(ctx context.Context, dtid string) {
 //
 // If the connection was moved to the prepared pool, but redo log
 // creation failed, then it will rollback that transaction and
-// return the conn to the te.
+// return the conn to the txPool.
 //
 // If prepare was fully successful, it will also delete the redo log.
 // If the redo log deletion fails, it returns an error indicating that
