@@ -49,7 +49,7 @@ func NewBranchWatcher(env tabletenv.Env, dbConfig dbconfigs.Connector) *BranchWa
 		updateInterval: UpdateInterval,
 		dbConfig:       dbConfig,
 	}
-	branchWatcher.conns = connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
+	branchWatcher.conns = connpool.NewPool(env, "BranchWatch", tabletenv.ConnPoolConfig{
 		Size:               2,
 		IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 	})

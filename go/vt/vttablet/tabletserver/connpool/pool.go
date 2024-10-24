@@ -99,7 +99,7 @@ func NewPool(env tabletenv.Env, name string, cfg tabletenv.ConnPoolConfig) *Pool
 		idleTimeout:        idleTimeout,
 		maxLifetime:        maxLifetime,
 		waiterCap:          int64(cfg.MaxWaiters),
-		dbaPool:            dbconnpool.NewConnectionPool("", 1, idleTimeout, maxLifetime, 0),
+		dbaPool:            dbconnpool.NewConnectionPool("DbaPoolOf"+name, 1, idleTimeout, maxLifetime, 0),
 	}
 	if name == "" {
 		return cp
@@ -435,4 +435,12 @@ func (cp *Pool) isCallerIDAppDebug(ctx context.Context) bool {
 	}
 	callerID := callerid.ImmediateCallerIDFromContext(ctx)
 	return callerID != nil && callerID.Username == params.Uname
+}
+
+func (cp *Pool) CloseIdleConnections(max int) int {
+	p := cp.pool()
+	if p == nil {
+		return 0
+	}
+	return p.CloseIdleResources(max)
 }

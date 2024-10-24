@@ -234,7 +234,7 @@ func (tacl *TableACL) init(env tabletenv.Env, dbConfig dbconfigs.Connector, tabl
 		return nil
 	}
 	if tableACLMode == global.TableACLModeMysqlBased {
-		tacl.conns = connpool.NewPool(env, "", tabletenv.ConnPoolConfig{
+		tacl.conns = connpool.NewPool(env, "TableACL", tabletenv.ConnPoolConfig{
 			Size:               3,
 			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
 		})
