@@ -259,12 +259,12 @@ func (qe *QueryEngine) HandleShowCreateFilter(stmt *sqlparser.ShowWescaleFilter)
 		return nil, err
 	}
 	rows := [][]sqltypes.Value{}
-	rows = append(rows, BuildVarCharRow(
+	rows = append(rows, sqltypes.BuildVarCharRow(
 		stmt.Name,
 		"\n"+sqlparser.String(createFilter),
 	))
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields("Filer", "Create Filter"),
+		Fields: sqltypes.BuildVarCharFields("Filer", "Create Filter"),
 		Rows:   rows,
 	}, nil
 }
