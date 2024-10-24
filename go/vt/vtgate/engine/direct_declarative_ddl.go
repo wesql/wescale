@@ -24,10 +24,7 @@ type DirectDeclarativeDDL struct {
 	tableName     string
 	originSchema  string
 	desiredSchema string
-	diffs         []string
-
-	//  Executed diff DDls to be by Send primitive
-	sends []*Send
+	diffDDL       string
 }
 
 func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.CreateTable, cursor VCursor) (*DirectDeclarativeDDL, error) {
@@ -41,7 +38,7 @@ func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.Creat
 	var dbExist bool
 	var originSchema string
 	var desireSchema string
-	var diffDDLs string
+	var diffDDL string
 
 	dbName = ddlStatement.GetTable().Qualifier.String()
 	tableName = ddlStatement.GetTable().Name.String()
@@ -78,8 +75,8 @@ func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.Creat
 		return nil, err
 	}
 
-	diffDDLs = diff.CanonicalStatementString()
-	log.Debugf("the diff DDLs to execute is %v", diffDDLs)
+	diffDDL = diff.CanonicalStatementString()
+	log.Debugf("the diff DDLs to execute is %v", diffDDL)
 
 	return &DirectDeclarativeDDL{
 		dbName:        dbName,
@@ -87,7 +84,7 @@ func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.Creat
 		tableName:     tableName,
 		originSchema:  originSchema,
 		desiredSchema: desireSchema,
-		diffs:         make([]string, 0), // todo clint: add diff DDLs to this list
+		diffDDL:       diffDDL,
 	}, nil
 }
 
@@ -98,15 +95,12 @@ func (d *DirectDeclarativeDDL) NeedsTransaction() bool {
 
 // RouteType implements Primitive interface
 func (d *DirectDeclarativeDDL) RouteType() string {
-	return "Send"
+	return "DirectDeclarativeDDL"
 }
 
 // GetKeyspaceName implements Primitive interface
 func (d *DirectDeclarativeDDL) GetKeyspaceName() string {
-	if d.sends == nil || len(d.sends) == 0 || d.sends[0].Keyspace == nil {
-		return ""
-	}
-	return d.sends[0].Keyspace.Name
+	return d.dbName
 }
 
 // GetTableName implements Primitive interface
@@ -116,29 +110,30 @@ func (d *DirectDeclarativeDDL) GetTableName() string {
 
 // TryExecute implements Primitive interface
 func (d *DirectDeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	executedDDL := ""
+	th, err := vcursor.FindHealthyPrimaryTablet()
+	if err != nil {
+		return nil, err
+	}
 
-	for i, send := range d.sends {
-		_, err := vcursor.ExecutePrimitive(ctx, send, bindVars, wantfields)
+	if !d.dbExist {
+		_, err = th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
 		if err != nil {
-			diffDDLs := ""
-			for _, ddl := range d.diffs {
-				diffDDLs += ddl + ";"
-			}
-			return nil, fmt.Errorf("the diff DDLs to execute is %v, "+
-				"some of them have been executed successfully: %v, "+
-				"the failed one is %v: %v", diffDDLs, executedDDL, d.diffs[i], err)
+			return nil, err
 		}
-		executedDDL += d.diffs[i] + ";"
+		return th.Conn.ExecuteInternal(ctx, th.Target, d.desiredSchema, nil, 0, 0, nil)
+	}
+
+	_, err = th.Conn.ExecuteInternal(ctx, th.Target, d.diffDDL, nil, 0, 0, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	// build final result
-	fileNames := []string{"DDL", "Result"}
+	// todo review: keep or remove?
+	fileNames := []string{"Diff DDL", "Result"}
 	var resultRows []sqltypes.Row
-	for i := range d.diffs {
-		row := sqltypes.BuildVarCharRow(d.diffs[i], "succeed")
-		resultRows = append(resultRows, row)
-	}
+	row := sqltypes.BuildVarCharRow(d.diffDDL, "succeed")
+	resultRows = append(resultRows, row)
 
 	return &sqltypes.Result{
 		Fields: sqltypes.BuildVarCharFields(fileNames...),
@@ -148,63 +143,58 @@ func (d *DirectDeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, 
 
 // TryStreamExecute implements Primitive interface
 func (d *DirectDeclarativeDDL) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
-	executedDDL := ""
+	th, err := vcursor.FindHealthyPrimaryTablet()
+	if err != nil {
+		return err
+	}
 
-	for i, send := range d.sends {
-		err := vcursor.StreamExecutePrimitive(ctx, send, bindVars, wantfields, func(qr *sqltypes.Result) error {
-			// we don't need the query result of each send, so we just ignore it
-			return nil
-		})
+	if !d.dbExist {
+		_, err = th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
 		if err != nil {
-			diffDDLs := ""
-			for _, ddl := range d.diffs {
-				diffDDLs += ddl + ";"
-			}
-			return fmt.Errorf("the diff DDLs to execute is %v, "+
-				"some of them have been executed successfully: %v, "+
-				"the failed one is %v: %v", diffDDLs, executedDDL, d.diffs[i], err)
+			return err
 		}
-		executedDDL += d.diffs[i] + ";"
+		qr, err := th.Conn.ExecuteInternal(ctx, th.Target, d.desiredSchema, nil, 0, 0, nil)
+		if err != nil {
+			return err
+		}
+		return callback(qr)
 	}
 
-	fileNames := []string{"DDL", "Result"}
-	var resultRows []sqltypes.Row
-	for i := range d.diffs {
-		row := sqltypes.BuildVarCharRow(d.diffs[i], "succeed")
-		resultRows = append(resultRows, row)
+	_, err = th.Conn.ExecuteInternal(ctx, th.Target, d.diffDDL, nil, 0, 0, nil)
+	if err != nil {
+		return err
 	}
+
+	// build final result
+	// todo review: keep or remove?
+	fileNames := []string{"Diff DDL", "Result"}
+	var resultRows []sqltypes.Row
+	row := sqltypes.BuildVarCharRow(d.diffDDL, "succeed")
+	resultRows = append(resultRows, row)
 
 	qr := &sqltypes.Result{
 		Fields: sqltypes.BuildVarCharFields(fileNames...),
 		Rows:   resultRows,
 	}
+
 	return callback(qr)
 }
 
 // GetFields implements Primitive interface
 func (d *DirectDeclarativeDDL) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
 	return &sqltypes.Result{
-		Fields: sqltypes.BuildVarCharFields("DDL", "Result"),
+		Fields: sqltypes.BuildVarCharFields("Diff DDL", "Result"),
 	}, nil
 }
 
 // Inputs implements the Primitive interface
 func (d *DirectDeclarativeDDL) Inputs() []Primitive {
-	rst := make([]Primitive, len(d.sends))
-	for i, send := range d.sends {
-		rst[i] = send
-	}
-	return rst
+	return []Primitive{}
 }
 
 // description implements the Primitive interface
 func (d *DirectDeclarativeDDL) description() PrimitiveDescription {
 	var rst PrimitiveDescription
-
-	for _, send := range d.Inputs() {
-		rst.Inputs = append(rst.Inputs, send.description())
-	}
-
 	rst.OperatorType = "DirectDeclarativeDDL"
 	return rst
 }

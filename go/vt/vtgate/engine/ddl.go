@@ -114,6 +114,10 @@ func (ddl *DDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[st
 		if !ddl.DirectDDLEnabled {
 			return nil, schema.ErrDirectDDLDisabled
 		}
+		if ddl.NormalDeclarativeDDL != nil {
+			return vcursor.ExecutePrimitive(ctx, ddl.NormalDeclarativeDDL, bindVars, wantfields)
+		}
+
 		return vcursor.ExecutePrimitive(ctx, ddl.NormalDDL, bindVars, wantfields)
 	}
 }
