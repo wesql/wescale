@@ -29,7 +29,6 @@ import (
 
 	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
 
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
@@ -203,13 +202,13 @@ func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema
 }
 
 func buildShowTargetPlan(vschema plancontext.VSchema) (engine.Primitive, error) {
-	rows := [][]sqltypes.Value{BuildVarCharRow(vschema.TargetString())}
+	rows := [][]sqltypes.Value{sqltypes.BuildVarCharRow(vschema.TargetString())}
 	return engine.NewRowsPrimitive(rows,
-		buildVarCharFields("Target")), nil
+		sqltypes.BuildVarCharFields("Target")), nil
 }
 
 func buildCharsetPlan(show *sqlparser.ShowBasic) (engine.Primitive, error) {
-	fields := buildVarCharFields("Charset", "Description", "Default collation")
+	fields := sqltypes.BuildVarCharFields("Charset", "Description", "Default collation")
 	maxLenField := &querypb.Field{Name: "Maxlen", Type: sqltypes.Int32}
 	fields = append(fields, maxLenField)
 
@@ -310,10 +309,10 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 
 	for _, v := range ks {
 		if filter.MatchString(v.Name) {
-			rows = append(rows, BuildVarCharRow(v.Name))
+			rows = append(rows, sqltypes.BuildVarCharRow(v.Name))
 		}
 	}
-	return engine.NewRowsPrimitive(rows, buildVarCharFields("Database")), nil
+	return engine.NewRowsPrimitive(rows, sqltypes.BuildVarCharFields("Database")), nil
 }
 
 // buildShowVMigrationsPlan serves `SHOW VITESS_MIGRATIONS ...` queries. It invokes queries on mysql.schema_migrations on all PRIMARY tablets on keyspace's shards.
@@ -395,27 +394,6 @@ func buildPlanWithDB(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (en
 
 }
 
-func buildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
-
-func BuildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
-}
-
 func generateCharsetRows(showFilter *sqlparser.ShowFilter, colNames []string) ([][]sqltypes.Value, error) {
 	if showFilter == nil {
 		return buildCharsetRows(both), nil
@@ -470,12 +448,12 @@ func generateCharsetRows(showFilter *sqlparser.ShowFilter, colNames []string) ([
 }
 
 func buildCharsetRows(colName string) [][]sqltypes.Value {
-	row0 := BuildVarCharRow(
+	row0 := sqltypes.BuildVarCharRow(
 		"utf8",
 		"UTF-8 Unicode",
 		"utf8_general_ci")
 	row0 = append(row0, sqltypes.NewInt32(3))
-	row1 := BuildVarCharRow(
+	row1 := sqltypes.BuildVarCharRow(
 		"utf8mb4",
 		"UTF-8 Unicode",
 		"utf8mb4_general_ci")
@@ -668,7 +646,7 @@ func buildWarnings() (engine.Primitive, error) {
 
 func buildPluginsPlan() (engine.Primitive, error) {
 	var rows [][]sqltypes.Value
-	rows = append(rows, BuildVarCharRow(
+	rows = append(rows, sqltypes.BuildVarCharRow(
 		"InnoDB",
 		"ACTIVE",
 		"STORAGE ENGINE",
@@ -676,12 +654,12 @@ func buildPluginsPlan() (engine.Primitive, error) {
 		"GPL"))
 
 	return engine.NewRowsPrimitive(rows,
-		buildVarCharFields("Name", "Status", "Type", "Library", "License")), nil
+		sqltypes.BuildVarCharFields("Name", "Status", "Type", "Library", "License")), nil
 }
 
 func buildEnginesPlan() (engine.Primitive, error) {
 	var rows [][]sqltypes.Value
-	rows = append(rows, BuildVarCharRow(
+	rows = append(rows, sqltypes.BuildVarCharRow(
 		"InnoDB",
 		"DEFAULT",
 		"Supports transactions, row-level locking, and foreign keys",
@@ -690,7 +668,7 @@ func buildEnginesPlan() (engine.Primitive, error) {
 		"YES"))
 
 	return engine.NewRowsPrimitive(rows,
-		buildVarCharFields("Engine", "Support", "Comment", "Transactions", "XA", "Savepoints")), nil
+		sqltypes.BuildVarCharFields("Engine", "Support", "Comment", "Transactions", "XA", "Savepoints")), nil
 }
 
 func buildVschemaTablesPlan(vschema plancontext.VSchema) (engine.Primitive, error) {
@@ -712,10 +690,10 @@ func buildVschemaTablesPlan(vschema plancontext.VSchema) (engine.Primitive, erro
 
 	rows := make([][]sqltypes.Value, len(tables))
 	for i, v := range tables {
-		rows[i] = BuildVarCharRow(v)
+		rows[i] = sqltypes.BuildVarCharRow(v)
 	}
 
-	return engine.NewRowsPrimitive(rows, buildVarCharFields("Tables")), nil
+	return engine.NewRowsPrimitive(rows, sqltypes.BuildVarCharFields("Tables")), nil
 }
 
 func buildVschemaVindexesPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine.Primitive, error) {
@@ -753,14 +731,14 @@ func buildVschemaVindexesPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 					params = append(params, fmt.Sprintf("%s=%s", k, v))
 				}
 				sort.Strings(params)
-				rows = append(rows, BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
+				rows = append(rows, sqltypes.BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
 			} else {
-				rows = append(rows, BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), "", "", ""))
+				rows = append(rows, sqltypes.BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), "", "", ""))
 			}
 		}
 
 		return engine.NewRowsPrimitive(rows,
-			buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+			sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		), nil
 	}
 
@@ -787,11 +765,11 @@ func buildVschemaVindexesPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 				params = append(params, fmt.Sprintf("%s=%s", k, v))
 			}
 			sort.Strings(params)
-			rows = append(rows, BuildVarCharRow(ksName, vindexName, vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
+			rows = append(rows, sqltypes.BuildVarCharRow(ksName, vindexName, vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
 		}
 	}
 	return engine.NewRowsPrimitive(rows,
-		buildVarCharFields("Keyspace", "Name", "Type", "Params", "Owner"),
+		sqltypes.BuildVarCharFields("Keyspace", "Name", "Type", "Params", "Owner"),
 	), nil
 
 }

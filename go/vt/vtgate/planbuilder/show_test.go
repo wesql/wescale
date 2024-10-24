@@ -33,26 +33,26 @@ import (
 func TestGenerateCharsetRows(t *testing.T) {
 	rows := make([][]sqltypes.Value, 0, 4)
 	rows0 := [][]sqltypes.Value{
-		append(BuildVarCharRow(
+		append(sqltypes.BuildVarCharRow(
 			"utf8",
 			"UTF-8 Unicode",
 			"utf8_general_ci"),
 			sqltypes.NewInt32(3)),
 	}
 	rows1 := [][]sqltypes.Value{
-		append(BuildVarCharRow(
+		append(sqltypes.BuildVarCharRow(
 			"utf8mb4",
 			"UTF-8 Unicode",
 			"utf8mb4_general_ci"),
 			sqltypes.NewInt32(4)),
 	}
 	rows2 := [][]sqltypes.Value{
-		append(BuildVarCharRow(
+		append(sqltypes.BuildVarCharRow(
 			"utf8",
 			"UTF-8 Unicode",
 			"utf8_general_ci"),
 			sqltypes.NewInt32(3)),
-		append(BuildVarCharRow(
+		append(sqltypes.BuildVarCharRow(
 			"utf8mb4",
 			"UTF-8 Unicode",
 			"utf8mb4_general_ci"),

@@ -422,9 +422,9 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	qr, err := executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test", nil)
 	require.NoError(t, err)
 	wantqr := &sqltypes.Result{
-		Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+		Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("id", "test_hash", "hash", "", ""),
+			sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
 		},
 	}
 	utils.MustMatch(t, wantqr, qr)
@@ -452,9 +452,9 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	qr, err = executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test", nil)
 	require.NoError(t, err)
 	wantqr = &sqltypes.Result{
-		Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+		Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("id", "test_hash", "hash", "", ""),
+			sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
 		},
 		RowsAffected: 0,
 	}
@@ -482,10 +482,10 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	qr, err = executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test", nil)
 	require.NoError(t, err)
 	wantqr = &sqltypes.Result{
-		Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+		Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("id", "test_hash", "hash", "", ""),
-			buildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
+			sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
+			sqltypes.BuildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
 		},
 	}
 	utils.MustMatch(t, wantqr, qr)
@@ -511,11 +511,11 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	qr, err = executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test", nil)
 	require.NoError(t, err)
 	wantqr = &sqltypes.Result{
-		Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+		Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("id", "test_hash", "hash", "", ""),
-			buildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
-			buildVarCharRow("id2", "test_hash_id2", "hash", "", ""),
+			sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
+			sqltypes.BuildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
+			sqltypes.BuildVarCharRow("id2", "test_hash_id2", "hash", "", ""),
 		},
 	}
 	utils.MustMatch(t, wantqr, qr)
@@ -531,10 +531,10 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 		qr, err = executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test", nil)
 		require.NoError(t, err)
 		wantqr = &sqltypes.Result{
-			Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+			Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 			Rows: [][]sqltypes.Value{
-				buildVarCharRow("id", "test_hash", "hash", "", ""),
-				buildVarCharRow("id2", "test_hash_id2", "hash", "", ""),
+				sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
+				sqltypes.BuildVarCharRow("id2", "test_hash_id2", "hash", "", ""),
 			},
 		}
 		if reflect.DeepEqual(qr, wantqr) {
@@ -576,10 +576,10 @@ func _TestExecutorAddDropVindexDDL(t *testing.T) {
 	qr, err = executor.Execute(context.Background(), "TestExecute", session, "show vschema vindexes on TestExecutor.test2", nil)
 	require.NoError(t, err)
 	wantqr = &sqltypes.Result{
-		Fields: buildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
+		Fields: sqltypes.BuildVarCharFields("Columns", "Name", "Type", "Params", "Owner"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("id", "test_hash", "hash", "", ""),
-			buildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
+			sqltypes.BuildVarCharRow("id", "test_hash", "hash", "", ""),
+			sqltypes.BuildVarCharRow("c1, c2", "test_lookup", "lookup", "from=c1,c2; table=test_lookup; to=keyspace_id", "test"),
 		},
 	}
 	utils.MustMatch(t, wantqr, qr)
