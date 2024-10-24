@@ -21,7 +21,7 @@ type QueryServerPoolAutoScaleConfig struct {
 	Interval                   time.Duration // Interval at which pool sizes are adjusted
 	PercentageOfMaxConnections int           // Percentage of MySQL max_connections that vttablet should use (e.g., 80 for 80%). range from 10 to 90.
 	SafetyBuffer               int           // Number of connections to reserve as a safety buffer (e.g., 35)
-	TxPoolPercentage           int           // Fraction of connections allocated to te (e.g., 0.3 for 30%)
+	TxPoolPercentage           int           // Fraction of connections allocated to te (e.g., 50 for 50%)
 	MinTxPoolSize              int           // Minimum size of te (e.g., 5)
 	MinOltpReadPoolSize        int           // Minimum size of qe (e.g., 5)
 }
