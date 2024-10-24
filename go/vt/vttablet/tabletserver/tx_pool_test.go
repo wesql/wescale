@@ -156,7 +156,7 @@ func TestTxPoolAutocommit(t *testing.T) {
 
 	// Start a transaction with autocommit. This will ensure that the executor does not send begin/commit statements
 	// to mysql.
-	// This test is meaningful because if txPool.Begin were to send a BEGIN statement to the connection, it will fatal
+	// This test is meaningful because if te.Begin were to send a BEGIN statement to the connection, it will fatal
 	// because is not in the list of expected queries (i.e db.AddQuery hasn't been called).
 	conn1, _, _, err := txPool.Begin(ctx, &querypb.ExecuteOptions{TransactionIsolation: querypb.ExecuteOptions_AUTOCOMMIT}, false, 0, nil, nil)
 	require.NoError(t, err)
