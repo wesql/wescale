@@ -98,6 +98,7 @@ type iExecute interface {
 	ShowDMLJob(uuid string, showDetail bool) (*sqltypes.Result, error)
 	HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error)
 	HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.Result, error)
+	FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
 }
 
 // VSchemaOperator is an interface to Vschema Operations
@@ -1285,4 +1286,8 @@ func (vc *vcursorImpl) FindRoutedShard(keyspace, shard string) (keyspaceName str
 
 func (vc *vcursorImpl) IsViewsEnabled() bool {
 	return enableViews
+}
+
+func (vc *vcursorImpl) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	return vc.executor.FindHealthyPrimaryTablet()
 }

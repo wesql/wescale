@@ -65,12 +65,19 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 		onlineDDLPlan = nil // emptying this so it does not accidentally gets used somewhere
 	}
 
+	normalDeclarativeDDL := &engine.DirectDeclarativeDDL{}
+	if _, ok := ddlStatement.(*sqlparser.CreateTable); ok && onlineDDLPlan.DDLStrategySetting.Strategy == schema.DDLStrategyDirect && vschema.GetSession().EnableDeclarativeDDL {
+		// init primitive for direct declarative DDL
+		normalDeclarativeDDL = initDirectDeclarativeDDL(ddlStatement)
+	}
+
 	eddl := &engine.DDL{
-		Keyspace:  normalDDLPlan.Keyspace,
-		SQL:       normalDDLPlan.Query,
-		DDL:       ddlStatement,
-		NormalDDL: normalDDLPlan,
-		OnlineDDL: onlineDDLPlan,
+		Keyspace:             normalDDLPlan.Keyspace,
+		SQL:                  normalDDLPlan.Query,
+		DDL:                  ddlStatement,
+		NormalDDL:            normalDDLPlan,
+		OnlineDDL:            onlineDDLPlan,
+		NormalDeclarativeDDL: normalDeclarativeDDL,
 
 		DirectDDLEnabled: enableDirectDDL,
 		OnlineDDLEnabled: enableOnlineDDL,
@@ -163,4 +170,16 @@ func checkFKError(vschema plancontext.VSchema, ddlStatement sqlparser.DDLStateme
 		}
 	}
 	return nil
+}
+
+func initDirectDeclarativeDDL(ddlStatement sqlparser.DDLStatement) *engine.DirectDeclarativeDDL {
+	//dbName := ddlStatement.GetTable().Qualifier.String()
+	//tableName := ddlStatement.GetTable().Name.String()
+	//
+	//desireSchema := ""
+	//originSchema := ""
+	//
+	//ddls := make([]string, 0)
+
+	return &engine.DirectDeclarativeDDL{}
 }

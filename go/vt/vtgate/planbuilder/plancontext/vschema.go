@@ -8,6 +8,8 @@ package plancontext
 import (
 	"strings"
 
+	"vitess.io/vitess/go/vt/discovery"
+
 	"vitess.io/vitess/go/vt/log"
 	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
 	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
@@ -46,6 +48,7 @@ type VSchema interface {
 	SetPlannerVersion(pv PlannerVersion)
 	ConnCollation() collations.ID
 	GetSession() *vtgatepb.Session
+	FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
 
 	// ErrorIfShardedF will return an error if the keyspace is sharded,
 	// and produce a warning if the vtgate if configured to do so

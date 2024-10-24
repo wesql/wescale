@@ -1935,3 +1935,7 @@ func ParseTabletType(param string) (topodatapb.TabletType, error) {
 	}
 	return topodatapb.TabletType(value), nil
 }
+
+func (e *Executor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	return findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
+}

@@ -41,8 +41,9 @@ type DDL struct {
 	SQL      string
 	DDL      sqlparser.DDLStatement
 
-	NormalDDL *Send
-	OnlineDDL *OnlineDDL
+	NormalDDL            *Send
+	OnlineDDL            *OnlineDDL
+	NormalDeclarativeDDL *DirectDeclarativeDDL
 
 	DirectDDLEnabled bool
 	OnlineDDLEnabled bool

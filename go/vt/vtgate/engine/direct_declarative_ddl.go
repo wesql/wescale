@@ -17,6 +17,7 @@ var _ Primitive = (*DirectDeclarativeDDL)(nil)
 
 // DirectDeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
 type DirectDeclarativeDDL struct {
+	dbName        string // todo clint: create db if not exist
 	tableName     string
 	originSchema  string
 	desiredSchema string
