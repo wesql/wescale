@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"sort"
@@ -32,6 +33,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/flagutil"
 
 	"github.com/spf13/pflag"
 
@@ -1988,15 +1990,18 @@ func (tsv *TabletServer) registerDebugEnvHandler() {
 
 func (tsv *TabletServer) registerDebugConfigHandler() {
 	tsv.exporter.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		rstMap := make(map[string]pflag.Value)
 		tabletFlagSet := servenv.GetFlagSetFor("vttablet")
 		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
 			rstMap[flag.Name] = flag.Value
 		})
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
+		defaultFlagValueMap := flagutil.StringMapValue{}
+		flag.VisitAll(func(f *flag.Flag) {
+			defaultFlagValueMap[f.Name] = f.Value.String()
+		})
+		rstMap["defaultFlagValues"] = &defaultFlagValueMap
 		data, _ := json.Marshal(rstMap)
 		w.Write(data)
 	})

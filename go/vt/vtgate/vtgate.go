@@ -27,6 +27,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -34,6 +35,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"vitess.io/vitess/go/flagutil"
 
 	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
@@ -476,6 +478,7 @@ func (vtg *VTGate) registerDebugEnvHandler() {
 
 func (vtg *VTGate) registerDebugConfigHandler() {
 	http.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		rstMap := make(map[string]pflag.Value)
 
@@ -484,7 +487,11 @@ func (vtg *VTGate) registerDebugConfigHandler() {
 			rstMap[flag.Name] = flag.Value
 		})
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		defaultFlagValueMap := flagutil.StringMapValue{}
+		flag.VisitAll(func(f *flag.Flag) {
+			defaultFlagValueMap[f.Name] = f.Value.String()
+		})
+		rstMap["defaultFlagValues"] = &defaultFlagValueMap
 
 		data, _ := json.Marshal(rstMap)
 		w.Write(data)
