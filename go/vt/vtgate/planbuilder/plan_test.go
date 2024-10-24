@@ -33,8 +33,6 @@ import (
 	"strings"
 	"testing"
 
-	"vitess.io/vitess/go/vt/discovery"
-
 	"github.com/nsf/jsondiff"
 	"github.com/stretchr/testify/require"
 
@@ -515,10 +513,6 @@ func (vm *vschemaWrapper) AllKeyspace() ([]*vindexes.Keyspace, error) {
 
 func (vm *vschemaWrapper) GetSession() *vtgatepb.Session {
 	return nil
-}
-
-func (vm *vschemaWrapper) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
-	return nil, vterrors.VT13002("FindHealthyPrimaryTablet not implemented")
 }
 
 // FindKeyspace implements the VSchema interface

@@ -6,6 +6,7 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package planbuilder
 
 import (
+	"context"
 	"fmt"
 
 	"vitess.io/vitess/go/vt/key"
@@ -52,6 +53,7 @@ func (fk *fkContraint) FkWalk(node sqlparser.SQLNode) (kontinue bool, err error)
 // This is why we return a compound primitive (DDL) which contains fully populated primitives (Send & OnlineDDL),
 // and which chooses which of the two to invoke at runtime.
 func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
+	var err error
 	normalDDLPlan, onlineDDLPlan, err := buildDDLPlans(sql, ddlStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	if err != nil {
 		return nil, err
@@ -66,9 +68,16 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 	}
 
 	normalDeclarativeDDL := &engine.DirectDeclarativeDDL{}
-	if _, ok := ddlStatement.(*sqlparser.CreateTable); ok && onlineDDLPlan.DDLStrategySetting.Strategy == schema.DDLStrategyDirect && vschema.GetSession().EnableDeclarativeDDL {
+	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && onlineDDLPlan.DDLStrategySetting.Strategy == schema.DDLStrategyDirect && vschema.GetSession().EnableDeclarativeDDL {
 		// init primitive for direct declarative DDL
-		normalDeclarativeDDL = initDirectDeclarativeDDL(ddlStatement)
+		cursor, ok := vschema.(engine.VCursor)
+		if !ok {
+			return nil, fmt.Errorf("build direct declarative ddl plan failed: vschema does not implement VCursor interface")
+		}
+		normalDeclarativeDDL, err = engine.InitDirectDeclarativeDDL(context.Background(), createTable, cursor)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	eddl := &engine.DDL{
@@ -170,16 +179,4 @@ func checkFKError(vschema plancontext.VSchema, ddlStatement sqlparser.DDLStateme
 		}
 	}
 	return nil
-}
-
-func initDirectDeclarativeDDL(ddlStatement sqlparser.DDLStatement) *engine.DirectDeclarativeDDL {
-	//dbName := ddlStatement.GetTable().Qualifier.String()
-	//tableName := ddlStatement.GetTable().Name.String()
-	//
-	//desireSchema := ""
-	//originSchema := ""
-	//
-	//ddls := make([]string, 0)
-
-	return &engine.DirectDeclarativeDDL{}
 }

@@ -8,9 +8,11 @@ package engine
 import (
 	"context"
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
+	"vitess.io/vitess/go/vt/log"
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	"vitess.io/vitess/go/vt/schemadiff"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 var _ Primitive = (*DirectDeclarativeDDL)(nil)
@@ -18,6 +20,7 @@ var _ Primitive = (*DirectDeclarativeDDL)(nil)
 // DirectDeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
 type DirectDeclarativeDDL struct {
 	dbName        string // todo clint: create db if not exist
+	dbExist       bool
 	tableName     string
 	originSchema  string
 	desiredSchema string
@@ -25,6 +28,67 @@ type DirectDeclarativeDDL struct {
 
 	//  Executed diff DDls to be by Send primitive
 	sends []*Send
+}
+
+func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.CreateTable, cursor VCursor) (*DirectDeclarativeDDL, error) {
+	th, err := cursor.FindHealthyPrimaryTablet()
+	if err != nil {
+		return nil, err
+	}
+
+	var dbName string
+	var tableName string
+	var dbExist bool
+	var originSchema string
+	var desireSchema string
+	var diffDDLs string
+
+	dbName = ddlStatement.GetTable().Qualifier.String()
+	tableName = ddlStatement.GetTable().Name.String()
+
+	qr, err := th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("SELECT SCHEMA_NAME\nFROM INFORMATION_SCHEMA.SCHEMATA\nWHERE SCHEMA_NAME = '%v';", dbName),
+		nil, 0, 0, nil)
+	if err != nil {
+		return nil, err
+	}
+	dbExist = len(qr.Rows) > 0
+	if dbExist {
+		qr, err := th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("SHOW CREATE TABLE %v.%v", dbName, tableName),
+			nil, 0, 0, nil)
+		if err != nil {
+			return nil, err
+		}
+		if len(qr.Rows) == 0 {
+			originSchema = ""
+		} else {
+			originSchema = qr.Rows[0][1].ToString()
+		}
+	}
+
+	desireSchema = sqlparser.CanonicalString(ddlStatement)
+
+	hints := &schemadiff.DiffHints{
+		// todo review and test: copy, inplace, instant
+		TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
+		// todo review: copy, inplace, instant
+		AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
+	}
+	diff, err := schemadiff.DiffCreateTablesQueries(originSchema, desireSchema, hints)
+	if err != nil {
+		return nil, err
+	}
+
+	diffDDLs = diff.CanonicalStatementString()
+	log.Debugf("the diff DDLs to execute is %v", diffDDLs)
+
+	return &DirectDeclarativeDDL{
+		dbName:        dbName,
+		dbExist:       dbExist,
+		tableName:     tableName,
+		originSchema:  originSchema,
+		desiredSchema: desireSchema,
+		diffs:         make([]string, 0), // todo clint: add diff DDLs to this list
+	}, nil
 }
 
 // NeedsTransaction implements the Primitive interface

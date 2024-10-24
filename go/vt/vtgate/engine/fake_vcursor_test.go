@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"vitess.io/vitess/go/vt/discovery"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -117,6 +118,10 @@ func (t *noopVCursor) RemoveAdvisoryLock(_ string) {
 
 func (t *noopVCursor) ReleaseLock(context.Context) error {
 	// TODO implement me
+	panic("implement me")
+}
+
+func (t *noopVCursor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
 	panic("implement me")
 }
 
@@ -508,6 +513,10 @@ func (f *loggingVCursor) ExecuteVSchema(context.Context, string, *sqlparser.Alte
 
 func (f *loggingVCursor) Session() SessionActions {
 	return f
+}
+
+func (f *loggingVCursor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	panic("implement me")
 }
 
 func (f *loggingVCursor) SetTarget(target string) error {

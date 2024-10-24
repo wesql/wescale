@@ -23,6 +23,7 @@ package engine
 
 import (
 	"context"
+	"vitess.io/vitess/go/vt/discovery"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -125,6 +126,8 @@ type (
 
 		//ReloadExec reload users from mysql table and flush privileges
 		ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error)
+
+		FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
 	}
 
 	// SessionActions gives primitives ability to interact with the session state
