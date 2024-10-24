@@ -21,11 +21,11 @@ var backGroundTaskPoolConfig = tabletenv.ConnPoolConfig{
 }
 
 func registerbackGroundTaskPoolConfigFlags(fs *pflag.FlagSet) {
-	pflag.IntVar(&backGroundTaskPoolConfig.Size, "background_task_pool_size", backGroundTaskPoolConfig.Size, "task background task connection pool size")
-	pflag.IntVar(&backGroundTaskPoolConfig.MaxSize, "background_task_pool_max_size", backGroundTaskPoolConfig.MaxSize, "task background task connection pool max size")
+	fs.IntVar(&backGroundTaskPoolConfig.Size, "background_task_pool_size", backGroundTaskPoolConfig.Size, "task background task connection pool size")
+	fs.IntVar(&backGroundTaskPoolConfig.MaxSize, "background_task_pool_max_size", backGroundTaskPoolConfig.MaxSize, "task background task connection pool max size")
 	tabletenv.SecondsVar(fs, &backGroundTaskPoolConfig.TimeoutSeconds, "background_task_pool_timeout", backGroundTaskPoolConfig.TimeoutSeconds, "task background task connection pool timeout")
 	tabletenv.SecondsVar(fs, &backGroundTaskPoolConfig.IdleTimeoutSeconds, "background_task_pool_idle_timeout", backGroundTaskPoolConfig.IdleTimeoutSeconds, "task background task connection pool idle timeout")
-	pflag.IntVar(&backGroundTaskPoolConfig.MaxWaiters, "background_task_pool_max_waiters", backGroundTaskPoolConfig.MaxWaiters, "task background task connection pool max waiters")
+	fs.IntVar(&backGroundTaskPoolConfig.MaxWaiters, "background_task_pool_max_waiters", backGroundTaskPoolConfig.MaxWaiters, "task background task connection pool max waiters")
 }
 
 func init() {
