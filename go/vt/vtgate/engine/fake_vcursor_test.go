@@ -182,6 +182,14 @@ func (t *noopVCursor) GetDDLStrategy() string {
 	panic("implement me")
 }
 
+func (t *noopVCursor) SetEnableDeclarativeDDL(_ context.Context, _ bool) error {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetEnableDeclarativeDDL() bool {
+	panic("implement me")
+}
+
 func (t *noopVCursor) SetReadWriteSplittingPolicy(_ string) {
 	panic("implement me")
 }

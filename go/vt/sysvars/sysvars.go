@@ -82,6 +82,9 @@ var (
 	Version        = SystemVariable{Name: "version"}
 	VersionComment = SystemVariable{Name: "version_comment"}
 
+	// DeclarativeDDL
+	EnableDeclarativeDDL = SystemVariable{Name: "enable_declarative_ddl", IsBoolean: true, Default: off}
+
 	// Read After Write settings
 	ReadAfterWriteGTID        = SystemVariable{Name: "read_after_write_gtid"}
 	ReadAfterWriteConsistency = SystemVariable{Name: "read_after_write_consistency"}
@@ -112,6 +115,7 @@ var (
 		SQLSelectLimit,
 		TransactionMode,
 		DDLStrategy,
+		EnableDeclarativeDDL,
 		Workload,
 		Charset,
 		Names,

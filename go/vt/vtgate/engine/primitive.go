@@ -160,6 +160,9 @@ type (
 		SetDDLStrategy(string)
 		GetDDLStrategy() string
 
+		SetEnableDeclarativeDDL(context.Context, bool) error
+		GetEnableDeclarativeDDL() bool
+
 		SetReadWriteSplittingPolicy(string)
 		GetReadWriteSplittingPolicy() string
 

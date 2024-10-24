@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"vitess.io/vitess/go/vt/key"
+	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vtgate/engine"
@@ -136,12 +137,20 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 	}
 
 	normalDDL := buildNormalDDLPlan(keyspace, destination, sql)
-	onlineDDL := &engine.OnlineDDL{
-		Keyspace:          keyspace,
-		TargetDestination: destination,
-		DDL:               ddlStatement,
-		SQL:               query,
+
+	ddlStrategySetting, err := schema.ParseDDLStrategy(vschema.GetSession().GetDDLStrategy())
+	if err != nil {
+		return nil, nil, err
 	}
+
+	onlineDDL := &engine.OnlineDDL{
+		Keyspace:           keyspace,
+		TargetDestination:  destination,
+		DDL:                ddlStatement,
+		SQL:                query,
+		DDLStrategySetting: ddlStrategySetting,
+	}
+
 	return normalDDL, onlineDDL, nil
 }
 

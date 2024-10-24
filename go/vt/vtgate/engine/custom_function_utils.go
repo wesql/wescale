@@ -15,23 +15,8 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
 
 	"vitess.io/vitess/go/mysql/collations"
-	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
-
-func BuildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
 
 // HasCustomFunction checks whether there is an expr contains custom function and
 // checks whether there is any errors in those exprs.

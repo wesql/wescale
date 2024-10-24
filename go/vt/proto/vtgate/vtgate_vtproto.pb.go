@@ -137,7 +137,19 @@ func (m *Session) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x2
 		i--
-		dAtA[i] = 0x92
+		dAtA[i] = 0x9a
+	}
+	if m.EnableDeclarativeDDL {
+		i--
+		if m.EnableDeclarativeDDL {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x2
+		i--
+		dAtA[i] = 0x90
 	}
 	if m.EnableDisplaySQLExecutionVTTabletType {
 		i--
@@ -1632,6 +1644,9 @@ func (m *Session) SizeVT() (n int) {
 		n += 3
 	}
 	if m.EnableDisplaySQLExecutionVTTabletType {
+		n += 3
+	}
+	if m.EnableDeclarativeDDL {
 		n += 3
 	}
 	if m.ResolverOptions != nil {
@@ -3311,6 +3326,26 @@ func (m *Session) UnmarshalVT(dAtA []byte) error {
 			}
 			m.EnableDisplaySQLExecutionVTTabletType = bool(v != 0)
 		case 34:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EnableDeclarativeDDL", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.EnableDeclarativeDDL = bool(v != 0)
+		case 35:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ResolverOptions", wireType)
 			}

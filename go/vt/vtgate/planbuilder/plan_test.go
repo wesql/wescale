@@ -511,6 +511,10 @@ func (vw *vschemaWrapper) AllKeyspace() ([]*vindexes.Keyspace, error) {
 	return []*vindexes.Keyspace{vw.keyspace}, nil
 }
 
+func (vw *vschemaWrapper) GetSession() *vtgatepb.Session {
+	return nil
+}
+
 // FindKeyspace implements the VSchema interface
 func (vw *vschemaWrapper) FindKeyspace(keyspace string) (*vindexes.Keyspace, error) {
 	if vw.keyspace == nil {

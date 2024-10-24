@@ -1504,7 +1504,7 @@ func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
 
 	for _, action := range qre.matchedActionList {
 		filter := action.GetRule()
-		rows = append(rows, BuildVarCharRow(
+		rows = append(rows, sqltypes.BuildVarCharRow(
 			filter.Name,
 			filter.Description,
 			strconv.Itoa(filter.Priority),
@@ -1514,7 +1514,7 @@ func (qre *QueryExecutor) getFilterInfo() (*sqltypes.Result, error) {
 	}
 
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields("Name", "description", "priority", "action", "action_args"),
+		Fields: sqltypes.BuildVarCharFields("Name", "description", "priority", "action", "action_args"),
 		Rows:   rows,
 	}, nil
 }
