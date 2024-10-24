@@ -364,7 +364,7 @@ func (te *TxEngine) shutdownLocked() {
 			log.Info("Transactions completed before grace period: shutting down.")
 		}
 	}()
-	log.Infof("TxEngine - waiting for empty te")
+	log.Infof("TxEngine - waiting for empty txPool")
 	te.txPool.WaitForEmpty()
 	// If the goroutine is still running, signal that it can exit.
 	close(poolEmpty)
@@ -372,7 +372,7 @@ func (te *TxEngine) shutdownLocked() {
 	log.Infof("TxEngine - making sure the goroutine has returned")
 	<-rollbackDone
 
-	log.Infof("TxEngine - closing the te")
+	log.Infof("TxEngine - closing the txPool")
 	te.txPool.Close()
 	log.Infof("TxEngine - closing twoPC")
 	te.twoPC.Close()

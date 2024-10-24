@@ -180,7 +180,7 @@ func TestTabletServerPrimaryToReplica(t *testing.T) {
 		t.Fatal("ch should not fire")
 	case <-time.After(10 * time.Millisecond):
 	}
-	require.EqualValues(t, 1, tsv.te.txPool.scp.active.Size(), "tsv.te.te.scp.active.Size()")
+	require.EqualValues(t, 1, tsv.te.txPool.scp.active.Size(), "tsv.te.txPool.scp.active.Size()")
 
 	// Concluding conn2 will allow the transition to go through.
 	tsv.te.txPool.RollbackAndRelease(ctx, conn2)
@@ -267,7 +267,7 @@ func TestTabletServerRedoLogIsKeptBetweenRestarts(t *testing.T) {
 		t.Errorf("Failed dtids: %v, want %v", tsv.te.preparedPool.reserved, wantFailed)
 	}
 	// Verify last id got adjusted.
-	assert.EqualValues(t, 20, tsv.te.txPool.scp.lastID.Get(), "tsv.te.te.lastID.Get()")
+	assert.EqualValues(t, 20, tsv.te.txPool.scp.lastID.Get(), "tsv.te.txPool.lastID.Get()")
 	turnOffTxEngine()
 	assert.Empty(t, tsv.te.preparedPool.conns, "tsv.te.preparedPool.conns")
 }
@@ -1817,7 +1817,7 @@ func TestConfigChanges(t *testing.T) {
 		t.Errorf("TxPoolSize: %d, want %d", val, newSize)
 	}
 	if val := int(tsv.te.txPool.scp.Capacity()); val != newSize {
-		t.Errorf("tsv.te.te.pool.Capacity: %d, want %d", val, newSize)
+		t.Errorf("tsv.te.txPool.pool.Capacity: %d, want %d", val, newSize)
 	}
 
 	tsv.Config().SetTxTimeoutForWorkload(newDuration, querypb.ExecuteOptions_OLTP)
