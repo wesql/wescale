@@ -1,3 +1,8 @@
+/*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
 package plancontext
 
 import (
@@ -5,6 +10,7 @@ import (
 
 	"vitess.io/vitess/go/vt/log"
 	vschemapb "vitess.io/vitess/go/vt/proto/vschema"
+	vtgatepb "vitess.io/vitess/go/vt/proto/vtgate"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/vt/key"
@@ -39,6 +45,7 @@ type VSchema interface {
 	Planner() PlannerVersion
 	SetPlannerVersion(pv PlannerVersion)
 	ConnCollation() collations.ID
+	GetSession() *vtgatepb.Session
 
 	// ErrorIfShardedF will return an error if the keyspace is sharded,
 	// and produce a warning if the vtgate if configured to do so

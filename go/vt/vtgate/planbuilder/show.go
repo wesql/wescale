@@ -203,7 +203,7 @@ func buildShowDMLJobPlan(show *sqlparser.ShowDMLJob, vschema plancontext.VSchema
 }
 
 func buildShowTargetPlan(vschema plancontext.VSchema) (engine.Primitive, error) {
-	rows := [][]sqltypes.Value{buildVarCharRow(vschema.TargetString())}
+	rows := [][]sqltypes.Value{BuildVarCharRow(vschema.TargetString())}
 	return engine.NewRowsPrimitive(rows,
 		buildVarCharFields("Target")), nil
 }
@@ -310,7 +310,7 @@ func buildDBPlan(show *sqlparser.ShowBasic, vschema plancontext.VSchema) (engine
 
 	for _, v := range ks {
 		if filter.MatchString(v.Name) {
-			rows = append(rows, buildVarCharRow(v.Name))
+			rows = append(rows, BuildVarCharRow(v.Name))
 		}
 	}
 	return engine.NewRowsPrimitive(rows, buildVarCharFields("Database")), nil
@@ -408,7 +408,7 @@ func buildVarCharFields(names ...string) []*querypb.Field {
 	return fields
 }
 
-func buildVarCharRow(values ...string) []sqltypes.Value {
+func BuildVarCharRow(values ...string) []sqltypes.Value {
 	row := make([]sqltypes.Value, len(values))
 	for i, v := range values {
 		row[i] = sqltypes.NewVarChar(v)
@@ -470,12 +470,12 @@ func generateCharsetRows(showFilter *sqlparser.ShowFilter, colNames []string) ([
 }
 
 func buildCharsetRows(colName string) [][]sqltypes.Value {
-	row0 := buildVarCharRow(
+	row0 := BuildVarCharRow(
 		"utf8",
 		"UTF-8 Unicode",
 		"utf8_general_ci")
 	row0 = append(row0, sqltypes.NewInt32(3))
-	row1 := buildVarCharRow(
+	row1 := BuildVarCharRow(
 		"utf8mb4",
 		"UTF-8 Unicode",
 		"utf8mb4_general_ci")
@@ -668,7 +668,7 @@ func buildWarnings() (engine.Primitive, error) {
 
 func buildPluginsPlan() (engine.Primitive, error) {
 	var rows [][]sqltypes.Value
-	rows = append(rows, buildVarCharRow(
+	rows = append(rows, BuildVarCharRow(
 		"InnoDB",
 		"ACTIVE",
 		"STORAGE ENGINE",
@@ -681,7 +681,7 @@ func buildPluginsPlan() (engine.Primitive, error) {
 
 func buildEnginesPlan() (engine.Primitive, error) {
 	var rows [][]sqltypes.Value
-	rows = append(rows, buildVarCharRow(
+	rows = append(rows, BuildVarCharRow(
 		"InnoDB",
 		"DEFAULT",
 		"Supports transactions, row-level locking, and foreign keys",
@@ -712,7 +712,7 @@ func buildVschemaTablesPlan(vschema plancontext.VSchema) (engine.Primitive, erro
 
 	rows := make([][]sqltypes.Value, len(tables))
 	for i, v := range tables {
-		rows[i] = buildVarCharRow(v)
+		rows[i] = BuildVarCharRow(v)
 	}
 
 	return engine.NewRowsPrimitive(rows, buildVarCharFields("Tables")), nil
@@ -753,9 +753,9 @@ func buildVschemaVindexesPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 					params = append(params, fmt.Sprintf("%s=%s", k, v))
 				}
 				sort.Strings(params)
-				rows = append(rows, buildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
+				rows = append(rows, BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
 			} else {
-				rows = append(rows, buildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), "", "", ""))
+				rows = append(rows, BuildVarCharRow(strings.Join(columns, ", "), colVindex.GetName(), "", "", ""))
 			}
 		}
 
@@ -787,7 +787,7 @@ func buildVschemaVindexesPlan(show *sqlparser.ShowBasic, vschema plancontext.VSc
 				params = append(params, fmt.Sprintf("%s=%s", k, v))
 			}
 			sort.Strings(params)
-			rows = append(rows, buildVarCharRow(ksName, vindexName, vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
+			rows = append(rows, BuildVarCharRow(ksName, vindexName, vindex.GetType(), strings.Join(params, "; "), vindex.GetOwner()))
 		}
 	}
 	return engine.NewRowsPrimitive(rows,
