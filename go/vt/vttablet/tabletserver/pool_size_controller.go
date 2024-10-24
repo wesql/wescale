@@ -172,6 +172,9 @@ func (psc *PoolSizeController) Start() {
 
 // Reconcile adjusts the te and qe sizes based on MySQL metrics.
 func (psc *PoolSizeController) Reconcile() {
+	if !config.Enable {
+		return
+	}
 	conn, err := psc.taskPool.BorrowConn(psc.ctx, nil)
 	if err != nil {
 		log.Errorf("Failed to acquire connection from task pool: %v", err)
