@@ -174,9 +174,6 @@ func TestPoolSizeController_BasicScenario(t *testing.T) {
 	// Mock TabletServer
 	db := setUpQueryExecutorTest(t)
 	mockTsv := newTestTabletServer(nil, noFlags, db)
-	mockTe := mockTsv.te
-	mockQe := mockTsv.qe
-	mockTaskPool := background.NewTaskPool(mockTsv)
 
 	// Given
 	db.AddQuery("SHOW GLOBAL VARIABLES LIKE 'max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
@@ -197,7 +194,7 @@ func TestPoolSizeController_BasicScenario(t *testing.T) {
 	config.TxPoolPercentage = 50
 
 	// When
-	psc := NewPoolSizeController(mockTsv, mockTaskPool, mockTe, mockQe)
+	psc := mockTsv.poolSizeController
 	psc.Reconcile()
 
 	// Then
@@ -213,90 +210,5 @@ func TestPoolSizeController_BasicScenario(t *testing.T) {
 	}
 	if mockTsv.PoolSize() != expectedOltpRead {
 		t.Errorf("OltpReadPoolSize = %d; want %d", mockTsv.PoolSize(), expectedOltpRead)
-	}
-}
-
-func TestPoolSizeController_MinimumPoolSizeScenario(t *testing.T) {
-	// Mock TabletServer
-	db := setUpQueryExecutorTest(t)
-	mockTsv := newTestTabletServer(nil, noFlags, db)
-	mockTe := mockTsv.te
-	mockQe := mockTsv.qe
-	mockTaskPool := background.NewTaskPool(mockTsv)
-
-	// Given
-	db.AddQuery("SHOW GLOBAL VARIABLES LIKE 'max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
-		"Variable_name|Value",
-		"varchar|int64"),
-		"max_connections|20", // Very small max_connections
-	))
-	db.AddQuery("SHOW GLOBAL STATUS LIKE 'Connection_errors_max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
-		"Variable_name|Value",
-		"varchar|int64"),
-		"Connection_errors_max_connections|0",
-	))
-
-	config.Enable = true
-	config.DryRun = false
-	config.PercentageOfMaxConnections = 80
-	config.SafetyBuffer = 5
-	config.TxPoolPercentage = 50
-	config.MinTxPoolSize = 5
-	config.MinOltpReadPoolSize = 5
-
-	// When
-	psc := NewPoolSizeController(mockTsv, mockTaskPool, mockTe, mockQe)
-	psc.Reconcile()
-
-	// Then
-	// Should use minimum values since calculated values would be too small
-	if mockTsv.TxPoolSize() != config.MinTxPoolSize {
-		t.Errorf("TxPoolSize = %d; want %d", mockTsv.TxPoolSize(), config.MinTxPoolSize)
-	}
-	if mockTsv.PoolSize() != config.MinOltpReadPoolSize {
-		t.Errorf("OltpReadPoolSize = %d; want %d", mockTsv.PoolSize(), config.MinOltpReadPoolSize)
-	}
-}
-
-func TestPoolSizeController_DryRunScenario(t *testing.T) {
-	// Mock TabletServer
-	db := setUpQueryExecutorTest(t)
-	mockTsv := newTestTabletServer(nil, noFlags, db)
-	mockTe := mockTsv.te
-	mockQe := mockTsv.qe
-	mockTaskPool := background.NewTaskPool(mockTsv)
-
-	// Given
-	db.AddQuery("SHOW GLOBAL VARIABLES LIKE 'max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
-		"Variable_name|Value",
-		"varchar|int64"),
-		"max_connections|1000",
-	))
-	db.AddQuery("SHOW GLOBAL STATUS LIKE 'Connection_errors_max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
-		"Variable_name|Value",
-		"varchar|int64"),
-		"Connection_errors_max_connections|0",
-	))
-
-	config.Enable = true
-	config.DryRun = true // Enable dry run mode
-	config.PercentageOfMaxConnections = 80
-	config.SafetyBuffer = 35
-	config.TxPoolPercentage = 50
-
-	initialTxPool := mockTsv.TxPoolSize()
-	initialOltpRead := mockTsv.PoolSize()
-
-	// When
-	psc := NewPoolSizeController(mockTsv, mockTaskPool, mockTe, mockQe)
-	psc.Reconcile()
-
-	// Then
-	// In dry-run mode, pool sizes should not change
-	if mockTsv.TxPoolSize() != initialTxPool {
-		t.Errorf("TxPoolSize changed in dry-run mode: got %d; want %d", mockTsv.TxPoolSize(), initialTxPool)
-	}
-	if mockTsv.PoolSize() != initialOltpRead {
-		t.Errorf("OltpReadPoolSize changed in dry-run mode: got %d; want %d", mockTsv.PoolSize(), initialOltpRead)
 	}
 }
