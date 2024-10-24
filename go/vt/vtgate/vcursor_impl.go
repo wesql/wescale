@@ -270,6 +270,10 @@ func (vc *vcursorImpl) FindTable(name sqlparser.TableName) (*vindexes.Table, str
 	return table, destKeyspace, destTabletType, dest, err
 }
 
+func (vc *vcursorImpl) GetSession() *vtgatepb.Session {
+	return vc.safeSession.Session
+}
+
 func (vc *vcursorImpl) FindView(name sqlparser.TableName) sqlparser.SelectStatement {
 	ks, _, _, err := vc.executor.ParseDestinationTarget(name.Qualifier.String())
 	if err != nil {
