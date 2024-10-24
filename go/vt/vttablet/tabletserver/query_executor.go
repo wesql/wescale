@@ -285,7 +285,7 @@ func (qre *QueryExecutor) execAsTransaction(f func(conn *StatefulConnection) (*s
 	if err != nil {
 		// dbConn is nil, it means the transaction was aborted.
 		// If so, we should not relog the rollback.
-		// TODO(sougou): these txPool functions should take the logstats
+		// TODO(sougou): these te functions should take the logstats
 		// and log any statements they issue. This needs to be done as
 		// a separate refactor because it impacts lot of code.
 		if conn.IsInTransaction() {
@@ -524,7 +524,7 @@ func (qre *QueryExecutor) Stream(callback StreamCallback) error {
 		}
 	}
 
-	// if we have a transaction id, let's use the txPool for this query
+	// if we have a transaction id, let's use the te for this query
 	var conn *connpool.DBConn
 	if qre.connID != 0 {
 		txConn, err := qre.tsv.te.txPool.GetAndLock(qre.connID, "for streaming query")

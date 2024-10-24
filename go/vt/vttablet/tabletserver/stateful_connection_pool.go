@@ -306,3 +306,10 @@ func (sf *StatefulConnectionPool) renewConn(sc *StatefulConnection) error {
 func (sf *StatefulConnectionPool) InUse() int64 {
 	return sf.conns.InUse() + sf.connsWithoutDB.InUse() + sf.foundRowsPool.InUse() + sf.foundRowsWithoutDBPool.InUse()
 }
+
+func (sf *StatefulConnectionPool) CloseIdleConnections(max int) int {
+	return sf.conns.CloseIdleConnections(max) +
+		sf.connsWithoutDB.CloseIdleConnections(max) +
+		sf.foundRowsPool.CloseIdleConnections(max) +
+		sf.foundRowsWithoutDBPool.CloseIdleConnections(max)
+}

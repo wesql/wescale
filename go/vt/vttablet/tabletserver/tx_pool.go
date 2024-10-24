@@ -476,3 +476,7 @@ func txKillerTimeoutInterval(config *tabletenv.TabletConfig) time.Duration {
 func (tp *TxPool) InUse() int64 {
 	return tp.scp.InUse()
 }
+
+func (tp *TxPool) CloseIdleConnections(max int) int {
+	return tp.scp.CloseIdleConnections(max)
+}

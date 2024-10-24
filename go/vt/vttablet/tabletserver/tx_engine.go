@@ -364,7 +364,7 @@ func (te *TxEngine) shutdownLocked() {
 			log.Info("Transactions completed before grace period: shutting down.")
 		}
 	}()
-	log.Infof("TxEngine - waiting for empty txPool")
+	log.Infof("TxEngine - waiting for empty te")
 	te.txPool.WaitForEmpty()
 	// If the goroutine is still running, signal that it can exit.
 	close(poolEmpty)
@@ -372,7 +372,7 @@ func (te *TxEngine) shutdownLocked() {
 	log.Infof("TxEngine - making sure the goroutine has returned")
 	<-rollbackDone
 
-	log.Infof("TxEngine - closing the txPool")
+	log.Infof("TxEngine - closing the te")
 	te.txPool.Close()
 	log.Infof("TxEngine - closing twoPC")
 	te.twoPC.Close()
@@ -616,4 +616,12 @@ func (te *TxEngine) Release(connID int64) error {
 // InUse returns the sum of in-use connections
 func (te *TxEngine) InUse() int64 {
 	return te.txPool.InUse()
+}
+
+func (te *TxEngine) Available() int64 {
+	return te.txPool.scp.conns.Available()
+}
+
+func (te *TxEngine) CloseIdleConnections(max int) int {
+	return te.txPool.CloseIdleConnections(max)
 }

@@ -436,3 +436,11 @@ func (cp *Pool) isCallerIDAppDebug(ctx context.Context) bool {
 	callerID := callerid.ImmediateCallerIDFromContext(ctx)
 	return callerID != nil && callerID.Username == params.Uname
 }
+
+func (cp *Pool) CloseIdleConnections(max int) int {
+	p := cp.pool()
+	if p == nil {
+		return 0
+	}
+	return p.CloseIdleResources(max)
+}

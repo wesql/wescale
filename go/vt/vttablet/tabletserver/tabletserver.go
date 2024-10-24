@@ -37,7 +37,6 @@ import (
 
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool/pool_manager"
 
 	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
@@ -130,7 +129,7 @@ type TabletServer struct {
 	tableGC            *gc.TableGC
 	branchWatch        *BranchWatcher
 	taskPool           *background.TaskPool
-	poolSizeController *pool_manager.PoolSizeController
+	poolSizeController *PoolSizeController
 
 	// sm manages state transitions.
 	sm                *stateManager
@@ -205,7 +204,7 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
 	tsv.taskPool = background.NewTaskPool(tsv)
-	tsv.poolSizeController = pool_manager.NewPoolSizeController(tsv.taskPool)
+	tsv.poolSizeController = NewPoolSizeController(tsv, tsv.taskPool, tsv.te, tsv.qe)
 
 	tsv.sm = &stateManager{
 		statelessql:      tsv.statelessql,

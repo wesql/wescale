@@ -732,6 +732,14 @@ func (qe *QueryEngine) InUse() int64 {
 	return qe.conns.InUse() + qe.streamConns.InUse() + qe.streamWithoutDBConns.InUse() + qe.withoutDBConns.InUse()
 }
 
+func (qe *QueryEngine) Available() int64 {
+	return qe.conns.Available()
+}
+
+func (qe *QueryEngine) CloseIdleConnections(max int) int {
+	return qe.conns.CloseIdleConnections(max) + qe.streamConns.CloseIdleConnections(max) + qe.streamWithoutDBConns.CloseIdleConnections(max) + qe.withoutDBConns.CloseIdleConnections(max)
+}
+
 func GenerateSQLHash(sqlTemplate string) string {
 	hasher := sha256.New()
 	hasher.Write([]byte(sqlTemplate))

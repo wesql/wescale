@@ -133,6 +133,9 @@ type (
 		// ResetSettingCount returns the total number of times resource settings have been reset.
 		// This indicates how frequently resources undergo configuration changes.
 		ResetSettingCount() int64
+
+		// CloseIdleResources scans the pool for idle resources and closes them.
+		CloseIdleResources(max int) int
 	}
 
 	// Resource defines the interface that every resource must provide.
@@ -298,10 +301,19 @@ func (rp *ResourcePool) Close() {
 
 // closeIdleResources scans the pool for idle resources
 func (rp *ResourcePool) closeIdleResources() {
+	rp.CloseIdleResources(int(rp.MaxCap()))
+}
+
+func (rp *ResourcePool) CloseIdleResources(max int) int {
+	if max <= 0 {
+		return 0
+	}
+
 	available := int(rp.Available())
 	idleTimeout := rp.IdleTimeout()
+	closed := 0
 
-	for i := 0; i < available; i++ {
+	for i := 0; i < available && closed < max; i++ {
 		var wrapper resourceWrapper
 		var origPool bool
 		select {
@@ -311,7 +323,7 @@ func (rp *ResourcePool) closeIdleResources() {
 			origPool = false
 		default:
 			// stop early if we don't get anything new from the pool
-			return
+			return closed
 		}
 
 		var reopened bool
@@ -320,9 +332,12 @@ func (rp *ResourcePool) closeIdleResources() {
 			rp.idleClosed.Add(1)
 			rp.reopenResource(&wrapper)
 			reopened = true
+			closed++
 		}
 		rp.returnResource(&wrapper, origPool, reopened)
 	}
+
+	return closed
 }
 
 func (rp *ResourcePool) returnResource(wrapper *resourceWrapper, origPool bool, reopened bool) {
