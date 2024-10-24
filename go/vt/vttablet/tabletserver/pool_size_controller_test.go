@@ -225,12 +225,12 @@ func TestPoolSizeController_ConnectionErrorsScenario(t *testing.T) {
 	db.AddQuery("SHOW GLOBAL STATUS LIKE 'Connection_errors_max_connections'", sqltypes.MakeTestResult(sqltypes.MakeTestFields(
 		"Variable_name|Value",
 		"varchar|int64"),
-		"Connection_errors_max_connections|50", // 有连接错误
+		"Connection_errors_max_connections|50", // Connection errors exist
 	))
 
 	config.Enable = true
 	config.DryRun = false
-	config.PercentageOfMaxConnections = 70 // 降低连接百分比
+	config.PercentageOfMaxConnections = 70 // Reduce connection percentage
 	config.SafetyBuffer = 35
 	config.TxPoolPercentage = 50
 
@@ -271,12 +271,12 @@ func TestPoolSizeController_DryRunScenario(t *testing.T) {
 		"Connection_errors_max_connections|0",
 	))
 
-	// 保存原始池大小
+	// Save original pool sizes
 	originalTxPool := mockTsv.TxPoolSize()
 	originalOltpRead := mockTsv.PoolSize()
 
 	config.Enable = true
-	config.DryRun = true // 启用DryRun模式
+	config.DryRun = true // Enable DryRun mode
 	config.PercentageOfMaxConnections = 80
 	config.SafetyBuffer = 35
 	config.TxPoolPercentage = 50
@@ -286,7 +286,7 @@ func TestPoolSizeController_DryRunScenario(t *testing.T) {
 	psc.Reconcile()
 
 	// Then
-	// 在DryRun模式下，池大小不应该改变
+	// In DryRun mode, pool sizes should not change
 	if mockTsv.TxPoolSize() != originalTxPool {
 		t.Errorf("TxPoolSize changed in DryRun mode: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
 	}
@@ -301,11 +301,11 @@ func TestPoolSizeController_DisabledScenario(t *testing.T) {
 	mockTsv := newTestTabletServer(nil, noFlags, db)
 
 	// Given
-	// 保存原始池大小
+	// Save original pool sizes
 	originalTxPool := mockTsv.TxPoolSize()
 	originalOltpRead := mockTsv.PoolSize()
 
-	config.Enable = false // 禁用控制器
+	config.Enable = false // Disable controller
 	config.DryRun = false
 	config.PercentageOfMaxConnections = 80
 	config.SafetyBuffer = 35
@@ -316,7 +316,7 @@ func TestPoolSizeController_DisabledScenario(t *testing.T) {
 	psc.Reconcile()
 
 	// Then
-	// 当禁用时，池大小不应该改变
+	// When disabled, pool sizes should not change
 	if mockTsv.TxPoolSize() != originalTxPool {
 		t.Errorf("TxPoolSize changed when disabled: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
 	}
@@ -342,14 +342,14 @@ func TestPoolSizeController_SafetyBufferExceedsMaxConnections(t *testing.T) {
 		"Connection_errors_max_connections|0",
 	))
 
-	// 保存原始池大小
+	// Save original pool sizes
 	originalTxPool := mockTsv.TxPoolSize()
 	originalOltpRead := mockTsv.PoolSize()
 
 	config.Enable = true
 	config.DryRun = false
 	config.PercentageOfMaxConnections = 80
-	config.SafetyBuffer = 50 // SafetyBuffer超过了max_connections
+	config.SafetyBuffer = 50 // Safety buffer exceeds max connections
 	config.TxPoolPercentage = 50
 
 	// When
@@ -357,12 +357,12 @@ func TestPoolSizeController_SafetyBufferExceedsMaxConnections(t *testing.T) {
 	psc.Reconcile()
 
 	// Then
-	// 因为可用连接数小于等于0，池大小不应改变
+	// Available connections are less than or equal to 0, pool sizes should not change
 	if mockTsv.TxPoolSize() != originalTxPool {
-		t.Errorf("TxPoolSize changed when safety buffer exceeds max_connections: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
+		t.Errorf("TxPoolSize changed when safety buffer exceeds max connections: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
 	}
 	if mockTsv.PoolSize() != originalOltpRead {
-		t.Errorf("OltpReadPoolSize changed when safety buffer exceeds max_connections: got %d; want %d", mockTsv.PoolSize(), originalOltpRead)
+		t.Errorf("OltpReadPoolSize changed when safety buffer exceeds max connections: got %d; want %d", mockTsv.PoolSize(), originalOltpRead)
 	}
 }
 
@@ -399,7 +399,7 @@ func TestPoolSizeController_PoolSizesBelowMinimum(t *testing.T) {
 	// max_connections=20, percentage=80%, safety=10
 	// available = min(16, 10) = 10
 	// txPool = 10 * 70% = 7
-	// oltpRead = 10 - 7 = 3, 但小于最小值，调整为5
+	// oltpRead = 10 - 7 = 3, but less than minimum, adjust to 5
 	expectedTxPool := 7
 	expectedOltpRead := 5
 
@@ -432,7 +432,7 @@ func TestPoolSizeController_AdjustedTxPoolPercentage(t *testing.T) {
 	config.DryRun = false
 	config.PercentageOfMaxConnections = 80
 	config.SafetyBuffer = 35
-	config.TxPoolPercentage = 70 // 调整TxPoolPercentage
+	config.TxPoolPercentage = 70 // Adjust TxPool percentage
 	config.MinTxPoolSize = 5
 	config.MinOltpReadPoolSize = 5
 
@@ -462,9 +462,9 @@ func TestPoolSizeController_ErrorFetchingMySQLVariables(t *testing.T) {
 	mockTsv := newTestTabletServer(nil, noFlags, db)
 
 	// Given
-	// 不添加查询，以模拟获取MySQL变量时发生错误
+	// Do not add queries to simulate error fetching MySQL variables
 
-	// 保存原始池大小
+	// Save original pool sizes
 	originalTxPool := mockTsv.TxPoolSize()
 	originalOltpRead := mockTsv.PoolSize()
 
@@ -481,7 +481,7 @@ func TestPoolSizeController_ErrorFetchingMySQLVariables(t *testing.T) {
 	psc.Reconcile()
 
 	// Then
-	// 由于获取MySQL变量失败，池大小应保持不变
+	// Due to error fetching MySQL variables, pool sizes should not change
 	if mockTsv.TxPoolSize() != originalTxPool {
 		t.Errorf("TxPoolSize changed when error fetching MySQL variables: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
 	}
@@ -507,14 +507,14 @@ func TestPoolSizeController_MaxConnectionsLessThanSafetyBuffer(t *testing.T) {
 		"Connection_errors_max_connections|0",
 	))
 
-	// 保存原始池大小
+	// Save original pool sizes
 	originalTxPool := mockTsv.TxPoolSize()
 	originalOltpRead := mockTsv.PoolSize()
 
 	config.Enable = true
 	config.DryRun = false
 	config.PercentageOfMaxConnections = 80
-	config.SafetyBuffer = 50 // SafetyBuffer大于max_connections
+	config.SafetyBuffer = 50 // Safety buffer exceeds max connections
 	config.TxPoolPercentage = 50
 
 	// When
@@ -522,12 +522,12 @@ func TestPoolSizeController_MaxConnectionsLessThanSafetyBuffer(t *testing.T) {
 	psc.Reconcile()
 
 	// Then
-	// 可用连接数小于等于0，池大小不应改变
+	// Available connections are less than or equal to 0, pool sizes should not change
 	if mockTsv.TxPoolSize() != originalTxPool {
-		t.Errorf("TxPoolSize changed when safety buffer exceeds max_connections: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
+		t.Errorf("TxPoolSize changed when safety buffer exceeds max connections: got %d; want %d", mockTsv.TxPoolSize(), originalTxPool)
 	}
 	if mockTsv.PoolSize() != originalOltpRead {
-		t.Errorf("OltpReadPoolSize changed when safety buffer exceeds max_connections: got %d; want %d", mockTsv.PoolSize(), originalOltpRead)
+		t.Errorf("OltpReadPoolSize changed when safety buffer exceeds max connections: got %d; want %d", mockTsv.PoolSize(), originalOltpRead)
 	}
 }
 
@@ -552,7 +552,7 @@ func TestPoolSizeController_TxPoolPercentage100(t *testing.T) {
 	config.DryRun = false
 	config.PercentageOfMaxConnections = 80
 	config.SafetyBuffer = 35
-	config.TxPoolPercentage = 100 // TxPool占据所有可用连接
+	config.TxPoolPercentage = 100 // TxPool occupies all available connections
 	config.MinTxPoolSize = 5
 	config.MinOltpReadPoolSize = 5
 
@@ -563,9 +563,9 @@ func TestPoolSizeController_TxPoolPercentage100(t *testing.T) {
 	// Then
 	// vttabletMaxConnections = 1000 * 80% = 800
 	// availableConnections = 1000 - 35 = 965
-	// vttabletMaxConnections取800
+	// vttabletMaxConnections takes 800
 	// txPool = 800 * 100% = 800
-	// oltpRead = 800 - 800 = 0，小于最小值，调整为最小值5
+	// oltpRead = 800 - 800 = 0, less than minimum, adjust to minimum 5
 	expectedTxPool := 800
 	expectedOltpRead := 5
 
