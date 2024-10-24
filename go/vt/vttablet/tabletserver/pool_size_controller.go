@@ -49,14 +49,14 @@ var config = QueryServerPoolAutoScaleConfig{
 }
 
 func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
-	pflag.BoolVar(&config.Enable, "queryserver_pool_autoscale_enable", config.Enable, "Enable the pool size autoscaler. default is false.")
-	pflag.BoolVar(&config.DryRun, "queryserver_pool_autoscale_dry_run", config.DryRun, "Enable dry-run mode. When enabled, it overrides queryserver_pool_autoscale_enable. default is false.")
-	pflag.DurationVar(&config.Interval, "queryserver_pool_autoscale_interval", config.Interval, "Interval at which pool sizes are adjusted. default is 30s.")
-	pflag.IntVar(&config.PercentageOfMaxConnections, "queryserver_pool_autoscale_percentage_of_max_connections", config.PercentageOfMaxConnections, "Percentage of MySQL max_connections that vttablet should use. range from 10 to 90. default is 80.")
-	pflag.IntVar(&config.SafetyBuffer, "queryserver_pool_autoscale_safety_buffer", config.SafetyBuffer, "Number of connections to reserve as a safety buffer. default is 35.")
-	pflag.IntVar(&config.TxPoolPercentage, "queryserver_pool_autoscale_tx_pool_percentage", config.TxPoolPercentage, "Fraction of connections allocated to te. default is 50%.")
-	pflag.IntVar(&config.MinTxPoolSize, "queryserver_pool_autoscale_min_tx_pool_size", config.MinTxPoolSize, "Minimum size of te. default is 5.")
-	pflag.IntVar(&config.MinOltpReadPoolSize, "queryserver_pool_autoscale_min_oltp_read_pool_size", config.MinOltpReadPoolSize, "Minimum size of qe. default is 5.")
+	fs.BoolVar(&config.Enable, "queryserver_pool_autoscale_enable", config.Enable, "Enable the pool size autoscaler. default is false.")
+	fs.BoolVar(&config.DryRun, "queryserver_pool_autoscale_dry_run", config.DryRun, "Enable dry-run mode. When enabled, it overrides queryserver_pool_autoscale_enable. default is false.")
+	fs.DurationVar(&config.Interval, "queryserver_pool_autoscale_interval", config.Interval, "Interval at which pool sizes are adjusted. default is 30s.")
+	fs.IntVar(&config.PercentageOfMaxConnections, "queryserver_pool_autoscale_percentage_of_max_connections", config.PercentageOfMaxConnections, "Percentage of MySQL max_connections that vttablet should use. range from 10 to 90. default is 80.")
+	fs.IntVar(&config.SafetyBuffer, "queryserver_pool_autoscale_safety_buffer", config.SafetyBuffer, "Number of connections to reserve as a safety buffer. default is 35.")
+	fs.IntVar(&config.TxPoolPercentage, "queryserver_pool_autoscale_tx_pool_percentage", config.TxPoolPercentage, "Fraction of connections allocated to te. default is 50%.")
+	fs.IntVar(&config.MinTxPoolSize, "queryserver_pool_autoscale_min_tx_pool_size", config.MinTxPoolSize, "Minimum size of te. default is 5.")
+	fs.IntVar(&config.MinOltpReadPoolSize, "queryserver_pool_autoscale_min_oltp_read_pool_size", config.MinOltpReadPoolSize, "Minimum size of qe. default is 5.")
 }
 
 func ValidateQueryServerPoolAutoScaleConfig(useDefaultOnError bool) []error {
