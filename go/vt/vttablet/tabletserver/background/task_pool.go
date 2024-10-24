@@ -40,10 +40,12 @@ type TaskPool struct {
 	conns *connpool.Pool
 }
 
+//todo use stats to monitor the pool usage
+
 func NewTaskPool(env tabletenv.Env) *TaskPool {
 	te := &TaskPool{
 		env:   env,
-		conns: connpool.NewPool(env, "", backGroundTaskPoolConfig),
+		conns: connpool.NewPool(env, "TaskPool", backGroundTaskPoolConfig),
 	}
 	return te
 }
