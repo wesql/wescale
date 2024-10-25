@@ -8,6 +8,7 @@ package engine
 import (
 	"context"
 	"fmt"
+
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/log"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -41,6 +42,14 @@ func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.Creat
 	var diffDDL string
 
 	dbName = ddlStatement.GetTable().Qualifier.String()
+	// todo test case
+	if dbName == "" {
+		dbName = cursor.GetKeyspace()
+		if dbName == "" {
+			return nil, fmt.Errorf("no database selected")
+		}
+	}
+
 	tableName = ddlStatement.GetTable().Name.String()
 
 	qr, err := th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("SELECT SCHEMA_NAME\nFROM INFORMATION_SCHEMA.SCHEMATA\nWHERE SCHEMA_NAME = '%v';", dbName),
@@ -65,7 +74,7 @@ func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.Creat
 	desireSchema = sqlparser.CanonicalString(ddlStatement)
 
 	hints := &schemadiff.DiffHints{
-		// todo review and test: copy, inplace, instant
+		// todo review and test:
 		TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
 		// todo review: copy, inplace, instant
 		AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
@@ -115,15 +124,23 @@ func (d *DirectDeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, 
 		return nil, err
 	}
 
+	target := &querypb.Target{
+		TabletType: th.Target.TabletType,
+		Keyspace:   d.dbName,
+		Shard:      th.Target.Shard,
+		Cell:       th.Target.Cell,
+	}
+
 	if !d.dbExist {
-		_, err = th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
+		// todo test
+		_, err = th.Conn.ExecuteInternal(ctx, target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
 		if err != nil {
 			return nil, err
 		}
-		return th.Conn.ExecuteInternal(ctx, th.Target, d.desiredSchema, nil, 0, 0, nil)
+		return th.Conn.ExecuteInternal(ctx, target, d.desiredSchema, nil, 0, 0, nil)
 	}
 
-	_, err = th.Conn.ExecuteInternal(ctx, th.Target, d.diffDDL, nil, 0, 0, nil)
+	_, err = th.Conn.ExecuteInternal(ctx, target, d.diffDDL, nil, 0, 0, nil)
 	if err != nil {
 		return nil, err
 	}

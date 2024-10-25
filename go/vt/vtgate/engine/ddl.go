@@ -41,9 +41,10 @@ type DDL struct {
 	SQL      string
 	DDL      sqlparser.DDLStatement
 
-	NormalDDL            *Send
-	OnlineDDL            *OnlineDDL
-	NormalDeclarativeDDL *DirectDeclarativeDDL
+	NormalDDL                  *Send
+	OnlineDDL                  *OnlineDDL
+	NormalDeclarativeDDL       *DirectDeclarativeDDL
+	ActiveNormalDeclarativeDDL bool
 
 	DirectDDLEnabled bool
 	OnlineDDLEnabled bool
@@ -114,7 +115,7 @@ func (ddl *DDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[st
 		if !ddl.DirectDDLEnabled {
 			return nil, schema.ErrDirectDDLDisabled
 		}
-		if ddl.NormalDeclarativeDDL != nil {
+		if ddl.ActiveNormalDeclarativeDDL {
 			return vcursor.ExecutePrimitive(ctx, ddl.NormalDeclarativeDDL, bindVars, wantfields)
 		}
 

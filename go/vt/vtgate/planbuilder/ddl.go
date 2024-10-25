@@ -68,6 +68,7 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 	}
 
 	normalDeclarativeDDL := &engine.DirectDeclarativeDDL{}
+	active := false
 	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && onlineDDLPlan.DDLStrategySetting.Strategy == schema.DDLStrategyDirect && vschema.GetSession().EnableDeclarativeDDL {
 		// init primitive for direct declarative DDL
 		cursor, ok := vschema.(engine.VCursor)
@@ -78,15 +79,17 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 		if err != nil {
 			return nil, err
 		}
+		active = true
 	}
 
 	eddl := &engine.DDL{
-		Keyspace:             normalDDLPlan.Keyspace,
-		SQL:                  normalDDLPlan.Query,
-		DDL:                  ddlStatement,
-		NormalDDL:            normalDDLPlan,
-		OnlineDDL:            onlineDDLPlan,
-		NormalDeclarativeDDL: normalDeclarativeDDL,
+		Keyspace:                   normalDDLPlan.Keyspace,
+		SQL:                        normalDDLPlan.Query,
+		DDL:                        ddlStatement,
+		NormalDDL:                  normalDDLPlan,
+		OnlineDDL:                  onlineDDLPlan,
+		NormalDeclarativeDDL:       normalDeclarativeDDL,
+		ActiveNormalDeclarativeDDL: active,
 
 		DirectDDLEnabled: enableDirectDDL,
 		OnlineDDLEnabled: enableOnlineDDL,
