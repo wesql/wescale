@@ -105,6 +105,12 @@ func (ddl *DDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[st
 		return vcursor.ExecutePrimitive(ctx, ddl.NormalDDL, bindVars, wantfields)
 	}
 
+	ddlStrategySetting, err := schema.ParseDDLStrategy(vcursor.Session().GetDDLStrategy())
+	if err != nil {
+		return nil, err
+	}
+	ddl.OnlineDDL.DDLStrategySetting = ddlStrategySetting
+
 	switch {
 	case ddl.isOnlineSchemaDDL():
 		if !ddl.OnlineDDLEnabled {
