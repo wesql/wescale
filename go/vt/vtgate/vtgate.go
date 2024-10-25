@@ -486,12 +486,9 @@ func (vtg *VTGate) registerDebugConfigHandler() {
 		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
 			rstMap[flag.Name] = flag.Value
 		})
-
-		defaultFlagValueMap := flagutil.StringMapValue{}
 		flag.VisitAll(func(f *flag.Flag) {
-			defaultFlagValueMap[f.Name] = f.Value.String()
+			rstMap[f.Name] = flagutil.NewCustomStringValue(f.Value.String())
 		})
-		rstMap["defaultFlagValues"] = &defaultFlagValueMap
 
 		data, _ := json.Marshal(rstMap)
 		w.Write(data)
