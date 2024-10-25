@@ -59,42 +59,74 @@ func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&config.MinOltpReadPoolSize, "queryserver_pool_autoscale_min_oltp_read_pool_size", config.MinOltpReadPoolSize, "Minimum size of qe. default is 5.")
 }
 
+func ValidatePercentageOfMaxConnections(percentage int) error {
+	if percentage < 10 || percentage > 90 {
+		return fmt.Errorf("invalid queryserver_pool_autoscale_percentage_of_max_connections: %d, must be between 10 and 90", percentage)
+	}
+	return nil
+}
+
+// 新增的验证函数
+
+func ValidateSafetyBuffer(buffer int) error {
+	if buffer < 0 {
+		return fmt.Errorf("invalid queryserver_pool_autoscale_safety_buffer: %d, must be greater than or equal to 0", buffer)
+	}
+	return nil
+}
+
+func ValidateTxPoolPercentage(percentage int) error {
+	if percentage < 0 || percentage > 100 {
+		return fmt.Errorf("invalid queryserver_pool_autoscale_tx_pool_percentage: %d, must be between 0 and 100", percentage)
+	}
+	return nil
+}
+
+func ValidateMinTxPoolSize(size int) error {
+	if size < 0 {
+		return fmt.Errorf("invalid queryserver_pool_autoscale_min_tx_pool_size: %d, must be greater than or equal to 0", size)
+	}
+	return nil
+}
+
+func ValidateMinOltpReadPoolSize(size int) error {
+	if size < 0 {
+		return fmt.Errorf("invalid queryserver_pool_autoscale_min_oltp_read_pool_size: %d, must be greater than or equal to 0", size)
+	}
+	return nil
+}
+
 func ValidateQueryServerPoolAutoScaleConfig(useDefaultOnError bool) []error {
 	var errorList []error
-	if config.PercentageOfMaxConnections < 10 || config.PercentageOfMaxConnections > 90 {
-		err := fmt.Errorf("invalid queryserver_pool_autoscale_percentage_of_max_connections: %d, must be between 10 and 90", config.PercentageOfMaxConnections)
+	if err := ValidatePercentageOfMaxConnections(config.PercentageOfMaxConnections); err != nil {
 		errorList = append(errorList, err)
 		if useDefaultOnError {
 			config.PercentageOfMaxConnections = defaultConfig.PercentageOfMaxConnections
 			log.Warningf("Using default queryserver_pool_autoscale_percentage_of_max_connections: %d", config.PercentageOfMaxConnections)
 		}
 	}
-	if config.SafetyBuffer < 0 {
-		err := fmt.Errorf("invalid queryserver_pool_autoscale_safety_buffer: %d, must be greater than or equal to 0", config.SafetyBuffer)
+	if err := ValidateSafetyBuffer(config.SafetyBuffer); err != nil {
 		errorList = append(errorList, err)
 		if useDefaultOnError {
 			config.SafetyBuffer = defaultConfig.SafetyBuffer
 			log.Warningf("Using default queryserver_pool_autoscale_safety_buffer: %d", config.SafetyBuffer)
 		}
 	}
-	if config.TxPoolPercentage < 0 || config.TxPoolPercentage > 100 {
-		err := fmt.Errorf("invalid queryserver_pool_autoscale_tx_pool_percentage: %d, must be between 0 and 100", config.TxPoolPercentage)
+	if err := ValidateTxPoolPercentage(config.TxPoolPercentage); err != nil {
 		errorList = append(errorList, err)
 		if useDefaultOnError {
 			config.TxPoolPercentage = defaultConfig.TxPoolPercentage
 			log.Warningf("Using default queryserver_pool_autoscale_tx_pool_percentage: %d", config.TxPoolPercentage)
 		}
 	}
-	if config.MinTxPoolSize < 0 {
-		err := fmt.Errorf("invalid queryserver_pool_autoscale_min_tx_pool_size: %d, must be greater than or equal to 0", config.MinTxPoolSize)
+	if err := ValidateMinTxPoolSize(config.MinTxPoolSize); err != nil {
 		errorList = append(errorList, err)
 		if useDefaultOnError {
 			config.MinTxPoolSize = defaultConfig.MinTxPoolSize
 			log.Warningf("Using default queryserver_pool_autoscale_min_tx_pool_size: %d", config.MinTxPoolSize)
 		}
 	}
-	if config.MinOltpReadPoolSize < 0 {
-		err := fmt.Errorf("invalid queryserver_pool_autoscale_min_oltp_read_pool_size: %d, must be greater than or equal to 0", config.MinOltpReadPoolSize)
+	if err := ValidateMinOltpReadPoolSize(config.MinOltpReadPoolSize); err != nil {
 		errorList = append(errorList, err)
 		if useDefaultOnError {
 			config.MinOltpReadPoolSize = defaultConfig.MinOltpReadPoolSize

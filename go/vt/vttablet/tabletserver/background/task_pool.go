@@ -80,3 +80,10 @@ func (te *TaskPool) InUse() int64 {
 	}
 	return te.conns.InUse()
 }
+
+func (te *TaskPool) SetCapacity(size int) {
+	if te.conns == nil || size < 0 {
+		return
+	}
+	te.conns.SetCapacity(size)
+}

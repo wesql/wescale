@@ -2063,6 +2063,10 @@ func (tsv *TabletServer) SetTxPoolSize(val int) {
 	tsv.te.txPool.scp.conns.SetCapacity(val)
 }
 
+func (tsv *TabletServer) SetTaskPoolSize(val int) {
+	tsv.taskPool.SetCapacity(val)
+}
+
 // TxPoolSize returns the tx pool size.
 func (tsv *TabletServer) TxPoolSize() int {
 	return tsv.te.txPool.scp.Capacity()

@@ -17,9 +17,88 @@ import (
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/role"
 )
 
+// todo: it seems registering the reload handlers is complicated, there are many duplicated code, need to refactor
+
 // RegisterReloadHandlersForVtTablet
 // viper_config will call these handlers when viper reloads a config file, even if the value remains the same
 func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletServer) {
+	v.ReloadHandler.AddReloadHandler("background_task_pool_size", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err == nil {
+			tsv.SetTaskPoolSize(i)
+		} else {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_enable", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_dry_run", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_percentage_of_max_connections", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err != nil {
+			log.Errorf("cannot parse %s=%s as int", key, value)
+			return
+		}
+		err = tabletserver.ValidatePercentageOfMaxConnections(i)
+		if err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		DefaultFsReloadHandler(key, value, fs)
+	})
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_safety_buffer", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err != nil {
+			log.Errorf("cannot parse %s=%s as int", key, value)
+			return
+		}
+		err = tabletserver.ValidateSafetyBuffer(i)
+		if err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		DefaultFsReloadHandler(key, value, fs)
+	})
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_tx_pool_percentage", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err != nil {
+			log.Errorf("cannot parse %s=%s as int", key, value)
+			return
+		}
+		err = tabletserver.ValidateTxPoolPercentage(i)
+		if err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		DefaultFsReloadHandler(key, value, fs)
+	})
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_min_tx_pool_size", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err != nil {
+			log.Errorf("cannot parse %s=%s as int", key, value)
+			return
+		}
+		err = tabletserver.ValidateMinTxPoolSize(i)
+		if err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		DefaultFsReloadHandler(key, value, fs)
+	})
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_min_oltp_read_pool_size", func(key string, value string, fs *pflag.FlagSet) {
+		i, err := parseInt(key, value)
+		if err != nil {
+			log.Errorf("cannot parse %s=%s as int", key, value)
+			return
+		}
+		err = tabletserver.ValidateMinOltpReadPoolSize(i)
+		if err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		DefaultFsReloadHandler(key, value, fs)
+	})
+
 	v.ReloadHandler.AddReloadHandler("mysql_role_probe_enable", DefaultFsReloadHandler)
 
 	v.ReloadHandler.AddReloadHandler("mysql_role_probe_url_template", func(key string, value string, fs *pflag.FlagSet) {
