@@ -164,7 +164,7 @@ func TestInitAndUpdate(t *testing.T) {
 		3*time.Second,
 		"initial table list not complete")
 
-	// Init
+	// CalculateDiff
 	_ = utils.Exec(t, conn, "create table test_sc (id bigint primary key)")
 	expected = `[[VARCHAR("dual")] [VARCHAR("t2")] [VARCHAR("t2_id4_idx")] [VARCHAR("t8")] [VARCHAR("test_sc")]]`
 

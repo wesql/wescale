@@ -6,11 +6,9 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package planbuilder
 
 import (
-	"context"
 	"fmt"
 
 	"vitess.io/vitess/go/vt/key"
-	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vtgate/engine"
@@ -67,29 +65,18 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 		onlineDDLPlan = nil // emptying this so it does not accidentally gets used somewhere
 	}
 
-	normalDeclarativeDDL := &engine.DirectDeclarativeDDL{}
-	active := false
-	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && onlineDDLPlan.DDLStrategySetting.Strategy == schema.DDLStrategyDirect && vschema.GetSession().EnableDeclarativeDDL {
-		// init primitive for direct declarative DDL
-		cursor, ok := vschema.(engine.VCursor)
-		if !ok {
-			return nil, fmt.Errorf("build direct declarative ddl plan failed: vschema does not implement VCursor interface")
-		}
-		normalDeclarativeDDL, err = engine.InitDirectDeclarativeDDL(context.Background(), createTable, cursor)
-		if err != nil {
-			return nil, err
-		}
-		active = true
+	declarativeDDL := &engine.DeclarativeDDL{}
+	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok {
+		declarativeDDL = engine.BuildDeclarativeDDLPlan(createTable, normalDDLPlan, onlineDDLPlan)
 	}
 
 	eddl := &engine.DDL{
-		Keyspace:                   normalDDLPlan.Keyspace,
-		SQL:                        normalDDLPlan.Query,
-		DDL:                        ddlStatement,
-		NormalDDL:                  normalDDLPlan,
-		OnlineDDL:                  onlineDDLPlan,
-		NormalDeclarativeDDL:       normalDeclarativeDDL,
-		ActiveNormalDeclarativeDDL: active,
+		Keyspace:       normalDDLPlan.Keyspace,
+		SQL:            normalDDLPlan.Query,
+		DDL:            ddlStatement,
+		NormalDDL:      normalDDLPlan,
+		OnlineDDL:      onlineDDLPlan,
+		DeclarativeDDL: declarativeDDL,
 
 		DirectDDLEnabled: enableDirectDDL,
 		OnlineDDLEnabled: enableOnlineDDL,

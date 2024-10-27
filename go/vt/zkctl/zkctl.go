@@ -166,7 +166,7 @@ func (zkd *Zkd) Init() error {
 		return fmt.Errorf("zk already inited")
 	}
 
-	log.Infof("zkd.Init")
+	log.Infof("zkd.CalculateDiff")
 	for _, path := range zkd.config.DirectoryList() {
 		if err := os.MkdirAll(path, 0775); err != nil {
 			log.Errorf("%v", err)

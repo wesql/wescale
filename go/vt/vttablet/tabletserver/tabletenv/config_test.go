@@ -152,7 +152,7 @@ func TestFlags(t *testing.T) {
 	assert.Equal(t, want.DB, currentConfig.DB)
 	assert.Equal(t, want, currentConfig)
 
-	// Simple Init.
+	// Simple CalculateDiff.
 	Init()
 	want.OlapReadPool.IdleTimeoutSeconds = 1800
 	want.TxPool.IdleTimeoutSeconds = 1800

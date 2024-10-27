@@ -40,7 +40,7 @@ func _TestLifeCycle(t *testing.T) {
 	zkConf := MakeZkConfigFromString(config, uint32(myID))
 	zkd := NewZkd(zkConf)
 	if err := zkd.Init(); err != nil {
-		t.Fatalf("Init() err: %v", err)
+		t.Fatalf("CalculateDiff() err: %v", err)
 	}
 
 	if err := zkd.Shutdown(); err != nil {

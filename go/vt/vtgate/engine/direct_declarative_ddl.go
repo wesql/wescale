@@ -8,210 +8,212 @@ package engine
 import (
 	"context"
 	"fmt"
-
 	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/log"
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
+	"vitess.io/vitess/go/vt/schema"
 	"vitess.io/vitess/go/vt/schemadiff"
 	"vitess.io/vitess/go/vt/sqlparser"
+	"vitess.io/vitess/go/vt/vterrors"
 )
 
-var _ Primitive = (*DirectDeclarativeDDL)(nil)
+var _ Primitive = (*DeclarativeDDL)(nil)
 
-// DirectDeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
-type DirectDeclarativeDDL struct {
-	dbName        string // todo clint: create db if not exist
-	dbExist       bool
+// DeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
+type DeclarativeDDL struct {
+	// set when plan building
+	dbName        string // will set to session db when executing if sql db is not provided
 	tableName     string
-	originSchema  string
 	desiredSchema string
-	diffDDL       string
+
+	// set when execute
+	originSchema string
+	diffDDL      string
+	diffDDLStmt  sqlparser.DDLStatement
+
+	isDirect bool
+	// query will be set when execute
+	directPrimitive    *Send
+	OnlineDDLPrimitive *OnlineDDL
+
+	noInputs
 }
 
-func InitDirectDeclarativeDDL(ctx context.Context, ddlStatement *sqlparser.CreateTable, cursor VCursor) (*DirectDeclarativeDDL, error) {
+func BuildDeclarativeDDLPlan(createTableStatement *sqlparser.CreateTable, send *Send, onlineDDL *OnlineDDL) *DeclarativeDDL {
+	// plan will be cached and index by sql template, so here we just build some static info related the sql.
+
+	sqlDBName := createTableStatement.GetTable().Qualifier.String()
+	tableName := createTableStatement.GetTable().Name.String()
+	desireSchema := sqlparser.CanonicalString(createTableStatement)
+
+	directPrimitive := &Send{}
+	directPrimitive.TargetDestination = send.TargetDestination
+	//directPrimitive.Keyspace = &vindexes.Keyspace{Sharded: send.Keyspace.Sharded}
+	directPrimitive.Keyspace = send.Keyspace
+
+	OnlineDDLPrimitive := &OnlineDDL{}
+	OnlineDDLPrimitive.TargetDestination = onlineDDL.TargetDestination
+	//OnlineDDLPrimitive.Keyspace = &vindexes.Keyspace{Sharded: onlineDDL.Keyspace.Sharded}
+	OnlineDDLPrimitive.Keyspace = onlineDDL.Keyspace
+
+	return &DeclarativeDDL{
+		dbName:             sqlDBName,
+		tableName:          tableName,
+		desiredSchema:      desireSchema,
+		directPrimitive:    directPrimitive,
+		OnlineDDLPrimitive: OnlineDDLPrimitive,
+	}
+}
+
+func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) error {
 	th, err := cursor.FindHealthyPrimaryTablet()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var dbName string
-	var tableName string
-	var dbExist bool
-	var originSchema string
-	var desireSchema string
-	var diffDDL string
-
-	dbName = ddlStatement.GetTable().Qualifier.String()
-	// todo test case
-	if dbName == "" {
-		dbName = cursor.GetKeyspace()
-		if dbName == "" {
-			return nil, fmt.Errorf("no database selected")
+	sessionDB := cursor.GetKeyspace()
+	if d.dbName == "" {
+		d.dbName = sessionDB
+		if d.dbName == "" {
+			return fmt.Errorf("no database selected")
 		}
 	}
 
-	tableName = ddlStatement.GetTable().Name.String()
-
-	qr, err := th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("SELECT SCHEMA_NAME\nFROM INFORMATION_SCHEMA.SCHEMATA\nWHERE SCHEMA_NAME = '%v';", dbName),
+	// return error if database not exist
+	qr, err := th.Conn.ExecuteInternal(ctx, th.Target,
+		fmt.Sprintf("SELECT SCHEMA_NAME\nFROM INFORMATION_SCHEMA.SCHEMATA\nWHERE SCHEMA_NAME = '%v';", d.dbName),
 		nil, 0, 0, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	dbExist = len(qr.Rows) > 0
-	if dbExist {
-		qr, err := th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("SHOW CREATE TABLE %v.%v", dbName, tableName),
-			nil, 0, 0, nil)
-		if err != nil {
-			return nil, err
-		}
-		if len(qr.Rows) == 0 {
-			originSchema = ""
+	dbExist := len(qr.Rows) > 0
+	if !dbExist {
+		return fmt.Errorf("database %v not exist", d.dbName)
+	}
+
+	// get origin schema
+	qr, err = th.Conn.ExecuteInternal(ctx, th.Target,
+		fmt.Sprintf("SHOW CREATE TABLE %v.%v;", d.dbName, d.tableName),
+		nil, 0, 0, nil)
+	if err != nil {
+		if vterrors.Code(err) == vtrpcpb.Code_NOT_FOUND {
+			// table not exist yet
+			d.originSchema = ""
 		} else {
-			originSchema = qr.Rows[0][1].ToString()
+			return err
+		}
+	} else {
+		if len(qr.Rows) == 1 {
+			d.originSchema = qr.Rows[0][1].ToString()
+		} else {
+			return fmt.Errorf("the len of result from show create table %v.%v is not 1 but %v", d.dbName, d.tableName, len(qr.Rows))
 		}
 	}
 
-	desireSchema = sqlparser.CanonicalString(ddlStatement)
-
+	// get diff DDL
 	hints := &schemadiff.DiffHints{
-		// todo review and test:
+		// todo clint: test different TableCharsetCollateStrategy
 		TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
-		// todo review: copy, inplace, instant
+		// todo clint: add to pflag
 		AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
 	}
-	diff, err := schemadiff.DiffCreateTablesQueries(originSchema, desireSchema, hints)
+	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, hints)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	diffDDL = diff.CanonicalStatementString()
-	log.Debugf("the diff DDLs to execute is %v", diffDDL)
+	ddlStmt, ok := diff.Statement().(sqlparser.DDLStatement)
+	if !ok {
+		return fmt.Errorf("diff ddl is not a DDLStatement")
+	}
+	d.diffDDLStmt = ddlStmt
+	// if we don't set dbName here, it will be set to mysql db when executing
+	ddlStmt.SetTable(d.dbName, d.tableName)
+	ddlStmt.SetFullyParsed(true)
+	d.diffDDL = diff.CanonicalStatementString()
 
-	return &DirectDeclarativeDDL{
-		dbName:        dbName,
-		dbExist:       dbExist,
-		tableName:     tableName,
-		originSchema:  originSchema,
-		desiredSchema: desireSchema,
-		diffDDL:       diffDDL,
-	}, nil
+	return nil
+}
+
+func (d *DeclarativeDDL) initSubPrimitive(cursor VCursor) error {
+	if schema.DDLStrategy(cursor.Session().GetDDLStrategy()) == schema.DDLStrategyDirect {
+		d.isDirect = true
+		d.directPrimitive.Query = d.diffDDL
+		return nil
+	}
+	d.OnlineDDLPrimitive.SQL = d.diffDDL
+	d.OnlineDDLPrimitive.DDL = d.diffDDLStmt
+
+	ddlStrategySetting, err := schema.ParseDDLStrategy(cursor.Session().GetDDLStrategy())
+	if err != nil {
+		return err
+	}
+	d.OnlineDDLPrimitive.DDLStrategySetting = ddlStrategySetting
+
+	return nil
+}
+
+// Init should be called before execution
+func (d *DeclarativeDDL) Init(ctx context.Context, cursor VCursor) error {
+	err := d.calculateDiff(ctx, cursor)
+	if err != nil {
+		return err
+	}
+	return d.initSubPrimitive(cursor)
 }
 
 // NeedsTransaction implements the Primitive interface
-func (d *DirectDeclarativeDDL) NeedsTransaction() bool {
+func (d *DeclarativeDDL) NeedsTransaction() bool {
 	return false
 }
 
 // RouteType implements Primitive interface
-func (d *DirectDeclarativeDDL) RouteType() string {
-	return "DirectDeclarativeDDL"
+func (d *DeclarativeDDL) RouteType() string {
+	return "DeclarativeDDL"
 }
 
 // GetKeyspaceName implements Primitive interface
-func (d *DirectDeclarativeDDL) GetKeyspaceName() string {
+func (d *DeclarativeDDL) GetKeyspaceName() string {
 	return d.dbName
 }
 
 // GetTableName implements Primitive interface
-func (d *DirectDeclarativeDDL) GetTableName() string {
+func (d *DeclarativeDDL) GetTableName() string {
 	return d.tableName
 }
 
 // TryExecute implements Primitive interface
-func (d *DirectDeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	th, err := vcursor.FindHealthyPrimaryTablet()
+func (d *DeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
+	err := d.Init(ctx, vcursor)
 	if err != nil {
 		return nil, err
 	}
-
-	target := &querypb.Target{
-		TabletType: th.Target.TabletType,
-		Keyspace:   d.dbName,
-		Shard:      th.Target.Shard,
-		Cell:       th.Target.Cell,
+	if d.isDirect {
+		return vcursor.ExecutePrimitive(ctx, d.directPrimitive, bindVars, wantfields)
 	}
-
-	if !d.dbExist {
-		// todo test
-		_, err = th.Conn.ExecuteInternal(ctx, target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
-		if err != nil {
-			return nil, err
-		}
-		return th.Conn.ExecuteInternal(ctx, target, d.desiredSchema, nil, 0, 0, nil)
-	}
-
-	_, err = th.Conn.ExecuteInternal(ctx, target, d.diffDDL, nil, 0, 0, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// build final result
-	// todo review: keep or remove?
-	fileNames := []string{"Diff DDL", "Result"}
-	var resultRows []sqltypes.Row
-	row := sqltypes.BuildVarCharRow(d.diffDDL, "succeed")
-	resultRows = append(resultRows, row)
-
-	return &sqltypes.Result{
-		Fields: sqltypes.BuildVarCharFields(fileNames...),
-		Rows:   resultRows,
-	}, nil
+	return vcursor.ExecutePrimitive(ctx, d.OnlineDDLPrimitive, bindVars, wantfields)
 }
 
 // TryStreamExecute implements Primitive interface
-func (d *DirectDeclarativeDDL) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
-	th, err := vcursor.FindHealthyPrimaryTablet()
+func (d *DeclarativeDDL) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
+	err := d.Init(ctx, vcursor)
 	if err != nil {
 		return err
 	}
-
-	if !d.dbExist {
-		_, err = th.Conn.ExecuteInternal(ctx, th.Target, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %v", d.dbName), nil, 0, 0, nil)
-		if err != nil {
-			return err
-		}
-		qr, err := th.Conn.ExecuteInternal(ctx, th.Target, d.desiredSchema, nil, 0, 0, nil)
-		if err != nil {
-			return err
-		}
-		return callback(qr)
+	if d.isDirect {
+		return vcursor.StreamExecutePrimitive(ctx, d.directPrimitive, bindVars, wantfields, callback)
 	}
-
-	_, err = th.Conn.ExecuteInternal(ctx, th.Target, d.diffDDL, nil, 0, 0, nil)
-	if err != nil {
-		return err
-	}
-
-	// build final result
-	// todo review: keep or remove?
-	fileNames := []string{"Diff DDL", "Result"}
-	var resultRows []sqltypes.Row
-	row := sqltypes.BuildVarCharRow(d.diffDDL, "succeed")
-	resultRows = append(resultRows, row)
-
-	qr := &sqltypes.Result{
-		Fields: sqltypes.BuildVarCharFields(fileNames...),
-		Rows:   resultRows,
-	}
-
-	return callback(qr)
+	return vcursor.StreamExecutePrimitive(ctx, d.OnlineDDLPrimitive, bindVars, wantfields, callback)
 }
 
 // GetFields implements Primitive interface
-func (d *DirectDeclarativeDDL) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
-	return &sqltypes.Result{
-		Fields: sqltypes.BuildVarCharFields("Diff DDL", "Result"),
-	}, nil
-}
-
-// Inputs implements the Primitive interface
-func (d *DirectDeclarativeDDL) Inputs() []Primitive {
-	return []Primitive{}
+func (d *DeclarativeDDL) GetFields(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable) (*sqltypes.Result, error) {
+	return &sqltypes.Result{}, nil
 }
 
 // description implements the Primitive interface
-func (d *DirectDeclarativeDDL) description() PrimitiveDescription {
+func (d *DeclarativeDDL) description() PrimitiveDescription {
 	var rst PrimitiveDescription
-	rst.OperatorType = "DirectDeclarativeDDL"
+	rst.OperatorType = "DeclarativeDDL"
 	return rst
 }

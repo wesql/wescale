@@ -73,7 +73,7 @@ var (
 // The legacy way of initializing is as follows:
 // App must call RegisterFlags to request the types of connections
 // it wants support for. This must be done before invoking flags.Parse.
-// After flag parsing, app invokes the Init function, which will return
+// After flag parsing, app invokes the CalculateDiff function, which will return
 // a DBConfigs object.
 // The app must store the DBConfigs object internally, and use it to
 // build connection parameters as needed.

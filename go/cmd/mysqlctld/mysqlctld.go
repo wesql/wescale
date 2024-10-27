@@ -82,7 +82,7 @@ func main() {
 		close(mysqldTerminated)
 	}
 
-	// Start or Init mysqld as needed.
+	// Start or CalculateDiff mysqld as needed.
 	ctx, cancel := context.WithTimeout(context.Background(), waitTime)
 	mycnfFile := mysqlctl.MycnfFile(uint32(tabletUID))
 	if _, statErr := os.Stat(mycnfFile); os.IsNotExist(statErr) {

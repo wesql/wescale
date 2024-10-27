@@ -428,7 +428,7 @@ func TestStartFindMysqlPort(t *testing.T) {
 	assert.Fail(t, "mysql port was not updated")
 }
 
-// Init tablet fixes replication data when safe
+// CalculateDiff tablet fixes replication data when safe
 func TestStartFixesReplicationData(t *testing.T) {
 	ctx := context.Background()
 	cell := "cell1"

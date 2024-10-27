@@ -163,7 +163,7 @@ func main() {
 
 func initConfig(tabletAlias *topodatapb.TabletAlias) (*tabletenv.TabletConfig, *mysqlctl.Mycnf) {
 	tabletenv.Init()
-	// Load current config after tabletenv.Init, because it changes it.
+	// Load current config after tabletenv.CalculateDiff, because it changes it.
 	config := tabletenv.NewCurrentConfig()
 	if err := config.Verify(); err != nil {
 		log.Exitf("invalid config: %v", err)

@@ -672,7 +672,7 @@ func (mysqld *Mysqld) InitConfig(cnf *Mycnf) error {
 // generate / configure a my.cnf file install a skeleton database,
 // and apply the provided initial SQL file.
 func (mysqld *Mysqld) Init(ctx context.Context, cnf *Mycnf, initDBSQLFile string) error {
-	log.Infof("mysqlctl.Init")
+	log.Infof("mysqlctl.CalculateDiff")
 	err := mysqld.InitConfig(cnf)
 	if err != nil {
 		log.Errorf("%s", err.Error())

@@ -238,7 +238,7 @@ func getDDLErrorHistory() []*ddlError {
 // Init creates or upgrades the sidecar database based on declarative schema for all tables in the schema.
 func Init(ctx context.Context, exec Exec) error {
 	printCallerDetails() // for debug purposes only, remove in v17
-	log.Infof("Starting sidecardb.Init()")
+	log.Infof("Starting sidecardb.CalculateDiff()")
 	si := &schemaInit{
 		ctx:  ctx,
 		exec: exec,

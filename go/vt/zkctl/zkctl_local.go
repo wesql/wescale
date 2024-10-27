@@ -34,9 +34,9 @@ func StartLocalZk(id, port int) (*Zkd, string) {
 	zkConfig := MakeZkConfigFromString(zkCfg, uint32(id))
 	zkd := NewZkd(zkConfig)
 
-	// Init & start zk.
+	// CalculateDiff & start zk.
 	if err := zkd.Init(); err != nil {
-		log.Exitf("zkd.Init(%d, %d) failed: %v", id, port, err)
+		log.Exitf("zkd.CalculateDiff(%d, %d) failed: %v", id, port, err)
 	}
 
 	return zkd, fmt.Sprintf("%v:%v", hostname, port+2)
