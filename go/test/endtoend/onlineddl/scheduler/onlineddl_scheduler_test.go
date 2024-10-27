@@ -1281,7 +1281,8 @@ func testScheduler(t *testing.T) {
 			}
 		})
 		t.Run("declarative", func(t *testing.T) {
-			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql --declarative", "vtgate", "just-created", "", false))
+			onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
+			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql", "vtgate", "just-created", "", false))
 
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)

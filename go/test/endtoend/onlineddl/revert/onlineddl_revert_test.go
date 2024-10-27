@@ -338,12 +338,14 @@ func testRevertible(t *testing.T) {
 			DROP TABLE onlineddl_test
 		`
 		tableName   = "onlineddl_test"
-		ddlStrategy = "online --declarative --allow-zero-in-date"
+		ddlStrategy = "online --allow-zero-in-date"
 	)
 
 	removeBackticks := func(s string) string {
 		return strings.Replace(s, "`", "", -1)
 	}
+
+	onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 
 	for _, testcase := range testCases {
 		t.Run(testcase.name, func(t *testing.T) {

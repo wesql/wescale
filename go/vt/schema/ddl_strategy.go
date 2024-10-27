@@ -33,7 +33,7 @@ var (
 )
 
 const (
-	declarativeFlag        = "declarative"
+	//declarativeFlag        = "declarative" // deprecated. now is done by set @@enable_declarative_ddl= true;
 	skipTopoFlag           = "skip-topo" // legacy. Kept for backwards compatibility, but unused
 	singletonFlag          = "singleton"
 	singletonContextFlag   = "singleton-context"
@@ -128,11 +128,6 @@ func (setting *DDLStrategySetting) hasFlag(name string) bool {
 	return false
 }
 
-// IsDeclarative checks if strategy options include --declarative
-func (setting *DDLStrategySetting) IsDeclarative() bool {
-	return setting.hasFlag(declarativeFlag)
-}
-
 // IsSingleton checks if strategy options include --singleton
 func (setting *DDLStrategySetting) IsSingleton() bool {
 	return setting.hasFlag(singletonFlag)
@@ -194,7 +189,6 @@ func (setting *DDLStrategySetting) RuntimeOptions() []string {
 	validOpts := []string{}
 	for _, opt := range opts {
 		switch {
-		case isFlag(opt, declarativeFlag):
 		case isFlag(opt, skipTopoFlag):
 		case isFlag(opt, singletonFlag):
 		case isFlag(opt, singletonContextFlag):
