@@ -57,7 +57,8 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 		return nil, err
 	}
 
-	if ddlStatement.IsTemporary() {
+	isTemporary := ddlStatement.IsTemporary()
+	if isTemporary {
 		err := vschema.ErrorIfShardedF(normalDDLPlan.Keyspace, "temporary table", "Temporary table not supported in sharded database %s", normalDDLPlan.Keyspace.Name)
 		if err != nil {
 			return nil, err
@@ -66,7 +67,7 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 	}
 
 	declarativeDDL := &engine.DeclarativeDDL{}
-	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok {
+	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && !isTemporary {
 		declarativeDDL = engine.BuildDeclarativeDDLPlan(createTable, normalDDLPlan, onlineDDLPlan)
 	}
 
