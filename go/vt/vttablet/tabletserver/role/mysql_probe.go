@@ -65,13 +65,14 @@ func mysqlProbe(ctx context.Context) (string, error) {
 		return UNKNOWN, err
 	}
 	if isReplica {
+		// vitess set @@read_only = 1 both in replica and rdonly type.
 		readOnly, err := isReadOnly(conn)
 		if err != nil {
 			return UNKNOWN, err
 		}
 		if readOnly {
 			// Map to RDONLY
-			return RDONLY, nil
+			return FOLLOWER, nil
 		}
 		// Map to REPLICA
 		return FOLLOWER, nil
