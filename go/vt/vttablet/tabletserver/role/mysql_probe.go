@@ -3,7 +3,9 @@ package role
 import (
 	"context"
 	"fmt"
+
 	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/vt/servenv"
 
@@ -69,7 +71,7 @@ func mysqlProbe(ctx context.Context) (string, error) {
 		}
 		if readOnly {
 			// Map to RDONLY
-			return FOLLOWER, nil
+			return RDONLY, nil
 		}
 		// Map to REPLICA
 		return FOLLOWER, nil
