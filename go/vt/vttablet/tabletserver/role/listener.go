@@ -40,6 +40,7 @@ const (
 	LEADER    = "Leader"
 	FOLLOWER  = "Follower"
 	LEARNER   = "Learner"
+	RDONLY    = "Rdonly"
 	CANDIDATE = "Candidate"
 	LOGGER    = "Logger"
 	UNKNOWN   = "unknown"
@@ -57,6 +58,8 @@ func transitionRoleType(role string) topodatapb.TabletType {
 	case strings.ToLower(CANDIDATE):
 		return topodatapb.TabletType_REPLICA
 	case strings.ToLower(LEARNER):
+		return topodatapb.TabletType_RDONLY
+	case strings.ToLower(RDONLY):
 		return topodatapb.TabletType_RDONLY
 	case strings.ToLower(LOGGER):
 		return topodatapb.TabletType_SPARE
