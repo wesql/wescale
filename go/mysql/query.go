@@ -467,7 +467,7 @@ func (c *Conn) ReadQueryResult(maxrows int, wantfields bool) (*sqltypes.Result, 
 			if err := c.drainResults(); err != nil {
 				return nil, false, 0, err
 			}
-			return nil, false, 0, vterrors.Errorf(vtrpc.Code_ABORTED, "Row count exceeded %d. You can configure max rows allow to return by: queryserver-config-max-result-size.", maxrows)
+			return nil, false, 0, vterrors.Errorf(vtrpc.Code_ABORTED, "Row count exceeded %d", maxrows)
 		}
 
 		// Regular row.
