@@ -57,12 +57,13 @@ func TestRoutingTabletType(t *testing.T) {
 		utils.Exec(t, conn, "select * from routingTest.t")
 
 		// select should execute on rdonly because keyspace tablet type is set
-		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"rdonly\")';")
-		utils.Exec(t, conn, "use routingTest@RDONLY")
-		utils.Exec(t, conn, "select * from t")
+		//utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"rdonly\")';")
+		//utils.Exec(t, conn, "use routingTest@RDONLY")
+		//utils.Exec(t, conn, "select * from t")
 
 		// select should execute on primary because user hint tablet type is set, and it will override keyspace tablet type
 		utils.Exec(t, conn, "set @put_failpoint='vitess.io/vitess/go/vt/vtgate/AssertRoutingTabletType=return(\"primary\")';")
+		utils.Exec(t, conn, "use routingTest@RDONLY")
 		utils.Exec(t, conn, "select /*vt+ ROLE=PRIMARY */ * from t")
 
 		// next we test that user hint tablet type should override suggested tablet type

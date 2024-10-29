@@ -25,7 +25,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -399,16 +398,16 @@ func (gw *TabletGateway) withRetry(ctx context.Context, target *querypb.Target, 
 		}
 		failpoint.Inject(failpointkey.AssertRoutingTabletType.Name, func(val failpoint.Value) {
 			if val.(string) == "primary" && th.Target.TabletType != topodatapb.TabletType_PRIMARY {
-				os.Exit(-1)
+				failpoint.Return(fmt.Errorf("error returned by failpoint AssertRoutingTabletType: th.Target.TabletType is %v instead of primary", th.Target.TabletType))
 			}
 			if val.(string) == "replica" && th.Target.TabletType != topodatapb.TabletType_REPLICA {
-				os.Exit(-1)
+				failpoint.Return(fmt.Errorf("error returned by failpoint AssertRoutingTabletType: th.Target.TabletType is %v instead of replica", th.Target.TabletType))
 			}
 			if val.(string) == "rdonly" && th.Target.TabletType != topodatapb.TabletType_RDONLY {
-				os.Exit(-1)
+				failpoint.Return(fmt.Errorf("error returned by failpoint AssertRoutingTabletType: th.Target.TabletType is %v instead of rdonly", th.Target.TabletType))
 			}
 			if (val.(string) == "replica or rdonly" || val.(string) == "rdonly or replica") && th.Target.TabletType != topodatapb.TabletType_RDONLY && th.Tablet.Type != topodatapb.TabletType_REPLICA {
-				os.Exit(-1)
+				failpoint.Return(fmt.Errorf("error returned by failpoint AssertRoutingTabletType: th.Target.TabletType is %v instead of replica or rdonly", th.Target.TabletType))
 			}
 		})
 
