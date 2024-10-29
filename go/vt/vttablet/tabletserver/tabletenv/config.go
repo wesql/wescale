@@ -534,7 +534,8 @@ var defaultConfig = TabletConfig{
 	Oltp: OltpConfig{
 		QueryTimeoutSeconds: 60,
 		TxTimeoutSeconds:    60,
-		MaxRows:             100000,
+		MaxRows:             1000000,
+		WarnRows:            100000,
 	},
 	Healthcheck: HealthcheckConfig{
 		IntervalSeconds:           20,
