@@ -8,6 +8,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"github.com/spf13/pflag"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
@@ -18,6 +19,36 @@ import (
 )
 
 var _ Primitive = (*DeclarativeDDL)(nil)
+
+var defaultConfig = schemadiff.DiffHints{
+	StrictIndexOrdering:         false,
+	AutoIncrementStrategy:       schemadiff.AutoIncrementIgnore,
+	RangeRotationStrategy:       schemadiff.RangeRotationFullSpec,
+	ConstraintNamesStrategy:     schemadiff.ConstraintNamesIgnoreVitess,
+	ColumnRenameStrategy:        schemadiff.ColumnRenameAssumeDifferent,
+	TableRenameStrategy:         schemadiff.TableRenameAssumeDifferent,
+	FullTextKeyStrategy:         schemadiff.FullTextKeyDistinctStatements,
+	TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
+	AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
+}
+
+var config = schemadiff.DiffHints{
+	StrictIndexOrdering:         defaultConfig.StrictIndexOrdering,
+	AutoIncrementStrategy:       defaultConfig.AutoIncrementStrategy,
+	RangeRotationStrategy:       defaultConfig.RangeRotationStrategy,
+	ConstraintNamesStrategy:     defaultConfig.ConstraintNamesStrategy,
+	ColumnRenameStrategy:        defaultConfig.ColumnRenameStrategy,
+	TableRenameStrategy:         defaultConfig.TableRenameStrategy,
+	FullTextKeyStrategy:         defaultConfig.FullTextKeyStrategy,
+	TableCharsetCollateStrategy: defaultConfig.TableCharsetCollateStrategy,
+	AlterTableAlgorithmStrategy: defaultConfig.AlterTableAlgorithmStrategy,
+}
+
+// todo clint: add and verify here and vtgate handler
+// todo clint: don't forget to register this func
+func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
+
+}
 
 // DeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
 type DeclarativeDDL struct {
@@ -111,13 +142,7 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	}
 
 	// get diff DDL
-	hints := &schemadiff.DiffHints{
-		// todo clint: test different TableCharsetCollateStrategy
-		TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
-		// todo clint: add to pflag
-		AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
-	}
-	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, hints)
+	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, &config)
 	if err != nil {
 		return err
 	}
