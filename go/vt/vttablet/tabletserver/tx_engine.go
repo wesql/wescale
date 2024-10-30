@@ -617,3 +617,11 @@ func (te *TxEngine) Release(connID int64) error {
 func (te *TxEngine) InUse() int64 {
 	return te.txPool.InUse()
 }
+
+func (te *TxEngine) Available() int64 {
+	return te.txPool.scp.conns.Available()
+}
+
+func (te *TxEngine) CloseIdleConnections(max int) int {
+	return te.txPool.CloseIdleConnections(max)
+}
