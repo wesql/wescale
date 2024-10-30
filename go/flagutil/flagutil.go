@@ -96,6 +96,30 @@ func StringListVar(fs *pflag.FlagSet, p *[]string, name string, defaultValue []s
 	fs.Var((*StringListValue)(p), name, usage)
 }
 
+type CustomStringValue string
+
+func NewCustomStringValue(v string) *CustomStringValue {
+	value := CustomStringValue(v)
+	return &value
+}
+
+func (value *CustomStringValue) Get() any {
+	return value
+}
+
+func (value *CustomStringValue) Set(v string) error {
+	*value = CustomStringValue(v)
+	return nil
+}
+
+func (value CustomStringValue) String() string {
+	return string(value)
+}
+
+func (value CustomStringValue) Type() string {
+	return "CustomStringValue"
+}
+
 // StringMapValue is a map[string]string flag. It accepts a
 // comma-separated list of key value pairs, of the form key:value. The
 // keys cannot contain colons.

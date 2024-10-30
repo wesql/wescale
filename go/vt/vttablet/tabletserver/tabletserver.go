@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 	"sort"
@@ -32,10 +33,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"vitess.io/vitess/go/flagutil"
 
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/vttablet/jobcontroller"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 
 	"github.com/pingcap/failpoint"
 	"google.golang.org/protobuf/proto"
@@ -111,22 +114,24 @@ type TabletServer struct {
 	topoServer             *topo.Server
 
 	// These are sub-components of TabletServer.
-	statelessql  *QueryList
-	statefulql   *QueryList
-	olapql       *QueryList
-	se           *schema.Engine
-	rt           *repltracker.ReplTracker
-	vstreamer    *vstreamer.Engine
-	tracker      *schema.Tracker
-	watcher      *BinlogWatcher
-	qe           *QueryEngine
-	txThrottler  *txthrottler.TxThrottler
-	te           *TxEngine
-	messager     *messager.Engine
-	hs           *healthStreamer
-	lagThrottler *throttle.Throttler
-	tableGC      *gc.TableGC
-	branchWatch  *BranchWatcher
+	statelessql        *QueryList
+	statefulql         *QueryList
+	olapql             *QueryList
+	se                 *schema.Engine
+	rt                 *repltracker.ReplTracker
+	vstreamer          *vstreamer.Engine
+	tracker            *schema.Tracker
+	watcher            *BinlogWatcher
+	qe                 *QueryEngine
+	txThrottler        *txthrottler.TxThrottler
+	te                 *TxEngine
+	messager           *messager.Engine
+	hs                 *healthStreamer
+	lagThrottler       *throttle.Throttler
+	tableGC            *gc.TableGC
+	branchWatch        *BranchWatcher
+	taskPool           *background.TaskPool
+	poolSizeController *PoolSizeController
 
 	// sm manages state transitions.
 	sm                *stateManager
@@ -200,27 +205,31 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
 	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
+	tsv.taskPool = background.NewTaskPool(tsv)
+	tsv.poolSizeController = NewPoolSizeController(tsv, tsv.taskPool, tsv.te, tsv.qe)
 
 	tsv.sm = &stateManager{
-		statelessql:      tsv.statelessql,
-		statefulql:       tsv.statefulql,
-		olapql:           tsv.olapql,
-		hs:               tsv.hs,
-		se:               tsv.se,
-		rt:               tsv.rt,
-		vstreamer:        tsv.vstreamer,
-		tracker:          tsv.tracker,
-		watcher:          tsv.watcher,
-		branchWatch:      tsv.branchWatch,
-		qe:               tsv.qe,
-		txThrottler:      tsv.txThrottler,
-		te:               tsv.te,
-		messager:         tsv.messager,
-		dmlJobController: tsv.dmlJonController,
-		ddle:             tsv.onlineDDLExecutor,
-		throttler:        tsv.lagThrottler,
-		tableGC:          tsv.tableGC,
-		tableACL:         tableacl.GetCurrentACL(),
+		statelessql:        tsv.statelessql,
+		statefulql:         tsv.statefulql,
+		olapql:             tsv.olapql,
+		hs:                 tsv.hs,
+		se:                 tsv.se,
+		rt:                 tsv.rt,
+		vstreamer:          tsv.vstreamer,
+		tracker:            tsv.tracker,
+		watcher:            tsv.watcher,
+		branchWatch:        tsv.branchWatch,
+		qe:                 tsv.qe,
+		txThrottler:        tsv.txThrottler,
+		te:                 tsv.te,
+		messager:           tsv.messager,
+		dmlJobController:   tsv.dmlJonController,
+		ddle:               tsv.onlineDDLExecutor,
+		throttler:          tsv.lagThrottler,
+		tableGC:            tsv.tableGC,
+		tableACL:           tableacl.GetCurrentACL(),
+		taskPool:           tsv.taskPool,
+		poolSizeController: tsv.poolSizeController,
 	}
 
 	tsv.exporter.NewGaugeFunc("TabletState", "Tablet server state", func() int64 { return int64(tsv.sm.State()) })
@@ -1981,15 +1990,16 @@ func (tsv *TabletServer) registerDebugEnvHandler() {
 
 func (tsv *TabletServer) registerDebugConfigHandler() {
 	tsv.exporter.HandleFunc("/debug/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		rstMap := make(map[string]pflag.Value)
 		tabletFlagSet := servenv.GetFlagSetFor("vttablet")
 		tabletFlagSet.VisitAll(func(flag *pflag.Flag) {
 			rstMap[flag.Name] = flag.Value
 		})
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
+		flag.VisitAll(func(f *flag.Flag) {
+			rstMap[f.Name] = flagutil.NewCustomStringValue(f.Value.String())
+		})
 		data, _ := json.Marshal(rstMap)
 		w.Write(data)
 	})
@@ -2051,6 +2061,10 @@ func (tsv *TabletServer) StreamPoolSize() int {
 // SetTxPoolSize changes the tx pool size to the specified value.
 func (tsv *TabletServer) SetTxPoolSize(val int) {
 	tsv.te.txPool.scp.conns.SetCapacity(val)
+}
+
+func (tsv *TabletServer) SetTaskPoolSize(val int) {
+	tsv.taskPool.SetCapacity(val)
 }
 
 // TxPoolSize returns the tx pool size.

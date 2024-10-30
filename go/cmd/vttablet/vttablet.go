@@ -110,6 +110,8 @@ func main() {
 	if err != nil {
 		log.Exitf("failed to parse --tablet-path: %v", err)
 	}
+	// validate query server pool auto scale config
+	tabletserver.ValidateQueryServerPoolAutoScaleConfig(true)
 
 	// config and mycnf initializations are intertwined.
 	config, mycnf := initConfig(tabletAlias)
