@@ -70,8 +70,6 @@ func ValidatePercentageOfMaxConnections(percentage int) error {
 	return nil
 }
 
-// 新增的验证函数
-
 func ValidateSafetyBuffer(buffer int) error {
 	if buffer < 0 {
 		return fmt.Errorf("invalid queryserver_pool_autoscale_safety_buffer: %d, must be greater than or equal to 0", buffer)
