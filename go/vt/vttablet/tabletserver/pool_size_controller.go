@@ -16,19 +16,21 @@ import (
 
 // QueryServerPoolAutoScaleConfig holds configuration parameters for PoolSizeController.
 type QueryServerPoolAutoScaleConfig struct {
-	Enable                     bool          // Enable the pool size controller
-	DryRun                     bool          // Enable dry-run mode, it will override Enable if it is true
-	Interval                   time.Duration // Interval at which pool sizes are adjusted
-	PercentageOfMaxConnections int           // Percentage of MySQL max_connections that vttablet should use (e.g., 80 for 80%). range from 10 to 90.
-	SafetyBuffer               int           // Number of connections to reserve as a safety buffer (e.g., 35)
-	TxPoolPercentage           int           // Fraction of connections allocated to te (e.g., 50 for 50%)
-	MinTxPoolSize              int           // Minimum size of te (e.g., 5)
-	MinOltpReadPoolSize        int           // Minimum size of qe (e.g., 5)
+	Enable                                     bool          // Enable the pool size controller
+	DryRun                                     bool          // Enable dry-run mode, it will override Enable if it is true
+	ReleaseIdleConnectionsOnMaxConnectionError bool          // Release idle connections when Connection_errors_max_connections increases
+	Interval                                   time.Duration // Interval at which pool sizes are adjusted
+	PercentageOfMaxConnections                 int           // Percentage of MySQL max_connections that vttablet should use (e.g., 80 for 80%). range from 10 to 90.
+	SafetyBuffer                               int           // Number of connections to reserve as a safety buffer (e.g., 35)
+	TxPoolPercentage                           int           // Fraction of connections allocated to te (e.g., 50 for 50%)
+	MinTxPoolSize                              int           // Minimum size of te (e.g., 5)
+	MinOltpReadPoolSize                        int           // Minimum size of qe (e.g., 5)
 }
 
 var defaultConfig = QueryServerPoolAutoScaleConfig{
-	Enable:                     false,
-	DryRun:                     false,
+	Enable: false,
+	DryRun: false,
+	ReleaseIdleConnectionsOnMaxConnectionError: true,
 	Interval:                   30 * time.Second,
 	PercentageOfMaxConnections: 80,
 	SafetyBuffer:               35,
@@ -38,8 +40,9 @@ var defaultConfig = QueryServerPoolAutoScaleConfig{
 }
 
 var config = QueryServerPoolAutoScaleConfig{
-	Enable:                     defaultConfig.Enable,
-	DryRun:                     defaultConfig.DryRun,
+	Enable: defaultConfig.Enable,
+	DryRun: defaultConfig.DryRun,
+	ReleaseIdleConnectionsOnMaxConnectionError: defaultConfig.ReleaseIdleConnectionsOnMaxConnectionError,
 	Interval:                   defaultConfig.Interval,
 	PercentageOfMaxConnections: defaultConfig.PercentageOfMaxConnections,
 	SafetyBuffer:               defaultConfig.SafetyBuffer,
@@ -51,6 +54,7 @@ var config = QueryServerPoolAutoScaleConfig{
 func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&config.Enable, "queryserver_pool_autoscale_enable", config.Enable, "Enable the pool size autoscaler. default is false.")
 	fs.BoolVar(&config.DryRun, "queryserver_pool_autoscale_dry_run", config.DryRun, "Enable dry-run mode. When enabled, it overrides queryserver_pool_autoscale_enable. default is false.")
+	fs.BoolVar(&config.ReleaseIdleConnectionsOnMaxConnectionError, "queryserver_pool_autoscale_release_idle_connections_on_max_connection_error", config.ReleaseIdleConnectionsOnMaxConnectionError, "Release idle connections when Connection_errors_max_connections increases. default is true.")
 	fs.DurationVar(&config.Interval, "queryserver_pool_autoscale_interval", config.Interval, "Interval at which pool sizes are adjusted. default is 30s.")
 	fs.IntVar(&config.PercentageOfMaxConnections, "queryserver_pool_autoscale_percentage_of_max_connections", config.PercentageOfMaxConnections, "Percentage of MySQL max_connections that vttablet should use. range from 10 to 90. default is 80.")
 	fs.IntVar(&config.SafetyBuffer, "queryserver_pool_autoscale_safety_buffer", config.SafetyBuffer, "Number of connections to reserve as a safety buffer. default is 35.")
@@ -299,7 +303,9 @@ func (psc *PoolSizeController) handleConnectionErrors(currentErrors int) {
 	if currentErrors > psc.prevConnErrors {
 		log.Warningf("Detected increase in Connection_errors_max_connections: %d -> %d", psc.prevConnErrors, currentErrors)
 		// Release some idle connections if our pools have idle capacity
-		psc.releaseIdleConnections()
+		if config.ReleaseIdleConnectionsOnMaxConnectionError {
+			psc.releaseIdleConnections()
+		}
 	}
 	psc.prevConnErrors = currentErrors
 }

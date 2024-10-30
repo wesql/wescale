@@ -33,6 +33,7 @@ func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletS
 
 	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_enable", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_dry_run", DefaultFsReloadHandler)
+	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_release_idle_connections_on_max_connection_error", DefaultFsReloadHandler)
 	v.ReloadHandler.AddReloadHandler("queryserver_pool_autoscale_percentage_of_max_connections", func(key string, value string, fs *pflag.FlagSet) {
 		i, err := parseInt(key, value)
 		if err != nil {
