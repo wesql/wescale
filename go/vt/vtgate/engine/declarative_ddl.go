@@ -8,7 +8,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/servenv"
+	"vitess.io/vitess/go/vt/vtgate/vindexes"
 
 	"github.com/spf13/pflag"
 
@@ -83,40 +85,38 @@ type DeclarativeDDL struct {
 
 	// set when execute
 	originSchema string
-	diffDDL      string
-	diffDDLStmt  sqlparser.DDLStatement
+	diffDDLs     []string
+	diffDDLStmts []sqlparser.DDLStatement
 
-	isDirect bool
-	// query will be set when execute
-	directPrimitive    *Send
-	OnlineDDLPrimitive *OnlineDDL
+	isDirect            bool
+	directPrimitives    []*Send
+	onlineDDLPrimitives []*OnlineDDL
 
 	noInputs
 }
 
-func BuildDeclarativeDDLPlan(createTableStatement *sqlparser.CreateTable, send *Send, onlineDDL *OnlineDDL) *DeclarativeDDL {
+func BuildDeclarativeDDLPlan(createTableStatement *sqlparser.CreateTable) *DeclarativeDDL {
 	// plan will be cached and index by sql template, so here we just build some static info related the sql.
 
 	sqlDBName := createTableStatement.GetTable().Qualifier.String()
 	tableName := createTableStatement.GetTable().Name.String()
+	normalizeCreateTableStmt(createTableStatement)
 	desireSchema := sqlparser.CanonicalString(createTableStatement)
 
-	directPrimitive := &Send{}
-	directPrimitive.TargetDestination = send.TargetDestination
-	//directPrimitive.Keyspace = &vindexes.Keyspace{Sharded: send.Keyspace.Sharded}
-	directPrimitive.Keyspace = send.Keyspace
-
-	OnlineDDLPrimitive := &OnlineDDL{}
-	OnlineDDLPrimitive.TargetDestination = onlineDDL.TargetDestination
-	//OnlineDDLPrimitive.Keyspace = &vindexes.Keyspace{Sharded: onlineDDL.Keyspace.Sharded}
-	OnlineDDLPrimitive.Keyspace = onlineDDL.Keyspace
-
 	return &DeclarativeDDL{
-		dbName:             sqlDBName,
-		tableName:          tableName,
-		desiredSchema:      desireSchema,
-		directPrimitive:    directPrimitive,
-		OnlineDDLPrimitive: OnlineDDLPrimitive,
+		dbName:        sqlDBName,
+		tableName:     tableName,
+		desiredSchema: desireSchema,
+	}
+}
+
+func normalizeCreateTableStmt(createTableStatement *sqlparser.CreateTable) {
+	// pk column should be not null too
+	for _, col := range createTableStatement.TableSpec.Columns {
+		if col.Type.Options.KeyOpt == sqlparser.ColKeyPrimary {
+			v := false
+			col.Type.Options.Null = &v
+		}
 	}
 }
 
@@ -166,40 +166,61 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	}
 
 	// get diff DDL
+	d.diffDDLs = make([]string, 0)
+	d.diffDDLStmts = make([]sqlparser.DDLStatement, 0)
+
 	hints := ConvertHints(configInStr)
 	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, &hints)
 	if err != nil {
 		return err
 	}
-
-	ddlStmt, ok := diff.Statement().(sqlparser.DDLStatement)
-	if !ok {
-		return fmt.Errorf("diff ddl is not a DDLStatement")
+	if diff.IsEmpty() {
+		return nil
 	}
-	d.diffDDLStmt = ddlStmt
-	// if we don't set dbName here, it will be set to mysql db when executing
-	ddlStmt.SetTable(d.dbName, d.tableName)
-	ddlStmt.SetFullyParsed(true)
-	d.diffDDL = diff.CanonicalStatementString()
+
+	for diff != nil && !diff.IsEmpty() {
+		ddlStmt, ok := diff.Statement().(sqlparser.DDLStatement)
+		if !ok {
+			return fmt.Errorf("diff ddl is not a DDLStatement")
+		}
+
+		// if we don't set dbName here, it will be set to mysql db when executing
+		ddlStmt.SetTable(d.dbName, d.tableName)
+		ddlStmt.SetFullyParsed(true)
+		d.diffDDLStmts = append(d.diffDDLStmts, ddlStmt)
+		d.diffDDLs = append(d.diffDDLs, diff.CanonicalStatementString())
+
+		diff = diff.SubsequentDiff()
+	}
 
 	return nil
 }
 
 func (d *DeclarativeDDL) initSubPrimitive(cursor VCursor) error {
+	d.directPrimitives = make([]*Send, 0)
+	d.onlineDDLPrimitives = make([]*OnlineDDL, 0)
+
 	if schema.DDLStrategy(cursor.Session().GetDDLStrategy()) == schema.DDLStrategyDirect {
 		d.isDirect = true
-		d.directPrimitive.Query = d.diffDDL
+		for _, diffDDL := range d.diffDDLs {
+			send := &Send{Query: diffDDL,
+				Keyspace:          &vindexes.Keyspace{Name: d.dbName, Sharded: false},
+				TargetDestination: key.DestinationShard("0")}
+			d.directPrimitives = append(d.directPrimitives, send)
+		}
 		return nil
 	}
-	d.OnlineDDLPrimitive.SQL = d.diffDDL
-	d.OnlineDDLPrimitive.DDL = d.diffDDLStmt
 
 	ddlStrategySetting, err := schema.ParseDDLStrategy(cursor.Session().GetDDLStrategy())
 	if err != nil {
 		return err
 	}
-	d.OnlineDDLPrimitive.DDLStrategySetting = ddlStrategySetting
-
+	for i, diffDDL := range d.diffDDLs {
+		onlineDDL := &OnlineDDL{SQL: diffDDL, DDL: d.diffDDLStmts[i], DDLStrategySetting: ddlStrategySetting,
+			Keyspace:          &vindexes.Keyspace{Name: d.dbName, Sharded: false},
+			TargetDestination: key.DestinationShard("0")}
+		d.onlineDDLPrimitives = append(d.onlineDDLPrimitives, onlineDDL)
+	}
 	return nil
 }
 
@@ -239,9 +260,29 @@ func (d *DeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVa
 		return nil, err
 	}
 	if d.isDirect {
-		return vcursor.ExecutePrimitive(ctx, d.directPrimitive, bindVars, wantfields)
+		for _, send := range d.directPrimitives {
+			_, err = vcursor.ExecutePrimitive(ctx, send, bindVars, wantfields)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return &sqltypes.Result{}, nil
 	}
-	return vcursor.ExecutePrimitive(ctx, d.OnlineDDLPrimitive, bindVars, wantfields)
+
+	rows := make([][]sqltypes.Value, 0)
+	for _, onlineDDL := range d.onlineDDLPrimitives {
+		qr, err := vcursor.ExecutePrimitive(ctx, onlineDDL, bindVars, wantfields)
+		if err != nil {
+			return nil, err
+		}
+		if len(qr.Named().Rows) != 1 {
+			return nil, fmt.Errorf("DeclarativeDDL: the len of result from online ddl is not 1 but %v", len(qr.Named().Rows))
+		}
+		uuid := qr.Named().Rows[0].AsString("uuid", "")
+		rows = append(rows, sqltypes.BuildVarCharRow(uuid))
+	}
+
+	return &sqltypes.Result{Fields: sqltypes.BuildVarCharFields("uuid"), Rows: rows}, nil
 }
 
 // TryStreamExecute implements Primitive interface
@@ -251,9 +292,34 @@ func (d *DeclarativeDDL) TryStreamExecute(ctx context.Context, vcursor VCursor, 
 		return err
 	}
 	if d.isDirect {
-		return vcursor.StreamExecutePrimitive(ctx, d.directPrimitive, bindVars, wantfields, callback)
+		for _, send := range d.directPrimitives {
+			err = vcursor.StreamExecutePrimitive(ctx, send, bindVars, wantfields, func(result *sqltypes.Result) error {
+				// we don't care about the result
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return callback(&sqltypes.Result{})
 	}
-	return vcursor.StreamExecutePrimitive(ctx, d.OnlineDDLPrimitive, bindVars, wantfields, callback)
+
+	rows := make([][]sqltypes.Value, 0)
+	for _, onlineDDL := range d.onlineDDLPrimitives {
+		err := vcursor.StreamExecutePrimitive(ctx, onlineDDL, bindVars, wantfields, func(qr *sqltypes.Result) error {
+			if len(qr.Named().Rows) != 1 {
+				return fmt.Errorf("DeclarativeDDL: the len of result from online ddl is not 1 but %v", len(qr.Named().Rows))
+			}
+			uuid := qr.Named().Rows[0].AsString("uuid", "")
+			rows = append(rows, sqltypes.BuildVarCharRow(uuid))
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return callback(&sqltypes.Result{Fields: sqltypes.BuildVarCharFields("uuid"), Rows: rows})
 }
 
 // GetFields implements Primitive interface

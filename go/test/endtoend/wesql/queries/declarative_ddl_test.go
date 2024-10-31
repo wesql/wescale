@@ -49,6 +49,32 @@ func TestDeclarativeDDL(t *testing.T) {
 		WaitForMigrationStatus(t, conn, uuid, 60*time.Second, schema.OnlineDDLStatusComplete)
 		checkTableColExist(t, conn, "dddb", "t1", "`height` int")
 		checkTableColExist(t, conn, "dddb", "t1", "`id` int")
+
+		qr, err = conn.ExecuteFetch(`
+			create table dddb.t1(
+				id int primary key,
+				content1 text,
+				content2 text,
+				fulltext idx_content1(content1),
+				fulltext idx_content2(content2)
+			);`, 1000, true)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(qr.Rows)) // Should return 2 UUIDs
+
+		// Wait for both migrations to complete
+		for _, row := range qr.Named().Rows {
+			uuid := row.AsString("uuid", "0")
+			WaitForMigrationStatus(t, conn, uuid, 60*time.Second, schema.OnlineDDLStatusComplete)
+		}
+
+		// Verify columns and indexes exist
+		checkTableColExist(t, conn, "dddb", "t1", "`content1` text")
+		checkTableColExist(t, conn, "dddb", "t1", "`content2` text")
+
+		// Verify fulltext indexes exist
+		qr, err = conn.ExecuteFetch("show index from dddb.t1 where Index_type = 'FULLTEXT';", 1000, true)
+		assert.Nil(t, err)
+		assert.Equal(t, 2, len(qr.Rows))
 	})
 }
 

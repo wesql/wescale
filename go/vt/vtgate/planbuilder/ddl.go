@@ -68,7 +68,7 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 
 	declarativeDDL := &engine.DeclarativeDDL{}
 	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && !isTemporary {
-		declarativeDDL = engine.BuildDeclarativeDDLPlan(createTable, normalDDLPlan, onlineDDLPlan)
+		declarativeDDL = engine.BuildDeclarativeDDLPlan(createTable)
 	}
 
 	eddl := &engine.DDL{
