@@ -845,7 +845,7 @@ func (c *CreateTableEntity) diffTableCharset(
 			}
 		}
 		if gotFromCharset != "" {
-			return gotFromCollate
+			return gotFromCharset
 		}
 		return gotFromCollate
 	}
