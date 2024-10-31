@@ -8,7 +8,9 @@ package engine
 import (
 	"context"
 	"fmt"
+
 	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
@@ -47,7 +49,6 @@ var config = schemadiff.DiffHints{
 // todo clint: add and verify here and vtgate handler
 // todo clint: don't forget to register this func
 func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
-
 }
 
 // DeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
