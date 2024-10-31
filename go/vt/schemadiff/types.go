@@ -240,7 +240,6 @@ func FullTextKeyStrategyToString(strategy int) (string, error) {
 	return "", errors.New("invalid full text key strategy value: " + fmt.Sprint(strategy))
 }
 
-// TableCharsetCollateStrategy枚举
 const (
 	TableCharsetCollateStrict int = iota
 	TableCharsetCollateIgnoreEmpty
@@ -273,7 +272,6 @@ func TableCharsetCollateStrategyToString(strategy int) (string, error) {
 	return "", errors.New("invalid table charset collate strategy value: " + fmt.Sprint(strategy))
 }
 
-// AlterTableAlgorithmStrategy枚举
 const (
 	AlterTableAlgorithmStrategyNone int = iota
 	AlterTableAlgorithmStrategyInstant

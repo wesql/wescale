@@ -43,7 +43,7 @@ var defaultConfig = HintsInStr{
 	ColumnRenameStrategy:        schemadiff.ColumnRenameStrategyValues[schemadiff.ColumnRenameHeuristicStatement],
 	TableRenameStrategy:         schemadiff.TableRenameStrategyValues[schemadiff.TableRenameHeuristicStatement], // in our case, only one table
 	FullTextKeyStrategy:         schemadiff.FullTextKeyStrategyValues[schemadiff.FullTextKeyDistinctStatements],
-	TableCharsetCollateStrategy: schemadiff.TableCharsetCollateStrategyValues[schemadiff.TableCharsetCollateStrict],
+	TableCharsetCollateStrategy: schemadiff.TableCharsetCollateStrategyValues[schemadiff.TableCharsetCollateIgnoreAlways],
 	AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyValues[schemadiff.AlterTableAlgorithmStrategyNone],
 }
 
