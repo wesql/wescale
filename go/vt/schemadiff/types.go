@@ -17,6 +17,8 @@ limitations under the License.
 package schemadiff
 
 import (
+	"errors"
+	"fmt"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -61,11 +63,63 @@ const (
 	AutoIncrementApplyAlways
 )
 
+var AutoIncrementStrategyValues = map[int]string{
+	AutoIncrementIgnore:      "ignore",
+	AutoIncrementApplyHigher: "apply_higher",
+	AutoIncrementApplyAlways: "apply_always",
+}
+
+var autoIncrementStrategyStrings = map[string]int{
+	AutoIncrementStrategyValues[AutoIncrementIgnore]:      AutoIncrementIgnore,
+	AutoIncrementStrategyValues[AutoIncrementApplyHigher]: AutoIncrementApplyHigher,
+	AutoIncrementStrategyValues[AutoIncrementApplyAlways]: AutoIncrementApplyAlways,
+}
+
+func ParseAutoIncrementStrategy(strategyStr string) (int, error) {
+	if strategy, exists := autoIncrementStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid auto increment strategy: " + strategyStr)
+}
+
+func AutoIncrementStrategyToString(strategy int) (string, error) {
+	if str, exists := AutoIncrementStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid auto increment strategy value: " + fmt.Sprint(strategy))
+}
+
 const (
 	RangeRotationFullSpec = iota
 	RangeRotationDistinctStatements
 	RangeRotationIgnore
 )
+
+var RangeRotationStrategyValues = map[int]string{
+	RangeRotationFullSpec:           "full_spec",
+	RangeRotationDistinctStatements: "distinct_statements",
+	RangeRotationIgnore:             "ignore",
+}
+
+var rangeRotationStrategyStrings = map[string]int{
+	RangeRotationStrategyValues[RangeRotationFullSpec]:           RangeRotationFullSpec,
+	RangeRotationStrategyValues[RangeRotationDistinctStatements]: RangeRotationDistinctStatements,
+	RangeRotationStrategyValues[RangeRotationIgnore]:             RangeRotationIgnore,
+}
+
+func ParseRangeRotationStrategy(strategyStr string) (int, error) {
+	if strategy, exists := rangeRotationStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid range rotation strategy: " + strategyStr)
+}
+
+func RangeRotationStrategyToString(strategy int) (string, error) {
+	if str, exists := RangeRotationStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid range rotation strategy value: " + fmt.Sprint(strategy))
+}
 
 const (
 	ConstraintNamesIgnoreVitess = iota
@@ -73,33 +127,180 @@ const (
 	ConstraintNamesStrict
 )
 
+var ConstraintNamesStrategyValues = map[int]string{
+	ConstraintNamesIgnoreVitess: "ignore_vitess",
+	ConstraintNamesIgnoreAll:    "ignore_all",
+	ConstraintNamesStrict:       "strict",
+}
+
+var constraintNamesStrategyStrings = map[string]int{
+	ConstraintNamesStrategyValues[ConstraintNamesIgnoreVitess]: ConstraintNamesIgnoreVitess,
+	ConstraintNamesStrategyValues[ConstraintNamesIgnoreAll]:    ConstraintNamesIgnoreAll,
+	ConstraintNamesStrategyValues[ConstraintNamesStrict]:       ConstraintNamesStrict,
+}
+
+func ParseConstraintNamesStrategy(strategyStr string) (int, error) {
+	if strategy, exists := constraintNamesStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid constraint names strategy: " + strategyStr)
+}
+
+func ConstraintNamesStrategyToString(strategy int) (string, error) {
+	if str, exists := ConstraintNamesStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid constraint names strategy value: " + fmt.Sprint(strategy))
+}
+
 const (
 	ColumnRenameAssumeDifferent = iota
 	ColumnRenameHeuristicStatement
 )
+
+var ColumnRenameStrategyValues = map[int]string{
+	ColumnRenameAssumeDifferent:    "assume_different",
+	ColumnRenameHeuristicStatement: "heuristic_statement",
+}
+
+var columnRenameStrategyStrings = map[string]int{
+	ColumnRenameStrategyValues[ColumnRenameAssumeDifferent]:    ColumnRenameAssumeDifferent,
+	ColumnRenameStrategyValues[ColumnRenameHeuristicStatement]: ColumnRenameHeuristicStatement,
+}
+
+func ParseColumnRenameStrategy(strategyStr string) (int, error) {
+	if strategy, exists := columnRenameStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid column rename strategy: " + strategyStr)
+}
+
+func ColumnRenameStrategyToString(strategy int) (string, error) {
+	if str, exists := ColumnRenameStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid column rename strategy value: " + fmt.Sprint(strategy))
+}
 
 const (
 	TableRenameAssumeDifferent = iota
 	TableRenameHeuristicStatement
 )
 
+var TableRenameStrategyValues = map[int]string{
+	TableRenameAssumeDifferent:    "assume_different",
+	TableRenameHeuristicStatement: "heuristic_statement",
+}
+
+var tableRenameStrategyStrings = map[string]int{
+	TableRenameStrategyValues[TableRenameAssumeDifferent]:    TableRenameAssumeDifferent,
+	TableRenameStrategyValues[TableRenameHeuristicStatement]: TableRenameHeuristicStatement,
+}
+
+func ParseTableRenameStrategy(strategyStr string) (int, error) {
+	if strategy, exists := tableRenameStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid table rename strategy: " + strategyStr)
+}
+
+func TableRenameStrategyToString(strategy int) (string, error) {
+	if str, exists := TableRenameStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid table rename strategy value: " + fmt.Sprint(strategy))
+}
+
 const (
 	FullTextKeyDistinctStatements = iota
 	FullTextKeyUnifyStatements
 )
 
+var FullTextKeyStrategyValues = map[int]string{
+	FullTextKeyDistinctStatements: "distinct_statements",
+	FullTextKeyUnifyStatements:    "unify_statements",
+}
+
+var fullTextKeyStrategyStrings = map[string]int{
+	FullTextKeyStrategyValues[FullTextKeyDistinctStatements]: FullTextKeyDistinctStatements,
+	FullTextKeyStrategyValues[FullTextKeyUnifyStatements]:    FullTextKeyUnifyStatements,
+}
+
+func ParseFullTextKeyStrategy(strategyStr string) (int, error) {
+	if strategy, exists := fullTextKeyStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid full text key strategy: " + strategyStr)
+}
+
+func FullTextKeyStrategyToString(strategy int) (string, error) {
+	if str, exists := FullTextKeyStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid full text key strategy value: " + fmt.Sprint(strategy))
+}
+
+// TableCharsetCollateStrategy枚举
 const (
 	TableCharsetCollateStrict int = iota
 	TableCharsetCollateIgnoreEmpty
 	TableCharsetCollateIgnoreAlways
 )
 
+var TableCharsetCollateStrategyValues = map[int]string{
+	TableCharsetCollateStrict:       "strict",
+	TableCharsetCollateIgnoreEmpty:  "ignore_empty",
+	TableCharsetCollateIgnoreAlways: "ignore_always",
+}
+
+var tableCharsetCollateStrategyStrings = map[string]int{
+	TableCharsetCollateStrategyValues[TableCharsetCollateStrict]:       TableCharsetCollateStrict,
+	TableCharsetCollateStrategyValues[TableCharsetCollateIgnoreEmpty]:  TableCharsetCollateIgnoreEmpty,
+	TableCharsetCollateStrategyValues[TableCharsetCollateIgnoreAlways]: TableCharsetCollateIgnoreAlways,
+}
+
+func ParseTableCharsetCollateStrategy(strategyStr string) (int, error) {
+	if strategy, exists := tableCharsetCollateStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid table charset collate strategy: " + strategyStr)
+}
+
+func TableCharsetCollateStrategyToString(strategy int) (string, error) {
+	if str, exists := TableCharsetCollateStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid table charset collate strategy value: " + fmt.Sprint(strategy))
+}
+
+// AlterTableAlgorithmStrategy枚举
 const (
 	AlterTableAlgorithmStrategyNone int = iota
 	AlterTableAlgorithmStrategyInstant
 	AlterTableAlgorithmStrategyInplace
 	AlterTableAlgorithmStrategyCopy
 )
+
+var AlterTableAlgorithmStrategyValues = map[int]string{
+	AlterTableAlgorithmStrategyNone:    "none",
+	AlterTableAlgorithmStrategyInstant: "instant",
+	AlterTableAlgorithmStrategyInplace: "inplace",
+	AlterTableAlgorithmStrategyCopy:    "copy",
+}
+
+var alterTableAlgorithmStrategyStrings = map[string]int{
+	AlterTableAlgorithmStrategyValues[AlterTableAlgorithmStrategyNone]:    AlterTableAlgorithmStrategyNone,
+	AlterTableAlgorithmStrategyValues[AlterTableAlgorithmStrategyInstant]: AlterTableAlgorithmStrategyInstant,
+	AlterTableAlgorithmStrategyValues[AlterTableAlgorithmStrategyInplace]: AlterTableAlgorithmStrategyInplace,
+	AlterTableAlgorithmStrategyValues[AlterTableAlgorithmStrategyCopy]:    AlterTableAlgorithmStrategyCopy,
+}
+
+func ParseAlterTableAlgorithmStrategy(strategyStr string) (int, error) {
+	if strategy, exists := alterTableAlgorithmStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid alter table algorithm strategy: " + strategyStr)
+}
 
 // DiffHints is an assortment of rules for diffing entities
 type DiffHints struct {

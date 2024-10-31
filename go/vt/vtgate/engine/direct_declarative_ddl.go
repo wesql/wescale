@@ -8,6 +8,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"vitess.io/vitess/go/vt/servenv"
 
 	"github.com/spf13/pflag"
 
@@ -22,19 +23,31 @@ import (
 
 var _ Primitive = (*DeclarativeDDL)(nil)
 
-var defaultConfig = schemadiff.DiffHints{
-	StrictIndexOrdering:         false,
-	AutoIncrementStrategy:       schemadiff.AutoIncrementIgnore,
-	RangeRotationStrategy:       schemadiff.RangeRotationFullSpec,
-	ConstraintNamesStrategy:     schemadiff.ConstraintNamesIgnoreVitess,
-	ColumnRenameStrategy:        schemadiff.ColumnRenameAssumeDifferent,
-	TableRenameStrategy:         schemadiff.TableRenameAssumeDifferent,
-	FullTextKeyStrategy:         schemadiff.FullTextKeyDistinctStatements,
-	TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways,
-	AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyNone,
+type HintsInStr struct {
+	StrictIndexOrdering         bool
+	AutoIncrementStrategy       string
+	RangeRotationStrategy       string
+	ConstraintNamesStrategy     string
+	ColumnRenameStrategy        string
+	TableRenameStrategy         string
+	FullTextKeyStrategy         string
+	TableCharsetCollateStrategy string
+	AlterTableAlgorithmStrategy string
 }
 
-var config = schemadiff.DiffHints{
+var defaultConfig = HintsInStr{
+	StrictIndexOrdering:         false,
+	AutoIncrementStrategy:       schemadiff.AutoIncrementStrategyValues[schemadiff.AutoIncrementIgnore],
+	RangeRotationStrategy:       schemadiff.RangeRotationStrategyValues[schemadiff.RangeRotationFullSpec],
+	ConstraintNamesStrategy:     schemadiff.ConstraintNamesStrategyValues[schemadiff.ConstraintNamesIgnoreVitess],
+	ColumnRenameStrategy:        schemadiff.ColumnRenameStrategyValues[schemadiff.ColumnRenameHeuristicStatement],
+	TableRenameStrategy:         schemadiff.TableRenameStrategyValues[schemadiff.TableRenameHeuristicStatement], // in our case, only one table
+	FullTextKeyStrategy:         schemadiff.FullTextKeyStrategyValues[schemadiff.FullTextKeyDistinctStatements],
+	TableCharsetCollateStrategy: schemadiff.TableCharsetCollateStrategyValues[schemadiff.TableCharsetCollateStrict],
+	AlterTableAlgorithmStrategy: schemadiff.AlterTableAlgorithmStrategyValues[schemadiff.AlterTableAlgorithmStrategyNone],
+}
+
+var configInStr = HintsInStr{
 	StrictIndexOrdering:         defaultConfig.StrictIndexOrdering,
 	AutoIncrementStrategy:       defaultConfig.AutoIncrementStrategy,
 	RangeRotationStrategy:       defaultConfig.RangeRotationStrategy,
@@ -46,9 +59,19 @@ var config = schemadiff.DiffHints{
 	AlterTableAlgorithmStrategy: defaultConfig.AlterTableAlgorithmStrategy,
 }
 
-// todo clint: add and verify here and vtgate handler
-// todo clint: don't forget to register this func
+// not all options are supported to configure
 func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&configInStr.AutoIncrementStrategy, "declarative_ddl_hints_auto_increment_strategy", configInStr.AutoIncrementStrategy, "auto increment strategy")
+	fs.StringVar(&configInStr.RangeRotationStrategy, "declarative_ddl_hints_range_rotation_strategy", configInStr.RangeRotationStrategy, "range rotation strategy")
+	fs.StringVar(&configInStr.ConstraintNamesStrategy, "declarative_ddl_hints_constraint_names_strategy", configInStr.ConstraintNamesStrategy, "constraint names strategy")
+	fs.StringVar(&configInStr.ColumnRenameStrategy, "declarative_ddl_hints_column_rename_strategy", configInStr.ColumnRenameStrategy, "column rename strategy")
+	fs.StringVar(&configInStr.AlterTableAlgorithmStrategy, "declarative_ddl_hints_alter_table_algorithm_strategy", configInStr.AlterTableAlgorithmStrategy, "set table algorithm strategy")
+	// todo newborn22: fix before enabling configure
+	// fs.StringVar(&configInStr.TableCharsetCollateStrategy, "declarative_ddl_hints_table_charset_collate_strategy", configInStr.TableCharsetCollateStrategy, "table charset collate strategy")
+}
+
+func init() {
+	servenv.OnParseFor("vtgate", registerPoolSizeControllerConfigTypeFlags)
 }
 
 // DeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination
@@ -143,7 +166,8 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	}
 
 	// get diff DDL
-	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, &config)
+	hints := ConvertHints(configInStr)
+	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, &hints)
 	if err != nil {
 		return err
 	}
@@ -242,4 +266,68 @@ func (d *DeclarativeDDL) description() PrimitiveDescription {
 	var rst PrimitiveDescription
 	rst.OperatorType = "DeclarativeDDL"
 	return rst
+}
+
+func ConvertHints(hints HintsInStr) schemadiff.DiffHints {
+	var diffHints schemadiff.DiffHints
+
+	diffHints.StrictIndexOrdering = hints.StrictIndexOrdering
+
+	// AutoIncrementStrategy
+	if strategy, err := schemadiff.ParseAutoIncrementStrategy(hints.AutoIncrementStrategy); err == nil {
+		diffHints.AutoIncrementStrategy = strategy
+	} else {
+		diffHints.AutoIncrementStrategy, _ = schemadiff.ParseAutoIncrementStrategy(defaultConfig.AutoIncrementStrategy)
+	}
+
+	// RangeRotationStrategy
+	if strategy, err := schemadiff.ParseRangeRotationStrategy(hints.RangeRotationStrategy); err == nil {
+		diffHints.RangeRotationStrategy = strategy
+	} else {
+		diffHints.RangeRotationStrategy, _ = schemadiff.ParseRangeRotationStrategy(defaultConfig.RangeRotationStrategy)
+	}
+
+	// ConstraintNamesStrategy
+	if strategy, err := schemadiff.ParseConstraintNamesStrategy(hints.ConstraintNamesStrategy); err == nil {
+		diffHints.ConstraintNamesStrategy = strategy
+	} else {
+		diffHints.ConstraintNamesStrategy, _ = schemadiff.ParseConstraintNamesStrategy(defaultConfig.ConstraintNamesStrategy)
+	}
+
+	// ColumnRenameStrategy
+	if strategy, err := schemadiff.ParseColumnRenameStrategy(hints.ColumnRenameStrategy); err == nil {
+		diffHints.ColumnRenameStrategy = strategy
+	} else {
+		diffHints.ColumnRenameStrategy, _ = schemadiff.ParseColumnRenameStrategy(defaultConfig.ColumnRenameStrategy)
+	}
+
+	// TableRenameStrategy
+	if strategy, err := schemadiff.ParseTableRenameStrategy(hints.TableRenameStrategy); err == nil {
+		diffHints.TableRenameStrategy = strategy
+	} else {
+		diffHints.TableRenameStrategy, _ = schemadiff.ParseTableRenameStrategy(defaultConfig.TableRenameStrategy)
+	}
+
+	// FullTextKeyStrategy
+	if strategy, err := schemadiff.ParseFullTextKeyStrategy(hints.FullTextKeyStrategy); err == nil {
+		diffHints.FullTextKeyStrategy = strategy
+	} else {
+		diffHints.FullTextKeyStrategy, _ = schemadiff.ParseFullTextKeyStrategy(defaultConfig.FullTextKeyStrategy)
+	}
+
+	// TableCharsetCollateStrategy
+	if strategy, err := schemadiff.ParseTableCharsetCollateStrategy(hints.TableCharsetCollateStrategy); err == nil {
+		diffHints.TableCharsetCollateStrategy = strategy
+	} else {
+		diffHints.TableCharsetCollateStrategy, _ = schemadiff.ParseTableCharsetCollateStrategy(defaultConfig.TableCharsetCollateStrategy)
+	}
+
+	// AlterTableAlgorithmStrategy
+	if strategy, err := schemadiff.ParseAlterTableAlgorithmStrategy(hints.AlterTableAlgorithmStrategy); err == nil {
+		diffHints.AlterTableAlgorithmStrategy = strategy
+	} else {
+		diffHints.AlterTableAlgorithmStrategy, _ = schemadiff.ParseAlterTableAlgorithmStrategy(defaultConfig.AlterTableAlgorithmStrategy)
+	}
+
+	return diffHints
 }

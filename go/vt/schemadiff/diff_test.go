@@ -796,10 +796,38 @@ func TestHints(t *testing.T) {
 			// in a supported rotation case, ignore will lead no diffs
 			expectedDiff: false,
 		},
-		{name: "RangeRotationStrategy ignore2",
+		{name: "RangeRotationStrategy unsupported",
 			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
 			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
 			hints:   DiffHints{RangeRotationStrategy: RangeRotationIgnore},
+			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
+			// the alter dml will be:
+			// ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p0` VALUES LESS THAN (2022),
+			// PARTITION `p1` VALUES LESS THAN (2023),
+			// PARTITION `p2` VALUES LESS THAN (2024),
+			// PARTITION `p3` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy unsupported",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationDistinctStatements},
+			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
+			// the alter dml will be:
+			// ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p0` VALUES LESS THAN (2022),
+			// PARTITION `p1` VALUES LESS THAN (2023),
+			// PARTITION `p2` VALUES LESS THAN (2024),
+			// PARTITION `p3` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy unsupported",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationFullSpec},
 			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
 			// the alter dml will be:
 			// ALTER TABLE `t1`
@@ -817,10 +845,23 @@ func TestHints(t *testing.T) {
 			// the dml is: ALTER TABLE `t1` DROP PARTITION `p2020`
 			expectedDiff: true,
 		},
+		{name: "RangeRotationStrategy distinct",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024));",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationDistinctStatements},
+			// the dml is: ALTER TABLE `t1` DROP PARTITION `p2020`
+			expectedDiff: true,
+		},
 		{name: "RangeRotationStrategy full spec",
-			schema1:      "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
-			schema2:      "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024),\n    PARTITION p2024 VALUES LESS THAN (2025)\n);",
-			hints:        DiffHints{RangeRotationStrategy: RangeRotationFullSpec},
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024),\n    PARTITION p2024 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationFullSpec},
+			//  diff:ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p2021` VALUES LESS THAN (2022),
+			// PARTITION `p2022` VALUES LESS THAN (2023),
+			// PARTITION `p2023` VALUES LESS THAN (2024),
+			// PARTITION `p2024` VALUES LESS THAN (2025))
 			expectedDiff: true,
 		},
 
@@ -1001,6 +1042,15 @@ func TestHints(t *testing.T) {
 			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=latin1_swedish_ci;",
 			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
 			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL
+			expectedDiff: true,
+		},
+
+		{
+			name:    "TableCharsetCollateStrategy strict",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=utf8mb4_general_ci; ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=latin1_swedish_ci;",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateStrict},
+			// diff: ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL, COLLATE latin1_swedish_ci
 			expectedDiff: true,
 		},
 	}
