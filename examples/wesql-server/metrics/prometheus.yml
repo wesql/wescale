@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+
+rule_files:
+  - "prometheus_rules.yaml"
+
+scrape_configs:
+  - job_name: 'vitess-vtgate'
+    static_configs:
+      - targets: ['host.docker.internal:15001']  # 替换为您的VTGate地址和端口
+
+  - job_name: 'vitess-vttablet'
+    static_configs:
+      - targets: ['host.docker.internal:15100']  # 替换为您的VTTablet地址和端口
+
+#  - job_name: 'mysql'
+#    static_configs:
+#      - targets: ['<MySQL_HOST>:<MySQL_PORT>']  # 替换为您的MySQL地址和端口
+
+    metrics_path: '/metrics'
+    scheme: 'http'

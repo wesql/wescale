@@ -500,6 +500,22 @@ local vitess_ct = configuration_templates.prometheus_vitess;
               )
           |||,
           legendFormat: 'Avg Latency (vttablet)',
+        },
+        {
+          expr: |||
+            sum (
+              rate(
+                vttablet_mysql_sum[5m]
+              )
+            )
+            /
+            sum (
+              rate(
+                vttablet_mysql_count[5m]
+                )
+              )
+          |||,
+          legendFormat: 'Avg Latency (vttablet)',
         }
       ],
     },
