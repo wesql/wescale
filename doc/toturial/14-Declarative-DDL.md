@@ -1,10 +1,7 @@
 ---
 title: Declarative DDL
-description: Learn how to use WeScale's declarative ddl feature.
-keywords: [WeScale, Declarative DDL]
-sidebar_position: 8
-sidebar_label: Declarative DDL
 ---
+
 # Declarative DDL
 
 ## Overview

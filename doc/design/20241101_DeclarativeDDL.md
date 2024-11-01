@@ -1,3 +1,6 @@
+---
+title: Declarative DDL
+---
 
 # Declarative DDL
 
