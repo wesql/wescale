@@ -914,6 +914,14 @@ func TestHints(t *testing.T) {
 			expectedDiff: true,
 		},
 		{
+			name:    "ColumnRenameStrategy heuristic0",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100) CHARSET latin1\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// diff:ALTER TABLE `t1` DROP COLUMN `username`, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+		{
 			name:    "ColumnRenameStrategy heuristic1",
 			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100),\n	tel int);",
 			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100),\n	email varchar(60));",
