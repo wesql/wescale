@@ -517,7 +517,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                 )
               )
           |||,
-          legendFormat: 'Avg Latency (vttablet)',
+          legendFormat: 'Avg Latency (mysql)',
         }
       ],
     },

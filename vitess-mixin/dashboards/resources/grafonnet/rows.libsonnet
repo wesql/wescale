@@ -24,7 +24,7 @@ local row = grafana.row;
   duration::
     row.new(
       title='Duration',
-      collapse=true,
+      collapse=false,
     ),
 
   errorsRowsReturned::
@@ -204,12 +204,6 @@ local row = grafana.row;
   RequestsVTTablet::
       row.new(
         title='Requests (VTTablet)',
-        collapse=true,
-      ),
-
-  DurationVTGate::
-      row.new(
-        title='Duration (VTGate)',
         collapse=true,
       ),
 
