@@ -112,10 +112,12 @@ func BuildDeclarativeDDLPlan(createTableStatement *sqlparser.CreateTable) *Decla
 
 func normalizeCreateTableStmt(createTableStatement *sqlparser.CreateTable) {
 	// pk column should be not null too
-	for _, col := range createTableStatement.TableSpec.Columns {
-		if col.Type.Options.KeyOpt == sqlparser.ColKeyPrimary {
-			v := false
-			col.Type.Options.Null = &v
+	if createTableStatement.TableSpec != nil {
+		for _, col := range createTableStatement.TableSpec.Columns {
+			if col.Type.Options.KeyOpt == sqlparser.ColKeyPrimary {
+				v := false
+				col.Type.Options.Null = &v
+			}
 		}
 	}
 }
@@ -270,20 +272,19 @@ func (d *DeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVa
 	}
 
 	rows := make([][]sqltypes.Value, 0)
+	result := &sqltypes.Result{}
 	for _, onlineDDL := range d.onlineDDLPrimitives {
 		qr, err := vcursor.ExecutePrimitive(ctx, onlineDDL, bindVars, wantfields)
 		if err != nil {
 			return nil, err
 		}
+		result.Fields = qr.Fields
 
-		if len(qr.Named().Rows) != 1 {
-			return nil, fmt.Errorf("DeclarativeDDL: the len of result from online ddl is not 1 but %v", len(qr.Named().Rows))
-		}
-		uuid := qr.Named().Rows[0].AsString("uuid", "")
-		rows = append(rows, sqltypes.BuildVarCharRow(uuid))
+		rows = append(rows, qr.Rows...)
 	}
+	result.Rows = rows
 
-	return &sqltypes.Result{Fields: sqltypes.BuildVarCharFields("uuid"), Rows: rows}, nil
+	return result, nil
 }
 
 // TryStreamExecute implements Primitive interface
@@ -306,21 +307,19 @@ func (d *DeclarativeDDL) TryStreamExecute(ctx context.Context, vcursor VCursor, 
 	}
 
 	rows := make([][]sqltypes.Value, 0)
+	result := &sqltypes.Result{}
 	for _, onlineDDL := range d.onlineDDLPrimitives {
 		err := vcursor.StreamExecutePrimitive(ctx, onlineDDL, bindVars, wantfields, func(qr *sqltypes.Result) error {
-			if len(qr.Named().Rows) != 1 {
-				return fmt.Errorf("DeclarativeDDL: the len of result from online ddl is not 1 but %v", len(qr.Named().Rows))
-			}
-			uuid := qr.Named().Rows[0].AsString("uuid", "")
-			rows = append(rows, sqltypes.BuildVarCharRow(uuid))
+			result.Fields = qr.Fields
+			rows = append(rows, qr.Rows...)
 			return nil
 		})
 		if err != nil {
 			return err
 		}
 	}
-
-	return callback(&sqltypes.Result{Fields: sqltypes.BuildVarCharFields("uuid"), Rows: rows})
+	result.Rows = rows
+	return callback(result)
 }
 
 // GetFields implements Primitive interface
