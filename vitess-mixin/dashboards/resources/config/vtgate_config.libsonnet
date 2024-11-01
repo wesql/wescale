@@ -86,6 +86,8 @@ local vitess_ct = configuration_templates.prometheus_vitess;
         ],
       },
 
+
+
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vtgateRequestsByInstanceDBType:
       panel_template

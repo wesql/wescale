@@ -195,4 +195,46 @@ local row = grafana.row;
       collapse=true,
     ),
 
+  RequestsVTGate::
+      row.new(
+        title='Requests (VTGate)',
+        collapse=true,
+      ),
+
+  RequestsVTTablet::
+      row.new(
+        title='Requests (VTTablet)',
+        collapse=true,
+      ),
+
+  DurationVTGate::
+      row.new(
+        title='Duration (VTGate)',
+        collapse=true,
+      ),
+
+  DurationVTTabletQuery::
+      row.new(
+        title='Duration (VTTablet Query)',
+        collapse=true,
+      ),
+
+  DurationVTTabletTransaction::
+      row.new(
+        title='Duration (VTTablet Transaction)',
+        collapse=true,
+      ),
+
+  ErrorsVTGate::
+    row.new(
+      title='Errors (VTGate)',
+      collapse=true,
+    ),
+
+  ErrorsVTTablet::
+    row.new(
+      title='Errors (VTTablet)',
+      collapse=true,
+    ),
+
 }
