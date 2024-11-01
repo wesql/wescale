@@ -19,7 +19,7 @@ limitations under the License.
 // flags that control the runtime environment.
 //
 // After a server program has called flag.Parse, it needs to call
-// env.CalculateDiff to make env use the command line variables to initialize
+// env.Init to make env use the command line variables to initialize
 // the environment. It also needs to call env.Close before exiting.
 //
 // Note: If you need to plug in any custom initialization/cleanup for
@@ -130,14 +130,14 @@ func Init() {
 	// Add version tag to every info log
 	log.Infof(AppVersion.String())
 	if inited {
-		log.Fatal("servenv.CalculateDiff called second time")
+		log.Fatal("servenv.Init called second time")
 	}
 	inited = true
 
 	// Once you run as root, you pretty much destroy the chances of a
 	// non-privileged user starting the program correctly.
 	if uid := os.Getuid(); uid == 0 {
-		log.Exitf("servenv.CalculateDiff: running this as root makes no sense")
+		log.Exitf("servenv.Init: running this as root makes no sense")
 	}
 
 	// We used to set this limit directly, but you pretty much have to

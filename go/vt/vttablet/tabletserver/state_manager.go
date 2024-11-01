@@ -648,7 +648,7 @@ func (sm *stateManager) setTimeBomb() chan struct{} {
 // setState changes the state and logs the event.
 func (sm *stateManager) setState(tabletType topodatapb.TabletType, state servingState) {
 	defer func() {
-		log.Infof("Tablet CalculateDiff took %d ms", time.Since(servenv.GetInitStartTime()).Milliseconds())
+		log.Infof("Tablet Init took %d ms", time.Since(servenv.GetInitStartTime()).Milliseconds())
 	}()
 	sm.mu.Lock()
 	defer sm.mu.Unlock()

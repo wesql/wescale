@@ -49,7 +49,7 @@ var options *Options
 func Init(opts *Options) error {
 	// verify opts is defined
 	if opts == nil {
-		return fmt.Errorf("vtaclcheck.CalculateDiff: opts is NULL")
+		return fmt.Errorf("vtaclcheck.Init: opts is NULL")
 	}
 	// Verify options
 	if opts.ACLFile == "" && opts.StaticAuthFile == "" {

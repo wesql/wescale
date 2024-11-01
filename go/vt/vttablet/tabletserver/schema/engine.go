@@ -157,7 +157,7 @@ func (se *Engine) syncSidecarDB(ctx context.Context, conn *dbconnpool.DBConnecti
 		return conn.ExecuteFetch(query, maxRows, true)
 	}
 	if err := sidecardb.Init(ctx, exec); err != nil {
-		log.Errorf("Error in sidecardb.CalculateDiff: %+v", err)
+		log.Errorf("Error in sidecardb.Init: %+v", err)
 		log.Errorf("syncSidecarDB error %+v", err)
 		return err
 	}

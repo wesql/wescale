@@ -180,7 +180,7 @@ func newVReplicator(id uint32, sourceTableSchema string, targetTableSchema strin
 }
 
 // Replicate starts a vreplication stream. It can be in one of three phases:
-// 1. CalculateDiff: If a request is issued with no starting position, we assume that the
+// 1. Init: If a request is issued with no starting position, we assume that the
 // contents of the tables must be copied first. During this phase, the list of
 // tables to be copied is inserted into the copy_state table. A successful insert
 // gets us out of this phase.
@@ -189,10 +189,10 @@ func newVReplicator(id uint32, sourceTableSchema string, targetTableSchema strin
 // table is successfully copied, it's removed from the copy_state table. We exit this
 // phase when there are no rows left in copy_state.
 // 3. Replicate: In this phase, we replicate binlog events indefinitely, unless
-// a stop position was requested. This phase differs from the CalculateDiff phase because
+// a stop position was requested. This phase differs from the Init phase because
 // there is a replication position.
 // If a request had a starting position, then we go directly into phase 3.
-// During these phases, the state of vreplication is reported as 'CalculateDiff', 'Copying',
+// During these phases, the state of vreplication is reported as 'Init', 'Copying',
 // or 'Running'. They all mean the same thing. The difference in the phases depends
 // on the criteria defined above. The different states reported are mainly
 // informational. The 'Stopped' state is, however, honored.

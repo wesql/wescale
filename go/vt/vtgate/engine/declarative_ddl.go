@@ -136,7 +136,7 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 
 	// return error if database not exist
 	qr, err := th.Conn.ExecuteInternal(ctx, th.Target,
-		fmt.Sprintf("SELECT SCHEMA_NAME\nFROM INFORMATION_SCHEMA.SCHEMATA\nWHERE SCHEMA_NAME = '%v';", d.dbName),
+		fmt.Sprintf("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '%v';", d.dbName),
 		nil, 0, 0, nil)
 	if err != nil {
 		return err
@@ -275,6 +275,7 @@ func (d *DeclarativeDDL) TryExecute(ctx context.Context, vcursor VCursor, bindVa
 		if err != nil {
 			return nil, err
 		}
+
 		if len(qr.Named().Rows) != 1 {
 			return nil, fmt.Errorf("DeclarativeDDL: the len of result from online ddl is not 1 but %v", len(qr.Named().Rows))
 		}

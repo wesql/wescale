@@ -125,7 +125,7 @@ func init() {
 }
 
 // GetCredentialsServer returns the current CredentialsServer. Only valid
-// after flag.CalculateDiff was called.
+// after flag.Init was called.
 func GetCredentialsServer() CredentialsServer {
 	cs, ok := AllCredentialsServers[dbCredentialsServer]
 	if !ok {

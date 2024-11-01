@@ -62,7 +62,7 @@ func initTest(mode string, opts *Options, topts *testopts, t *testing.T) *VTExpl
 
 	opts.ExecutionMode = mode
 	vte, err := Init(string(vSchema), string(schema), shardmap, opts)
-	require.NoError(t, err, "vtexplain CalculateDiff error\n%s", string(schema))
+	require.NoError(t, err, "vtexplain Init error\n%s", string(schema))
 	return vte
 }
 

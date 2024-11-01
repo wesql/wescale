@@ -285,7 +285,7 @@ func resetTabletDirectory(t *testing.T, tablet cluster.Vttablet, initMysql bool)
 	tablet.MysqlctlProcess.CleanupFiles(tablet.TabletUID)
 
 	if initMysql {
-		// CalculateDiff the Mysql
+		// Init the Mysql
 		tablet.MysqlctlProcess.InitDBFile = newInitDBFile
 		err = tablet.MysqlctlProcess.Start()
 		require.Nil(t, err)

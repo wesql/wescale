@@ -201,11 +201,12 @@ message Session {
   // when enabled, vtgate will display the type of SQL execution vttablet
   bool EnableDisplaySQLExecutionVTTabletType = 33;
 
-  // when enabled, vtgate will support declarative DDL
-  bool EnableDeclarativeDDL = 34;
-
   // used to resolve tablet type/types to load balance
-  ResolverOptions resolver_options = 35;
+  ResolverOptions resolver_options = 34;
+
+  // when enabled, vtgate will support declarative DDL
+  bool EnableDeclarativeDDL = 35;
+
 }
 
 message ResolverOptions {

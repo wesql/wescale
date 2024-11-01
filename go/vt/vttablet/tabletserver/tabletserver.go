@@ -96,11 +96,11 @@ var logComputeRowSerializerKey = logutil.NewThrottledLogger("ComputeRowSerialize
 // NewTabletServer->InitDBConfig->SetServingType.
 // Subcomponents of TabletServer are initialized using one of the
 // following sequences:
-// New->InitDBConfig->CalculateDiff->Open, or New->InitDBConfig->Open.
+// New->InitDBConfig->Init->Open, or New->InitDBConfig->Open.
 // Essentially, InitDBConfig is a continuation of New. However,
 // the db config is not initially available. For this reason,
 // the initialization is done in two phases.
-// Some subcomponents have CalculateDiff functions. Such functions usually
+// Some subcomponents have Init functions. Such functions usually
 // perform one-time initializations and must be idempotent.
 // Open and Close can be called repeatedly during the lifetime of
 // a subcomponent. These should also be idempotent.
@@ -348,7 +348,7 @@ func (tsv *TabletServer) SetQueryRules(ruleSource string, qrs *rules.Rules) erro
 }
 
 func (tsv *TabletServer) initACL(env tabletenv.Env, tableACLMode string, tableACLConfigFile string, enforceTableACLConfig bool, reloadACLConfigFileInterval time.Duration) {
-	// tabletacl.CalculateDiff loads ACL from file if *tableACLConfig is not empty
+	// tabletacl.Init loads ACL from file if *tableACLConfig is not empty
 	err := tableacl.Init(
 		env,
 		tsv.config.DB.DbaWithDB(),

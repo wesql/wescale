@@ -51,7 +51,7 @@ func main() {
 	ts = topo.Open()
 	defer ts.Close()
 
-	// CalculateDiff the vtctld core
+	// Init the vtctld core
 	err := vtctld.InitVtctld(ts)
 	if err != nil {
 		exit.Return(1)
