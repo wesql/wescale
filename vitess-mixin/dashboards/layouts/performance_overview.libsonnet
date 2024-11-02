@@ -17,6 +17,7 @@ local rows_helper = helpers.default;
         templates.interval,
         templates.hostVttablet,
         templates.vtgatehost,
+        templates.table,
       ])
       .addLink(helpers.default.getDashboardLink(config._config.dashborardLinks))
       .addPanels([
@@ -27,8 +28,6 @@ local rows_helper = helpers.default;
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQPS) { gridPos: { h: 4, w: 4, x: 0, y: 1 } },
         singlestats.vtgateSuccessRate { gridPos: { h: 4, w: 4, x: 4, y: 1 } },
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQueryLatencyP99) { gridPos: { h: 4, w: 4, x: 8, y: 1 } },
-        helpers.vttablet.getSingleStat(config.vttablet.singlestats.vttabletQPS) { gridPos: { h: 4, w: 4, x: 12, y: 1 } },
-        singlestats.vttabletQuerySuccess { gridPos: { h: 4, w: 4, x: 16, y: 1 } },
 
         # Requests VTGate row (y: 5)
         rows.RequestsVTGate { gridPos: { h: 1, w: 24, x: 0, y: 5 } },
@@ -80,12 +79,6 @@ local rows_helper = helpers.default;
         rows_helper.getRow(config.row.vitessTimings) { gridPos: { h: 1, w: 24, x: 0, y: 75 } },
         helpers.vttablet.getPanel(config.vttablet.panels.vtgateToVtTabletCallTimeAvgFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 76 } },
         heatmaps.vttabletQueryTimeDistribution { gridPos: { h: 7, w: 16, x: 8, y: 76 } },
-
-        # MySQL Timings row (y: 83)
-        rows_helper.getRow(config.row.mysqlTimings) { gridPos: { h: 1, w: 24, x: 0, y: 83 } },
-        helpers.vttablet.getPanel(config.vttablet.panels.vttabletMysqlTimeAvgFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 84 } },
-        helpers.vttablet.getPanel(config.vttablet.panels.vttabletMysqlExecTimeP50FilterebyInstance) { gridPos: { h: 7, w: 8, x: 8, y: 84 } },
-        helpers.vttablet.getPanel(config.vttablet.panels.vttabletMysqlExecTimeP95FilterebyInstance) { gridPos: { h: 7, w: 8, x: 16, y: 84 } },
 
         # Rows Returned row (y: 91)
         rows.rowsReturned { gridPos: { h: 1, w: 24, x: 0, y: 91 } },

@@ -410,6 +410,17 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             )
           |||,
           legendFormat: 'Duration p50 (vttablet)',
+        },
+        {
+          expr: |||
+            histogram_quantile(
+              0.50,
+              sum by(le)(
+                vitess_mixin:vttablet_mysql_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p50 (mysql)',
         }
       ],
     },
@@ -462,6 +473,17 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             )
           |||,
           legendFormat: 'Duration p95 (vttablet)',
+        },
+        {
+          expr: |||
+            histogram_quantile(
+              0.95,
+              sum by(le)(
+                vitess_mixin:vttablet_mysql_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p95 (mysql)',
         },
       ],
     },

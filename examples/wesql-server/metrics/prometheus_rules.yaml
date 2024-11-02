@@ -99,3 +99,7 @@
     "rules":
       - "expr": "sum by(keyspace, table) (rate(vttablet_query_counts{plan!=\"Rollback\"}[1m]))"
         "record": "vitess_mixin:vttablet_query_counts_by_keyspace_table:rate1m"
+  - "name": "vitess_mixin_26"
+    "rules":
+      - "expr": "sum by(le)(rate(vttablet_mysql_bucket[1m]))"
+        "record": "vitess_mixin:vttablet_mysql_bucket:rate1m"

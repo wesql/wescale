@@ -233,6 +233,15 @@ local config = import '../config.libsonnet';
             expr: 'sum by(keyspace, table) (rate(vttablet_query_counts{plan!="Rollback"}[1m]))'
           }
         ]
+      },
+      {
+        name: 'vitess_mixin_26',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_mysql_bucket:rate1m',
+            expr: 'sum by(le)(rate(vttablet_mysql_bucket[1m]))'
+          }
+        ]
       }
     ],
   },
