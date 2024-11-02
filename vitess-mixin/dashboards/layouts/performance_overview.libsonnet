@@ -28,9 +28,8 @@ local rows_helper = helpers.default;
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQPS) { gridPos: { h: 4, w: 4, x: 0, y: 1 } },
         singlestats.vtgateSuccessRate { gridPos: { h: 4, w: 4, x: 4, y: 1 } },
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQueryLatencyP99) { gridPos: { h: 4, w: 4, x: 8, y: 1 } },
-        helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsActive) { gridPos: { h: 4, w: 4, x: 12, y: 1 } },
-        helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsInUse) { gridPos: { h: 4, w: 4, x: 16, y: 1 } },
-        helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsCapacity) { gridPos: { h: 4, w: 4, x: 20, y: 1 } },
+        helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsInUse) { gridPos: { h: 4, w: 4, x: 12, y: 1 } },
+        helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsActive) { gridPos: { h: 4, w: 4, x: 16, y: 1 } },
 
         # Requests VTGate row (y: 5)
         rows.RequestsVTGate { gridPos: { h: 1, w: 24, x: 0, y: 5 } },
