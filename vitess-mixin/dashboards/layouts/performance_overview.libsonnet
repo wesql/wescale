@@ -32,7 +32,7 @@ local rows_helper = helpers.default;
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateWriteRatio) { gridPos: { h: 4, w: 3, x: 15, y: 1 } },
         helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsInUse) { gridPos: { h: 4, w: 3, x: 18, y: 1 } },
         helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsActive) { gridPos: { h: 4, w: 3, x: 21, y: 1 } },
-        //todo add read/write ratio
+        // TODO: add read/write ratio
 
         # Requests VTGate row (y: 5)
         rows.RequestsVTGate { gridPos: { h: 1, w: 24, x: 0, y: 5 } },
@@ -82,12 +82,12 @@ local rows_helper = helpers.default;
 
         # Active Connections of All Pools row (y: 75)
         rows.activeConnectionsOfAllPools { gridPos: { h: 1, w: 24, x: 0, y: 75 } },
-        helpers.vttablet.getPanel(config.vttablet.panels.vttabletPoolActiveConnectionsOfAllPools) { gridPos: { h: 7, w: 8, x: 8, y: 76 } },
+        helpers.vttablet.getPanel(config.vttablet.panels.vttabletPoolActiveConnectionsOfAllPools) { gridPos: { h: 7, w: 24, x: 0, y: 76 } },
 
-        # Vitess Timings row (y: 75)
-        rows_helper.getRow(config.row.vitessTimings) { gridPos: { h: 1, w: 24, x: 0, y: 75 } },
-        helpers.vttablet.getPanel(config.vttablet.panels.vtgateToVtTabletCallTimeAvgFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 76 } },
-        heatmaps.vttabletQueryTimeDistribution { gridPos: { h: 7, w: 16, x: 8, y: 76 } },
+        # Vitess Timings row (y: 83) - 调整后的 y 坐标
+        rows_helper.getRow(config.row.vitessTimings) { gridPos: { h: 1, w: 24, x: 0, y: 83 } },
+        helpers.vttablet.getPanel(config.vttablet.panels.vtgateToVtTabletCallTimeAvgFilteredByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 84 } },
+        heatmaps.vttabletQueryTimeDistribution { gridPos: { h: 7, w: 16, x: 8, y: 84 } },
 
         # Rows Returned row (y: 91)
         rows.rowsReturned { gridPos: { h: 1, w: 24, x: 0, y: 91 } },
