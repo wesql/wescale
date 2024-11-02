@@ -15,9 +15,13 @@ linters-settings:
     disable: # not supported when using Generics in 1.18
       - nilness
       - unusedwrite
+  gosimple:
+    # see how to disable checks: https://staticcheck.dev/docs/configuration/options/#checks
+    checks: ["all", "-S1002"]
   revive:
     ignore-generated-header: true
     enable-all-rules: false
+    # available rules: https://github.com/mgechev/revive?tab=readme-ov-file#available-rules
     rules:
       - name: unhandled-error
       - name: deep-exit
