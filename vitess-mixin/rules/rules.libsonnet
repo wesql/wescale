@@ -224,6 +224,15 @@ local config = import '../config.libsonnet';
             expr: 'sum by(le)(rate(vttablet_queries_bucket[1m]))'
           }
         ]
+      },
+      {
+        name: 'vitess_mixin_25',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_query_counts_by_keyspace_table:rate1m',
+            expr: 'sum by(keyspace, table) (rate(vttablet_query_counts{plan!="Rollback"}[1m]))'
+          }
+        ]
       }
     ],
   },

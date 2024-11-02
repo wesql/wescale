@@ -17,6 +17,7 @@ local rows_helper = helpers.default;
         templates.interval,
         templates.hostVttablet,
         templates.vtgatehost,
+        templates.table,
       ])
       .addLink(helpers.default.getDashboardLink(config._config.dashborardLinks))
       .addPanels([
