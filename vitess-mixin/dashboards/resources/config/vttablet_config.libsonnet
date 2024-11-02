@@ -907,6 +907,23 @@ local vitess_ct = configuration_templates.prometheus_vitess;
       ],
     },
 
+
+    vttabletPoolActiveConnectionsOfAllPools: vttablet_host_view_panel_template {
+      title: 'Active Connections of All Pools',
+      description: 'Number of active connections in all connection pools',
+      format: 'short',
+      targets: [
+        {
+          expr: |||
+            sum by(instance, __name__) (
+              {__name__=~"vttablet.*active", instance=~"$host"}
+            )
+          |||,
+          legendFormat: '{{instance}} - {{__name__}}',
+        },
+      ],
+    },
+
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vttabletGarbageCollectionCount: vitess_ct.panel.go_gc_ops {
       title: 'GC Count (vttablet)',

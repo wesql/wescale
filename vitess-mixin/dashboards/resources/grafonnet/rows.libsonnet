@@ -183,6 +183,12 @@ local row = grafana.row;
       collapse=true,
     ),
 
+  activeConnectionsOfAllPools::
+    row.new(
+      title='Active connections of All Pools',
+      collapse=true,
+    ),
+
   vtgate::
     row.new(
       title='vtgate - Requests (by table / by plan / by keyspace )',

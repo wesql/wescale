@@ -862,5 +862,43 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           intervalFactor: 1,
         },
     },
+
+    vtgateReadRatio: {
+      title: 'Read Ratio',
+      datasource: '%(dataSource)s' % config._config,
+      format: 'short',
+      valueFontSize: '70%',
+      valueName: 'current',
+      sparklineFull: true,
+      sparklineShow: true,
+      target:
+        {
+          expr: |||
+            round(sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show"})
+                /
+            sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show|Insert|Update|Delete"}) * 100, 0.1)
+          |||,
+          intervalFactor: 1,
+        },
+    },
+
+    vtgateWriteRatio: {
+      title: 'Write Ratio',
+      datasource: '%(dataSource)s' % config._config,
+      format: 'short',
+      valueFontSize: '70%',
+      valueName: 'current',
+      sparklineFull: true,
+      sparklineShow: true,
+      target:
+        {
+          expr: |||
+            round(sum(vttablet_queries_count{plan_type=~"Insert|Update|Delete"})
+                /
+            sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show|Insert|Update|Delete"}) * 100, 0.1)
+          |||,
+          intervalFactor: 1,
+        },
+    },
   },
 }
