@@ -42,14 +42,14 @@ type testCaseSysVar struct {
 }
 
 type myTestCase struct {
-	in, expected                                                                    string
-	liid, db, foundRows, rowCount, rawGTID, scope, rawTimeout, sessTrackGTID        bool
-	ddlStrategy, sessionUUID, sessionEnableSystemSettings, readWriteSplittingPolicy bool
-	udv                                                                             int
-	readWriteSplittingRatio                                                         int32
-	autocommit, clientFoundRows, skipQueryPlanCache, socket, queryTimeout           bool
-	sqlSelectLimit, transactionMode, workload, version, versionComment              bool
-	txIsolation                                                                     bool
+	in, expected                                                                                          string
+	liid, db, foundRows, rowCount, rawGTID, scope, rawTimeout, sessTrackGTID                              bool
+	ddlStrategy, sessionUUID, sessionEnableSystemSettings, readWriteSplittingPolicy, enableDeclarativeDDL bool
+	udv                                                                                                   int
+	readWriteSplittingRatio                                                                               int32
+	autocommit, clientFoundRows, skipQueryPlanCache, socket, queryTimeout                                 bool
+	sqlSelectLimit, transactionMode, workload, version, versionComment                                    bool
+	txIsolation                                                                                           bool
 }
 
 func TestRewrites(in *testing.T) {
@@ -327,6 +327,7 @@ func TestRewrites(in *testing.T) {
 		version:                     true,
 		versionComment:              true,
 		ddlStrategy:                 true,
+		enableDeclarativeDDL:        true,
 		readWriteSplittingPolicy:    true,
 		sessionUUID:                 true,
 		sessionEnableSystemSettings: true,
@@ -348,6 +349,7 @@ func TestRewrites(in *testing.T) {
 		version:                     true,
 		versionComment:              true,
 		ddlStrategy:                 true,
+		enableDeclarativeDDL:        true,
 		readWriteSplittingPolicy:    true,
 		sessionUUID:                 true,
 		sessionEnableSystemSettings: true,
@@ -404,6 +406,7 @@ func TestRewrites(in *testing.T) {
 			assert.Equal(tc.version, result.NeedsSysVar(sysvars.Version.Name), "should need Vitess version")
 			assert.Equal(tc.versionComment, result.NeedsSysVar(sysvars.VersionComment.Name), "should need Vitess version")
 			assert.Equal(tc.socket, result.NeedsSysVar(sysvars.Socket.Name), "should need :__vtsocket")
+			assert.Equal(tc.enableDeclarativeDDL, result.NeedsSysVar(sysvars.EnableDeclarativeDDL.Name), "should need enable declarative DDL")
 		})
 	}
 }

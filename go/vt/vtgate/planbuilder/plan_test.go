@@ -471,15 +471,15 @@ type vschemaWrapper struct {
 	enableViews   bool
 }
 
-func (vw *vschemaWrapper) IsShardRoutingEnabled() bool {
+func (vm *vschemaWrapper) IsShardRoutingEnabled() bool {
 	return false
 }
 
-func (vw *vschemaWrapper) GetVSchema() *vindexes.VSchema {
-	return vw.v
+func (vm *vschemaWrapper) GetVSchema() *vindexes.VSchema {
+	return vm.v
 }
 
-func (vw *vschemaWrapper) GetSrvVschema() *vschemapb.SrvVSchema {
+func (vm *vschemaWrapper) GetSrvVschema() *vschemapb.SrvVSchema {
 	return &vschemapb.SrvVSchema{
 		Keyspaces: map[string]*vschemapb.Keyspace{
 			"user": {
@@ -493,176 +493,180 @@ func (vw *vschemaWrapper) GetSrvVschema() *vschemapb.SrvVSchema {
 	}
 }
 
-func (vw *vschemaWrapper) ConnCollation() collations.ID {
+func (vm *vschemaWrapper) ConnCollation() collations.ID {
 	return collations.CollationUtf8ID
 }
 
-func (vw *vschemaWrapper) PlannerWarning(_ string) {
+func (vm *vschemaWrapper) PlannerWarning(_ string) {
 }
 
-func (vw *vschemaWrapper) ForeignKeyMode() string {
+func (vm *vschemaWrapper) ForeignKeyMode() string {
 	return "allow"
 }
 
-func (vw *vschemaWrapper) AllKeyspace() ([]*vindexes.Keyspace, error) {
-	if vw.keyspace == nil {
+func (vm *vschemaWrapper) AllKeyspace() ([]*vindexes.Keyspace, error) {
+	if vm.keyspace == nil {
 		return nil, vterrors.VT13001("keyspace not available")
 	}
-	return []*vindexes.Keyspace{vw.keyspace}, nil
+	return []*vindexes.Keyspace{vm.keyspace}, nil
+}
+
+func (vm *vschemaWrapper) GetSession() *vtgatepb.Session {
+	return nil
 }
 
 // FindKeyspace implements the VSchema interface
-func (vw *vschemaWrapper) FindKeyspace(keyspace string) (*vindexes.Keyspace, error) {
-	if vw.keyspace == nil {
+func (vm *vschemaWrapper) FindKeyspace(keyspace string) (*vindexes.Keyspace, error) {
+	if vm.keyspace == nil {
 		return nil, vterrors.VT13001("keyspace not available")
 	}
-	if vw.keyspace.Name == keyspace {
-		return vw.keyspace, nil
+	if vm.keyspace.Name == keyspace {
+		return vm.keyspace, nil
 	}
 	return nil, nil
 }
 
-func (vw *vschemaWrapper) Planner() plancontext.PlannerVersion {
-	return vw.version
+func (vm *vschemaWrapper) Planner() plancontext.PlannerVersion {
+	return vm.version
 }
 
 // SetPlannerVersion implements the ContextVSchema interface
-func (vw *vschemaWrapper) SetPlannerVersion(v plancontext.PlannerVersion) {
-	vw.version = v
+func (vm *vschemaWrapper) SetPlannerVersion(v plancontext.PlannerVersion) {
+	vm.version = v
 }
 
-func (vw *vschemaWrapper) GetSemTable() *semantics.SemTable {
+func (vm *vschemaWrapper) GetSemTable() *semantics.SemTable {
 	return nil
 }
 
-func (vw *vschemaWrapper) KeyspaceExists(keyspace string) bool {
-	if vw.keyspace != nil {
-		return vw.keyspace.Name == keyspace
+func (vm *vschemaWrapper) KeyspaceExists(keyspace string) bool {
+	if vm.keyspace != nil {
+		return vm.keyspace.Name == keyspace
 	}
 	return false
 }
 
-func (vw *vschemaWrapper) SysVarSetEnabled() bool {
-	return vw.sysVarEnabled
+func (vm *vschemaWrapper) SysVarSetEnabled() bool {
+	return vm.sysVarEnabled
 }
 
-func (vw *vschemaWrapper) TargetDestination(qualifier string) (key.Destination, *vindexes.Keyspace, topodatapb.TabletType, error) {
+func (vm *vschemaWrapper) TargetDestination(qualifier string) (key.Destination, *vindexes.Keyspace, topodatapb.TabletType, error) {
 	var keyspaceName string
-	if vw.keyspace != nil {
-		keyspaceName = vw.keyspace.Name
+	if vm.keyspace != nil {
+		keyspaceName = vm.keyspace.Name
 	}
-	if vw.dest == nil && qualifier != "" {
+	if vm.dest == nil && qualifier != "" {
 		keyspaceName = qualifier
 	}
 	if keyspaceName == "" {
 		return nil, nil, 0, vterrors.VT03007()
 	}
-	keyspace := vw.v.Keyspaces[keyspaceName]
+	keyspace := vm.v.Keyspaces[keyspaceName]
 	if keyspace == nil {
 		return nil, nil, 0, vterrors.VT05003(keyspaceName)
 	}
-	return vw.dest, keyspace.Keyspace, vw.tabletType, nil
+	return vm.dest, keyspace.Keyspace, vm.tabletType, nil
 
 }
 
-func (vw *vschemaWrapper) TabletType() topodatapb.TabletType {
-	return vw.tabletType
+func (vm *vschemaWrapper) TabletType() topodatapb.TabletType {
+	return vm.tabletType
 }
 
-func (vw *vschemaWrapper) Destination() key.Destination {
-	return vw.dest
+func (vm *vschemaWrapper) Destination() key.Destination {
+	return vm.dest
 }
 
-func (vw *vschemaWrapper) FindTable(tab sqlparser.TableName) (*vindexes.Table, string, topodatapb.TabletType, key.Destination, error) {
+func (vm *vschemaWrapper) FindTable(tab sqlparser.TableName) (*vindexes.Table, string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, destTarget, err := topoproto.ParseDestination(tab.Qualifier.String(), topodatapb.TabletType_PRIMARY)
 	if err != nil {
 		return nil, destKeyspace, destTabletType, destTarget, err
 	}
-	table, err := vw.v.FindTable(destKeyspace, tab.Name.String())
+	table, err := vm.v.FindTable(destKeyspace, tab.Name.String())
 	if err != nil {
 		return nil, destKeyspace, destTabletType, destTarget, err
 	}
 	return table, destKeyspace, destTabletType, destTarget, nil
 }
 
-func (vw *vschemaWrapper) FindView(tab sqlparser.TableName) sqlparser.SelectStatement {
+func (vm *vschemaWrapper) FindView(tab sqlparser.TableName) sqlparser.SelectStatement {
 	destKeyspace, _, _, err := topoproto.ParseDestination(tab.Qualifier.String(), topodatapb.TabletType_PRIMARY)
 	if err != nil {
 		return nil
 	}
-	return vw.v.FindView(destKeyspace, tab.Name.String())
+	return vm.v.FindView(destKeyspace, tab.Name.String())
 }
 
-func (vw *vschemaWrapper) FindTableOrVindex(tab sqlparser.TableName) (*vindexes.Table, vindexes.Vindex, string, topodatapb.TabletType, key.Destination, error) {
+func (vm *vschemaWrapper) FindTableOrVindex(tab sqlparser.TableName) (*vindexes.Table, vindexes.Vindex, string, topodatapb.TabletType, key.Destination, error) {
 	destKeyspace, destTabletType, destTarget, err := topoproto.ParseDestination(tab.Qualifier.String(), topodatapb.TabletType_PRIMARY)
 	if err != nil {
 		return nil, nil, destKeyspace, destTabletType, destTarget, err
 	}
 	if destKeyspace == "" {
-		destKeyspace = vw.getActualKeyspace()
+		destKeyspace = vm.getActualKeyspace()
 	}
-	table, vindex, err := vw.v.FindTableOrVindex(destKeyspace, tab.Name.String(), topodatapb.TabletType_PRIMARY)
+	table, vindex, err := vm.v.FindTableOrVindex(destKeyspace, tab.Name.String(), topodatapb.TabletType_PRIMARY)
 	if err != nil {
 		return nil, nil, destKeyspace, destTabletType, destTarget, err
 	}
 	return table, vindex, destKeyspace, destTabletType, destTarget, nil
 }
 
-func (vw *vschemaWrapper) getActualKeyspace() string {
-	if vw.keyspace == nil {
+func (vm *vschemaWrapper) getActualKeyspace() string {
+	if vm.keyspace == nil {
 		return ""
 	}
-	if !sqlparser.SystemSchema(vw.keyspace.Name) {
-		return vw.keyspace.Name
+	if !sqlparser.SystemSchema(vm.keyspace.Name) {
+		return vm.keyspace.Name
 	}
-	ks, err := vw.AnyKeyspace()
+	ks, err := vm.AnyKeyspace()
 	if err != nil {
 		return ""
 	}
 	return ks.Name
 }
 
-func (vw *vschemaWrapper) DefaultKeyspace() (*vindexes.Keyspace, error) {
-	return vw.v.Keyspaces["main"].Keyspace, nil
+func (vm *vschemaWrapper) DefaultKeyspace() (*vindexes.Keyspace, error) {
+	return vm.v.Keyspaces["main"].Keyspace, nil
 }
 
-func (vw *vschemaWrapper) AnyKeyspace() (*vindexes.Keyspace, error) {
-	return vw.DefaultKeyspace()
+func (vm *vschemaWrapper) AnyKeyspace() (*vindexes.Keyspace, error) {
+	return vm.DefaultKeyspace()
 }
 
-func (vw *vschemaWrapper) FirstSortedKeyspace() (*vindexes.Keyspace, error) {
-	return vw.v.Keyspaces["main"].Keyspace, nil
+func (vm *vschemaWrapper) FirstSortedKeyspace() (*vindexes.Keyspace, error) {
+	return vm.v.Keyspaces["main"].Keyspace, nil
 }
 
-func (vw *vschemaWrapper) TargetString() string {
+func (vm *vschemaWrapper) TargetString() string {
 	return "targetString"
 }
 
-func (vw *vschemaWrapper) WarnUnshardedOnly(_ string, _ ...any) {
+func (vm *vschemaWrapper) WarnUnshardedOnly(_ string, _ ...any) {
 
 }
 
-func (vw *vschemaWrapper) ErrorIfShardedF(keyspace *vindexes.Keyspace, _, errFmt string, params ...any) error {
+func (vm *vschemaWrapper) ErrorIfShardedF(keyspace *vindexes.Keyspace, _, errFmt string, params ...any) error {
 	if keyspace.Sharded {
 		return fmt.Errorf(errFmt, params...)
 	}
 	return nil
 }
 
-func (vw *vschemaWrapper) currentDb() string {
+func (vm *vschemaWrapper) currentDb() string {
 	ksName := ""
-	if vw.keyspace != nil {
-		ksName = vw.keyspace.Name
+	if vm.keyspace != nil {
+		ksName = vm.keyspace.Name
 	}
 	return ksName
 }
 
-func (vw *vschemaWrapper) FindRoutedShard(_, _ string) (string, error) {
+func (vm *vschemaWrapper) FindRoutedShard(_, _ string) (string, error) {
 	return "", nil
 }
 
-func (vw *vschemaWrapper) IsViewsEnabled() bool {
-	return vw.enableViews
+func (vm *vschemaWrapper) IsViewsEnabled() bool {
+	return vm.enableViews
 }
 
 type (

@@ -832,12 +832,22 @@ func (c *CreateTableEntity) diffTableCharset(
 	t2Options sqlparser.TableOptions,
 ) string {
 	getcharset := func(options sqlparser.TableOptions) string {
+		gotFromCharset := ""
+		gotFromCollate := ""
 		for _, option := range options {
 			if strings.EqualFold(option.Name, "CHARSET") {
-				return option.String
+				gotFromCharset = option.String
+			}
+			if strings.EqualFold(option.Name, "COLLATE") {
+				if index := strings.Index(option.String, "_"); index != -1 {
+					gotFromCollate = option.String[:index]
+				}
 			}
 		}
-		return ""
+		if gotFromCharset != "" {
+			return gotFromCharset
+		}
+		return gotFromCollate
 	}
 	t1Charset := getcharset(t1Options)
 	t2Charset := getcharset(t2Options)

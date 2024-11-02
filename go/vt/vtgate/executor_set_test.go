@@ -426,10 +426,10 @@ func _TestExecutorSetMetadata(t *testing.T) {
 	assert.NoError(t, err)
 
 	wantqr := &sqltypes.Result{
-		Fields: buildVarCharFields("Key", "Value"),
+		Fields: sqltypes.BuildVarCharFields("Key", "Value"),
 		Rows: [][]sqltypes.Value{
-			buildVarCharRow("app_keyspace_v1", "1"),
-			buildVarCharRow("app_keyspace_v2", "2"),
+			sqltypes.BuildVarCharRow("app_keyspace_v1", "1"),
+			sqltypes.BuildVarCharRow("app_keyspace_v2", "2"),
 		},
 		RowsAffected: 2,
 	}

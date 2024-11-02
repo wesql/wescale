@@ -69,9 +69,9 @@ func TestCrossDbCRUD(t *testing.T) {
 
 		// cross db update
 		updateSQL := `
-			UPDATE wesql.t1 
-			INNER JOIN wesql2.t2 
-			INNER JOIN wesql3.t3 
+			UPDATE wesql.t1
+			INNER JOIN wesql2.t2
+			INNER JOIN wesql3.t3
 			SET t1.c2 = 4, t2.c2 = 44, t3.c2 = 444`
 		utils.Exec(t, conn, updateSQL)
 		qr = utils.Exec(t, conn, "select * from t1 join wesql2.t2 join wesql3.t3 order by t1.c1 asc limit 1")

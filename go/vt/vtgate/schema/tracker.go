@@ -188,7 +188,6 @@ func (t *Tracker) Start() {
 		for {
 			select {
 			case th := <-t.ch:
-				log.Debugf("got a schema change for db_list %v", th.Stats.DbList)
 				ksUpdaters := t.getKeyspaceUpdateControllerArray(th)
 				if len(ksUpdaters) > 0 {
 					for _, ksUpdater := range ksUpdaters {
