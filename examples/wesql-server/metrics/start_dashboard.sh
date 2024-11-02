@@ -10,16 +10,6 @@ docker run -d \
 
 
 # datasource: http://prometheus:9090
-#docker run -d \
-#  --name=grafana \
-#  --network=monitoring \
-#  -p 3000:3000 \
-#  -v ./prometheus-datasource.yaml:/etc/grafana/provisioning/datasources/prometheus-datasource.yaml \
-#  -e "GF_AUTH_ANONYMOUS_ENABLED=true" \
-#  -e "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin" \
-#  -e "GF_AUTH_DISABLE_LOGIN_FORM=true" \
-#  grafana/grafana
-
 docker run -d \
   --name=grafana \
   --network=monitoring \
