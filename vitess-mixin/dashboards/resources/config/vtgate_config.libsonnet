@@ -73,7 +73,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateRequestsByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Requests (by db_type)',
+        title: 'Requests (by tablet_type)',
         targets: [
           {
             expr: |||
@@ -92,7 +92,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateRequestsByInstanceDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Requests (by db_type)',
+        title: 'Requests (by tablet_type)',
         fill: 0,
         targets: [
           {
@@ -203,7 +203,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorRateByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Error rate (by db_type)',
+        title: 'Error rate (by tablet_type)',
         format: 'percentunit',
         targets: [
           {
@@ -255,7 +255,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorRateByInstanceDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Error rate (by db_type)',
+        title: 'Error rate (by tablet_type)',
         fill: 0,
         format: 'percentunit',
         targets: [
@@ -363,7 +363,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
 
     //TODO crete a recording rule for this prometheus vitess target
     vtgateDurationP99ByInstanceDBType: vtgateDurationTemplate {
-      title: 'Duration 99th quantile (by db_type)',
+      title: 'Duration 99th quantile (by tablet_type)',
       fill: 0,
       targets: [
         {
@@ -576,7 +576,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateDurationP99ByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Duration 99th quantile (by db_type)',
+        title: 'Duration 99th quantile (by tablet_type)',
         format: 's',
         targets: [
           {
@@ -655,7 +655,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorsByDbtype:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Errors (by db_type)',
+        title: 'Errors (by tablet_type)',
         format: 'cps',
         targets: [
           {

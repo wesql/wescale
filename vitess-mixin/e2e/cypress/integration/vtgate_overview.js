@@ -92,9 +92,9 @@ describe('vitess-mixin: Vtgate Overview Dashboard Test', function() {
       expect(titles).to.have.length(4)
       expect(titles).to.deep.eq([
         '',
-        'Requests (by db_type)',
-        'Error rate (by db_type)',
-        'Duration 99th quantile (by db_type)'
+        'Requests (by tablet_type)',
+        'Error rate (by tablet_type)',
+        'Duration 99th quantile (by tablet_type)'
       ])
     })
   })
@@ -126,7 +126,7 @@ describe('vitess-mixin: Vtgate Overview Dashboard Test', function() {
         '',
         'Errors (by code)',
         'Errors (by operation)',
-        'Errors (by db_type)'
+        'Errors (by tablet_type)'
       ])
     })
   })
