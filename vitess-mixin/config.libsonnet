@@ -77,7 +77,7 @@
         dashboardTags: $._config.grafanaDashboardMetadataDefault.dashboardTags + ['devview', 'cluster'],
       },
 
-      // Dev View
+      // Performance View
       performanceOverview+: devDashboard{
         uid: 'vitess-performance-overview',
         title: 'performance overview %(dashboardNameSuffix)s' % $._config.grafanaDashboardMetadataDefault,

@@ -16,6 +16,7 @@ local rows_helper = helpers.default;
       .addTemplates([
         templates.interval,
         templates.hostVttablet,
+        templates.vtgatehost,
       ])
       .addLink(helpers.default.getDashboardLink(config._config.dashborardLinks))
       .addPanels([
@@ -31,7 +32,7 @@ local rows_helper = helpers.default;
 
         # Requests VTGate row (y: 5)
         rows.RequestsVTGate { gridPos: { h: 1, w: 24, x: 0, y: 5 } },
-        helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByInstance) { gridPos: { h: 7, w: 8, x: 0, y: 6 } },
+        helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByInstance2) { gridPos: { h: 7, w: 8, x: 0, y: 6 } },
         helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByDBType) { gridPos: { h: 7, w: 8, x: 8, y: 6 } },
         helpers.vtgate.getPanel(config.vtgate.panels.vtgateRequestsByKeyspace) { gridPos: { h: 7, w: 8, x: 16, y: 6 } },
 

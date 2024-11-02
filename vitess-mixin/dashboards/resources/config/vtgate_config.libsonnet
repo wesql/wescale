@@ -135,6 +135,29 @@ local vitess_ct = configuration_templates.prometheus_vitess;
         ],
       },
 
+    vtgateRequestsByInstance2:
+      panel_template
+      + vitess_ct.panel.null_as_zeros {
+        title: 'Requests',
+        fill: 0,
+        targets: [
+          {
+            expr:
+              |||
+                sum by (instance)(
+                  rate(
+                    vtgate_api_count{
+                      instance=~'$vtgate_host'
+                    }[1m]
+                  )
+                )
+              |||,
+            legendFormat: '{{instance}}',
+            intervalFactor: 1,
+          },
+        ],
+      },
+
     vtgateErrorRate:
       panel_template
       + vitess_ct.panel.null_as_zeros {
