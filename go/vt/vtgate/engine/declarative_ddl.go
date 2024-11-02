@@ -41,7 +41,7 @@ var defaultConfig = HintsInStr{
 	StrictIndexOrdering:         false,
 	AutoIncrementStrategy:       schemadiff.AutoIncrementStrategyValues[schemadiff.AutoIncrementIgnore],
 	RangeRotationStrategy:       schemadiff.RangeRotationStrategyValues[schemadiff.RangeRotationFullSpec],
-	ConstraintNamesStrategy:     schemadiff.ConstraintNamesStrategyValues[schemadiff.ConstraintNamesStrict],
+	ConstraintNamesStrategy:     schemadiff.ConstraintNamesStrategyValues[schemadiff.ConstraintNamesIgnoreAll],
 	ColumnRenameStrategy:        schemadiff.ColumnRenameStrategyValues[schemadiff.ColumnRenameHeuristicStatement],
 	TableRenameStrategy:         schemadiff.TableRenameStrategyValues[schemadiff.TableRenameHeuristicStatement], // in our case, only one table
 	FullTextKeyStrategy:         schemadiff.FullTextKeyStrategyValues[schemadiff.FullTextKeyDistinctStatements],

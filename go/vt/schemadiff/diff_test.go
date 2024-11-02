@@ -771,15 +771,17 @@ func TestHints(t *testing.T) {
 			expectedDiff: false,
 		},
 		{name: "test AutoIncrementStrategy always",
-			schema1:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
-			schema2:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
-			hints:        DiffHints{AutoIncrementStrategy: AutoIncrementApplyAlways},
+			schema1: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			schema2: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			hints:   DiffHints{AutoIncrementStrategy: AutoIncrementApplyAlways},
+			//  diff:ALTER TABLE `t1` AUTO_INCREMENT 200
 			expectedDiff: true,
 		},
 		{name: "test AutoIncrementStrategy higher1",
-			schema1:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
-			schema2:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
-			hints:        DiffHints{AutoIncrementStrategy: AutoIncrementApplyHigher},
+			schema1: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			schema2: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			hints:   DiffHints{AutoIncrementStrategy: AutoIncrementApplyHigher},
+			//  diff:ALTER TABLE `t1` AUTO_INCREMENT 200
 			expectedDiff: true,
 		},
 		{name: "test AutoIncrementStrategy higher2",
@@ -887,6 +889,14 @@ func TestHints(t *testing.T) {
 			schema2:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%@%')\n);",
 			hints:        DiffHints{ConstraintNamesStrategy: ConstraintNamesIgnoreAll},
 			expectedDiff: false,
+		},
+		{
+			name:    "ConstraintNamesStrategy ignore all",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email CHECK (email LIKE '%@%')\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%!%')\n);",
+			hints:   DiffHints{ConstraintNamesStrategy: ConstraintNamesIgnoreAll},
+			//  diff:ALTER TABLE `t1` DROP CHECK `chk_email`, ADD CONSTRAINT `chk_email_format` CHECK (`email` LIKE '%!%')
+			expectedDiff: true,
 		},
 
 		{
