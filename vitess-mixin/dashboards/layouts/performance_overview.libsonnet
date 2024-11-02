@@ -30,6 +30,7 @@ local rows_helper = helpers.default;
         helpers.vtgate.getSingleStat(config.vtgate.singlestats.vtgateQueryLatencyP99) { gridPos: { h: 4, w: 4, x: 8, y: 1 } },
         helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsInUse) { gridPos: { h: 4, w: 4, x: 12, y: 1 } },
         helpers.vttablet.getSingleStat(config.vttablet.singlestats.connectionsActive) { gridPos: { h: 4, w: 4, x: 16, y: 1 } },
+        //todo add read/write ratio
 
         # Requests VTGate row (y: 5)
         rows.RequestsVTGate { gridPos: { h: 1, w: 24, x: 0, y: 5 } },
@@ -76,6 +77,8 @@ local rows_helper = helpers.default;
         helpers.vttablet.getPanel(config.vttablet.panels.vttabletTransactionPoolIddleClosedRate) { gridPos: { h: 7, w: 8, x: 16, y: 61 } },
         helpers.vttablet.getPanel(config.vttablet.panels.vttabletTransactionPoolWaitCount) { gridPos: { h: 7, w: 8, x: 0, y: 68 } },
         helpers.vttablet.getPanel(config.vttablet.panels.vttabletTransactionPoolAvgWaitTime) { gridPos: { h: 7, w: 8, x: 8, y: 68 } },
+
+        //todo add pool metrics by type
 
         # Vitess Timings row (y: 75)
         rows_helper.getRow(config.row.vitessTimings) { gridPos: { h: 1, w: 24, x: 0, y: 75 } },
