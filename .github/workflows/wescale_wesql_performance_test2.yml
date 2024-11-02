@@ -40,12 +40,6 @@ jobs:
           aws s3 mb s3://$BUCKET_NAME
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
-      - name: Create WeSQL Cluster in Docker
-        run: |
-          docker network create my-network
-          mkdir -p ./wesql-local-dir
-          chmod 777 ./wesql-local-dir
-
       # Step 4: Start Kind Cluster using kind-action
       - name: Start Kind Cluster
         uses: helm/kind-action@v1.4.0
