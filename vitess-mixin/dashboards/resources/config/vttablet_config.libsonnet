@@ -1096,5 +1096,60 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           intervalFactor: 1,
         },
     },
+
+    connectionsActive: {
+          title: 'Connections Established - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_active:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
+    connectionsInUse: {
+          title: 'Connections In Use - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_in_use:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
+    connectionsCapacity: {
+          title: 'Connections Capacity - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_capacity:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
   },
 }

@@ -242,7 +242,34 @@ local config = import '../config.libsonnet';
             expr: 'sum by(le)(rate(vttablet_mysql_bucket[1m]))'
           }
         ]
-      }
+      },
+      {
+        name: 'vitess_mixin_27',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_connections_active:rate1m',
+            expr: "sum({__name__=~'vttablet_.*_active'})"
+          }
+        ]
+      },
+      {
+        name: 'vitess_mixin_28',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_connections_in_use:rate1m',
+            expr: "sum({__name__=~'vttablet_.*_in_use'})"
+          }
+        ]
+      },
+      {
+        name: 'vitess_mixin_29',
+        rules: [
+          {
+            record: 'vitess_mixin:vttablet_connections_capacity:rate1m',
+            expr: "sum({__name__=~'vttablet_.*_capacity'})"
+          }
+        ]
+      },
     ],
   },
 }
