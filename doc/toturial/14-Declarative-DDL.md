@@ -15,54 +15,32 @@ Before using Declarative DDL, ensure the feature is enabled:
 ```sql
 SET @@enable_declarative_ddl=true;
 ```
+> Notice: If you see an "Unknown system variable" error, you are not connected to the WeScale endpoint. Please connect to the WeScale endpoint and try again.
+
+
 
 ## Using Declarative DDL
 
 First, create the initial database and table:
 
 ```sql
-CREATE DATABASE dddb;
+CREATE DATABASE test_declarative_ddl;
        
-USE dddb;
+USE test_declarative_ddl;
     
-CREATE TABLE dddb.users ( id INT PRIMARY KEY );
+CREATE TABLE test_declarative_ddl.users ( id INT PRIMARY KEY );
 ```
 
-You can use Declarative DDL in either direct or online mode:
+Then, you can declare the desired table structure using the `CREATE TABLE` statement. For example, if you want to add a new column `age` of type `INT`, and change the type of id from `INT` to `VARCHAR(64)`, you can use the following statement:
 
-### Direct Mode (Default)
 ```sql
-SET @@ddl_strategy='direct';
-
 -- Declare the target structure
-CREATE TABLE dddb.users ( id VARCHAR(64) PRIMARY KEY, age INT );
-```
-
-### Online Mode
-```sql
-SET @@ddl_strategy='online';
-
--- Declare the target structure
-CREATE TABLE dddb.users ( id VARCHAR(64) PRIMARY KEY, age INT, email VARCHAR(255) );
-```
-
-In online mode, you'll receive a UUID for tracking the DDL task:
-```
-+--------------------------------------+
-| uuid                                 |
-+--------------------------------------+
-| bcda3efe_9847_11ef_905b_da3720e3a51d |
-+--------------------------------------+
-```
-
-Monitor the progress using:
-```sql
-SHOW SCHEMA_MIGRATION like 'bcda3efe_9847_11ef_905b_da3720e3a51d';
+CREATE TABLE test_declarative_ddl.users ( id VARCHAR(64) PRIMARY KEY, age INT );
 ```
 
 Check the final table structure:
 ```sql
-DESC dddb.users;
+DESC test_declarative_ddl.users;
 ```
 
 ## Configuration Parameters
