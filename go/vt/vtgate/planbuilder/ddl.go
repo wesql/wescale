@@ -51,12 +51,14 @@ func (fk *fkContraint) FkWalk(node sqlparser.SQLNode) (kontinue bool, err error)
 // This is why we return a compound primitive (DDL) which contains fully populated primitives (Send & OnlineDDL),
 // and which chooses which of the two to invoke at runtime.
 func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reservedVars *sqlparser.ReservedVars, vschema plancontext.VSchema, enableOnlineDDL, enableDirectDDL bool) (*planResult, error) {
+	var err error
 	normalDDLPlan, onlineDDLPlan, err := buildDDLPlans(sql, ddlStatement, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 	if err != nil {
 		return nil, err
 	}
 
-	if ddlStatement.IsTemporary() {
+	isTemporary := ddlStatement.IsTemporary()
+	if isTemporary {
 		err := vschema.ErrorIfShardedF(normalDDLPlan.Keyspace, "temporary table", "Temporary table not supported in sharded database %s", normalDDLPlan.Keyspace.Name)
 		if err != nil {
 			return nil, err
@@ -64,12 +66,18 @@ func buildGeneralDDLPlan(sql string, ddlStatement sqlparser.DDLStatement, reserv
 		onlineDDLPlan = nil // emptying this so it does not accidentally gets used somewhere
 	}
 
+	declarativeDDL := &engine.DeclarativeDDL{}
+	if createTable, ok := ddlStatement.(*sqlparser.CreateTable); ok && !isTemporary {
+		declarativeDDL = engine.BuildDeclarativeDDLPlan(createTable)
+	}
+
 	eddl := &engine.DDL{
-		Keyspace:  normalDDLPlan.Keyspace,
-		SQL:       normalDDLPlan.Query,
-		DDL:       ddlStatement,
-		NormalDDL: normalDDLPlan,
-		OnlineDDL: onlineDDLPlan,
+		Keyspace:       normalDDLPlan.Keyspace,
+		SQL:            normalDDLPlan.Query,
+		DDL:            ddlStatement,
+		NormalDDL:      normalDDLPlan,
+		OnlineDDL:      onlineDDLPlan,
+		DeclarativeDDL: declarativeDDL,
 
 		DirectDDLEnabled: enableDirectDDL,
 		OnlineDDLEnabled: enableOnlineDDL,
@@ -136,12 +144,14 @@ func buildDDLPlans(sql string, ddlStatement sqlparser.DDLStatement, reservedVars
 	}
 
 	normalDDL := buildNormalDDLPlan(keyspace, destination, sql)
+
 	onlineDDL := &engine.OnlineDDL{
 		Keyspace:          keyspace,
 		TargetDestination: destination,
 		DDL:               ddlStatement,
 		SQL:               query,
 	}
+
 	return normalDDL, onlineDDL, nil
 }
 

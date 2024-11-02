@@ -58,5 +58,6 @@ func main() {
 
 	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online --prefer-instant-ddl", "alter table t1 add column c7 int default 0")
 
-	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online --declarative", "CREATE TABLE `t1` (  `c1` bigint NOT NULL AUTO_INCREMENT,  `c2` int NOT NULL DEFAULT '0',\n  `c3` int NOT NULL DEFAULT '0',\n  `c4` char NOT NULL DEFAULT '0',\n  `c6` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`c1`),\n  KEY(c2)\n) ENGINE=InnoDB AUTO_INCREMENT=5232588 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci")
+	execute("root@tcp(127.0.0.1:15306)/d1", "set @@enable_declarative_ddl=true")
+	executeOnlineDDLThenWaitForCompletion("root@tcp(127.0.0.1:15306)/d1", "online", "CREATE TABLE `t1` (  `c1` bigint NOT NULL AUTO_INCREMENT,  `c2` int NOT NULL DEFAULT '0',\n  `c3` int NOT NULL DEFAULT '0',\n  `c4` char NOT NULL DEFAULT '0',\n  `c6` int NOT NULL DEFAULT '0',\n  PRIMARY KEY (`c1`),\n  KEY(c2)\n) ENGINE=InnoDB AUTO_INCREMENT=5232588 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci")
 }

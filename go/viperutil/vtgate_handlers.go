@@ -7,6 +7,7 @@ package viperutil
 
 import (
 	"github.com/spf13/pflag"
+	"vitess.io/vitess/go/vt/schemadiff"
 
 	"vitess.io/vitess/go/vt/vtgate/autoscale"
 
@@ -38,6 +39,8 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 	v.ReloadHandler.AddReloadHandler("auto_scale_cpu_no_adjust_lower_bound_ratio", autoscale.UpdateAutoScaleCpuNoAdjustLowerBoundRatioHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_upper_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustUpperBoundRatioHandler)
 	v.ReloadHandler.AddReloadHandler("auto_scale_memory_no_adjust_lower_bound_ratio", autoscale.UpdateAutoScaleMemoryNoAdjustLowerBoundRatioHandler)
+
+	v.ReloadHandler.AddReloadHandler("enable_declarative_ddl", DefaultFsReloadHandler)
 
 	v.ReloadHandler.AddReloadHandler("read_write_splitting_policy", func(key string, value string, fs *pflag.FlagSet) {
 		if err := vtgate.SetDefaultReadWriteSplittingPolicy(value); err == nil {
@@ -130,5 +133,55 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
 		vtgate.ReloadTLSConfig()
+	})
+
+	v.ReloadHandler.AddReloadHandler("declarative_ddl_hints_auto_increment_strategy", func(key string, value string, fs *pflag.FlagSet) {
+		if _, err := schemadiff.ParseAutoIncrementStrategy(value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		if err := fs.Set("declarative_ddl_hints_auto_increment_strategy", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("declarative_ddl_hints_range_rotation_strategy", func(key string, value string, fs *pflag.FlagSet) {
+		if _, err := schemadiff.ParseRangeRotationStrategy(value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		if err := fs.Set("declarative_ddl_hints_range_rotation_strategy", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("declarative_ddl_hints_constraint_names_strategy", func(key string, value string, fs *pflag.FlagSet) {
+		if _, err := schemadiff.ParseConstraintNamesStrategy(value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		if err := fs.Set("declarative_ddl_hints_constraint_names_strategy", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("declarative_ddl_hints_column_rename_strategy", func(key string, value string, fs *pflag.FlagSet) {
+		if _, err := schemadiff.ParseColumnRenameStrategy(value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		if err := fs.Set("declarative_ddl_hints_column_rename_strategy", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("declarative_ddl_hints_alter_table_algorithm_strategy", func(key string, value string, fs *pflag.FlagSet) {
+		if _, err := schemadiff.ParseAlterTableAlgorithmStrategy(value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+			return
+		}
+		if err := fs.Set("declarative_ddl_hints_alter_table_algorithm_strategy", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
 	})
 }

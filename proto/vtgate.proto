@@ -203,6 +203,10 @@ message Session {
 
   // used to resolve tablet type/types to load balance
   ResolverOptions resolver_options = 34;
+
+  // when enabled, vtgate will support declarative DDL
+  bool EnableDeclarativeDDL = 35;
+
 }
 
 message ResolverOptions {

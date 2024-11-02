@@ -44,7 +44,6 @@ func TestParseDDLStrategy(t *testing.T) {
 		strategyVariable     string
 		strategy             DDLStrategy
 		options              string
-		isDeclarative        bool
 		isSingleton          bool
 		isPostponeLaunch     bool
 		isPostponeCompletion bool
@@ -138,7 +137,6 @@ func TestParseDDLStrategy(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, ts.strategy, setting.Strategy)
 			assert.Equal(t, ts.options, setting.Options)
-			assert.Equal(t, ts.isDeclarative, setting.IsDeclarative())
 			assert.Equal(t, ts.isSingleton, setting.IsSingleton())
 			assert.Equal(t, ts.isPostponeCompletion, setting.IsPostponeCompletion())
 			assert.Equal(t, ts.isPostponeLaunch, setting.IsPostponeLaunch())

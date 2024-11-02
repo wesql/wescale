@@ -698,6 +698,19 @@ func (session *SafeSession) GetDDLStrategy() string {
 	return session.DDLStrategy
 }
 
+// SetDDLStrategy set the DDLStrategy setting.
+func (session *SafeSession) SetEnableDeclarativeDDL(enable bool) {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	session.EnableDeclarativeDDL = enable
+}
+
+func (session *SafeSession) GetEnableDeclarativeDDL() bool {
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.EnableDeclarativeDDL
+}
+
 // SetReadWriteSplittingPolicy set the ReadWriteSplittingPolicy setting.
 func (session *SafeSession) SetReadWriteSplittingPolicy(strategy string) {
 	session.mu.Lock()

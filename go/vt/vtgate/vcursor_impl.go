@@ -98,6 +98,7 @@ type iExecute interface {
 	ShowDMLJob(uuid string, showDetail bool) (*sqltypes.Result, error)
 	HandleWescaleFilterRequest(sql string) (*sqltypes.Result, error)
 	HandleWescaleCDCRequest(stmt sqlparser.Statement) (*sqltypes.Result, error)
+	FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
 }
 
 // VSchemaOperator is an interface to Vschema Operations
@@ -268,6 +269,10 @@ func (vc *vcursorImpl) FindTable(name sqlparser.TableName) (*vindexes.Table, str
 		return nil, "", destTabletType, nil, err
 	}
 	return table, destKeyspace, destTabletType, dest, err
+}
+
+func (vc *vcursorImpl) GetSession() *vtgatepb.Session {
+	return vc.safeSession.Session
 }
 
 func (vc *vcursorImpl) FindView(name sqlparser.TableName) sqlparser.SelectStatement {
@@ -931,6 +936,17 @@ func (vc *vcursorImpl) GetDDLStrategy() string {
 	return vc.safeSession.GetDDLStrategy()
 }
 
+// SetEnableDeclarativeDDL implements the SessionActions interface
+func (vc *vcursorImpl) SetEnableDeclarativeDDL(_ context.Context, enable bool) error {
+	vc.safeSession.SetEnableDeclarativeDDL(enable)
+	return nil
+}
+
+// GetEnableDeclarativeDDL implements the SessionActions interface
+func (vc *vcursorImpl) GetEnableDeclarativeDDL() bool {
+	return vc.safeSession.GetEnableDeclarativeDDL()
+}
+
 // SetReadWriteSplittingPolicy implements the SessionActions interface
 func (vc *vcursorImpl) SetReadWriteSplittingPolicy(strategy string) {
 	vc.safeSession.SetReadWriteSplittingPolicy(strategy)
@@ -1203,6 +1219,8 @@ func (vc *vcursorImpl) GetSrvVschema() *vschemapb.SrvVSchema {
 }
 
 func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) error {
+	// The global setting will not be applied to current session immediately,
+	// which is the same as mysql behavior.
 	switch name {
 	case sysvars.ReadWriteSplittingPolicy.Name:
 		return SetDefaultReadWriteSplittingPolicy(value)
@@ -1220,6 +1238,8 @@ func (vc *vcursorImpl) SetExec(ctx context.Context, name string, value string) e
 		return SetDefaultEnableDisplaySQLExecutionVTTablet(value)
 	case sysvars.ReadWriteSplitForReadOnlyTxnUserInput.Name:
 		return SetDefaultReadWriteSplitForReadOnlyTxnUserInput(value)
+	case sysvars.EnableDeclarativeDDL.Name:
+		return SetDefaultEnableDeclarativeDDL(value)
 	}
 	return vc.executor.setVitessMetadata(ctx, name, value)
 }
@@ -1266,4 +1286,8 @@ func (vc *vcursorImpl) FindRoutedShard(keyspace, shard string) (keyspaceName str
 
 func (vc *vcursorImpl) IsViewsEnabled() bool {
 	return enableViews
+}
+
+func (vc *vcursorImpl) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	return vc.executor.FindHealthyPrimaryTablet()
 }

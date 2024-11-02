@@ -41,8 +41,9 @@ type DDL struct {
 	SQL      string
 	DDL      sqlparser.DDLStatement
 
-	NormalDDL *Send
-	OnlineDDL *OnlineDDL
+	NormalDDL      *Send
+	OnlineDDL      *OnlineDDL
+	DeclarativeDDL *DeclarativeDDL
 
 	DirectDDLEnabled bool
 	OnlineDDLEnabled bool
@@ -103,6 +104,12 @@ func (ddl *DDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[st
 		return vcursor.ExecutePrimitive(ctx, ddl.NormalDDL, bindVars, wantfields)
 	}
 
+	// declarative ddl
+	enableDeclarativeDDL := vcursor.Session().GetEnableDeclarativeDDL()
+	if _, ok := ddl.DDL.(*sqlparser.CreateTable); ok && enableDeclarativeDDL {
+		return vcursor.ExecutePrimitive(ctx, ddl.DeclarativeDDL, bindVars, wantfields)
+	}
+
 	ddlStrategySetting, err := schema.ParseDDLStrategy(vcursor.Session().GetDDLStrategy())
 	if err != nil {
 		return nil, err
@@ -119,6 +126,7 @@ func (ddl *DDL) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[st
 		if !ddl.DirectDDLEnabled {
 			return nil, schema.ErrDirectDDLDisabled
 		}
+
 		return vcursor.ExecutePrimitive(ctx, ddl.NormalDDL, bindVars, wantfields)
 	}
 }

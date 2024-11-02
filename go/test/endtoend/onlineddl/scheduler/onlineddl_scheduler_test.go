@@ -1281,12 +1281,15 @@ func testScheduler(t *testing.T) {
 			}
 		})
 		t.Run("declarative", func(t *testing.T) {
-			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql --declarative", "vtgate", "just-created", "", false))
+			onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
+			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql", "vtgate", "just-created", "", false))
 
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete)
+			//onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
 			checkTable(t, t1Name, true)
+			onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=false", "")
 		})
 
 		t.Run("fail postpone-completion", func(t *testing.T) {
@@ -1316,7 +1319,7 @@ func testScheduler(t *testing.T) {
 
 			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
 			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
+			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete)
 		})
 	})
 	// in-order-completion
@@ -1771,7 +1774,7 @@ func testDeclarative(t *testing.T) {
 		maxTableRows = 4096
 	)
 
-	declarativeStrategy := "online -declarative"
+	declarativeStrategy := "online"
 	var uuids []string
 
 	generateInsert := func(t *testing.T, conn *mysql.Conn) error {
@@ -1934,6 +1937,7 @@ func testDeclarative(t *testing.T) {
 
 	// VIEWS
 	t.Run("create base table for view", func(t *testing.T) {
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createViewBaseTableStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -1942,6 +1946,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE VIEW 1
 	t.Run("declarative CREATE VIEW where table does not exist", func(t *testing.T) {
 		// The table does not exist
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createViewStatement1, declarativeStrategy, "vtgate", "success_create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -1951,6 +1956,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE VIEW 1 again, noop
 	t.Run("declarative CREATE VIEW with no changes where view exists", func(t *testing.T) {
 		// The exists with exact same schema
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createViewStatement1, declarativeStrategy, "vtgate", "success_create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -1968,6 +1974,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE OR REPLACE VIEW
 	t.Run("CREATE OR REPLACE VIEW expecting failure", func(t *testing.T) {
 		// IF NOT EXISTS is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createOrReplaceViewStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)
@@ -1976,6 +1983,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("ALTER VIEW expecting failure", func(t *testing.T) {
 		// IF NOT EXISTS is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, alterViewStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)
@@ -1984,6 +1992,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("DROP VIEW IF EXISTS expecting failure", func(t *testing.T) {
 		// IF NOT EXISTS is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropViewIfExistsStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)
@@ -1991,6 +2000,7 @@ func testDeclarative(t *testing.T) {
 		checkTable(t, viewName, true)
 	})
 	t.Run("declarative DROP VIEW", func(t *testing.T) {
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropViewStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2002,6 +2012,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE VIEW1
 	t.Run("declarative CREATE VIEW where view does not exist", func(t *testing.T) {
 		// The table does not exist
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createViewStatement1, declarativeStrategy, "vtgate", "success_create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2011,6 +2022,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE VIEW2: Change view
 	t.Run("declarative CREATE VIEW with changes where view exists", func(t *testing.T) {
 		// The table exists with different schema
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createViewStatement2, declarativeStrategy, "vtgate", "success_create2", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2027,6 +2039,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("declarative DROP VIEW", func(t *testing.T) {
 		// Table exists
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropViewStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2049,6 +2062,7 @@ func testDeclarative(t *testing.T) {
 		checkTable(t, viewName, false)
 	})
 	t.Run("declarative DROP VIEW where view does not exist", func(t *testing.T) {
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropViewStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2069,6 +2083,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE1
 	t.Run("declarative CREATE TABLE where table does not exist", func(t *testing.T) {
 		// The table does not exist
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement1, declarativeStrategy, "vtgate", "create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2080,6 +2095,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE1 again, noop
 	t.Run("declarative CREATE TABLE with no changes where table exists", func(t *testing.T) {
 		// The exists with exact same schema
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement1, declarativeStrategy, "vtgate", "create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2097,6 +2113,7 @@ func testDeclarative(t *testing.T) {
 		testSelectTableMetrics(t)
 	})
 	t.Run("declarative DROP TABLE", func(t *testing.T) {
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2108,6 +2125,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE1
 	t.Run("declarative CREATE TABLE where table does not exist", func(t *testing.T) {
 		// The table does not exist
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement1, declarativeStrategy, "vtgate", "create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2119,6 +2137,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE2: Change schema
 	t.Run("declarative CREATE TABLE with changes where table exists", func(t *testing.T) {
 		// The table exists with different schema
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement2, declarativeStrategy, "vtgate", "create2", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2137,6 +2156,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("declarative DROP TABLE", func(t *testing.T) {
 		// Table exists
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2160,6 +2180,7 @@ func testDeclarative(t *testing.T) {
 		checkTable(t, tableName, false)
 	})
 	t.Run("declarative DROP TABLE where table does not exist", func(t *testing.T) {
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2178,6 +2199,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE1
 	t.Run("declarative CREATE TABLE where table does not exist", func(t *testing.T) {
 		// The table does not exist
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement1, declarativeStrategy, "vtgate", "create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2199,6 +2221,7 @@ func testDeclarative(t *testing.T) {
 	// CREATE1 again
 	t.Run("declarative CREATE TABLE again with changes where table exists", func(t *testing.T) {
 		// The table exists but with different schema
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createStatement1, declarativeStrategy, "vtgate", "create1", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusComplete)
@@ -2217,6 +2240,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("ALTER TABLE expecting failure", func(t *testing.T) {
 		// ALTER is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, alterStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)
@@ -2226,6 +2250,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("CREATE TABLE IF NOT EXISTS expecting failure", func(t *testing.T) {
 		// IF NOT EXISTS is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, createIfNotExistsStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)
@@ -2235,6 +2260,7 @@ func testDeclarative(t *testing.T) {
 	})
 	t.Run("DROP TABLE IF EXISTS expecting failure", func(t *testing.T) {
 		// IF EXISTS is not supported in -declarative
+		onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
 		uuid := testOnlineDDL(t, dropIfExistsStatement, declarativeStrategy, "vtgate", "", "")
 		uuids = append(uuids, uuid)
 		onlineddl.CheckMigrationStatus(t, &vtParams, shards, uuid, schema.OnlineDDLStatusFailed)

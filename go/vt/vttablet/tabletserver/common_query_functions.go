@@ -13,9 +13,7 @@ import (
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -41,28 +39,6 @@ func (tsv *TabletServer) CommonQuery(_ context.Context, queryFunctionName string
 	}
 }
 
-func BuildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
-
-func BuildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
-}
-
-// todo remove origin one
 func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 
@@ -84,7 +60,7 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 		var pqstats perQueryStats
 		pqstats.QueryCount, pqstats.Time, pqstats.MysqlTime, pqstats.RowsAffected, pqstats.RowsReturned, pqstats.ErrorCount = plan.Stats()
 
-		rows = append(rows, BuildVarCharRow(
+		rows = append(rows, sqltypes.BuildVarCharRow(
 			formattedAlias,
 			sqlparser.TruncateForUI(plan.Original),
 			plan.PlanID.String(),
@@ -100,7 +76,7 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 	})
 
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
+		Fields: sqltypes.BuildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }

@@ -61,7 +61,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	// ensure that there is at least one row, so we can get the collation info
 	if len(qr.Rows) == 0 {
 		return &sqltypes.Result{
-			Fields: BuildVarCharFields(finalFieldNames...),
+			Fields: sqltypes.BuildVarCharFields(finalFieldNames...),
 			Rows:   nil,
 		}, nil
 	}
@@ -146,7 +146,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 
 	// build final result
 	env := evalengine.EnvWithBindVars(bindVars, vcursor.ConnCollation())
-	env.Fields = BuildVarCharFields(finalFieldNames...)
+	env.Fields = sqltypes.BuildVarCharFields(finalFieldNames...)
 	var resultRows []sqltypes.Row
 	for _, row := range qr.Rows {
 		resultRow := make(sqltypes.Row, 0, len(qr.Rows))
@@ -162,7 +162,7 @@ func (c *CustomFunctionPrimitive) TryExecute(ctx context.Context, vcursor VCurso
 	}
 
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields(finalFieldNames...),
+		Fields: sqltypes.BuildVarCharFields(finalFieldNames...),
 		Rows:   resultRows,
 	}, nil
 }
@@ -262,7 +262,7 @@ func (c *CustomFunctionPrimitive) TryStreamExecute(ctx context.Context, vcursor 
 
 		// build final result
 		env := evalengine.EnvWithBindVars(bindVars, vcursor.ConnCollation())
-		env.Fields = BuildVarCharFields(finalFieldNames...)
+		env.Fields = sqltypes.BuildVarCharFields(finalFieldNames...)
 		var resultRows []sqltypes.Row
 		for _, row := range qr.Rows {
 			resultRow := make(sqltypes.Row, 0, len(qr.Rows))
@@ -277,7 +277,7 @@ func (c *CustomFunctionPrimitive) TryStreamExecute(ctx context.Context, vcursor 
 			resultRows = append(resultRows, resultRow)
 		}
 
-		qr.Fields = BuildVarCharFields(finalFieldNames...)
+		qr.Fields = sqltypes.BuildVarCharFields(finalFieldNames...)
 		qr.Rows = resultRows
 
 		return callback(qr)
@@ -307,7 +307,7 @@ func (c *CustomFunctionPrimitive) GetFields(ctx context.Context, vcursor VCursor
 	}
 
 	return &sqltypes.Result{
-		Fields: BuildVarCharFields(finalFieldNames...),
+		Fields: sqltypes.BuildVarCharFields(finalFieldNames...),
 	}, nil
 }
 

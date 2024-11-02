@@ -16,40 +16,17 @@ import (
 
 	"vitess.io/vitess/go/vt/log"
 
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/pools"
 	"vitess.io/vitess/go/sqltypes"
-	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
-func buildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
-
-func buildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
-}
-
 func (jc *JobController) buildJobSubmitResult(jobUUID, jobBatchTable string, timeGap, subtaskRows int64, postponeLaunch bool, failPolicy string) *sqltypes.Result {
 	var rows []sqltypes.Row
-	row := buildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), failPolicy, strconv.FormatBool(postponeLaunch))
+	row := sqltypes.BuildVarCharRow(jobUUID, jobBatchTable, strconv.FormatInt(timeGap, 10), strconv.FormatInt(subtaskRows, 10), failPolicy, strconv.FormatBool(postponeLaunch))
 	rows = append(rows, row)
 	submitRst := &sqltypes.Result{
-		Fields:       buildVarCharFields("job_uuid", "batch_info_table_name", "batch_interval_in_ms", "batch_size", "fail_policy", "postpone_launch"),
+		Fields:       sqltypes.BuildVarCharFields("job_uuid", "batch_info_table_name", "batch_interval_in_ms", "batch_size", "fail_policy", "postpone_launch"),
 		Rows:         rows,
 		RowsAffected: 1,
 	}
@@ -86,7 +63,7 @@ func parseDML(sql string) (tableName string, whereExpr sqlparser.Expr, stmt sqlp
 			return "", nil, nil, errors.New("the number of table is more than one")
 		}
 		tableExpr, ok := s.TableExprs[0].(*sqlparser.AliasedTableExpr)
-		// todo feat 目前暂不支持join和多表
+		// todo feat: now it doesn't support join and multi table
 		if !ok {
 			return "", nil, nil, errors.New("don't support join table now")
 		}
@@ -685,7 +662,7 @@ func (jc *JobController) ShowAllDMLJobs() (*sqltypes.Result, error) {
 
 	}
 
-	qr.Fields = append(qr.Fields, buildVarCharFields("affected_rows", "dealing_batch_id")...)
+	qr.Fields = append(qr.Fields, sqltypes.BuildVarCharFields("affected_rows", "dealing_batch_id")...)
 	return qr, nil
 }
 
@@ -732,7 +709,7 @@ func (jc *JobController) ShowSingleDMLJob(uuid string, showDetails bool) (qr *sq
 		qr.Rows[0] = append(qr.Rows[0], sqltypes.NewVarChar(dealingBatchID))
 	}
 
-	qr.Fields = append(qr.Fields, buildVarCharFields("affected_rows", "dealing_batch_id")...)
+	qr.Fields = append(qr.Fields, sqltypes.BuildVarCharFields("affected_rows", "dealing_batch_id")...)
 	return qr, nil
 
 }

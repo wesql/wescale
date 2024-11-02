@@ -17,10 +17,11 @@ limitations under the License.
 package schemadiff
 
 import (
-	"testing"
-
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"strings"
+	"testing"
 
 	"vitess.io/vitess/go/vt/sqlparser"
 )
@@ -737,4 +738,355 @@ func TestSchemaApplyError(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHints(t *testing.T) {
+	tt := []struct {
+		name         string
+		schema1      string
+		schema2      string
+		hints        DiffHints
+		errorMessage string
+		expectedDiff bool
+	}{
+		{name: "test StrictIndexOrdering false",
+			schema1:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    name VARCHAR(100),\n    INDEX idx_name (name),\n    INDEX idx_id_name (id, name)\n);",
+			schema2:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    name VARCHAR(100),\n    INDEX idx_id_name (id, name),\n    INDEX idx_name (name)\n);",
+			hints:        DiffHints{StrictIndexOrdering: false},
+			expectedDiff: false,
+		},
+
+		{name: "test StrictIndexOrdering true unsupported",
+			schema1:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    name VARCHAR(100),\n    INDEX idx_name (name),\n    INDEX idx_id_name (id, name)\n);",
+			schema2:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    name VARCHAR(100),\n    INDEX idx_id_name (id, name),\n    INDEX idx_name (name)\n);",
+			hints:        DiffHints{StrictIndexOrdering: true},
+			errorMessage: "strict index ordering is unsupported",
+			expectedDiff: true,
+		},
+
+		{name: "test AutoIncrementStrategy ignore",
+			schema1:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			schema2:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			hints:        DiffHints{AutoIncrementStrategy: AutoIncrementIgnore},
+			expectedDiff: false,
+		},
+		{name: "test AutoIncrementStrategy always",
+			schema1: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			schema2: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			hints:   DiffHints{AutoIncrementStrategy: AutoIncrementApplyAlways},
+			//  diff:ALTER TABLE `t1` AUTO_INCREMENT 200
+			expectedDiff: true,
+		},
+		{name: "test AutoIncrementStrategy higher1",
+			schema1: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			schema2: "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			hints:   DiffHints{AutoIncrementStrategy: AutoIncrementApplyHigher},
+			//  diff:ALTER TABLE `t1` AUTO_INCREMENT 200
+			expectedDiff: true,
+		},
+		{name: "test AutoIncrementStrategy higher2",
+			schema1:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=200;",
+			schema2:      "CREATE TABLE t1 (\n    id INT AUTO_INCREMENT PRIMARY KEY,\n    name VARCHAR(100)\n) AUTO_INCREMENT=100;",
+			hints:        DiffHints{AutoIncrementStrategy: AutoIncrementApplyHigher},
+			expectedDiff: false,
+		},
+
+		{name: "RangeRotationStrategy ignore1",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024),\n    PARTITION p2024 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationIgnore},
+			// in a supported rotation case, ignore will lead no diffs
+			expectedDiff: false,
+		},
+		{name: "RangeRotationStrategy unsupported",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationIgnore},
+			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
+			// the alter dml will be:
+			// ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p0` VALUES LESS THAN (2022),
+			// PARTITION `p1` VALUES LESS THAN (2023),
+			// PARTITION `p2` VALUES LESS THAN (2024),
+			// PARTITION `p3` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy unsupported",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationDistinctStatements},
+			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
+			// the alter dml will be:
+			// ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p0` VALUES LESS THAN (2022),
+			// PARTITION `p1` VALUES LESS THAN (2023),
+			// PARTITION `p2` VALUES LESS THAN (2024),
+			// PARTITION `p3` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy unsupported",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2021),\n    PARTITION p1 VALUES LESS THAN (2022),\n    PARTITION p2 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p0 VALUES LESS THAN (2022),\n    PARTITION p1 VALUES LESS THAN (2023),\n    PARTITION p2 VALUES LESS THAN (2024),\n    PARTITION p3 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationFullSpec},
+			// in an unsupported rotation case, hints is useless, all hints will return an alter dml
+			// the alter dml will be:
+			// ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p0` VALUES LESS THAN (2022),
+			// PARTITION `p1` VALUES LESS THAN (2023),
+			// PARTITION `p2` VALUES LESS THAN (2024),
+			// PARTITION `p3` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy distinct",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024),\n    PARTITION p2024 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationDistinctStatements},
+			// the dml is: ALTER TABLE `t1` DROP PARTITION `p2020`
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy distinct",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024));",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationDistinctStatements},
+			// the dml is: ALTER TABLE `t1` DROP PARTITION `p2020`
+			expectedDiff: true,
+		},
+		{name: "RangeRotationStrategy full spec",
+			schema1: "CREATE TABLE t1 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2020 VALUES LESS THAN (2021),\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023)\n);",
+			schema2: "CREATE TABLE t2 (\n    id INT,\n    name VARCHAR(100),\n    created_date DATE\n)\nPARTITION BY RANGE (YEAR(created_date)) (\n    PARTITION p2021 VALUES LESS THAN (2022),\n    PARTITION p2022 VALUES LESS THAN (2023),\n    PARTITION p2023 VALUES LESS THAN (2024),\n    PARTITION p2024 VALUES LESS THAN (2025)\n);",
+			hints:   DiffHints{RangeRotationStrategy: RangeRotationFullSpec},
+			//  diff:ALTER TABLE `t1`
+			// PARTITION BY RANGE (YEAR(`created_date`))
+			//(PARTITION `p2021` VALUES LESS THAN (2022),
+			// PARTITION `p2022` VALUES LESS THAN (2023),
+			// PARTITION `p2023` VALUES LESS THAN (2024),
+			// PARTITION `p2024` VALUES LESS THAN (2025))
+			expectedDiff: true,
+		},
+
+		{
+			name:    "ConstraintNamesStrategy strict",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email CHECK (email LIKE '%@%')\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%@%')\n);",
+			hints:   DiffHints{ConstraintNamesStrategy: ConstraintNamesStrict},
+			// ALTER TABLE `t1` DROP CHECK `chk_email`, ADD CONSTRAINT `chk_email_format` CHECK (`email` LIKE '%@%')
+			expectedDiff: true,
+		},
+		{
+			name:    "ConstraintNamesStrategy strict",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%@%')\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%!%')\n);",
+			hints:   DiffHints{ConstraintNamesStrategy: ConstraintNamesStrict},
+			// diff:ALTER TABLE `t1` DROP CHECK `chk_email_format`, ADD CONSTRAINT `chk_email_format` CHECK (`email` LIKE '%!%')
+			expectedDiff: true,
+		},
+		{
+			name:         "ConstraintNamesStrategy ignore all",
+			schema1:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email CHECK (email LIKE '%@%')\n);",
+			schema2:      "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%@%')\n);",
+			hints:        DiffHints{ConstraintNamesStrategy: ConstraintNamesIgnoreAll},
+			expectedDiff: false,
+		},
+		{
+			name:    "ConstraintNamesStrategy ignore all",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email CHECK (email LIKE '%@%')\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    email VARCHAR(100) UNIQUE,\n    CONSTRAINT chk_email_format CHECK (email LIKE '%!%')\n);",
+			hints:   DiffHints{ConstraintNamesStrategy: ConstraintNamesIgnoreAll},
+			//  diff:ALTER TABLE `t1` DROP CHECK `chk_email`, ADD CONSTRAINT `chk_email_format` CHECK (`email` LIKE '%!%')
+			expectedDiff: true,
+		},
+
+		{
+			name:    "ColumnRenameStrategy different1",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100)\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameAssumeDifferent},
+			// ALTER TABLE `t1` DROP COLUMN `username`, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy different2",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100),\n	tel int);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100),\n	email varchar(60));",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameAssumeDifferent},
+			//  diff:ALTER TABLE `t1` DROP COLUMN `username`, DROP COLUMN `tel`, ADD COLUMN `user_name` varchar(100), ADD COLUMN `email` varchar(60)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic0",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100)\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// ALTER TABLE `t1` RENAME COLUMN `username` TO `user_name`
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic0",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100) CHARSET latin1\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// diff:ALTER TABLE `t1` DROP COLUMN `username`, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic1",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100),\n	tel int);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100),\n	email varchar(60));",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			//  diff:ALTER TABLE `t1` DROP COLUMN `username`, DROP COLUMN `tel`, ADD COLUMN `user_name` varchar(100), ADD COLUMN `email` varchar(60)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic2",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100)\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    age INT,\n	user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// diff:ALTER TABLE `t1` DROP COLUMN `username`, ADD COLUMN `age` int, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic3",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(100),\n	 age1 INT\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    age INT,\n	user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// diff:ALTER TABLE `t1` DROP COLUMN `username`, DROP COLUMN `age1`, ADD COLUMN `age` int, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+		{
+			name:    "ColumnRenameStrategy heuristic4",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    username VARCHAR(123)\n);",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    user_name VARCHAR(100)\n);",
+			hints:   DiffHints{ColumnRenameStrategy: ColumnRenameHeuristicStatement},
+			// diff:ALTER TABLE `t1` DROP COLUMN `username`, ADD COLUMN `user_name` varchar(100)
+			expectedDiff: true,
+		},
+
+		{
+			name:    "FullTextKeyStrategy distinct",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    content TEXT,\n	content2 TEXT\n)",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    content TEXT,\n	content2 TEXT,\n    FULLTEXT INDEX ft_content_idx1 (content),\n	FULLTEXT INDEX ft_content_idx2 (content)\n);",
+			hints:   DiffHints{FullTextKeyStrategy: FullTextKeyDistinctStatements},
+			// diff:ALTER TABLE `t1` DROP KEY `ft_content`, ADD FULLTEXT KEY `ft_content_idx` (`content`)
+			// the next is in the subsequent diff
+			expectedDiff: true,
+		},
+		{
+			name:    "FullTextKeyStrategy distinct",
+			schema1: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    content TEXT,\n	content2 TEXT\n)",
+			schema2: "CREATE TABLE t1 (\n    id INT PRIMARY KEY,\n    content TEXT,\n	content2 TEXT,\n    FULLTEXT INDEX ft_content_idx1 (content),\n	FULLTEXT INDEX ft_content_idx2 (content2)\n);",
+			hints:   DiffHints{FullTextKeyStrategy: FullTextKeyUnifyStatements},
+			// diff: ALTER TABLE `t1` ADD FULLTEXT INDEX `ft_content_idx1` (`content`), ADD FULLTEXT INDEX `ft_content_idx2` (`content2`)
+			// ERROR 1795 (HY000): target: mydb.0.primary: vttablet: rpc error: code = Unknown desc = InnoDB presently supports one FULLTEXT index creation at a time
+			// (errno 1795) (sqlstate HY000) (CallerID: userData1): Sql: "alter table mydb.t1 add FULLTEXT INDEX ft_content_idx1 (content), add FULLTEXT INDEX ft_content_idx2 (content2)", BindVars: {}
+			expectedDiff: true,
+		},
+
+		// todo newborn22: always0 and always1 shows a bug: fix it in normalizeColumnOptions()
+		// in always0: column has no collate info
+		// in always1: column has collate info
+		{
+			name:    "TableCharsetCollateStrategy ignore always0",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// todo newborn22: the column in the function has no charset and collate info when executing identicalOtherThanName.
+			expectedDiff: false,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore always1",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// todo newborn22: the column in the function has no charset info when executing identicalOtherThanName, but has the info of collate.
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
+			expectedDiff: true,
+		},
+		{
+			name:         "TableCharsetCollateStrategy ignore always2",
+			schema1:      "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB ",
+			schema2:      "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB",
+			hints:        DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			expectedDiff: false,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore always43",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// reason: table charset and collate is ignore; but column charset and collate is not equal.
+			// todo newborn22: now the function is not enable to set col charset and collate based on table's.
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
+			expectedDiff: true,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore always4",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL
+			expectedDiff: true,
+		},
+
+		{
+			name:    "TableCharsetCollateStrategy ignore; column change because of table charset change",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL
+			expectedDiff: true,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore; column change because of table charset change",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci; ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// reason: table charset doesn't change, so column charset and collate doesn't need to change too.
+			expectedDiff: false,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore; column change because of table charset change",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci; ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_unicode_ci;",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL
+			expectedDiff: true,
+		},
+		{
+			name:    "TableCharsetCollateStrategy ignore; column change because of table charset change",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=utf8mb4_general_ci; ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=latin1_swedish_ci;",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL
+			expectedDiff: true,
+		},
+
+		{
+			name:    "TableCharsetCollateStrategy strict",
+			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=utf8mb4_general_ci; ",
+			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB COLLATE=latin1_swedish_ci;",
+			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateStrict},
+			// diff: ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL, COLLATE latin1_swedish_ci
+			expectedDiff: true,
+		},
+	}
+
+	for _, ts := range tt {
+		t.Run(ts.name, func(t *testing.T) {
+			diff, err := DiffCreateTablesQueries(ts.schema1, ts.schema2, &ts.hints)
+			if ts.errorMessage != "" {
+				assert.True(t, strings.Contains(err.Error(), ts.errorMessage))
+				return
+			}
+			assert.Nil(t, err)
+
+			assert.Equal(t, !ts.expectedDiff, diff.IsEmpty())
+			if !diff.IsEmpty() {
+				fmt.Printf("name:%v\n schema1:%v\n schema2:%v\n diff:%v\n", ts.name, ts.schema1, ts.schema2, diff.CanonicalStatementString())
+			}
+		})
+	}
+
 }

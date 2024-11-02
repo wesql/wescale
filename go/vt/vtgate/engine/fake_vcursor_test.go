@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"vitess.io/vitess/go/vt/discovery"
 
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
@@ -120,6 +121,10 @@ func (t *noopVCursor) ReleaseLock(context.Context) error {
 	panic("implement me")
 }
 
+func (t *noopVCursor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	panic("implement me")
+}
+
 func (t *noopVCursor) SetExec(_ context.Context, _ string, _ string) error {
 	panic("implement me")
 }
@@ -179,6 +184,14 @@ func (t *noopVCursor) SetDDLStrategy(_ string) {
 }
 
 func (t *noopVCursor) GetDDLStrategy() string {
+	panic("implement me")
+}
+
+func (t *noopVCursor) SetEnableDeclarativeDDL(_ context.Context, _ bool) error {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetEnableDeclarativeDDL() bool {
 	panic("implement me")
 }
 
@@ -500,6 +513,10 @@ func (f *loggingVCursor) ExecuteVSchema(context.Context, string, *sqlparser.Alte
 
 func (f *loggingVCursor) Session() SessionActions {
 	return f
+}
+
+func (f *loggingVCursor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	panic("implement me")
 }
 
 func (f *loggingVCursor) SetTarget(target string) error {

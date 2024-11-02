@@ -1,4 +1,9 @@
 /*
+Copyright ApeCloud, Inc.
+Licensed under the Apache v2(found in the LICENSE file in the root directory).
+*/
+
+/*
 Copyright 2019 The Vitess Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +31,8 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+
+	"vitess.io/vitess/go/mysql/collations"
 
 	"vitess.io/vitess/go/bytes2"
 	"vitess.io/vitess/go/hack"
@@ -662,4 +669,25 @@ func init() {
 			SQLDecodeMap[to] = byte(i)
 		}
 	}
+}
+
+func BuildVarCharFields(names ...string) []*querypb.Field {
+	fields := make([]*querypb.Field, len(names))
+	for i, v := range names {
+		fields[i] = &querypb.Field{
+			Name:    v,
+			Type:    VarChar,
+			Charset: collations.CollationUtf8ID,
+			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
+		}
+	}
+	return fields
+}
+
+func BuildVarCharRow(values ...string) []Value {
+	row := make([]Value, len(values))
+	for i, v := range values {
+		row[i] = NewVarChar(v)
+	}
+	return row
 }

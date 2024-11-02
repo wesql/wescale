@@ -31,7 +31,6 @@ set @@ddl_strategy='online';
 
 - allow-concurrent: Allows migrations to synchronize with another migration instead of waiting in the queue, but not all migrations can run in parallel, subject to certain restrictions (e.g., simultaneous operations on the same table are not allowed).
 - allow-zero-in-date: Normally, WeSQL WeScaleruns in strict sql_mode. If you have columns like my_datetime DATETIME DEFAULT '0000-00-00 00:00:00' and want to run DDL on these tables, WeSQL WeScalewould block the migration due to invalid values. The --allow-zero-in-date option allows using zero-date or zero-in-date.
-- declarative: Declarative migration, performed using create and drop operations, further details can be found in another article (todo: write an article about declarative).
 - fast-range-rotation: The table partitioning feature has been removed.
 - in-order-completion: Completes migrations in order. If migrations queued before the current one are still in pending status (queued, ready, running), then the current migration will have to wait until previous ones are completed. This flag is mainly to support multiple online DDLs running concurrently in an orderly manner.
     - This feature is designed to allow users to initiate multiple migrations simultaneously, which may depend on each other. For instance, task2 depends on task1, so they must be executed in the order they were submitted to achieve correct results.
@@ -39,8 +38,6 @@ set @@ddl_strategy='online';
     - **`alter table`** is not applicable for **`mysql`**, or **`direct`** modes.
 - postpone-completion: Only transitions state under user command, not automatically completed, allowing better control over the timing of schema changes.
 - prefer-instant-ddl: Prioritize using the instant-ddl function of mysql. [instant-ddl](https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html)
-
-If a migration is both **`--declarative`** and **`--postpone-completion`**, it will remain in **`queued`** status until the user executes the **`alter schema_migration 'uuid' complete`** command.
 
 - postpone-launch: Initializes a queue in **`queued`** status, set to transition state only on user command.
 - singleton: Allows only one migration in pending status to be submitted at a time. From the point a migration enters **`queued`** status, until it reaches **`completion`**, **`failure`**, or **`cancellation`**, no other migrations can be submitted. New migrations will be rejected. This can be seen as a mutex lock for migrations, affecting only those with the **`singleton`** flag, others are not impacted.

@@ -56,7 +56,6 @@ import (
 	"vitess.io/vitess/go/acl"
 	"vitess.io/vitess/go/cache"
 	"vitess.io/vitess/go/hack"
-	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/stats"
 	"vitess.io/vitess/go/sync2"
@@ -529,6 +528,8 @@ func (e *Executor) addNeededBindVars(ctx context.Context, bindVarNeeds *sqlparse
 			bindVars[key] = sqltypes.StringBindVariable(v)
 		case sysvars.DDLStrategy.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.DDLStrategy)
+		case sysvars.EnableDeclarativeDDL.Name:
+			bindVars[key] = sqltypes.BoolBindVariable(session.EnableDeclarativeDDL)
 		case sysvars.ReadWriteSplittingPolicy.Name:
 			bindVars[key] = sqltypes.StringBindVariable(session.ReadWriteSplittingPolicy)
 		case sysvars.ReadWriteSplittingRatio.Name:
@@ -777,12 +778,12 @@ func (e *Executor) showVitessMetadata(ctx context.Context, filter *sqlparser.Sho
 
 	rows := make([][]sqltypes.Value, 0, len(metadata))
 	for k, v := range metadata {
-		row := buildVarCharRow(k, v)
+		row := sqltypes.BuildVarCharRow(k, v)
 		rows = append(rows, row)
 	}
 
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Key", "Value"),
+		Fields: sqltypes.BuildVarCharFields("Key", "Value"),
 		Rows:   rows,
 	}, nil
 }
@@ -863,12 +864,12 @@ func (e *Executor) showShards(ctx context.Context, filter *sqlparser.ShowFilter,
 				continue
 			}
 
-			rows = append(rows, buildVarCharRow(topoproto.KeyspaceShardString(keyspace, shard.Name)))
+			rows = append(rows, sqltypes.BuildVarCharRow(topoproto.KeyspaceShardString(keyspace, shard.Name)))
 		}
 	}
 
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Shards"),
+		Fields: sqltypes.BuildVarCharFields("Shards"),
 		Rows:   rows,
 	}, nil
 }
@@ -876,9 +877,9 @@ func (e *Executor) showShards(ctx context.Context, filter *sqlparser.ShowFilter,
 func (e *Executor) showLastSeenGTID(_ *sqlparser.ShowFilter) (*sqltypes.Result, error) {
 	rows := [][]sqltypes.Value{}
 	lastSeenGTID := e.scatterConn.gateway.lastSeenGtid.String()
-	rows = append(rows, buildVarCharRow(lastSeenGTID))
+	rows = append(rows, sqltypes.BuildVarCharRow(lastSeenGTID))
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("LastSeenGTID"),
+		Fields: sqltypes.BuildVarCharFields("LastSeenGTID"),
 		Rows:   rows,
 	}, nil
 }
@@ -897,7 +898,7 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 		if err == nil {
 			Enabled = true
 		}
-		rows = append(rows, buildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
+		rows = append(rows, sqltypes.BuildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
 	}
 	// then show failpoint not in static map but in failpoint.List()
 	for _, key := range failpoint.List() {
@@ -907,11 +908,11 @@ func (e *Executor) showFailPoint(filter *sqlparser.ShowFilter) (*sqltypes.Result
 			if err == nil {
 				Enabled = true
 			}
-			rows = append(rows, buildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
+			rows = append(rows, sqltypes.BuildVarCharRow(key, boolToString(Enabled), failpointkey.FailpointTable[key].ExampleStr))
 		}
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("failpoint keys", "Enabled", "Example"),
+		Fields: sqltypes.BuildVarCharFields("failpoint keys", "Enabled", "Example"),
 		Rows:   rows,
 		Info:   "\nTo enable failpoint: set @put_failpoint='key=value'\nTo disable failpoint: set @remove_failpoint='key'",
 	}, nil
@@ -972,7 +973,7 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 				continue
 			}
 
-			rows = append(rows, buildVarCharRow(
+			rows = append(rows, sqltypes.BuildVarCharRow(
 				s.Cell,
 				s.Target.Keyspace,
 				s.Target.Shard,
@@ -985,7 +986,7 @@ func (e *Executor) showTablets(filter *sqlparser.ShowFilter) (*sqltypes.Result, 
 		}
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Cell", "Keyspace", "Shard", "TabletType", "State", "Alias", "Hostname", "PrimaryTermStartTime"),
+		Fields: sqltypes.BuildVarCharFields("Cell", "Keyspace", "Shard", "TabletType", "State", "Alias", "Hostname", "PrimaryTermStartTime"),
 		Rows:   rows,
 	}, nil
 }
@@ -1052,7 +1053,7 @@ func (e *Executor) showTabletsPlans(filter *sqlparser.ShowFilter) (*sqltypes.Res
 	}
 
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
+		Fields: sqltypes.BuildVarCharFields("tablet_alias", "query_template", "plan_type", "tables", "query_count", "accumulated_time", "accumulated_mysql_time", "rows_affected", "rows_returned", "error_count"),
 		Rows:   rows,
 	}, nil
 }
@@ -1061,7 +1062,7 @@ func (e *Executor) showWorkload(_ *sqlparser.ShowFilter) (*sqltypes.Result, erro
 	rows := [][]sqltypes.Value{}
 	status := e.scatterConn.GetGatewayCacheStatus()
 	for _, s := range status {
-		rows = append(rows, buildVarCharRow(
+		rows = append(rows, sqltypes.BuildVarCharRow(
 			s.Name,
 			s.TabletType.String(),
 			fmt.Sprintf("%v", s.QueryCount),
@@ -1071,7 +1072,7 @@ func (e *Executor) showWorkload(_ *sqlparser.ShowFilter) (*sqltypes.Result, erro
 		))
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Tablet Alias", "Type", "TotalQueries(60s)", "Qps", "AvgLatency(ms)", "QueryError"),
+		Fields: sqltypes.BuildVarCharFields("Tablet Alias", "Type", "TotalQueries(60s)", "Qps", "AvgLatency(ms)", "QueryError"),
 		Rows:   rows,
 	}, nil
 }
@@ -1127,7 +1128,7 @@ func (e *Executor) showVitessReplicationStatus(ctx context.Context, filter *sqlp
 			}
 			replicationHealth := fmt.Sprintf("{\"EventStreamRunning\":\"%s\",\"EventApplierRunning\":\"%s\",\"LastError\":\"%s\"}", replIOThreadHealth, replSQLThreadHealth, replLastError)
 
-			rows = append(rows, buildVarCharRow(
+			rows = append(rows, sqltypes.BuildVarCharRow(
 				s.Target.Keyspace,
 				s.Target.Shard,
 				ts.Target.TabletType.String(),
@@ -1141,7 +1142,7 @@ func (e *Executor) showVitessReplicationStatus(ctx context.Context, filter *sqlp
 		}
 	}
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("Keyspace", "Shard", "TabletType", "Alias", "Hostname", "ReplicationSource", "ReplicationHealth", "ReplicationLag", "ThrottlerStatus"),
+		Fields: sqltypes.BuildVarCharFields("Keyspace", "Shard", "TabletType", "Alias", "Hostname", "ReplicationSource", "ReplicationHealth", "ReplicationLag", "ThrottlerStatus"),
 		Rows:   rows,
 	}, nil
 }
@@ -1413,27 +1414,6 @@ func (e *Executor) VSchemaStats() *VSchemaStats {
 		}
 	}
 	return e.vschemaStats
-}
-
-func buildVarCharFields(names ...string) []*querypb.Field {
-	fields := make([]*querypb.Field, len(names))
-	for i, v := range names {
-		fields[i] = &querypb.Field{
-			Name:    v,
-			Type:    sqltypes.VarChar,
-			Charset: collations.CollationUtf8ID,
-			Flags:   uint32(querypb.MySqlFlag_NOT_NULL_FLAG),
-		}
-	}
-	return fields
-}
-
-func buildVarCharRow(values ...string) []sqltypes.Value {
-	row := make([]sqltypes.Value, len(values))
-	for i, v := range values {
-		row[i] = sqltypes.NewVarChar(v)
-	}
-	return row
 }
 
 // isValidPayloadSize validates whether a query payload is above the
@@ -1866,12 +1846,12 @@ func generateShowCreateCDCResult(th *discovery.TabletHealth, target *querypb.Tar
 
 	// construct create cdc query result
 	rows := [][]sqltypes.Value{}
-	rows = append(rows, buildVarCharRow(
+	rows = append(rows, sqltypes.BuildVarCharRow(
 		cdcStmt.Name,
 		"\n"+sqlparser.String(cdcStmt),
 	))
 	return &sqltypes.Result{
-		Fields: buildVarCharFields("CDC", "Create CDC"),
+		Fields: sqltypes.BuildVarCharFields("CDC", "Create CDC"),
 		Rows:   rows,
 	}, nil
 }
@@ -1954,4 +1934,8 @@ func ParseTabletType(param string) (topodatapb.TabletType, error) {
 		return topodatapb.TabletType_UNKNOWN, fmt.Errorf("unknown TabletType %v", param)
 	}
 	return topodatapb.TabletType(value), nil
+}
+
+func (e *Executor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, error) {
+	return findHealthyPrimaryTablet(e.scatterConn.gateway.hc)
 }
