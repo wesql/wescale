@@ -1,3 +1,5 @@
+# config example: https://golangci-lint.run/usage/linters/
+
 run:
   go: 1.19
   timeout: 10m
@@ -13,6 +15,40 @@ linters-settings:
     disable: # not supported when using Generics in 1.18
       - nilness
       - unusedwrite
+  revive:
+    max-open-files: 2048
+    ignore-generated-header: true
+    severity: error
+    enable-all-rules: false
+    confidence: 0.1
+    rules:
+      - name: unhandled-error
+        disable: false
+      - name: deep-exit
+        disable: false
+      - name: imports-blacklist
+        disable: false
+      - name: nested-structs
+        disable: false
+      - name: range-val-address
+        disable: false
+      - name: string-of-int
+        disable: false
+      - name: unnecessary-stmt
+        disable: false
+      - name: blank-imports
+        disable: false
+      - name: unreachable-code
+        disable: false
+      - name: unused-parameter
+        disable: false
+      - name: indent-error-flow
+        disable: false
+      - name: range-val-in-closure
+        disable: false
+      - name: superfluous-else
+        disable: false
+
 
 linters:
   disable-all: true
