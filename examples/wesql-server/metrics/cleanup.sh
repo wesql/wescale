@@ -5,7 +5,7 @@ PROMETHEUS_CONTAINER="prometheus"
 GRAFANA_CONTAINER="grafana"
 
 # 定义网络名称
-NETWORK_NAME="monitoring_network"
+NETWORK_NAME="monitoring"
 
 echo "Stopping and removing Prometheus container..."
 docker stop $PROMETHEUS_CONTAINER 2>/dev/null

@@ -17,9 +17,9 @@ docker run -d \
   -e "GF_AUTH_ANONYMOUS_ENABLED=true" \
   -e "GF_AUTH_ANONYMOUS_ORG_ROLE=Admin" \
   -e "GF_AUTH_DISABLE_LOGIN_FORM=true" \
-  -e "GF_DATASOURCES_DEFAULT_URL=http://prometheus:9090" \
-  -e "GF_DATASOURCES_DEFAULT_TYPE=prometheus" \
-  -e "GF_DATASOURCES_DEFAULT_ACCESS=proxy" \
-  -e "GF_DATASOURCES_DEFAULT_IS_DEFAULT=true" \
-  -e "GF_DATASOURCES_DEFAULT_NAME=Prometheus" \
+  -e "GF_DATASOURCES__Prometheus__Name=Prometheus" \
+  -e "GF_DATASOURCES__Prometheus__Type=prometheus" \
+  -e "GF_DATASOURCES__Prometheus__Access=proxy" \
+  -e "GF_DATASOURCES__Prometheus__URL=http://prometheus:9090" \
+  -e "GF_DATASOURCES__Prometheus__IsDefault=true" \
   grafana/grafana
