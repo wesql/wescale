@@ -9,6 +9,8 @@ import (
 	"context"
 	"strings"
 	"time"
+	"vitess.io/vitess/go/vt/binlog/binlogplayer"
+	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/dbconfigs"
@@ -96,7 +98,7 @@ func (b *BranchWatcher) watch() error {
 			return err
 		}
 		switch vState {
-		case "Stopped":
+		case binlogplayer.BlpStopped:
 			if strings.Contains(message, "Stopped after copy") {
 				err = b.updateBranchState(ctx, conn, BranchStateOfCompleted, message, workflow)
 				if err != nil {
@@ -108,12 +110,13 @@ func (b *BranchWatcher) watch() error {
 					return err
 				}
 			}
-		case "Error":
+		case binlogplayer.BlpError:
 			err = b.updateBranchState(ctx, conn, BranchStateOfError, message, workflow)
 			if err != nil {
 				return err
 			}
-		case "Copying":
+		case binlogplayer.VReplicationCopying, binlogplayer.BlpRunning:
+			log.Tracef("BranchWatcher: workflow %s state is %s", workflow, vState)
 			err = b.updateBranchState(ctx, conn, BranchStateOfRunning, message, workflow)
 			if err != nil {
 				return err
@@ -124,12 +127,17 @@ func (b *BranchWatcher) watch() error {
 }
 
 func (b *BranchWatcher) Open() {
+	log.Tracef("BranchWatcher Open")
 	b.conns.Open(b.dbConfig, b.dbConfig, b.dbConfig)
 	b.ticker.Reset(b.updateInterval)
 	if !b.running {
 		go func() {
+			log.Tracef("BranchWatcher started")
 			for range b.ticker.C {
-				b.watch()
+				err := b.watch()
+				if err != nil {
+					log.Errorf("BranchWatcher error: %v", err)
+				}
 			}
 		}()
 		b.running = true
@@ -138,4 +146,5 @@ func (b *BranchWatcher) Open() {
 func (b *BranchWatcher) Close() {
 	b.conns.Close()
 	b.ticker.Stop()
+	b.running = false
 }

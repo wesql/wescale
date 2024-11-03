@@ -30,6 +30,7 @@ import (
 type Level = glog.Level
 
 const DebugVerbosity = 5
+const TraceVerbosity = 10
 
 var (
 	// V quickly checks if the logging verbosity meets a threshold.
@@ -41,6 +42,10 @@ var (
 	Debug      = glog.V(DebugVerbosity).Info
 	Debugf     = glog.V(DebugVerbosity).Infof
 	DebugDepth = glog.V(DebugVerbosity).InfoDepth
+
+	Trace      = glog.V(TraceVerbosity).Info
+	Tracef     = glog.V(TraceVerbosity).Infof
+	TraceDepth = glog.V(TraceVerbosity).InfoDepth
 
 	// Info formats arguments like fmt.Print.
 	Info = glog.Info
