@@ -170,14 +170,17 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	if !includeViews {
 		sql += " AND table_type = '" + tmutils.TableBaseTable + "'"
 	}
+	log.Tracef("execute query to get tables: %v", sql)
 	qr, err := mysqld.FetchSuperQuery(ctx, sql)
+	log.Tracef("len of qr.rows returned by FetchSuperQuery: %v", len(qr.Rows))
 	if err != nil {
+		log.Tracef("collectBasicTableData: error in FetchSuperQuery: %v", err)
 		return nil, err
 	}
 	if len(qr.Rows) == 0 {
+		log.Tracef("collectBasicTableData: no table found in db %v", dbName)
 		return nil, nil
 	}
-	log.Tracef("execute query to get tables: %v", sql)
 
 	filter, err := tmutils.NewTableFilter(tables, excludeTables, includeViews)
 	if err != nil {
