@@ -31,6 +31,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/vttablet/tmclient"
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
@@ -1110,6 +1112,8 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 		}
 
 		var applyDDLs []string
+		var tablesToCreate []string
+
 		for _, ts := range mz.ms.TableSettings {
 			if hasTargetTable[ts.TargetTable] {
 				// Table already exists.
@@ -1173,6 +1177,7 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 			}
 
 			applyDDLs = append(applyDDLs, createDDL)
+			tablesToCreate = append(tablesToCreate, ts.TargetTable)
 		}
 
 		if len(applyDDLs) > 0 {
@@ -1190,8 +1195,83 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 			}
 		}
 
-		return nil
+		// wait for all target tablets been created
+		return waitForTargetTablesCreate(ctx, tablesToCreate, mz.wr.tmc, targetTablet.Tablet)
 	})
+}
+
+// waitForTargetTablesCreate waits for all target tables to be created
+func waitForTargetTablesCreate(ctx context.Context, tablesToWait []string, tmc tmclient.TabletManagerClient, targetTablet *topodatapb.Tablet) error {
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	expectedTables := make(map[string]bool)
+	for _, table := range tablesToWait {
+		expectedTables[table] = false
+	}
+
+	// Check tables periodically
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Context timeout or cancellation
+			missingTables := []string{}
+			for tableName, found := range expectedTables {
+				if !found {
+					missingTables = append(missingTables, tableName)
+				}
+			}
+			return fmt.Errorf("timeout waiting for tables to be created. Missing tables: %v", missingTables)
+
+		case <-ticker.C:
+			// Get current schema
+			request := &tabletmanagerdatapb.GetSchemaRequest{
+				Tables:          []string{"/.*/"},
+				ExcludeTables:   []string{"/" + schema.GCTableNameExpression + "/"},
+				TableSchemaOnly: true,
+			}
+
+			schemaDef, err := tmc.GetSchema(ctx, targetTablet, request)
+			if err != nil {
+				log.Warningf("Error getting schema: %v, retrying...", err)
+				continue
+			}
+
+			// Check if all expected tables exist
+			allFound := true
+			for _, td := range schemaDef.TableDefinitions {
+				if _, ok := expectedTables[td.Name]; ok {
+					expectedTables[td.Name] = true
+				}
+			}
+
+			// Verify if all tables are found
+			for _, found := range expectedTables {
+				if !found {
+					allFound = false
+					break
+				}
+			}
+
+			if allFound {
+				log.Infof("All target tables have been created successfully")
+				return nil
+			}
+
+			// Log progress
+			missingTables := []string{}
+			for tableName, found := range expectedTables {
+				if !found {
+					missingTables = append(missingTables, tableName)
+				}
+			}
+			log.Infof("Waiting for tables to be created: %v", missingTables)
+		}
+	}
 }
 
 func stripTableForeignKeys(ddl string) (string, error) {
