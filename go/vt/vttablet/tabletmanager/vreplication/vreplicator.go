@@ -251,10 +251,12 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 		}
 		switch {
 		case numTablesToCopy != 0:
+			log.Tracef("replicate: numTablesToCopy != 0, numTablesToCopy=%v", numTablesToCopy)
 			if err := vr.clearFKCheck(vr.dbClient); err != nil {
 				log.Warningf("Unable to clear FK check %v", err)
 				return err
 			}
+			log.Tracef("replicate: newVCopier(vr).copyNext")
 			if err := newVCopier(vr).copyNext(ctx, settings); err != nil {
 				vr.stats.ErrorCounts.Add([]string{"Copy"}, 1)
 				return err
