@@ -116,7 +116,6 @@ func (b *BranchWatcher) watch() error {
 				return err
 			}
 		case binlogplayer.VReplicationCopying, binlogplayer.BlpRunning:
-			log.Tracef("BranchWatcher: workflow %s state is %s", workflow, vState)
 			err = b.updateBranchState(ctx, conn, BranchStateOfRunning, message, workflow)
 			if err != nil {
 				return err
