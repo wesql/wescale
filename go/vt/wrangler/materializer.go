@@ -1196,12 +1196,12 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 		}
 
 		// wait for all target tablets been created
-		return waitForTargetTablesCreate(ctx, tablesToCreate, mz.wr.tmc, targetTablet.Tablet)
+		return waitForTargetTablesCreate(ctx, targetDbName, tablesToCreate, mz.wr.tmc, targetTablet.Tablet)
 	})
 }
 
 // waitForTargetTablesCreate waits for all target tables to be created
-func waitForTargetTablesCreate(ctx context.Context, tablesToWait []string, tmc tmclient.TabletManagerClient, targetTablet *topodatapb.Tablet) error {
+func waitForTargetTablesCreate(ctx context.Context, targetDB string, tablesToWait []string, tmc tmclient.TabletManagerClient, targetTablet *topodatapb.Tablet) error {
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
@@ -1233,6 +1233,7 @@ func waitForTargetTablesCreate(ctx context.Context, tablesToWait []string, tmc t
 				Tables:          []string{"/.*/"},
 				ExcludeTables:   []string{"/" + schema.GCTableNameExpression + "/"},
 				TableSchemaOnly: true,
+				DbName:          targetDB,
 			}
 
 			schemaDef, err := tmc.GetSchema(ctx, targetTablet, request)
