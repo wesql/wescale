@@ -234,6 +234,7 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Tracef("replicate: ctx.Done()")
 			return nil
 		default:
 		}
@@ -271,6 +272,7 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 				}
 			}
 		case settings.StartPos.IsZero():
+			log.Tracef("replicate: settings.StartPos.IsZero(), call initTablesForCopy")
 			if err := newVCopier(vr).initTablesForCopy(ctx); err != nil {
 				vr.stats.ErrorCounts.Add([]string{"Copy"}, 1)
 				return err
@@ -312,9 +314,16 @@ func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*Colum
 	}
 	queryTemplate := "select character_set_name, collation_name, column_name, data_type, column_type, extra from information_schema.columns where table_schema=%s and table_name=%s;"
 	colInfoMap := make(map[string][]*ColumnInfo)
+
+	log.Tracef("buildColInfoMap: schema.TableDefinitions:")
+	for _, td := range schema.TableDefinitions {
+		log.Tracef("%v", td.Name)
+	}
+
 	for _, td := range schema.TableDefinitions {
 		//todo onlineDDL: fix tableSchema here
 		query := fmt.Sprintf(queryTemplate, encodeString(vr.dbClient.DBName()), encodeString(td.Name))
+		log.Tracef("buildColInfoMap: query to select table info: %s", query)
 		qr, err := vr.mysqld.FetchSuperQuery(ctx, query)
 		if err != nil {
 			return nil, err

@@ -88,6 +88,7 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 	if err != nil {
 		return nil, err
 	}
+	log.Tracef("len tds from collectBasicTableData: %v", len(tds))
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -173,7 +174,10 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 		tableName := row[0].ToString()
 		tableType := row[1].ToString()
 
+		log.Tracef("collectBasicTableData: %v", tableName)
+
 		if !filter.Includes(tableName, tableType) {
+			log.Tracef("collectBasicTableData: %v is skipped", tableName)
 			continue
 		}
 

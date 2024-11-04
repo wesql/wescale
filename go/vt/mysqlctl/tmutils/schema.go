@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/vt/schemadiff"
 
@@ -223,18 +224,23 @@ func NewTableFilter(tables, excludeTables []string, includeViews bool) (*TableFi
 
 // Includes returns whether a tableName/tableType should be included in this TableFilter.
 func (f *TableFilter) Includes(tableName string, tableType string) bool {
+
 	if f.filterTables {
 		matches := false
 		for _, name := range f.tableNames {
+			log.Tracef("TableFilter f.tableNames: %v", name)
 			if strings.EqualFold(name, tableName) {
 				matches = true
+				log.Tracef("TableFilter: strings.EqualFold %v", tableName)
 				break
 			}
 		}
 
 		if !matches {
 			for _, re := range f.tableREs {
+				log.Tracef("TableFilter f.tableREs: %v", re)
 				if re.MatchString(tableName) {
+					log.Tracef("TableFilter: re.MatchString %v", tableName)
 					matches = true
 					break
 				}
@@ -242,6 +248,7 @@ func (f *TableFilter) Includes(tableName string, tableType string) bool {
 		}
 
 		if !matches {
+			log.Tracef("not match, %v", tableName)
 			return false
 		}
 	}
@@ -264,6 +271,7 @@ func (f *TableFilter) Includes(tableName string, tableType string) bool {
 		return false
 	}
 
+	log.Tracef("return true for tableName %v ", tableName)
 	return true
 }
 
