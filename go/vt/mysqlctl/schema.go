@@ -88,7 +88,10 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 	if err != nil {
 		return nil, err
 	}
-	log.Tracef("len tds from collectBasicTableData: %v", len(tds))
+	log.Tracef("len tds from collectBasicTableData: %v, request tables: %v, tables are:", len(tds), request.Tables)
+	for _, td := range tds {
+		log.Tracef("td: %v", td.Name)
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -116,6 +119,11 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 			td.Columns = columns
 			td.Schema = schema
 		}(td)
+	}
+
+	log.Tracef("len tableNames: %v, tables are:", len(tableNames))
+	for _, tableName := range tableNames {
+		log.Tracef("tableName: %v", tableName)
 	}
 
 	// Get primary columns concurrently.
@@ -146,6 +154,11 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 
 	sd.TableDefinitions = tds
 
+	log.Tracef("sd.TableDefinitions return immediately:")
+	for _, td := range sd.TableDefinitions {
+		log.Tracef("td: %v", td.Name)
+	}
+
 	tmutils.GenerateSchemaVersion(sd)
 	return sd, nil
 }
@@ -153,6 +166,7 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, tables, excludeTables []string, includeViews bool) ([]*tabletmanagerdatapb.TableDefinition, error) {
 	// get the list of tables we're interested in
 	sql := "SELECT table_name, table_type, data_length, table_rows FROM information_schema.tables WHERE table_schema = '" + dbName + "'"
+
 	if !includeViews {
 		sql += " AND table_type = '" + tmutils.TableBaseTable + "'"
 	}
@@ -163,6 +177,7 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	if len(qr.Rows) == 0 {
 		return nil, nil
 	}
+	log.Tracef("execute query to get tables: %v", sql)
 
 	filter, err := tmutils.NewTableFilter(tables, excludeTables, includeViews)
 	if err != nil {
@@ -209,7 +224,10 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	}
 
 	sort.Sort(tds)
-
+	log.Tracef("collectBasicTableData return tds immediately, len(tds): %v", len(tds))
+	for _, td := range tds {
+		log.Tracef("collectBasicTableData: %v", td.Name)
+	}
 	return tds, nil
 }
 

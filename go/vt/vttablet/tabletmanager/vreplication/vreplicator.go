@@ -308,6 +308,7 @@ type ColumnInfo struct {
 func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*ColumnInfo, error) {
 	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{"/.*/"}, ExcludeTables: []string{"/" + schema.GCTableNameExpression + "/"}}
 	//todo onlineDDL: fix tableSchema here
+	log.Tracef("call vr.mysqld.GetSchema from buildColInfoMap")
 	schema, err := vr.mysqld.GetSchema(ctx, vr.dbClient.DBName(), req)
 	if err != nil {
 		return nil, err
