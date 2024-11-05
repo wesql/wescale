@@ -172,7 +172,7 @@ func (cached *DDL) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(64)
+		size += int64(80)
 	}
 	// field Keyspace *vitess.io/vitess/go/vt/vtgate/vindexes.Keyspace
 	size += cached.Keyspace.CachedSize(true)
@@ -186,6 +186,8 @@ func (cached *DDL) CachedSize(alloc bool) int64 {
 	size += cached.NormalDDL.CachedSize(true)
 	// field OnlineDDL *vitess.io/vitess/go/vt/vtgate/engine.OnlineDDL
 	size += cached.OnlineDDL.CachedSize(true)
+	// field DeclarativeDDL *vitess.io/vitess/go/vt/vtgate/engine.DeclarativeDDL
+	size += cached.DeclarativeDDL.CachedSize(true)
 	return size
 }
 func (cached *DML) CachedSize(alloc bool) int64 {
@@ -213,6 +215,54 @@ func (cached *DML) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.OwnedVindexQuery)))
 	// field RoutingParameters *vitess.io/vitess/go/vt/vtgate/engine.RoutingParameters
 	size += cached.RoutingParameters.CachedSize(true)
+	return size
+}
+func (cached *DeclarativeDDL) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(176)
+	}
+	// field dbName string
+	size += hack.RuntimeAllocSize(int64(len(cached.dbName)))
+	// field tableName string
+	size += hack.RuntimeAllocSize(int64(len(cached.tableName)))
+	// field desiredSchema string
+	size += hack.RuntimeAllocSize(int64(len(cached.desiredSchema)))
+	// field originSchema string
+	size += hack.RuntimeAllocSize(int64(len(cached.originSchema)))
+	// field diffDDLs []string
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.diffDDLs)) * int64(16))
+		for _, elem := range cached.diffDDLs {
+			size += hack.RuntimeAllocSize(int64(len(elem)))
+		}
+	}
+	// field diffDDLStmts []vitess.io/vitess/go/vt/sqlparser.DDLStatement
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.diffDDLStmts)) * int64(16))
+		for _, elem := range cached.diffDDLStmts {
+			if cc, ok := elem.(cachedObject); ok {
+				size += cc.CachedSize(true)
+			}
+		}
+	}
+	// field directPrimitives []*vitess.io/vitess/go/vt/vtgate/engine.Send
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.directPrimitives)) * int64(8))
+		for _, elem := range cached.directPrimitives {
+			size += elem.CachedSize(true)
+		}
+	}
+	// field onlineDDLPrimitives []*vitess.io/vitess/go/vt/vtgate/engine.OnlineDDL
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.onlineDDLPrimitives)) * int64(8))
+		for _, elem := range cached.onlineDDLPrimitives {
+			size += elem.CachedSize(true)
+		}
+	}
 	return size
 }
 func (cached *Delete) CachedSize(alloc bool) int64 {
