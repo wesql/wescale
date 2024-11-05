@@ -49,6 +49,7 @@ jobs:
           colima start --kubernetes
 
         # Step 7: Verify Kubernetes is running
+      - name: kubectl get nodes
         run: |
           kubectl get nodes
           kubectl get pods -A
