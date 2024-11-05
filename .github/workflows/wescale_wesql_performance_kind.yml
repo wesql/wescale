@@ -16,7 +16,7 @@ on:
 
 jobs:
   setup:
-    name: "Setup WeScale WeSQL Server Cluster"
+    name: "Kind Ubuntu K8s Cluster"
     runs-on: ubuntu-latest
 
     steps:
@@ -108,12 +108,15 @@ jobs:
           
           kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "SHOW DATABASES;"
 
-      - name: Print WeSQL Server Logs
+      - name: Print WeSQL Server ConfigMap and Secret
         if: always()
         run: |
           kubectl get configmap wesql-server-config -o yaml
           kubectl get secret wesql-server-secret -o yaml
-          
+
+      - name: Print WeSQL Server Logs
+        if: always()
+        run: |
           kubectl logs mycluster-wesql-0-0
 
       - name: Clean up

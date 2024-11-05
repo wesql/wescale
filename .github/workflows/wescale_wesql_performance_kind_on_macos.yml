@@ -16,7 +16,7 @@ on:
 
 jobs:
   setup:
-    name: "Setup WeScale WeSQL Server Cluster"
+    name: "Kind MacOS K8s Cluster"
     runs-on: macos-latest
 
     steps:
