@@ -24,14 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install Homebrew (如果未预装)
-      - name: Install Homebrew
-        if: runner.os == 'macos' && !command -v brew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-
       # Step 3: Install kubectl
       - name: Install kubectl
         run: brew install kubectl
