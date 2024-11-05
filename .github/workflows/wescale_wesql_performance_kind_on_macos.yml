@@ -24,12 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install Homebrew (通常已预装，可省略)
-      - name: Install Homebrew
-        if: runner.os == 'macos' && !command -v brew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
       # Step 3: Install Docker
       - name: Install Docker
         run: brew install --cask docker
