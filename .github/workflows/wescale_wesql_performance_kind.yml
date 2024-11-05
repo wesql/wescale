@@ -59,7 +59,7 @@ jobs:
       # Step 5: Create Kubernetes ConfigMap and Secret
       - name: Create ConfigMap and Secret in Kubernetes
         run: |
-          export WESQL_OBJECTSTORE_BUCKET=${{ secrets.BUCKET_NAME }}
+          export WESQL_OBJECTSTORE_BUCKET=${{ steps.create_bucket.outputs.bucket_name }}
           export WESQL_OBJECTSTORE_REGION=us-east-2
           export WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY_ID }}
           export WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
