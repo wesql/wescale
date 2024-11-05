@@ -36,6 +36,7 @@ func (uvs *uvstreamer) copy(ctx context.Context) error {
 	for len(uvs.tablesToCopy) > 0 {
 		tableName := uvs.tablesToCopy[0]
 		log.V(2).Infof("Copystate not empty starting catchupAndCopy on table %s", tableName)
+		log.Tracef("uvstreamer copy(): start catchup and copy for table %v", tableName)
 		if err := uvs.catchupAndCopy(ctx, tableName); err != nil {
 			uvs.vse.errorCounts.Add("Copy", 1)
 			return err

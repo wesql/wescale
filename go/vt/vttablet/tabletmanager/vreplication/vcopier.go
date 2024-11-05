@@ -240,6 +240,9 @@ func (vc *vcopier) initTablesForCopy(ctx context.Context) error {
 			fmt.Fprintf(&buf, "%s(%d, %s)", prefix, vc.vr.id, encodeString(name))
 			prefix = ", "
 		}
+
+		log.Tracef("insert copy_state sql: %v", buf.String())
+
 		if _, err := vc.vr.dbClient.Execute(buf.String()); err != nil {
 			return err
 		}
@@ -326,6 +329,7 @@ func (vc *vcopier) copyNext(ctx context.Context, settings binlogplayer.VRSetting
 	if err := vc.catchup(ctx, copyState); err != nil {
 		return err
 	}
+	log.Tracef("vcopier.copyNext: call copyTable with tableToCopy:%v, copyState:%v", tableToCopy, copyState)
 	return vc.copyTable(ctx, tableToCopy, copyState)
 }
 
@@ -428,6 +432,7 @@ func (vc *vcopier) copyTable(ctx context.Context, tableName string, copyState ma
 	// Use this for task sequencing.
 	var prevCh <-chan *vcopierCopyTaskResult
 
+	log.Tracef("vcopier.copyTable: call VStreamRows with query:%v(initialPlan.SendRule.Filter)", initialPlan.SendRule.Filter)
 	serr := vc.vr.sourceVStreamer.VStreamRows(ctx, vc.vr.sourceTableSchema, initialPlan.SendRule.Filter, lastpkpb, func(rows *binlogdatapb.VStreamRowsResponse) error {
 		for {
 			select {

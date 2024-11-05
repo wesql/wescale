@@ -448,7 +448,7 @@ func (wr *Wrangler) ExecuteQueryByPrimary(ctx context.Context, sql string, disab
 	return wr.ExecuteFetchAsDba(ctx, alias, sql, 10000, disableBinlog, reloadSchema)
 }
 
-func (wr *Wrangler) RebuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
+func (wr *Wrangler) BuildMaterializeSettings(ctx context.Context, workflow string) (*vtctldatapb.MaterializeSettings, error) {
 	branchJob, err := GetBranchJobByWorkflow(ctx, workflow, wr)
 	if err != nil {
 		return nil, err
@@ -501,47 +501,80 @@ func (wr *Wrangler) StreamExist(ctx context.Context, workflow string) (bool, err
 	return false, nil
 }
 
+// StartBranch create target tables and starts a vreplication
 func (wr *Wrangler) StartBranch(ctx context.Context, workflow string) error {
-	ms, err := wr.RebuildMaterializeSettings(ctx, workflow)
+	ms, err := wr.BuildMaterializeSettings(ctx, workflow)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize materializer settings: %w", err)
 	}
-	var exist bool
-	var mz *materializer
-	if exist, err = wr.StreamExist(ctx, workflow); err != nil {
-		return err
-	}
-	if !exist {
-		mz, err = wr.prepareMaterializerStreams(ctx, ms)
-		if err != nil {
-			return err
-		}
-		err = wr.storeSchemaSnapshot(ctx, workflow, mz)
-		if err != nil {
-			return err
-		}
-	} else {
-		mz, err = wr.buildMaterializer(ctx, ms)
-		if err != nil {
-			return err
-		}
-	}
-	exist, err = wr.StreamExist(ctx, workflow)
+
+	// Get or create materializer based on stream existence
+	mz, err := wr.getOrCreateMaterializer(ctx, workflow, ms)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get or create materializer: %w", err)
 	}
-	if exist {
-		err = mz.startStreams(ctx)
-		if err != nil {
-			return err
-		}
+
+	// Ensure target tables are created
+	if err := wr.ensureTargetTablesExist(ctx, mz); err != nil {
+		return fmt.Errorf("failed to ensure target tables exist: %w", err)
 	}
+
+	if err := mz.startStreams(ctx); err != nil {
+		return fmt.Errorf("failed to start streams: %w", err)
+	}
+
 	wr.Logger().Printf("Start workflow:%v successfully.\n", workflow)
 	return nil
 }
 
+// getOrCreateMaterializer either creates a new materializer or builds one from existing settings
+func (wr *Wrangler) getOrCreateMaterializer(ctx context.Context, workflow string, ms *vtctldatapb.MaterializeSettings) (*materializer, error) {
+	exist, err := wr.StreamExist(ctx, workflow)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exist {
+		return wr.createNewMaterializer(ctx, workflow, ms)
+	}
+
+	return wr.buildMaterializer(ctx, ms)
+}
+
+// createNewMaterializer prepares and stores a new materializer
+func (wr *Wrangler) createNewMaterializer(ctx context.Context, workflow string, ms *vtctldatapb.MaterializeSettings) (*materializer, error) {
+	mz, err := wr.prepareMaterializerStreams(ctx, ms)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := wr.storeSchemaSnapshot(ctx, workflow, mz); err != nil {
+		return nil, err
+	}
+
+	return mz, nil
+}
+
+// ensureTargetTablesExist waits for all target tablets to be created
+func (wr *Wrangler) ensureTargetTablesExist(ctx context.Context, mz *materializer) error {
+	return mz.forAllTargets(func(target *topo.ShardInfo) error {
+		targetTablet, err := mz.wr.ts.GetTablet(ctx, target.PrimaryAlias)
+		if err != nil {
+			return err
+		}
+
+		targetDbName := mz.targetShards[0].Keyspace()
+		tablesToCreate := make([]string, len(mz.ms.TableSettings))
+		for i, ts := range mz.ms.TableSettings {
+			tablesToCreate[i] = ts.TargetTable
+		}
+
+		return waitForTargetTablesCreate(ctx, targetDbName, tablesToCreate, mz.wr.tmc, targetTablet.Tablet)
+	})
+}
+
 func (wr *Wrangler) StopBranch(ctx context.Context, workflow string) error {
-	ms, err := wr.RebuildMaterializeSettings(ctx, workflow)
+	ms, err := wr.BuildMaterializeSettings(ctx, workflow)
 	if err != nil {
 		return err
 	}

@@ -22,9 +22,8 @@ limitations under the License.
 package vreplication
 
 import (
-	"sync"
-
 	"context"
+	"sync"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/dbconfigs"

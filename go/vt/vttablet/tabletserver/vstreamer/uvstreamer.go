@@ -181,6 +181,7 @@ func (uvs *uvstreamer) buildTablePlan() error {
 
 	}
 	sort.Strings(uvs.tablesToCopy)
+	log.Tracef("uvstreamer buildTablePlan: tablesToCopy %v", uvs.tablesToCopy)
 	return nil
 }
 

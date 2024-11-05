@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"vitess.io/vitess/go/vt/log"
 
 	"vitess.io/vitess/go/vt/schemadiff"
 
@@ -264,6 +265,7 @@ func (f *TableFilter) Includes(tableName string, tableType string) bool {
 		return false
 	}
 
+	log.Tracef("return true for tableName %v ", tableName)
 	return true
 }
 
