@@ -1,4 +1,4 @@
-name: "Setup WeScale WeSQL Server Cluster Colima"
+name: "Setup WeScale WeSQL Server Cluster Kind"
 
 on:
   pull_request:
@@ -17,43 +17,32 @@ on:
 jobs:
   setup:
     name: "Setup WeScale WeSQL Server Cluster"
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install kubectl
-      - name: Install kubectl
-        run: brew install kubectl
-
-      # Step 3: Install Docker
-      - name: Install Docker
-        run: brew install --cask docker
-
-      # Step 4: Install Colima
-      - name: Install Colima
-        run: brew install colima
-
-      # Step 5: Start Docker (required for Colima)
-      - name: Start Docker
+      # Step 2: Install Kind
+      - name: Install Kind
         run: |
-          open /Applications/Docker.app
-          # 等待 Docker 启动
-          sleep 30
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
 
-      # Step 6: Setup Colima with Kubernetes
-      - name: Setup Colima with Kubernetes
+      # Step 3: Create Kind Cluster
+      - name: Create Kind Cluster
         run: |
-          colima start --kubernetes
+          kind create cluster --name wescale-cluster
 
-        # Step 7: Verify Kubernetes is running
+      # Step 4: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
         run: |
           kubectl get nodes
           kubectl get pods -A
 
-      # Step 8: Create Kubernetes ConfigMap and Secret
+      # Step 5: Create Kubernetes ConfigMap and Secret
       - name: Create ConfigMap and Secret in Kubernetes
         run: |
           kubectl apply -f - <<EOF
@@ -88,7 +77,7 @@ jobs:
           
           kubectl get secret wesql-server-secret --namespace default -o yaml
 
-      # Step 9: Generate Cluster YAML File And Create Cluster
+      # Step 6: Generate Cluster YAML File And Create Cluster
       - name: Generate Cluster YAML File And Create Cluster
         run: |
           WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
