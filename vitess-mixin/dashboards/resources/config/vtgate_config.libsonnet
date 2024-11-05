@@ -73,7 +73,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateRequestsByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Requests (by db_type)',
+        title: 'Requests (by tablet_type)',
         targets: [
           {
             expr: |||
@@ -86,11 +86,13 @@ local vitess_ct = configuration_templates.prometheus_vitess;
         ],
       },
 
+
+
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vtgateRequestsByInstanceDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Requests (by db_type)',
+        title: 'Requests (by tablet_type)',
         fill: 0,
         targets: [
           {
@@ -123,6 +125,29 @@ local vitess_ct = configuration_templates.prometheus_vitess;
                   rate(
                     vtgate_api_count{
                       instance=~'$host'
+                    }[1m]
+                  )
+                )
+              |||,
+            legendFormat: '{{instance}}',
+            intervalFactor: 1,
+          },
+        ],
+      },
+
+    vtgateRequestsByInstance2:
+      panel_template
+      + vitess_ct.panel.null_as_zeros {
+        title: 'Requests',
+        fill: 0,
+        targets: [
+          {
+            expr:
+              |||
+                sum by (instance)(
+                  rate(
+                    vtgate_api_count{
+                      instance=~'$vtgate_host'
                     }[1m]
                   )
                 )
@@ -178,7 +203,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorRateByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Error rate (by db_type)',
+        title: 'Error rate (by tablet_type)',
         format: 'percentunit',
         targets: [
           {
@@ -230,7 +255,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorRateByInstanceDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Error rate (by db_type)',
+        title: 'Error rate (by tablet_type)',
         fill: 0,
         format: 'percentunit',
         targets: [
@@ -338,7 +363,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
 
     //TODO crete a recording rule for this prometheus vitess target
     vtgateDurationP99ByInstanceDBType: vtgateDurationTemplate {
-      title: 'Duration 99th quantile (by db_type)',
+      title: 'Duration 99th quantile (by tablet_type)',
       fill: 0,
       targets: [
         {
@@ -385,6 +410,17 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             )
           |||,
           legendFormat: 'Duration p50 (vttablet)',
+        },
+        {
+          expr: |||
+            histogram_quantile(
+              0.50,
+              sum by(le)(
+                vitess_mixin:vttablet_mysql_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p50 (mysql)',
         }
       ],
     },
@@ -437,6 +473,17 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             )
           |||,
           legendFormat: 'Duration p95 (vttablet)',
+        },
+        {
+          expr: |||
+            histogram_quantile(
+              0.95,
+              sum by(le)(
+                vitess_mixin:vttablet_mysql_bucket:rate1m
+              )
+            )
+          |||,
+          legendFormat: 'Duration p95 (mysql)',
         },
       ],
     },
@@ -500,6 +547,22 @@ local vitess_ct = configuration_templates.prometheus_vitess;
               )
           |||,
           legendFormat: 'Avg Latency (vttablet)',
+        },
+        {
+          expr: |||
+            sum (
+              rate(
+                vttablet_mysql_sum[5m]
+              )
+            )
+            /
+            sum (
+              rate(
+                vttablet_mysql_count[5m]
+                )
+              )
+          |||,
+          legendFormat: 'Avg Latency (mysql)',
         }
       ],
     },
@@ -535,7 +598,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateDurationP99ByDBType:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Duration 99th quantile (by db_type)',
+        title: 'Duration 99th quantile (by tablet_type)',
         format: 's',
         targets: [
           {
@@ -614,7 +677,7 @@ local vitess_ct = configuration_templates.prometheus_vitess;
     vtgateErrorsByDbtype:
       panel_template
       + vitess_ct.panel.null_as_zeros {
-        title: 'Errors (by db_type)',
+        title: 'Errors (by tablet_type)',
         format: 'cps',
         targets: [
           {
@@ -796,6 +859,44 @@ local vitess_ct = configuration_templates.prometheus_vitess;
             )
           |||,
           instant: true,
+          intervalFactor: 1,
+        },
+    },
+
+    vtgateReadRatio: {
+      title: 'Read Ratio',
+      datasource: '%(dataSource)s' % config._config,
+      format: 'short',
+      valueFontSize: '70%',
+      valueName: 'current',
+      sparklineFull: true,
+      sparklineShow: true,
+      target:
+        {
+          expr: |||
+            round(sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show"})
+                /
+            sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show|Insert|Update|Delete"}) * 100, 0.1)
+          |||,
+          intervalFactor: 1,
+        },
+    },
+
+    vtgateWriteRatio: {
+      title: 'Write Ratio',
+      datasource: '%(dataSource)s' % config._config,
+      format: 'short',
+      valueFontSize: '70%',
+      valueName: 'current',
+      sparklineFull: true,
+      sparklineShow: true,
+      target:
+        {
+          expr: |||
+            round(sum(vttablet_queries_count{plan_type=~"Insert|Update|Delete"})
+                /
+            sum(vttablet_queries_count{plan_type=~"Select|SelectImpossible|OtherRead|Show|Insert|Update|Delete"}) * 100, 0.1)
+          |||,
           intervalFactor: 1,
         },
     },

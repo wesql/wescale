@@ -24,7 +24,7 @@ local row = grafana.row;
   duration::
     row.new(
       title='Duration',
-      collapse=true,
+      collapse=false,
     ),
 
   errorsRowsReturned::
@@ -183,6 +183,12 @@ local row = grafana.row;
       collapse=true,
     ),
 
+  activeConnectionsOfAllPools::
+    row.new(
+      title='Active connections of All Pools',
+      collapse=true,
+    ),
+
   vtgate::
     row.new(
       title='vtgate - Requests (by table / by plan / by keyspace )',
@@ -192,6 +198,42 @@ local row = grafana.row;
   vttablet::
     row.new(
       title='vttablet - Requests (by table / by plan / by keyspace )',
+      collapse=true,
+    ),
+
+  RequestsVTGate::
+      row.new(
+        title='Requests (VTGate)',
+        collapse=true,
+      ),
+
+  RequestsVTTablet::
+      row.new(
+        title='Requests (VTTablet)',
+        collapse=true,
+      ),
+
+  DurationVTTabletQuery::
+      row.new(
+        title='Duration (VTTablet Query)',
+        collapse=true,
+      ),
+
+  DurationVTTabletTransaction::
+      row.new(
+        title='Duration (VTTablet Transaction)',
+        collapse=true,
+      ),
+
+  ErrorsVTGate::
+    row.new(
+      title='Errors (VTGate)',
+      collapse=true,
+    ),
+
+  ErrorsVTTablet::
+    row.new(
+      title='Errors (VTTablet)',
       collapse=true,
     ),
 

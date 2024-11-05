@@ -1,3 +1,5 @@
+# config example: https://golangci-lint.run/usage/linters/
+
 run:
   go: 1.19
   timeout: 10m
@@ -13,6 +15,27 @@ linters-settings:
     disable: # not supported when using Generics in 1.18
       - nilness
       - unusedwrite
+  gosimple:
+    # see how to disable checks: https://staticcheck.dev/docs/configuration/options/#checks
+    checks: ["all", "-S1002"]
+  revive:
+    ignore-generated-header: true
+    enable-all-rules: false
+    # available rules: https://github.com/mgechev/revive?tab=readme-ov-file#available-rules
+    rules:
+      - name: unhandled-error
+      - name: deep-exit
+      - name: imports-blacklist
+      - name: nested-structs
+      - name: range-val-address
+      - name: string-of-int
+      - name: unnecessary-stmt
+      - name: blank-imports
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: indent-error-flow
+      - name: range-val-in-closure
+      - name: superfluous-else
 
 linters:
   disable-all: true

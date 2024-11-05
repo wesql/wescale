@@ -15,4 +15,8 @@
     title: 'WeScale Timings',
     collapse: true,
   },
+  gc:: {
+    title: 'GC',
+    collapse: true,
+  },
 }

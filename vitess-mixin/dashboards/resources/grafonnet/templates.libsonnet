@@ -48,4 +48,16 @@ local template = grafana.template;
       sort=1
     ),
 
+  vtgatehost::
+    template.new(
+      'vtgate_host',
+      '%(dataSource)s' % config._config,
+      'label_values(vtgate_build_number, instance)',
+      label='Host(s)',
+      refresh='time',
+      multi=true,
+      allValues='.*',
+    ),
+
+
 }

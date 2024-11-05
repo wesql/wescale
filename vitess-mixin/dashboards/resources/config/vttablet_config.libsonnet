@@ -907,6 +907,23 @@ local vitess_ct = configuration_templates.prometheus_vitess;
       ],
     },
 
+
+    vttabletPoolActiveConnectionsOfAllPools: vttablet_host_view_panel_template {
+      title: 'Active Connections of All Pools',
+      description: 'Number of active connections in all connection pools',
+      format: 'short',
+      targets: [
+        {
+          expr: |||
+            sum by(instance, __name__) (
+              {__name__=~"vttablet.*active", instance=~"$host"}
+            )
+          |||,
+          legendFormat: '{{instance}} - {{__name__}}',
+        },
+      ],
+    },
+
     //TODO CREATE A RECORDING RULE FOR THIS PROMETHEUS TARGET
     vttabletGarbageCollectionCount: vitess_ct.panel.go_gc_ops {
       title: 'GC Count (vttablet)',
@@ -1096,5 +1113,60 @@ local vitess_ct = configuration_templates.prometheus_vitess;
           intervalFactor: 1,
         },
     },
+
+    connectionsActive: {
+          title: 'Connections Established - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_active:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
+    connectionsInUse: {
+          title: 'Connections In Use - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_in_use:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
+    connectionsCapacity: {
+          title: 'Connections Capacity - vttablet',
+          datasource: '%(dataSource)s' % config._config,
+          format: 'short',
+          valueFontSize: '70%',
+          valueName: 'current',
+          sparklineFull: true,
+          sparklineShow: true,
+          target:
+            {
+              expr: |||
+                sum (
+                  vitess_mixin:vttablet_connections_capacity:rate1m
+                )
+              |||,
+              intervalFactor: 1,
+            },
+        },
   },
 }
