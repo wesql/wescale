@@ -1,200 +1,224 @@
-#name: "Setup WeScale WeSQL Server Cluster"
+name: "Setup WeScale WeSQL Server Cluster"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
+
+jobs:
+  setup:
+    name: "Setup WeScale WeSQL Server Cluster"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure AWS CLI
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region us-east-2
+
+      # Step 3: Generate S3 bucket name and create bucket
+      - name: Create S3 Bucket
+        id: create_bucket
+        run: |
+          BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
+          echo "Bucket name: $BUCKET_NAME"
+          aws s3 mb s3://$BUCKET_NAME
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create WeSQL Cluster in Docker
+        run: |
+          docker network create my-network
+          mkdir -p ./wesql-local-dir
+          chmod 777 ./wesql-local-dir
+
+      - name: Run WeSQL Server Container
+        run: |
+          docker run -itd --name wesql-server \
+          --network my-network \
+          -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+          port=3306\n\
+          log-bin=binlog\n\
+          gtid_mode=ON\n\
+          enforce_gtid_consistency=ON\n\
+          log_slave_updates=ON\n\
+          binlog_format=ROW\n\
+          objectstore_provider='aws'\n\
+          objectstore_region='us-east-1'\n\
+          objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
+          datadir=/data/mysql/data\n\
+          log-error=/data/mysql/log/mysqld-error.log" \
+          -p 3306:3306 \
+          -v ./wesql-local-dir:/data/mysql \
+          -e WESQL_CLUSTER_MEMBERS='127.0.0.1:13306' \
+          -e WESQL_CLUSTER_MEMBER_INDEX=0 \
+          -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+          -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
+
+
+      #           启动 wesql-server-1
+#          docker run -itd --name wesql-server-1 --net=wesql-network --ip=172.21.0.3 \
+#            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+#            port=3306\n\
+#            log-bin=binlog\n\
+#            objectstore_provider='aws'\n\
+#            objectstore_region='us-east-1'\n\
+#            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
+#            datadir=/data/mysql/data\n\
+#            log-error=/data/mysql/log/mysqld-error.log" \
+#            -v ~/wesql-local-dir-1:/data/mysql \
+#            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
+#            -e WESQL_CLUSTER_MEMBER_INDEX=1 \
+#            -e WESQL_LOGGER_MODE=1 \
+#            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+#            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+#            -e MYSQL_ROOT_PASSWORD=passwd \
+#            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
 #
-#on:
-#  pull_request:
-#    types: [opened, synchronize, reopened]
-#  workflow_dispatch:
-#    inputs:
-#      wescale_image_tag:
-#        description: "WeScale Image Tag"
-#        required: true
-#        default: "0.3.0"
-#      wesql_image_tag:
-#        description: "WeSQL Server Image Tag"
-#        required: true
-#        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
-#
-#jobs:
-#  setup:
-#    name: "Setup WeScale WeSQL Server Cluster"
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      # Step 1: Checkout the code
-#      - name: Checkout code
-#        uses: actions/checkout@v3
-#
-#      # Step 2: Configure AWS CLI
-#      - name: Configure AWS CLI
+#          # 启动 wesql-server-2
+#          docker run -itd --name wesql-server-2 --net=wesql-network --ip=172.21.0.4 \
+#            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
+#            port=3306\n\
+#            log-bin=binlog\n\
+#            objectstore_provider='aws'\n\
+#            objectstore_region='us-east-1'\n\
+#            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
+#            datadir=/data/mysql/data\n\
+#            log-error=/data/mysql/log/mysqld-error.log" \
+#            -v ~/wesql-local-dir-2:/data/mysql \
+#            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
+#            -e WESQL_CLUSTER_MEMBER_INDEX=2 \
+#            -e WESQL_LOGGER_MODE=1 \
+#            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
+#            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
+#            -e MYSQL_ROOT_PASSWORD=passwd \
+#            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
+
+      # Step 4: Start Kind Cluster using kind-action
+#      - name: Start Kind Cluster
+#        uses: helm/kind-action@v1.4.0
+#        with:
+#          version: "v0.23.0"
+#          cluster_name: "wescale-cluster"
+
+#      - name: start minikube
+#        id: minikube
+#        uses: medyagh/setup-minikube@latest
+
+
+      # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
+      # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
+#      - name: Create Secret in Kind Cluster
 #        run: |
-#          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          aws configure set default.region us-east-2
+#          kubectl apply -f - <<EOF
+#          apiVersion: v1
+#          kind: ConfigMap
+#          metadata:
+#            name: wesql-server-config
+#          data:
+#            MYSQL_CUSTOM_CONFIG: |
+#              [mysqld]
+#              objectstore_provider=aws
+#              objectstore_region=us-east-2
+#              objectstore_bucket=${{ steps.create_bucket.outputs.bucket_name }}
+#              datadir=/data/mysql/data
+#              log-error=/data/mysql/log/mysqld-error.log
+#              log-bin=binlog
+#              gtid_mode=ON
+#              enforce_gtid_consistency=ON
+#              log_slave_updates=ON
+#              binlog_format=ROW
+#              skip_name_resolve=ON
+#          EOF
 #
-#      # Step 3: Generate S3 bucket name and create bucket
-#      - name: Create S3 Bucket
-#        id: create_bucket
+#          kubectl get configmap wesql-server-config --namespace default -o yaml
+#
+#          kubectl create secret generic wesql-server-secret \
+#            --namespace default \
+#            --type Opaque \
+#            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }} \
+#            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }} \
+#            --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+#
+#          kubectl get secret wesql-server-secret --namespace default -o yaml
+
+      # Step 6: Generate Cluster YAML File And Create Cluster
+#      - name: Generate Cluster YAML File And Create Cluster
 #        run: |
-#          BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
-#          echo "Bucket name: $BUCKET_NAME"
-#          aws s3 mb s3://$BUCKET_NAME
-#          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+#          WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
+#          WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.27' }}
 #
-#      - name: Create WeSQL Cluster in Docker
+#          echo "Using Wescale Image Tag: $WESCALE_IMAGE_TAG"
+#          echo "Using WeSQL Server Image Tag: $WESQL_SERVER_IMAGE_TAG"
+#
+#          sed -e "s|\${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g" -e "s|\${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g" cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
+#          echo "Content of wescale-standard-tag.yaml:"
+#          cat cluster/wescale-standard-tag.yaml
+#
+#          echo "Creating Cluster..."
+#          kubectl apply -f cluster/wescale-standard-tag.yaml
+#          kubectl get pods
+
+#          kubectl wait --for=condition=ready pod --all --timeout=600s
+#
+#          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
+
+      - name: Install Tmate
+        run: sudo apt-get install tmate
+
+      - name: Start Tmate session
+        run: |
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+
+          TIMEOUT=1800  # 30 minutes
+          INTERVAL=1  # 1 second
+          START_TIME=$(date +%s)
+
+          while true; do
+            sleep "$INTERVAL"
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+
+            # Check if timeout is reached
+            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+              echo "Timeout reached while waiting for the container."
+              break
+            fi
+          done
+        continue-on-error: true
+
+
+#      - name: Print Logs of the Pod
 #        run: |
-#          docker network create my-network
-#          mkdir -p ./wesql-local-dir
-#          chmod 777 ./wesql-local-dir
-#
-#      - name: Run WeSQL Server Container
-#        run: |
-#          docker run -itd --name wesql-server \
-#          --network my-network \
-#          -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-#          port=3306\n\
-#          log-bin=binlog\n\
-#          gtid_mode=ON\n\
-#          enforce_gtid_consistency=ON\n\
-#          log_slave_updates=ON\n\
-#          binlog_format=ROW\n\
-#          objectstore_provider='aws'\n\
-#          objectstore_region='us-east-1'\n\
-#          objectstore_bucket='${{ secrets.BUCKET_NAME }}'\n\
-#          datadir=/data/mysql/data\n\
-#          log-error=/data/mysql/log/mysqld-error.log" \
-#          -p 3306:3306 \
-#          -v ./wesql-local-dir:/data/mysql \
-#          -e WESQL_CLUSTER_MEMBERS='127.0.0.1:13306' \
-#          -e WESQL_CLUSTER_MEMBER_INDEX=0 \
-#          -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-#          -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-#          -e MYSQL_ROOT_PASSWORD=passwd \
-#          apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.25
-#
-#
-#      #           启动 wesql-server-1
-##          docker run -itd --name wesql-server-1 --net=wesql-network --ip=172.21.0.3 \
-##            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-##            port=3306\n\
-##            log-bin=binlog\n\
-##            objectstore_provider='aws'\n\
-##            objectstore_region='us-east-1'\n\
-##            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
-##            datadir=/data/mysql/data\n\
-##            log-error=/data/mysql/log/mysqld-error.log" \
-##            -v ~/wesql-local-dir-1:/data/mysql \
-##            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
-##            -e WESQL_CLUSTER_MEMBER_INDEX=1 \
-##            -e WESQL_LOGGER_MODE=1 \
-##            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-##            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-##            -e MYSQL_ROOT_PASSWORD=passwd \
-##            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
-##
-##          # 启动 wesql-server-2
-##          docker run -itd --name wesql-server-2 --net=wesql-network --ip=172.21.0.4 \
-##            -e MYSQL_CUSTOM_CONFIG="[mysqld]\n\
-##            port=3306\n\
-##            log-bin=binlog\n\
-##            objectstore_provider='aws'\n\
-##            objectstore_region='us-east-1'\n\
-##            objectstore_bucket='${{ steps.create_bucket.outputs.bucket_name }}'\n\
-##            datadir=/data/mysql/data\n\
-##            log-error=/data/mysql/log/mysqld-error.log" \
-##            -v ~/wesql-local-dir-2:/data/mysql \
-##            -e WESQL_CLUSTER_MEMBER='172.21.0.2:13306;172.21.0.3:13306;172.21.0.4:13306' \
-##            -e WESQL_CLUSTER_MEMBER_INDEX=2 \
-##            -e WESQL_LOGGER_MODE=1 \
-##            -e WESQL_OBJECTSTORE_ACCESS_KEY='${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }}' \
-##            -e WESQL_OBJECTSTORE_SECRET_KEY='${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }}' \
-##            -e MYSQL_ROOT_PASSWORD=passwd \
-##            apecloud/wesql-server:8.0.35-6.alpha10.20240918.g18ad68b.26
-#
-#      # Step 4: Start Kind Cluster using kind-action
-##      - name: Start Kind Cluster
-##        uses: helm/kind-action@v1.4.0
-##        with:
-##          version: "v0.23.0"
-##          cluster_name: "wescale-cluster"
-#
-##      - name: start minikube
-##        id: minikube
-##        uses: medyagh/setup-minikube@latest
-#
-#
-#      # Step 5: Create Kubernetes ConfigMap and  Secret in Kind Cluster
-#      # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
-##      - name: Create Secret in Kind Cluster
-##        run: |
-##          kubectl apply -f - <<EOF
-##          apiVersion: v1
-##          kind: ConfigMap
-##          metadata:
-##            name: wesql-server-config
-##          data:
-##            MYSQL_CUSTOM_CONFIG: |
-##              [mysqld]
-##              objectstore_provider=aws
-##              objectstore_region=us-east-2
-##              objectstore_bucket=${{ steps.create_bucket.outputs.bucket_name }}
-##              datadir=/data/mysql/data
-##              log-error=/data/mysql/log/mysqld-error.log
-##              log-bin=binlog
-##              gtid_mode=ON
-##              enforce_gtid_consistency=ON
-##              log_slave_updates=ON
-##              binlog_format=ROW
-##              skip_name_resolve=ON
-##          EOF
-##
-##          kubectl get configmap wesql-server-config --namespace default -o yaml
-##
-##          kubectl create secret generic wesql-server-secret \
-##            --namespace default \
-##            --type Opaque \
-##            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }} \
-##            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }} \
-##            --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-##
-##          kubectl get secret wesql-server-secret --namespace default -o yaml
-#
-#      # Step 6: Generate Cluster YAML File And Create Cluster
-##      - name: Generate Cluster YAML File And Create Cluster
-##        run: |
-##          WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
-##          WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.27' }}
-##
-##          echo "Using Wescale Image Tag: $WESCALE_IMAGE_TAG"
-##          echo "Using WeSQL Server Image Tag: $WESQL_SERVER_IMAGE_TAG"
-##
-##          sed -e "s|\${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g" -e "s|\${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g" cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
-##          echo "Content of wescale-standard-tag.yaml:"
-##          cat cluster/wescale-standard-tag.yaml
-##
-##          echo "Creating Cluster..."
-##          kubectl apply -f cluster/wescale-standard-tag.yaml
-##          kubectl get pods
-#
-##          kubectl wait --for=condition=ready pod --all --timeout=600s
-##
-##          docker run -it --rm mysql mysql -hwescale -P15306 -uroot -ppasswd -e "create database sbtest"
-#
-#      - name: Install Tmate
-#        run: sudo apt-get install tmate
-#
-#      - name: Start Tmate session
-#        run: |
-#          tmate -S /tmp/tmate.sock new-session -d
-#          tmate -S /tmp/tmate.sock wait tmate-ready
-#          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-#          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-#
-#          TIMEOUT=1800  # 30 minutes
+#          POD_NAME="mycluster-wesql-0-0"
+#          CONTAINER_NAME="mysql"
+#          FILE_PATH="/etc/mysql/auto.conf.d/01_my_custom.cnf"
+#          LOCAL_PATH="./01_my_custom.cnf"
+#          TIMEOUT=600  # 10 minutes
 #          INTERVAL=1  # 1 second
+#
 #          START_TIME=$(date +%s)
 #
 #          while true; do
-#            sleep "$INTERVAL"
 #            CURRENT_TIME=$(date +%s)
 #            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
 #
@@ -203,60 +227,36 @@
 #              echo "Timeout reached while waiting for the container."
 #              break
 #            fi
+#
+#            # Check if the pod is running
+#            POD_STATUS=$(kubectl get pod "$POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
+#            if [ "$POD_STATUS" == "Running" ]; then
+#              echo "Pod is running. Trying to copy the file..."
+#
+#              # Attempt to copy the file
+#              if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
+#                echo "File copied successfully:"
+#                cat "$LOCAL_PATH"
+#                kubectl logs "$POD_NAME" -c "$CONTAINER_NAME"
+#                kubectl get pods
+#                break
+#              else
+#                echo "File copy failed. Retrying in $INTERVAL second(s)..."
+#              fi
+#            else
+#              echo "Pod is not running yet. Current status: $POD_STATUS"
+#            fi
+#
+#            sleep "$INTERVAL"
 #          done
-#        continue-on-error: true
-#
-#
-##      - name: Print Logs of the Pod
-##        run: |
-##          POD_NAME="mycluster-wesql-0-0"
-##          CONTAINER_NAME="mysql"
-##          FILE_PATH="/etc/mysql/auto.conf.d/01_my_custom.cnf"
-##          LOCAL_PATH="./01_my_custom.cnf"
-##          TIMEOUT=600  # 10 minutes
-##          INTERVAL=1  # 1 second
-##
-##          START_TIME=$(date +%s)
-##
-##          while true; do
-##            CURRENT_TIME=$(date +%s)
-##            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-##
-##            # Check if timeout is reached
-##            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-##              echo "Timeout reached while waiting for the container."
-##              break
-##            fi
-##
-##            # Check if the pod is running
-##            POD_STATUS=$(kubectl get pod "$POD_NAME" -o jsonpath='{.status.phase}' 2>/dev/null)
-##            if [ "$POD_STATUS" == "Running" ]; then
-##              echo "Pod is running. Trying to copy the file..."
-##
-##              # Attempt to copy the file
-##              if kubectl cp "$POD_NAME":"$FILE_PATH" "$LOCAL_PATH" -c "$CONTAINER_NAME" 2>/dev/null; then
-##                echo "File copied successfully:"
-##                cat "$LOCAL_PATH"
-##                kubectl logs "$POD_NAME" -c "$CONTAINER_NAME"
-##                kubectl get pods
-##                break
-##              else
-##                echo "File copy failed. Retrying in $INTERVAL second(s)..."
-##              fi
-##            else
-##              echo "Pod is not running yet. Current status: $POD_STATUS"
-##            fi
-##
-##            sleep "$INTERVAL"
-##          done
-#
-#
-#      # Step 7: Delete the S3 Bucket And Kind Cluster
-#      - name: Clean up
-#        if: always()
-#        run: |
-#          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
-#          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
-#          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
-#
-##          kind delete cluster --name wescale-cluster
+
+
+      # Step 7: Delete the S3 Bucket And Kind Cluster
+      - name: Clean up
+        if: always()
+        run: |
+          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
+          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
+          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
+
+#          kind delete cluster --name wescale-cluster
