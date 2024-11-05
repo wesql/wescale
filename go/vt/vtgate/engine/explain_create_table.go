@@ -53,11 +53,17 @@ func (e *ExplainCreateTable) TryExecute(ctx context.Context, vcursor VCursor, bi
 	ddlStrategy := vcursor.Session().GetDDLStrategy()
 
 	if enableDeclarative {
-		err := e.declarativeDDL.calculateDiff(ctx, vcursor)
+		th, err := vcursor.FindHealthyPrimaryTablet()
 		if err != nil {
 			return &sqltypes.Result{}, err
 		}
-		for _, diff := range e.declarativeDDL.diffDDLs {
+		sessionDB := vcursor.GetKeyspace()
+
+		err = e.declarativeDDL.CalculateDiff(ctx, th, sessionDB)
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+		for _, diff := range e.declarativeDDL.GetDiffDDLs() {
 			row = append(row, sqltypes.BuildVarCharRow(diff))
 		}
 	} else {
@@ -81,11 +87,16 @@ func (e *ExplainCreateTable) TryStreamExecute(ctx context.Context, vcursor VCurs
 	ddlStrategy := vcursor.Session().GetDDLStrategy()
 
 	if enableDeclarative {
-		err := e.declarativeDDL.calculateDiff(ctx, vcursor)
+		th, err := vcursor.FindHealthyPrimaryTablet()
 		if err != nil {
 			return err
 		}
-		for _, diff := range e.declarativeDDL.diffDDLs {
+		sessionDB := vcursor.GetKeyspace()
+		err = e.declarativeDDL.CalculateDiff(ctx, th, sessionDB)
+		if err != nil {
+			return err
+		}
+		for _, diff := range e.declarativeDDL.GetDiffDDLs() {
 			row = append(row, sqltypes.BuildVarCharRow(diff))
 		}
 	} else {
