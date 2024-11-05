@@ -7,15 +7,15 @@ rule_files:
 scrape_configs:
   - job_name: 'vitess-vtgate'
     static_configs:
-      - targets: ['host.docker.internal:15001']  # 替换为您的VTGate地址和端口
+      - targets: ['host.docker.internal:15001']
 
   - job_name: 'vitess-vttablet'
     static_configs:
-      - targets: ['host.docker.internal:15100']  # 替换为您的VTTablet地址和端口
+      - targets: ['host.docker.internal:15100']
 
 #  - job_name: 'mysql'
 #    static_configs:
-#      - targets: ['<MySQL_HOST>:<MySQL_PORT>']  # 替换为您的MySQL地址和端口
+#      - targets: ['<MySQL_HOST>:<MySQL_PORT>']
 
     metrics_path: '/metrics'
     scheme: 'http'
