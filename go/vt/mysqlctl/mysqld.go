@@ -69,7 +69,7 @@ var (
 	// menu items there, using features.
 	DisableActiveReparents bool
 
-	dbaPoolSize = 20
+	dbaPoolSize = 5
 	// DbaIdleTimeout is how often we will refresh the DBA connpool connections
 	DbaIdleTimeout = time.Minute
 	appPoolSize    = 40
