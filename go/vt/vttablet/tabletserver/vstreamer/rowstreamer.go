@@ -367,11 +367,6 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 		}
 		// Reuse the vstreamer's filter.
 		ok, err := rs.plan.filter(mysqlrow, filtered, charsets)
-		log.Tracef("rowStreamer get a row from mysql for table %v", rs.plan.Table.Name)
-		for _, v := range mysqlrow {
-			log.Tracef("%v ", v.ToString())
-		}
-		log.Tracef("\n")
 		if err != nil {
 			return err
 		}

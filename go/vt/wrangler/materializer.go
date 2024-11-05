@@ -1203,7 +1203,7 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 // waitForTargetTablesCreate waits for all target tables to be created
 func waitForTargetTablesCreate(ctx context.Context, targetDB string, tablesToWait []string, tmc tmclient.TabletManagerClient, targetTablet *topodatapb.Tablet) error {
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
 	expectedTables := make(map[string]bool)

@@ -224,7 +224,6 @@ func NewTableFilter(tables, excludeTables []string, includeViews bool) (*TableFi
 
 // Includes returns whether a tableName/tableType should be included in this TableFilter.
 func (f *TableFilter) Includes(tableName string, tableType string) bool {
-
 	if f.filterTables {
 		matches := false
 		for _, name := range f.tableNames {

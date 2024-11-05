@@ -126,12 +126,10 @@ func (b *BranchWatcher) watch() error {
 }
 
 func (b *BranchWatcher) Open() {
-	log.Tracef("BranchWatcher Open")
 	b.conns.Open(b.dbConfig, b.dbConfig, b.dbConfig)
 	b.ticker.Reset(b.updateInterval)
 	if !b.running {
 		go func() {
-			log.Tracef("BranchWatcher started")
 			for range b.ticker.C {
 				err := b.watch()
 				if err != nil {

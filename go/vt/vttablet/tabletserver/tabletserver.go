@@ -1200,7 +1200,6 @@ func (tsv *TabletServer) VStreamRows(ctx context.Context, request *binlogdatapb.
 		request.TableSchema = request.Target.Keyspace
 		log.Error("VStreamRows: table schema not provided, using keyspace name as table schema")
 	}
-	log.Tracef("from fun(tsv *TabletServer) VStreamRows to StreamRows")
 	return tsv.vstreamer.StreamRows(ctx, request.TableSchema, request.Query, row, send)
 }
 

@@ -88,10 +88,6 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 	if err != nil {
 		return nil, err
 	}
-	log.Tracef("len tds from collectBasicTableData: %v, request tables: %v, tables are:", len(tds), request.Tables)
-	for _, td := range tds {
-		log.Tracef("td: %v", td.Name)
-	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -119,11 +115,6 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 			td.Columns = columns
 			td.Schema = schema
 		}(td)
-	}
-
-	log.Tracef("len tableNames: %v, tables are:", len(tableNames))
-	for _, tableName := range tableNames {
-		log.Tracef("tableName: %v", tableName)
 	}
 
 	// Get primary columns concurrently.
@@ -166,7 +157,6 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, tables, excludeTables []string, includeViews bool) ([]*tabletmanagerdatapb.TableDefinition, error) {
 	// get the list of tables we're interested in
 	sql := "SELECT table_name, table_type, data_length, table_rows FROM information_schema.tables WHERE table_schema = '" + dbName + "'"
-
 	if !includeViews {
 		sql += " AND table_type = '" + tmutils.TableBaseTable + "'"
 	}
@@ -174,7 +164,6 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	qr, err := mysqld.FetchSuperQuery(ctx, sql)
 	log.Tracef("len of qr.rows returned by FetchSuperQuery: %v", len(qr.Rows))
 	if err != nil {
-		log.Tracef("collectBasicTableData: error in FetchSuperQuery: %v", err)
 		return nil, err
 	}
 	if len(qr.Rows) == 0 {
@@ -191,9 +180,7 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	for _, row := range qr.Rows {
 		tableName := row[0].ToString()
 		tableType := row[1].ToString()
-
 		log.Tracef("collectBasicTableData: %v", tableName)
-
 		if !filter.Includes(tableName, tableType) {
 			log.Tracef("collectBasicTableData: %v is skipped", tableName)
 			continue
@@ -227,10 +214,7 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	}
 
 	sort.Sort(tds)
-	log.Tracef("collectBasicTableData return tds immediately, len(tds): %v", len(tds))
-	for _, td := range tds {
-		log.Tracef("collectBasicTableData: %v", td.Name)
-	}
+
 	return tds, nil
 }
 

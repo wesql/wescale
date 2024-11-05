@@ -43,9 +43,9 @@ var (
 	Debugf     = glog.V(DebugVerbosity).Infof
 	DebugDepth = glog.V(DebugVerbosity).InfoDepth
 
-	Trace      = Warning
-	Tracef     = Warningf
-	TraceDepth = WarningDepth
+	Trace      = glog.V(TraceVerbosity).Info
+	Tracef     = glog.V(TraceVerbosity).Infof
+	TraceDepth = glog.V(TraceVerbosity).InfoDepth
 
 	// Info formats arguments like fmt.Print.
 	Info = glog.Info

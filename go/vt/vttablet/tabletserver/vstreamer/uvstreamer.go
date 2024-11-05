@@ -143,12 +143,6 @@ func (uvs *uvstreamer) buildTablePlan() error {
 		tableLastPKs[tablePK.TableName] = tablePK
 	}
 	tables := uvs.se.GetSchema2(uvs.tableSchema)
-	log.Tracef("uvstreamer buildTablePlan: tables %v", tables)
-	log.Tracef("uvstreamer buildTablePlan: rules:")
-	for _, rule := range uvs.filter.Rules {
-		log.Tracef("rule:%v rule filter:%v rule match:%v", rule.String(), rule.Filter, rule.Match)
-	}
-
 	for range tables {
 		for _, rule := range uvs.filter.Rules {
 			if !strings.HasPrefix(rule.Match, "/") {

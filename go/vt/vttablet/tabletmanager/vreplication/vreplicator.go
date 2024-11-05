@@ -234,7 +234,6 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Tracef("replicate: ctx.Done()")
 			return nil
 		default:
 		}
@@ -252,12 +251,10 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 		}
 		switch {
 		case numTablesToCopy != 0:
-			log.Tracef("replicate: numTablesToCopy != 0, numTablesToCopy=%v", numTablesToCopy)
 			if err := vr.clearFKCheck(vr.dbClient); err != nil {
 				log.Warningf("Unable to clear FK check %v", err)
 				return err
 			}
-			log.Tracef("replicate: newVCopier(vr).copyNext")
 			if err := newVCopier(vr).copyNext(ctx, settings); err != nil {
 				vr.stats.ErrorCounts.Add([]string{"Copy"}, 1)
 				return err
@@ -272,7 +269,6 @@ func (vr *vreplicator) replicate(ctx context.Context) error {
 				}
 			}
 		case settings.StartPos.IsZero():
-			log.Tracef("replicate: settings.StartPos.IsZero(), call initTablesForCopy")
 			if err := newVCopier(vr).initTablesForCopy(ctx); err != nil {
 				vr.stats.ErrorCounts.Add([]string{"Copy"}, 1)
 				return err
@@ -308,19 +304,12 @@ type ColumnInfo struct {
 func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*ColumnInfo, error) {
 	req := &tabletmanagerdatapb.GetSchemaRequest{Tables: []string{"/.*/"}, ExcludeTables: []string{"/" + schema.GCTableNameExpression + "/"}}
 	//todo onlineDDL: fix tableSchema here
-	log.Tracef("call vr.mysqld.GetSchema from buildColInfoMap")
 	schema, err := vr.mysqld.GetSchema(ctx, vr.dbClient.DBName(), req)
 	if err != nil {
 		return nil, err
 	}
 	queryTemplate := "select character_set_name, collation_name, column_name, data_type, column_type, extra from information_schema.columns where table_schema=%s and table_name=%s;"
 	colInfoMap := make(map[string][]*ColumnInfo)
-
-	log.Tracef("buildColInfoMap: schema.TableDefinitions:")
-	for _, td := range schema.TableDefinitions {
-		log.Tracef("%v", td.Name)
-	}
-
 	for _, td := range schema.TableDefinitions {
 		//todo onlineDDL: fix tableSchema here
 		query := fmt.Sprintf(queryTemplate, encodeString(vr.dbClient.DBName()), encodeString(td.Name))

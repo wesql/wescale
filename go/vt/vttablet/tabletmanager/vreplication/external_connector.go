@@ -22,10 +22,8 @@ limitations under the License.
 package vreplication
 
 import (
-	"sync"
-	"vitess.io/vitess/go/vt/log"
-
 	"context"
+	"sync"
 
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/dbconfigs"
@@ -144,7 +142,6 @@ func (c *mysqlConnector) VStreamRows(ctx context.Context, tableSchema string, qu
 		}
 		row = r.Rows[0]
 	}
-	log.Tracef("from func (c *mysqlConnector) VStreamRows to StreamRows")
 	return c.vstreamer.StreamRows(ctx, tableSchema, query, row, send)
 }
 

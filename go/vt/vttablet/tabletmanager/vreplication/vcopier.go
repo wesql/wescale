@@ -231,16 +231,6 @@ func (vc *vcopier) initTablesForCopy(ctx context.Context) error {
 	if err := vc.vr.dbClient.Begin(); err != nil {
 		return err
 	}
-
-	log.Tracef("initTablesForCopy, vc.vr.colInfoMap table names:")
-	for k, _ := range plan.TargetTables {
-		log.Tracef("%v", k)
-	}
-	log.Tracef("initTablesForCopy, plan.TargetTables names:")
-	for k, _ := range plan.TargetTables {
-		log.Tracef("%v", k)
-	}
-
 	// Insert the table list only if at least one table matches.
 	if len(plan.TargetTables) != 0 {
 		var buf strings.Builder
@@ -251,7 +241,7 @@ func (vc *vcopier) initTablesForCopy(ctx context.Context) error {
 			prefix = ", "
 		}
 
-		log.Tracef("initTablesForCopy, insert copy_state sql: %v", buf.String())
+		log.Tracef("insert copy_state sql: %v", buf.String())
 
 		if _, err := vc.vr.dbClient.Execute(buf.String()); err != nil {
 			return err
@@ -324,7 +314,6 @@ func (vc *vcopier) copyNext(ctx context.Context, settings binlogplayer.VRSetting
 		if tableToCopy == "" {
 			tableToCopy = tableName
 		}
-		log.Tracef("vcopier.copyNext: tableToCopy:%v, tableName:%v", tableToCopy, tableName)
 		copyState[tableName] = nil
 		if lastpk != "" {
 			var r querypb.QueryResult
