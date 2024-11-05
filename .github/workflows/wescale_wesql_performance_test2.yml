@@ -40,9 +40,11 @@ jobs:
           aws s3 mb s3://$BUCKET_NAME
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
-      - name: install docker
+      - name: Setup docker (missing on MacOS)
+        if: runner.os == 'macos'
         run: |
           brew install docker
+          colima start
 
       - name: start minikube
         id: minikube
