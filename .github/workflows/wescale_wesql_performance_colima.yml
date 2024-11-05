@@ -1,0 +1,62 @@
+name: "Colima MacOS K8s Cluster"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
+
+jobs:
+  setup:
+    name: "Setup WeScale WeSQL Server Cluster"
+    runs-on: macos-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install kubectl
+      - name: Install kubectl
+        run: brew install kubectl
+
+      # Step 3: Install Docker CLI
+      - name: Install Docker CLI
+        run: brew install docker
+
+      # Step 4: Install Colima
+      - name: Install Colima
+        run: |
+          brew install colima
+          LIMACTL_PATH=$(brew --prefix)/bin/limactl
+          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
+
+
+# Step 5: Start Colima with Kubernetes
+      - name: Start Colima with Kubernetes
+        run: |
+          colima start --kubernetes --network-address --arch arm64 --vm-type=qemu
+          # Wait for Docker and Kubernetes to fully start
+          for i in {1..10}; do
+            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
+              echo "Docker and Kubernetes are running"
+              break
+            else
+              echo "Waiting for Docker and Kubernetes to start..."
+              sleep 5
+            fi
+          done
+
+      # Step 6: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
