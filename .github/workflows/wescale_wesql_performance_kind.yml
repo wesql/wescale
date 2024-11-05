@@ -118,6 +118,11 @@ jobs:
         if: always()
         run: |
           kubectl get pods
+          
+          kubectl describe po mycluster-wesql-0-0
+          
+          kubectl get pvc
+          
           kubectl logs mycluster-wesql-0-0
 
       - name: Clean up
