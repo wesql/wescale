@@ -119,7 +119,7 @@ jobs:
 
       - name: Generate Cluster YAML File And Create Cluster
         run: |
-          kubectl apply -f https://raw.githubusercontent.com/wesql/deploy/refs/heads/main/artifact/wescale.yaml
+          kubectl apply -f https://raw.githubusercontent.com/wesql/deploy/refs/heads/main/artifact/wescale-ci.yaml
 
       - name: Wait for WeSQL Server to be ready
         run: |
