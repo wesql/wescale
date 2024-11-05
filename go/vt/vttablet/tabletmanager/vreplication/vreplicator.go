@@ -313,6 +313,7 @@ func (vr *vreplicator) buildColInfoMap(ctx context.Context) (map[string][]*Colum
 	for _, td := range schema.TableDefinitions {
 		//todo onlineDDL: fix tableSchema here
 		query := fmt.Sprintf(queryTemplate, encodeString(vr.dbClient.DBName()), encodeString(td.Name))
+		log.Tracef("buildColInfoMap: query to select table info: %s", query)
 		qr, err := vr.mysqld.FetchSuperQuery(ctx, query)
 		if err != nil {
 			return nil, err

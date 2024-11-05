@@ -145,6 +145,11 @@ func (mysqld *Mysqld) GetSchema(ctx context.Context, dbName string, request *tab
 
 	sd.TableDefinitions = tds
 
+	log.Tracef("sd.TableDefinitions return immediately:")
+	for _, td := range sd.TableDefinitions {
+		log.Tracef("td: %v", td.Name)
+	}
+
 	tmutils.GenerateSchemaVersion(sd)
 	return sd, nil
 }
@@ -155,11 +160,14 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	if !includeViews {
 		sql += " AND table_type = '" + tmutils.TableBaseTable + "'"
 	}
+	log.Tracef("execute query to get tables: %v", sql)
 	qr, err := mysqld.FetchSuperQuery(ctx, sql)
+	log.Tracef("len of qr.rows returned by FetchSuperQuery: %v", len(qr.Rows))
 	if err != nil {
 		return nil, err
 	}
 	if len(qr.Rows) == 0 {
+		log.Tracef("collectBasicTableData: no table found in db %v", dbName)
 		return nil, nil
 	}
 
@@ -172,8 +180,9 @@ func (mysqld *Mysqld) collectBasicTableData(ctx context.Context, dbName string, 
 	for _, row := range qr.Rows {
 		tableName := row[0].ToString()
 		tableType := row[1].ToString()
-
+		log.Tracef("collectBasicTableData: %v", tableName)
 		if !filter.Includes(tableName, tableType) {
+			log.Tracef("collectBasicTableData: %v is skipped", tableName)
 			continue
 		}
 

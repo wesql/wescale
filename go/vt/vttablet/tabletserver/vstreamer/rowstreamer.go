@@ -289,6 +289,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 	if err != nil {
 		return err
 	}
+	log.Tracef("streamQuery start snapshot for table %v", rs.plan.Table.Name)
 
 	// first call the callback with the fields
 	flds, err := conn.Fields()

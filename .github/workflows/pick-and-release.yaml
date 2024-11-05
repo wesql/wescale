@@ -16,6 +16,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Automatic Cherry Pick
         uses: apecloud-inc/gha-cherry-pick@v1
@@ -36,8 +37,20 @@ jobs:
             exit 1
           fi
           
+          if ! git ls-remote --heads origin "$TARGET_BRANCH" | grep -q "$TARGET_BRANCH"; then
+            gh pr comment "${{ github.event.issue.number }}" \
+              --body "🤖 says: Target branch '$TARGET_BRANCH' does not exist in origin." \
+              --fail-on-error=false
+            exit 1
+          fi
+          
           git fetch origin $TARGET_BRANCH
-          git checkout $TARGET_BRANCH
+          git checkout origin/$TARGET_BRANCH || {
+            gh pr comment "${{ github.event.issue.number }}" \
+              --body "🤖 says: Failed to checkout branch '$TARGET_BRANCH'." \
+              --fail-on-error=false
+            exit 1
+          }
           
           if git tag | grep -q "^$TAG_NAME$"; then
             gh pr comment "${{ github.event.issue.number }}" \
@@ -46,8 +59,19 @@ jobs:
             exit 1
           fi
           
-          git tag $TAG_NAME
-          git push origin $TAG_NAME
+          git tag $TAG_NAME || {
+            gh pr comment "${{ github.event.issue.number }}" \
+              --body "🤖 says: Failed to create tag '$TAG_NAME'." \
+              --fail-on-error=false
+            exit 1
+          }
+          
+          git push origin $TAG_NAME || {
+            gh pr comment "${{ github.event.issue.number }}" \
+              --body "🤖 says: Failed to push tag '$TAG_NAME'." \
+              --fail-on-error=false
+            exit 1
+          }
           
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           gh pr comment "${{ github.event.issue.number }}" \
@@ -58,7 +82,13 @@ jobs:
         run: |
           TAG_NAME="${{ steps.add_tag.outputs.tag_name }}"
           
-          gh workflow run release-image.yml --ref "$TAG_NAME" -f image_tag="$TAG_NAME"
+          gh workflow run release-image.yml --ref "$TAG_NAME" -f image_tag="$TAG_NAME" || {
+            gh pr comment "${{ github.event.issue.number }}" \
+              --body "🤖 says: Failed to trigger image release workflow." \
+              --fail-on-error=false
+            exit 1
+          }
+          
           gh pr comment "${{ github.event.issue.number }}" \
             --body "🤖 says: image release starts running, tag is $TAG_NAME" \
             --fail-on-error=false

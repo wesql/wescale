@@ -15,6 +15,7 @@ mkdir -p $VTDATAROOT
 
 vtgate \
   $topology_flags \
+  --v 100 \
   --alsologtostderr \
   --log_dir $VTDATAROOT \
   --log_queries_to_file $VTDATAROOT/vtgate_querylog.txt \
