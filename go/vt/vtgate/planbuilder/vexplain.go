@@ -57,7 +57,7 @@ func buildExplainPlan(stmt sqlparser.Explain, reservedVars *sqlparser.ReservedVa
 			}
 			return buildPlanForBypass(stmt, reservedVars, vschema)
 		default:
-			return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected explain type: %s", explain.Type)
+			return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "unexpected explain type: %v", explain.Type.ToString())
 			//return buildOtherReadAndAdmin(sqlparser.String(explain), vschema)
 		}
 	}
