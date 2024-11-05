@@ -43,6 +43,8 @@ jobs:
       - name: start minikube
         id: minikube
         uses: medyagh/setup-minikube@latest
+        with:
+          driver: docker
 
       - name: kubectl
         run: kubectl get pods -A
