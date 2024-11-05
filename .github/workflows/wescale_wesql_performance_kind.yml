@@ -123,6 +123,8 @@ jobs:
           
           kubectl get pvc
           
+          kubectl get storageclass
+          
           kubectl logs mycluster-wesql-0-0
 
       - name: Clean up
