@@ -1,0 +1,114 @@
+name: "Setup WeScale WeSQL Server Cluster Kind On MacOS"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
+
+jobs:
+  setup:
+    name: "Setup WeScale WeSQL Server Cluster"
+    runs-on: macos-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install Homebrew (通常已预装，可省略)
+      - name: Install Homebrew
+        if: runner.os == 'macos' && !command -v brew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+      # Step 3: Install Docker
+      - name: Install Docker
+        run: brew install --cask docker
+
+      # Step 4: Start Docker
+      - name: Start Docker
+        run: |
+          open /Applications/Docker.app
+          # 等待 Docker 完全启动
+          sleep 60
+
+      # Step 5: Install kubectl
+      - name: Install kubectl
+        run: brew install kubectl
+
+      # Step 6: Install Kind
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-darwin-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      # Step 7: Create Kind Cluster
+      - name: Create Kind Cluster
+        run: kind create cluster --name wescale-cluster
+
+        # Step 8: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
+
+      # Step 9: Create Kubernetes ConfigMap and Secret
+      - name: Create ConfigMap and Secret in Kubernetes
+        run: |
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: wesql-server-config
+          data:
+            MYSQL_CUSTOM_CONFIG: |
+              [mysqld]
+              objectstore_provider=aws
+              objectstore_region=cn-northwest-1
+              objectstore_bucket=${{ steps.create_bucket.outputs.bucket_name }}
+              datadir=/data/mysql/data
+              log-error=/data/mysql/log/mysqld-error.log
+              log-bin=binlog
+              gtid_mode=ON
+              enforce_gtid_consistency=ON
+              log_slave_updates=ON
+              binlog_format=ROW
+              skip_name_resolve=ON
+          EOF
+
+          kubectl get configmap wesql-server-config --namespace default -o yaml
+          
+          kubectl create secret generic wesql-server-secret \
+            --namespace default \
+            --type Opaque \
+            --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.WESQL_OBJECTSTORE_ACCESS_KEY }} \
+            --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.WESQL_OBJECTSTORE_SECRET_KEY }} \
+            --from-literal=MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          
+          kubectl get secret wesql-server-secret --namespace default -o yaml
+
+      # Step 10: Generate Cluster YAML File And Create Cluster
+      - name: Generate Cluster YAML File And Create Cluster
+        run: |
+          WESCALE_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wescale_image_tag || '0.3.0' }}
+          WESQL_SERVER_IMAGE_TAG=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.wesql_image_tag || '8.0.35-6.alpha10.20240918.g18ad68b.25' }}
+          
+          echo "Using Wescale Image Tag: $WESCALE_IMAGE_TAG"
+          echo "Using WeSQL Server Image Tag: $WESQL_SERVER_IMAGE_TAG"
+          
+          sed -e "s|\${WESQL_SERVER_TAG}|$WESQL_SERVER_IMAGE_TAG|g" -e "s|\${WESCALE_TAG}|$WESCALE_IMAGE_TAG|g" cluster/wescale-standard-tag-template.yaml > cluster/wescale-standard-tag.yaml
+          echo "Content of wescale-standard-tag.yaml:"
+          cat cluster/wescale-standard-tag.yaml
+          
+          echo "Creating Cluster..."
+          kubectl apply -f cluster/wescale-standard-tag.yaml
+          kubectl get pods
