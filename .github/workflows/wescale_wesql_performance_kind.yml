@@ -100,7 +100,11 @@ jobs:
 
       - name: Wait for WeSQL Server to be ready
         run: |
-          kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=500s
+          kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=30s
+          
+          kubectl logs mycluster-wesql-0-0
+          
+          kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=300s
           
           kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "SHOW DATABASES;"
 
