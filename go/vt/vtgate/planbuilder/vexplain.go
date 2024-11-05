@@ -50,7 +50,11 @@ func buildExplainPlan(stmt sqlparser.Explain, reservedVars *sqlparser.ReservedVa
 			vschema.PlannerWarning("EXPLAIN FORMAT = VTEXPLAIN is deprecated, please use VEXPLAIN QUERIES instead.")
 			return buildVExplainLoggingPlan(&sqlparser.VExplainStmt{Type: sqlparser.QueriesVExplainType, Statement: explain.Statement, Comments: explain.Comments}, reservedVars, vschema, enableOnlineDDL, enableDirectDDL)
 		default:
-			// todo newborn22, add more case here
+			switch stmtOfExplain := explain.Statement.(type) {
+			case *sqlparser.CreateTable:
+				// explain create table plan
+				return newPlanResult(engine.BuildExplainCreateTablePlan(stmtOfExplain), stmtOfExplain.Table.Name.String()), nil
+			}
 			return buildPlanForBypass(stmt, reservedVars, vschema)
 			//return buildOtherReadAndAdmin(sqlparser.String(explain), vschema)
 		}

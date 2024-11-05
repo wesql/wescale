@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -13,6 +14,12 @@ type ExplainCreateTable struct {
 	declarativeDDL *DeclarativeDDL
 
 	noInputs
+}
+
+func BuildExplainCreateTablePlan(createTableStatement *sqlparser.CreateTable) *ExplainCreateTable {
+	explainCreateTable := &ExplainCreateTable{}
+	explainCreateTable.declarativeDDL = BuildDeclarativeDDLPlan(createTableStatement)
+	return explainCreateTable
 }
 
 // NeedsTransaction implements the Primitive interface
