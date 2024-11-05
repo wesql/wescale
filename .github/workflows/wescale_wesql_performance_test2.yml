@@ -40,12 +40,12 @@ jobs:
           aws s3 mb s3://$BUCKET_NAME
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
-      # Step 4: Start Kind Cluster using kind-action
-      - name: Start Kind Cluster
-        uses: helm/kind-action@v1.4.0
-        with:
-          version: "v0.23.0"
-          cluster_name: "wescale-cluster"
+      - name: start minikube
+        id: minikube
+        uses: medyagh/setup-minikube@latest
+
+      - name: kubectl
+        run: kubectl get pods -A
 
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
       - name: Create Secret in Kind Cluster
@@ -155,4 +155,3 @@ jobs:
           aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
           aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
           
-          kind delete cluster --name wescale-cluster 
