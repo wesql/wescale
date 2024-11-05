@@ -24,20 +24,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup docker (missing on MacOS)
+      # Step 2: Setup Colima with Kubernetes
+      - name: Setup Colima with Kubernetes
         if: runner.os == 'macos'
         run: |
-          brew install docker colima
-          colima start
+          brew install colima
+          colima start --kubernetes
 
-      - name: start minikube
-        id: minikube
-        uses: medyagh/setup-minikube@latest
-        with:
-          driver: docker
-
-      - name: kubectl
-        run: kubectl get pods -A
+      # Step 3: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
 
       # Step 5: Create Kubernetes ConfigMap and Secret in Kind Cluster
       - name: Create Secret in Kind Cluster
