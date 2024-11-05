@@ -24,20 +24,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Setup Colima with Kubernetes using containerd
+      # Step 2: Install kubectl
+      - name: Install kubectl
+        run: brew install kubectl
+
+      # Step 3: Setup Colima with Kubernetes using containerd
       - name: Setup Colima with Kubernetes and containerd
-        if: runner.os == 'macos'
         run: |
           brew install colima
           colima start --kubernetes --runtime containerd
 
-      # Step 3: Verify Kubernetes is running
+      # Step 4: Verify Kubernetes is running
       - name: Verify Kubernetes is running
         run: |
           kubectl get nodes
           kubectl get pods -A
-
-      # Step 4: (如果有其他步骤，继续配置)
 
       # Step 5: Create Kubernetes ConfigMap and Secret
       - name: Create ConfigMap and Secret in Kubernetes
