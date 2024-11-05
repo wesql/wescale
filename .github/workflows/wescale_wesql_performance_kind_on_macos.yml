@@ -56,7 +56,7 @@ jobs:
       - name: Create Kind Cluster
         run: kind create cluster --name wescale-cluster
 
-        # Step 8: Verify Kubernetes is running
+      - name: kubectl get nodes
         run: |
           kubectl get nodes
           kubectl get pods -A
