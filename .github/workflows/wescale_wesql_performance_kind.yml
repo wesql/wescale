@@ -117,6 +117,7 @@ jobs:
       - name: Print WeSQL Server Logs
         if: always()
         run: |
+          kubectl get pods
           kubectl logs mycluster-wesql-0-0
 
       - name: Clean up
