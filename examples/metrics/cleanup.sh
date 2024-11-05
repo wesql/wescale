@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# 定义容器名称
 PROMETHEUS_CONTAINER="prometheus"
 GRAFANA_CONTAINER="grafana"
 
-# 定义网络名称
 NETWORK_NAME="monitoring"
 
 echo "Stopping and removing Prometheus container..."
