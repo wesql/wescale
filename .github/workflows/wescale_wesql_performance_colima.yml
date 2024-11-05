@@ -1,4 +1,4 @@
-name: "Setup WeScale WeSQL Server Cluster Colima"
+name: "Colima MacOS K8s Cluster"
 
 on:
   pull_request:

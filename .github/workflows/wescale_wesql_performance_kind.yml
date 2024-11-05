@@ -1,4 +1,4 @@
-name: "Setup WeScale WeSQL Server Cluster Kind"
+name: "Kind Ubuntu K8s Cluster"
 
 on:
   pull_request:
