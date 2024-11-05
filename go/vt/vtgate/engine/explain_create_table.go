@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"vitess.io/vitess/go/vt/sqlparser"
 
 	"vitess.io/vitess/go/sqltypes"
@@ -46,37 +47,57 @@ var colName = "DDLs to Execute"
 
 // TryExecute implements Primitive interface
 func (e *ExplainCreateTable) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	err := e.declarativeDDL.calculateDiff(ctx, vcursor)
-	if err != nil {
-		return &sqltypes.Result{}, err
+	row := make([][]sqltypes.Value, 0)
+
+	enableDeclarative := vcursor.Session().GetEnableDeclarativeDDL()
+	ddlStrategy := vcursor.Session().GetDDLStrategy()
+
+	if enableDeclarative {
+		err := e.declarativeDDL.calculateDiff(ctx, vcursor)
+		if err != nil {
+			return &sqltypes.Result{}, err
+		}
+		for _, diff := range e.declarativeDDL.diffDDLs {
+			row = append(row, sqltypes.BuildVarCharRow(diff))
+		}
+	} else {
+		row = append(row, sqltypes.BuildVarCharRow(e.declarativeDDL.desiredSchema))
 	}
 
-	row := make([][]sqltypes.Value, len(e.declarativeDDL.diffDDLs))
-	for i, diff := range e.declarativeDDL.diffDDLs {
-		row[i] = sqltypes.BuildVarCharRow(diff)
-	}
+	info := fmt.Sprintf("@@enable_declarative_ddl is %v, @@ddl_strategy is %v", enableDeclarative, ddlStrategy)
 
 	return &sqltypes.Result{
 		Fields: sqltypes.BuildVarCharFields(colName),
 		Rows:   row,
+		Info:   info,
 	}, nil
 }
 
 // TryStreamExecute implements Primitive interface
 func (e *ExplainCreateTable) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
-	err := e.declarativeDDL.calculateDiff(ctx, vcursor)
-	if err != nil {
-		return err
+	row := make([][]sqltypes.Value, 0)
+
+	enableDeclarative := vcursor.Session().GetEnableDeclarativeDDL()
+	ddlStrategy := vcursor.Session().GetDDLStrategy()
+
+	if enableDeclarative {
+		err := e.declarativeDDL.calculateDiff(ctx, vcursor)
+		if err != nil {
+			return err
+		}
+		for _, diff := range e.declarativeDDL.diffDDLs {
+			row = append(row, sqltypes.BuildVarCharRow(diff))
+		}
+	} else {
+		row = append(row, sqltypes.BuildVarCharRow(e.declarativeDDL.desiredSchema))
 	}
 
-	row := make([][]sqltypes.Value, len(e.declarativeDDL.diffDDLs))
-	for i, diff := range e.declarativeDDL.diffDDLs {
-		row[i] = sqltypes.BuildVarCharRow(diff)
-	}
+	info := fmt.Sprintf("@@enable_declarative_ddl is %v, @@ddl_strategy is %v", enableDeclarative, ddlStrategy)
 
 	return callback(&sqltypes.Result{
 		Fields: sqltypes.BuildVarCharFields(colName),
 		Rows:   row,
+		Info:   info,
 	})
 }
 
