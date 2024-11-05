@@ -31,6 +31,7 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	"vitess.io/vitess/go/vt/vttablet/tmclient"
 
@@ -1112,7 +1113,6 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 		}
 
 		var applyDDLs []string
-		var tablesToCreate []string
 
 		for _, ts := range mz.ms.TableSettings {
 			if hasTargetTable[ts.TargetTable] {
@@ -1177,7 +1177,6 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 			}
 
 			applyDDLs = append(applyDDLs, createDDL)
-			tablesToCreate = append(tablesToCreate, ts.TargetTable)
 		}
 
 		if len(applyDDLs) > 0 {
@@ -1194,9 +1193,8 @@ func (mz *materializer) deploySchema(ctx context.Context) error {
 				return err
 			}
 		}
+		return nil
 
-		// wait for all target tablets been created
-		return waitForTargetTablesCreate(ctx, targetDbName, tablesToCreate, mz.wr.tmc, targetTablet.Tablet)
 	})
 }
 
