@@ -29,7 +29,6 @@ jobs:
           ./examples/wesql-server/start_mysql_server.sh
 
       - name: Compile source
-        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
         timeout-minutes: 30
         run: |
           make failpoint-enable
