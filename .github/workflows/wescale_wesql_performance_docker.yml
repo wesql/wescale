@@ -33,6 +33,8 @@ jobs:
         run: |
           pwd
           chmod 777 ./examples/wesql-server/vtdataroot
+          ls -alF examples/wesql-server/vtdataroot
+          whoami
           make failpoint-enable
           make build
           make failpoint-disable
