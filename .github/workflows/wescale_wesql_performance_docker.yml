@@ -1,0 +1,29 @@
+name: "Ubuntu Docker Cluster"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
+
+jobs:
+  setup:
+    name: "Ubuntu Docker Cluster"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Start MySQL Server
+        run: |
+          ./examples/wesql-server/
