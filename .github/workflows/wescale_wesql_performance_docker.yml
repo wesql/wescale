@@ -52,6 +52,7 @@ jobs:
           fi
 
       - name: Check Vitess Tablets
+        if: always()
         run: |
           # Install MySQL client
           sudo apt-get update && sudo apt-get install -y mysql-client
