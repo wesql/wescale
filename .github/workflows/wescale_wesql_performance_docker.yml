@@ -47,7 +47,7 @@ jobs:
           mkdir bin && \
           make build
 
-      - name: Run endtoend test
+      - name: Run MTR Tests
         run: |
           cd ./mysql-tester && \
           eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
