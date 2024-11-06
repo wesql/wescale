@@ -79,9 +79,11 @@ jobs:
           fi
 
       - name: Install Tmate
+        if: always()
         run: sudo apt-get install tmate
 
       - name: Start Tmate session
+        if: always()
         run: |
           tmate -S /tmp/tmate.sock new-session -d
           tmate -S /tmp/tmate.sock wait tmate-ready
