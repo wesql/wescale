@@ -31,20 +31,40 @@ jobs:
 
       - name: Start WeScale
         run: |
-          cd ./examples/wesql-server && ./init_single_node_cluster.sh
-          # Wait for port 15306 to be ready
-          timeout 300 bash -c 'until nc -z localhost 15306; do sleep 1; done'
-          # Save logs to a file for later steps
-          docker logs wescale > wescale_logs.txt 2>&1
+          # Run initialization script in background and capture its output
+          cd ./examples/wesql-server
+          ./init_single_node_cluster.sh > init_script_logs.txt 2>&1 &
+          
+          # Store the background process ID
+          INIT_PID=$!
+          
+          # Wait for WeScale to start (timeout after 5 minutes)
+          echo "Waiting for WeScale to be ready..."
+          timeout 300 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'
+          
+          # Additional wait to ensure service is fully ready
+          sleep 10
+          
+          # Check if initialization script is still running
+          if ps -p $INIT_PID > /dev/null; then
+            echo "Initialization script is still running"
+          else
+            echo "Initialization script has completed"
+          fi
+          
+          # Display initialization script logs
+          echo "=== Initialization Script Logs ==="
+          cat init_script_logs.txt
 
       - name: Check Vitess Tablets
         run: |
           # Install MySQL client
           sudo apt-get update && sudo apt-get install -y mysql-client
           
-          # Execute show vitess_tablets command
-          mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"
-          
-          # Display WeScale logs if needed
-          echo "=== WeScale Logs ==="
-          cat wescale_logs.txt
+          # Attempt to connect and execute command, display logs if failed
+          if ! mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"; then
+            echo "Failed to execute MySQL command"
+            echo "=== Initialization Script Logs ==="
+            cat ./examples/wesql-server/init_script_logs.txt
+            exit 1
+          fi
