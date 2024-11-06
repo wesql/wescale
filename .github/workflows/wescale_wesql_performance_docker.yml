@@ -23,8 +23,6 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y mysql-client
           
-          
-
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -50,7 +48,7 @@ jobs:
           TAIL_PID=$!
           
           echo "Waiting for WeScale to be ready..."
-          if timeout 180 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
+          if timeout 10 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
             echo "Port 15306 is now available"
             # 停止 tail
             kill $TAIL_PID
