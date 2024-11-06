@@ -37,7 +37,7 @@ jobs:
 
       - name: Start WeScale
         run: |
-          ./examples/wesql-server/init_single_node_cluster.sh
+          cd ./examples/wesql-server && ./examples/wesql-server/init_single_node_cluster.sh
           
       - name: Build and Run container
         run: |
