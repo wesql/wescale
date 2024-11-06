@@ -18,8 +18,7 @@ This declarative approach offers several benefits:
 
 Whether you're creating a new table or modifying an existing one, Declarative DDL makes schema management more intuitive and less error-prone. It's particularly useful in scenarios with frequently changing schemas or complex table structures.
 
-## Basic Usage
-### Prerequisites
+## Prerequisites
 
 Before using Declarative DDL, ensure the feature is enabled:
 
@@ -28,6 +27,7 @@ SET @@enable_declarative_ddl=true;
 ```
 > Notice: If you see an "Unknown system variable" error, you are not connected to the WeScale endpoint. Please connect to the WeScale endpoint and try again.
 
+## Basic Usage
 ### Using Declarative DDL
 
 To get started with Declarative DDL, first let's create a simple database and table:
