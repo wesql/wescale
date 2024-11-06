@@ -3,16 +3,6 @@ name: "Ubuntu Docker Cluster"
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  workflow_dispatch:
-    inputs:
-      wescale_image_tag:
-        description: "WeScale Image Tag"
-        required: true
-        default: "0.3.0"
-      wesql_image_tag:
-        description: "WeSQL Server Image Tag"
-        required: true
-        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
 
 jobs:
   setup:
@@ -20,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -36,7 +25,6 @@ jobs:
       - name: Compile source
         timeout-minutes: 30
         run: |
-          go version
           make failpoint-enable
           make build
           make failpoint-disable
@@ -44,7 +32,19 @@ jobs:
       - name: Start WeScale
         run: |
           cd ./examples/wesql-server && ./init_single_node_cluster.sh
-          
-      - name: Build and Run container
+          # Wait for port 15306 to be ready
+          timeout 300 bash -c 'until nc -z localhost 15306; do sleep 1; done'
+          # Save logs to a file for later steps
+          docker logs wescale > wescale_logs.txt 2>&1
+
+      - name: Check Vitess Tablets
         run: |
-          docker logs mysql-server
+          # Install MySQL client
+          sudo apt-get update && sudo apt-get install -y mysql-client
+          
+          # Execute show vitess_tablets command
+          mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"
+          
+          # Display WeScale logs if needed
+          echo "=== WeScale Logs ==="
+          cat wescale_logs.txt
