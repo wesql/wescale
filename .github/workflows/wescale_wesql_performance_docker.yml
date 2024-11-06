@@ -29,12 +29,16 @@ jobs:
       - name: Compile source
         timeout-minutes: 30
         run: |
+          # install etcd
+          BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=1 ./bootstrap.sh
+          
           make failpoint-enable
           make build
           make failpoint-disable
 
       - name: Start WeScale
         run: |
+          export PATH=$PATH:./bin
           cd ./examples/wesql-server
           
           # 在一个终端会话中运行初始化脚本并通过 tee 输出日志
@@ -73,31 +77,31 @@ jobs:
             exit 1
           fi
 
-      - name: Install Tmate
-        if: always()
-        run: sudo apt-get install tmate
-
-      - name: Start Tmate session
-        if: always()
-        run: |
-          tmate -S /tmp/tmate.sock new-session -d
-          tmate -S /tmp/tmate.sock wait tmate-ready
-          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-
-          TIMEOUT=1800  # 30 minutes
-          INTERVAL=1  # 1 second
-          START_TIME=$(date +%s)
-
-          while true; do
-            sleep "$INTERVAL"
-            CURRENT_TIME=$(date +%s)
-            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-
-            # Check if timeout is reached
-            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-              echo "Timeout reached while waiting for the container."
-              break
-            fi
-          done
-        continue-on-error: true
+#      - name: Install Tmate
+#        if: always()
+#        run: sudo apt-get install tmate
+#
+#      - name: Start Tmate session
+#        if: always()
+#        run: |
+#          tmate -S /tmp/tmate.sock new-session -d
+#          tmate -S /tmp/tmate.sock wait tmate-ready
+#          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+#          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+#
+#          TIMEOUT=1800  # 30 minutes
+#          INTERVAL=1  # 1 second
+#          START_TIME=$(date +%s)
+#
+#          while true; do
+#            sleep "$INTERVAL"
+#            CURRENT_TIME=$(date +%s)
+#            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+#
+#            # Check if timeout is reached
+#            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+#              echo "Timeout reached while waiting for the container."
+#              break
+#            fi
+#          done
+#        continue-on-error: true
