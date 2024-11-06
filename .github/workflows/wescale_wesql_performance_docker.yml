@@ -26,7 +26,7 @@ jobs:
 
       - name: Start MySQL Server
         run: |
-          cd ./examples/wesql-server && ./examples/wesql-server/start_mysql_server.sh
+          cd ./examples/wesql-server && ./start_mysql_server.sh
 
       - name: Set up Go
         if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
@@ -43,7 +43,7 @@ jobs:
 
       - name: Start WeScale
         run: |
-          cd ./examples/wesql-server && ./examples/wesql-server/init_single_node_cluster.sh
+          cd ./examples/wesql-server && ./init_single_node_cluster.sh
           
       - name: Build and Run container
         run: |
