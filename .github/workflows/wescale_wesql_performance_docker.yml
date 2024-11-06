@@ -38,36 +38,9 @@ jobs:
 
       - name: Start WeScale
         run: |
-          pwd
-          ls ./bin
           export PATH=$PATH:$(pwd)/bin
-          echo $PATH
           cd ./examples/wesql-server
-          
-          # 在一个终端会话中运行初始化脚本并通过 tee 输出日志
           ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
-          INIT_PID=$!
-          
-          # 实时显示日志文件内容
-          tail -f init_script_logs.txt &
-          TAIL_PID=$!
-          
-          echo "Waiting for WeScale to be ready..."
-          if timeout 60 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
-            echo "Port 15306 is now available"
-            # 停止 tail
-            kill $TAIL_PID
-            wait $INIT_PID
-            echo "Initialization completed successfully"
-          else
-            echo "Timeout waiting for port 15306"
-            # 停止 tail 和初始化脚本
-            kill $TAIL_PID
-            kill $INIT_PID
-            echo "=== Final logs ==="
-            cat init_script_logs.txt
-            exit 1
-          fi
 
       - name: Check Vitess Tablets
         if: always()
