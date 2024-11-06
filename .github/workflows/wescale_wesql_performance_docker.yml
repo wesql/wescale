@@ -32,23 +32,30 @@ jobs:
       - name: Start WeScale
         run: |
           cd ./examples/wesql-server
-          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
           
-          # Store the background process ID - need to get the PID of the script, not tee
+          # 在一个终端会话中运行初始化脚本并通过 tee 输出日志
+          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
           INIT_PID=$!
           
-          # Wait for WeScale to start (timeout after 5 minutes)
+          # 实时显示日志文件内容
+          tail -f init_script_logs.txt &
+          TAIL_PID=$!
+          
           echo "Waiting for WeScale to be ready..."
-          timeout 30 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'
-          
-          # Additional wait to ensure service is fully ready 
-          sleep 10
-          
-          # Check if initialization script is still running
-          if ps -p $INIT_PID > /dev/null; then
-            echo "Initialization script is still running"
+          if timeout 180 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
+            echo "Port 15306 is now available"
+            # 停止 tail
+            kill $TAIL_PID
+            wait $INIT_PID
+            echo "Initialization completed successfully"
           else
-            echo "Initialization script has completed"
+            echo "Timeout waiting for port 15306"
+            # 停止 tail 和初始化脚本
+            kill $TAIL_PID
+            kill $INIT_PID
+            echo "=== Final logs ==="
+            cat init_script_logs.txt
+            exit 1
           fi
 
       - name: Check Vitess Tablets
