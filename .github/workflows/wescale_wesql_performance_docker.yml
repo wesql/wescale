@@ -16,6 +16,14 @@ jobs:
       - name: Start MySQL Server
         run: |
           cd ./examples/wesql-server && ./start_mysql_server.sh
+          
+          docker logs mysql-server
+
+      - name: Install MySQL client
+        run: |
+          sudo apt-get update && sudo apt-get install -y mysql-client
+          
+          
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -61,9 +69,6 @@ jobs:
       - name: Check Vitess Tablets
         if: always()
         run: |
-          # Install MySQL client
-          sudo apt-get update && sudo apt-get install -y mysql-client
-          
           # Attempt to connect and execute command, display logs if failed
           if ! mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"; then
             echo "Failed to execute MySQL command"
