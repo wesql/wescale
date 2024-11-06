@@ -20,8 +20,6 @@ jobs:
       - name: Install MySQL client
         run: |
           sudo apt-get update && sudo apt-get install -y mysql-client
-          
-          docker logs mysql-server
 
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -32,7 +30,7 @@ jobs:
         timeout-minutes: 30
         run: |
           pwd
-          chmod 777 ./examples/wesql-server/vtdataroot
+          chmod -R 777 ./examples/wesql-server/vtdataroot
           ls -alF examples/wesql-server/vtdataroot
           whoami
           make failpoint-enable
