@@ -20,62 +20,32 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      # Step 1: Checkout the code
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Install Docker
+      # Step 2: Install kubectl
+      - name: Install kubectl
+        run: brew install kubectl
+
+      # Step 3: Install Docker CLI
+      - name: Install Docker CLI
+        run: brew install docker
+
+      # Step 4: Install Colima
+      - name: Install Colima
         run: |
-          brew install docker
-          brew install docker-buildx
-          # Start Docker Desktop from the command line
-          open -a Docker
-          # Wait for Docker to start
-          while ! docker system info > /dev/null 2>&1; do
-            echo "Waiting for Docker to start..."
-            sleep 1
-          done
+          brew install colima
+          LIMACTL_PATH=$(brew --prefix)/bin/limactl
+          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # Step 5: Build image
+      - name: Build image
+        run: |
+          chmod -R o=rx *;
+          echo "Building docker using amd64/arm64 buildx";
+          docker buildx build --squash --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-
-      - name: Fix permissions
-        run: chmod -R o=rx *
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/wesqlscale/Dockerfile.release
-          platforms: linux/amd64
-          tags: apecloud/apecloud-mysql-scale:local-latest
-          load: true  # 对应 --load 参数
-          push: false # 不推送到镜像仓库
-
-
-
-#      # Step 1: Checkout the code
-#      - name: Checkout code
-#        uses: actions/checkout@v3
-#
-#      # Step 2: Install kubectl
-#      - name: Install kubectl
-#        run: brew install kubectl
-#
-#      # Step 3: Install Docker CLI
-#      - name: Install Docker CLI
-#        run: brew install docker
-#
-#      # Step 4: Install Colima
-#      - name: Install Colima
-#        run: |
-#          brew install colima
-#          LIMACTL_PATH=$(brew --prefix)/bin/limactl
-#          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 #
 #
 ## Step 5: Start Colima with Kubernetes
