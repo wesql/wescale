@@ -38,6 +38,7 @@ jobs:
 
       - name: Start WeScale
         run: |
+          pwd
           export PATH=$PATH:./bin
           cd ./examples/wesql-server
           
@@ -73,35 +74,7 @@ jobs:
           if ! mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"; then
             echo "Failed to execute MySQL command"
             echo "=== Initialization Script Logs ==="
+            docker logs mysql-server
             cat ./examples/wesql-server/init_script_logs.txt
             exit 1
           fi
-
-#      - name: Install Tmate
-#        if: always()
-#        run: sudo apt-get install tmate
-#
-#      - name: Start Tmate session
-#        if: always()
-#        run: |
-#          tmate -S /tmp/tmate.sock new-session -d
-#          tmate -S /tmp/tmate.sock wait tmate-ready
-#          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-#          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-#
-#          TIMEOUT=1800  # 30 minutes
-#          INTERVAL=1  # 1 second
-#          START_TIME=$(date +%s)
-#
-#          while true; do
-#            sleep "$INTERVAL"
-#            CURRENT_TIME=$(date +%s)
-#            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-#
-#            # Check if timeout is reached
-#            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-#              echo "Timeout reached while waiting for the container."
-#              break
-#            fi
-#          done
-#        continue-on-error: true
