@@ -30,7 +30,8 @@ EOL
 fi
 
 # 设置目录权限
-chmod -R 755 "$DATA_DIR"
+chmod -R 777 "$DATA_DIR"
+chmod 644 "$CONFIG_FILE"
 
 # 运行 Docker 容器
 docker run -itd --name $CONTAINER_NAME \
