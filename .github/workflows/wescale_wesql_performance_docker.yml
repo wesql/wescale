@@ -32,7 +32,6 @@ jobs:
         timeout-minutes: 30
         run: |
           pwd
-          chmod -R 777 ./examples/wesql-server/vtdataroot
           ls -alF examples/wesql-server/vtdataroot
           whoami
           make failpoint-enable
