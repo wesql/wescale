@@ -32,6 +32,7 @@ jobs:
         timeout-minutes: 30
         run: |
           pwd
+          chmod 777 ./examples/wesql-server/vtdataroot
           make failpoint-enable
           make build
           make failpoint-disable
