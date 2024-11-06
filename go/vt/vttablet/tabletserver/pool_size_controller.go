@@ -34,7 +34,7 @@ var defaultConfig = QueryServerPoolAutoScaleConfig{
 	Interval:                   30 * time.Second,
 	PercentageOfMaxConnections: 80,
 	SafetyBuffer:               35,
-	TxPoolPercentage:           50,
+	TxPoolPercentage:           65,
 	MinTxPoolSize:              5,
 	MinOltpReadPoolSize:        5,
 }
