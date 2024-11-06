@@ -13,14 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Start MySQL Server
-        run: |
-          cd ./examples/wesql-server && ./start_mysql_server.sh
-
-      - name: Install MySQL client
-        run: |
-          sudo apt-get update && sudo apt-get install -y mysql-client
-
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -36,33 +28,21 @@ jobs:
           make build
           make failpoint-disable
 
-      - name: Start WeScale
+      - name: Start MySQL-Server & WeScale
         run: |
           export PATH=$PATH:$(pwd)/bin
           cd ./examples/wesql-server
+          ./start_mysql_server.sh
           ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
 
-      - name: Print WeScale Logs
-        if: always()
-        run: |
-          # Attempt to connect and execute command, display logs if failed
-          if ! mysql -h127.0.0.1 -P15306 -uroot -ppasswd -e "show vitess_tablets"; then
-            echo "Failed to execute MySQL command"
-            echo "=== Initialization Script Logs ==="
-            docker logs mysql-server
-            cat ./examples/wesql-server/init_script_logs.txt
-            exit 1
-          fi
-
       - name: Checkout mysql-tester code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: apecloud/mysql-tester
           path: './mysql-tester'
 
       - name: Build mysql-tester
         run: |
-          pwd
           cd ./mysql-tester && \
           mkdir bin && \
           make build
@@ -72,11 +52,16 @@ jobs:
           cd ./mysql-tester && \
           eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
 
+      - name: Print WeScale Logs
+        run: |
+          docker logs mysql-server
+          cat ./examples/wesql-server/init_script_logs.txt
+
       - name: Print test output
         run: |
-          
           # print test output
           cat ./mysql-tester/output.txt
+
       - name: Check test results
         run: |
           # check if any test failed
@@ -86,32 +71,3 @@ jobs:
           else
               echo "Testcase is successful"
           fi
-
-      - name: Install Tmate
-        if: always()
-        run: sudo apt-get install tmate
-
-      - name: Start Tmate session
-        if: always()
-        run: |
-          tmate -S /tmp/tmate.sock new-session -d
-          tmate -S /tmp/tmate.sock wait tmate-ready
-          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-
-          TIMEOUT=1800  # 30 minutes
-          INTERVAL=1  # 1 second
-          START_TIME=$(date +%s)
-
-          while true; do
-            sleep "$INTERVAL"
-            CURRENT_TIME=$(date +%s)
-            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-
-            # Check if timeout is reached
-            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-              echo "Timeout reached while waiting for the container."
-              break
-            fi
-          done
-        continue-on-error: true
