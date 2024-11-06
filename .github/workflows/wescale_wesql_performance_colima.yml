@@ -39,12 +39,20 @@ jobs:
           LIMACTL_PATH=$(brew --prefix)/bin/limactl
           sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: false
+          timeout-minutes: 30  # 设置超时时间，默认是 30 分钟
+
+
       # Step 5: Build image
-      - name: Build image
-        run: |
-          chmod -R o=rx *;
-          echo "Building docker using amd64/arm64 buildx";
-          docker buildx build --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
+#      - name: Build image
+#        run: |
+#          chmod -R o=rx *;
+#          echo "Building docker using amd64/arm64 buildx";
+#          docker buildx version
+#          docker buildx build --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
 
 #
 #
