@@ -15,6 +15,8 @@ jobs:
 
       - name: Start MySQL Server
         run: |
+          chmod -R 777 .
+          chown -R $(whoami) .
           cd ./examples/wesql-server && ./start_mysql_server.sh
 
       - name: Install MySQL client
