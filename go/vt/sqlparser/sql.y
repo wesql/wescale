@@ -5329,6 +5329,10 @@ explainable_statement:
   {
     $$ = $1
   }
+| create_statement
+  {
+    $$ = $1
+  }
 
 wild_opt:
   {

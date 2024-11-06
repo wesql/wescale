@@ -8,6 +8,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"vitess.io/vitess/go/vt/discovery"
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/vtgate/vindexes"
@@ -122,13 +123,12 @@ func normalizeCreateTableStmt(createTableStatement *sqlparser.CreateTable) {
 	}
 }
 
-func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) error {
-	th, err := cursor.FindHealthyPrimaryTablet()
-	if err != nil {
-		return err
-	}
-
-	sessionDB := cursor.GetKeyspace()
+// CalculateDiff gets diff DDLs and stores them in DeclarativeDDL.
+// Parameters:
+//   - ctx: context.Context for the operation
+//   - primaryTablet: the primary tablet to execute queries
+//   - sessionDB: the database name set in current session
+func (d *DeclarativeDDL) CalculateDiff(ctx context.Context, primaryTablet *discovery.TabletHealth, sessionDB string) error {
 	if d.dbName == "" {
 		d.dbName = sessionDB
 		if d.dbName == "" {
@@ -137,7 +137,7 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	}
 
 	// return error if database not exist
-	qr, err := th.Conn.ExecuteInternal(ctx, th.Target,
+	qr, err := primaryTablet.Conn.ExecuteInternal(ctx, primaryTablet.Target,
 		fmt.Sprintf("SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '%v';", d.dbName),
 		nil, 0, 0, nil)
 	if err != nil {
@@ -149,7 +149,7 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	}
 
 	// get origin schema
-	qr, err = th.Conn.ExecuteInternal(ctx, th.Target,
+	qr, err = primaryTablet.Conn.ExecuteInternal(ctx, primaryTablet.Target,
 		fmt.Sprintf("SHOW CREATE TABLE %v.%v;", d.dbName, d.tableName),
 		nil, 0, 0, nil)
 	if err != nil {
@@ -198,6 +198,16 @@ func (d *DeclarativeDDL) calculateDiff(ctx context.Context, cursor VCursor) erro
 	return nil
 }
 
+// GetDiffDDLs should be called after CalculateDiff
+func (d *DeclarativeDDL) GetDiffDDLs() []string {
+	return d.diffDDLs
+}
+
+// GetDiffStmts should be called after CalculateDiff
+func (d *DeclarativeDDL) GetDiffStmts() []sqlparser.DDLStatement {
+	return d.diffDDLStmts
+}
+
 func (d *DeclarativeDDL) initSubPrimitive(cursor VCursor) error {
 	d.directPrimitives = make([]*Send, 0)
 	d.onlineDDLPrimitives = make([]*OnlineDDL, 0)
@@ -228,7 +238,12 @@ func (d *DeclarativeDDL) initSubPrimitive(cursor VCursor) error {
 
 // Init should be called before execution
 func (d *DeclarativeDDL) Init(ctx context.Context, cursor VCursor) error {
-	err := d.calculateDiff(ctx, cursor)
+	th, err := cursor.FindHealthyPrimaryTablet()
+	if err != nil {
+		return err
+	}
+	sessionDB := cursor.GetKeyspace()
+	err = d.CalculateDiff(ctx, th, sessionDB)
 	if err != nil {
 		return err
 	}
