@@ -54,31 +54,34 @@ jobs:
             exit 1
           fi
 
-#      - name: Install Tmate
-#        if: always()
-#        run: sudo apt-get install tmate
-#
-#      - name: Start Tmate session
-#        if: always()
-#        run: |
-#          tmate -S /tmp/tmate.sock new-session -d
-#          tmate -S /tmp/tmate.sock wait tmate-ready
-#          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-#          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-#
-#          TIMEOUT=1800  # 30 minutes
-#          INTERVAL=1  # 1 second
-#          START_TIME=$(date +%s)
-#
-#          while true; do
-#            sleep "$INTERVAL"
-#            CURRENT_TIME=$(date +%s)
-#            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-#
-#            # Check if timeout is reached
-#            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-#              echo "Timeout reached while waiting for the container."
-#              break
-#            fi
-#          done
-#        continue-on-error: true
+      - name: Checkout mysql-tester code
+        uses: actions/checkout@v2
+        with:
+          repository: apecloud/mysql-tester
+          path: './mysql-tester'
+
+      - name: Build mysql-tester
+        run: |
+          cd ./mysql-tester && \
+          mkdir bin && \
+          make build
+
+      - name: Run endtoend test
+        run: |
+          cd ./mysql-tester && \
+          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
+
+      - name: Print test output
+        run: |
+          
+          # print test output
+          cat ./mysql-tester/output.txt
+      - name: Check test results
+        run: |
+          # check if any test failed
+          if grep -q -- 'level=error' ./mysql-tester/output.txt; then
+              echo "Testcase is failed"
+              exit 1
+          else
+              echo "Testcase is successful"
+          fi
