@@ -16,13 +16,13 @@ jobs:
       - name: Start MySQL Server
         run: |
           cd ./examples/wesql-server && ./start_mysql_server.sh
-          
-          docker logs mysql-server
 
       - name: Install MySQL client
         run: |
           sudo apt-get update && sudo apt-get install -y mysql-client
           
+          docker logs mysql-server
+
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
