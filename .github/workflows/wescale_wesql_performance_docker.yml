@@ -29,9 +29,6 @@ jobs:
       - name: Compile source
         timeout-minutes: 30
         run: |
-          pwd
-          ls -alF examples/wesql-server/vtdataroot
-          whoami
           make failpoint-enable
           make build
           make failpoint-disable
@@ -49,7 +46,7 @@ jobs:
           TAIL_PID=$!
           
           echo "Waiting for WeScale to be ready..."
-          if timeout 10 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
+          if timeout 60 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'; then
             echo "Port 15306 is now available"
             # 停止 tail
             kill $TAIL_PID
