@@ -9,6 +9,10 @@ DATA_DIR="$(pwd)/vtdataroot/mysql"
 CONFIG_FILE="$DATA_DIR/my.cnf"
 IMG="mysql/mysql-server:8.0.32"
 
+# 获取当前用户的 UID 和 GID
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+
 # 创建数据目录和日志目录（如果不存在）
 mkdir -p "$DATA_DIR/data"
 mkdir -p "$DATA_DIR/log"
@@ -29,12 +33,12 @@ log-error=/data/mysql/log/mysqld-error.log
 EOL
 fi
 
-# 设置目录权限
-chmod -R 777 "$DATA_DIR"
-chmod 644 "$CONFIG_FILE"
+# 设置目录所有权
+chown -R $USER_ID:$GROUP_ID "$DATA_DIR"
 
 # 运行 Docker 容器
 docker run -itd --name $CONTAINER_NAME \
+  --user $USER_ID:$GROUP_ID \
   -p $HOST_PORT:$CONTAINER_PORT \
   -v "$DATA_DIR":/data/mysql \
   -v "$CONFIG_FILE":/etc/my.cnf \
