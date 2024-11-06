@@ -42,7 +42,7 @@ jobs:
           cd ./examples/wesql-server
           ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
 
-      - name: Check Vitess Tablets
+      - name: Print WeScale Logs
         if: always()
         run: |
           # Attempt to connect and execute command, display logs if failed
@@ -62,6 +62,7 @@ jobs:
 
       - name: Build mysql-tester
         run: |
+          pwd
           cd ./mysql-tester && \
           mkdir bin && \
           make build
@@ -85,3 +86,32 @@ jobs:
           else
               echo "Testcase is successful"
           fi
+
+      - name: Install Tmate
+        if: always()
+        run: sudo apt-get install tmate
+
+      - name: Start Tmate session
+        if: always()
+        run: |
+          tmate -S /tmp/tmate.sock new-session -d
+          tmate -S /tmp/tmate.sock wait tmate-ready
+          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
+          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
+
+          TIMEOUT=1800  # 30 minutes
+          INTERVAL=1  # 1 second
+          START_TIME=$(date +%s)
+
+          while true; do
+            sleep "$INTERVAL"
+            CURRENT_TIME=$(date +%s)
+            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
+
+            # Check if timeout is reached
+            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
+              echo "Timeout reached while waiting for the container."
+              break
+            fi
+          done
+        continue-on-error: true
