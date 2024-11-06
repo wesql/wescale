@@ -6,9 +6,20 @@ title: Declarative DDL
 
 ## Overview
 
-The Declarative DDL feature in WeSQL WeScale allows you to manage database schemas in a declarative way. You specify the desired final state of your table, and WeSQL WeScale automatically generates and executes the necessary DDL statements to achieve that state. This approach simplifies schema management and reduces the risk of errors in writing complex DDL statements manually.
+The Declarative DDL feature in WeSQL WeScale allows you to manage database schemas using a declarative approach. Instead of writing complex DDL statements manually to create or modify tables, you simply define the desired end state of your table. WeSQL WeScale then automatically generates and executes the necessary DDL statements to bring your database schema to that specified state.
 
-## Prerequisites
+This declarative approach offers several benefits:
+
+1. Simplified schema management: You only need to focus on the end result, rather than the step-by-step DDL operations.
+
+2. Reduced risk of errors: By eliminating the need to write intricate DDL statements by hand, Declarative DDL reduces the chances of making syntax or logical mistakes.
+
+3. Easier schema evolution: As your application evolves, updating the database schema becomes more straightforward. You modify the desired state definition, and WeSQL WeScale determines the necessary changes.
+
+Whether you're creating a new table or modifying an existing one, Declarative DDL makes schema management more intuitive and less error-prone. It's particularly useful in scenarios with frequently changing schemas or complex table structures.
+
+## Basic Usage
+### Prerequisites
 
 Before using Declarative DDL, ensure the feature is enabled:
 
@@ -17,35 +28,109 @@ SET @@enable_declarative_ddl=true;
 ```
 > Notice: If you see an "Unknown system variable" error, you are not connected to the WeScale endpoint. Please connect to the WeScale endpoint and try again.
 
+### Using Declarative DDL
 
-
-## Using Declarative DDL
-
-First, create the initial database and table:
+To get started with Declarative DDL, first let's create a simple database and table:
 
 ```sql
 CREATE DATABASE test_declarative_ddl;
        
 USE test_declarative_ddl;
-    
-CREATE TABLE test_declarative_ddl.users ( id INT PRIMARY KEY );
+
+CREATE TABLE test_declarative_ddl.users (
+    id INT PRIMARY KEY
+);
 ```
 
-Then, you can declare the desired table structure using the `CREATE TABLE` statement. For example, if you want to add a new column `age` of type `INT`, and change the type of id from `INT` to `VARCHAR(64)`, you can use the following statement:
+Now, suppose you want to modify this table. For example, you might want to:
+
+Add a new column age of type `INT`
+Change the type of id from `INT` to `VARCHAR(64)`
+
+With Declarative DDL, you don't need to write the ALTER TABLE statements manually. Instead, you simply declare the desired table structure using the CREATE TABLE statement:
 
 ```sql
 -- Declare the target structure
-CREATE TABLE test_declarative_ddl.users ( id VARCHAR(64) PRIMARY KEY, age INT );
+CREATE TABLE test_declarative_ddl.users (
+    id VARCHAR(64) PRIMARY KEY,
+    age INT
+);
 ```
+Declarative DDL will automatically figure out the necessary changes and apply them. You won't get a "table already exists" error.
 
-Check the final table structure:
+To verify that the changes were applied, you can check the table structure:
 ```sql
 DESC test_declarative_ddl.users;
+
++-------+-------------+------+-----+---------+-------+
+| Field | Type        | Null | Key | Default | Extra |
++-------+-------------+------+-----+---------+-------+
+| id    | varchar(64) | NO   | PRI | NULL    |       |
+| age   | int         | YES  |     | NULL    |       |
++-------+-------------+------+-----+---------+-------+
+```
+As you can see, the id column type has been changed to VARCHAR(64), and the new age column has been added.
+
+### Previewing Changes with EXPLAIN
+
+Before applying the changes, you might want to see what DDL statements Declarative DDL will generate. You can do this using the `EXPLAIN` command.
+
+For example, suppose you want to change your table to:
+```sql
+CREATE TABLE test_declarative_ddl.users (
+    id INT PRIMARY KEY,
+    height INT
+);
+```
+To see the DDL statements that will be generated, use:
+```sql
+EXPLAIN CREATE TABLE test_declarative_ddl.users (
+  id INT PRIMARY KEY,
+  height INT
+);
+```
+You will get output like:
+```sql
++-------------------------------------------------------------------------------------------------------------+
+| DDLs to Execute                                                                                             |
++-------------------------------------------------------------------------------------------------------------+
+| ALTER TABLE `test_declarative_ddl`.`users` MODIFY COLUMN `id` int NOT NULL, RENAME COLUMN `age` TO `height` |
++-------------------------------------------------------------------------------------------------------------+
+1 row in set (2.93 sec)
+@@enable_declarative_ddl is true, @@ddl_strategy is direct
+```
+> Note that EXPLAIN CREATE TABLE shows the DDL statements that are going to be executed by WeScale. You can use this even when `@@enable_declarative_ddl` is false. When `@@enable_declarative_ddl` is false, it will print the original create table DDL you want to execute.
+
+After previewing the changes, you can either run the DDL statements shown in the output, or simply run the declarative CREATE TABLE statement:
+```sql
+CREATE TABLE test_declarative_ddl.users (
+  id INT PRIMARY KEY,
+  height INT
+);
 ```
 
-## Configuration Parameters
+To verify the changes:
+```sql
+DESC test_declarative_ddl.users;
 
-Declarative DDL behavior can be fine-tuned using the hints parameters. All configuration parameters should be set in the WeScale vtgate configuration file. The format is:
++--------+------+------+-----+---------+-------+
+| Field  | Type | Null | Key | Default | Extra |
++--------+------+------+-----+---------+-------+
+| id     | int  | NO   | PRI | NULL    |       |
+| height | int  | YES  |     | NULL    |       |
++--------+------+------+-----+---------+-------+
+```
+
+### Best Practices
+
+1. Use `EXPLAIN CREATE TABLE` to preview the DDL statements that Declarative DDL will generate before executing them.
+2. Declarative DDL is a feature help generate DDLs needed from current table structure to target table structure, it's independent of DDL execution strategy. You can set `@@ddl_strategy` to `direct` or `online` based on your needs.
+3. If you want more control over the DDL statements generated by Declarative DDL, see the Configuration Parameters chapter.
+
+## Configuration Parameters (Advanced)
+The Declarative DDL hints parameters provide more control over the behavior of Declarative DDL. Feel free to explore these options as you become more familiar with the feature. 
+
+All configuration parameters should be set in the WeScale vtgate configuration file. The format is:
 
 ```
 parameter_name = value
