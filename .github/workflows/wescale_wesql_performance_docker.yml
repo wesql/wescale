@@ -40,7 +40,7 @@ jobs:
           
           # Wait for WeScale to start (timeout after 5 minutes)
           echo "Waiting for WeScale to be ready..."
-          timeout 300 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'
+          timeout 30 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'
           
           # Additional wait to ensure service is fully ready
           sleep 10
