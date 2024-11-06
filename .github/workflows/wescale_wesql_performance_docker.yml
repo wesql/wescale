@@ -26,4 +26,20 @@ jobs:
 
       - name: Start MySQL Server
         run: |
-          ./examples/wesql-server/
+          ./examples/wesql-server/start_mysql_server.sh
+
+      - name: Compile source
+        if: steps.skip-workflow.outputs.skip-workflow == 'false' && steps.changes.outputs.end_to_end == 'true'
+        timeout-minutes: 30
+        run: |
+          make failpoint-enable
+          make build
+          make failpoint-disable
+
+      - name: Start WeScale
+        run: |
+          ./examples/wesql-server/init_single_node_cluster.sh
+          
+      - name: Build and Run container
+        run: |
+          docker logs mysql-server
