@@ -44,7 +44,7 @@ jobs:
         run: |
           chmod -R o=rx *;
           echo "Building docker using amd64/arm64 buildx";
-          docker buildx build --squash --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
+          docker buildx build --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
 
 #
 #
