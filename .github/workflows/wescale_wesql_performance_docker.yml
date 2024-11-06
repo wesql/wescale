@@ -31,18 +31,17 @@ jobs:
 
       - name: Start WeScale
         run: |
-          # Run initialization script in background and capture its output
           cd ./examples/wesql-server
-          ./init_single_node_cluster.sh > init_script_logs.txt 2>&1 &
+          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
           
-          # Store the background process ID
+          # Store the background process ID - need to get the PID of the script, not tee
           INIT_PID=$!
           
           # Wait for WeScale to start (timeout after 5 minutes)
           echo "Waiting for WeScale to be ready..."
           timeout 30 bash -c 'until nc -z localhost 15306; do sleep 2; echo "Waiting for port 15306..."; done'
           
-          # Additional wait to ensure service is fully ready
+          # Additional wait to ensure service is fully ready 
           sleep 10
           
           # Check if initialization script is still running
@@ -51,10 +50,6 @@ jobs:
           else
             echo "Initialization script has completed"
           fi
-          
-          # Display initialization script logs
-          echo "=== Initialization Script Logs ==="
-          cat init_script_logs.txt
 
       - name: Check Vitess Tablets
         run: |
