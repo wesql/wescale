@@ -23,6 +23,7 @@ jobs:
           branch: ${{ github.ref }}
           image_name: test/wesqlscale
           tags: test-${{ github.sha }}
+          registry: ghcr.io
         secrets:
           REGISTRY_USERNAME: ${{ secrets.GHCR_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.GHCR_TOKEN }}
