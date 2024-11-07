@@ -12,6 +12,7 @@ import (
 	"math"
 	"sync"
 	"time"
+
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 
 	"github.com/spf13/pflag"
@@ -107,7 +108,6 @@ const (
 )
 
 type JobController struct {
-	tableName              string
 	tableMutex             sync.Mutex
 	tabletTypeFunc         func() topodatapb.TabletType
 	env                    tabletenv.Env
@@ -171,9 +171,8 @@ func (jc *JobController) Close() {
 	}
 }
 
-func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletType, env tabletenv.Env, lagThrottler *throttle.Throttler, taskPool *background.TaskPool) *JobController {
+func NewJobController(tabletTypeFunc func() topodatapb.TabletType, env tabletenv.Env, lagThrottler *throttle.Throttler, taskPool *background.TaskPool) *JobController {
 	return &JobController{
-		tableName:      tableName,
 		tabletTypeFunc: tabletTypeFunc,
 		env:            env,
 		lagThrottler:   lagThrottler,
@@ -504,13 +503,13 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 	if err != nil {
 		return err
 	}
+	defer conn.Recycle()
 	failpoint.Inject(failpointkey.CreateErrorWhenExecutingBatch.Name, func(val failpoint.Value) {
 		temp, ok := val.(bool)
 		if ok && temp {
 			err = errors.New("error created by failpoint")
 		}
 	})
-	defer conn.Recycle()
 
 	// 1. start a transaction
 	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, false)
