@@ -11,7 +11,7 @@ jobs:
       contents: read
       packages: write
 
-    uses: ./.github/workflows/build-image.yml
+    uses: ./.github/workflows/build_image.yml
     with:
       branch: ${{ github.ref }}
       image_name: test/wesqlscale
