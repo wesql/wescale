@@ -41,8 +41,6 @@ queryserver_config_strict_table_acl = false
 table_acl_config_reload_interval    = 30s
 enforce_tableacl_config             = false
 
-# the size of database connection pool in non transaction dml
-non_transactional_dml_database_pool_size=3
 # the number of rows to be processed in one batch by default
 non_transactional_dml_default_batch_size=2000
 # the interval of batch processing in milliseconds by default
@@ -156,45 +154,6 @@ func TestRegisterReloadHandlersForVtTabletWithModify(t *testing.T) {
 		val, err := fs.GetString("mysql_role_probe_url_template")
 		assert.NoError(t, err)
 		assert.Equal(t, "http://%s:%d/v3.0/getrole", val)
-	}
-
-	// expect: non_transactional_dml_database_pool_size = 3(default value), because non_transactional_dml_database_pool_size should >= 1
-	{
-		configFileName := "./test/vttablet_test_modify.cnf"
-		section := "vttablet"
-		key := "non_transactional_dml_database_pool_size"
-		value := "0"
-		SaveConfigTo(t, configFileName, section, key, value)
-
-		val, err := fs.GetInt("non_transactional_dml_database_pool_size")
-		assert.NoError(t, err)
-		assert.Equal(t, 3, val)
-	}
-
-	// expect: non_transactional_dml_database_pool_size = 3(default value), because non_transactional_dml_database_pool_size should >= 1
-	{
-		configFileName := "./test/vttablet_test_modify.cnf"
-		section := "vttablet"
-		key := "non_transactional_dml_database_pool_size"
-		value := "1.2345"
-		SaveConfigTo(t, configFileName, section, key, value)
-
-		val, err := fs.GetInt("non_transactional_dml_database_pool_size")
-		assert.NoError(t, err)
-		assert.Equal(t, 3, val)
-	}
-
-	// expect: non_transactional_dml_database_pool_size = 1
-	{
-		configFileName := "./test/vttablet_test_modify.cnf"
-		section := "vttablet"
-		key := "non_transactional_dml_database_pool_size"
-		value := "1"
-		SaveConfigTo(t, configFileName, section, key, value)
-
-		val, err := fs.GetInt("non_transactional_dml_database_pool_size")
-		assert.NoError(t, err)
-		assert.Equal(t, 1, val)
 	}
 
 	// expect: non_transactional_dml_batch_size_threshold_ratio = 0.85
