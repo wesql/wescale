@@ -16,7 +16,7 @@ jobs:
       image_name: ${{ github.repository_owner }}/test/wesqlscale
       tags: test-${{ github.sha }}
       registry: ghcr.io
-      platform: linux/arm64/v8
+      platforms: linux/arm64/v8
 
   test-cluster:
     needs: build-image
