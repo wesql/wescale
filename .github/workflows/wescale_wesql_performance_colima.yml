@@ -39,43 +39,39 @@ jobs:
           LIMACTL_PATH=$(brew --prefix)/bin/limactl
           sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 
+      # Step 5: Start Colima with Kubernetes
+      - name: Start Colima with Kubernetes
+        run: |
+          colima start --kubernetes --network-address --arch arm64 --vm-type=qemu
+          # Wait for Docker and Kubernetes to fully start
+          for i in {1..10}; do
+            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
+              echo "Docker and Kubernetes are running"
+              break
+            else
+              echo "Waiting for Docker and Kubernetes to start..."
+              sleep 5
+            fi
+          done
+
+      # Step 6: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
+
+      # Step 7: Build image
+      - name: Build image
+        run: |
+          chmod -R o=rx *;
+          echo "Building docker using amd64/arm64 buildx";
+          docker build -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest .;
+
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: false
-          timeout-minutes: 30  # 设置超时时间，默认是 30 分钟
-
-
-      # Step 5: Build image
-#      - name: Build image
-#        run: |
-#          chmod -R o=rx *;
-#          echo "Building docker using amd64/arm64 buildx";
-#          docker buildx version
-#          docker buildx build --platform linux/arm64 -f docker/wesqlscale/Dockerfile.release -t apecloud/apecloud-mysql-scale:local-latest --load .;
-
-#
-#
-## Step 5: Start Colima with Kubernetes
-#      - name: Start Colima with Kubernetes
-#        run: |
-#          colima start --kubernetes --network-address --arch arm64 --vm-type=qemu
-#          # Wait for Docker and Kubernetes to fully start
-#          for i in {1..10}; do
-#            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
-#              echo "Docker and Kubernetes are running"
-#              break
-#            else
-#              echo "Waiting for Docker and Kubernetes to start..."
-#              sleep 5
-#            fi
-#          done
-#
-#      # Step 6: Verify Kubernetes is running
-#      - name: Verify Kubernetes is running
-#        run: |
-#          kubectl get nodes
-#          kubectl get pods -A
+          timeout-minutes: 90  # 设置超时时间，默认是 30 分钟
 
       ################################################################################################################
       ################################################################################################################
