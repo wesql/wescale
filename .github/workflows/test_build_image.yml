@@ -11,10 +11,10 @@ jobs:
       contents: read
       packages: write
 
-    uses: ./.github/workflows/build_image.yml
+    uses: ./.github/workflows/build-image.yml
     with:
       branch: ${{ github.ref }}
-      image_name: test/wesqlscale
+      image_name: ${{ github.repository_owner }}/test/wesqlscale
       tags: test-${{ github.sha }}
       registry: ghcr.io
 
@@ -29,7 +29,7 @@ jobs:
       - name: Wait for image to be available
         run: |
           for i in {1..12}; do
-            if docker manifest inspect ghcr.io/test/wesqlscale:test-${{ github.sha }} >/dev/null 2>&1; then
+            if docker manifest inspect ghcr.io/${{ github.repository_owner }}/test/wesqlscale:test-${{ github.sha }} >/dev/null 2>&1; then
               echo "Image is available"
               exit 0
             fi
@@ -51,13 +51,13 @@ jobs:
 
       - name: Verify image exists
         run: |
-          docker pull ghcr.io/test/wesqlscale:test-${{ github.sha }}
+          docker pull ghcr.io/${{ github.repository_owner }}/test/wesqlscale:test-${{ github.sha }}
 
       - name: Delete test image
         if: always()
         run: |
           TOKEN="${{ github.token }}"
-          IMAGE="test/wesqlscale"
+          IMAGE="${{ github.repository_owner }}/test/wesqlscale"
           TAG="test-${{ github.sha }}"
           
           PACKAGE_VERSION_ID=$(curl -s -H "Authorization: Bearer $TOKEN" \
