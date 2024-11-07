@@ -50,11 +50,9 @@ ls bin
 export PATH=$PATH:$(pwd)/bin
 ```
 
-# **Deploy** **&** **Debug**
+# **Deploy**
 
 You can deploy a WeSQL WeScale cluster locally by using the scripts in `wescale/examples/wesql-server` folder
-
-## **Deploy**
 
 ```Shell
 cd ./examples/wesql-server
