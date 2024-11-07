@@ -54,9 +54,8 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         run: |
           export PATH=$PATH:$(pwd)/bin
-          cd ./examples/wesql-server
-          ./start_mysql_server.sh
-          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
+          ./examples/wesql-server/start_mysql_server.sh
+          ./examples/wesql-server/init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
@@ -77,18 +76,6 @@ jobs:
         run: |
           cd ./mysql-tester && \
           eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
-
-      - name: Print WeScale Logs
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-        run: |
-          docker logs mysql-server
-          cat ./examples/wesql-server/init_script_logs.txt
-
-      - name: Check test results
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-        run: |
-          # print test output
-          cat ./mysql-tester/output.txt
           
           # check if any test failed
           if grep -q -- 'level=error' ./mysql-tester/output.txt; then
@@ -97,3 +84,9 @@ jobs:
           else
               echo "Testcase is successful"
           fi
+
+      - name: Print WeScale Logs
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        run: |
+          docker logs mysql-server
+          cat ./init_script_logs.txt
