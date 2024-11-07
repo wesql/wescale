@@ -186,6 +186,8 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 		return tsv.sm.Target().TabletType
 	}
 
+	tsv.taskPool = background.NewTaskPool(tsv)
+
 	tsv.statelessql = NewQueryList("oltp-stateless")
 	tsv.statefulql = NewQueryList("oltp-stateful")
 	tsv.olapql = NewQueryList("olap")
@@ -203,9 +205,8 @@ func NewTabletServer(name string, config *tabletenv.TabletConfig, topoServer *to
 	tsv.branchWatch = NewBranchWatcher(tsv, tsv.config.DB.DbaWithDB())
 
 	tsv.onlineDDLExecutor = onlineddl.NewExecutor(tsv, alias, topoServer, tsv.lagThrottler, tabletTypeFunc, tsv.onlineDDLExecutorToggleTableBuffer)
-	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler)
+	tsv.dmlJonController = jobcontroller.NewJobController("non_transactional_dml_jobs", tabletTypeFunc, tsv, tsv.lagThrottler, tsv.taskPool)
 	tsv.tableGC = gc.NewTableGC(tsv, topoServer, tsv.lagThrottler)
-	tsv.taskPool = background.NewTaskPool(tsv)
 	tsv.poolSizeController = NewPoolSizeController(tsv, tsv.taskPool, tsv.te, tsv.qe)
 
 	tsv.sm = &stateManager{

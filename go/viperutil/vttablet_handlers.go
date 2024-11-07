@@ -137,14 +137,6 @@ func RegisterReloadHandlersForVtTablet(v *ViperConfig, tsv *tabletserver.TabletS
 		}
 	})
 
-	v.ReloadHandler.AddReloadHandler("non_transactional_dml_database_pool_size", func(key string, value string, fs *pflag.FlagSet) {
-		if err := jobcontroller.SetDatabasePoolSize(value); err == nil {
-			_ = fs.Set("non_transactional_dml_database_pool_size", value)
-		} else {
-			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
-		}
-	})
-
 	v.ReloadHandler.AddReloadHandler("non_transactional_dml_default_batch_size", func(key string, value string, fs *pflag.FlagSet) {
 		if err := jobcontroller.SetDefaultBatchSize(value); err == nil {
 			_ = fs.Set("non_transactional_dml_default_batch_size", value)
