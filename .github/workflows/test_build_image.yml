@@ -118,18 +118,30 @@ jobs:
           TOKEN="${{ github.token }}"
           IMAGE="${{ github.repository_owner }}/test/wesqlscale"
           TAG="test-${{ github.sha }}"
-          
-          PACKAGE_VERSION_ID=$(curl -s -H "Authorization: Bearer $TOKEN" \
+            
+           
+          VERSIONS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/user/packages/container/$IMAGE/versions" | \
-            jq -r ".[] | select(.metadata.container.tags[] == \"$TAG\") | .id")
+            "https://api.github.com/user/packages/container/$IMAGE/versions")
+          
+          PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.names[] | contains(\"$TAG\")) | .id")
           
           if [ ! -z "$PACKAGE_VERSION_ID" ]; then
-            curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
+            echo "Found image version ID: $PACKAGE_VERSION_ID"
+          
+            DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/user/packages/container/$IMAGE/versions/$PACKAGE_VERSION_ID"
-            echo "Deleted image version: $PACKAGE_VERSION_ID"
+              "https://api.github.com/user/packages/container/$IMAGE/versions/$PACKAGE_VERSION_ID")
+          
+            if [ -z "$DELETE_RESPONSE" ]; then
+              echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
+            else
+              echo "❌ Failed to delete image version. Response: $DELETE_RESPONSE"
+              exit 1
+            fi
           else
-            echo "Image version not found"
+            echo "❌ Could not find image version with tag: $TAG"
+            echo "Available versions:"
+            echo "$VERSIONS_JSON" | jq -r '.[].names'
             exit 1
           fi
