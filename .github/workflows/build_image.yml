@@ -26,13 +26,6 @@ on:
         type: string
         default: 'latest'
         description: 'Image tags (comma-separated)'
-    secrets:
-      REGISTRY_USERNAME:
-        required: true
-        description: 'Username for container registry'
-      REGISTRY_PASSWORD:
-        required: true
-        description: 'Password for container registry'
 
 jobs:
   build-and-push:
