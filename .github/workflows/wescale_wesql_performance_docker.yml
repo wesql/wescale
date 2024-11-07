@@ -57,13 +57,11 @@ jobs:
           docker logs mysql-server
           cat ./examples/wesql-server/init_script_logs.txt
 
-      - name: Print test output
+      - name: Check test results
         run: |
           # print test output
           cat ./mysql-tester/output.txt
-
-      - name: Check test results
-        run: |
+          
           # check if any test failed
           if grep -q -- 'level=error' ./mysql-tester/output.txt; then
               echo "Testcase is failed"
