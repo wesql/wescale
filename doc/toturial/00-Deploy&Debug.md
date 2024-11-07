@@ -71,30 +71,3 @@ Once the WeSQL WeScale cluster is successfully launched, you can use the followi
 ```Shell
 mysql -h127.0.0.1 -P15306
 ```
-
-## Debug
-
-If you would like to debug `VTGate` or `VTTablet`, you may want to start them in IDE.
-
-You can kill the vtgate/vttablet process started by the script and start vtgate/vttablet from an IDE for debugging. The program arguments can refer to the startup options of vtgate got from `ps aux` command:
-
-![img](images/ps_aux.png)
-
-There is a convenient way to help you start a local cluster for debugging purposes. You can add an environment variable `debug=on` when starting a cluster.
-
-It will start a cluster first, then all vtgate and vttablet processes will be killed.
-
-```Shell
-debug=on ./init_cluster.sh
-```
-
-Let's take VTTablet as an example:
-
-You should configure the `Run kind`、`Package path`、`Working directory`、`Environment` and `Program arguments`。
-
-You can follow the settings in the picture, but remember to replace the file paths with the ones on your own computer. As stated previously, program arguments can be viewed by using the `ps aux` command.
-
-![img](images/debug_goland.png)
-
-However, when using the `ps aux` command to obtain information about the program arguments of `vttablet`, there is no argument value following the `--tablet_hostname` flag, which will lead an error in GoLand. You can obtain the hostname by running `hostname` in the terminal and then use it as the value of `hostname` flag.
-
