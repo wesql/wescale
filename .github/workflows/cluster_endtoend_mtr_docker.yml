@@ -54,8 +54,9 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         run: |
           export PATH=$PATH:$(pwd)/bin
-          ./examples/wesql-server/start_mysql_server.sh
-          ./examples/wesql-server/init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
+          cd ./examples/wesql-server
+          ./start_mysql_server.sh
+          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
@@ -89,4 +90,4 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         run: |
           docker logs mysql-server
-          cat ./init_script_logs.txt
+          cat ./examples/wesql-server/init_script_logs.txt
