@@ -7,30 +7,25 @@ on:
 
 jobs:
   test-build:
+    permissions:
+      contents: read
+      packages: write
+
+    uses: ./.github/workflows/build-image.yml@${{ github.ref }}
+    with:
+      branch: ${{ github.ref }}
+      image_name: test/wesqlscale
+      tags: test-${{ github.sha }}
+      registry: ghcr.io
+
+  verify-and-cleanup:
+    needs: test-build
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        id: build
-        uses: ./.github/workflows/build-image.yml
-        with:
-          branch: ${{ github.ref }}
-          image_name: test/wesqlscale
-          tags: test-${{ github.sha }}
-          registry: ghcr.io
-
-      - name: Verify build status
-        if: steps.build.outcome != 'success'
-        run: |
-          echo "Docker build workflow failed"
-          exit 1
-
       - name: Wait for image to be available
         run: |
           for i in {1..12}; do
