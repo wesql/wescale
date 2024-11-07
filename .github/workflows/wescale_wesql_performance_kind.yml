@@ -18,8 +18,6 @@ jobs:
   setup:
     name: "Kind Ubuntu K8s Cluster"
     runs-on: ubuntu-latest
-    container:
-      image: debian:latest
 
     steps:
       # Step 1: Checkout the code
