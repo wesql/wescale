@@ -18,7 +18,7 @@ jobs:
 
       - name: Build Docker image
         id: build
-        uses: ./.github/workflows/docker-build.yml
+        uses: ./.github/workflows/build-image.yml
         with:
           branch: ${{ github.ref }}
           image_name: test/wesqlscale
