@@ -6,7 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-test:
+  build-image:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build_image.yml
+    with:
+      branch: ${{ github.ref }}
+      image_name: ${{ github.repository_owner }}/test/wesqlscale
+      tags: test-${{ github.sha }}
+      registry: ghcr.io
+
+  test-cluster:
+    needs: build-image
     runs-on: macos-latest
     permissions:
       contents: read
@@ -40,16 +52,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      # Step 6: Build and push Docker image
-      - name: Build and push Docker image
-        uses: ./.github/workflows/build_image.yml
-        with:
-          branch: ${{ github.ref }}
-          image_name: ${{ github.repository_owner }}/test/wesqlscale
-          tags: test-${{ github.sha }}
-          registry: ghcr.io
-
-      # Step 7: Start Colima with Kubernetes
+      # Step 6: Start Colima with Kubernetes
       - name: Start Colima with Kubernetes
         run: |
           # Start Colima with error handling
@@ -79,13 +82,13 @@ jobs:
             exit 1
           fi
 
-      # Step 8: Verify Kubernetes is running
+      # Step 7: Verify Kubernetes is running
       - name: Verify Kubernetes is running
         run: |
           kubectl get nodes
           kubectl get pods -A
 
-      # Step 9: Verify and pull the test image
+      # Step 8: Verify and pull the test image
       - name: Verify and pull test image
         id: verify-image
         run: |
@@ -107,7 +110,7 @@ jobs:
           echo "❌ Failed to pull image after $MAX_ATTEMPTS attempts"
           exit 1
 
-      # Step 10: Delete test image (only if previous steps succeeded)
+      # Step 9: Delete test image (only if previous steps succeeded)
       - name: Delete test image
         if: always() && steps.verify-image.outcome == 'success'
         run: |
