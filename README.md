@@ -9,7 +9,7 @@
 [![Unit Test (mysql57)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql57.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql57.yml)
 [![Unit Test (mysql80)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql80.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql80.yml)
 [![E2E Test](https://github.com/wesql/wescale/actions/workflows/cluster_endtoend_wesql.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/cluster_endtoend_wesql.yml)
-[![MTR Test](https://github.com/wesql/wescale/actions/workflows/cluster_endtoend_mtr_docker.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/cluster_endtoend_mysqltester.yml)
+[![MTR Test](https://github.com/wesql/wescale/actions/workflows/wescale_wesql_performance_docker.yml/badge.svg)](https://github.com/wesql/wescale/actions/workflows/wescale_wesql_performance_docker.yml)
 
 </div>
 
