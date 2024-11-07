@@ -18,30 +18,34 @@ jobs:
       tags: test-${{ github.sha }}
       registry: ghcr.io
 
-  verify-and-cleanup:
+  build-cluster:
     needs: test-build
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Wait for image to be available
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Install kubectl
+      - name: Install kubectl
+        run: brew install kubectl
+
+      # Step 3: Install Docker CLI
+      - name: Install Docker CLI
+        run: brew install docker
+
+      # Step 4: Install Colima
+      - name: Install Colima
         run: |
-          for i in {1..12}; do
-            if docker manifest inspect ghcr.io/${{ github.repository_owner }}/test/wesqlscale:test-${{ github.sha }} >/dev/null 2>&1; then
-              echo "Image is available"
-              exit 0
-            fi
-            echo "Waiting for image to be available... (attempt $i/12)"
-            sleep 5
-          done
-          echo "Timeout waiting for image"
-          exit 1
+          brew install colima
+          LIMACTL_PATH=$(brew --prefix)/bin/limactl
+          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
-
+      # Step 5: Login to registry
       - name: Login to registry
         uses: docker/login-action@v3
         with:
@@ -49,12 +53,67 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Verify image exists
+      # Step 6: Start Colima with Kubernetes
+      - name: Start Colima with Kubernetes
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/test/wesqlscale:test-${{ github.sha }}
+          # Start Colima with error handling
+          if ! colima start --kubernetes --network-address --arch arm64 --vm-type=qemu; then
+            echo "Failed to start Colima"
+            colima status
+            exit 1
+          fi
 
+          # Wait for Docker and Kubernetes with timeout
+          MAX_ATTEMPTS=20
+          ATTEMPT=1
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
+              echo "✅ Docker and Kubernetes are running"
+              break
+            fi
+            echo "Waiting for Docker and Kubernetes to start (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+            sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+            echo "❌ Timeout waiting for Docker and Kubernetes"
+            docker info || true
+            kubectl cluster-info || true
+            exit 1
+          fi
+
+      # Step 7: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
+
+      # Step 8: Verify and pull the test image
+      - name: Verify and pull test image
+        id: verify-image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/test/wesqlscale"
+          TAG="test-${{ github.sha }}"
+          
+          echo "Waiting for image to be available..."
+          MAX_ATTEMPTS=12
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            if docker pull $IMAGE:$TAG; then
+              echo "✅ Successfully pulled image"
+              docker images | grep wesqlscale
+              exit 0
+            fi
+            echo "Attempt $i/$MAX_ATTEMPTS: Image not yet available, waiting..."
+            sleep 10
+          done
+          
+          echo "❌ Failed to pull image after $MAX_ATTEMPTS attempts"
+          exit 1
+
+      # Step 9: Delete test image (only if previous steps succeeded)
       - name: Delete test image
-        if: always()
+        if: always() && steps.verify-image.outcome == 'success'
         run: |
           TOKEN="${{ github.token }}"
           IMAGE="${{ github.repository_owner }}/test/wesqlscale"
