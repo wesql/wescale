@@ -6,17 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-image:
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/build_image.yml
-    with:
-      branch: ${{ github.ref }}
-      image_name: ${{ github.repository_owner }}/test/wesqlscale
-      tags: test-${{ github.sha }}
-      registry: ghcr.io
-      platforms: linux/arm64/v8
+#  build-image:
+#    permissions:
+#      contents: read
+#      packages: write
+#    uses: ./.github/workflows/build_image.yml
+#    with:
+#      branch: ${{ github.ref }}
+#      image_name: ${{ github.repository_owner }}/test/wesqlscale
+#      tags: test-${{ github.sha }}
+#      registry: ghcr.io
+#      platforms: linux/arm64/v8
 
   test-cluster:
     needs: build-image
@@ -39,13 +39,13 @@ jobs:
         run: brew install docker
 
       # Step 4: Install Colima
-      - name: Install Colima
-        run: |
-          brew install colima
-          LIMACTL_PATH=$(brew --prefix)/bin/limactl
-          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
-
-      # Step 5: Login to registry
+#      - name: Install Colima
+#        run: |
+#          brew install colima
+#          LIMACTL_PATH=$(brew --prefix)/bin/limactl
+#          sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
+#
+#      # Step 5: Login to registry
       - name: Login to registry
         uses: docker/login-action@v3
         with:
@@ -54,62 +54,62 @@ jobs:
           password: ${{ github.token }}
 
       # Step 6: Start Colima with Kubernetes
-      - name: Start Colima with Kubernetes
-        run: |
-          # Start Colima with error handling
-          if ! colima start --kubernetes --network-address --arch arm64 --vm-type=qemu; then
-            echo "Failed to start Colima"
-            colima status
-            exit 1
-          fi
-
-          # Wait for Docker and Kubernetes with timeout
-          MAX_ATTEMPTS=20
-          ATTEMPT=1
-          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
-              echo "✅ Docker and Kubernetes are running"
-              break
-            fi
-            echo "Waiting for Docker and Kubernetes to start (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
-            sleep 10
-            ATTEMPT=$((ATTEMPT + 1))
-          done
-
-          if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
-            echo "❌ Timeout waiting for Docker and Kubernetes"
-            docker info || true
-            kubectl cluster-info || true
-            exit 1
-          fi
+#      - name: Start Colima with Kubernetes
+#        run: |
+#          # Start Colima with error handling
+#          if ! colima start --kubernetes --network-address --arch arm64 --vm-type=qemu; then
+#            echo "Failed to start Colima"
+#            colima status
+#            exit 1
+#          fi
+#
+#          # Wait for Docker and Kubernetes with timeout
+#          MAX_ATTEMPTS=20
+#          ATTEMPT=1
+#          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+#            if docker info > /dev/null 2>&1 && kubectl cluster-info > /dev/null 2>&1; then
+#              echo "✅ Docker and Kubernetes are running"
+#              break
+#            fi
+#            echo "Waiting for Docker and Kubernetes to start (attempt $ATTEMPT/$MAX_ATTEMPTS)..."
+#            sleep 10
+#            ATTEMPT=$((ATTEMPT + 1))
+#          done
+#
+#          if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+#            echo "❌ Timeout waiting for Docker and Kubernetes"
+#            docker info || true
+#            kubectl cluster-info || true
+#            exit 1
+#          fi
 
       # Step 7: Verify Kubernetes is running
-      - name: Verify Kubernetes is running
-        run: |
-          kubectl get nodes
-          kubectl get pods -A
+#      - name: Verify Kubernetes is running
+#        run: |
+#          kubectl get nodes
+#          kubectl get pods -A
 
       # Step 8: Verify and pull the test image
-      - name: Verify and pull test image
-        id: verify-image
-        run: |
-          IMAGE="ghcr.io/${{ github.repository_owner }}/test/wesqlscale"
-          TAG="test-${{ github.sha }}"
-          
-          echo "Waiting for image to be available..."
-          MAX_ATTEMPTS=12
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            if docker pull $IMAGE:$TAG; then
-              echo "✅ Successfully pulled image"
-              docker images | grep wesqlscale
-              exit 0
-            fi
-            echo "Attempt $i/$MAX_ATTEMPTS: Image not yet available, waiting..."
-            sleep 10
-          done
-          
-          echo "❌ Failed to pull image after $MAX_ATTEMPTS attempts"
-          exit 1
+#      - name: Verify and pull test image
+#        id: verify-image
+#        run: |
+#          IMAGE="ghcr.io/${{ github.repository_owner }}/test/wesqlscale"
+#          TAG="test-${{ github.sha }}"
+#
+#          echo "Waiting for image to be available..."
+#          MAX_ATTEMPTS=12
+#          for i in $(seq 1 $MAX_ATTEMPTS); do
+#            if docker pull $IMAGE:$TAG; then
+#              echo "✅ Successfully pulled image"
+#              docker images | grep wesqlscale
+#              exit 0
+#            fi
+#            echo "Attempt $i/$MAX_ATTEMPTS: Image not yet available, waiting..."
+#            sleep 10
+#          done
+#
+#          echo "❌ Failed to pull image after $MAX_ATTEMPTS attempts"
+#          exit 1
 
       # Step 9: Delete test image (only if previous steps succeeded)
       - name: Delete test image
@@ -117,12 +117,14 @@ jobs:
         run: |
           TOKEN="${{ github.token }}"
           IMAGE="${{ github.repository_owner }}/test/wesqlscale"
-          TAG="test-${{ github.sha }}"
-            
+          # TAG="test-${{ github.sha }}"
+          TAG="test-35cb9c97334a31dbc6ca7fa204d1c267cc56b670"  
            
           VERSIONS_JSON=$(curl -s -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/user/packages/container/$IMAGE/versions")
+          
+          echo $VERSIONS_JSON
           
           PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.names[] | contains(\"$TAG\")) | .id")
           
