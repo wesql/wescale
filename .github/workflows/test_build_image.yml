@@ -118,7 +118,8 @@ jobs:
           IMAGE="${{ github.repository_owner }}/test/wesqlscale"
           OWNER="${{ github.repository_owner }}"
           # TAG="test-${{ github.sha }}"
-          TAG="test-35cb9c97334a31dbc6ca7fa204d1c267cc56b670"  
+          TAG="test-35cb9c97334a31dbc6ca7fa204d1c267cc56b670"
+          PACKAGE_NAME="test/wesqlscale"
           
           echo "Fetching package versions..."
           VERSIONS_JSON=$(curl -s \
