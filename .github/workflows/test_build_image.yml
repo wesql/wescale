@@ -6,8 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
+#  build-image:
+#    permissions:
+#      contents: read
+#      packages: write
+#    uses: ./.github/workflows/build_image.yml
+#    with:
+#      branch: ${{ github.ref }}
+#      image_name: ${{ github.repository_owner }}/test/wesqlscale
+#      tags: test-${{ github.sha }}
+#      registry: ghcr.io
+#      platforms: linux/arm64/v8
   test-cluster:
-    needs: build-image
+#    needs: build-image
     runs-on: macos-latest
     permissions:
       contents: read
