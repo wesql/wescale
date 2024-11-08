@@ -139,7 +139,7 @@ jobs:
           
             DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/orgs/$OWNER/packages/container/$IMAGE/versions/$PACKAGE_VERSION_ID")
+              "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions/$PACKAGE_VERSION_ID")
           
             if [ -z "$DELETE_RESPONSE" ]; then
               echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
