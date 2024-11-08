@@ -6,25 +6,10 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package jobcontroller
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/pingcap/errors"
 )
-
-// SetDatabasePoolSize The constraints on this parameter are the same as in KB Addons
-func SetDatabasePoolSize(value string) error {
-	fmt.Printf("SetDatabasePoolSize: %v", value)
-	i, err := strconv.Atoi(value)
-	if err != nil {
-		return err
-	}
-	if i < 1 {
-		return errors.New("make sure that databasePoolSize >= 1")
-	}
-	databasePoolSize = i
-	return nil
-}
 
 // SetDefaultBatchSize The constraints on this parameter are the same as in KB Addons
 func SetDefaultBatchSize(value string) error {

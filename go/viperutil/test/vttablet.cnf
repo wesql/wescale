@@ -11,8 +11,6 @@ queryserver_config_strict_table_acl = false
 table_acl_config_reload_interval    = 30s
 enforce_tableacl_config             = false
 
-# the size of database connection pool in non transaction dml
-non_transactional_dml_database_pool_size=3
 # the number of rows to be processed in one batch by default
 non_transactional_dml_default_batch_size=2000
 # the interval of batch processing in milliseconds by default

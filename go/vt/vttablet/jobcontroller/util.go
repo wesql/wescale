@@ -42,7 +42,7 @@ func (jc *JobController) execQuery(ctx context.Context, targetString, query stri
 		setting.SetQuery(fmt.Sprintf("use %s", targetString))
 		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
-	conn, err := jc.pool.Get(ctx, &setting)
+	conn, err := jc.pool.BorrowConn(ctx, &setting)
 	if err != nil {
 		return result, err
 	}

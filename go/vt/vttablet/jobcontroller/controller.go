@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
+
 	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/vt/servenv"
@@ -37,7 +39,6 @@ import (
 )
 
 var (
-	databasePoolSize          = 3
 	defaultBatchSize          = 2000 //
 	defaultBatchInterval      = 1    // ms
 	tableGCInterval           = 24   // hour
@@ -48,7 +49,6 @@ var (
 )
 
 func registerFlags(fs *pflag.FlagSet) {
-	fs.IntVar(&databasePoolSize, "non_transactional_dml_database_pool_size", databasePoolSize, "the number of database connection to mysql")
 	fs.IntVar(&defaultBatchSize, "non_transactional_dml_default_batch_size", defaultBatchSize, "the number of rows to be processed in one batch by default")
 	fs.IntVar(&defaultBatchInterval, "non_transactional_dml_default_batch_interval", defaultBatchInterval, "the interval of batch processing in milliseconds by default")
 	fs.IntVar(&tableGCInterval, "non_transactional_dml_table_gc_interval", tableGCInterval, "the interval of table GC in hours")
@@ -108,11 +108,9 @@ const (
 )
 
 type JobController struct {
-	tableName              string
 	tableMutex             sync.Mutex
 	tabletTypeFunc         func() topodatapb.TabletType
 	env                    tabletenv.Env
-	pool                   *connpool.Pool
 	lagThrottler           *throttle.Throttler
 	lastSuccessfulThrottle int64
 
@@ -130,6 +128,8 @@ type JobController struct {
 	// The jobManager runs a job schedule every jobManagerRunningInterval seconds.
 	// However, when it receives a message from this channel, it will immediately start a schedule.
 	managerNotifyChan chan struct{}
+
+	pool *background.TaskPool
 }
 
 type PKInfo struct {
@@ -155,7 +155,6 @@ func (jc *JobController) Open() error {
 
 func (jc *JobController) initJobController() {
 	jc.ctx, jc.cancelOperation = context.WithCancel(context.Background())
-	jc.pool.Open(jc.env.Config().DB.AppConnector(), jc.env.Config().DB.DbaConnector(), jc.env.Config().DB.AppDebugConnector())
 	jc.workingTables = map[string]bool{}
 	jc.managerNotifyChan = make(chan struct{}, 1)
 	initThrottleTicker()
@@ -167,22 +166,18 @@ func (jc *JobController) Close() {
 	if jc.cancelOperation != nil {
 		jc.cancelOperation()
 	}
-	jc.pool.Close()
 	if jc.managerNotifyChan != nil {
 		close(jc.managerNotifyChan)
 	}
 }
 
-func NewJobController(tableName string, tabletTypeFunc func() topodatapb.TabletType, env tabletenv.Env, lagThrottler *throttle.Throttler) *JobController {
+func NewJobController(tabletTypeFunc func() topodatapb.TabletType, env tabletenv.Env, lagThrottler *throttle.Throttler, taskPool *background.TaskPool) *JobController {
 	return &JobController{
-		tableName:      tableName,
 		tabletTypeFunc: tabletTypeFunc,
 		env:            env,
-		pool: connpool.NewPool(env, "DMLJobControllerPool", tabletenv.ConnPoolConfig{
-			Size:               databasePoolSize,
-			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
-		}),
-		lagThrottler: lagThrottler}
+		lagThrottler:   lagThrottler,
+		pool:           taskPool,
+	}
 }
 
 func (jc *JobController) HandleRequest(command, sql, jobUUID, tableSchema, runningTimePeriodStart, runningTimePeriodEnd, runningTimePeriodTimeZone, throttleDuration, throttleRatio string, timeGapInMs, usrBatchSize int64, postponeLaunch bool, failPolicy string, showDetails bool) (*sqltypes.Result, error) {
@@ -503,7 +498,11 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 		setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
 		setting.SetResetQuery(fmt.Sprintf("use %s", jc.env.Config().DB.DBName))
 	}
-	conn, err := jc.pool.Get(ctx, &setting)
+
+	conn, err := jc.pool.BorrowConn(ctx, &setting)
+	if err != nil {
+		return err
+	}
 	defer conn.Recycle()
 	failpoint.Inject(failpointkey.CreateErrorWhenExecutingBatch.Name, func(val failpoint.Value) {
 		temp, ok := val.(bool)
@@ -511,10 +510,6 @@ func (jc *JobController) execBatchAndRecord(ctx context.Context, tableSchema, ta
 			err = errors.New("error created by failpoint")
 		}
 	})
-
-	if err != nil {
-		return err
-	}
 
 	// 1. start a transaction
 	_, err = conn.Exec(ctx, "start transaction", math.MaxInt32, false)
