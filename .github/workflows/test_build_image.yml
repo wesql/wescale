@@ -25,26 +25,21 @@ jobs:
       packages: write
 
     steps:
-      # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Install kubectl
       - name: Install kubectl
         run: brew install kubectl
 
-      # Step 3: Install Docker CLI
       - name: Install Docker CLI
         run: brew install docker
 
-      # Step 4: Install Colima
       - name: Install Colima
         run: |
           brew install colima
           LIMACTL_PATH=$(brew --prefix)/bin/limactl
           sudo curl -L -o $LIMACTL_PATH https://github.com/mikekazakov/lima-nohvf/raw/master/limactl && sudo chmod +x $LIMACTL_PATH
 
-      # Step 5: Login to registry
       - name: Login to registry
         uses: docker/login-action@v3
         with:
@@ -52,17 +47,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      # Step 6: Start Colima with Kubernetes
       - name: Start Colima with Kubernetes
         run: |
-          # Start Colima with error handling
           if ! colima start --kubernetes --network-address --arch arm64 --vm-type=qemu; then
             echo "Failed to start Colima"
             colima status
             exit 1
           fi
 
-          # Wait for Docker and Kubernetes with timeout
           MAX_ATTEMPTS=20
           ATTEMPT=1
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
@@ -82,13 +74,11 @@ jobs:
             exit 1
           fi
 
-      # Step 7: Verify Kubernetes is running
       - name: Verify Kubernetes is running
         run: |
           kubectl get nodes
           kubectl get pods -A
 
-       # Step 8: Verify and pull the test image
       - name: Verify and pull test image
         id: verify-image
         run: |
@@ -100,7 +90,7 @@ jobs:
           for i in $(seq 1 $MAX_ATTEMPTS); do
             if docker pull $IMAGE:$TAG; then
               echo "✅ Successfully pulled image"
-              docker images | grep wesqlscale
+              docker images | grep wescale
               exit 0
             fi
             echo "Attempt $i/$MAX_ATTEMPTS: Image not yet available, waiting..."
@@ -113,20 +103,16 @@ jobs:
       - name: Get Yaml Template
         uses: actions/checkout@v3
         with:
-        repository: wesql/deploy
-        path: './deploy'
+          repository: wesql/deploy
+          path: './deploy'
 
       - name: Init yaml
         run: |
           TAG="test-${{ github.sha }}"
           IMAGE=${{ github.repository_owner }}/wescale_ci_image
           brew install sed
-          sed "s/WESCALE_CI_IMAGE_NAME/${{IMAGE}}/g; s/WESCALE_CI_IMAGE_TAG/${{TAG }}/g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
+          sed "s/WESCALE_CI_IMAGE_NAME/$IMAGE/g; s/WESCALE_CI_IMAGE_TAG/$TAG/g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
           echo "$(cat ./wescale_cluster.yaml)"
-          
-      ################################################################################################################
-      ################################################################################################################
-      ################################################################################################################
 
       - name: Configure AWS CLI
         run: |
@@ -142,7 +128,6 @@ jobs:
           aws s3 mb s3://$BUCKET_NAME
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
-      # Step 5: Create Kubernetes ConfigMap and Secret
       - name: Create ConfigMap and Secret in Kubernetes
         run: |
           export WESQL_OBJECTSTORE_BUCKET=${{ steps.create_bucket.outputs.bucket_name }}
@@ -189,78 +174,10 @@ jobs:
           kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=3000s
           kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "SHOW DATABASES;"
 
-      - name: Print WeSQL Server ConfigMap and Secret
-        if: always()
-        run: |
-          kubectl get configmap wesql-server-config -o yaml
-          kubectl get secret wesql-server-secret -o yaml
-
-      - name: Print WeSQL Server Logs
-        if: always()
-        run: |
-          kubectl get pods
-
-          kubectl describe po mycluster-wesql-0-0
-
-          kubectl get pvc
-
-          kubectl get storageclass
-
-          kubectl logs mycluster-wesql-0-0
-
       - name: Clean up
         if: always()
         run: |
-          k kubectl delete -f ./wescale_cluster.yaml
+          kubectl delete -f ./wescale_cluster.yaml
           echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
           aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
           aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
-      
-
-      ################################################################################################################
-      ################################################################################################################
-      ################################################################################################################
-
-
-      # Step 9: Delete test image (only if previous steps succeeded)
-      - name: Delete test image
-        if: always() && steps.verify-image.outcome == 'success'
-        run: |
-          TOKEN="${{ github.token }}"
-          OWNER="${{ github.repository_owner }}"
-          TAG="test-${{ github.sha }}"
-          PACKAGE_NAME="wescale_ci_image"
-          
-          echo "Fetching package versions..."
-          VERSIONS_JSON=$(curl -s \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions")
-          
-          echo $TAG
-          echo $VERSIONS_JSON
-          
-          PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
-          
-          echo $PACKAGE_VERSION_ID
-          
-          if [ ! -z "$PACKAGE_VERSION_ID" ]; then
-            echo "Found image version ID: $PACKAGE_VERSION_ID"
-          
-            DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions/$PACKAGE_VERSION_ID")
-          
-            if [ -z "$DELETE_RESPONSE" ]; then
-              echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
-            else
-              echo "❌ Failed to delete image version. Response: $DELETE_RESPONSE"
-              exit 1
-            fi
-          else
-            echo "❌ Could not find image version with tag: $TAG"
-            echo "Available versions:"
-            echo "$VERSIONS_JSON" | jq -r '.[].names'
-            exit 1
-          fi
-          
