@@ -92,7 +92,7 @@ jobs:
       - name: Verify and pull test image
         id: verify-image
         run: |
-          IMAGE="ghcr.io/${{ github.repository_owner }}/test/wesqlscale"
+          IMAGE="ghcr.io/${{ github.repository_owner }}/wescale_ci_image"
           TAG="test-${{ github.sha }}"
 
           echo "Waiting for image to be available..."
@@ -110,13 +110,125 @@ jobs:
           echo "❌ Failed to pull image after $MAX_ATTEMPTS attempts"
           exit 1
 
+      - name: Get Yaml Template
+        uses: actions/checkout@v3
+        with:
+        repository: wesql/deploy
+        path: './deploy'
+
+      - name: Init yaml
+        run: |
+          TAG="test-${{ github.sha }}"
+          IMAGE=${{ github.repository_owner }}/wescale_ci_image
+          brew install sed
+          sed "s/WESCALE_CI_IMAGE_NAME/${{IMAGE}}/g; s/WESCALE_CI_IMAGE_TAG/${{TAG }}/g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
+          echo "$(cat ./wescale_cluster.yaml)"
+          
+      ################################################################################################################
+      ################################################################################################################
+      ################################################################################################################
+
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region us-east-2
+
+      - name: Create S3 Bucket
+        id: create_bucket
+        run: |
+          BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
+          echo "Bucket name: $BUCKET_NAME"
+          aws s3 mb s3://$BUCKET_NAME
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+      # Step 5: Create Kubernetes ConfigMap and Secret
+      - name: Create ConfigMap and Secret in Kubernetes
+        run: |
+          export WESQL_OBJECTSTORE_BUCKET=${{ steps.create_bucket.outputs.bucket_name }}
+          export WESQL_OBJECTSTORE_REGION=us-east-2
+          export WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY_ID }}
+          export WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: wesql-server-config
+          data:
+            MYSQL_CUSTOM_CONFIG: |
+              [mysqld]
+              objectstore_provider=aws
+              objectstore_region=${WESQL_OBJECTSTORE_REGION}
+              objectstore_bucket=${WESQL_OBJECTSTORE_BUCKET}
+              repo_objectstore_id=sysbench
+              branch_objectstore_id=main
+              datadir=/data/mysql/data
+              log-error=/data/mysql/log/mysqld-error.log
+              log-bin=binlog
+              gtid_mode=ON
+              enforce_gtid_consistency=ON
+              log_slave_updates=ON
+              binlog_format=ROW
+              skip_name_resolve=ON
+          EOF
+
+          kubectl create secret generic wesql-server-secret \
+          --namespace default \
+          --type Opaque \
+          --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${WESQL_OBJECTSTORE_ACCESS_KEY} \
+          --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${WESQL_OBJECTSTORE_SECRET_KEY} \
+          --from-literal=MYSQL_ROOT_PASSWORD=passwd
+
+      - name: Generate Cluster YAML File And Create Cluster
+        run: |
+          kubectl apply -f ./wescale_cluster.yaml
+
+      - name: Wait for WeSQL Server to be ready
+        run: |
+          kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=3000s
+          kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "SHOW DATABASES;"
+
+      - name: Print WeSQL Server ConfigMap and Secret
+        if: always()
+        run: |
+          kubectl get configmap wesql-server-config -o yaml
+          kubectl get secret wesql-server-secret -o yaml
+
+      - name: Print WeSQL Server Logs
+        if: always()
+        run: |
+          kubectl get pods
+
+          kubectl describe po mycluster-wesql-0-0
+
+          kubectl get pvc
+
+          kubectl get storageclass
+
+          kubectl logs mycluster-wesql-0-0
+
+      - name: Clean up
+        if: always()
+        run: |
+          k kubectl delete -f ./wescale_cluster.yaml
+          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
+          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
+          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
+      
+
+      ################################################################################################################
+      ################################################################################################################
+      ################################################################################################################
+
+
       # Step 9: Delete test image (only if previous steps succeeded)
       - name: Delete test image
         if: always() && steps.verify-image.outcome == 'success'
         run: |
           TOKEN="${{ github.token }}"
           OWNER="${{ github.repository_owner }}"
-          # TAG="test-${{ github.sha }}"
+          TAG="test-${{ github.sha }}"
           PACKAGE_NAME="wescale_ci_image"
           
           echo "Fetching package versions..."
@@ -151,3 +263,4 @@ jobs:
             echo "$VERSIONS_JSON" | jq -r '.[].names'
             exit 1
           fi
+          
