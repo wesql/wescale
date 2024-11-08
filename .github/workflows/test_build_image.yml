@@ -130,15 +130,16 @@ jobs:
           echo $TAG
           echo $VERSIONS_JSON
           
-          brew install jq
           PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
+          
+          echo $PACKAGE_VERSION_ID
           
           if [ ! -z "$PACKAGE_VERSION_ID" ]; then
             echo "Found image version ID: $PACKAGE_VERSION_ID"
           
             DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/user/packages/container/$IMAGE/versions/$PACKAGE_VERSION_ID")
+              "https://api.github.com/orgs/$OWNER/packages/container/$IMAGE/versions/$PACKAGE_VERSION_ID")
           
             if [ -z "$DELETE_RESPONSE" ]; then
               echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
