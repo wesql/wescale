@@ -112,7 +112,7 @@ jobs:
 
       # Step 9: Delete test image (only if previous steps succeeded)
       - name: Delete test image
-        if: always() && steps.verify-image.outcome == 'success'
+#        if: always() && steps.verify-image.outcome == 'success'
         run: |
           TOKEN="${{ github.token }}"
           IMAGE="${{ github.repository_owner }}/test/wesqlscale"
