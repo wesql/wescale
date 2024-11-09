@@ -183,7 +183,7 @@ jobs:
           
           TOKEN="${{ github.token }}"
           OWNER="${{ github.repository_owner }}"
-          # TAG="test-${{ github.sha }}"
+          TAG="test-${{ github.sha }}"
           PACKAGE_NAME="wescale_ci_image"
           
           echo "Fetching package versions..."
