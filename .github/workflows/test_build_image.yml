@@ -110,7 +110,7 @@ jobs:
         run: |
           TAG="test-${{ github.sha }}"
           IMAGE=${{ github.repository_owner }}/wescale_ci_image
-          sed "s/WESCALE_CI_IMAGE_NAME/$IMAGE/g; s/WESCALE_CI_IMAGE_TAG/$TAG/g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
+          sed "s#WESCALE_CI_IMAGE_NAME#$IMAGE#g; s#WESCALE_CI_IMAGE_TAG#$TAG#g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
           echo "$(cat ./wescale_cluster.yaml)"
 
       - name: Configure AWS CLI
