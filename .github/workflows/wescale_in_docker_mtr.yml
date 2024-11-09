@@ -108,7 +108,7 @@ jobs:
           -e MYSQL_ROOT_USER=root \
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_PORT=3306 \
-          -e MYSQL_HOST=wesql-server \
+          -e MYSQL_HOST=mysql-server \
           -p 15306:15306 \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
