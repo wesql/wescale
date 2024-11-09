@@ -110,7 +110,6 @@ jobs:
         run: |
           TAG="test-${{ github.sha }}"
           IMAGE=${{ github.repository_owner }}/wescale_ci_image
-          brew install sed
           sed "s/WESCALE_CI_IMAGE_NAME/$IMAGE/g; s/WESCALE_CI_IMAGE_TAG/$TAG/g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
           echo "$(cat ./wescale_cluster.yaml)"
 
@@ -181,3 +180,41 @@ jobs:
           echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
           aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
           aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}
+          
+          TOKEN="${{ github.token }}"
+          OWNER="${{ github.repository_owner }}"
+          # TAG="test-${{ github.sha }}"
+          PACKAGE_NAME="wescale_ci_image"
+          
+          echo "Fetching package versions..."
+          VERSIONS_JSON=$(curl -s \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions")
+          
+          echo $TAG
+          echo $VERSIONS_JSON
+          
+          PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
+          
+          echo $PACKAGE_VERSION_ID
+          
+          if [ ! -z "$PACKAGE_VERSION_ID" ]; then
+            echo "Found image version ID: $PACKAGE_VERSION_ID"
+          
+            DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions/$PACKAGE_VERSION_ID")
+          
+            if [ -z "$DELETE_RESPONSE" ]; then
+              echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
+            else
+              echo "❌ Failed to delete image version. Response: $DELETE_RESPONSE"
+              exit 1
+            fi
+          else
+            echo "❌ Could not find image version with tag: $TAG"
+            echo "Available versions:"
+            echo "$VERSIONS_JSON" | jq -r '.[].names'
+            exit 1
+          fi
