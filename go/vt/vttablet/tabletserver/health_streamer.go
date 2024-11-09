@@ -92,7 +92,7 @@ type healthStreamer struct {
 
 	ticks                  *timer.Timer
 	dbConfig               dbconfigs.Connector
-	conns                  *connpool.Pool
+	pool                   taskPool
 	signalWhenSchemaChange bool
 
 	tableTrackEnable bool
@@ -100,17 +100,11 @@ type healthStreamer struct {
 	views            map[string]string
 }
 
-func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *healthStreamer {
+func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias, taskPool taskPool) *healthStreamer {
 	var newTimer *timer.Timer
-	var pool *connpool.Pool
 	if env.Config().SignalWhenSchemaChange {
 		reloadTime := env.Config().SignalSchemaChangeReloadIntervalSeconds.Get()
 		newTimer = timer.NewTimer(reloadTime)
-		// We need one connection for the reloader.
-		pool = connpool.NewPool(env, "HealthStreamer", tabletenv.ConnPoolConfig{
-			Size:               1,
-			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
-		})
 	}
 	return &healthStreamer{
 		stats:              env.Stats(),
@@ -129,7 +123,7 @@ func newHealthStreamer(env tabletenv.Env, alias *topodatapb.TabletAlias) *health
 
 		history:                history.New(5),
 		ticks:                  newTimer,
-		conns:                  pool,
+		pool:                   taskPool,
 		signalWhenSchemaChange: env.Config().SignalWhenSchemaChange,
 		tableTrackEnable:       env.Config().EnableTableTrack,
 		viewsEnabled:           env.Config().EnableViews,
@@ -150,15 +144,12 @@ func (hs *healthStreamer) Open() {
 		return
 	}
 	hs.ctx, hs.cancel = context.WithCancel(context.Background())
-	if hs.conns != nil {
-		// if we don't have a live conns object, it means we are not configured to signal when the schema changes
-		hs.conns.Open(hs.dbConfig, hs.dbConfig, hs.dbConfig)
+	if hs.ticks != nil {
 		hs.ticks.Start(func() {
 			if err := hs.reload(); err != nil {
 				log.Errorf("periodic schema reload failed in health stream: %v", err)
 			}
 		})
-
 	}
 
 }
@@ -170,7 +161,6 @@ func (hs *healthStreamer) Close() {
 	if hs.cancel != nil {
 		if hs.ticks != nil {
 			hs.ticks.Stop()
-			hs.conns.Close()
 		}
 		hs.cancel()
 		hs.cancel = nil
@@ -352,7 +342,7 @@ func (hs *healthStreamer) reload() error {
 	}
 
 	ctx := hs.ctx
-	conn, err := hs.conns.Get(ctx, nil)
+	conn, err := hs.pool.BorrowConn(ctx, nil)
 	if err != nil {
 		return err
 	}

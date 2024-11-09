@@ -24,11 +24,13 @@ package tabletserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"vitess.io/vitess/go/mysql"
+	"vitess.io/vitess/go/pools"
 
 	"google.golang.org/protobuf/proto"
 
@@ -41,6 +43,7 @@ import (
 	"vitess.io/vitess/go/vt/log"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
@@ -78,11 +81,11 @@ func TestStateManagerServePrimary(t *testing.T) {
 	assert.Equal(t, false, sm.lameduck)
 	assert.Equal(t, testNow, sm.terTimestamp)
 
-	verifySubcomponent(t, 1, sm.watcher, testStateClosed)
-	verifySubcomponent(t, 2, sm.se, testStateOpen)
-	verifySubcomponent(t, 3, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 4, sm.qe, testStateOpen)
-	verifySubcomponent(t, 5, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.watcher, testStateClosed)
+	verifySubcomponent(t, 3, sm.se, testStateOpen)
+	verifySubcomponent(t, 4, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 5, sm.qe, testStateOpen)
 	verifySubcomponent(t, 6, sm.poolSizeController, testStateOpen)
 	verifySubcomponent(t, 7, sm.txThrottler, testStateOpen)
 	verifySubcomponent(t, 8, sm.rt, testStatePrimary)
@@ -106,18 +109,19 @@ func TestStateManagerServeNonPrimary(t *testing.T) {
 	err := sm.SetServingType(topodatapb.TabletType_REPLICA, testNow, StateServing, "")
 	require.NoError(t, err)
 
-	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
-	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 4, sm.messager, testStateClosed)
-	verifySubcomponent(t, 5, sm.tracker, testStateClosed)
-	verifySubcomponent(t, 6, sm.branchWatch, testStateClosed)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.ddle, testStateClosed)
+	verifySubcomponent(t, 3, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 4, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 5, sm.messager, testStateClosed)
+	verifySubcomponent(t, 6, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 7, sm.branchWatch, testStateClosed)
 
 	assert.True(t, sm.se.(*testSchemaEngine).nonPrimary)
 
-	verifySubcomponent(t, 7, sm.se, testStateOpen)
-	verifySubcomponent(t, 8, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 9, sm.qe, testStateOpen)
+	verifySubcomponent(t, 8, sm.se, testStateOpen)
+	verifySubcomponent(t, 9, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 10, sm.qe, testStateOpen)
 	verifySubcomponent(t, 12, sm.txThrottler, testStateOpen)
 	verifySubcomponent(t, 13, sm.te, testStateNonPrimary)
 	verifySubcomponent(t, 14, sm.rt, testStateNonPrimary)
@@ -134,19 +138,19 @@ func TestStateManagerUnservePrimary(t *testing.T) {
 	err := sm.SetServingType(topodatapb.TabletType_PRIMARY, testNow, StateNotServing, "")
 	require.NoError(t, err)
 
-	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
-	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 4, sm.throttler, testStateClosed)
-	verifySubcomponent(t, 5, sm.messager, testStateClosed)
-	verifySubcomponent(t, 6, sm.te, testStateClosed)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.ddle, testStateClosed)
+	verifySubcomponent(t, 3, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 4, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 5, sm.throttler, testStateClosed)
+	verifySubcomponent(t, 6, sm.messager, testStateClosed)
+	verifySubcomponent(t, 7, sm.te, testStateClosed)
 
-	verifySubcomponent(t, 7, sm.tracker, testStateClosed)
-	verifySubcomponent(t, 8, sm.watcher, testStateClosed)
-	verifySubcomponent(t, 9, sm.se, testStateOpen)
-	verifySubcomponent(t, 10, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 11, sm.qe, testStateOpen)
-	verifySubcomponent(t, 12, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 8, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 9, sm.watcher, testStateClosed)
+	verifySubcomponent(t, 10, sm.se, testStateOpen)
+	verifySubcomponent(t, 11, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 12, sm.qe, testStateOpen)
 	verifySubcomponent(t, 13, sm.poolSizeController, testStateOpen)
 	verifySubcomponent(t, 14, sm.txThrottler, testStateOpen)
 
@@ -162,19 +166,19 @@ func TestStateManagerUnserveNonPrimary(t *testing.T) {
 	err := sm.SetServingType(topodatapb.TabletType_RDONLY, testNow, StateNotServing, "")
 	require.NoError(t, err)
 
-	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
-	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 4, sm.throttler, testStateClosed)
-	verifySubcomponent(t, 5, sm.messager, testStateClosed)
-	verifySubcomponent(t, 6, sm.te, testStateClosed)
-	verifySubcomponent(t, 7, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.ddle, testStateClosed)
+	verifySubcomponent(t, 3, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 4, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 5, sm.throttler, testStateClosed)
+	verifySubcomponent(t, 6, sm.messager, testStateClosed)
+	verifySubcomponent(t, 7, sm.te, testStateClosed)
+	verifySubcomponent(t, 8, sm.tracker, testStateClosed)
 	assert.True(t, sm.se.(*testSchemaEngine).nonPrimary)
 
-	verifySubcomponent(t, 8, sm.se, testStateOpen)
-	verifySubcomponent(t, 9, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 10, sm.qe, testStateOpen)
-	verifySubcomponent(t, 11, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 9, sm.se, testStateOpen)
+	verifySubcomponent(t, 10, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 11, sm.qe, testStateOpen)
 	verifySubcomponent(t, 12, sm.poolSizeController, testStateOpen)
 	verifySubcomponent(t, 13, sm.txThrottler, testStateOpen)
 	verifySubcomponent(t, 14, sm.rt, testStateNonPrimary)
@@ -200,11 +204,10 @@ func TestStateManagerClose(t *testing.T) {
 	verifySubcomponent(t, 8, sm.txThrottler, testStateClosed)
 	verifySubcomponent(t, 9, sm.qe, testStateClosed)
 	verifySubcomponent(t, 10, sm.poolSizeController, testStateClosed)
-	verifySubcomponent(t, 11, sm.taskPool, testStateClosed)
-	verifySubcomponent(t, 12, sm.watcher, testStateClosed)
-	verifySubcomponent(t, 13, sm.vstreamer, testStateClosed)
-	verifySubcomponent(t, 14, sm.rt, testStateClosed)
-	verifySubcomponent(t, 15, sm.se, testStateClosed)
+	verifySubcomponent(t, 11, sm.watcher, testStateClosed)
+	verifySubcomponent(t, 12, sm.vstreamer, testStateClosed)
+	verifySubcomponent(t, 13, sm.rt, testStateClosed)
+	verifySubcomponent(t, 14, sm.se, testStateClosed)
 
 	assert.Equal(t, topodatapb.TabletType_RDONLY, sm.target.TabletType)
 	assert.Equal(t, StateNotConnected, sm.state)
@@ -306,19 +309,19 @@ func TestStateManagerSetServingTypeNoChange(t *testing.T) {
 	err = sm.SetServingType(topodatapb.TabletType_REPLICA, testNow, StateServing, "")
 	require.NoError(t, err)
 
-	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
-	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 4, sm.messager, testStateClosed)
-	verifySubcomponent(t, 5, sm.tracker, testStateClosed)
-	verifySubcomponent(t, 6, sm.branchWatch, testStateClosed)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.ddle, testStateClosed)
+	verifySubcomponent(t, 3, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 4, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 5, sm.messager, testStateClosed)
+	verifySubcomponent(t, 6, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 7, sm.branchWatch, testStateClosed)
 
 	assert.True(t, sm.se.(*testSchemaEngine).nonPrimary)
 
-	verifySubcomponent(t, 7, sm.se, testStateOpen)
-	verifySubcomponent(t, 8, sm.vstreamer, testStateOpen)
-	verifySubcomponent(t, 9, sm.qe, testStateOpen)
-	verifySubcomponent(t, 10, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 8, sm.se, testStateOpen)
+	verifySubcomponent(t, 9, sm.vstreamer, testStateOpen)
+	verifySubcomponent(t, 10, sm.qe, testStateOpen)
 	verifySubcomponent(t, 11, sm.poolSizeController, testStateOpen)
 	verifySubcomponent(t, 12, sm.txThrottler, testStateOpen)
 	verifySubcomponent(t, 13, sm.te, testStateNonPrimary)
@@ -723,11 +726,13 @@ func newTestStateManager(t *testing.T) *stateManager {
 	order.Set(0)
 	config := tabletenv.NewDefaultConfig()
 	env := tabletenv.NewEnv(config, "StateManagerTest")
+	taskPool := &testTaskPool{}
+
 	sm := &stateManager{
 		statelessql:        NewQueryList("stateless"),
 		statefulql:         NewQueryList("stateful"),
 		olapql:             NewQueryList("olap"),
-		hs:                 newHealthStreamer(env, &topodatapb.TabletAlias{}),
+		hs:                 newHealthStreamer(env, &topodatapb.TabletAlias{}, taskPool),
 		se:                 &testSchemaEngine{},
 		rt:                 &testReplTracker{lag: 1 * time.Second},
 		vstreamer:          &testSubcomponent{},
@@ -743,7 +748,7 @@ func newTestStateManager(t *testing.T) *stateManager {
 		dmlJobController:   &testSubcomponentWithError{},
 		tableACL:           &testSubcomponentWithError{},
 		branchWatch:        &testSubcomponent{},
-		taskPool:           &testTaskPool{},
+		taskPool:           taskPool,
 		poolSizeController: &testSubcomponent{},
 	}
 	sm.Init(env, &querypb.Target{})
@@ -919,6 +924,10 @@ func (te *testTaskPool) Open() {
 func (te *testTaskPool) Close() {
 	te.order = order.Add(1)
 	te.state = testStateClosed
+}
+
+func (te *testTaskPool) BorrowConn(ctx context.Context, setting *pools.Setting) (*connpool.DBConn, error) {
+	return nil, fmt.Errorf("test borrow conn")
 }
 
 func (te *testTaskPool) InUse() int64 {

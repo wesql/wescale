@@ -39,6 +39,7 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
@@ -52,7 +53,11 @@ func TestHealthStreamerClosed(t *testing.T) {
 		Uid:  1,
 	}
 	blpFunc = testBlpFunc
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+
+	hs := newHealthStreamer(env, alias, taskPool)
 	err := hs.Stream(context.Background(), func(shr *querypb.StreamHealthResponse) error {
 		return nil
 	})
@@ -77,7 +82,11 @@ func TestHealthStreamerBroadcast(t *testing.T) {
 		Uid:  1,
 	}
 	blpFunc = testBlpFunc
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+
+	hs := newHealthStreamer(env, alias, taskPool)
 	hs.InitDBConfig(&querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}, config.DB.DbaWithDB())
 	hs.Open()
 	defer hs.Close()
@@ -180,7 +189,11 @@ func _TestReloadSchema(t *testing.T) {
 		Uid:  1,
 	}
 	blpFunc = testBlpFunc
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+
+	hs := newHealthStreamer(env, alias, taskPool)
 
 	target := &querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}
 	configs := config.DB
@@ -240,7 +253,11 @@ func TestDoesNotReloadSchema(t *testing.T) {
 		Uid:  1,
 	}
 	blpFunc = testBlpFunc
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+
+	hs := newHealthStreamer(env, alias, taskPool)
 
 	target := &querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}
 	configs := config.DB
@@ -292,7 +309,11 @@ func _TestInitialReloadSchema(t *testing.T) {
 		Uid:  1,
 	}
 	blpFunc = testBlpFunc
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+
+	hs := newHealthStreamer(env, alias, taskPool)
 
 	target := &querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}
 	configs := config.DB
@@ -350,7 +371,10 @@ func _TestReloadView(t *testing.T) {
 
 	env := tabletenv.NewEnv(config, "TestReloadView")
 	alias := &topodatapb.TabletAlias{Cell: "cell", Uid: 1}
-	hs := newHealthStreamer(env, alias)
+	taskPool := background.NewTaskPool(env)
+	taskPool.Open()
+	defer taskPool.Close()
+	hs := newHealthStreamer(env, alias, taskPool)
 
 	target := &querypb.Target{TabletType: topodatapb.TabletType_PRIMARY}
 	configs := config.DB
