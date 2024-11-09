@@ -55,7 +55,7 @@ jobs:
 
       - name: Set up cluster
         run: |
-          CONTAINER_NAME="wesql-server"
+          CONTAINER_NAME="mysql-server"
           MYSQL_ROOT_PASSWORD="passwd"
           MYSQL_ROOT_HOST="%"
           HOST_PORT=3306
