@@ -160,12 +160,6 @@ jobs:
               echo "Testcase is successful"
           fi
 
-      - name: Print WeScale Logs
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-        run: |
-          docker logs mysql-server
-          cat ./examples/wesql-server/init_script_logs.txt
-
       - name: Clean up
         if: always()
         run: |
