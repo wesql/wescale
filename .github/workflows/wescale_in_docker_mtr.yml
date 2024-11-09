@@ -28,6 +28,7 @@ jobs:
 
   setup:
     name: "MTR Test - Ubuntu Docker Cluster"
+    needs: build-image
     runs-on: ubuntu-latest
 
     steps:
