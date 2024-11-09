@@ -46,6 +46,13 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         uses: actions/checkout@v3
 
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Set up cluster
         run: |
           CONTAINER_NAME="wesql-server"
