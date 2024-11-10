@@ -171,14 +171,53 @@ jobs:
       - name: Wait for WeSQL Server to be ready
         run: |
           kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=3000s
-          # kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "CREATE DATABASE sysbench_test;"
-          # kubectl port-forward svc/wesql-vtgate-headless 15306:15306 &
+          kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "CREATE DATABASE sysbench_test;"
+          kubectl port-forward svc/wesql-vtgate-headless 15306:15306 &
+          
+          
+          # 设置最大等待时间（秒）
+          MAX_WAIT=300  # 5分钟
+          # 检查间隔（秒）
+          INTERVAL=5
+          
+          start_time=$(date +%s)
+          
+          while true; do
+            current_time=$(date +%s)
+            elapsed=$((current_time - start_time))
+            
+            if [ $elapsed -gt $MAX_WAIT ]; then
+              echo "Timeout waiting for primary tablet after ${MAX_WAIT} seconds"
+              exit 1
+            fi
+            
+            # 执行命令并检查输出
+            output=$(kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "show vitess_tablets;" 2>/dev/null)
+            
+            # 检查命令是否成功执行
+            if [ $? -ne 0 ]; then
+              echo "Error executing command, retrying in ${INTERVAL} seconds..."
+              sleep $INTERVAL
+              continue
+            fi
+            
+            # 检查输出中是否包含 primary
+            if echo "$output" | grep -q "primary"; then
+              echo "Primary tablet found!"
+              echo "Current tablets status:"
+              echo "$output"
+              exit 0
+            else
+              echo "Waiting for primary tablet... (${elapsed}s elapsed)"
+              sleep $INTERVAL
+            fi
+          done
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: false
-          timeout-minutes: 90  # 设置超时时间，默认是 30 分钟
+#      - name: Setup tmate session
+#        uses: mxschmitt/action-tmate@v3
+#        with:
+#          limit-access-to-actor: false
+#          timeout-minutes: 90  # 设置超时时间，默认是 30 分钟
 
 
       - name: Run tests
