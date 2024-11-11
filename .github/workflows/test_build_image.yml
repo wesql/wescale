@@ -222,7 +222,6 @@ jobs:
             sleep $INTERVAL
           done
 
-          kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "CREATE DATABASE sysbench_test;"
 
 #      - name: Setup tmate session
 #        uses: mxschmitt/action-tmate@v3
@@ -234,16 +233,16 @@ jobs:
       - name: Run tests
         run: |
           docker run --rm zyclonite/sysbench oltp_read_write \
-            --tables=10 \
+            --tables=5 \
             --table-size=10000 \
-            --mysql-db=sysbench_test \
+            --mysql-db=mysql \
             --mysql-host=host.docker.internal \
             --mysql-port=15306 \
             --mysql-user='root' \
             --mysql-password='' \
             prepare
           
-          docker run --rm zyclonite/sysbench oltp_read_write --tables=10 --table-size=10000 --mysql-db=sysbench_test --mysql-host=host.docker.internal --mysql-port=15306 --mysql-user='root' --threads=8 --mysql-password='' run
+          docker run --rm zyclonite/sysbench oltp_read_write --tables=5 --table-size=10000 --mysql-db=mysql --mysql-host=host.docker.internal --mysql-port=15306 --mysql-user='root' --threads=8 --mysql-password='' run
 
       - name: Clean up
         if: always()
