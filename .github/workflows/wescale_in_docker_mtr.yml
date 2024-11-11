@@ -33,9 +33,9 @@ jobs:
     uses: ./.github/workflows/build_image.yml
     with:
       branch: ${{ github.ref }}
-      image_name: ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
-      tags: ${{ env.IMAGE_TAG }}
-      registry: ${{ env.REGISTRY }}
+      image_name: ${{ github.repository_owner }}/wescale_ci_image
+      tags: test-${{ github.sha }}
+      registry: ghcr.io
       platforms: linux/amd64
 
   setup:
