@@ -1,4 +1,5 @@
 name: "MTR Test - Ubuntu Docker Cluster"
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -9,6 +10,17 @@ on:
     tags:
       - '*'
   workflow_dispatch:
+
+env:
+  IMAGE_NAME: wescale_ci_image
+  REGISTRY: ghcr.io
+  IMAGE_TAG: test-${{ github.sha }}
+  MYSQL_ROOT_PASSWORD: passwd
+  MYSQL_ROOT_HOST: "%"
+  MYSQL_PORT: 3306
+  WESCALE_PORT: 15306
+  MYSQL_VERSION: 8.0.32
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-mtr
   cancel-in-progress: true
@@ -21,9 +33,9 @@ jobs:
     uses: ./.github/workflows/build_image.yml
     with:
       branch: ${{ github.ref }}
-      image_name: ${{ github.repository_owner }}/wescale_ci_image
-      tags: test-${{ github.sha }}
-      registry: ghcr.io
+      image_name: ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+      tags: ${{ env.IMAGE_TAG }}
+      registry: ${{ env.REGISTRY }}
       platforms: linux/amd64
 
   setup:
@@ -49,31 +61,25 @@ jobs:
       - name: Login to registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
       - name: Set up cluster
         run: |
           CONTAINER_NAME="mysql-server"
-          MYSQL_ROOT_PASSWORD="passwd"
-          MYSQL_ROOT_HOST="%"
-          HOST_PORT=3306
-          CONTAINER_PORT=3306
           DATA_DIR="$(pwd)/vtdataroot/mysql"
           CONFIG_FILE="$DATA_DIR/my.cnf"
-          IMG="mysql/mysql-server:8.0.32"
-          WESCALE_CI_IMAGE="ghcr.io/${{ github.repository_owner }}/wescale_ci_image:test-${{ github.sha }}"
+          MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
+          WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
-          # 创建数据目录和日志目录（如果不存在）
           mkdir -p "$DATA_DIR/data"
           mkdir -p "$DATA_DIR/log"
           
-          # 创建 my.cnf（如果不存在）
           if [ ! -f "$CONFIG_FILE" ]; then
           cat <<EOL > "$CONFIG_FILE"
           [mysqld]
-          port=3306
+          port=${{ env.MYSQL_PORT }}
           bind-address=0.0.0.0
           log-bin=binlog
           gtid_mode=ON
@@ -85,52 +91,31 @@ jobs:
           EOL
           fi
           
-          # 设置目录权限
           chmod -R 777 "$DATA_DIR"
           chmod 644 "$CONFIG_FILE"
           
           docker network create my-network
           
-          # 运行 Docker 容器
           docker run -itd --name $CONTAINER_NAME \
           --network my-network \
-          -p $HOST_PORT:$CONTAINER_PORT \
+          -p ${{ env.MYSQL_PORT }}:${{ env.MYSQL_PORT }} \
           -v "$DATA_DIR":/data/mysql \
           -v "$CONFIG_FILE":/etc/my.cnf \
-          -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
-          -e MYSQL_ROOT_HOST="$MYSQL_ROOT_HOST" \
-          $IMG
+          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
+          -e MYSQL_ROOT_HOST="${{ env.MYSQL_ROOT_HOST }}" \
+          $MYSQL_IMG
           
           docker run -itd \
           --name wescale \
           --network my-network \
           -w /vt/examples/wesql-server \
           -e MYSQL_ROOT_USER=root \
-          -e MYSQL_ROOT_PASSWORD=passwd \
-          -e MYSQL_PORT=3306 \
+          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
+          -e MYSQL_PORT=${{ env.MYSQL_PORT }} \
           -e MYSQL_HOST=mysql-server \
-          -p 15306:15306 \
+          -p ${{ env.WESCALE_PORT }}:${{ env.WESCALE_PORT }} \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
-
-#      - name: Compile source
-#        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-#        timeout-minutes: 30
-#        run: |
-#          # install etcd
-#          BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=1 ./bootstrap.sh
-#
-#          make failpoint-enable
-#          make build
-#          make failpoint-disable
-#
-#      - name: Start MySQL-Server & WeScale
-#        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-#        run: |
-#          export PATH=$PATH:$(pwd)/bin
-#          cd ./examples/wesql-server
-#          ./start_mysql_server.sh
-#          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
 
       - name: Checkout mysql-tester code
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
@@ -146,40 +131,12 @@ jobs:
           mkdir bin && \
           make build
 
-#      - name: Install Tmate
-#        run: sudo apt-get install tmate
-#
-#      - name: Start Tmate session
-#        run: |
-#          tmate -S /tmp/tmate.sock new-session -d
-#          tmate -S /tmp/tmate.sock wait tmate-ready
-#          echo "SSH access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}')"
-#          echo "Web access: $(tmate -S /tmp/tmate.sock display -p '#{tmate_web}')"
-#
-#          TIMEOUT=3600  # 30 minutes
-#          INTERVAL=1  # 1 second
-#          START_TIME=$(date +%s)
-#
-#          while true; do
-#            sleep "$INTERVAL"
-#            CURRENT_TIME=$(date +%s)
-#            ELAPSED_TIME=$((CURRENT_TIME - START_TIME))
-#
-#            # Check if timeout is reached
-#            if [ "$ELAPSED_TIME" -ge "$TIMEOUT" ]; then
-#              echo "Timeout reached while waiting for the container."
-#              break
-#            fi
-#          done
-#        continue-on-error: true
-
       - name: Run MTR Tests
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         run: |
           cd ./mysql-tester && \
-          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
+          eatmydata -- ./bin/mysql-tester -user root -port ${{ env.WESCALE_PORT }} -path testcase/wesql-scale 2>&1 | tee -a output.txt
           
-          # check if any test failed
           if grep -q -- 'level=error' ./mysql-tester/output.txt; then
               echo "Testcase is failed"
               exit 1
@@ -192,21 +149,15 @@ jobs:
         run: |
           TOKEN="${{ github.token }}"
           OWNER="${{ github.repository_owner }}"
-          TAG="test-${{ github.sha }}"
-          PACKAGE_NAME="wescale_ci_image"
+          PACKAGE_NAME="${{ env.IMAGE_NAME }}"
+          TAG="${{ env.IMAGE_TAG }}"
 
-          echo "Fetching package versions..."
           VERSIONS_JSON=$(curl -s \
             -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions")
 
-          echo $TAG
-          echo $VERSIONS_JSON
-
           PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
-
-          echo $PACKAGE_VERSION_ID
 
           if [ ! -z "$PACKAGE_VERSION_ID" ]; then
             echo "Found image version ID: $PACKAGE_VERSION_ID"

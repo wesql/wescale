@@ -1,9 +1,14 @@
 name: Test Docker Build Workflow
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+#  pull_request:
+#    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+env:
+  IMAGE_NAME: wescale_ci_image
+  REGISTRY: ghcr.io
+  IMAGE_TAG: test-${{ github.sha }}
 
 jobs:
   build-image:
@@ -13,10 +18,11 @@ jobs:
     uses: ./.github/workflows/build_image.yml
     with:
       branch: ${{ github.ref }}
-      image_name: ${{ github.repository_owner }}/wescale_ci_image
-      tags: test-${{ github.sha }}
-      registry: ghcr.io
+      image_name: ${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+      tags: ${{ env.IMAGE_TAG }}
+      registry: ${{ env.REGISTRY }}
       platforms: linux/arm64/v8
+
   test-cluster:
     needs: build-image
     runs-on: macos-latest
@@ -44,7 +50,7 @@ jobs:
       - name: Login to registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
@@ -83,15 +89,15 @@ jobs:
       - name: Verify and pull test image
         id: verify-image
         run: |
-          IMAGE="ghcr.io/${{ github.repository_owner }}/wescale_ci_image"
-          TAG="test-${{ github.sha }}"
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          TAG="${{ env.IMAGE_TAG }}"
 
           echo "Waiting for image to be available..."
           MAX_ATTEMPTS=12
           for i in $(seq 1 $MAX_ATTEMPTS); do
             if docker pull $IMAGE:$TAG; then
               echo "✅ Successfully pulled image"
-              docker images | grep wescale
+              docker images | grep ${{ env.IMAGE_NAME }}
               exit 0
             fi
             echo "Attempt $i/$MAX_ATTEMPTS: Image not yet available, waiting..."
@@ -110,7 +116,7 @@ jobs:
       - name: Init yaml
         run: |
           TAG="test-${{ github.sha }}"
-          IMAGE="ghcr.io/${{ github.repository_owner }}/wescale_ci_image"
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
           sed "s#WESCALE_CI_IMAGE_NAME#$IMAGE#g; s#WESCALE_CI_IMAGE_TAG#$TAG#g" ./deploy/artifact/wescale-ci-template.yaml > ./wescale_cluster.yaml
           echo "$(cat ./wescale_cluster.yaml)"
 
@@ -174,75 +180,58 @@ jobs:
           kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=3000s
           kubectl port-forward svc/wesql-vtgate-headless 15306:15306 &
 
-
-          # 设置最大等待时间（秒）
-          MAX_WAIT=300  # 5分钟
-          # 检查间隔（秒）
+          MAX_WAIT=300
           INTERVAL=5
-          
           start_time=$(date +%s)
           
           while true; do
             current_time=$(date +%s)
             elapsed=$((current_time - start_time))
-            
+          
             if [ $elapsed -gt $MAX_WAIT ]; then
               echo "Timeout waiting for serving primary tablet after ${MAX_WAIT} seconds"
               exit 1
             fi
-            
-            # 执行命令并检查输出
+          
             output=$(kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "show vitess_tablets;" 2>/dev/null)
-            
-            # 检查命令是否成功执行
+          
             if [ $? -ne 0 ]; then
               echo "Error executing command, retrying in ${INTERVAL} seconds..."
               sleep $INTERVAL
               continue
             fi
-            
-            # 首先检查是否有 PRIMARY
+          
             if echo "$output" | grep -q "PRIMARY"; then
-              # 如果有 PRIMARY，检查是否为 NOT_SERVING
               if echo "$output" | grep -q "NOT_SERVING"; then
-              echo "Found PRIMARY tablet but it's NOT_SERVING... waiting (${elapsed}s elapsed)"
-            else
-              # 如果没有 NOT_SERVING，检查是否为 SERVING
-              if echo "$output" | grep -q "SERVING"; then
-                echo "Primary tablet is now SERVING!"
-                echo "Current tablets status:"
-                echo "$output"
-                exit 0
+                echo "Found PRIMARY tablet but it's NOT_SERVING... waiting (${elapsed}s elapsed)"
+              else
+                if echo "$output" | grep -q "SERVING"; then
+                  echo "Primary tablet is now SERVING!"
+                  echo "Current tablets status:"
+                  echo "$output"
+                  exit 0
+                fi
               fi
-            fi
             else
               echo "Waiting for PRIMARY tablet... (${elapsed}s elapsed)"
             fi
-            
+          
             sleep $INTERVAL
           done
 
-
-#      - name: Setup tmate session
-#        uses: mxschmitt/action-tmate@v3
-#        with:
-#          limit-access-to-actor: false
-#          timeout-minutes: 90  # 设置超时时间，默认是 30 分钟
-
-
-      - name: Run tests
-        run: |
-          docker run --rm zyclonite/sysbench oltp_read_write \
-            --tables=5 \
-            --table-size=10000 \
-            --mysql-db=mysql \
-            --mysql-host=host.docker.internal \
-            --mysql-port=15306 \
-            --mysql-user='root' \
-            --mysql-password='' \
-            prepare
-          
-          docker run --rm zyclonite/sysbench oltp_read_write --tables=5 --table-size=10000 --mysql-db=mysql --mysql-host=host.docker.internal --mysql-port=15306 --mysql-user='root' --threads=8 --mysql-password='' run
+#      - name: Run tests
+#        run: |
+#          docker run --rm zyclonite/sysbench oltp_read_write \
+#            --tables=5 \
+#            --table-size=10000 \
+#            --mysql-db=mysql \
+#            --mysql-host=host.docker.internal \
+#            --mysql-port=15306 \
+#            --mysql-user='root' \
+#            --mysql-password='' \
+#            prepare
+#
+#          docker run --rm zyclonite/sysbench oltp_read_write --tables=5 --table-size=10000 --mysql-db=mysql --mysql-host=host.docker.internal --mysql-port=15306 --mysql-user='root' --threads=8 --mysql-password='' run
 
       - name: Clean up
         if: always()
@@ -255,7 +244,7 @@ jobs:
           TOKEN="${{ github.token }}"
           OWNER="${{ github.repository_owner }}"
           TAG="test-${{ github.sha }}"
-          PACKAGE_NAME="wescale_ci_image"
+          PACKAGE_NAME="${{ env.IMAGE_NAME }}"
           
           echo "Fetching package versions..."
           VERSIONS_JSON=$(curl -s \
@@ -263,12 +252,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions")
           
-          echo $TAG
-          echo $VERSIONS_JSON
-          
           PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
-          
-          echo $PACKAGE_VERSION_ID
           
           if [ ! -z "$PACKAGE_VERSION_ID" ]; then
             echo "Found image version ID: $PACKAGE_VERSION_ID"
