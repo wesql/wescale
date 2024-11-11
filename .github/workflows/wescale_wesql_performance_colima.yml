@@ -1,8 +1,8 @@
 name: "Colima MacOS K8s Cluster"
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+#  pull_request:
+#    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       wescale_image_tag:
