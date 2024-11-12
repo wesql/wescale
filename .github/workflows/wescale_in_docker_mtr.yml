@@ -143,6 +143,9 @@ jobs:
           else
               echo "Testcase is successful"
           fi
+#          todo fix grep path
+
+#      todo print wescale logs
 
       - name: Clean up
         if: always()
