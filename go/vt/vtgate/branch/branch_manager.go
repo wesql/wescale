@@ -19,6 +19,10 @@ func (b *Branch) BranchFetch() {
 	// fetch source schema using mysql_handle.go and store it in metadata table
 }
 
+func (b *Branch) BranchCreate() {
+
+}
+
 func (b *Branch) BranchDiff() {
 	// SchemaDiff
 }
