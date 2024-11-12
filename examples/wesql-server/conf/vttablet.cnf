@@ -10,12 +10,14 @@ table_acl_config=
 queryserver_config_strict_table_acl=false
 table_acl_config_reload_interval=5s
 enforce_tableacl_config=false
+
 queryserver_config_transaction_cap=20
 queryserver_config_pool_size=16
 queryserver_config_stream_pool_size=4
 dba_pool_size=5
 queryserver_pool_autoscale_enable=true
 queryserver_pool_autoscale_tx_pool_percentage=70
+
 non_transactional_dml_database_pool_size=3
 non_transactional_dml_default_batch_size=2000
 non_transactional_dml_default_batch_interval=1

@@ -1,0 +1,134 @@
+name: "Kind Ubuntu K8s Cluster"
+
+on:
+#  pull_request:
+#    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      wescale_image_tag:
+        description: "WeScale Image Tag"
+        required: true
+        default: "0.3.0"
+      wesql_image_tag:
+        description: "WeSQL Server Image Tag"
+        required: true
+        default: "8.0.35-6.alpha10.20240918.g18ad68b.27"
+
+jobs:
+  setup:
+    name: "Kind Ubuntu K8s Cluster"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install Kind
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      # Step 3: Create Kind Cluster
+      - name: Create Kind Cluster
+        run: |
+          kind create cluster --name wescale-cluster
+
+      # Step 4: Verify Kubernetes is running
+      - name: Verify Kubernetes is running
+        run: |
+          kubectl get nodes
+          kubectl get pods -A
+
+      ################################################################################################################
+      ################################################################################################################
+      ################################################################################################################
+
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set default.region us-east-2
+
+      - name: Create S3 Bucket
+        id: create_bucket
+        run: |
+          BUCKET_NAME="wescale-$(date +'%Y%m%d%H%M%S')"
+          echo "Bucket name: $BUCKET_NAME"
+          aws s3 mb s3://$BUCKET_NAME
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+      # Step 5: Create Kubernetes ConfigMap and Secret
+      - name: Create ConfigMap and Secret in Kubernetes
+        run: |
+          export WESQL_OBJECTSTORE_BUCKET=${{ steps.create_bucket.outputs.bucket_name }}
+          export WESQL_OBJECTSTORE_REGION=us-east-2
+          export WESQL_OBJECTSTORE_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY_ID }}
+          export WESQL_OBJECTSTORE_SECRET_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          
+          kubectl apply -f - <<EOF
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: wesql-server-config
+          data:
+            MYSQL_CUSTOM_CONFIG: |
+              [mysqld]
+              objectstore_provider=aws
+              objectstore_region=${WESQL_OBJECTSTORE_REGION}
+              objectstore_bucket=${WESQL_OBJECTSTORE_BUCKET}
+              repo_objectstore_id=sysbench
+              branch_objectstore_id=main
+              datadir=/data/mysql/data
+              log-error=/data/mysql/log/mysqld-error.log
+              log-bin=binlog
+              gtid_mode=ON
+              enforce_gtid_consistency=ON
+              log_slave_updates=ON
+              binlog_format=ROW
+              skip_name_resolve=ON
+          EOF
+          
+          kubectl create secret generic wesql-server-secret \
+          --namespace default \
+          --type Opaque \
+          --from-literal=WESQL_OBJECTSTORE_ACCESS_KEY=${WESQL_OBJECTSTORE_ACCESS_KEY} \
+          --from-literal=WESQL_OBJECTSTORE_SECRET_KEY=${WESQL_OBJECTSTORE_SECRET_KEY} \
+          --from-literal=MYSQL_ROOT_PASSWORD=passwd
+
+      - name: Generate Cluster YAML File And Create Cluster
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/wesql/deploy/refs/heads/main/artifact/wescale-ci.yaml
+
+      - name: Wait for WeSQL Server to be ready
+        run: |
+          kubectl wait --for=condition=available deployment/wesql-vtgate --timeout=300s
+          kubectl exec -it $(kubectl get pods -l app.kubernetes.io/name=wesql-vtgate -o jsonpath='{.items[0].metadata.name}') -- mysql -uroot -P15306 -ppasswd -e "SHOW DATABASES;"
+
+      - name: Print WeSQL Server ConfigMap and Secret
+        if: always()
+        run: |
+          kubectl get configmap wesql-server-config -o yaml
+          kubectl get secret wesql-server-secret -o yaml
+
+      - name: Print WeSQL Server Logs
+        if: always()
+        run: |
+          kubectl get pods
+          
+          kubectl describe po mycluster-wesql-0-0
+          
+          kubectl get pvc
+          
+          kubectl get storageclass
+          
+          kubectl logs mycluster-wesql-0-0
+
+      - name: Clean up
+        if: always()
+        run: |
+          echo "Deleting bucket: ${{ steps.create_bucket.outputs.bucket_name }}"
+          aws s3 rm s3://${{ steps.create_bucket.outputs.bucket_name }} --recursive
+          aws s3 rb s3://${{ steps.create_bucket.outputs.bucket_name }}

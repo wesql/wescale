@@ -60,4 +60,3 @@ WORKDIR /vt/src/mount
 
 CMD ["/bin/bash"]
 
-# CMD cd /vt/src/mount/examples/mysql/ && ./init_cluster.sh && /bin/bash

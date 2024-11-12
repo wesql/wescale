@@ -1,0 +1,93 @@
+name: "MTR Test - Ubuntu Docker Cluster"
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - 'release-*'
+    tags:
+      - '*'
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-mtr
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: "MTR Test - Ubuntu Docker Cluster"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if workflow needs to be skipped
+        id: skip-workflow
+        run: |
+          skip='false'
+          if [[ "${{github.event.pull_request}}" ==  "" ]] && [[ "${{github.ref}}" != "refs/heads/main" ]] && [[ ! "${{github.ref}}" =~ ^refs/heads/release-[0-9]+\.[0-9]$ ]] && [[ ! "${{github.ref}}" =~ "refs/tags/.*" ]]; then
+            skip='true'
+          fi
+          echo Skip ${skip}
+          echo "skip-workflow=${skip}" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20.1
+
+      - name: Compile source
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        timeout-minutes: 30
+        run: |
+          # install etcd
+          BUILD_CHROME=0 BUILD_JAVA=0 BUILD_CONSUL=0 BUILD_K3S=0 BUILD_ETCD=1 ./bootstrap.sh
+          
+          make failpoint-enable
+          make build
+          make failpoint-disable
+
+      - name: Start MySQL-Server & WeScale
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        run: |
+          export PATH=$PATH:$(pwd)/bin
+          cd ./examples/wesql-server
+          ./start_mysql_server.sh
+          ./init_single_node_cluster.sh 2>&1 | tee init_script_logs.txt &
+
+      - name: Checkout mysql-tester code
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        uses: actions/checkout@v3
+        with:
+          repository: apecloud/mysql-tester
+          path: './mysql-tester'
+
+      - name: Build mysql-tester
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        run: |
+          cd ./mysql-tester && \
+          mkdir bin && \
+          make build
+
+      - name: Run MTR Tests
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        run: |
+          cd ./mysql-tester && \
+          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
+          
+          # check if any test failed
+          if grep -q -- 'level=error' ./mysql-tester/output.txt; then
+              echo "Testcase is failed"
+              exit 1
+          else
+              echo "Testcase is successful"
+          fi
+
+      - name: Print WeScale Logs
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        run: |
+          docker logs mysql-server
+          cat ./examples/wesql-server/init_script_logs.txt

@@ -27,6 +27,8 @@ mysql_server_ssl_ca=
 mysql_server_ssl_cert=
 mysql_server_ssl_key=
 
+enable_interception_for_dml_without_where=false
+
 # AutoScale & AutoSuspend Params
 enable_auto_suspend=false
 auto_suspend_timeout=5m
