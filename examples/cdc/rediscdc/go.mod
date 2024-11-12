@@ -1,6 +1,6 @@
 module github.com/wesql/wescale/examples/cdc/rediscdc
 
-go 1.23.2
+go 1.23
 
 require (
 	github.com/go-sql-driver/mysql v1.8.1
