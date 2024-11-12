@@ -137,15 +137,15 @@ jobs:
           cd ./mysql-tester && \
           eatmydata -- ./bin/mysql-tester -user root -port ${{ env.WESCALE_PORT }} -path testcase/wesql-scale 2>&1 | tee -a output.txt
           
-          if grep -q -- 'level=error' ./mysql-tester/output.txt; then
+          if grep -q -- 'level=error' output.txt; then
               echo "Testcase is failed"
               exit 1
           else
               echo "Testcase is successful"
           fi
-#          todo fix grep path
-
-#      todo print wescale logs
+      - name: Print Wescale logs
+        run: |
+          docker logs wescale
 
       - name: Clean up
         if: always()

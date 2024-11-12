@@ -1,7 +1,7 @@
 name: "MTR Test - Ubuntu Docker Cluster"
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+#  pull_request:
+#    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
