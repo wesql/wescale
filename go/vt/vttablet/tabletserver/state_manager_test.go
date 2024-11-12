@@ -868,9 +868,6 @@ type testQueryEngine struct {
 }
 
 func (te *testQueryEngine) Open() error {
-	if te.state == testStateOpen {
-		return nil
-	}
 	te.order = order.Add(1)
 	te.state = testStateOpen
 	return nil
@@ -921,6 +918,9 @@ type testTaskPool struct {
 }
 
 func (te *testTaskPool) Open() {
+	if te.state == testStateOpen {
+		return
+	}
 	te.order = order.Add(1)
 	te.state = testStateOpen
 }
