@@ -3,7 +3,7 @@
 
 ARG DEBIAN_VER=bullseye
 
-FROM --platform=linux/amd64 golang:1.20.2-${DEBIAN_VER}
+FROM --platform=linux/amd64 golang:1.23.3-${DEBIAN_VER}
 
 # Allows some docker builds to disable CGO
 ARG CGO_ENABLED=0
