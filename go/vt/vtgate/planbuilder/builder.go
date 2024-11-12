@@ -208,6 +208,8 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 	case *sqlparser.CreateWescaleFilter, *sqlparser.AlterWescaleFilter, *sqlparser.DropWescaleFilter, *sqlparser.ShowWescaleFilter,
 		*sqlparser.CreateWescaleCDC, *sqlparser.AlterWescaleCDC, *sqlparser.ShowWescaleCDC, *sqlparser.DropWescaleCDC:
 		return buildWescaleFilterPlan(query, vschema)
+		// todo branch case *sqlparser.Branch:
+
 	}
 
 	return nil, vterrors.VT13001(fmt.Sprintf("unexpected statement type: %T", stmt))
