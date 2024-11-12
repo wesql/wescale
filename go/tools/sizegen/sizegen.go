@@ -442,6 +442,8 @@ func (sizegen *sizegen) sizeStmtForType(fieldName *jen.Statement, field types.Ty
 			return nil, 0
 		}
 		return sizegen.sizeStmtForType(fieldName, node.Underlying(), alloc)
+	case *types.Alias:
+		return sizegen.sizeStmtForType(fieldName, types.Unalias(node), alloc)
 
 	case *types.Interface:
 		if node.Empty() {

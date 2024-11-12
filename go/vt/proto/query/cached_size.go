@@ -27,7 +27,7 @@ func (cached *BindVariable) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(96)
 	}
-	// field unknownFields []byte
+	// field unknownFields google.golang.org/protobuf/runtime/protoimpl.UnknownFields
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.unknownFields)))
 	}
@@ -52,7 +52,7 @@ func (cached *Field) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(160)
 	}
-	// field unknownFields []byte
+	// field unknownFields google.golang.org/protobuf/runtime/protoimpl.UnknownFields
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.unknownFields)))
 	}
@@ -78,7 +78,7 @@ func (cached *QueryWarning) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(64)
 	}
-	// field unknownFields []byte
+	// field unknownFields google.golang.org/protobuf/runtime/protoimpl.UnknownFields
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.unknownFields)))
 	}
@@ -94,7 +94,7 @@ func (cached *Target) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(96)
 	}
-	// field unknownFields []byte
+	// field unknownFields google.golang.org/protobuf/runtime/protoimpl.UnknownFields
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.unknownFields)))
 	}
@@ -114,7 +114,7 @@ func (cached *Value) CachedSize(alloc bool) int64 {
 	if alloc {
 		size += int64(80)
 	}
-	// field unknownFields []byte
+	// field unknownFields google.golang.org/protobuf/runtime/protoimpl.UnknownFields
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.unknownFields)))
 	}

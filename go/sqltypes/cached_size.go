@@ -34,7 +34,7 @@ func (cached *Result) CachedSize(alloc bool) int64 {
 			size += elem.CachedSize(true)
 		}
 	}
-	// field Rows [][]vitess.io/vitess/go/sqltypes.Value
+	// field Rows []vitess.io/vitess/go/sqltypes.Row
 	{
 		size += hack.RuntimeAllocSize(int64(cap(cached.Rows)) * int64(24))
 		for _, elem := range cached.Rows {

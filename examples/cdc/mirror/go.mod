@@ -1,6 +1,6 @@
 module github.com/wesql/wescale/examples/cdc/mirror
 
-go 1.22.4
+go 1.23
 
 require (
 	github.com/stealthrocket/net v0.2.1
