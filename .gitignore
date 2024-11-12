@@ -58,6 +58,7 @@ __debug_bin
 
 # vitess.io preview site
 /preview-vitess.io/
+examples/connection-pool/bin
 
 # vitess.io generated site files
 /docs/

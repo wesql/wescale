@@ -312,6 +312,18 @@ func (cached *DistinctV3) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
+func (cached *ExplainCreateTable) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field declarativeDDL *vitess.io/vitess/go/vt/vtgate/engine.DeclarativeDDL
+	size += cached.declarativeDDL.CachedSize(true)
+	return size
+}
 func (cached *Filter) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
