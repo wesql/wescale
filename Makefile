@@ -295,6 +295,7 @@ vtadmin_authz_testgen:
 # Needs to be called if the templates change or if a new test "shard" is created. We do not need to rebuild tests if only the test/config.json
 # is changed by adding a new test to an existing shard. Any new or modified files need to be committed into git
 generate_ci_workflows:
+	mkdir -p .github/workflows/archive
 	cd test && go run ci_workflow_gen.go && cd ..
 	cd .github/workflows && sh replace_workflows.sh && cd ../..
 

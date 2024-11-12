@@ -65,6 +65,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+
       - name: Set up cluster
         run: |
           CONTAINER_NAME="mysql-server"
