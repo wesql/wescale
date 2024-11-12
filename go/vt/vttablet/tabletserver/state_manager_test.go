@@ -194,20 +194,21 @@ func TestStateManagerClose(t *testing.T) {
 	err := sm.SetServingType(topodatapb.TabletType_RDONLY, testNow, StateNotConnected, "")
 	require.NoError(t, err)
 
-	verifySubcomponent(t, 1, sm.ddle, testStateClosed)
-	verifySubcomponent(t, 2, sm.dmlJobController, testStateClosed)
-	verifySubcomponent(t, 3, sm.tableGC, testStateClosed)
-	verifySubcomponent(t, 4, sm.throttler, testStateClosed)
-	verifySubcomponent(t, 5, sm.messager, testStateClosed)
-	verifySubcomponent(t, 6, sm.te, testStateClosed)
-	verifySubcomponent(t, 7, sm.tracker, testStateClosed)
-	verifySubcomponent(t, 8, sm.txThrottler, testStateClosed)
-	verifySubcomponent(t, 9, sm.qe, testStateClosed)
-	verifySubcomponent(t, 10, sm.poolSizeController, testStateClosed)
-	verifySubcomponent(t, 11, sm.watcher, testStateClosed)
-	verifySubcomponent(t, 12, sm.vstreamer, testStateClosed)
-	verifySubcomponent(t, 13, sm.rt, testStateClosed)
-	verifySubcomponent(t, 14, sm.se, testStateClosed)
+	verifySubcomponent(t, 1, sm.taskPool, testStateOpen)
+	verifySubcomponent(t, 2, sm.ddle, testStateClosed)
+	verifySubcomponent(t, 3, sm.dmlJobController, testStateClosed)
+	verifySubcomponent(t, 4, sm.tableGC, testStateClosed)
+	verifySubcomponent(t, 5, sm.throttler, testStateClosed)
+	verifySubcomponent(t, 6, sm.messager, testStateClosed)
+	verifySubcomponent(t, 7, sm.te, testStateClosed)
+	verifySubcomponent(t, 8, sm.tracker, testStateClosed)
+	verifySubcomponent(t, 9, sm.txThrottler, testStateClosed)
+	verifySubcomponent(t, 10, sm.qe, testStateClosed)
+	verifySubcomponent(t, 11, sm.poolSizeController, testStateClosed)
+	verifySubcomponent(t, 12, sm.watcher, testStateClosed)
+	verifySubcomponent(t, 13, sm.vstreamer, testStateClosed)
+	verifySubcomponent(t, 14, sm.rt, testStateClosed)
+	verifySubcomponent(t, 15, sm.se, testStateClosed)
 
 	assert.Equal(t, topodatapb.TabletType_RDONLY, sm.target.TabletType)
 	assert.Equal(t, StateNotConnected, sm.state)
@@ -867,6 +868,9 @@ type testQueryEngine struct {
 }
 
 func (te *testQueryEngine) Open() error {
+	if te.state == testStateOpen {
+		return nil
+	}
 	te.order = order.Add(1)
 	te.state = testStateOpen
 	return nil
