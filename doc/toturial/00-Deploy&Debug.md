@@ -12,7 +12,7 @@ This document explains how to start a WeSQL WeScale cluster on your local machin
 Start a WeSQL WeScale cluster locally, which relies on the following software.
 
 * [Docker](https://docs.docker.com/engine/install/)
-* [Go 1.20](https://go.dev/dl/#go1.20.1)
+* [Go 1.23](https://go.dev/dl/#go1.23)
 * [Make](https://www.gnu.org/software/make/)
 
 You can verify the installation of these dependencies by running the following commands:
