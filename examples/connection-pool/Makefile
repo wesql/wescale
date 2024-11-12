@@ -35,7 +35,8 @@ run:
 		--mysql-database=information_schema \
 		--connection-count=100 \
 		--duration=1m \
-		--query="SELECT 1"
+		--query="SELECT 1" \
+		--exit-on-failure=true
 
 .PHONY: docker-run
 docker-run:
@@ -48,4 +49,5 @@ docker-run:
 		-e CONNECTION_COUNT=100 \
 		-e DURATION=1m \
 		-e QUERY="SELECT 1" \
+		-e EXIT_ON_FAILURE=true \
 		connection-pool-tester:latest

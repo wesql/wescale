@@ -16,33 +16,35 @@ import (
 )
 
 type ConnectionTester struct {
-	dsn          string
-	targetConns  int
-	duration     time.Duration
-	query        string
-	successCount int32
-	activeConns  int32
-	sigChan      chan os.Signal
-	wg           sync.WaitGroup
-	startTime    time.Time
-	ctx          context.Context
-	cancel       context.CancelFunc
+	dsn           string
+	targetConns   int
+	duration      time.Duration
+	query         string
+	successCount  int32
+	activeConns   int32
+	sigChan       chan os.Signal
+	wg            sync.WaitGroup
+	startTime     time.Time
+	ctx           context.Context
+	cancel        context.CancelFunc
+	exitOnFailure bool
 }
 
 func NewConnectionTester(host string, port int, user, password, database string,
-	connections int, duration time.Duration, query string) *ConnectionTester {
+	connections int, duration time.Duration, query string, exitOnFailure bool) *ConnectionTester {
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, password, host, port, database)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ConnectionTester{
-		dsn:         dsn,
-		targetConns: connections,
-		duration:    duration,
-		query:       query,
-		sigChan:     make(chan os.Signal, 1),
-		ctx:         ctx,
-		cancel:      cancel,
+		dsn:           dsn,
+		targetConns:   connections,
+		duration:      duration,
+		query:         query,
+		sigChan:       make(chan os.Signal, 1),
+		ctx:           ctx,
+		cancel:        cancel,
+		exitOnFailure: exitOnFailure,
 	}
 }
 
@@ -63,18 +65,30 @@ func (ct *ConnectionTester) establishConnection(connID int) {
 	db, err := sql.Open("mysql", ct.dsn)
 	if err != nil {
 		log.Printf("Connection %d failed to open: %v", connID, err)
+		if ct.exitOnFailure {
+			ct.cancel()
+			os.Exit(1)
+		}
 		return
 	}
 	defer db.Close()
 
 	if err = db.Ping(); err != nil {
 		log.Printf("Connection %d ping failed: %v", connID, err)
+		if ct.exitOnFailure {
+			ct.cancel()
+			os.Exit(1)
+		}
 		return
 	}
 
 	rows, err := db.Query(ct.query)
 	if err != nil {
 		log.Printf("Connection %d query failed: %v", connID, err)
+		if ct.exitOnFailure {
+			ct.cancel()
+			os.Exit(1)
+		}
 		return
 	}
 	rows.Close()
@@ -123,7 +137,6 @@ func (ct *ConnectionTester) Run() {
 		}
 	}
 
-	// Start a goroutine to periodically print status
 	go ct.printStatus()
 
 	done := make(chan struct{})
@@ -136,12 +149,19 @@ func (ct *ConnectionTester) Run() {
 	case <-done:
 		elapsed := time.Since(ct.startTime)
 		log.Printf("Test completed in %v", elapsed)
+		successCount := ct.GetSuccessCount()
 		log.Printf("Successfully established %d out of %d connections",
-			ct.GetSuccessCount(), ct.targetConns)
+			successCount, ct.targetConns)
+		if ct.exitOnFailure && successCount < int32(ct.targetConns) {
+			os.Exit(1)
+		}
 	case <-ct.ctx.Done():
 		log.Println("Waiting for all connections to close...")
 		ct.wg.Wait()
 		log.Println("All connections closed")
+		if ct.exitOnFailure {
+			os.Exit(1)
+		}
 	}
 }
 
@@ -169,12 +189,13 @@ func main() {
 	connectionCount := flag.Int("connection-count", 100, "Number of connections")
 	duration := flag.Duration("duration", 5*time.Minute, "Duration to keep connections")
 	query := flag.String("query", "SELECT 1", "Query to execute")
+	exitOnFailure := flag.Bool("exit-on-failure", true, "Exit process on connection failure")
 
 	flag.Parse()
 
 	tester := NewConnectionTester(
 		*mysqlHost, *mysqlPort, *mysqlUser, *mysqlPassword, *mysqlDatabase,
-		*connectionCount, *duration, *query,
+		*connectionCount, *duration, *query, *exitOnFailure,
 	)
 
 	tester.Run()

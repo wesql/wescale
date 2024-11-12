@@ -17,7 +17,8 @@ ENV MYSQL_HOST="localhost" \
     MYSQL_DATABASE="information_schema" \
     CONNECTION_COUNT="100" \
     DURATION="5m" \
-    QUERY="SELECT 1"
+    QUERY="SELECT 1" \
+    EXIT_ON_FAILURE="true"
 
 ENTRYPOINT ["./connection-pool-tester", \
     "--mysql-host=${MYSQL_HOST}", \
@@ -27,4 +28,5 @@ ENTRYPOINT ["./connection-pool-tester", \
     "--mysql-database=${MYSQL_DATABASE}", \
     "--connection-count=${CONNECTION_COUNT}", \
     "--duration=${DURATION}", \
-    "--query=${QUERY}"]
+    "--query=${QUERY}", \
+    "--exit-on-failure=${EXIT_ON_FAILURE}"]
