@@ -15,10 +15,6 @@ env:
   IMAGE_NAME: wescale_ci_image
   REGISTRY: ghcr.io
   IMAGE_TAG: test-${{ github.sha }}
-  MYSQL_ROOT_PASSWORD: passwd
-  MYSQL_ROOT_HOST: "%"
-  MYSQL_PORT: 3306
-  WESCALE_PORT: 15306
   MYSQL_VERSION: 8.0.32
 
 concurrency:
@@ -68,53 +64,32 @@ jobs:
 
       - name: Set up cluster
         run: |
-          CONTAINER_NAME="mysql-server"
-          DATA_DIR="$(pwd)/vtdataroot/mysql"
-          CONFIG_FILE="$DATA_DIR/my.cnf"
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
           WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
-          mkdir -p "$DATA_DIR/data"
-          mkdir -p "$DATA_DIR/log"
+          docker network create wescale-network
           
-          if [ ! -f "$CONFIG_FILE" ]; then
-          cat <<EOL > "$CONFIG_FILE"
-          [mysqld]
-          port=${{ env.MYSQL_PORT }}
-          bind-address=0.0.0.0
-          log-bin=binlog
-          gtid_mode=ON
-          enforce_gtid_consistency=ON
-          log_replica_updates=ON
-          binlog_format=ROW
-          datadir=/data/mysql/data
-          log-error=/data/mysql/log/mysqld-error.log
-          EOL
-          fi
+          docker run -itd --network wescale-network --name mysql-server \
+          -p 3306:3306 \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_ROOT_HOST=% \
+          -e MYSQL_LOG_CONSOLE=true \
+          $MYSQL_IMG \
+          --bind-address=0.0.0.0 \
+          --port=3306 \
+          --log-bin=binlog \
+          --gtid_mode=ON \
+          --enforce_gtid_consistency=ON \
+          --log_replica_updates=ON \
+          --binlog_format=ROW
           
-          chmod -R 777 "$DATA_DIR"
-          chmod 644 "$CONFIG_FILE"
-          
-          docker network create my-network
-          
-          docker run -itd --name $CONTAINER_NAME \
-          --network my-network \
-          -p ${{ env.MYSQL_PORT }}:${{ env.MYSQL_PORT }} \
-          -v "$DATA_DIR":/data/mysql \
-          -v "$CONFIG_FILE":/etc/my.cnf \
-          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
-          -e MYSQL_ROOT_HOST="${{ env.MYSQL_ROOT_HOST }}" \
-          $MYSQL_IMG
-          
-          docker run -itd \
-          --name wescale \
-          --network my-network \
+          docker run -itd --network wescale-network --name wescale \
+          -p 15306:15306 \
           -w /vt/examples/wesql-server \
           -e MYSQL_ROOT_USER=root \
-          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
-          -e MYSQL_PORT=${{ env.MYSQL_PORT }} \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_PORT=3306 \
           -e MYSQL_HOST=mysql-server \
-          -p ${{ env.WESCALE_PORT }}:${{ env.WESCALE_PORT }} \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
@@ -136,7 +111,7 @@ jobs:
         if: steps.skip-workflow.outputs.skip-workflow == 'false'
         run: |
           cd ./mysql-tester && \
-          eatmydata -- ./bin/mysql-tester -user root -port ${{ env.WESCALE_PORT }} -path testcase/wesql-scale 2>&1 | tee -a output.txt
+          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
           
           if grep -q -- 'level=error' output.txt; then
               echo "Testcase is failed"

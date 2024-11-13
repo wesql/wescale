@@ -23,7 +23,52 @@ a valuable tool for developers and database administrators.
 * To [Get Started On Your Local Machine](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeScale, simply clone the repository and follow the installation instructions
 provided in the documentation.
 * To [Deploy WeScale on Kubernetes](doc%2Ftoturial%2F11-Getting-Started-with-Kubernetes.md), 
-you can use the powerful Kubeblocks Operator to quickly launch a WeScale cluster in a Kubernetes cluster. We recommend this method for production environments.
+you can use the powerful Kubeblocks Operator to quickly launch a WeScale cluster in a Kubernetes cluster. We recommend this method for production environments. 
+
+## Getting Started with Docker
+To Start WeScale with Docker, you can simply run the following command:
+```shell
+docker network create wescale-network
+
+docker run -itd --network wescale-network --name mysql-server \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_ROOT_HOST=% \
+  -e MYSQL_LOG_CONSOLE=true \
+  mysql/mysql-server:8.0.32 \
+  --bind-address=0.0.0.0 \
+  --port=3306 \
+  --log-bin=binlog \
+  --gtid_mode=ON \
+  --enforce_gtid_consistency=ON \
+  --log_replica_updates=ON \
+  --binlog_format=ROW
+
+docker run -itd --network wescale-network --name wescale \
+  -p 15306:15306 \
+  -w /vt/examples/wesql-server \
+  -e MYSQL_ROOT_USER=root \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_PORT=3306 \
+  -e MYSQL_HOST=mysql-server \
+  apecloud/apecloud-mysql-scale:0.3.7 \
+  /vt/examples/wesql-server/init_single_node_cluster.sh
+```
+
+Now you can connect to WeScale and the original MySQL server:
+```shell
+# Connect to WeScale
+mysql -h127.0.0.1 -uroot -ppasswd -P15306
+
+# You can still connect to the original MySQL server
+mysql -h127.0.0.1 -uroot -ppasswd -P3306
+```
+
+Clean up the containers:
+```shell
+docker rm -f mysql-server wescale
+docker network rm wescale-network
+```
 
 # Blogs
 * [Introduction To WeScale.md](doc%2Fblogs%2FIntroduction%20To%20WeScale.md)
