@@ -23,9 +23,36 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/spf13/pflag"
+
 	"vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 )
+
+var serverConfigForClientAuth = "VerifyClientCertIfGiven"
+
+func getClientAuth() tls.ClientAuthType {
+	switch serverConfigForClientAuth {
+	case "NoClientCert":
+		return tls.NoClientCert
+	case "RequestClientCert":
+		return tls.RequestClientCert
+	case "RequireAnyClientCert":
+		return tls.RequireAnyClientCert
+	case "VerifyClientCertIfGiven":
+		return tls.VerifyClientCertIfGiven
+	case "RequireAndVerifyClientCert":
+		return tls.RequireAndVerifyClientCert
+	default:
+		return tls.VerifyClientCertIfGiven
+	}
+}
+
+func RegisterTlsFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&serverConfigForClientAuth, "server-config-for-client-auth", serverConfigForClientAuth,
+		"Configures the server to request and verify client certificates. "+
+			"Options are NoClientCert, RequestClientCert, RequireAnyClientCert, VerifyClientCertIfGiven, RequireAndVerifyClientCert")
+}
 
 // SslMode indicates the type of SSL mode to use. This matches
 // the MySQL SSL modes as mentioned at:
@@ -209,7 +236,7 @@ func ServerConfig(cert, key, ca, crl, serverCA string, minTLSVersion uint16) (*t
 		}
 
 		config.ClientCAs = certificatePool
-		config.ClientAuth = tls.RequireAndVerifyClientCert
+		config.ClientAuth = getClientAuth()
 	}
 
 	if crl != "" {
