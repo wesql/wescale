@@ -29,7 +29,7 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 )
 
-var serverConfigForClientAuth = "RequireAndVerifyClientCert"
+var serverConfigForClientAuth = "VerifyClientCertIfGiven"
 
 func getClientAuth() tls.ClientAuthType {
 	switch serverConfigForClientAuth {
