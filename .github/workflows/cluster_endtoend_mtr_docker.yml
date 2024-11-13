@@ -68,43 +68,21 @@ jobs:
 
       - name: Set up cluster
         run: |
-          CONTAINER_NAME="mysql-server"
-          DATA_DIR="$(pwd)/vtdataroot/mysql"
-          CONFIG_FILE="$DATA_DIR/my.cnf"
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
           WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
-          mkdir -p "$DATA_DIR/data"
-          mkdir -p "$DATA_DIR/log"
+          IMG=$MYSQL_IMG ./examples/wesql-server/start_mysql_server.sh
           
-          if [ ! -f "$CONFIG_FILE" ]; then
-          cat <<EOL > "$CONFIG_FILE"
-          [mysqld]
-          port=${{ env.MYSQL_PORT }}
-          bind-address=0.0.0.0
-          log-bin=binlog
-          gtid_mode=ON
-          enforce_gtid_consistency=ON
-          log_replica_updates=ON
-          binlog_format=ROW
-          datadir=/data/mysql/data
-          log-error=/data/mysql/log/mysqld-error.log
-          EOL
-          fi
-          
-          chmod -R 777 "$DATA_DIR"
-          chmod 644 "$CONFIG_FILE"
-          
-          docker network create my-network
-          
-          docker run -itd --name $CONTAINER_NAME \
-          --network my-network \
-          -p ${{ env.MYSQL_PORT }}:${{ env.MYSQL_PORT }} \
-          -v "$DATA_DIR":/data/mysql \
-          -v "$CONFIG_FILE":/etc/my.cnf \
-          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
-          -e MYSQL_ROOT_HOST="${{ env.MYSQL_ROOT_HOST }}" \
-          $MYSQL_IMG
+          docker run -itd --network host --name wescale \
+            --name wescale \
+            -w /vt/examples/wesql-server \
+            -e MYSQL_ROOT_USER=root \
+            -e MYSQL_ROOT_PASSWORD=passwd \
+            -e MYSQL_PORT=3306 \
+            -e MYSQL_HOST=127.0.0.1 \
+            -p ${{ env.WESCALE_PORT }}:${{ env.WESCALE_PORT }} \
+            $WESCALE_CI_IMAGE \
+            /vt/examples/wesql-server/init_single_node_cluster.sh
           
           docker run -itd \
           --name wescale \
