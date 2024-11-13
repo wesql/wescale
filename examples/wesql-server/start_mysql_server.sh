@@ -7,7 +7,6 @@ HOST_PORT=3306
 CONTAINER_PORT=3306
 IMG="mysql/mysql-server:8.0.32"
 
-# 运行 Docker 容器
 docker run -itd --name $CONTAINER_NAME \
   -p $HOST_PORT:$CONTAINER_PORT \
   -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
