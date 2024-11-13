@@ -15,10 +15,6 @@ env:
   IMAGE_NAME: wescale_ci_image
   REGISTRY: ghcr.io
   IMAGE_TAG: test-${{ github.sha }}
-  MYSQL_ROOT_PASSWORD: passwd
-  MYSQL_ROOT_HOST: "%"
-  MYSQL_PORT: 3306
-  WESCALE_PORT: 15306
   MYSQL_VERSION: 8.0.32
 
 concurrency:
@@ -71,28 +67,29 @@ jobs:
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
           WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
-          IMG=$MYSQL_IMG ./examples/wesql-server/start_mysql_server.sh
+          docker network create wescale-network
           
-          docker run -itd --network host --name wescale \
-            --name wescale \
-            -w /vt/examples/wesql-server \
-            -e MYSQL_ROOT_USER=root \
-            -e MYSQL_ROOT_PASSWORD=passwd \
-            -e MYSQL_PORT=3306 \
-            -e MYSQL_HOST=127.0.0.1 \
-            -p ${{ env.WESCALE_PORT }}:${{ env.WESCALE_PORT }} \
-            $WESCALE_CI_IMAGE \
-            /vt/examples/wesql-server/init_single_node_cluster.sh
+          docker run -itd --network wescale-network --name mysql-server \
+          -p 3306:3306 \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_ROOT_HOST=% \
+          -e MYSQL_LOG_CONSOLE=true \
+          $MYSQL_IMG \
+          --bind-address=0.0.0.0 \
+          --port=3306 \
+          --log-bin=binlog \
+          --gtid_mode=ON \
+          --enforce_gtid_consistency=ON \
+          --log_replica_updates=ON \
+          --binlog_format=ROW
           
-          docker run -itd \
-          --name wescale \
-          --network my-network \
+          docker run -itd --network wescale-network --name wescale \
+          -p 15306:15306 \
           -w /vt/examples/wesql-server \
           -e MYSQL_ROOT_USER=root \
-          -e MYSQL_ROOT_PASSWORD=${{ env.MYSQL_ROOT_PASSWORD }} \
-          -e MYSQL_PORT=${{ env.MYSQL_PORT }} \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_PORT=3306 \
           -e MYSQL_HOST=mysql-server \
-          -p ${{ env.WESCALE_PORT }}:${{ env.WESCALE_PORT }} \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
