@@ -29,6 +29,9 @@ limitations under the License.
 package servenv
 
 import (
+	"github.com/spf13/pflag"
+	"vitess.io/vitess/go/vt/vttls"
+
 	// register the HTTP handlers for profiling
 	_ "net/http/pprof"
 	"net/url"
@@ -39,8 +42,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/spf13/pflag"
 
 	"vitess.io/vitess/go/event"
 	"vitess.io/vitess/go/netutil"
@@ -412,6 +413,14 @@ func init() {
 		"vtorc",
 	} {
 		OnParseFor(cmd, stats.RegisterFlags)
+	}
+
+	for _, cmd := range []string{
+		"vtctld",
+		"vtgate",
+		"vttablet",
+	} {
+		OnParseFor(cmd, vttls.RegisterTlsFlags)
 	}
 
 	// Flags in package log are installed for all binaries.

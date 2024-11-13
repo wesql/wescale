@@ -25,8 +25,6 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"vitess.io/vitess/go/vt/servenv"
-
 	"vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
 )
@@ -50,14 +48,10 @@ func getClientAuth() tls.ClientAuthType {
 	}
 }
 
-func registerFlags(fs *pflag.FlagSet) {
+func RegisterTlsFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&serverConfigForClientAuth, "server-config-for-client-auth", serverConfigForClientAuth,
 		"Configures the server to request and verify client certificates. "+
 			"Options are NoClientCert, RequestClientCert, RequireAnyClientCert, VerifyClientCertIfGiven, RequireAndVerifyClientCert")
-}
-
-func init() {
-	servenv.OnParse(registerFlags)
 }
 
 // SslMode indicates the type of SSL mode to use. This matches
