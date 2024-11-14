@@ -67,7 +67,7 @@ jobs:
       - name: Set up cluster
         run: |
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
-          WESCALE_CI_IMAGE="localhost/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          WESCALE_CI_IMAGE="${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
           docker network create wescale-network
           
