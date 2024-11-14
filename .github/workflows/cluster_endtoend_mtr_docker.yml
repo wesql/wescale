@@ -33,7 +33,7 @@ jobs:
       tags: test-${{ github.sha }}
       platforms: linux/amd64
       want_push: false
-      want_load: false
+      want_load: true
       want_artifact: true
       artifact_path: '/tmp/image.tar'
 
