@@ -38,10 +38,10 @@ on:
         required: false
         type: boolean
         default: false
-      artifact_path:
+      artifact_name:
         required: false
         type: string
-        default: '/tmp'
+        default: 'image.tar'
 
 
 jobs:
@@ -96,12 +96,12 @@ jobs:
         if: inputs.want_artifact
         run: |
           IMAGE_NAME="${{ steps.meta.outputs.tags }}"
-          docker save $IMAGE_NAME > ${{ inputs.artifact_path }}
+          docker save $IMAGE_NAME > /tmp/image.tar
 
       - name: Upload artifact
         if: inputs.want_artifact
         uses: actions/upload-artifact@v3
         with:
-          name: image.tar
+          name: ${{ inputs.artifact_name }}
           path: /tmp/image.tar
           retention-days: 1

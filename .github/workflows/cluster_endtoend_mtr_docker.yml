@@ -35,7 +35,7 @@ jobs:
       want_push: false
       want_load: true
       want_artifact: true
-      artifact_path: '/tmp/image.tar'
+      artifact_name: 'image.tar'
 
   setup:
     name: "MTR Test - Ubuntu Docker Cluster"
@@ -79,7 +79,7 @@ jobs:
       - name: Set up cluster
         run: |
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
-          WESCALE_CI_IMAGE="${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
           docker network create wescale-network
           
