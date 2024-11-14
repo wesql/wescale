@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"vitess.io/vitess/go/mysql"
+	"vitess.io/vitess/go/pools"
 
 	"vitess.io/vitess/go/vt/servenv"
 
@@ -40,6 +41,7 @@ import (
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
 
@@ -182,6 +184,7 @@ type (
 	taskPool interface {
 		Open()
 		Close()
+		BorrowConn(ctx context.Context, setting *pools.Setting) (*connpool.DBConn, error)
 		InUse() int64
 	}
 
@@ -245,6 +248,7 @@ func (sm *stateManager) Init(env tabletenv.Env, target *querypb.Target) {
 func (sm *stateManager) SetServingType(tabletType topodatapb.TabletType, terTimestamp time.Time, state servingState, reason string) error {
 	defer sm.ExitLameduck()
 
+	sm.taskPool.Open()
 	sm.hs.Open()
 	sm.hcticks.Start(sm.Broadcast)
 
@@ -406,6 +410,7 @@ func (sm *stateManager) StopService() {
 	sm.SetServingType(sm.Target().TabletType, time.Time{}, StateNotConnected, "service stopped")
 	sm.hcticks.Stop()
 	sm.hs.Close()
+	sm.taskPool.Close()
 }
 
 // StartRequest validates the current state and target and registers
@@ -562,7 +567,6 @@ func (sm *stateManager) connect(tabletType topodatapb.TabletType) error {
 	if err := sm.qe.Open(); err != nil {
 		return err
 	}
-	sm.taskPool.Open()
 	sm.poolSizeController.Open()
 	return sm.txThrottler.Open()
 }
@@ -619,7 +623,6 @@ func (sm *stateManager) closeAll() {
 	sm.txThrottler.Close()
 	sm.qe.Close()
 	sm.poolSizeController.Close()
-	sm.taskPool.Close()
 	sm.watcher.Close()
 	sm.vstreamer.Close()
 	sm.rt.Close()
