@@ -34,6 +34,15 @@ on:
         required: false
         type: boolean
         default: true
+      want_artifact:
+        required: false
+        type: boolean
+        default: false
+      artifact_path:
+        required: false
+        type: string
+        default: '/tmp/image.tar'
+
 
 jobs:
   build-image:
@@ -82,3 +91,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
+
+      - name: Save Docker image
+        if: inputs.want_artifact
+        run: |
+          IMAGE_NAME="${{ steps.meta.outputs.tags }}"
+          docker save $IMAGE_NAME > ${{ inputs.artifact_path }}
+
+      - name: Upload artifact
+        if: inputs.want_artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: ${{ inputs.artifact_path }}
+          retention-days: 1

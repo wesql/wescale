@@ -31,10 +31,11 @@ jobs:
       branch: ${{ github.ref }}
       image_name: ${{ github.repository_owner }}/wescale_ci_image
       tags: test-${{ github.sha }}
-      registry: ghcr.io
       platforms: linux/amd64
       want_push: false
       want_load: false
+      want_artifact: true
+      artifact_path: '/tmp/image.tar'
 
   setup:
     name: "MTR Test - Ubuntu Docker Cluster"
@@ -63,6 +64,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/image.tar
+          echo "Verifying image loaded:"
+          docker images
 
       - name: Set up cluster
         run: |
