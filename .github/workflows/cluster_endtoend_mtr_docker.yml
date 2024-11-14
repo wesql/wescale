@@ -33,6 +33,8 @@ jobs:
       tags: test-${{ github.sha }}
       registry: ghcr.io
       platforms: linux/amd64
+      want_push: false
+      want_load: false
 
   setup:
     name: "MTR Test - Ubuntu Docker Cluster"
@@ -65,7 +67,7 @@ jobs:
       - name: Set up cluster
         run: |
           MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
-          WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          WESCALE_CI_IMAGE="localhost/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           
           docker network create wescale-network
           

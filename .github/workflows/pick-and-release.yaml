@@ -10,6 +10,11 @@ jobs:
     if: github.event.issue.pull_request != null && contains(github.event.comment.body, '/pick-and-release')
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -25,6 +30,8 @@ jobs:
 
       - name: Add Tag to Target Branch
         id: add_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMMENT="${{ github.event.comment.body }}"
           TARGET_BRANCH=$(echo "$COMMENT" | awk '{print $2}')
@@ -72,6 +79,8 @@ jobs:
             --body "🤖 says: tagged branch $TARGET_BRANCH with $TAG_NAME successfully."
 
       - name: Trigger Image Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="${{ steps.add_tag.outputs.tag_name }}"
           

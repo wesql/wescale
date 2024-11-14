@@ -26,6 +26,14 @@ on:
         type: string
         default: 'latest'
         description: 'Image tags (comma-separated)'
+      want_push:
+        required: false
+        type: boolean
+        default: true
+      want_load:
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build-and-push:
@@ -67,7 +75,8 @@ jobs:
           context: .
           file: docker/wesqlscale/Dockerfile.release
           platforms: ${{ inputs.platforms }}
-          push: true
+          push: ${{ inputs.want_push }}
+          load: ${{ inputs.want_load }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
