@@ -67,8 +67,8 @@ jobs:
       - name: Download Docker image
         uses: actions/download-artifact@v3
         with:
-          name: docker-image
-          path: /tmp/image.tar
+          name: image.tar
+          path: /tmp
 
       - name: Load Docker image
         run: |

@@ -41,7 +41,7 @@ on:
       artifact_path:
         required: false
         type: string
-        default: '/tmp/image.tar'
+        default: '/tmp'
 
 
 jobs:
@@ -102,6 +102,6 @@ jobs:
         if: inputs.want_artifact
         uses: actions/upload-artifact@v3
         with:
-          name: docker-image
-          path: ${{ inputs.artifact_path }}
+          name: image.tar
+          path: /tmp/image.tar
           retention-days: 1
