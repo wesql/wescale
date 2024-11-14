@@ -15,6 +15,11 @@ const (
 	BranchSnapshotTableQualifiedName = "mysql.branch_snapshot"
 )
 
+type BranchHandler interface {
+	ensureMetaTableExists() error
+	getBranchFromMetaTable(workflowName string) *Branch
+}
+
 type BranchStatus string
 
 type Branch struct {
@@ -35,6 +40,8 @@ type Branch struct {
 	// others
 	targetDBPattern string // todo
 	status          string // todo
+
+	branchHandler BranchHandler
 }
 
 // BranchWorkflowCaches map branch workflow name to branch
@@ -43,36 +50,36 @@ var BranchWorkflowCaches = make(map[string]*Branch)
 func NewBranch(workflowName,
 	sourceHost string, sourcePort int, sourceUser, sourcePassword,
 	targetHost string, targetPort int, targetUser, targetPassword,
-	include, exclude string) *Branch {
-	// todo
+	include, exclude string, branchHandler BranchHandler) *Branch {
 	return &Branch{
-		workflowName:   workflowName,
-		sourceHost:     sourceHost,
-		sourcePort:     sourcePort,
-		sourceUser:     sourceUser,
-		sourcePassword: sourcePassword,
-		targetHost:     targetHost,
-		targetPort:     targetPort,
-		targetUser:     targetUser,
-		targetPassword: targetPassword,
-		include:        include,
-		exclude:        exclude,
+		workflowName:    workflowName,
+		sourceHost:      sourceHost,
+		sourcePort:      sourcePort,
+		sourceUser:      sourceUser,
+		sourcePassword:  sourcePassword,
+		targetHost:      targetHost,
+		targetPort:      targetPort,
+		targetUser:      targetUser,
+		targetPassword:  targetPassword,
+		include:         include,
+		exclude:         exclude,
+		branchHandler:   branchHandler,
+		targetDBPattern: "", // todo
+		status:          "", // todo
 	}
 }
 
-func BranchCreate(workflowName,
+func (b *Branch) BranchCreate(workflowName,
 	sourceHost string, sourcePort int, sourceUser, sourcePassword,
 	targetHost string, targetPort int, targetUser, targetPassword,
 	include, exclude string) error {
-	branchToCreate := NewBranch(workflowName, sourceHost, sourcePort, sourceUser, sourcePassword,
-		targetHost, targetPort, targetUser, targetPassword, include, exclude)
 
-	err := branchToCreate.ensureMetaTableExists()
+	err := b.ensureMetaTableExists()
 	if err != nil {
 		return err
 	}
 	// If branch object with same name exists in BranchWorkflowCaches or branch meta table, return error
-	if checkBranchExists(workflowName) {
+	if b.checkBranchExists(workflowName) {
 		return fmt.Errorf("branch %v already exists", workflowName)
 	}
 
@@ -90,11 +97,12 @@ func BranchCreate(workflowName,
 		delete(stmts, db)
 	}
 
-	// get SQL that creates new databases and tables in target
+	// apply schema to target
+	err = createNewDatabaseAndTables(targetHost, targetPort, targetUser, targetPassword, stmts)
+	if err != nil {
+		return err
+	}
 
-	//createDatabaseAndTablesSQL := getSQLCreateDatabasesAndTables(stmts)
-
-	// apply schema to target through mysql connection.
 	// ===== txn begin =====
 
 	// snapshot
@@ -140,14 +148,14 @@ func (b *Branch) ensureMetaTableExists() error {
 	return nil
 }
 
-func checkBranchExists(workflowName string) bool {
+func (b *Branch) checkBranchExists(workflowName string) bool {
 	// check workflowName exists in BranchWorkflowCaches
 	if _, exists := BranchWorkflowCaches[workflowName]; exists {
 		return true
 	}
 
 	// check from getBranchFromMetaTable  branch meta table
-	if getBranchFromMetaTable(workflowName) != nil {
+	if b.branchHandler.getBranchFromMetaTable(workflowName) != nil {
 		return true
 	}
 	return false
@@ -314,7 +322,7 @@ func getSQLCreateDatabasesAndTables(createTableStmts map[string]map[string]strin
 }
 
 // todo spi
-func createDatabaseAndTables(host string, port int, user, password string, createTableStmts map[string]map[string]string) error {
+func createNewDatabaseAndTables(host string, port int, user, password string, createTableStmts map[string]map[string]string) error {
 	sqlQuery := getSQLCreateDatabasesAndTables(createTableStmts)
 	if sqlQuery == "" {
 		return fmt.Errorf("no SQL statements to execute")
