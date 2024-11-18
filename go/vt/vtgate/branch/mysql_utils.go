@@ -3,11 +3,38 @@ package branch
 import (
 	"database/sql"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"strings"
 )
 
-func connectToMysql(host string, port int, username, password, connectionOpt string) (*sql.DB, error) {
+type MysqlService struct {
+	db *sql.DB
+}
+
+func NewMysqlService(db *sql.DB) (*MysqlService, error) {
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping MySQL: %w", err)
+	}
+	return &MysqlService{db: db}, nil
+}
+
+func NewMysqlServiceWithConfig(config *mysql.Config) (*MysqlService, error) {
+	db, err := sql.Open("mysql", config.FormatDSN())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MySQL: %w", err)
+	}
+
+	service, err := NewMysqlService(db)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return service, nil
+}
+
+func Connect(host string, port int, username, password, connectionOpt string) (*sql.DB, error) {
 	var dsn string
 
 	// Handle different authentication scenarios
@@ -43,7 +70,7 @@ func connectToMysql(host string, port int, username, password, connectionOpt str
 
 // GetAllDatabases retrieves all database names from MySQL
 func GetAllDatabases(host string, port int, username, password string) ([]string, error) {
-	db, err := connectToMysql(host, port, username, password, "")
+	db, err := Connect(host, port, username, password, "")
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +104,7 @@ func GetAllDatabases(host string, port int, username, password string) ([]string
 // Returns a nested map where the first level key is the database name,
 // second level key is the table name, and the value is the CREATE TABLE statement
 func GetAllCreateTableStatements(host string, port int, username, password string, databasesExclude []string) (map[string]map[string]string, error) {
-	db, err := connectToMysql(host, port, username, password, "information_schema?multiStatements=true")
+	db, err := Connect(host, port, username, password, "information_schema?multiStatements=true")
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +198,7 @@ func GetAllCreateTableStatements(host string, port int, username, password strin
 }
 
 func ExecuteSQL(host string, port int, username, password, query string) error {
-	db, err := connectToMysql(host, port, username, password, "information_schema?multiStatements=true")
+	db, err := Connect(host, port, username, password, "information_schema?multiStatements=true")
 	if err != nil {
 		return err
 	}
@@ -187,7 +214,7 @@ func ExecuteSQL(host string, port int, username, password, query string) error {
 }
 
 func ExecuteSQLInTxn(host string, port int, username, password string, queries []string) error {
-	db, err := connectToMysql(host, port, username, password, "")
+	db, err := Connect(host, port, username, password, "")
 	if err != nil {
 		return err
 	}

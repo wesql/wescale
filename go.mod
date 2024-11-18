@@ -231,6 +231,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/brianvoe/gofakeit/v6 v6.25.0
 	github.com/golang/protobuf v1.5.4
 	github.com/pingcap/failpoint v0.0.0-20220801062533-2eaa32854a6c
