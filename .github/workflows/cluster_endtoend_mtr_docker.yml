@@ -31,8 +31,11 @@ jobs:
       branch: ${{ github.ref }}
       image_name: ${{ github.repository_owner }}/wescale_ci_image
       tags: test-${{ github.sha }}
-      registry: ghcr.io
       platforms: linux/amd64
+      want_push: false
+      want_load: true
+      want_artifact: true
+      artifact_name: 'image.tar'
 
   setup:
     name: "MTR Test - Ubuntu Docker Cluster"
@@ -61,6 +64,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: image.tar
+          path: /tmp
+
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/image.tar
+          echo "Verifying image loaded:"
+          docker images
 
       - name: Set up cluster
         run: |
@@ -122,38 +136,3 @@ jobs:
       - name: Print Wescale logs
         run: |
           docker logs wescale
-
-      - name: Clean up
-        if: always()
-        run: |
-          TOKEN="${{ github.token }}"
-          OWNER="${{ github.repository_owner }}"
-          PACKAGE_NAME="${{ env.IMAGE_NAME }}"
-          TAG="${{ env.IMAGE_TAG }}"
-
-          VERSIONS_JSON=$(curl -s \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions")
-
-          PACKAGE_VERSION_ID=$(echo "$VERSIONS_JSON" | jq -r ".[] | select(.metadata.container.tags[] | contains(\"$TAG\")) | .id")
-
-          if [ ! -z "$PACKAGE_VERSION_ID" ]; then
-            echo "Found image version ID: $PACKAGE_VERSION_ID"
-
-            DELETE_RESPONSE=$(curl -X DELETE -s -H "Authorization: Bearer $TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/orgs/$OWNER/packages/container/$PACKAGE_NAME/versions/$PACKAGE_VERSION_ID")
-
-            if [ -z "$DELETE_RESPONSE" ]; then
-              echo "✅ Successfully deleted image version: $PACKAGE_VERSION_ID"
-            else
-              echo "❌ Failed to delete image version. Response: $DELETE_RESPONSE"
-              exit 1
-            fi
-          else
-            echo "❌ Could not find image version with tag: $TAG"
-            echo "Available versions:"
-            echo "$VERSIONS_JSON" | jq -r '.[].names'
-            exit 1
-          fi
