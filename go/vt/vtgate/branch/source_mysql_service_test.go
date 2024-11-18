@@ -1,30 +1,10 @@
 package branch
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 )
-
-func TestGetAllDatabases(t *testing.T) {
-	//todo fixme
-	mysqlService, mock := newMockMysqlService(t)
-	SourceMySQLServiceForTest := &SourceMySQLService{
-		mysqlService: mysqlService,
-	}
-
-	//todo
-	addMockShowCreateTable(mock, "db1", "users", "CREATE TABLE users ...")
-
-	dbs, err := SourceMySQLServiceForTest.GetAllDatabases()
-	if err != nil {
-		t.Error(err)
-	}
-	for _, db := range dbs {
-		fmt.Println(db)
-	}
-}
 
 func TestGetAllCreateTableStatements(t *testing.T) {
 	//todo fixme

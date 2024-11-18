@@ -16,6 +16,7 @@ type BranchMeta struct {
 }
 
 const (
+	//todo move to sidecardb
 	CreateBranchMetaTableSQL = `CREATE TABLE IF NOT EXISTS mysql.branch (
 			id bigint auto_increment,
 			name varchar(64) not null,
@@ -35,6 +36,7 @@ const (
 		(name, source_host, source_port, source_user, source_password, include, exclude, status, target_db_pattern) 
 		VALUES ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
 
+	//todo move to sidecardb
 	CreateBranchSnapshotTableSQL = `CREATE TABLE IF NOT EXISTS mysql.branch_snapshots(
 			id bigint unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(64) NOT NULL,

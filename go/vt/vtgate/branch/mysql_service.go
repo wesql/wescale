@@ -41,18 +41,12 @@ func (m *MysqlService) Close() error {
 }
 
 // todo branch add UT
-func (m *MysqlService) ExecuteSQL(query string) error {
-	// use Exec instead of Query since we're not expecting any rows to be returned
-	_, err := m.db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to execute SQL statements: %w", err)
-	}
-
-	return nil
+func (m *MysqlService) Query(query string) (*sql.Rows, error) {
+	return m.db.Query(query)
 }
 
 // todo branch add UT
-func (m *MysqlService) ExecuteSQLInTxn(queries []string) error {
+func (m *MysqlService) ExecuteInTxn(queries ...string) error {
 	tx, err := m.db.Begin()
 	if err != nil {
 		return err

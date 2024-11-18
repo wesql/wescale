@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// todo: do not use mysqlService.db
 type SourceMySQLService struct {
 	mysqlService *MysqlService
 }
@@ -19,38 +18,13 @@ func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
 }
 
 // todo branch add UT
-// GetAllDatabases retrieves all database names from MySQL
-func (s *SourceMySQLService) GetAllDatabases() ([]string, error) {
-	// Execute query to get all database names
-	rows, err := s.mysqlService.db.Query("SHOW DATABASES")
-	if err != nil {
-		return nil, fmt.Errorf("failed to query database list: %v", err)
-	}
-	defer rows.Close()
-
-	var databases []string
-	for rows.Next() {
-		var dbName string
-		if err := rows.Scan(&dbName); err != nil {
-			return nil, fmt.Errorf("failed to scan database name: %v", err)
-		}
-		databases = append(databases, dbName)
-	}
-
-	// Check for errors during iteration
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating database list: %v", err)
-	}
-
-	return databases, nil
-}
-
-// todo branch add UT
 // GetAllCreateTableStatements retrieves CREATE TABLE statements for all tables in all databases
 // Returns a nested map where the first level key is the database name,
 // second level key is the table name, and the value is the CREATE TABLE statement
 func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []string) (map[string]map[string]string, error) {
-	//todo branch: why need "information_schema?multiStatements=true" as connectionOpt?
+	// todo: need to paginate the query, because the result set may be too large. maybe add a param to control it.
+
+	// todo: split this method into smaller methods for better readability and testability
 
 	// First step: Get information about all tables and build the combined query
 	buildQuery := `
@@ -65,7 +39,7 @@ func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []stri
 		buildQuery += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", strings.Join(databasesExclude, "','"))
 	}
 
-	rows, err := s.mysqlService.db.Query(buildQuery)
+	rows, err := s.mysqlService.Query(buildQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query table information: %v", err)
 	}
@@ -96,7 +70,7 @@ func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []stri
 	combinedQuery := strings.Join(showStatements, "")
 
 	// Execute the combined query to get all CREATE TABLE statements at once
-	multiRows, err := s.mysqlService.db.Query(combinedQuery)
+	multiRows, err := s.mysqlService.Query(combinedQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute combined query: %v", err)
 	}

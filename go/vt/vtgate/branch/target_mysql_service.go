@@ -7,44 +7,89 @@ type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
 
-func (t *TargetMySQLService) ensureMetaTableExists() error {
-	err := t.mysqlService.ExecuteSQL(CreateBranchMetaTableSQL)
+func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts map[string]map[string]string) error {
+	// get databases from target
+	databases, err := t.getAllDatabases()
 	if err != nil {
 		return err
 	}
-	return t.mysqlService.ExecuteSQL(CreateBranchSnapshotTableSQL)
+
+	// skip databases that already exist in target
+	for _, db := range databases {
+		delete(createTableStmts, db)
+	}
+
+	// apply schema to target
+	err = t.CreateDatabaseAndTablesIfNotExists(createTableStmts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (t *TargetMySQLService) FetchDatabases() ([]string, error) {
-	//todo
-	return nil, nil
+/**********************************************************************************************************************/
+
+// todo delete this
+func (t *TargetMySQLService) ensureMetaTableExists() error {
+	err := t.mysqlService.ExecuteInTxn(CreateBranchMetaTableSQL)
+	if err != nil {
+		return err
+	}
+	return t.mysqlService.ExecuteInTxn(CreateBranchSnapshotTableSQL)
 }
 
-func (t *TargetMySQLService) CreateNewDatabaseAndTables(createTableStmts map[string]map[string]string) error {
+// todo branch add UT
+// getAllDatabases retrieves all database names from MySQL
+func (s *TargetMySQLService) getAllDatabases() ([]string, error) {
+	// Execute query to get all database names
+	rows, err := s.mysqlService.Query("SHOW DATABASES")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query database list: %v", err)
+	}
+	defer rows.Close()
+
+	var databases []string
+	for rows.Next() {
+		var dbName string
+		if err := rows.Scan(&dbName); err != nil {
+			return nil, fmt.Errorf("failed to scan database name: %v", err)
+		}
+		databases = append(databases, dbName)
+	}
+
+	// Check for errors during iteration
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error occurred while iterating database list: %v", err)
+	}
+
+	return databases, nil
+}
+
+func (t *TargetMySQLService) createDatabaseAndTables(createTableStmts map[string]map[string]string) error {
 	sqlQuery := getSQLCreateDatabasesAndTables(createTableStmts)
 	if sqlQuery == "" {
 		return fmt.Errorf("no SQL statements to execute")
 	}
-	return t.mysqlService.ExecuteSQL(sqlQuery)
+	return t.mysqlService.ExecuteInTxn(sqlQuery)
 }
 
-func (t *TargetMySQLService) getBranchFromMetaTable(name string) *BranchService {
+func (t *TargetMySQLService) getBranchMeta(name string) *BranchService {
 	// todo
 	return nil
 }
 
 // todo branch: snapshot and branchMeta should have their struct type
-func (t *TargetMySQLService) storeMetaData(snapshot map[string]map[string]string, branchMeta BranchMeta) error {
+func (t *TargetMySQLService) storeBranchMeta(snapshot map[string]map[string]string, branchMeta BranchMeta) error {
 	// todo
 	//insertSnapshotSQL := getInsertSnapshotSQL(branchMeta.name, string(snapshot))
 	//insertBranchMetaSQL := getInsertBranchMetaSQL(branchMeta.name, sourceHost, sourcePort, sourceUser, sourcePassword, include, exclude, "create", "")
 
-	// todo: need to call: checkBranchExists
+	// todo: need to call: checkBranchMetaExists
 
 	return nil
 }
 
-func (t *TargetMySQLService) checkBranchExists(name string) bool {
+func (t *TargetMySQLService) checkBranchMetaExists(name string) bool {
 	//todo
 	return false
 }

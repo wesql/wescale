@@ -18,36 +18,23 @@ func NewBranchService(sourceHandler *SourceMySQLService, targetHandler *TargetMy
 
 // todo, the func params
 func (s *BranchService) BranchCreate(branchMeta BranchMeta) error {
-	err := s.targetMySQLService.ensureMetaTableExists()
+	err := s.targetMySQLService.ensureMetaTableExists() //todo delete this
 	if err != nil {
 		return err
 	}
 	// If branch object with same name exists in BranchWorkflowCaches or branch meta table, return error
-	if s.targetMySQLService.checkBranchExists(branchMeta.name) {
+	if s.targetMySQLService.checkBranchMetaExists(branchMeta.name) {
 		return fmt.Errorf("branch %v already exists", branchMeta.name)
 	}
 
 	// get schema from source
-	stmts, err := s.BranchFetch(branchMeta.include, branchMeta.exclude)
-
-	// get databases from target
-	databases, err := s.targetMySQLService.FetchDatabases()
+	stmts, err := s.BranchFetch(branchMeta)
 	if err != nil {
 		return err
 	}
 
-	// skip databases that already exist in target
-	for _, db := range databases {
-		delete(stmts, db)
-	}
-
-	// apply schema to target
-	err = s.targetMySQLService.CreateNewDatabaseAndTables(stmts)
-	if err != nil {
-		return err
-	}
-
-	err = s.targetMySQLService.storeMetaData(stmts, branchMeta)
+	// stmts act as the WAL for CreateDatabaseAndTablesIfNotExists
+	err = s.targetMySQLService.CreateDatabaseAndTablesIfNotExists(stmts)
 	if err != nil {
 		return err
 	}
@@ -55,8 +42,16 @@ func (s *BranchService) BranchCreate(branchMeta BranchMeta) error {
 	return nil
 }
 
-func (s *BranchService) BranchFetch(include, exclude string) (map[string]map[string]string, error) {
-	return s.sourceMySQLService.FetchAndFilterCreateTableStmts(include, exclude)
+func (s *BranchService) BranchFetch(branchMeta BranchMeta) (map[string]map[string]string, error) {
+	stmts, err := s.sourceMySQLService.FetchAndFilterCreateTableStmts(branchMeta.include, branchMeta.exclude)
+	if err != nil {
+		return nil, err
+	}
+	err = s.targetMySQLService.storeBranchMeta(stmts, branchMeta) // this step is the commit point of BranchCreate function
+	if err != nil {
+		return nil, err
+	}
+	return stmts, nil
 }
 
 // todo, get branch b from database every time?
