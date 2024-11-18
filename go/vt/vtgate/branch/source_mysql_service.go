@@ -1,83 +1,19 @@
 package branch
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"strings"
 )
 
-type MysqlService struct {
-	db *sql.DB
+type SourceMySqlService struct {
+	mysqlService *MysqlService
 }
 
-func NewMysqlService(db *sql.DB) (*MysqlService, error) {
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping MySQL: %w", err)
-	}
-	return &MysqlService{db: db}, nil
-}
-
-func NewMysqlServiceWithConfig(config *mysql.Config) (*MysqlService, error) {
-	db, err := sql.Open("mysql", config.FormatDSN())
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MySQL: %w", err)
-	}
-
-	service, err := NewMysqlService(db)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	return service, nil
-}
-
-func Connect(host string, port int, username, password, connectionOpt string) (*sql.DB, error) {
-	var dsn string
-
-	// Handle different authentication scenarios
-	switch {
-	case username == "" && password == "":
-		// Connect without authentication
-		dsn = fmt.Sprintf("@tcp(%s:%d)/%s", host, port, connectionOpt)
-	case username == "":
-		// Username is required if password is provided
-		return nil, fmt.Errorf("username is required when password is provided")
-	case password == "":
-		// Connect with username but no password
-		dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s", username, host, port, connectionOpt)
-	default:
-		// Connect with both username and password
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", username, password, host, port, connectionOpt)
-	}
-
-	// Establish database connection
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MySQL: %v", err)
-	}
-
-	// Test connection
-	err = db.Ping()
-	if err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to ping MySQL: %v", err)
-	}
-	return db, nil
-}
-
+// todo branch: remove useless params
 // GetAllDatabases retrieves all database names from MySQL
-func GetAllDatabases(host string, port int, username, password string) ([]string, error) {
-	db, err := Connect(host, port, username, password, "")
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
+func (s *SourceMySqlService) GetAllDatabases(host string, port int, username, password string) ([]string, error) {
 	// Execute query to get all database names
-	rows, err := db.Query("SHOW DATABASES")
+	rows, err := s.mysqlService.db.Query("SHOW DATABASES")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database list: %v", err)
 	}
@@ -100,15 +36,12 @@ func GetAllDatabases(host string, port int, username, password string) ([]string
 	return databases, nil
 }
 
+// todo branch: remove useless params
 // GetAllCreateTableStatements retrieves CREATE TABLE statements for all tables in all databases
 // Returns a nested map where the first level key is the database name,
 // second level key is the table name, and the value is the CREATE TABLE statement
-func GetAllCreateTableStatements(host string, port int, username, password string, databasesExclude []string) (map[string]map[string]string, error) {
-	db, err := Connect(host, port, username, password, "information_schema?multiStatements=true")
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
+func (s *SourceMySqlService) GetAllCreateTableStatements(host string, port int, username, password string, databasesExclude []string) (map[string]map[string]string, error) {
+	//todo branch: why need "information_schema?multiStatements=true" as connectionOpt?
 
 	// First step: Get information about all tables and build the combined query
 	buildQuery := `
@@ -123,7 +56,7 @@ func GetAllCreateTableStatements(host string, port int, username, password strin
 		buildQuery += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", strings.Join(databasesExclude, "','"))
 	}
 
-	rows, err := db.Query(buildQuery)
+	rows, err := s.mysqlService.db.Query(buildQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query table information: %v", err)
 	}
@@ -154,7 +87,7 @@ func GetAllCreateTableStatements(host string, port int, username, password strin
 	combinedQuery := strings.Join(showStatements, "")
 
 	// Execute the combined query to get all CREATE TABLE statements at once
-	multiRows, err := db.Query(combinedQuery)
+	multiRows, err := s.mysqlService.db.Query(combinedQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute combined query: %v", err)
 	}
@@ -195,47 +128,4 @@ func GetAllCreateTableStatements(host string, port int, username, password strin
 	}
 
 	return result, nil
-}
-
-func ExecuteSQL(host string, port int, username, password, query string) error {
-	db, err := Connect(host, port, username, password, "information_schema?multiStatements=true")
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	// use Exec instead of Query since we're not expecting any rows to be returned
-	_, err = db.Exec(query)
-	if err != nil {
-		return fmt.Errorf("failed to execute SQL statements: %w", err)
-	}
-
-	return nil
-}
-
-func ExecuteSQLInTxn(host string, port int, username, password string, queries []string) error {
-	db, err := Connect(host, port, username, password, "")
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-
-	for _, query := range queries {
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
 }
