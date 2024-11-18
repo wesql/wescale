@@ -185,3 +185,30 @@ func ExecuteSQL(host string, port int, username, password, query string) error {
 
 	return nil
 }
+
+func ExecuteSQLInTxn(host string, port int, username, password string, queries []string) error {
+	db, err := connectToMysql(host, port, username, password, "")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	for _, query := range queries {
+		_, err := tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}

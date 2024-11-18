@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,14 +11,40 @@ import (
 
 const (
 	BranchMetaTableQualifiedName = "mysql.branch"
+	CreateBranchMetaTableSQL     = `CREATE TABLE IF NOT EXISTS mysql.branch (
+		id bigint auto_increment,
+		workflow_name varchar(64) not null,
+		source_host varchar(32) not null,
+		source_port int not null,
+		source_user varchar(64),
+		source_password varchar(64),
+		include varchar(256) not null,
+		exclude varchar(256),
+		status varchar(32) not null,
+		target_db_pattern varchar(256),
+		primary key (id),
+		unique key (workflow_name)
+	)ENGINE=InnoDB;`
+	InsertBranchSQL = `INSERT INTO mysql.branch 
+    (workflow_name, source_host, source_port, source_user, source_password, include, exclude, status, target_db_pattern) 
+    VALUES ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
 
 	// the reason for using individual table for snapshot is to speed up branch meta table query
 	BranchSnapshotTableQualifiedName = "mysql.branch_snapshot"
+	CreateBranchSnapshotTableSQL     = `CREATE TABLE IF NOT EXISTS mysql.branch_snapshots(
+		id bigint unsigned NOT NULL AUTO_INCREMENT,
+		workflow_name varchar(64) NOT NULL,
+		snapshot                longblob,
+		PRIMARY KEY (id),
+		UNIQUE KEY(workflow_name)
+	) ENGINE = InnoDB;`
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshots(workflow_name, snapshot) values (%s, %s)"
 )
 
 type BranchHandler interface {
 	ensureMetaTableExists() error
 	getBranchFromMetaTable(workflowName string) *Branch
+	executeSQLInTxn(queries []string) error
 }
 
 type BranchStatus string
@@ -41,7 +68,8 @@ type Branch struct {
 	targetDBPattern string // todo
 	status          string // todo
 
-	branchHandler BranchHandler
+	sourceHandler BranchHandler
+	targetHandler BranchHandler
 }
 
 // BranchWorkflowCaches map branch workflow name to branch
@@ -50,7 +78,7 @@ var BranchWorkflowCaches = make(map[string]*Branch)
 func NewBranch(workflowName,
 	sourceHost string, sourcePort int, sourceUser, sourcePassword,
 	targetHost string, targetPort int, targetUser, targetPassword,
-	include, exclude string, branchHandler BranchHandler) *Branch {
+	include, exclude string, sourceHandler, targetHandler BranchHandler) *Branch {
 	return &Branch{
 		workflowName:    workflowName,
 		sourceHost:      sourceHost,
@@ -63,16 +91,20 @@ func NewBranch(workflowName,
 		targetPassword:  targetPassword,
 		include:         include,
 		exclude:         exclude,
-		branchHandler:   branchHandler,
+		sourceHandler:   sourceHandler,
+		targetHandler:   targetHandler,
 		targetDBPattern: "", // todo
 		status:          "", // todo
 	}
 }
 
-func (b *Branch) BranchCreate(workflowName,
+// todo, the func params
+func BranchCreate(workflowName,
 	sourceHost string, sourcePort int, sourceUser, sourcePassword,
 	targetHost string, targetPort int, targetUser, targetPassword,
-	include, exclude string) error {
+	include, exclude string, sourceHandler, targetHandler BranchHandler) error {
+
+	b := NewBranch(workflowName, sourceHost, sourcePort, sourceUser, sourcePassword, targetHost, targetPort, targetUser, targetPassword, include, exclude, sourceHandler, targetHandler)
 
 	err := b.ensureMetaTableExists()
 	if err != nil {
@@ -103,18 +135,30 @@ func (b *Branch) BranchCreate(workflowName,
 		return err
 	}
 
+	// get snapshot
+	// todo other marshal, such as proto
+	snapshot, err := json.Marshal(stmts)
+	if err != nil {
+		return err
+	}
+
+	insertSnapshotSQL := getInsertSnapshotSQL(workflowName, string(snapshot))
+	insertBranchMetaSQL := getInsertBranchMetaSQL(workflowName, sourceHost, sourcePort, sourceUser, sourcePassword, include, exclude, "create", "")
 	// ===== txn begin =====
-
-	// snapshot
-
 	// Store source Info and branch metadata into branch meta table
-
 	// ===== txn commit =====
+	err = b.targetHandler.executeSQLInTxn([]string{insertSnapshotSQL, insertBranchMetaSQL})
+	if err != nil {
+		return err
+	}
+
 	// Create branch object in BranchWorkflowCaches
+	BranchWorkflowCaches[workflowName] = b
 
 	return nil
 }
 
+// todo, get branch b from database every time?
 func (b *Branch) BranchDiff() {
 	// todo
 	// SchemaDiff
@@ -155,7 +199,8 @@ func (b *Branch) checkBranchExists(workflowName string) bool {
 	}
 
 	// check from getBranchFromMetaTable  branch meta table
-	if b.branchHandler.getBranchFromMetaTable(workflowName) != nil {
+	if branch := b.targetHandler.getBranchFromMetaTable(workflowName); branch != nil {
+		BranchWorkflowCaches[workflowName] = branch
 		return true
 	}
 	return false
@@ -328,4 +373,21 @@ func createNewDatabaseAndTables(host string, port int, user, password string, cr
 		return fmt.Errorf("no SQL statements to execute")
 	}
 	return ExecuteSQL(host, port, user, password, sqlQuery)
+}
+
+func getInsertSnapshotSQL(workflow, snapshotData string) string {
+	return fmt.Sprintf(InsertBranchSnapshotSQL, workflow, snapshotData)
+}
+
+func getInsertBranchMetaSQL(workflowName, sourceHost string, sourcePort int, sourceUser, sourcePassword, include, exclude, status, targetDBPattern string) string {
+	return fmt.Sprintf(InsertBranchSQL,
+		workflowName,
+		sourceHost,
+		sourcePort,
+		sourceUser,
+		sourcePassword,
+		include,
+		exclude,
+		status,
+		targetDBPattern)
 }
