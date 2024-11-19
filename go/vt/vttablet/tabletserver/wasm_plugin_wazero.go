@@ -322,12 +322,13 @@ func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, bytes []byte, w
 		return StatusBadArgument
 	}
 
-	//todo wasm: why not use 'malloc' here?
+	// call 'proxy_on_memory_allocate' to allocate memory in guest, 'proxy_on_memory_allocate' is a exported function in guest
 	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
 	res, err := alloc.Call(ctx, uint64(size))
 	if err != nil {
 		return StatusInternalFailure
 	}
+	// res[0] is the pointer to the allocated memory in guest
 	buf, ok := mod.Memory().Read(uint32(res[0]), uint32(size))
 	if !ok {
 		return StatusInternalFailure

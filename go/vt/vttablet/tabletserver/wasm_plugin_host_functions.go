@@ -187,8 +187,7 @@ func moduleUnlockOnHost(hostModulePtr uint64) {
 	module.moduleMu.Unlock()
 }
 
-func GetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData,
-	returnValueSize uint32) uint32 {
+func GetQueryOnHost(ctx context.Context, mod api.Module, hostInstancePtr uint64, returnValueData, returnValueSize uint32) uint32 {
 	w := (*WazeroInstance)(unsafe.Pointer(uintptr(hostInstancePtr)))
 	return uint32(copyHostStringIntoGuest(ctx, mod, w.qre.query, returnValueData, returnValueSize))
 }
