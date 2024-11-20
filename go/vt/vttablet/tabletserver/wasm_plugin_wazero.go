@@ -125,51 +125,41 @@ func (w *WazeroVM) InitRuntime() error {
 	return exportHostABIV1(w.ctx, w)
 }
 
-func (w *WazeroVM) ClearWasmModule(key string) {
+func (w *WazeroVM) ClearWasmModule(filterName string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if mod, exist := w.modules[key]; exist {
+	if mod, exist := w.modules[filterName]; exist {
 		defer mod.Close()
 	}
-	delete(w.modules, key)
+	delete(w.modules, filterName)
 }
 
-func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
+func (w *WazeroVM) GetWasmModule(filterName string) (bool, WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	module, exist := w.modules[key]
+	module, exist := w.modules[filterName]
 	return exist, module
 }
 
-func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
+func (w *WazeroVM) InitWasmModule(filterName string, wasmBytes []byte) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.modules[key] = wasmModule
-}
-
-func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	module, exist := w.modules[key]
+	module, exist := w.modules[filterName]
 	if exist {
 		return module, nil
 	}
-	module, err := w.CompileWasmModule(wasmBytes)
+	compiled, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err
 	}
-	w.modules[key] = module
+	module = &WazeroModule{
+		filterName:     filterName,
+		compliedModule: compiled,
+		wazeroRuntime:  w,
+	}
+	w.modules[filterName] = module
 	return module, nil
-}
-
-func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
-	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w}, nil
 }
 
 func (w *WazeroVM) Close() error {
@@ -178,6 +168,7 @@ func (w *WazeroVM) Close() error {
 }
 
 type WazeroModule struct {
+	filterName     string
 	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
 }
@@ -214,6 +205,7 @@ type WazeroInstance struct {
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
+	defer ins.qre.tsv.qe.actionStats.WasmMemorySize.Add([]string{"", ""}, int64(ins.instance.Memory().Size()))
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunBeforeExecutionOnGuest")
 	if wazeroGuestFunc == nil {

@@ -337,13 +337,13 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
 	controller := qre.tsv.qe.wasmPluginController
 
-	ok, module := controller.VM.GetWasmModule(p.Args.WasmBinaryName)
+	ok, module := controller.VM.GetWasmModule(p.GetRule().Name)
 	if !ok {
 		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
-		module, err = controller.VM.InitWasmModule(p.Args.WasmBinaryName, wasmBytes)
+		module, err = controller.VM.InitWasmModule(p.GetRule().Name, wasmBytes)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
