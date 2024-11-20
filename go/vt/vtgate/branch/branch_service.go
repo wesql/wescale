@@ -29,17 +29,16 @@ func (s *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	return nil
 }
 
-// todo not urgent: map[string]map[string]string to structure
-func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (map[string]map[string]string, error) {
-	stmts, err := s.sourceMySQLService.FetchAndFilterCreateTableStmts(branchMeta.include, branchMeta.exclude)
+func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
+	schema, err := s.sourceMySQLService.FetchAndFilterCreateTableStmts(branchMeta.include, branchMeta.exclude)
 	if err != nil {
 		return nil, err
 	}
-	err = s.targetMySQLService.StoreBranchMeta(stmts, branchMeta) // this step is the commit point of BranchCreate function
+	err = s.targetMySQLService.StoreBranchMeta(schema.schema, branchMeta) // this step is the commit point of BranchCreate function
 	if err != nil {
 		return nil, err
 	}
-	return stmts, nil
+	return schema, nil
 }
 
 // todo, get branch b from database every time?

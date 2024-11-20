@@ -20,7 +20,7 @@ func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
 // GetAllCreateTableStatements retrieves CREATE TABLE statements for all tables in all databases
 // Returns a nested map where the first level key is the database name,
 // second level key is the table name, and the value is the CREATE TABLE statement
-func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []string) (map[string]map[string]string, error) {
+func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []string) (*BranchSchema, error) {
 	// todo: need to paginate the query, because the result set may be too large. maybe add a param to control it.
 
 	// todo: split this method into smaller methods for better readability and testability
@@ -109,22 +109,22 @@ func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []stri
 		}
 	}
 
-	return result, nil
+	return &BranchSchema{schema: result}, nil
 }
 
 // todo not urgent: parama "mysql", "sys", "information_schema", "performance_schema" from branch_service
-func (s *SourceMySQLService) FetchAndFilterCreateTableStmts(include, exclude string) (map[string]map[string]string, error) {
+func (s *SourceMySQLService) FetchAndFilterCreateTableStmts(include, exclude string) (*BranchSchema, error) {
 	// Get all create table statements except system databases
-	stmts, err := s.GetAllCreateTableStatements([]string{"mysql", "sys", "information_schema", "performance_schema"})
+	schema, err := s.GetAllCreateTableStatements([]string{"mysql", "sys", "information_schema", "performance_schema"})
 	if err != nil {
 		return nil, err
 	}
-	return filterCreateTableStmts(stmts, include, exclude)
+	return filterCreateTableStmts(schema, include, exclude)
 }
 
 // return error if any pattern in `include` does not match
 // if `include` is empty, return error
-func filterCreateTableStmts(stmts map[string]map[string]string, include, exclude string) (map[string]map[string]string, error) {
+func filterCreateTableStmts(schema *BranchSchema, include, exclude string) (*BranchSchema, error) {
 	if include == "" {
 		return nil, fmt.Errorf("include pattern is empty")
 	}
@@ -143,7 +143,7 @@ func filterCreateTableStmts(stmts map[string]map[string]string, include, exclude
 	}
 
 	// Process each database and table
-	for dbName, tables := range stmts {
+	for dbName, tables := range schema.schema {
 		for tableName, createStmt := range tables {
 			tableId := dbName + "." + tableName
 
@@ -186,7 +186,7 @@ func filterCreateTableStmts(stmts map[string]map[string]string, include, exclude
 			return nil, fmt.Errorf("the following include patterns had no matches: %s", strings.Join(unmatchedPatterns, ", "))
 		}
 	}
-	return result, nil
+	return &BranchSchema{schema: result}, nil
 }
 
 // parsePatterns splits the pattern string and returns a slice of patterns

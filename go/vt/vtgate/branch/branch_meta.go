@@ -15,6 +15,11 @@ type BranchMeta struct {
 	status          string // todo
 }
 
+type BranchSchema struct {
+	// databases -> tables -> create table statement
+	schema map[string]map[string]string
+}
+
 const (
 	InsertBranchSQL = `INSERT INTO mysql.branch 
 		(name, source_host, source_port, source_user, source_password, include, exclude, status, target_db_pattern) 
