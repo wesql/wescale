@@ -1,6 +1,6 @@
 package tabletserver
 
-const AbiVersion = "v1alpha2"
+const AbiVersion = "v1alpha1"
 
 const WAZERO = "wazero"
 
