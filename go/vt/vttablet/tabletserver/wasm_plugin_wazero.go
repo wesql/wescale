@@ -275,8 +275,8 @@ func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, bytes []byte, w
 		return StatusBadArgument
 	}
 
-	// call 'proxy_on_memory_allocate' to allocate memory in guest, 'proxy_on_memory_allocate' is a exported function in guest
-	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
+	// call 'malloc' to allocate memory in guest, guest need to free it
+	alloc := mod.ExportedFunction("malloc")
 	res, err := alloc.Call(ctx, uint64(size))
 	if err != nil {
 		return StatusInternalFailure
