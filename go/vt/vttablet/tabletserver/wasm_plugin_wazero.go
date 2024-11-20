@@ -18,19 +18,13 @@ type WazeroVM struct {
 	ctx     context.Context
 	runtime wazero.Runtime
 	modules map[string]WasmModule
-
-	globalMu sync.Mutex
-
-	hostSharedVariables map[string][]byte
-	hostSharedMu        sync.Mutex
 }
 
 func initWazeroVM() *WazeroVM {
 	ctx := context.Background()
 	w := &WazeroVM{
-		ctx:                 ctx,
-		modules:             make(map[string]WasmModule),
-		hostSharedVariables: make(map[string][]byte),
+		ctx:     ctx,
+		modules: make(map[string]WasmModule),
 	}
 	w.InitRuntime()
 	return w
@@ -67,20 +61,6 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
-		}).
-		Export("SetValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
-		}).
-		Export("GetValueByKeyOnHost").
-		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
 		WithResultNames("callStatus").
@@ -96,18 +76,6 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 			return SetQueryOnHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
 		Export("SetQueryOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
-			LockOnHost(wazeroRuntime, scope, hostModulePtr)
-		}).
-		Export("LockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
-			UnlockOnHost(wazeroRuntime, scope, hostModulePtr)
-		}).
-		Export("UnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
 		WithResultNames("callStatus").
@@ -172,12 +140,6 @@ func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
 func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	// the goal is to change the compiled module bytes, and keep module variables map
-	oldWasmModule, exist := w.modules[key]
-	if exist {
-		oldMap := oldWasmModule.GetModuleSharingVariables()
-		wasmModule.SetModuleSharingVariables(oldMap)
-	}
 	w.modules[key] = wasmModule
 }
 
@@ -202,7 +164,7 @@ func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
 		return nil, err
 	}
 
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleSharingVariables: make(map[string][]byte)}, nil
+	return &WazeroModule{compliedModule: module, wazeroRuntime: w}, nil
 }
 
 func (w *WazeroVM) Close() error {
@@ -213,24 +175,6 @@ func (w *WazeroVM) Close() error {
 type WazeroModule struct {
 	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
-
-	mu                     sync.Mutex
-	moduleSharingVariables map[string][]byte
-
-	moduleMu sync.Mutex
-	tmp      int
-}
-
-func (mod *WazeroModule) GetModuleSharingVariables() map[string][]byte {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-	return mod.moduleSharingVariables
-}
-
-func (mod *WazeroModule) SetModuleSharingVariables(m map[string][]byte) {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-	mod.moduleSharingVariables = m
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {

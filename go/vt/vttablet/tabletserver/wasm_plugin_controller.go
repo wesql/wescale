@@ -19,7 +19,7 @@ var (
 )
 
 func registerWasmFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&RuntimeType, "wasm_runtime_type", WAZERO, "the runtime for wasm plugin. default is wazero.")
+	fs.StringVar(&RuntimeType, "wasm_runtime_type", WAZERO, "the runtime for wasm plugin. default is wazero. options: [wazero]")
 }
 
 func init() {
@@ -93,8 +93,6 @@ func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, w
 
 func initWasmVM() WasmVM {
 	switch RuntimeType {
-	//case WASMER:
-	//	return initWasmerRuntime(qe)
 	case WAZERO:
 		return initWazeroVM()
 	default:
