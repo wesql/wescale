@@ -9,7 +9,7 @@ type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
 
-func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts map[string]map[string]string) error {
+func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts *BranchSchema) error {
 	// get databases from target
 	databases, err := t.getAllDatabases()
 	if err != nil {
@@ -18,11 +18,11 @@ func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts
 
 	// skip databases that already exist in target
 	for _, db := range databases {
-		delete(createTableStmts, db)
+		delete(createTableStmts.schema, db)
 	}
 
 	// apply schema to target
-	err = t.createDatabaseAndTables(createTableStmts)
+	err = t.createDatabaseAndTables(createTableStmts.schema)
 	if err != nil {
 		return err
 	}

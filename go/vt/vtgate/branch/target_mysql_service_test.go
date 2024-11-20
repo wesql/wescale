@@ -7,7 +7,8 @@ import (
 
 func TestGetAllDatabases(t *testing.T) {
 	//todo fixme
-	mysqlService, mock := newMockMysqlService(t)
+	mysqlService, mock := NewMockMysqlService(t)
+	defer mysqlService.Close()
 	TargetMySQLServiceForTest := &TargetMySQLService{
 		mysqlService: mysqlService,
 	}

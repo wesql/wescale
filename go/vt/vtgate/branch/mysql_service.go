@@ -35,17 +35,14 @@ func NewMysqlServiceWithConfig(config *mysql.Config) (*MysqlService, error) {
 	return service, nil
 }
 
-// todo branch add UT
 func (m *MysqlService) Close() error {
 	return m.db.Close()
 }
 
-// todo branch add UT
 func (m *MysqlService) Query(query string) (*sql.Rows, error) {
 	return m.db.Query(query)
 }
 
-// todo branch add UT
 func (m *MysqlService) ExecuteInTxn(queries ...string) error {
 	tx, err := m.db.Begin()
 	if err != nil {

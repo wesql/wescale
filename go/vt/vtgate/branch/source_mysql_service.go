@@ -2,7 +2,6 @@ package branch
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -16,238 +15,23 @@ func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
 	}
 }
 
-// todo branch add UT
-// GetAllCreateTableStatements retrieves CREATE TABLE statements for all tables in all databases
-// Returns a nested map where the first level key is the database name,
-// second level key is the table name, and the value is the CREATE TABLE statement
-func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []string) (*BranchSchema, error) {
-	// todo: need to paginate the query, because the result set may be too large. maybe add a param to control it.
-
-	// todo: split this method into smaller methods for better readability and testability
-
-	// First step: Get information about all tables and build the combined query
-	buildQuery := `
-        SELECT CONCAT( 'SHOW CREATE TABLE ', TABLE_SCHEMA, '.', TABLE_NAME, ';' ) AS show_stmt,
-               TABLE_SCHEMA,
-               TABLE_NAME
-        FROM information_schema.TABLES 
-        WHERE TABLE_TYPE = 'BASE TABLE'
-        `
-
-	if databasesExclude != nil && len(databasesExclude) > 0 {
-		buildQuery += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", strings.Join(databasesExclude, "','"))
-	}
-
-	rows, err := s.mysqlService.Query(buildQuery)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query table information: %v", err)
-	}
-	defer rows.Close()
-
-	// Collect all statements and table information
-	var showStatements []string
-	type tableInfo struct {
-		schema string
-		name   string
-	}
-	tableInfos := make([]tableInfo, 0)
-
-	for rows.Next() {
-		var showStmt, schema, tableName string
-		if err := rows.Scan(&showStmt, &schema, &tableName); err != nil {
-			return nil, fmt.Errorf("failed to scan query result: %v", err)
-		}
-		showStatements = append(showStatements, showStmt)
-		tableInfos = append(tableInfos, tableInfo{schema: schema, name: tableName})
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating query results: %v", err)
-	}
-
-	// Build the combined query
-	combinedQuery := strings.Join(showStatements, "")
-
-	// Execute the combined query to get all CREATE TABLE statements at once
-	multiRows, err := s.mysqlService.Query(combinedQuery)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute combined query: %v", err)
-	}
-	defer multiRows.Close()
-
-	// Initialize result map
-	result := make(map[string]map[string]string)
-
-	// Process each result set
-	for i := 0; i < len(tableInfos); i++ {
-		schema := tableInfos[i].schema
-		tableName := tableInfos[i].name
-
-		// Ensure database map is initialized
-		if _, exists := result[schema]; !exists {
-			result[schema] = make(map[string]string)
-		}
-
-		// Each SHOW CREATE TABLE result has two columns: table name and create statement
-		if !multiRows.Next() {
-			return nil, fmt.Errorf("unexpected end of result sets while processing %s.%s", schema, tableName)
-		}
-
-		var tableNameResult, createTableStmt string
-		if err := multiRows.Scan(&tableNameResult, &createTableStmt); err != nil {
-			return nil, fmt.Errorf("failed to scan create table result for %s.%s: %v", schema, tableName, err)
-		}
-
-		// Store the result
-		result[schema][tableName] = createTableStmt
-
-		// Move to next result set
-		if i < len(tableInfos)-1 {
-			if !multiRows.NextResultSet() {
-				return nil, fmt.Errorf("failed to move to next result set after processing %s.%s", schema, tableName)
-			}
-		}
-	}
-
-	return &BranchSchema{schema: result}, nil
+type TableInfo struct {
+	database string
+	name     string
 }
 
-// todo not urgent: parama "mysql", "sys", "information_schema", "performance_schema" from branch_service
-func (s *SourceMySQLService) FetchAndFilterCreateTableStmts(include, exclude string) (*BranchSchema, error) {
-	// Get all create table statements except system databases
-	schema, err := s.GetAllCreateTableStatements([]string{"mysql", "sys", "information_schema", "performance_schema"})
+const BranchSchemaInBatches = 50
+
+// GetBranchSchema retrieves CREATE TABLE statements for all tables in all databases
+// Returns a nested map where the first level key is the database name,
+// second level key is the table name, and the value is the CREATE TABLE statement
+// todo add Test
+func (s *SourceMySQLService) GetBranchSchema(databasesExclude []string) (*BranchSchema, error) {
+	tableInfos, err := s.getTableInfos(databasesExclude)
 	if err != nil {
 		return nil, err
 	}
-	return filterCreateTableStmts(schema, include, exclude)
-}
-
-// return error if any pattern in `include` does not match
-// if `include` is empty, return error
-func filterCreateTableStmts(schema *BranchSchema, include, exclude string) (*BranchSchema, error) {
-	if include == "" {
-		return nil, fmt.Errorf("include pattern is empty")
-	}
-
-	// Parse include and exclude patterns
-	includePatterns := parsePatterns(include)
-	excludePatterns := parsePatterns(exclude)
-
-	// Create result map and pattern match tracking
-	result := make(map[string]map[string]string)
-	patternMatchCount := make(map[string]int)
-
-	// Initialize match count for include patterns
-	for _, pattern := range includePatterns {
-		patternMatchCount[strings.TrimSpace(pattern)] = 0
-	}
-
-	// Process each database and table
-	for dbName, tables := range schema.schema {
-		for tableName, createStmt := range tables {
-			tableId := dbName + "." + tableName
-
-			// Check inclusion
-			included := false
-			for _, pattern := range includePatterns {
-				pattern = strings.TrimSpace(pattern)
-				if matchPattern(tableId, pattern) {
-					included = true
-					patternMatchCount[pattern]++
-				}
-			}
-
-			if !included {
-				continue
-			}
-
-			// Check exclusion
-			if matchesAnyPattern(tableId, excludePatterns) {
-				continue
-			}
-
-			// Add to result
-			if _, exists := result[dbName]; !exists {
-				result[dbName] = make(map[string]string)
-			}
-			result[dbName][tableName] = createStmt
-		}
-	}
-
-	// Check if any include pattern had no matches
-	if len(includePatterns) > 0 {
-		var unmatchedPatterns []string
-		for pattern, count := range patternMatchCount {
-			if count == 0 {
-				unmatchedPatterns = append(unmatchedPatterns, pattern)
-			}
-		}
-		if len(unmatchedPatterns) > 0 {
-			return nil, fmt.Errorf("the following include patterns had no matches: %s", strings.Join(unmatchedPatterns, ", "))
-		}
-	}
-	return &BranchSchema{schema: result}, nil
-}
-
-// parsePatterns splits the pattern string and returns a slice of patterns
-func parsePatterns(patterns string) []string {
-	if patterns == "" {
-		return nil
-	}
-	return strings.Split(patterns, ",")
-}
-
-// matchesAnyPattern checks if the tableId matches any of the patterns
-func matchesAnyPattern(tableId string, patterns []string) bool {
-	if patterns == nil {
-		return false
-	}
-
-	for _, pattern := range patterns {
-		if matchPattern(tableId, strings.TrimSpace(pattern)) {
-			return true
-		}
-	}
-	return false
-}
-
-// matchPattern checks if a table ID (db.table) matches a pattern (d.t) with wildcard support
-func matchPattern(tableId, pattern string) bool {
-	// Split both tableId and pattern into database and table parts
-	tableParts := strings.Split(tableId, ".")
-	patternParts := strings.Split(pattern, ".")
-
-	if len(tableParts) != 2 || len(patternParts) != 2 {
-		return false
-	}
-
-	// Match both database name and table name separately
-	return matchWildcard(tableParts[0], patternParts[0]) &&
-		matchWildcard(tableParts[1], patternParts[1])
-}
-
-// matchWildcard handles wildcard pattern matching with support for partial wildcards
-func matchWildcard(s, pattern string) bool {
-	// Handle plain wildcard pattern
-	pattern = strings.TrimSpace(pattern)
-	if pattern == "*" {
-		return true
-	}
-
-	// Convert pattern to regular expression
-	// 1. Escape all regex special characters
-	regex := regexp.QuoteMeta(pattern)
-	// 2. Replace * with .* for wildcard matching
-	regex = strings.Replace(regex, "\\*", ".*", -1)
-	// 3. Add start and end anchors for full string match
-	regex = "^" + regex + "$"
-
-	// Attempt to match the pattern
-	matched, err := regexp.MatchString(regex, s)
-	if err != nil {
-		return false
-	}
-	return matched
+	return s.getBranchSchemaInBatches(tableInfos, BranchSchemaInBatches)
 }
 
 func getSQLCreateDatabasesAndTables(createTableStmts map[string]map[string]string) string {
@@ -260,4 +44,113 @@ func getSQLCreateDatabasesAndTables(createTableStmts map[string]map[string]strin
 		finalQuery += temp
 	}
 	return finalQuery
+}
+
+// buildTableInfosQuerySQL constructs the SQL query to retrieve table names
+func buildTableInfosQuerySQL(databasesExclude []string) string {
+	sql := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+
+	if databasesExclude != nil && len(databasesExclude) > 0 {
+		excludeList := strings.Join(databasesExclude, "','")
+		sql += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", excludeList)
+	}
+
+	return sql
+}
+
+// getTableInfos executes the table info query and returns a slice of tableInfo
+func (s *SourceMySQLService) getTableInfos(databasesExclude []string) ([]TableInfo, error) {
+
+	query := buildTableInfosQuerySQL(databasesExclude)
+
+	rows, err := s.mysqlService.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query table information: %v", err)
+	}
+	defer rows.Close()
+
+	var tableInfos []TableInfo
+
+	for rows.Next() {
+		var database, tableName string
+		if err := rows.Scan(&database, &tableName); err != nil {
+			return nil, fmt.Errorf("failed to scan query result: %v", err)
+		}
+		tableInfos = append(tableInfos, TableInfo{database: database, name: tableName})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error occurred while iterating query results: %v", err)
+	}
+
+	return tableInfos, nil
+}
+
+// todo add test
+// getBranchSchemaInBatches retrieves CREATE TABLE statements in batches
+func (s *SourceMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, batchSize int) (*BranchSchema, error) {
+	result := make(map[string]map[string]string)
+
+	for i := 0; i < len(tableInfos); i += batchSize {
+		end := i + batchSize
+		if end > len(tableInfos) {
+			end = len(tableInfos)
+		}
+		batch := tableInfos[i:end]
+
+		combinedQuery := getCombinedShowCreateTableSQL(batch)
+
+		// Execute the combined query
+		multiRows, err := s.mysqlService.Query(combinedQuery)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute combined query: %v", err)
+		}
+
+		// Process each result set in the batch
+		for j := 0; j < len(batch); j++ {
+			table := batch[j]
+			db := table.database
+			tableName := table.name
+
+			// Ensure database map is initialized
+			if _, exists := result[db]; !exists {
+				result[db] = make(map[string]string)
+			}
+
+			// Each SHOW CREATE TABLE result has two columns: Table and Create Table
+			if !multiRows.Next() {
+				return nil, fmt.Errorf("unexpected end of result sets while processing %s.%s", db, tableName)
+			}
+
+			var tableNameResult, createTableStmt string
+			if err := multiRows.Scan(&tableNameResult, &createTableStmt); err != nil {
+				return nil, fmt.Errorf("failed to scan create table result for %s.%s: %v", db, tableName, err)
+			}
+
+			// Store the result
+			result[db][tableName] = createTableStmt
+
+			// Move to next result set, unless it's the last table in the batch
+			if j < len(batch)-1 {
+				if !multiRows.NextResultSet() {
+					return nil, fmt.Errorf("failed to move to next result set after processing %s.%s", db, tableName)
+				}
+			}
+		}
+
+		multiRows.Close()
+	}
+
+	return &BranchSchema{schema: result}, nil
+}
+
+func getCombinedShowCreateTableSQL(tableInfos []TableInfo) string {
+	// Build combined query for the batch
+	var showStatements []string
+	for _, table := range tableInfos {
+		showStmt := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", table.database, table.name)
+		showStatements = append(showStatements, showStmt)
+	}
+	combinedQuery := strings.Join(showStatements, " ")
+	return combinedQuery
 }

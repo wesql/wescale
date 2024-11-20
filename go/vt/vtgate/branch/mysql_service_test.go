@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 
@@ -67,4 +68,52 @@ func TestNewMysqlServiceWithConfig(t *testing.T) {
 	service, err := NewMysqlServiceWithConfig(config)
 	assert.Error(t, err)
 	assert.Nil(t, service)
+}
+
+func TestQuery(t *testing.T) {
+	service, mock := NewMockMysqlService(t)
+	defer service.Close()
+
+	mock.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+	rows, err := service.Query("SELECT 1")
+	assert.NoError(t, err)
+	assert.NotNil(t, rows)
+
+	mock.ExpectQuery("INSERT * FROM t1").WillReturnError(errors.New("synx error"))
+	_, err = service.Query("SELECT 1")
+	assert.Error(t, err)
+}
+
+func TestClose(t *testing.T) {
+	service, _ := NewMockMysqlService(t)
+	service.Close()
+	_, err := service.Query("SELECT 1")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "closed")
+}
+
+func TestExecuteInTxn(t *testing.T) {
+	service, mock := NewMockMysqlService(t)
+	defer service.Close()
+
+	t.Run("Successful Transaction", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("QUERY_1").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("QUERY_2").WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err := service.ExecuteInTxn("QUERY_1", "QUERY_2")
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("Failed Transaction", func(t *testing.T) {
+		mock.ExpectBegin()
+		mock.ExpectExec("QUERY_1").WillReturnError(sql.ErrNoRows)
+		mock.ExpectRollback()
+
+		err := service.ExecuteInTxn("QUERY_1", "QUERY_2")
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
 }
