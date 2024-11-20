@@ -1,8 +1,10 @@
 package branch
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
-// todo: do not use mysqlService.db
 type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
@@ -20,29 +22,34 @@ func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts
 	}
 
 	// apply schema to target
-	err = t.CreateDatabaseAndTablesIfNotExists(createTableStmts)
+	err = t.createDatabaseAndTables(createTableStmts)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-/**********************************************************************************************************************/
-
-// todo delete this
-func (t *TargetMySQLService) ensureMetaTableExists() error {
-	err := t.mysqlService.ExecuteInTxn(CreateBranchMetaTableSQL)
+// todo branch: snapshot and branchMeta should have their struct type
+// todo : UT
+func (t *TargetMySQLService) StoreBranchMeta(snapshot map[string]map[string]string, branchMeta *BranchMeta) error {
+	snapshotJson, err := json.Marshal(snapshot)
 	if err != nil {
 		return err
 	}
-	return t.mysqlService.ExecuteInTxn(CreateBranchSnapshotTableSQL)
+	insertBranchMetaSQL := getInsertBranchMetaSQL(branchMeta)
+	insertSnapshotSQL := getInsertSnapshotSQL(branchMeta.name, string(snapshotJson))
+
+	// if the branch name has existed, the sql will fail
+	return t.mysqlService.ExecuteInTxn(insertBranchMetaSQL, insertSnapshotSQL)
 }
+
+/**********************************************************************************************************************/
 
 // todo branch add UT
 // getAllDatabases retrieves all database names from MySQL
-func (s *TargetMySQLService) getAllDatabases() ([]string, error) {
+func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	// Execute query to get all database names
-	rows, err := s.mysqlService.Query("SHOW DATABASES")
+	rows, err := t.mysqlService.Query("SHOW DATABASES")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database list: %v", err)
 	}
@@ -73,40 +80,19 @@ func (t *TargetMySQLService) createDatabaseAndTables(createTableStmts map[string
 	return t.mysqlService.ExecuteInTxn(sqlQuery)
 }
 
-func (t *TargetMySQLService) getBranchMeta(name string) *BranchService {
-	// todo
-	return nil
-}
-
-// todo branch: snapshot and branchMeta should have their struct type
-func (t *TargetMySQLService) storeBranchMeta(snapshot map[string]map[string]string, branchMeta BranchMeta) error {
-	// todo
-	//insertSnapshotSQL := getInsertSnapshotSQL(branchMeta.name, string(snapshot))
-	//insertBranchMetaSQL := getInsertBranchMetaSQL(branchMeta.name, sourceHost, sourcePort, sourceUser, sourcePassword, include, exclude, "create", "")
-
-	// todo: need to call: checkBranchMetaExists
-
-	return nil
-}
-
-func (t *TargetMySQLService) checkBranchMetaExists(name string) bool {
-	//todo
-	return false
-}
-
 func getInsertSnapshotSQL(name, snapshotData string) string {
 	return fmt.Sprintf(InsertBranchSnapshotSQL, name, snapshotData)
 }
 
-func getInsertBranchMetaSQL(name, sourceHost string, sourcePort int, sourceUser, sourcePassword, include, exclude, status, targetDBPattern string) string {
+func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
 	return fmt.Sprintf(InsertBranchSQL,
-		name,
-		sourceHost,
-		sourcePort,
-		sourceUser,
-		sourcePassword,
-		include,
-		exclude,
-		status,
-		targetDBPattern)
+		branchMeta.name,
+		branchMeta.sourceHost,
+		branchMeta.sourcePort,
+		branchMeta.sourceUser,
+		branchMeta.sourcePassword,
+		branchMeta.include,
+		branchMeta.exclude,
+		branchMeta.status,
+		branchMeta.targetDBPattern)
 }

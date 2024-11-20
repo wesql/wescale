@@ -10,7 +10,6 @@ type SourceMySQLService struct {
 	mysqlService *MysqlService
 }
 
-// todo branch add UT
 func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
 	return &SourceMySQLService{
 		mysqlService: mysqlService,
@@ -113,6 +112,7 @@ func (s *SourceMySQLService) GetAllCreateTableStatements(databasesExclude []stri
 	return result, nil
 }
 
+// todo not urgent: parama "mysql", "sys", "information_schema", "performance_schema" from branch_service
 func (s *SourceMySQLService) FetchAndFilterCreateTableStmts(include, exclude string) (map[string]map[string]string, error) {
 	// Get all create table statements except system databases
 	stmts, err := s.GetAllCreateTableStatements([]string{"mysql", "sys", "information_schema", "performance_schema"})

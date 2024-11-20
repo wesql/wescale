@@ -1,9 +1,5 @@
 package branch
 
-import (
-	"fmt"
-)
-
 type BranchService struct {
 	sourceMySQLService *SourceMySQLService
 	targetMySQLService *TargetMySQLService
@@ -16,18 +12,9 @@ func NewBranchService(sourceHandler *SourceMySQLService, targetHandler *TargetMy
 	}
 }
 
-// todo, the func params
-func (s *BranchService) BranchCreate(branchMeta BranchMeta) error {
-	err := s.targetMySQLService.ensureMetaTableExists() //todo delete this
-	if err != nil {
-		return err
-	}
-	// If branch object with same name exists in BranchWorkflowCaches or branch meta table, return error
-	if s.targetMySQLService.checkBranchMetaExists(branchMeta.name) {
-		return fmt.Errorf("branch %v already exists", branchMeta.name)
-	}
-
-	// get schema from source
+// todo, think of failure handling
+func (s *BranchService) BranchCreate(branchMeta *BranchMeta) error {
+	// get schema from source and store to target
 	stmts, err := s.BranchFetch(branchMeta)
 	if err != nil {
 		return err
@@ -42,12 +29,13 @@ func (s *BranchService) BranchCreate(branchMeta BranchMeta) error {
 	return nil
 }
 
-func (s *BranchService) BranchFetch(branchMeta BranchMeta) (map[string]map[string]string, error) {
+// todo not urgent: map[string]map[string]string to structure
+func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (map[string]map[string]string, error) {
 	stmts, err := s.sourceMySQLService.FetchAndFilterCreateTableStmts(branchMeta.include, branchMeta.exclude)
 	if err != nil {
 		return nil, err
 	}
-	err = s.targetMySQLService.storeBranchMeta(stmts, branchMeta) // this step is the commit point of BranchCreate function
+	err = s.targetMySQLService.StoreBranchMeta(stmts, branchMeta) // this step is the commit point of BranchCreate function
 	if err != nil {
 		return nil, err
 	}
