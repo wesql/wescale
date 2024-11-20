@@ -275,13 +275,10 @@ func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, bytes []byte, w
 	if err != nil {
 		return StatusInternalFailure
 	}
-	// res[0] is the pointer to the allocated memory in guest
-	buf, ok := mod.Memory().Read(uint32(res[0]), uint32(size))
+	ok := mod.Memory().Write(uint32(res[0]), bytes)
 	if !ok {
 		return StatusInternalFailure
 	}
-
-	copy(buf, bytes)
 	ok = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
 	if !ok {
 		return StatusInternalFailure
