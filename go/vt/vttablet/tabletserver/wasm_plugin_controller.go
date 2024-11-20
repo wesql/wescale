@@ -53,7 +53,7 @@ func CalcMd5String32(data []byte) string {
 }
 
 func (wpc *WasmPluginController) GetWasmBytesByBinaryName(ctx context.Context, wasmBinaryName string) ([]byte, error) {
-	query := getQueryByName(wasmBinaryName)
+	query := generateWasmQueryByName(wasmBinaryName)
 	qr, err := wpc.qe.ExecuteQuery(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("get wasm binary by name %s failed : %v", wasmBinaryName, err)
