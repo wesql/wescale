@@ -2,7 +2,6 @@ package branch
 
 import (
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -138,25 +137,14 @@ func TestGetTableInfos(t *testing.T) {
 	testcases := []struct {
 		name             string
 		databasesExclude []string
-		expected         []TableInfo
 	}{
 		{
 			name:             "No Exclude",
 			databasesExclude: nil,
-			expected: []TableInfo{
-				{database: "db1", name: "table1"},
-				{database: "db1", name: "table2"},
-				{database: "db2", name: "table3"},
-				{database: "db3", name: "table4"},
-			},
 		},
 		{
 			name:             "With Exclude",
-			databasesExclude: []string{"db1"},
-			expected: []TableInfo{
-				{database: "db2", name: "table3"},
-				{database: "db3", name: "table4"},
-			},
+			databasesExclude: []string{"eCommerce"},
 		},
 	}
 
@@ -167,8 +155,34 @@ func TestGetTableInfos(t *testing.T) {
 	for _, tt := range testcases {
 		got, err := service.getTableInfos(tt.databasesExclude)
 		assert.Nil(t, err)
-		if !reflect.DeepEqual(got, tt.expected) {
-			t.Errorf("Expected %v, got %v", tt.expected, got)
+		expected := make([]TableInfo, 0)
+		for db, tables := range BranchSchemaForTest.schema {
+			skip := false
+			for _, dbToSkip := range tt.databasesExclude {
+				if db == dbToSkip {
+					skip = true
+					break
+				}
+			}
+			if skip {
+				continue
+			}
+			for table, _ := range tables {
+				expected = append(expected, TableInfo{database: db, name: table})
+			}
+		}
+
+		assert.Equal(t, len(expected), len(got))
+
+		m := make(map[string]int)
+		for _, table := range got {
+			m[table.database+table.name]++
+		}
+		for _, table := range expected {
+			if count, exist := m[table.database+table.name]; !exist || count <= 0 {
+				t.Errorf("Table %s not found in got", table)
+			}
+			m[table.database+table.name]--
 		}
 	}
 }

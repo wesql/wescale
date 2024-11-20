@@ -122,8 +122,8 @@ func TestFilterBranchSchema(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(result, tc.expectedStmts) {
-				t.Errorf("expected %v, got %v", tc.expectedStmts, result)
+			if !reflect.DeepEqual(result.schema, tc.expectedStmts) {
+				t.Errorf("expected %v, got %v", tc.expectedStmts, result.schema)
 			}
 		})
 	}

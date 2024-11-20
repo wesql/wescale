@@ -22,34 +22,126 @@ func NewMockMysqlService(t *testing.T) (*MysqlService, sqlmock.Sqlmock) {
 	return service, mock
 }
 
-// todo optimize this
-func addMockShowCreateTable(mock sqlmock.Sqlmock, db, table, createTableStmt string) {
-	mock.ExpectQuery("SHOW CREATE TABLE " + db + "." + table).
-		WillReturnRows(sqlmock.NewRows([]string{"Table", "Create Table"}).AddRow(table, createTableStmt))
+var BranchSchemaForTest = BranchSchema{
+	schema: map[string]map[string]string{
+		"eCommerce": {
+			"Users": `
+					CREATE TABLE Users (
+						UserID INT PRIMARY KEY,
+						Username VARCHAR(50) NOT NULL,
+						Email VARCHAR(100) NOT NULL UNIQUE,
+						PasswordHash VARCHAR(255) NOT NULL
+					);`,
+			"Orders": `
+					CREATE TABLE Orders (
+						OrderID INT PRIMARY KEY,
+						UserID INT,
+						OrderDate DATETIME,
+						Status VARCHAR(20),
+						ShippingAddress VARCHAR(255),
+						FOREIGN KEY (UserID) REFERENCES Users(UserID)
+					);`,
+			"OrderItems": `
+					CREATE TABLE OrderItems (
+						OrderItemID INT PRIMARY KEY,
+						OrderID INT,
+						ProductID INT,
+						Quantity INT,
+						Price DECIMAL(10, 2),
+						FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+					);`,
+		},
+		"Inventory": {
+			"Products": `
+					CREATE TABLE Products (
+						ProductID INT PRIMARY KEY,
+						ProductName VARCHAR(100) NOT NULL,
+						CategoryID INT,
+						Price DECIMAL(10, 2),
+						Stock INT
+					);`,
+			"Categories": `
+					CREATE TABLE Categories (
+						CategoryID INT PRIMARY KEY,
+						CategoryName VARCHAR(50) NOT NULL
+					);`,
+			"Suppliers": `
+					CREATE TABLE Suppliers (
+						SupplierID INT PRIMARY KEY,
+						SupplierName VARCHAR(100),
+						ContactEmail VARCHAR(100)
+					);`,
+			"InventoryLog": `
+					CREATE TABLE InventoryLog (
+						LogID INT PRIMARY KEY,
+						ProductID INT,
+						ChangeAmount INT,
+						ChangeDate DATETIME,
+						FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+					);`,
+		},
+		"HR": {
+			"Employees": `
+					CREATE TABLE Employees (
+						EmployeeID INT PRIMARY KEY,
+						FirstName VARCHAR(50),
+						LastName VARCHAR(50),
+						DepartmentID INT,
+						Email VARCHAR(100) UNIQUE
+					);`,
+			"Departments": `
+					CREATE TABLE Departments (
+						DepartmentID INT PRIMARY KEY,
+						DepartmentName VARCHAR(100)
+					);`,
+			"Payroll": `
+					CREATE TABLE Payroll (
+						PayrollID INT PRIMARY KEY,
+						EmployeeID INT,
+						Salary DECIMAL(15, 2),
+						PayrollDate DATE,
+						FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
+					);`,
+		},
+	},
 }
 
-var tableInfos = []TableInfo{
-	{database: "db1", name: "table1"},
-	{database: "db1", name: "table2"},
-	{database: "db2", name: "table3"},
-	{database: "db3", name: "table4"},
+func InitMockShowDatabases(mock sqlmock.Sqlmock) {
+	rows := sqlmock.NewRows([]string{"Database"})
+	for db, _ := range BranchSchemaForTest.schema {
+		rows = rows.AddRow(db)
+	}
+	mock.ExpectQuery("SHOW DATABASES").WillReturnRows(rows)
+}
+
+func InitMockShowCreateTable(mock sqlmock.Sqlmock) {
+	for db, tables := range BranchSchemaForTest.schema {
+		for table, createTableStmt := range tables {
+			mock.ExpectQuery("SHOW CREATE TABLE " + db + "." + table).
+				WillReturnRows(sqlmock.NewRows([]string{"Table", "Create Table"}).AddRow(table, createTableStmt))
+		}
+	}
 }
 
 func InitMockTableInfos(mock sqlmock.Sqlmock) {
 	query1 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
 	rows1 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for _, tableInfo := range tableInfos {
-		rows1 = rows1.AddRow(tableInfo.database, tableInfo.name)
+	for db, tables := range BranchSchemaForTest.schema {
+		for table, _ := range tables {
+			rows1 = rows1.AddRow(db, table)
+		}
 	}
 	mock.ExpectQuery(query1).WillReturnRows(rows1)
 
-	query2 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ('db1')"
+	query2 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ('eCommerce')"
 	rows2 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for _, tableInfo := range tableInfos {
-		if tableInfo.database == "db1" {
+	for db, tables := range BranchSchemaForTest.schema {
+		if db == "eCommerce" {
 			continue
 		}
-		rows2 = rows2.AddRow(tableInfo.database, tableInfo.name)
+		for table, _ := range tables {
+			rows2 = rows2.AddRow(db, table)
+		}
 	}
 	mock.ExpectQuery(query2).WillReturnRows(rows2)
 }
