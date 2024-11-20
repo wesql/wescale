@@ -266,6 +266,9 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunBeforeExecutionOnGuest")
+	if wazeroGuestFunc == nil {
+		return fmt.Errorf("Wasm Plugin ABI version is not compatible, missing RunBeforeExecutionOnGuest function in wasm module")
+	}
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
 	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
