@@ -115,7 +115,12 @@ func (*WazeroVM) GetRuntimeType() string {
 }
 
 func (w *WazeroVM) InitRuntime() error {
-	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, wazero.NewRuntimeConfig().WithCompilationCache(wazero.NewCompilationCache()))
+	runtimeConfig := wazero.NewRuntimeConfig().
+		WithCompilationCache(wazero.NewCompilationCache()).
+		WithCloseOnContextDone(true).
+		WithMemoryLimitPages(16 * 10) //64KB each page, 10 * 16pages = 10MB
+
+	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, runtimeConfig)
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	return exportHostABIV1(w.ctx, w)
 }
@@ -184,7 +189,8 @@ func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
 	if mod.compliedModule == nil {
 		return nil, fmt.Errorf("compliedModule is nil in NewInstance")
 	}
-	instance, err := mod.wazeroRuntime.runtime.InstantiateModule(mod.wazeroRuntime.ctx, mod.compliedModule, wazero.NewModuleConfig().WithName(""))
+	config := wazero.NewModuleConfig().WithName("")
+	instance, err := mod.wazeroRuntime.runtime.InstantiateModule(mod.wazeroRuntime.ctx, mod.compliedModule, config)
 	if err != nil {
 		return nil, err
 	}

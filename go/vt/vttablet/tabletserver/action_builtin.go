@@ -351,6 +351,7 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 
 	instance, err := module.NewInstance(qre)
 	if err != nil {
+		//todo wasm: if instance is nil, we will not be able to get the it in AfterExecution. We need to handle this case
 		return &ActionExecutionResponse{Err: err}
 	}
 
