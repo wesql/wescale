@@ -205,7 +205,7 @@ type WazeroInstance struct {
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
-	defer ins.qre.tsv.qe.actionStats.WasmMemorySize.Add([]string{"", ""}, int64(ins.instance.Memory().Size()))
+	defer ins.qre.tsv.qe.actionStats.WasmMemorySize.Add([]string{ins.module.filterName, "Before"}, int64(ins.instance.Memory().Size()))
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunBeforeExecutionOnGuest")
 	if wazeroGuestFunc == nil {
@@ -226,6 +226,7 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 
 func (ins *WazeroInstance) RunWASMPluginAfter() error {
 	ctx := context.Background()
+	defer ins.qre.tsv.qe.actionStats.WasmMemorySize.Add([]string{ins.module.filterName, "After"}, int64(ins.instance.Memory().Size()))
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunAfterExecutionOnGuest")
 
