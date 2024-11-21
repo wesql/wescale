@@ -1,10 +1,9 @@
-
-
 <div align="center">
     <h1>WeScale</h1>
 
 [![LICENSE](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://github.com/wesql/wescale/blob/vitess-release-16.0-dev/LICENSE)
 [![Language](https://img.shields.io/badge/Language-Go-blue.svg)](https://go.dev/)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwesql%2Fwescale.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwesql%2Fwescale?ref=badge_shield)
 <br/>
 [![Unit Test (mysql57)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql57.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql57.yml)
 [![Unit Test (mysql80)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql80.yml/badge.svg?branch=main)](https://github.com/wesql/wescale/actions/workflows/unit_test_mysql80.yml)
@@ -125,6 +124,9 @@ please feel free to open an issue or submit a pull request.
 
 # License
 WeScale is released under the Apache 2.0 License.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwesql%2Fwescale.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwesql%2Fwescale?ref=badge_large)
 
 # Acknowledgements
 WeScale is a fork of the Vitess project, which is a database clustering system for horizontal scaling of MySQL.
