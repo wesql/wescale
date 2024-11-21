@@ -24,7 +24,7 @@ package main
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"time"
 
 	"vitess.io/vitess/go/internal/global"
@@ -53,12 +53,12 @@ import (
 )
 
 var (
+	cell                         = global.DefaultCell
 	enforceTableACLConfig        bool
 	tableACLConfig               string
 	tableACLMode                 string
 	tableACLConfigReloadInterval time.Duration
 	tabletPath                   string
-	tabletConfig                 string
 
 	tm                  *tabletmanager.TabletManager
 	vtTabletViperConfig = viperutil.NewViperConfig()
@@ -70,7 +70,6 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeSimple, "table acl config mode (simple or mysqlbased)")
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", global.DefaultACLReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
-	fs.StringVar(&tabletConfig, "tablet_config", tabletConfig, "YAML file config for tablet")
 	acl.RegisterFlags(fs)
 }
 
@@ -99,10 +98,17 @@ func main() {
 	servenv.ParseFlags("vttablet")
 	servenv.Init()
 	vtTabletViperConfig.LoadAndWatchConfigFile()
-
 	if tableACLMode != global.TableACLModeSimple && tableACLMode != global.TableACLModeMysqlBased {
 		log.Exit("require table-acl-config-mode")
 	}
+
+	config := initConfig()
+	mysqld := mysqlctl.NewMysqld(config.DB)
+	server_id, err := mysqld.GetServerID(context.Background())
+	if err != nil {
+		log.Exitf("failed to get server id: %v", err)
+	}
+	tabletPath = fmt.Sprintf("%s-%010d", cell, server_id)
 	if tabletPath == "" {
 		log.Exit("--tablet-path required")
 	}
@@ -113,14 +119,10 @@ func main() {
 	// validate query server pool auto scale config
 	tabletserver.ValidateQueryServerPoolAutoScaleConfig(true)
 
-	// config and mycnf initializations are intertwined.
-	config, mycnf := initConfig(tabletAlias)
-
 	ts := topo.Open()
 	qsc := createTabletServer(config, ts, tabletAlias)
 	viperutil.RegisterReloadHandlersForVtTablet(vtTabletViperConfig, qsc)
 
-	mysqld := mysqlctl.NewMysqld(config.DB)
 	servenv.OnClose(mysqld.Close)
 
 	// Initialize and start tm.
@@ -135,7 +137,7 @@ func main() {
 	tm = &tabletmanager.TabletManager{
 		BatchCtx:            context.Background(),
 		TopoServer:          ts,
-		Cnf:                 mycnf,
+		Cnf:                 nil, // we don't host mysql-server like vitess, so we don't need mycnf
 		MysqlDaemon:         mysqld,
 		DBConfigs:           config.DB.Clone(),
 		QueryServiceControl: qsc,
@@ -161,7 +163,7 @@ func main() {
 	servenv.RunDefault()
 }
 
-func initConfig(tabletAlias *topodatapb.TabletAlias) (*tabletenv.TabletConfig, *mysqlctl.Mycnf) {
+func initConfig() *tabletenv.TabletConfig {
 	tabletenv.Init()
 	// Load current config after tabletenv.Init, because it changes it.
 	config := tabletenv.NewCurrentConfig()
@@ -169,30 +171,12 @@ func initConfig(tabletAlias *topodatapb.TabletAlias) (*tabletenv.TabletConfig, *
 		log.Exitf("invalid config: %v", err)
 	}
 
-	if tabletConfig != "" {
-		bytes, err := os.ReadFile(tabletConfig)
-		if err != nil {
-			log.Exitf("error reading config file %s: %v", tabletConfig, err)
-		}
-		if err := yaml2.Unmarshal(bytes, config); err != nil {
-			log.Exitf("error parsing config file %s: %v", bytes, err)
-		}
-	}
 	gotBytes, _ := yaml2.Marshal(config)
-	log.Infof("Loaded config file %s successfully:\n%s", tabletConfig, gotBytes)
+	log.Infof("Loaded config file successfully:\n%s", gotBytes)
 
-	var mycnf *mysqlctl.Mycnf
 	var socketFile string
-	// If no connection parameters were specified, load the mycnf file
-	// and use the socket from it. If connection parameters were specified,
-	// we assume that the mysql is not local, and we skip loading mycnf.
-	// This also means that backup and restore will not be allowed.
 	if !config.DB.HasGlobalSettings() {
-		var err error
-		if mycnf, err = mysqlctl.NewMycnfFromFlags(tabletAlias.Uid); err != nil {
-			log.Exitf("mycnf read failed: %v", err)
-		}
-		socketFile = mycnf.SocketFile
+		log.Exitf("no db_host or db_socket file specified")
 	} else {
 		log.Info("connection parameters were specified. Not loading my.cnf.")
 	}
@@ -204,7 +188,7 @@ func initConfig(tabletAlias *topodatapb.TabletAlias) (*tabletenv.TabletConfig, *
 	for _, cfg := range config.ExternalConnections {
 		cfg.InitWithSocket("")
 	}
-	return config, mycnf
+	return config
 }
 
 func createTabletServer(config *tabletenv.TabletConfig, ts *topo.Server, tabletAlias *topodatapb.TabletAlias) *tabletserver.TabletServer {
