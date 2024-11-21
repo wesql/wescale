@@ -323,13 +323,6 @@ func CheckAndFormatActionArgs(qe *QueryEngine, filerName, actionType, actionArgs
 		}
 
 		return FormatUserInputStr(actionArgs), nil
-	case rules.QRSkipFilter:
-		skipFilterArgs := &SkipFilterActionArgs{}
-		_, err := skipFilterArgs.Parse(actionArgs)
-		if err != nil {
-			return "", err
-		}
-		return FormatUserInputStr(actionArgs), nil
 	default:
 		if actionArgs != "" {
 			return "", fmt.Errorf("action %v does not support action_args", action)
