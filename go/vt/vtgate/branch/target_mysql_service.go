@@ -9,7 +9,7 @@ type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
 
-func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts *BranchSchema) error {
+func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(branchSchema *BranchSchema) error {
 	// get databases from target
 	databases, err := t.getAllDatabases()
 	if err != nil {
@@ -17,18 +17,20 @@ func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts
 	}
 
 	// skip databases that already exist in target
+	// todo optimize move to branch service
 	for _, db := range databases {
-		delete(createTableStmts.schema, db)
+		delete(branchSchema.schema, db)
 	}
 
 	// apply schema to target
-	err = t.createDatabaseAndTables(createTableStmts.schema)
+	err = t.createDatabaseAndTables(branchSchema)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// todo optimize store in batches, or the snapshot maybe too large
 func (t *TargetMySQLService) StoreBranchMeta(snapshot *BranchSchema, branchMeta *BranchMeta) error {
 	snapshotJson, err := json.Marshal(snapshot.schema)
 	if err != nil {
@@ -69,8 +71,8 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	return databases, nil
 }
 
-func (t *TargetMySQLService) createDatabaseAndTables(createTableStmts map[string]map[string]string) error {
-	sqlQuery := getSQLCreateDatabasesAndTables(createTableStmts)
+func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
+	sqlQuery := getSQLCreateDatabasesAndTables(branchSchema)
 	if sqlQuery == "" {
 		return fmt.Errorf("no SQL statements to execute")
 	}

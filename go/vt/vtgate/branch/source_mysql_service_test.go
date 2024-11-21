@@ -114,7 +114,7 @@ func TestGetSQLCreateDatabasesAndTables(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getSQLCreateDatabasesAndTables(tt.createTableStmts)
+			got := getSQLCreateDatabasesAndTables(&BranchSchema{schema: tt.createTableStmts})
 			if got != tt.want {
 				t.Errorf("getSQLCreateDatabasesAndTables() = %v, want %v", got, tt.want)
 			}

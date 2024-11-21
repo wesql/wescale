@@ -33,8 +33,9 @@ func (s *SourceMySQLService) GetBranchSchema(databasesExclude []string) (*Branch
 	return s.getBranchSchemaInBatches(tableInfos, BranchSchemaInBatches)
 }
 
-func getSQLCreateDatabasesAndTables(createTableStmts map[string]map[string]string) string {
+func getSQLCreateDatabasesAndTables(branchSchema *BranchSchema) string {
 	finalQuery := ""
+	createTableStmts := branchSchema.schema
 	for dbName, tables := range createTableStmts {
 		temp := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;USE DATABASE %s;", dbName, dbName)
 		for _, createStmt := range tables {
@@ -58,6 +59,7 @@ func buildTableInfosQuerySQL(databasesExclude []string) string {
 }
 
 // getTableInfos executes the table info query and returns a slice of tableInfo
+// todo optimize push down, include
 func (s *SourceMySQLService) getTableInfos(databasesExclude []string) ([]TableInfo, error) {
 
 	query := buildTableInfosQuerySQL(databasesExclude)

@@ -20,28 +20,28 @@ func NewBranchService(sourceHandler *SourceMySQLService, targetHandler *TargetMy
 	}
 }
 
-// todo, think of failure handling
-func (s *BranchService) BranchCreate(branchMeta *BranchMeta) error {
+// todo optimize think of failure handling
+func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	// get schema from source and store to target
-	branchSchema, err := s.BranchFetch(branchMeta)
+	branchSchema, err := bs.BranchFetch(branchMeta)
 	if err != nil {
 		return err
 	}
 
 	// stmts act as the WAL for CreateDatabaseAndTablesIfNotExists
-	err = s.targetMySQLService.CreateDatabaseAndTablesIfNotExists(branchSchema)
+	err = bs.targetMySQLService.CreateDatabaseAndTablesIfNotExists(branchSchema)
 	if err != nil {
 		return err
 	}
 
-	// todo, wait for tables created
+	// todo optimize wait for tables created
 
 	return nil
 }
 
-func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
+func (bs *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
 	// Get all create table statements except system databases
-	schema, err := s.sourceMySQLService.GetBranchSchema(DefaultDatabasesToSkip)
+	schema, err := bs.sourceMySQLService.GetBranchSchema(DefaultDatabasesToSkip)
 	if err != nil {
 		return nil, err
 	}
@@ -49,33 +49,33 @@ func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, erro
 	if err != nil {
 		return nil, err
 	}
-	err = s.targetMySQLService.StoreBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
+	err = bs.targetMySQLService.StoreBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
 	if err != nil {
 		return nil, err
 	}
 	return schema, nil
 }
 
-func (b *BranchService) BranchDiff() {
+func (bs *BranchService) BranchDiff() {
 	// todo
 	// SchemaDiff
 	// query schemas from mysql
 }
 
-func (b *BranchService) BranchPrepareMerge(meta BranchMeta) {
+func (bs *BranchService) BranchPrepareMerge(meta BranchMeta) {
 	// todo
 	// PrepareMerge
 	// get schemas from source and target through mysql connection
 	// calculate diffs based on merge options such as override or merge
 }
 
-func (b *BranchService) BranchMerge() {
+func (bs *BranchService) BranchMerge() {
 	// todo
 	// StartMergeBack
 	// apply schema diffs ddl to source through mysql connection
 }
 
-func (b *BranchService) BranchShow() {
+func (bs *BranchService) BranchShow() {
 	//todo
 }
 
