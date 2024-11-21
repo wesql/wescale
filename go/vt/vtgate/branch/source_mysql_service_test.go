@@ -6,18 +6,40 @@ import (
 	"testing"
 )
 
+func TestGetBranchSchemaInBatches(t *testing.T) {
+	service, mock := NewMockMysqlService(t)
+	s := &SourceMySQLService{mysqlService: service}
+
+	InitMockShowCreateTable(mock)
+	tableInfo := make([]TableInfo, 0)
+	for d, tables := range BranchSchemaForTest.schema {
+		for table, _ := range tables {
+			tableInfo = append(tableInfo, TableInfo{
+				database: d,
+				name:     table,
+			})
+		}
+	}
+
+	// get one table schema each time, because it's more convenient for mock
+	_, err := s.getBranchSchemaInBatches(tableInfo, 1)
+	assert.Nil(t, err)
+}
+
 func TestGetAllCreateTableStatements(t *testing.T) {
-	//todo fixme
-	//m, err := GetBranchSchema(MysqlHost, MysqlPort, MysqlUser, MysqlPass, []string{"mysql", "performance_schema", "information_schema", "sys"})
-	//if err != nil {
-	//	t.Error(err)
-	//} else {
-	//	for d, _ := range m {
-	//		for t, _ := range m[d] {
-	//			fmt.Printf("%v.%v: %v\n", d, t, m[d][t])
-	//		}
-	//	}
-	//}
+	service, mock := NewMockMysqlService(t)
+	s := &SourceMySQLService{mysqlService: service}
+
+	// get one table schema each time, because it's more convenient for mock
+	BranchSchemaInBatches = 1
+
+	InitMockTableInfos(mock)
+	InitMockShowCreateTable(mock)
+
+	_, err := s.GetBranchSchema(nil)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestGetSQLCreateDatabasesAndTables(t *testing.T) {

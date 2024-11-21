@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -19,6 +20,10 @@ func NewMockMysqlService(t *testing.T) (*MysqlService, sqlmock.Sqlmock) {
 		t.Fatalf("failed to create mysql service: %v", err)
 	}
 
+	// if not set, when the current expected query does not match your actual query, it will fail
+	// instead of trying to match all.
+	mock.MatchExpectationsInOrder(false)
+
 	return service, mock
 }
 
@@ -26,82 +31,82 @@ var BranchSchemaForTest = BranchSchema{
 	schema: map[string]map[string]string{
 		"eCommerce": {
 			"Users": `
-					CREATE TABLE Users (
-						UserID INT PRIMARY KEY,
-						Username VARCHAR(50) NOT NULL,
-						Email VARCHAR(100) NOT NULL UNIQUE,
-						PasswordHash VARCHAR(255) NOT NULL
-					);`,
+                    CREATE TABLE Users (
+                        UserID INT PRIMARY KEY,
+                        Username VARCHAR(50) NOT NULL,
+                        Email VARCHAR(100) NOT NULL UNIQUE,
+                        PasswordHash VARCHAR(255) NOT NULL
+                    );`,
 			"Orders": `
-					CREATE TABLE Orders (
-						OrderID INT PRIMARY KEY,
-						UserID INT,
-						OrderDate DATETIME,
-						Status VARCHAR(20),
-						ShippingAddress VARCHAR(255),
-						FOREIGN KEY (UserID) REFERENCES Users(UserID)
-					);`,
+                    CREATE TABLE Orders (
+                        OrderID INT PRIMARY KEY,
+                        UserID INT,
+                        OrderDate DATETIME,
+                        Status VARCHAR(20),
+                        ShippingAddress VARCHAR(255),
+                        FOREIGN KEY (UserID) REFERENCES Users(UserID)
+                    );`,
 			"OrderItems": `
-					CREATE TABLE OrderItems (
-						OrderItemID INT PRIMARY KEY,
-						OrderID INT,
-						ProductID INT,
-						Quantity INT,
-						Price DECIMAL(10, 2),
-						FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
-					);`,
+                    CREATE TABLE OrderItems (
+                        OrderItemID INT PRIMARY KEY,
+                        OrderID INT,
+                        ProductID INT,
+                        Quantity INT,
+                        Price DECIMAL(10, 2),
+                        FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+                    );`,
 		},
 		"Inventory": {
 			"Products": `
-					CREATE TABLE Products (
-						ProductID INT PRIMARY KEY,
-						ProductName VARCHAR(100) NOT NULL,
-						CategoryID INT,
-						Price DECIMAL(10, 2),
-						Stock INT
-					);`,
+                    CREATE TABLE Products (
+                        ProductID INT PRIMARY KEY,
+                        ProductName VARCHAR(100) NOT NULL,
+                        CategoryID INT,
+                        Price DECIMAL(10, 2),
+                        Stock INT
+                    );`,
 			"Categories": `
-					CREATE TABLE Categories (
-						CategoryID INT PRIMARY KEY,
-						CategoryName VARCHAR(50) NOT NULL
-					);`,
+                    CREATE TABLE Categories (
+                        CategoryID INT PRIMARY KEY,
+                        CategoryName VARCHAR(50) NOT NULL
+                    );`,
 			"Suppliers": `
-					CREATE TABLE Suppliers (
-						SupplierID INT PRIMARY KEY,
-						SupplierName VARCHAR(100),
-						ContactEmail VARCHAR(100)
-					);`,
+                    CREATE TABLE Suppliers (
+                        SupplierID INT PRIMARY KEY,
+                        SupplierName VARCHAR(100),
+                        ContactEmail VARCHAR(100)
+                    );`,
 			"InventoryLog": `
-					CREATE TABLE InventoryLog (
-						LogID INT PRIMARY KEY,
-						ProductID INT,
-						ChangeAmount INT,
-						ChangeDate DATETIME,
-						FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
-					);`,
+                    CREATE TABLE InventoryLog (
+                        LogID INT PRIMARY KEY,
+                        ProductID INT,
+                        ChangeAmount INT,
+                        ChangeDate DATETIME,
+                        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+                    );`,
 		},
 		"HR": {
 			"Employees": `
-					CREATE TABLE Employees (
-						EmployeeID INT PRIMARY KEY,
-						FirstName VARCHAR(50),
-						LastName VARCHAR(50),
-						DepartmentID INT,
-						Email VARCHAR(100) UNIQUE
-					);`,
+                    CREATE TABLE Employees (
+                        EmployeeID INT PRIMARY KEY,
+                        FirstName VARCHAR(50),
+                        LastName VARCHAR(50),
+                        DepartmentID INT,
+                        Email VARCHAR(100) UNIQUE
+                    );`,
 			"Departments": `
-					CREATE TABLE Departments (
-						DepartmentID INT PRIMARY KEY,
-						DepartmentName VARCHAR(100)
-					);`,
+                    CREATE TABLE Departments (
+                        DepartmentID INT PRIMARY KEY,
+                        DepartmentName VARCHAR(100)
+                    );`,
 			"Payroll": `
-					CREATE TABLE Payroll (
-						PayrollID INT PRIMARY KEY,
-						EmployeeID INT,
-						Salary DECIMAL(15, 2),
-						PayrollDate DATE,
-						FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-					);`,
+                    CREATE TABLE Payroll (
+                        PayrollID INT PRIMARY KEY,
+                        EmployeeID INT,
+                        Salary DECIMAL(15, 2),
+                        PayrollDate DATE,
+                        FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
+                    );`,
 		},
 	},
 }
@@ -117,8 +122,10 @@ func InitMockShowDatabases(mock sqlmock.Sqlmock) {
 func InitMockShowCreateTable(mock sqlmock.Sqlmock) {
 	for db, tables := range BranchSchemaForTest.schema {
 		for table, createTableStmt := range tables {
-			mock.ExpectQuery("SHOW CREATE TABLE " + db + "." + table).
-				WillReturnRows(sqlmock.NewRows([]string{"Table", "Create Table"}).AddRow(table, createTableStmt))
+			sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", db, table)
+			println(sql)
+			row := sqlmock.NewRows([]string{"Table", "Create Table"}).AddRow(table, createTableStmt)
+			mock.ExpectQuery(sql).WillReturnRows(row)
 		}
 	}
 }

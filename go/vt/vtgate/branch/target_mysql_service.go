@@ -29,10 +29,8 @@ func (t *TargetMySQLService) CreateDatabaseAndTablesIfNotExists(createTableStmts
 	return nil
 }
 
-// todo branch: snapshot and branchMeta should have their struct type
-// todo : UT
-func (t *TargetMySQLService) StoreBranchMeta(snapshot map[string]map[string]string, branchMeta *BranchMeta) error {
-	snapshotJson, err := json.Marshal(snapshot)
+func (t *TargetMySQLService) StoreBranchMeta(snapshot *BranchSchema, branchMeta *BranchMeta) error {
+	snapshotJson, err := json.Marshal(snapshot.schema)
 	if err != nil {
 		return err
 	}
@@ -45,7 +43,6 @@ func (t *TargetMySQLService) StoreBranchMeta(snapshot map[string]map[string]stri
 
 /**********************************************************************************************************************/
 
-// todo branch add UT
 // getAllDatabases retrieves all database names from MySQL
 func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	// Execute query to get all database names

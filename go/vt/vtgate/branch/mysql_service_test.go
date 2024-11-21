@@ -73,7 +73,7 @@ func TestNewMysqlServiceWithConfig(t *testing.T) {
 func TestQuery(t *testing.T) {
 	service, mock := NewMockMysqlService(t)
 	defer service.Close()
-
+	
 	mock.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
 	rows, err := service.Query("SELECT 1")
 	assert.NoError(t, err)

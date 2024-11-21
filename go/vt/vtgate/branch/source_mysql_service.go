@@ -20,12 +20,11 @@ type TableInfo struct {
 	name     string
 }
 
-const BranchSchemaInBatches = 50
+var BranchSchemaInBatches = 50
 
 // GetBranchSchema retrieves CREATE TABLE statements for all tables in all databases
 // Returns a nested map where the first level key is the database name,
 // second level key is the table name, and the value is the CREATE TABLE statement
-// todo add Test
 func (s *SourceMySQLService) GetBranchSchema(databasesExclude []string) (*BranchSchema, error) {
 	tableInfos, err := s.getTableInfos(databasesExclude)
 	if err != nil {
@@ -86,7 +85,6 @@ func (s *SourceMySQLService) getTableInfos(databasesExclude []string) ([]TableIn
 	return tableInfos, nil
 }
 
-// todo add test
 // getBranchSchemaInBatches retrieves CREATE TABLE statements in batches
 func (s *SourceMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, batchSize int) (*BranchSchema, error) {
 	result := make(map[string]map[string]string)

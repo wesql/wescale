@@ -45,11 +45,11 @@ func (s *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, erro
 	if err != nil {
 		return nil, err
 	}
-	schema, err = filterBranchSchema(schema, branchMeta.include, branchMeta.exclude)
+	err = filterBranchSchema(schema, branchMeta.include, branchMeta.exclude)
 	if err != nil {
 		return nil, err
 	}
-	err = s.targetMySQLService.StoreBranchMeta(schema.schema, branchMeta) // this step is the commit point of BranchCreate function
+	err = s.targetMySQLService.StoreBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
 	if err != nil {
 		return nil, err
 	}
@@ -81,9 +81,9 @@ func (b *BranchService) BranchShow() {
 
 /**********************************************************************************************************************/
 
-func filterBranchSchema(schema *BranchSchema, include, exclude string) (*BranchSchema, error) {
+func filterBranchSchema(schema *BranchSchema, include, exclude string) error {
 	if include == "" {
-		return nil, fmt.Errorf("include pattern is empty")
+		return fmt.Errorf("include pattern is empty")
 	}
 
 	// Parse include and exclude patterns
@@ -135,10 +135,11 @@ func filterBranchSchema(schema *BranchSchema, include, exclude string) (*BranchS
 			}
 		}
 		if len(unmatchedPatterns) > 0 {
-			return nil, fmt.Errorf("the following include patterns had no matches: %s", strings.Join(unmatchedPatterns, ", "))
+			return fmt.Errorf("the following include patterns had no matches: %s", strings.Join(unmatchedPatterns, ", "))
 		}
 	}
-	return &BranchSchema{schema: result}, nil
+	schema.schema = result
+	return nil
 }
 
 // parsePatterns splits the pattern string and returns a slice of patterns

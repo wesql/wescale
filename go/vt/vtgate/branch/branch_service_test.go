@@ -104,7 +104,8 @@ func TestFilterBranchSchema(t *testing.T) {
 	// Run test cases
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := filterBranchSchema(&BranchSchema{schema: testStmts}, tc.include, tc.exclude)
+			schema := &BranchSchema{schema: testStmts}
+			err := filterBranchSchema(schema, tc.include, tc.exclude)
 
 			// Check error
 			if tc.expectedErr != "" {
@@ -122,8 +123,8 @@ func TestFilterBranchSchema(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(result.schema, tc.expectedStmts) {
-				t.Errorf("expected %v, got %v", tc.expectedStmts, result.schema)
+			if !reflect.DeepEqual(schema.schema, tc.expectedStmts) {
+				t.Errorf("expected %v, got %v", tc.expectedStmts, schema.schema)
 			}
 		})
 	}
