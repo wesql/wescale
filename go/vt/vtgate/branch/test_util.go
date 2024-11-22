@@ -27,7 +27,7 @@ func NewMockMysqlService(t *testing.T) (*MysqlService, sqlmock.Sqlmock) {
 	return service, mock
 }
 
-var BranchSchemaForTest = BranchSchema{
+var BranchSchemaForTest = &BranchSchema{
 	schema: map[string]map[string]string{
 		"eCommerce": {
 			"Users": `

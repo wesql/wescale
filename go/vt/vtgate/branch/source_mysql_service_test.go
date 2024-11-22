@@ -21,11 +21,12 @@ func TestGetBranchSchemaInBatches(t *testing.T) {
 	}
 
 	// get one table schema each time, because it's more convenient for mock
-	_, err := s.getBranchSchemaInBatches(tableInfo, 1)
+	got, err := s.getBranchSchemaInBatches(tableInfo, 1)
 	assert.Nil(t, err)
+	compareBranchSchema(t, BranchSchemaForTest, got)
 }
 
-func TestGetAllCreateTableStatements(t *testing.T) {
+func TestGetBranchSchema(t *testing.T) {
 	service, mock := NewMockMysqlService(t)
 	s := &SourceMySQLService{mysqlService: service}
 
@@ -35,10 +36,51 @@ func TestGetAllCreateTableStatements(t *testing.T) {
 	InitMockTableInfos(mock)
 	InitMockShowCreateTable(mock)
 
-	// todo fix me
-	_, err := s.GetBranchSchema(nil, nil)
+	got, err := s.GetBranchSchema([]string{"*"}, nil)
 	if err != nil {
 		t.Error(err)
+	}
+
+	compareBranchSchema(t, BranchSchemaForTest, got)
+
+}
+
+func compareBranchSchema(t *testing.T, want, got *BranchSchema) {
+	if want == nil && got == nil {
+		return
+	}
+
+	if want == nil || got == nil {
+		assert.Equal(t, want, got, "One of the BranchSchema is nil")
+		return
+	}
+
+	// Compare the outer map lengths
+	assert.Equal(t, len(want.schema), len(got.schema), "schema databases length mismatch")
+
+	// Compare each database's tables
+	for dbName, wantTables := range want.schema {
+		gotTables, exists := got.schema[dbName]
+		assert.True(t, exists, "missing database %s in schema", dbName)
+		if !exists {
+			continue
+		}
+
+		// Compare tables map lengths for this database
+		assert.Equal(t, len(wantTables), len(gotTables),
+			"tables length mismatch for database %s", dbName)
+
+		// Compare each table's create statement
+		for tableName, wantCreate := range wantTables {
+			gotCreate, exists := gotTables[tableName]
+			assert.True(t, exists, "missing table %s in database %s", tableName, dbName)
+			if exists {
+				// Compare the create table statements
+				assert.Equal(t, wantCreate, gotCreate,
+					"create table statement mismatch for table %s in database %s",
+					tableName, dbName)
+			}
+		}
 	}
 }
 
