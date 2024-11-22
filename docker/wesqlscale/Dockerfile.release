@@ -91,9 +91,7 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
     cp /vt/src/vitess/bin/vtctlclient /vt/bin/ && \
     cp /vt/src/vitess/bin/vtctldclient /vt/bin/ && \
     cp /vt/src/vitess/bin/vtgate /vt/bin/ && \
-    cp /vt/src/vitess/bin/vtconsensus /vt/bin/ && \
     cp /vt/src/vitess/bin/vttablet /vt/bin/ && \
-    cp /vt/src/vitess/bin/vtadmin /vt/bin/ && \
     cp /vt/src/vitess/bin/protoc  /vt/bin && \
     cp /vt/src/vitess/bin/etcd  /vt/bin && \
     cp /vt/src/vitess/bin/etcdctl  /vt/bin && \

@@ -71,12 +71,6 @@ if [ "$debug_vtctld" == "on" ]; then
   echo "vtctld killed"
 fi
 
-# start vtadmin
-if [ "$vtadmin" == "on" ]; then
-  echo "start vtadmin"
-  ../common/scripts-apecloud/vtadmin-up.sh
-fi
-
 if [ "$tracing" == "on" ]; then
   echo 'jaeger UI endpoint:
 http://127.0.0.1:16686/
