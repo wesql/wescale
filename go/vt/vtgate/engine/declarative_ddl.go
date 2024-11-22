@@ -168,31 +168,15 @@ func (d *DeclarativeDDL) CalculateDiff(ctx context.Context, primaryTablet *disco
 	}
 
 	// get diff DDL
-	d.diffDDLs = make([]string, 0)
-	d.diffDDLStmts = make([]sqlparser.DDLStatement, 0)
-
 	hints := ConvertHints(configInStr)
 	diff, err := schemadiff.DiffCreateTablesQueries(d.originSchema, d.desiredSchema, &hints)
 	if err != nil {
 		return err
 	}
-	if diff.IsEmpty() {
-		return nil
-	}
 
-	for diff != nil && !diff.IsEmpty() {
-		ddlStmt, ok := diff.Statement().(sqlparser.DDLStatement)
-		if !ok {
-			return fmt.Errorf("diff ddl is not a DDLStatement")
-		}
-
-		// if we don't set dbName here, it will be set to mysql db when executing
-		ddlStmt.SetTable(d.dbName, d.tableName)
-		ddlStmt.SetFullyParsed(true)
-		d.diffDDLStmts = append(d.diffDDLStmts, ddlStmt)
-		d.diffDDLs = append(d.diffDDLs, diff.CanonicalStatementString())
-
-		diff = diff.SubsequentDiff()
+	d.diffDDLStmts, d.diffDDLs, err = schemadiff.GetDDLFromTableDiff(diff, d.dbName, d.tableName)
+	if err != nil {
+		return err
 	}
 
 	return nil

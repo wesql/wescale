@@ -20,6 +20,18 @@ type BranchSchema struct {
 	schema map[string]map[string]string
 }
 
+type DatabaseDiff struct {
+	needCreate bool
+	needDrop   bool
+	// table name -> ddls to alter this table from origin to expected
+	tableDDLs map[string][]string
+}
+
+type BranchDiff struct {
+	// database name -> DatabaseDiff
+	diffs map[string]*DatabaseDiff
+}
+
 const (
 	InsertBranchSQL = `INSERT INTO mysql.branch 
 		(name, source_host, source_port, source_user, source_password, include, exclude, status, target_db_pattern) 

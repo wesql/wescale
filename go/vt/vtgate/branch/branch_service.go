@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"vitess.io/vitess/go/vt/schemadiff"
 )
 
 var DefaultDatabasesToSkip = []string{"mysql", "sys", "information_schema", "performance_schema"}
@@ -80,6 +81,118 @@ func (bs *BranchService) BranchShow() {
 }
 
 /**********************************************************************************************************************/
+
+// todo enhancement: target database pattern
+func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	branchDiff := &BranchDiff{diffs: make(map[string]*DatabaseDiff)}
+
+	// databases exist in originSchema but not exist in expectSchema
+	for dbName := range originSchema.schema {
+		if _, exist := expectSchema.schema[dbName]; !exist {
+			databaseDiff := &DatabaseDiff{
+				needCreate: false,
+				needDrop:   true,
+			}
+			branchDiff.diffs[dbName] = databaseDiff
+		}
+	}
+
+	// databases exist in expectSchema but not exist in originSchema
+	for dbName := range expectSchema.schema {
+		if _, exist := originSchema.schema[dbName]; !exist {
+			databaseDiff := &DatabaseDiff{
+				needCreate: true,
+				needDrop:   false,
+			}
+			tableDDLs := make(map[string][]string)
+			// generate create table ddl for each tables
+			for tableName, schema := range expectSchema.schema[dbName] {
+				tableDiffs := make([]string, 0)
+				diff, err := schemadiff.DiffCreateTablesQueries("", schema, hints)
+				if err != nil {
+					return nil, err
+				}
+
+				_, ddls, err := schemadiff.GetDDLFromTableDiff(diff, dbName, tableName)
+				if err != nil {
+					return nil, err
+				}
+				tableDiffs = append(tableDiffs, ddls...)
+				tableDDLs[tableName] = tableDiffs
+			}
+			databaseDiff.tableDDLs = tableDDLs
+			branchDiff.diffs[dbName] = databaseDiff
+		}
+	}
+
+	// databases exist in both originSchema and expectSchema
+	for dbName, expectTables := range expectSchema.schema {
+		originTables, exist := originSchema.schema[dbName]
+		if !exist {
+			continue
+		}
+		databaseDiff := &DatabaseDiff{
+			needCreate: false,
+			needDrop:   false,
+		}
+		tableDDLs := make(map[string][]string)
+
+		// tables exist in originSchema but not exist in expectSchema
+		for tableName, originSchema := range originTables {
+			if _, exist := expectTables[tableName]; !exist {
+				tableDiffs := make([]string, 0)
+				diff, err := schemadiff.DiffCreateTablesQueries(originSchema, "", hints)
+				if err != nil {
+					return nil, err
+				}
+				_, ddls, err := schemadiff.GetDDLFromTableDiff(diff, dbName, tableName)
+				if err != nil {
+					return nil, err
+				}
+				tableDiffs = append(tableDiffs, ddls...)
+				tableDDLs[tableName] = tableDiffs
+			}
+		}
+
+		// tables exist in expectSchema but not exist in originSchema
+		for tableName, expectSchema := range expectTables {
+			if _, exist := originTables[tableName]; !exist {
+				tableDiffs := make([]string, 0)
+				diff, err := schemadiff.DiffCreateTablesQueries("", expectSchema, hints)
+				if err != nil {
+					return nil, err
+				}
+				_, ddls, err := schemadiff.GetDDLFromTableDiff(diff, dbName, tableName)
+				if err != nil {
+					return nil, err
+				}
+				tableDiffs = append(tableDiffs, ddls...)
+				tableDDLs[tableName] = tableDiffs
+			}
+		}
+
+		// tables exist in both originSchema and expectSchema
+		for tableName, expectSchema := range expectTables {
+			if originSchema, exist := originTables[tableName]; exist {
+				tableDiffs := make([]string, 0)
+				diff, err := schemadiff.DiffCreateTablesQueries(originSchema, expectSchema, hints)
+				if err != nil {
+					return nil, err
+				}
+				_, ddls, err := schemadiff.GetDDLFromTableDiff(diff, dbName, tableName)
+				if err != nil {
+					return nil, err
+				}
+				tableDiffs = append(tableDiffs, ddls...)
+				tableDDLs[tableName] = tableDiffs
+			}
+		}
+		databaseDiff.tableDDLs = tableDDLs
+		branchDiff.diffs[dbName] = databaseDiff
+	}
+
+	return branchDiff, nil
+}
 
 func filterBranchSchema(schema *BranchSchema, include, exclude string) error {
 	if include == "" {
