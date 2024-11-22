@@ -2,12 +2,11 @@ package branch
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 	"vitess.io/vitess/go/vt/schemadiff"
 )
 
-var DefaultDatabasesToSkip = []string{"mysql", "sys", "information_schema", "performance_schema"}
+var DefaultExcludeDatabases = []string{"mysql", "sys", "information_schema", "performance_schema"}
 
 type BranchService struct {
 	sourceMySQLService *SourceMySQLService
@@ -19,6 +18,61 @@ func NewBranchService(sourceHandler *SourceMySQLService, targetHandler *TargetMy
 		sourceMySQLService: sourceHandler,
 		targetMySQLService: targetHandler,
 	}
+}
+
+func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePassword,
+	includeDBs, excludeDBs, targetDBPattern string) (*BranchMeta, error) {
+
+	var includeDatabases []string
+	if includeDBs == "" {
+		return nil, fmt.Errorf("includeDatabases cannot be empty")
+	}
+
+	includeDatabases = strings.Split(includeDBs, ",")
+	for i, db := range includeDatabases {
+		if db == "*" {
+			includeDatabases = []string{"*"}
+			break
+		}
+		includeDatabases[i] = strings.TrimSpace(db)
+	}
+
+	var excludeDatabases []string
+	if excludeDBs != "" {
+		excludeDatabases = strings.Split(excludeDBs, ",")
+		for i, db := range excludeDatabases {
+			db = strings.TrimSpace(db)
+			if db == "*" {
+				return nil, fmt.Errorf("excludeDatabases contains wildcard '*', branching is meaningless")
+			}
+			excludeDatabases[i] = db
+		}
+	}
+
+	if name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+	if sourceHost == "" {
+		return nil, fmt.Errorf("sourceHost cannot be empty")
+	}
+	if sourcePort <= 0 || sourcePort > 65535 {
+		return nil, fmt.Errorf("invalid sourcePort: %d", sourcePort)
+	}
+
+	bMeta := &BranchMeta{
+		name:             name,
+		sourceHost:       sourceHost,
+		sourcePort:       sourcePort,
+		sourceUser:       sourceUser,
+		sourcePassword:   sourcePassword,
+		includeDatabases: includeDatabases,
+		excludeDatabases: excludeDatabases,
+		targetDBPattern:  targetDBPattern,
+		status:           StatusInit, // 设置初始状态
+	}
+
+	addDefaultExcludeDatabases(bMeta)
+	return bMeta, nil
 }
 
 // todo optimize think of failure handling
@@ -40,13 +94,10 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	return nil
 }
 
+// todo refactor me
 func (bs *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
 	// Get all create table statements except system databases
-	schema, err := bs.sourceMySQLService.GetBranchSchema(DefaultDatabasesToSkip)
-	if err != nil {
-		return nil, err
-	}
-	err = filterBranchSchema(schema, branchMeta.include, branchMeta.exclude)
+	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
 	if err != nil {
 		return nil, err
 	}
@@ -194,124 +245,17 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 	return branchDiff, nil
 }
 
-func filterBranchSchema(schema *BranchSchema, include, exclude string) error {
-	if include == "" {
-		return fmt.Errorf("include pattern is empty")
-	}
-
-	// Parse include and exclude patterns
-	includePatterns := parsePatterns(include)
-	excludePatterns := parsePatterns(exclude)
-
-	// Create result map and pattern match tracking
-	result := make(map[string]map[string]string)
-	patternMatchCount := make(map[string]int)
-
-	// Initialize match count for include patterns
-	for _, pattern := range includePatterns {
-		patternMatchCount[strings.TrimSpace(pattern)] = 0
-	}
-
-	// Process each database and table
-	for dbName, tables := range schema.schema {
-		for tableName, createStmt := range tables {
-			tableId := dbName + "." + tableName
-
-			// Check inclusion
-			included := false
-			for _, pattern := range includePatterns {
-				pattern = strings.TrimSpace(pattern)
-				if matchPattern(tableId, pattern) {
-					included = true
-					patternMatchCount[pattern]++
-				}
-			}
-
-			if !included || matchesAnyPattern(tableId, excludePatterns) {
-				continue
-			}
-
-			// Add to result
-			if _, exists := result[dbName]; !exists {
-				result[dbName] = make(map[string]string)
-			}
-			result[dbName][tableName] = createStmt
-		}
-	}
-
-	// Check if any include pattern had no matches
-	if len(includePatterns) > 0 {
-		var unmatchedPatterns []string
-		for pattern, count := range patternMatchCount {
-			if count == 0 {
-				unmatchedPatterns = append(unmatchedPatterns, pattern)
+func addDefaultExcludeDatabases(branchMeta *BranchMeta) {
+	for _, db := range DefaultExcludeDatabases {
+		has := false
+		for _, db2 := range branchMeta.excludeDatabases {
+			if db == db2 {
+				has = true
+				break
 			}
 		}
-		if len(unmatchedPatterns) > 0 {
-			return fmt.Errorf("the following include patterns had no matches: %s", strings.Join(unmatchedPatterns, ", "))
+		if !has {
+			branchMeta.excludeDatabases = append(branchMeta.excludeDatabases, db)
 		}
 	}
-	schema.schema = result
-	return nil
-}
-
-// parsePatterns splits the pattern string and returns a slice of patterns
-func parsePatterns(patterns string) []string {
-	if patterns == "" {
-		return nil
-	}
-	return strings.Split(patterns, ",")
-}
-
-// matchesAnyPattern checks if the tableId matches any of the patterns
-func matchesAnyPattern(tableId string, patterns []string) bool {
-	if patterns == nil {
-		return false
-	}
-
-	for _, pattern := range patterns {
-		if matchPattern(tableId, strings.TrimSpace(pattern)) {
-			return true
-		}
-	}
-	return false
-}
-
-// matchPattern checks if a table ID (db.table) matches a pattern (d.t) with wildcard support
-func matchPattern(tableId, pattern string) bool {
-	// Split both tableId and pattern into database and table parts
-	tableParts := strings.Split(tableId, ".")
-	patternParts := strings.Split(pattern, ".")
-
-	if len(tableParts) != 2 || len(patternParts) != 2 {
-		return false
-	}
-
-	// Match both database name and table name separately
-	return matchWildcard(tableParts[0], patternParts[0]) &&
-		matchWildcard(tableParts[1], patternParts[1])
-}
-
-// matchWildcard handles wildcard pattern matching with support for partial wildcards
-func matchWildcard(s, pattern string) bool {
-	// Handle plain wildcard pattern
-	pattern = strings.TrimSpace(pattern)
-	if pattern == "*" {
-		return true
-	}
-
-	// Convert pattern to regular expression
-	// 1. Escape all regex special characters
-	regex := regexp.QuoteMeta(pattern)
-	// 2. Replace * with .* for wildcard matching
-	regex = strings.Replace(regex, "\\*", ".*", -1)
-	// 3. Add start and end anchors for full string match
-	regex = "^" + regex + "$"
-
-	// Attempt to match the pattern
-	matched, err := regexp.MatchString(regex, s)
-	if err != nil {
-		return false
-	}
-	return matched
 }

@@ -22,11 +22,10 @@ type TableInfo struct {
 
 var BranchSchemaInBatches = 50
 
-// GetBranchSchema retrieves CREATE TABLE statements for all tables in all databases
-// Returns a nested map where the first level key is the database name,
-// second level key is the table name, and the value is the CREATE TABLE statement
-func (s *SourceMySQLService) GetBranchSchema(databasesExclude []string) (*BranchSchema, error) {
-	tableInfos, err := s.getTableInfos(databasesExclude)
+// todo fix my testcase
+// GetBranchSchema retrieves CREATE TABLE statements for all tables in databases filtered by `databasesInclude` and `databasesExclude`
+func (s *SourceMySQLService) GetBranchSchema(databasesInclude, databasesExclude []string) (*BranchSchema, error) {
+	tableInfos, err := s.getTableInfos(databasesInclude, databasesExclude)
 	if err != nil {
 		return nil, err
 	}
@@ -47,22 +46,63 @@ func getSQLCreateDatabasesAndTables(branchSchema *BranchSchema) string {
 }
 
 // buildTableInfosQuerySQL constructs the SQL query to retrieve table names
-func buildTableInfosQuerySQL(databasesExclude []string) string {
+func buildTableInfosQuerySQL(databasesInclude, databasesExclude []string) (string, error) {
 	sql := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
 
-	if databasesExclude != nil && len(databasesExclude) > 0 {
-		excludeList := strings.Join(databasesExclude, "','")
-		sql += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", excludeList)
+	// deal with databasesInclude
+	if databasesInclude == nil {
+		return "", fmt.Errorf("databasesInclude is empty, which is not supported")
+	}
+	databasesIncludeFilterEmpty := make([]string, 0)
+	for _, db := range databasesInclude {
+		if db != "" {
+			databasesIncludeFilterEmpty = append(databasesIncludeFilterEmpty, db)
+		}
+	}
+	if len(databasesIncludeFilterEmpty) == 0 {
+		return "", fmt.Errorf("databasesInclude is empty, which is not supported")
 	}
 
-	return sql
+	needInclude := true
+	for _, db := range databasesIncludeFilterEmpty {
+		if db == "*" {
+			needInclude = false
+			break
+		}
+	}
+	if needInclude {
+		includeList := strings.Join(databasesIncludeFilterEmpty, "','")
+		sql += fmt.Sprintf(" AND TABLE_SCHEMA IN ('%s')", includeList)
+	}
+
+	// deal with databasesExclude
+	databasesExcludeFilterEmptye := make([]string, 0)
+	for _, db := range databasesExclude {
+		if db == "*" {
+			return "", fmt.Errorf("exclude all databases is not supported")
+		}
+		if db != "" {
+			databasesExcludeFilterEmptye = append(databasesExcludeFilterEmptye, db)
+		}
+	}
+
+	if len(databasesExcludeFilterEmptye) > 0 {
+		excludeList := strings.Join(databasesExcludeFilterEmptye, "','")
+		sql += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", excludeList)
+	}
+	return sql, nil
 }
 
 // getTableInfos executes the table info query and returns a slice of tableInfo
-// todo optimize push down, include
-func (s *SourceMySQLService) getTableInfos(databasesExclude []string) ([]TableInfo, error) {
+// todo optimize push down, includeDatabases
+// todo fix my testcase
+// todo refactor me
+func (s *SourceMySQLService) getTableInfos(databasesInclude, databasesExclude []string) ([]TableInfo, error) {
 
-	query := buildTableInfosQuerySQL(databasesExclude)
+	query, err := buildTableInfosQuerySQL(databasesInclude, databasesExclude)
+	if err != nil {
+		return nil, err
+	}
 
 	rows, err := s.mysqlService.Query(query)
 	if err != nil {

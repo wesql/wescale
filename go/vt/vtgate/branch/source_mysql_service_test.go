@@ -2,7 +2,6 @@ package branch
 
 import (
 	"github.com/stretchr/testify/assert"
-	"strings"
 	"testing"
 )
 
@@ -36,7 +35,8 @@ func TestGetAllCreateTableStatements(t *testing.T) {
 	InitMockTableInfos(mock)
 	InitMockShowCreateTable(mock)
 
-	_, err := s.GetBranchSchema(nil)
+	// todo fix me
+	_, err := s.GetBranchSchema(nil, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -122,29 +122,114 @@ func TestGetSQLCreateDatabasesAndTables(t *testing.T) {
 	}
 }
 
-func TestBuildTableInfoQuery(t *testing.T) {
+func Test_buildTableInfosQuerySQL(t *testing.T) {
 	tests := []struct {
-		name             string
-		databasesExclude []string
-		wantContains     string
+		name            string
+		databaseInclude []string
+		databaseExclude []string
+		wantSQL         string
+		wantErr         bool
+		errMsg          string
 	}{
 		{
-			name:             "No Exclude",
-			databasesExclude: nil,
-			wantContains:     "WHERE TABLE_TYPE = 'BASE TABLE'",
+			name:            "Normal case with include and exclude",
+			databaseInclude: []string{"db1", "db2"},
+			databaseExclude: []string{"test1", "test2"},
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('db1','db2') AND TABLE_SCHEMA NOT IN ('test1','test2')",
+			wantErr:         false,
 		},
 		{
-			name:             "With Exclude",
-			databasesExclude: []string{"db1", "db2"},
-			wantContains:     "AND TABLE_SCHEMA NOT IN ('db1','db2')",
+			name:            "Normal case with include and exclude",
+			databaseInclude: []string{"db1", "db2", "", ""},
+			databaseExclude: []string{"test1", "test2", "", ""},
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('db1','db2') AND TABLE_SCHEMA NOT IN ('test1','test2')",
+			wantErr:         false,
+		},
+		{
+			name:            "Only include databases",
+			databaseInclude: []string{"db1", "db2"},
+			databaseExclude: nil,
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('db1','db2')",
+			wantErr:         false,
+		},
+		{
+			name:            "Only exclude databases",
+			databaseInclude: nil,
+			databaseExclude: []string{"test1", "test2"},
+			wantSQL:         "",
+			wantErr:         true,
+		},
+		{
+			name:            "Empty include and exclude",
+			databaseInclude: nil,
+			databaseExclude: nil,
+			wantSQL:         "",
+			wantErr:         true,
+		},
+		{
+			name:            "Include with wildcard",
+			databaseInclude: []string{"db1", "*", "db2"},
+			databaseExclude: []string{"test1"},
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ('test1')",
+			wantErr:         false,
+		},
+		{
+			name:            "Exclude with wildcard should error",
+			databaseInclude: []string{"db1", "db2"},
+			databaseExclude: []string{"test1", "*", "test2"},
+			wantSQL:         "",
+			wantErr:         true,
+			errMsg:          "exclude all databases is not supported",
+		},
+		{
+			name:            "Empty strings in include",
+			databaseInclude: []string{""},
+			databaseExclude: nil,
+			wantSQL:         "",
+			wantErr:         true,
+		},
+		{
+			name:            "Empty strings in include",
+			databaseInclude: []string{"", ""},
+			databaseExclude: nil,
+			wantSQL:         "",
+			wantErr:         true,
+		},
+		{
+			name:            "Empty strings in exclude",
+			databaseInclude: []string{"*"},
+			databaseExclude: []string{""},
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'",
+			wantErr:         false,
+		},
+		{
+			name:            "Empty strings in exclude",
+			databaseInclude: nil,
+			databaseExclude: []string{""},
+			wantSQL:         "",
+			wantErr:         true,
+		},
+		{
+			name:            "Special characters in database names",
+			databaseInclude: []string{"db-1", "db_2"},
+			databaseExclude: []string{"test-1", "test_2"},
+			wantSQL:         "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('db-1','db_2') AND TABLE_SCHEMA NOT IN ('test-1','test_2')",
+			wantErr:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			query := buildTableInfosQuerySQL(tt.databasesExclude)
-			if !strings.Contains(query, tt.wantContains) {
-				t.Errorf("Query does not contain expected string. Got: %s, Want Contains: %s", query, tt.wantContains)
+			gotSQL, err := buildTableInfosQuerySQL(tt.databaseInclude, tt.databaseExclude)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Equal(t, tt.errMsg, err.Error())
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantSQL, gotSQL)
 			}
 		})
 	}
@@ -175,7 +260,8 @@ func TestGetTableInfos(t *testing.T) {
 	}
 
 	for _, tt := range testcases {
-		got, err := service.getTableInfos(tt.databasesExclude)
+		// todo fix me
+		got, err := service.getTableInfos(nil, tt.databasesExclude)
 		assert.Nil(t, err)
 		expected := make([]TableInfo, 0)
 		for db, tables := range BranchSchemaForTest.schema {

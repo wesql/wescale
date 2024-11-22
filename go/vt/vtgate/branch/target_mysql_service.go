@@ -80,18 +80,20 @@ func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema)
 }
 
 func getInsertSnapshotSQL(name, snapshotData string) string {
+	// todo fix me, snapshot spliting
 	return fmt.Sprintf(InsertBranchSnapshotSQL, name, snapshotData)
 }
 
 func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
+	// todo fix me
 	return fmt.Sprintf(InsertBranchSQL,
 		branchMeta.name,
 		branchMeta.sourceHost,
 		branchMeta.sourcePort,
 		branchMeta.sourceUser,
 		branchMeta.sourcePassword,
-		branchMeta.include,
-		branchMeta.exclude,
+		branchMeta.includeDatabases,
+		branchMeta.excludeDatabases,
 		branchMeta.status,
 		branchMeta.targetDBPattern)
 }

@@ -8,12 +8,16 @@ type BranchMeta struct {
 	sourceUser     string
 	sourcePassword string
 	// filter rules
-	include string
-	exclude string
+	includeDatabases []string
+	excludeDatabases []string
 	// others
 	targetDBPattern string // todo
 	status          string // todo
 }
+
+const (
+	StatusInit = "init" // todo, need it?
+)
 
 type BranchSchema struct {
 	// databases -> tables -> create table statement
@@ -34,7 +38,7 @@ type BranchDiff struct {
 
 const (
 	InsertBranchSQL = `INSERT INTO mysql.branch 
-		(name, source_host, source_port, source_user, source_password, include, exclude, status, target_db_pattern) 
+		(name, source_host, source_port, source_user, source_password, includeDatabases, excludeDatabases, status, target_db_pattern) 
 		VALUES ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
 
 	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshots(name, snapshot) values (%s, %s)"
