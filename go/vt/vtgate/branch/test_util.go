@@ -151,4 +151,15 @@ func InitMockTableInfos(mock sqlmock.Sqlmock) {
 		}
 	}
 	mock.ExpectQuery(query2).WillReturnRows(rows2)
+
+	query3 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('eCommerce')"
+	rows3 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
+	for db, tables := range BranchSchemaForTest.schema {
+		if db == "eCommerce" {
+			for table, _ := range tables {
+				rows3 = rows3.AddRow(db, table)
+			}
+		}
+	}
+	mock.ExpectQuery(query3).WillReturnRows(rows3)
 }

@@ -243,15 +243,37 @@ func TestGetTableInfos(t *testing.T) {
 
 	testcases := []struct {
 		name             string
+		databasesInclude []string
 		databasesExclude []string
+		wantErr          bool
 	}{
 		{
-			name:             "No Exclude",
-			databasesExclude: nil,
+			name:             "With Include",
+			databasesInclude: []string{"eCommerce"},
 		},
 		{
 			name:             "With Exclude",
+			databasesInclude: []string{"*"},
 			databasesExclude: []string{"eCommerce"},
+		},
+		{
+			name:             "Include nothing",
+			databasesInclude: nil,
+			wantErr:          true,
+		},
+		{
+			name:             "Include nothing",
+			databasesInclude: []string{""},
+			wantErr:          true,
+		},
+		{
+			name:             "Exclude every thing",
+			databasesExclude: []string{"*"},
+			wantErr:          true,
+		},
+		{
+			name:             "Exclude nothing",
+			databasesInclude: []string{"*"},
 		},
 	}
 
@@ -260,23 +282,36 @@ func TestGetTableInfos(t *testing.T) {
 	}
 
 	for _, tt := range testcases {
-		// todo fix me
-		got, err := service.getTableInfos(nil, tt.databasesExclude)
+		got, err := service.getTableInfos(tt.databasesInclude, tt.databasesExclude)
+		if tt.wantErr {
+			assert.Error(t, err)
+			continue
+		}
 		assert.Nil(t, err)
 		expected := make([]TableInfo, 0)
 		for db, tables := range BranchSchemaForTest.schema {
-			skip := false
-			for _, dbToSkip := range tt.databasesExclude {
-				if db == dbToSkip {
-					skip = true
+			exclude := false
+			for _, dbToExclude := range tt.databasesExclude {
+				if db == dbToExclude {
+					exclude = true
 					break
 				}
 			}
-			if skip {
+			if exclude {
 				continue
 			}
-			for table, _ := range tables {
-				expected = append(expected, TableInfo{database: db, name: table})
+
+			include := false
+			for _, dbToInclude := range tt.databasesInclude {
+				if db == dbToInclude || dbToInclude == "*" {
+					include = true
+					break
+				}
+			}
+			if include {
+				for table, _ := range tables {
+					expected = append(expected, TableInfo{database: db, name: table})
+				}
 			}
 		}
 

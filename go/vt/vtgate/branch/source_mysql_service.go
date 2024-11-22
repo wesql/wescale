@@ -94,11 +94,7 @@ func buildTableInfosQuerySQL(databasesInclude, databasesExclude []string) (strin
 }
 
 // getTableInfos executes the table info query and returns a slice of tableInfo
-// todo optimize push down, includeDatabases
-// todo fix my testcase
-// todo refactor me
 func (s *SourceMySQLService) getTableInfos(databasesInclude, databasesExclude []string) ([]TableInfo, error) {
-
 	query, err := buildTableInfosQuerySQL(databasesInclude, databasesExclude)
 	if err != nil {
 		return nil, err
