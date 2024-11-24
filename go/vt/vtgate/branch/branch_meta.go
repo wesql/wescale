@@ -12,12 +12,26 @@ type BranchMeta struct {
 	excludeDatabases []string
 	// others
 	targetDBPattern string // todo
-	status          string // todo
+	status          BranchStatus
 }
 
+type BranchStatus string
+
 const (
-	StatusInit = "init" // todo, need it?
+	StatusUnknown BranchStatus = "unknown"
+	StatusInit    BranchStatus = "init"
+	StatusFetched BranchStatus = "fetched"
+	statusCreated BranchStatus = "created"
 )
+
+func StringToBranchStatus(s string) BranchStatus {
+	switch s {
+	case "init":
+		return StatusInit
+	default:
+		return StatusUnknown
+	}
+}
 
 type BranchSchema struct {
 	// databases -> tables -> create table statement
@@ -37,9 +51,21 @@ type BranchDiff struct {
 }
 
 const (
-	InsertBranchSQL = `INSERT INTO mysql.branch 
-		(name, source_host, source_port, source_user, source_password, includeDatabases, excludeDatabases, status, target_db_pattern) 
-		VALUES ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
+	UpsertBranchMetaSQL = `
+    INSERT INTO mysql.branch 
+        (name, source_host, source_port, source_user, source_password, 
+        include_databases, exclude_databases, status, target_db_pattern) 
+    VALUES 
+        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')
+    ON DUPLICATE KEY UPDATE 
+        source_host = VALUES(source_host),
+        source_port = VALUES(source_port),
+        source_user = VALUES(source_user),
+        source_password = VALUES(source_password),
+        include_databases = VALUES(include_databases),
+        exclude_databases = VALUES(exclude_databases),
+        status = VALUES(status),
+        target_db_pattern = VALUES(target_db_pattern)`
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshots(name, snapshot) values (%s, %s)"
+	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 )

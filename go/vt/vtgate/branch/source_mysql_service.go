@@ -33,19 +33,6 @@ func (s *SourceMySQLService) GetBranchSchema(databasesInclude, databasesExclude 
 
 /**********************************************************************************************************************/
 
-func getSQLCreateDatabasesAndTables(branchSchema *BranchSchema) string {
-	finalQuery := ""
-	createTableStmts := branchSchema.schema
-	for dbName, tables := range createTableStmts {
-		temp := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s;USE DATABASE %s;", dbName, dbName)
-		for _, createStmt := range tables {
-			temp += createStmt + ";"
-		}
-		finalQuery += temp
-	}
-	return finalQuery
-}
-
 // buildTableInfosQuerySQL constructs the SQL query to retrieve table names
 func buildTableInfosQuerySQL(databasesInclude, databasesExclude []string) (string, error) {
 	sql := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"

@@ -68,7 +68,7 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 		includeDatabases: includeDatabases,
 		excludeDatabases: excludeDatabases,
 		targetDBPattern:  targetDBPattern,
-		status:           StatusInit, // 设置初始状态
+		status:           StatusInit,
 	}
 
 	addDefaultExcludeDatabases(bMeta)
@@ -76,36 +76,37 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 }
 
 // todo optimize think of failure handling
+// 幂等性 ：如果没创建，则创建，否则不管。
+// 创建崩溃后，再次运行这个命令即可。
+// 如果状态是已经创建了，那么就不需要再走继续的流程的，返回成功
+// 如果是其他的状态，也会直接返回。
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
-	// get schema from source and store to target
-	branchSchema, err := bs.BranchFetch(branchMeta)
+	meta, err := bs.targetMySQLService.SelectOrInsertBranchMeta(branchMeta)
 	if err != nil {
 		return err
 	}
-
-	// stmts act as the WAL for CreateDatabaseAndTablesIfNotExists
-	err = bs.targetMySQLService.CreateDatabaseAndTablesIfNotExists(branchSchema)
-	if err != nil {
-		return err
+	if meta.status == StatusInit || meta.status == StatusUnknown {
+		_, err := bs.branchFetch(meta)
+		if err != nil {
+			return err
+		}
+		// upsert make sure the meta stored in mysql will be synced
+		meta.status = StatusFetched
+		err = bs.targetMySQLService.UpsertBranchMeta(meta)
+		if err != nil {
+			return err
+		}
 	}
 
-	// todo optimize wait for tables created
+	if meta.status == StatusFetched {
+		err := bs.targetMySQLService.ApplySnapshot(meta)
+		if err != nil {
+			return err
+		}
+		meta.status = statusCreated
+	}
 
 	return nil
-}
-
-// todo refactor me
-func (bs *BranchService) BranchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
-	// Get all create table statements except system databases
-	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
-	if err != nil {
-		return nil, err
-	}
-	err = bs.targetMySQLService.StoreBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
-	if err != nil {
-		return nil, err
-	}
-	return schema, nil
 }
 
 func (bs *BranchService) BranchDiff() {
@@ -132,6 +133,23 @@ func (bs *BranchService) BranchShow() {
 }
 
 /**********************************************************************************************************************/
+
+// todo make it Idempotence
+// todo comment
+// 每次都删除所有条目，重新获取和插入。
+func (bs *BranchService) branchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
+	// Get all create table statements except system databases
+	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+	if err != nil {
+		return nil, err
+	}
+	// todo fix me
+	//	err = bs.targetMySQLService.SelectOrInsertBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
+	if err != nil {
+		return nil, err
+	}
+	return schema, nil
+}
 
 // todo enhancement: target database pattern
 func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints *schemadiff.DiffHints) (*BranchDiff, error) {

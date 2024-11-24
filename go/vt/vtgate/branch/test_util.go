@@ -2,6 +2,7 @@ package branch
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -162,4 +163,77 @@ func InitMockTableInfos(mock sqlmock.Sqlmock) {
 		}
 	}
 	mock.ExpectQuery(query3).WillReturnRows(rows3)
+}
+
+var (
+	BranchMetaColumns = []string{
+		"name",
+		"source_host",
+		"source_port",
+		"source_user",
+		"source_password",
+		"include_databases",
+		"exclude_databases",
+		"target_db_pattern",
+		"status",
+	}
+
+	BranchMetasForTest = []*BranchMeta{
+		{
+			name:             "test0",
+			sourceHost:       "prod.mysql.example.com",
+			sourcePort:       3306,
+			sourceUser:       "repl_user",
+			sourcePassword:   "password123",
+			includeDatabases: []string{"db1", "db2"},
+			excludeDatabases: []string{"db3"},
+			targetDBPattern:  "",
+			status:           "init",
+		},
+		{
+			name:             "test1",
+			sourceHost:       "prod.mysql.example.com",
+			sourcePort:       3306,
+			sourceUser:       "repl_user",
+			sourcePassword:   "password123",
+			includeDatabases: []string{"*"},
+			excludeDatabases: []string{},
+			targetDBPattern:  "",
+			status:           "bad status",
+		},
+		{
+			name:             "test2",
+			sourceHost:       "prod.mysql.example.com",
+			sourcePort:       3306,
+			sourceUser:       "repl_user",
+			sourcePassword:   "password123",
+			includeDatabases: []string{},
+			excludeDatabases: []string{},
+			targetDBPattern:  "",
+			status:           "unknown",
+		},
+	}
+)
+
+func InitMockBranchMetas(mock sqlmock.Sqlmock) {
+
+	for i, _ := range BranchMetasForTest {
+		rows := sqlmock.NewRows(BranchMetaColumns).AddRow(
+			BranchMetasForTest[i].name,
+			BranchMetasForTest[i].sourceHost,
+			BranchMetasForTest[i].sourcePort,
+			BranchMetasForTest[i].sourceUser,
+			BranchMetasForTest[i].sourcePassword,
+			strings.Join(BranchMetasForTest[i].includeDatabases, ","),
+			strings.Join(BranchMetasForTest[i].excludeDatabases, ","),
+			BranchMetasForTest[i].targetDBPattern,
+			BranchMetasForTest[i].status,
+		)
+
+		mock.ExpectQuery(fmt.Sprintf("select * from mysql.branch where name='test%d'", i)).WillReturnRows(rows)
+	}
+
+	for _, meta := range BranchMetasForTest {
+		meta.status = StringToBranchStatus(string(meta.status))
+	}
 }
