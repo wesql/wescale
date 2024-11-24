@@ -66,7 +66,10 @@ func TestQueryExecutor_runActionListBeforeExecution(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			qre := &QueryExecutor{ctx: ctx}
+			db := setUpQueryExecutorTest(t)
+			defer db.Close()
+			tsv := newTestTabletServer(ctx, noFlags, db)
+			qre := newTestQueryExecutor(ctx, tsv, "select 1", 0)
 			qre.matchedActionList = tt.actionList
 			_, err := qre.runActionListBeforeExecution()
 			tt.wantErr(t, err, "runActionListBeforeExecution()")
@@ -129,7 +132,10 @@ func TestQueryExecutor_runActionListAfterExecution(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			qre := &QueryExecutor{ctx: ctx}
+			db := setUpQueryExecutorTest(t)
+			defer db.Close()
+			tsv := newTestTabletServer(ctx, noFlags, db)
+			qre := newTestQueryExecutor(ctx, tsv, "select 1", 0)
 			qre.matchedActionList = tt.actionList
 			qr := &sqltypes.Result{}
 			var err error
@@ -162,7 +168,10 @@ func TestQueryExecutor_actions_can_be_skipped(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
-			qre := &QueryExecutor{ctx: ctx}
+			db := setUpQueryExecutorTest(t)
+			defer db.Close()
+			tsv := newTestTabletServer(ctx, noFlags, db)
+			qre := newTestQueryExecutor(ctx, tsv, "select 1", 0)
 			qre.matchedActionList = tt.actionList
 			qr, err := qre.runActionListBeforeExecution()
 			tt.wantErr(t, err, "runActionListBeforeExecution()")
