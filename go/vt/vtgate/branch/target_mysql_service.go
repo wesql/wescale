@@ -10,6 +10,9 @@ type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
 
+var CreateTablesBatchSize = 10
+var InsertSnapshotBatchSize = 10
+
 func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *BranchMeta) (*BranchMeta, error) {
 
 	meta, _ := t.selectBranchMeta(metaToInsertIfNotExists.name)
@@ -57,10 +60,75 @@ func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 
 /**********************************************************************************************************************/
 
-// todo complete me
-// Query接口本身就是流式的
 func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error) {
-	return nil, nil
+	selectSnapshotSQL := getSelectSnapshotSQL(meta.name)
+	// mysql Query will stream the result, so we don't need to worry if the data is too large to transfer.
+	rows, err := t.mysqlService.Query(selectSnapshotSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
+	}
+	defer rows.Close()
+
+	result := &BranchSchema{
+		schema: make(map[string]map[string]string),
+	}
+
+	for rows.Next() {
+		var (
+			id             int64
+			name           string
+			database       string
+			table          string
+			createTableSQL string
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %v", err)
+		}
+
+		if _, ok := result.schema[database]; !ok {
+			result.schema[database] = make(map[string]string)
+		}
+
+		result.schema[database][table] = createTableSQL
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %v", err)
+	}
+
+	if len(result.schema) == 0 {
+		return nil, fmt.Errorf("no snapshot found for name: %s", meta.name)
+	}
+
+	return result, nil
+}
+
+func (t *TargetMySQLService) deleteSnapshot(branchMeta *BranchMeta) error {
+	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(branchMeta.name)
+	_, err := t.mysqlService.Exec(deleteBranchSnapshotSQL)
+	return err
+}
+
+func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *BranchSchema, batchSize int) error {
+	insertSQLs := make([]string, 0)
+	for database, tables := range schema.schema {
+		for tableName, createTableSQL := range tables {
+			sql := getInsertSnapshotSQL(meta.name, database, tableName, createTableSQL)
+			insertSQLs = append(insertSQLs, sql)
+		}
+	}
+	for i := 0; i < len(insertSQLs); i += batchSize {
+		endIndex := i + batchSize
+		if endIndex > len(insertSQLs) {
+			endIndex = len(insertSQLs)
+		}
+		err := t.mysqlService.ExecuteInTxn(insertSQLs[i:endIndex]...)
+		if err != nil {
+			return fmt.Errorf("failed to insert snapshot %v: %v", insertSQLs[i:endIndex], err)
+		}
+	}
+	return nil
 }
 
 // todo add test case
@@ -111,13 +179,51 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	return databases, nil
 }
 
-// todo complete me
+// 幂等性：确保创建输入参数中的数据库和表，忽略已经存在的数据库和表
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
-	//sqlQuery := addIfNotExistsForCreateTableSQL(branchSchema)
-	//if sqlQuery == "" {
-	//	return fmt.Errorf("no SQL statements to execute")
-	//}
-	//return t.mysqlService.ExecuteInTxn(sqlQuery)
+	for database, tables := range branchSchema.schema {
+		// create database
+		_, err := t.mysqlService.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+		if err != nil {
+			return fmt.Errorf("failed to create database '%s': %v", database, err)
+		}
+
+		// create tables in batch
+		createTableStmts := addIfNotExistsForCreateTableSQL(tables)
+		err = t.createTablesInBatches(database, createTableStmts, CreateTablesBatchSize)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *TargetMySQLService) createTablesInBatches(databaseName string, createTableStmts map[string]string, batchSize int) error {
+	if batchSize <= 0 {
+		return fmt.Errorf("invalid batch size: %d", batchSize)
+	}
+
+	stmts := make([]string, 0, len(createTableStmts))
+	for _, stmt := range createTableStmts {
+		stmt = strings.TrimSpace(stmt)
+		stmt = strings.TrimSuffix(stmt, ";")
+		stmts = append(stmts, stmt)
+	}
+
+	for i := 0; i < len(stmts); i += batchSize {
+		end := i + batchSize
+		if end > len(stmts) {
+			end = len(stmts)
+		}
+
+		batchSQL := strings.Join(stmts[i:end], ";")
+		batchSQL = fmt.Sprintf("USE %s; %s", databaseName, batchSQL)
+
+		if _, err := t.mysqlService.Exec(batchSQL); err != nil {
+			return fmt.Errorf("failed to execute batch create tables %s: %v", batchSQL, err)
+		}
+	}
+
 	return nil
 }
 
@@ -176,18 +282,20 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 
 func (t *TargetMySQLService) UpsertBranchMeta(branchMeta *BranchMeta) error {
 	sql := getUpsertBranchMetaSQL(branchMeta)
-	row, err := t.mysqlService.Query(sql)
-	if err != nil {
-		return err
-	}
-	defer row.Close()
-	return nil
+	_, err := t.mysqlService.Exec(sql)
+	return err
 }
 
-func getInsertSnapshotSQL(name, snapshotData string) string {
-	// todo fix me, snapshot spliting
-	//return fmt.Sprintf(InsertBranchSnapshotSQL, name, snapshotData)
-	return ""
+func getSelectSnapshotSQL(name string) string {
+	return fmt.Sprintf(SelectBranchSnapshotSQL, name)
+}
+
+func getDeleteSnapshotSQL(name string) string {
+	return fmt.Sprintf(DeleteBranchSnapshotSQL, name)
+}
+
+func getInsertSnapshotSQL(name, database, table, createTable string) string {
+	return fmt.Sprintf(InsertBranchSnapshotSQL, name, database, table, createTable)
 }
 
 func getSelectBranchMetaSQL(name string) string {

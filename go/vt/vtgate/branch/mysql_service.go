@@ -43,6 +43,10 @@ func (m *MysqlService) Query(query string) (*sql.Rows, error) {
 	return m.db.Query(query)
 }
 
+func (m *MysqlService) Exec(query string, args ...any) (sql.Result, error) {
+	return m.db.Exec(query, args...)
+}
+
 func (m *MysqlService) ExecuteInTxn(queries ...string) error {
 	tx, err := m.db.Begin()
 	if err != nil {

@@ -31,7 +31,7 @@ func TestGetBranchSchema(t *testing.T) {
 	s := &SourceMySQLService{mysqlService: service}
 
 	// get one table schema each time, because it's more convenient for mock
-	BranchSchemaInBatches = 1
+	GetBranchSchemaBatchSize = 1
 
 	InitMockTableInfos(mock)
 	InitMockShowCreateTable(mock)

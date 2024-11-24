@@ -68,4 +68,10 @@ const (
         target_db_pattern = VALUES(target_db_pattern)`
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
+
+	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"
+
+	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where name='%s'"
+
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
 )

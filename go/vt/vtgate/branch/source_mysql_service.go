@@ -20,7 +20,7 @@ type TableInfo struct {
 	name     string
 }
 
-var BranchSchemaInBatches = 50
+var GetBranchSchemaBatchSize = 50
 
 // GetBranchSchema retrieves CREATE TABLE statements for all tables in databases filtered by `databasesInclude` and `databasesExclude`
 func (s *SourceMySQLService) GetBranchSchema(databasesInclude, databasesExclude []string) (*BranchSchema, error) {
@@ -28,7 +28,7 @@ func (s *SourceMySQLService) GetBranchSchema(databasesInclude, databasesExclude 
 	if err != nil {
 		return nil, err
 	}
-	return s.getBranchSchemaInBatches(tableInfos, BranchSchemaInBatches)
+	return s.getBranchSchemaInBatches(tableInfos, GetBranchSchemaBatchSize)
 }
 
 /**********************************************************************************************************************/

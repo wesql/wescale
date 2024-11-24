@@ -104,6 +104,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 			return err
 		}
 		meta.status = statusCreated
+		return bs.targetMySQLService.UpsertBranchMeta(meta)
 	}
 
 	return nil
@@ -136,15 +137,24 @@ func (bs *BranchService) BranchShow() {
 
 // todo make it Idempotence
 // todo comment
+// todo fix me
 // 每次都删除所有条目，重新获取和插入。
+// 幂等性：获取最新的source端的schema并存入target端，每次执行会删除之前的所有条目并重新查询。
 func (bs *BranchService) branchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
-	// Get all create table statements except system databases
+	// get schema from source
 	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
 	if err != nil {
 		return nil, err
 	}
-	// todo fix me
-	//	err = bs.targetMySQLService.SelectOrInsertBranchMeta(schema, branchMeta) // this step is the commit point of BranchCreate function
+
+	// delete all snapshot entries in target database
+	err = bs.targetMySQLService.deleteSnapshot(branchMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	// insert snapshot schema into target database
+	err = bs.targetMySQLService.insertSnapshotInBatches(branchMeta, schema, InsertSnapshotBatchSize)
 	if err != nil {
 		return nil, err
 	}
