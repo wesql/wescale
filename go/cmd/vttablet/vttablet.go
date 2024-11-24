@@ -106,7 +106,7 @@ func main() {
 	mysqld := mysqlctl.NewMysqld(config.DB)
 	server_id, err := mysqld.GetServerID(context.Background())
 	if err != nil {
-		log.Warningf("failed to get server id: %v", err)
+		log.Exitf("failed to get server id: %v", err)
 	}
 	tabletPath = fmt.Sprintf("%s-%010d", cell, server_id)
 	if tabletPath == "" {
@@ -176,7 +176,7 @@ func initConfig() *tabletenv.TabletConfig {
 
 	var socketFile string
 	if !config.DB.HasGlobalSettings() {
-		log.Exitf("no db_host or db_socket file specified")
+		log.Error("no db_host or db_socket file specified")
 	} else {
 		log.Info("connection parameters were specified. Not loading my.cnf.")
 	}
