@@ -50,6 +50,7 @@ import (
 	"vitess.io/vitess/go/streamlog"
 	"vitess.io/vitess/go/vt/dbconfigs"
 	"vitess.io/vitess/go/vt/tableacl"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/planbuilder"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema/schematest"
@@ -60,7 +61,9 @@ func TestGetPlanPanicDuetoEmptyQuery(t *testing.T) {
 	db := fakesqldb.New(t)
 	defer db.Close()
 	schematest.AddDefaultQueries(db)
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -95,7 +98,9 @@ func TestGetMessageStreamPlan(t *testing.T) {
 
 	addSchemaEngineQueries(db)
 
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -141,7 +146,9 @@ func TestQueryPlanCache(t *testing.T) {
 	db.AddQuery("select * from test_table_01 where 1 != 1", &sqltypes.Result{})
 	db.AddQuery("select * from test_table_02 where 1 != 1", &sqltypes.Result{})
 
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -178,7 +185,9 @@ func TestNoQueryPlanCache(t *testing.T) {
 	db.AddQuery("select * from test_table_01 where 1 != 1", &sqltypes.Result{})
 	db.AddQuery("select * from test_table_02 where 1 != 1", &sqltypes.Result{})
 
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -207,7 +216,9 @@ func TestNoQueryPlanCacheDirective(t *testing.T) {
 	db.AddQuery("select /*vt+ SKIP_QUERY_PLAN_CACHE=1 */ * from test_table_01 where 1 != 1", &sqltypes.Result{})
 	db.AddQuery("select /*vt+ SKIP_QUERY_PLAN_CACHE=1 */ * from test_table_02 where 1 != 1", &sqltypes.Result{})
 
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -232,7 +243,9 @@ func TestStatsURL(t *testing.T) {
 	schematest.AddDefaultQueries(db)
 	query := "select * from test_table_01"
 	db.AddQuery("select * from test_table_01 where 1 != 1", &sqltypes.Result{})
-	qe := newTestQueryEngine(1*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(1*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -254,24 +267,27 @@ func TestStatsURL(t *testing.T) {
 	qe.handleHTTPQueryRules(response, request)
 }
 
-func newTestQueryEngine(idleTimeout time.Duration, _ bool, dbcfgs *dbconfigs.DBConfigs) *QueryEngine {
+func newTestQueryEngine(idleTimeout time.Duration, _ bool, dbcfgs *dbconfigs.DBConfigs) (*QueryEngine, *background.TaskPool) {
 	config := tabletenv.NewDefaultConfig()
 	config.DB = dbcfgs
 	config.OltpReadPool.IdleTimeoutSeconds.Set(idleTimeout)
 	config.OlapReadPool.IdleTimeoutSeconds.Set(idleTimeout)
 	config.TxPool.IdleTimeoutSeconds.Set(idleTimeout)
 	env := tabletenv.NewEnv(config, "TabletServerTest")
-	se := schema.NewEngine(env)
+	taskPool := background.NewTaskPool(env)
+	se := schema.NewEngine(env, taskPool)
 	qe := NewQueryEngine(env, se)
 	se.InitDBConfig(dbcfgs.DbaWithDB())
-	return qe
+	return qe, taskPool
 }
 
 func runConsolidatedQuery(t *testing.T, sql string) *QueryEngine {
 	db := fakesqldb.New(t)
 	defer db.Close()
 
-	qe := newTestQueryEngine(1*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(1*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -334,7 +350,9 @@ func BenchmarkPlanCacheThroughput(b *testing.B) {
 
 	db.AddQueryPattern(".*", &sqltypes.Result{})
 
-	qe := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	qe, taskPool := newTestQueryEngine(10*time.Second, true, newDBConfigs(db))
+	taskPool.Open()
+	defer taskPool.Close()
 	qe.se.Open()
 	qe.Open()
 	defer qe.Close()
@@ -360,9 +378,12 @@ func benchmarkPlanCache(b *testing.B, db *fakesqldb.DB, lfu bool, par int) {
 	config.QueryCacheLFU = lfu
 
 	env := tabletenv.NewEnv(config, "TabletServerTest")
-	se := schema.NewEngine(env)
+	taskPool := background.NewTaskPool(env)
+	se := schema.NewEngine(env, taskPool)
 	qe := NewQueryEngine(env, se)
 
+	taskPool.Open()
+	defer taskPool.Close()
 	se.InitDBConfig(dbcfgs.DbaWithDB())
 	require.NoError(b, se.Open())
 	require.NoError(b, qe.Open())
@@ -422,9 +443,12 @@ func TestPlanCachePollution(t *testing.T) {
 	// config.LFUQueryCacheSizeBytes = 3 * 1024 * 1024
 
 	env := tabletenv.NewEnv(config, "TabletServerTest")
-	se := schema.NewEngine(env)
+	taskPool := background.NewTaskPool(env)
+	se := schema.NewEngine(env, taskPool)
 	qe := NewQueryEngine(env, se)
 
+	taskPool.Open()
+	defer taskPool.Close()
 	se.InitDBConfig(dbcfgs.DbaWithDB())
 	se.Open()
 
@@ -614,7 +638,8 @@ func TestAddQueryStats(t *testing.T) {
 			config := tabletenv.NewDefaultConfig()
 			config.DB = newDBConfigs(fakesqldb.New(t))
 			env := tabletenv.NewEnv(config, "TestAddQueryStats_"+testcase.name)
-			se := schema.NewEngine(env)
+			taskPool := background.NewTaskPool(env)
+			se := schema.NewEngine(env, taskPool)
 			qe := NewQueryEngine(env, se)
 			qe.AddStats(testcase.planType, testcase.tableName, testcase.queryCount, testcase.duration, testcase.mysqlTime, testcase.rowsAffected, testcase.rowsReturned, testcase.errorCount)
 			assert.Equal(t, testcase.expectedQueryCounts, qe.queryCounts.String())

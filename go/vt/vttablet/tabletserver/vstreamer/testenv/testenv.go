@@ -36,6 +36,7 @@ import (
 	"vitess.io/vitess/go/vt/srvtopo"
 	"vitess.io/vitess/go/vt/topo"
 	"vitess.io/vitess/go/vt/topo/memorytopo"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 	"vitess.io/vitess/go/vt/vttest"
@@ -54,6 +55,7 @@ type Env struct {
 	Cells        []string
 
 	TabletEnv    tabletenv.Env
+	TaskPool     *background.TaskPool
 	TopoServ     *topo.Server
 	SrvTopo      srvtopo.Server
 	Dbcfgs       *dbconfigs.DBConfigs
@@ -113,6 +115,7 @@ func Init() (*Env, error) {
 	config := tabletenv.NewDefaultConfig()
 	config.DB = te.Dbcfgs
 	te.TabletEnv = tabletenv.NewEnv(config, "VStreamerTest")
+	te.TaskPool = background.NewTaskPool(te.TabletEnv)
 	te.Mysqld = mysqlctl.NewMysqld(te.Dbcfgs)
 	pos, _ := te.Mysqld.PrimaryPosition()
 	te.Flavor = pos.GTIDSet.Flavor()
@@ -138,8 +141,10 @@ func Init() (*Env, error) {
 		return nil, fmt.Errorf("could not parse database patch version from '%s': %v", dbVersionStr, err)
 	}
 
-	te.SchemaEngine = schema.NewEngine(te.TabletEnv)
+	te.SchemaEngine = schema.NewEngine(te.TabletEnv, te.TaskPool)
 	te.SchemaEngine.InitDBConfig(te.Dbcfgs.DbaWithDB())
+
+	te.TaskPool.Open()
 	if err := te.SchemaEngine.Open(); err != nil {
 		return nil, err
 	}
@@ -157,6 +162,7 @@ func Init() (*Env, error) {
 // Close tears down TestEnv.
 func (te *Env) Close() {
 	te.SchemaEngine.Close()
+	te.TaskPool.Close()
 	te.Mysqld.Close()
 	te.cluster.TearDown()
 	os.RemoveAll(te.cluster.Config.SchemaDir)

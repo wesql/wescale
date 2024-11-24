@@ -13,7 +13,7 @@ import (
 )
 
 var backGroundTaskPoolConfig = tabletenv.ConnPoolConfig{
-	Size:               1,
+	Size:               5,
 	MaxSize:            50,
 	TimeoutSeconds:     1,
 	IdleTimeoutSeconds: 30 * 60,

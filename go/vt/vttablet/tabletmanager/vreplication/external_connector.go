@@ -35,6 +35,7 @@ import (
 	"vitess.io/vitess/go/vt/vterrors"
 	"vitess.io/vitess/go/vt/vttablet/queryservice"
 	"vitess.io/vitess/go/vt/vttablet/tabletconn"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/vstreamer"
@@ -92,12 +93,14 @@ func (ec *externalConnector) Get(name string) (*mysqlConnector, error) {
 	}
 	c := &mysqlConnector{}
 	c.env = tabletenv.NewEnv(config, name)
-	c.se = schema.NewEngine(c.env)
+	c.taskPool = background.NewTaskPool(c.env)
+	c.se = schema.NewEngine(c.env, c.taskPool)
 	c.vstreamer = vstreamer.NewEngine(c.env, nil, c.se, nil, "")
 	c.vstreamer.InitDBConfig("", "")
 	c.se.InitDBConfig(c.env.Config().DB.AllPrivsWithDB())
 
 	// Open
+	c.taskPool.Open()
 	if err := c.se.Open(); err != nil {
 		return nil, vterrors.Wrapf(err, "external mysqlConnector: %v", name)
 	}
@@ -114,11 +117,13 @@ type mysqlConnector struct {
 	env       tabletenv.Env
 	se        *schema.Engine
 	vstreamer *vstreamer.Engine
+	taskPool  *background.TaskPool
 }
 
 func (c *mysqlConnector) shutdown() {
 	c.vstreamer.Close()
 	c.se.Close()
+	c.taskPool.Close()
 }
 
 func (c *mysqlConnector) Open(ctx context.Context) error {
