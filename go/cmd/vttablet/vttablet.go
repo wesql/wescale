@@ -106,7 +106,7 @@ func main() {
 	mysqld := mysqlctl.NewMysqld(config.DB)
 	server_id, err := mysqld.GetServerID(context.Background())
 	if err != nil {
-		log.Exitf("failed to get server id: %v", err)
+		log.Warningf("failed to get server id: %v", err)
 	}
 	tabletPath = fmt.Sprintf("%s-%010d", cell, server_id)
 	if tabletPath == "" {
