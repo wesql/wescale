@@ -110,10 +110,10 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	return nil
 }
 
-func (bs *BranchService) BranchDiff() {
-	// todo
-	// SchemaDiff
-	// query schemas from mysql
+// todo complete me
+// 根据传入的参数，选择要产生diff的schema，然后计算diff，返回结果
+func (bs *BranchService) BranchDiff() (*BranchDiff, error) {
+	return nil, nil
 }
 
 func (bs *BranchService) BranchPrepareMerge(meta BranchMeta) {

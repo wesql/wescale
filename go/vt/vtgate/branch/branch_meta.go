@@ -69,9 +69,9 @@ const (
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 
-	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"
+	SelectBranchSnapshotSQL = "select * from mysql.branch_schema where name='%s' and schema_type='snapshot' order by id"
 
-	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where name='%s'"
+	DeleteBranchSnapshotSQL = "delete from mysql.branch_schema where name='%s' and schema_type='snapshot'"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
+	InsertBranchSnapshotSQL = "insert into mysql.branch_schema (name, database, table, create_table_sql, schema_type) values ('%s', '%s', '%s', '%s', 'snapshot')"
 )

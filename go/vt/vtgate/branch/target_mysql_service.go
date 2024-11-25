@@ -80,9 +80,10 @@ func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error
 			database       string
 			table          string
 			createTableSQL string
+			schemaType     string
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &schemaType); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
