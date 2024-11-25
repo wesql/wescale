@@ -108,6 +108,7 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 //
 // Returns:
 // - error: Returns nil on success, error otherwise
+// todo enhancement: filter schemas about table gc and online DDL shadow tables
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	if branchMeta.status != StatusInit {
 		return fmt.Errorf("the status of branch meta should be init")
@@ -165,6 +166,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // Returns:
 // - *BranchDiff: Contains the calculated schema differences
 // - error: Returns nil on success, error on invalid flag or retrieval failure
+// todo enhancement: filter schemas about table gc and online DDL shadow tables
 func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
@@ -252,17 +254,33 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 	}
 
 	// delete all existing ddl entries in target database
-	err = bs.targetMySQLService.deleteSnapshot(meta)
+	err = bs.targetMySQLService.deleteMergeBackDDL(meta)
 	if err != nil {
 		return err
 	}
 
 	// calculate ddl based on merge option
-
+	ddls := &BranchSchema{}
+	if mergeOption == MergeOptionOverride {
+		ddls, err = bs.getMergeBackOverrideDDLs()
+		if err != nil {
+			return err
+		}
+	} else if mergeOption == MergeOptionMerge {
+		ddls, err = bs.getMergeBackMergeDDLs()
+		if err != nil {
+			return err
+		}
+	}
 	// insert ddl into target database
-	// set status to prepared
+	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta, ddls, InsertMergeBackDDLBatchSize)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	// set status to prepared
+	meta.status = StatusPrepared
+	return bs.targetMySQLService.UpsertBranchMeta(meta)
 }
 
 // todo make it Idempotence
@@ -281,6 +299,16 @@ func (bs *BranchService) BranchShow() {
 }
 
 /**********************************************************************************************************************/
+
+// todo complete me
+func (bs *BranchService) getMergeBackOverrideDDLs() (*BranchSchema, error) {
+	return nil, nil
+}
+
+// todo complete me
+func (bs *BranchService) getMergeBackMergeDDLs() (*BranchSchema, error) {
+	return nil, nil
+}
 
 // branchFetchSnapshot retrieves the schema from the source MySQL instance and stores it
 // as a snapshot in the target instance.

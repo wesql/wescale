@@ -12,6 +12,7 @@ type TargetMySQLService struct {
 
 var CreateTablesBatchSize = 10
 var InsertSnapshotBatchSize = 10
+var InsertMergeBackDDLBatchSize = 10
 
 func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *BranchMeta) (*BranchMeta, error) {
 
@@ -189,10 +190,9 @@ func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error
 			database       string
 			table          string
 			createTableSQL string
-			schemaType     string
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &schemaType); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
@@ -241,10 +241,31 @@ func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *B
 	return nil
 }
 
-func (t *TargetMySQLService) deleteMergeDDL(branchMeta *BranchMeta) error {
-	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(branchMeta.name)
-	_, err := t.mysqlService.Exec(deleteBranchSnapshotSQL)
+func (t *TargetMySQLService) deleteMergeBackDDL(branchMeta *BranchMeta) error {
+	deleteBranchMergeBackSQL := getDeleteMergeBackDDLSQL(branchMeta.name)
+	_, err := t.mysqlService.Exec(deleteBranchMergeBackSQL)
 	return err
+}
+
+func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchSchema, batchSize int) error {
+	insertSQLs := make([]string, 0)
+	for database, tables := range ddls.schema {
+		for tableName, ddl := range tables {
+			sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
+			insertSQLs = append(insertSQLs, sql)
+		}
+	}
+	for i := 0; i < len(insertSQLs); i += batchSize {
+		endIndex := i + batchSize
+		if endIndex > len(insertSQLs) {
+			endIndex = len(insertSQLs)
+		}
+		err := t.mysqlService.ExecuteInTxn(insertSQLs[i:endIndex]...)
+		if err != nil {
+			return fmt.Errorf("failed to insert ddl %v: %v", insertSQLs[i:endIndex], err)
+		}
+	}
+	return nil
 }
 
 // addIfNotExistsForCreateTableSQL modifies CREATE TABLE statements to include IF NOT EXISTS clause.
@@ -413,17 +434,7 @@ func (t *TargetMySQLService) UpsertBranchMeta(branchMeta *BranchMeta) error {
 	return err
 }
 
-func getSelectSnapshotSQL(name string) string {
-	return fmt.Sprintf(SelectBranchSnapshotSQL, name)
-}
-
-func getDeleteSnapshotSQL(name string) string {
-	return fmt.Sprintf(DeleteBranchSnapshotSQL, name)
-}
-
-func getInsertSnapshotSQL(name, database, table, createTable string) string {
-	return fmt.Sprintf(InsertBranchSnapshotSQL, name, database, table, createTable)
-}
+// branch meta related
 
 func getSelectBranchMetaSQL(name string) string {
 	return fmt.Sprintf(SelectBranchMetaSQL, name)
@@ -443,4 +454,32 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		string(branchMeta.status),
 		branchMeta.targetDBPattern,
 		branchMeta.IdOfNextDDLToExecute)
+}
+
+// snapshot related
+
+func getSelectSnapshotSQL(name string) string {
+	return fmt.Sprintf(SelectBranchSnapshotSQL, name)
+}
+
+func getDeleteSnapshotSQL(name string) string {
+	return fmt.Sprintf(DeleteBranchSnapshotSQL, name)
+}
+
+func getInsertSnapshotSQL(name, database, table, createTable string) string {
+	return fmt.Sprintf(InsertBranchSnapshotSQL, name, database, table, createTable)
+}
+
+// merge back ddl related
+
+func getDeleteMergeBackDDLSQL(name string) string {
+	return fmt.Sprintf(DeleteBranchMergeBackDDLSQL, name)
+}
+
+func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
+	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, name, database, table, ddl)
+}
+
+func getSelectMergeBackDDLSQL(name string) string {
+	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name)
 }

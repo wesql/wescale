@@ -40,7 +40,7 @@ func StringToBranchStatus(s string) BranchStatus {
 }
 
 type BranchSchema struct {
-	// databases -> tables -> create table statement
+	// databases -> tables -> create table statement or DDLs
 	schema map[string]map[string]string
 }
 
@@ -57,6 +57,8 @@ type BranchDiff struct {
 }
 
 const (
+	// branch meta related
+
 	UpsertBranchMetaSQL = `
     INSERT INTO mysql.branch 
         (name, source_host, source_port, source_user, source_password, 
@@ -76,9 +78,19 @@ const (
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 
-	SelectBranchSnapshotSQL = "select * from mysql.branch_schema where name='%s' and schema_type='snapshot' order by id"
+	// snapshot related
 
-	DeleteBranchSnapshotSQL = "delete from mysql.branch_schema where name='%s' and schema_type='snapshot'"
+	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_schema (name, database, table, sql, schema_type) values ('%s', '%s', '%s', '%s', 'snapshot')"
+	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where name='%s'"
+
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
+
+	// merge back ddl related
+
+	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_merge_back where name='%s'"
+
+	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_merge_back where name='%s' order by id"
+
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_merge_back (name, database, table, ddl) values ('%s', '%s', '%s', '%s')"
 )
