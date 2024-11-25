@@ -15,6 +15,9 @@ var (
 	BranchDiffObjectsSnapshotSource = "snapshot_source"
 	BranchDiffObjectsTargetSnapshot = "target_snapshot"
 	BranchDiffObjectsSnapshotTarget = "snapshot_target"
+
+	MergeOptionOverride = "override"
+	MergeOptionMerge    = "merge"
 )
 
 type BranchService struct {
@@ -131,7 +134,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 		if err != nil {
 			return err
 		}
-		meta.status = statusCreated
+		meta.status = StatusCreated
 		return bs.targetMySQLService.UpsertBranchMeta(meta)
 	}
 
@@ -224,16 +227,48 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 	}
 }
 
-func (bs *BranchService) BranchPrepareMerge(meta BranchMeta) {
-	// todo
-	// PrepareMerge
-	// get schemas from source and target through mysql connection
-	// calculate diffs based on merge options such as override or merge
+// 根据option，计算schema
+// 不对输入的meta做参数校验，默认输入为正确情况
+// 幂等性：每次执行时都删除旧的ddl条目，重新计算并插入。
+// 只有状态为preparing，prepared,merged，created时才能执行
+// override: 试图将target分支覆盖掉source分支，
+// merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
+// todo complete me
+func (bs *BranchService) BranchPrepareMerge(meta *BranchMeta, mergeOption string) error {
+	if mergeOption != MergeOptionOverride && mergeOption != MergeOptionMerge {
+		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOptionOverride, MergeOptionMerge)
+	}
+
+	if meta.status != StatusCreated && meta.status != StatusPreparing && meta.status != StatusPrepared && meta.status != StatusMerged {
+		return fmt.Errorf("%v is invalid status, should be one of %v or %v or %v or %v",
+			meta.status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
+	}
+
+	// set status to preparing
+	meta.status = StatusPreparing
+	err := bs.targetMySQLService.UpsertBranchMeta(meta)
+	if err != nil {
+		return err
+	}
+
+	// delete all existing ddl entries in target database
+	err = bs.targetMySQLService.deleteSnapshot(meta)
+	if err != nil {
+		return err
+	}
+
+	// calculate ddl based on merge option
+
+	// insert ddl into target database
+	// set status to prepared
+
+	return nil
 }
 
 // todo make it Idempotence
 // 幂等性：确保执行prepare merge中记录的ddl，crash后再次执行时，从上次没有执行的DDL继续。
 // 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
+// merge完成后，更新snapshot。
 func (bs *BranchService) BranchMerge() {
 	// todo
 	// StartMergeBack
@@ -241,7 +276,8 @@ func (bs *BranchService) BranchMerge() {
 }
 
 func (bs *BranchService) BranchShow() {
-	//todo
+	// todo
+	// use flag to decide what to show
 }
 
 /**********************************************************************************************************************/

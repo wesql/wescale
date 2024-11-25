@@ -22,7 +22,12 @@ const (
 	StatusUnknown BranchStatus = "unknown"
 	StatusInit    BranchStatus = "init"
 	StatusFetched BranchStatus = "fetched"
-	statusCreated BranchStatus = "created"
+	StatusCreated BranchStatus = "created"
+
+	StatusPreparing BranchStatus = "preparing"
+	StatusPrepared  BranchStatus = "prepared"
+	StatusMerging   BranchStatus = "merging"
+	StatusMerged    BranchStatus = "merged"
 )
 
 func StringToBranchStatus(s string) BranchStatus {

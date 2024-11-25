@@ -241,6 +241,12 @@ func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *B
 	return nil
 }
 
+func (t *TargetMySQLService) deleteMergeDDL(branchMeta *BranchMeta) error {
+	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(branchMeta.name)
+	_, err := t.mysqlService.Exec(deleteBranchSnapshotSQL)
+	return err
+}
+
 // addIfNotExistsForCreateTableSQL modifies CREATE TABLE statements to include IF NOT EXISTS clause.
 //
 // Parameters:
