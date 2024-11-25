@@ -84,11 +84,27 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 	return bMeta, nil
 }
 
-// todo optimize think of failure handling
-// 幂等性 ：如果没创建，则创建，否则不管。
-// 创建崩溃后，再次运行这个命令即可。
-// 如果状态是已经创建了，那么就不需要再走继续的流程的，返回成功
-// 如果是其他的状态，也会直接返回。
+// BranchCreate creates a database branch in the target MySQL instance based on the source schema.
+// It filters the schema according to include/exclude rules and saves it as a snapshot.
+// The function will skip databases that already exist in the target instance.
+//
+// State Transitions:
+// - Init -> Fetched -> Created
+// - Starts in Init state
+// - Moves to Fetched state after successfully pulling and saving the snapshot
+// - Reaches Created state after applying the snapshot to the target
+//
+// Idempotency:
+// This function is idempotent and can safely handle interruptions:
+// - If the branch hasn't been created, it will create it
+// - If interrupted during creation, subsequent runs will continue from the last successful state
+// - If the branch already exists, it returns successfully without further operations
+//
+// Parameters:
+// - branchMeta: Contains the branch metadata and configuration
+//
+// Returns:
+// - error: Returns nil on success, error otherwise
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	if branchMeta.status != StatusInit {
 		return fmt.Errorf("the status of branch meta should be init")
@@ -98,7 +114,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 		return err
 	}
 	if meta.status == StatusInit || meta.status == StatusUnknown {
-		_, err := bs.branchFetch(meta)
+		_, err := bs.branchFetchSnapshot(meta)
 		if err != nil {
 			return err
 		}
@@ -122,8 +138,30 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	return nil
 }
 
-// 根据传入的参数，选择要产生diff的schema，然后计算diff，返回结果
-// 确保调用时branch meta的正确性，特别是其中的inlcude/ exclude字段
+// BranchDiff calculates schema differences between selected objects based on the provided parameters.
+// It supports comparing schemas between three types of objects: source, target, and snapshot.
+//
+// The function assumes that the input branchMeta is valid, including its include/exclude fields,
+// and therefore does not perform additional parameter validation.
+//
+// Schema Retrieval:
+// - Source and target schemas are fetched via real-time queries
+// - Snapshot schema is retrieved from entries stored in the target instance
+// - Returns error if the requested snapshot doesn't exist
+//
+// Supported Comparison Modes (branchDiffObjectsFlag):
+// - SourceTarget/TargetSource: Compares source MySQL schema with target MySQL schema
+// - TargetSnapshot/SnapshotTarget: Compares target MySQL schema with stored snapshot
+// - SnapshotSource/SourceSnapshot: Compares stored snapshot with source MySQL schema
+//
+// Parameters:
+// - branchMeta: Contains branch configuration including database filters
+// - branchDiffObjectsFlag: Specifies which objects to compare and comparison direction
+// - hints: Additional configuration for diff calculation
+//
+// Returns:
+// - *BranchDiff: Contains the calculated schema differences
+// - error: Returns nil on success, error on invalid flag or retrieval failure
 func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
@@ -193,6 +231,9 @@ func (bs *BranchService) BranchPrepareMerge(meta BranchMeta) {
 	// calculate diffs based on merge options such as override or merge
 }
 
+// todo make it Idempotence
+// 幂等性：确保执行prepare merge中记录的ddl，crash后再次执行时，从上次没有执行的DDL继续。
+// 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
 func (bs *BranchService) BranchMerge() {
 	// todo
 	// StartMergeBack
@@ -205,12 +246,21 @@ func (bs *BranchService) BranchShow() {
 
 /**********************************************************************************************************************/
 
-// todo make it Idempotence
-// todo comment
-// todo fix me
-// 每次都删除所有条目，重新获取和插入。
-// 幂等性：获取最新的source端的schema并存入target端，每次执行会删除之前的所有条目并重新查询。
-func (bs *BranchService) branchFetch(branchMeta *BranchMeta) (*BranchSchema, error) {
+// branchFetchSnapshot retrieves the schema from the source MySQL instance and stores it
+// as a snapshot in the target instance.
+//
+// Idempotency:
+// This function is idempotent by design:
+// - It always removes all existing snapshot entries before inserting new ones
+// - Each execution will result in a fresh snapshot state
+//
+// Parameters:
+// - branchMeta: Contains the branch metadata and configuration
+//
+// Returns:
+// - *BranchSchema: The fetched schema information
+// - error: Returns nil on success, error otherwise
+func (bs *BranchService) branchFetchSnapshot(branchMeta *BranchMeta) (*BranchSchema, error) {
 	// get schema from source
 	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
 	if err != nil {

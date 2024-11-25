@@ -27,10 +27,20 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 	return metaToInsertIfNotExists, nil
 }
 
-// todo make it idempotent
-// todo comment
-// 幂等性：确保将当前存在表中的snapshot应用到目标端，借助create database if not exist 和 create table if not exist这两个命令的幂等性，
-// 注意：具体创建时，会忽略掉已经在目标端的数据库
+// ApplySnapshot applies the stored snapshot schema to the target MySQL instance.
+//
+// Idempotency:
+// The function is idempotent through:
+// - Using 'CREATE DATABASE IF NOT EXISTS' and 'CREATE TABLE IF NOT EXISTS' commands
+//
+// Note:
+// Existing databases in the target instance are intentionally skipped.
+//
+// Parameters:
+// - meta: Contains branch metadata and configuration
+//
+// Returns:
+// - error: Returns nil on success, error otherwise
 func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 
 	// get databases from target
@@ -231,19 +241,28 @@ func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *B
 	return nil
 }
 
-// todo add test case
-// param tables and return: map tableName -> create table sql
+// addIfNotExistsForCreateTableSQL modifies CREATE TABLE statements to include IF NOT EXISTS clause.
+//
+// Parameters:
+// - tables: A map where keys are table names and values are CREATE TABLE statements
+//
+// Returns:
+// - map[string]string: A new map with modified CREATE TABLE statements including IF NOT EXISTS
+//
+// Example:
+// Input:  "CREATE TABLE users (...)"
+// Output: "CREATE TABLE IF NOT EXISTS users (...)"
 func addIfNotExistsForCreateTableSQL(tables map[string]string) map[string]string {
-	// 编译正则表达式，匹配 CREATE TABLE 语句
-	// (?i) 使匹配大小写不敏感
-	// \s+ 匹配一个或多个空白字符
-	// (?:...)? 用于可选的 IF NOT EXISTS 部分
+	// Compile regex pattern to match CREATE TABLE statements
+	// (?i) makes the match case-insensitive
+	// \s+ matches one or more whitespace characters
+	// (?:...)? is for optional IF NOT EXISTS part
 	re := regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`)
 
 	result := make(map[string]string, len(tables))
 
 	for tableName, createSQL := range tables {
-		// 替换 CREATE TABLE 语句为 CREATE TABLE IF NOT EXISTS
+		// Replace CREATE TABLE with CREATE TABLE IF NOT EXISTS
 		modifiedSQL := re.ReplaceAllString(createSQL,
 			"CREATE TABLE IF NOT EXISTS ")
 
@@ -279,7 +298,6 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	return databases, nil
 }
 
-// 幂等性：确保创建输入参数中的数据库和表，忽略已经存在的数据库和表
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
 	for database, tables := range branchSchema.schema {
 		// create database
@@ -288,7 +306,7 @@ func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema)
 			return fmt.Errorf("failed to create database '%s': %v", database, err)
 		}
 
-		// create tables in batch
+		// create tables in batches
 		createTableStmts := addIfNotExistsForCreateTableSQL(tables)
 		err = t.createTablesInBatches(database, createTableStmts, CreateTablesBatchSize)
 		if err != nil {
