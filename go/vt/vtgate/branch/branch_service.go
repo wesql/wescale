@@ -234,7 +234,7 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 // override: 试图将target分支覆盖掉source分支，
 // merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
 // todo complete me
-func (bs *BranchService) BranchPrepareMerge(meta *BranchMeta, mergeOption string) error {
+func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption string) error {
 	if mergeOption != MergeOptionOverride && mergeOption != MergeOptionMerge {
 		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOptionOverride, MergeOptionMerge)
 	}
@@ -269,7 +269,7 @@ func (bs *BranchService) BranchPrepareMerge(meta *BranchMeta, mergeOption string
 // 幂等性：确保执行prepare merge中记录的ddl，crash后再次执行时，从上次没有执行的DDL继续。
 // 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
 // merge完成后，更新snapshot。
-func (bs *BranchService) BranchMerge() {
+func (bs *BranchService) BranchMergeBack() {
 	// todo
 	// StartMergeBack
 	// apply schema diffs ddl to source through mysql connection
