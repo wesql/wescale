@@ -563,6 +563,7 @@ func newEngine(queryCacheSize int, reloadTime time.Duration, idleTimeout time.Du
 	config.OltpReadPool.IdleTimeoutSeconds.Set(idleTimeout)
 	config.OlapReadPool.IdleTimeoutSeconds.Set(idleTimeout)
 	config.TxPool.IdleTimeoutSeconds.Set(idleTimeout)
+	config.DB = newDBConfigs(db)
 	env := tabletenv.NewEnv(config, "SchemaTest")
 	taskPool := background.NewTaskPool(env)
 	se := NewEngine(env, taskPool)
