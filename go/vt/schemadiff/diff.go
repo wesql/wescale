@@ -190,7 +190,9 @@ func GetDDLFromTableDiff(diff EntityDiff, dbName, tableName string) ([]sqlparser
 		}
 
 		// if we don't set dbName here, it will be set to mysql db when executing
-		ddlStmt.SetTable(dbName, tableName)
+		if dbName != "" && tableName != "" {
+			ddlStmt.SetTable(dbName, tableName)
+		}
 		ddlStmt.SetFullyParsed(true)
 		ddlStmts = append(ddlStmts, ddlStmt)
 		ddlStrs = append(ddlStrs, diff.CanonicalStatementString())

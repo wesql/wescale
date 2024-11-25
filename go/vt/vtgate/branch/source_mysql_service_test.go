@@ -11,7 +11,7 @@ func TestGetBranchSchemaInBatches(t *testing.T) {
 
 	InitMockShowCreateTable(mock)
 	tableInfo := make([]TableInfo, 0)
-	for d, tables := range BranchSchemaForTest.schema {
+	for d, tables := range BranchSchemaForTest.branchSchema {
 		for table, _ := range tables {
 			tableInfo = append(tableInfo, TableInfo{
 				database: d,
@@ -56,11 +56,11 @@ func compareBranchSchema(t *testing.T, want, got *BranchSchema) {
 	}
 
 	// Compare the outer map lengths
-	assert.Equal(t, len(want.schema), len(got.schema), "schema databases length mismatch")
+	assert.Equal(t, len(want.branchSchema), len(got.branchSchema), "schema databases length mismatch")
 
 	// Compare each database's tables
-	for dbName, wantTables := range want.schema {
-		gotTables, exists := got.schema[dbName]
+	for dbName, wantTables := range want.branchSchema {
+		gotTables, exists := got.branchSchema[dbName]
 		assert.True(t, exists, "missing database %s in schema", dbName)
 		if !exists {
 			continue
@@ -251,7 +251,7 @@ func TestGetTableInfos(t *testing.T) {
 		}
 		assert.Nil(t, err)
 		expected := make([]TableInfo, 0)
-		for db, tables := range BranchSchemaForTest.schema {
+		for db, tables := range BranchSchemaForTest.branchSchema {
 			exclude := false
 			for _, dbToExclude := range tt.databasesExclude {
 				if db == dbToExclude {

@@ -29,7 +29,7 @@ func NewMockMysqlService(t *testing.T) (*MysqlService, sqlmock.Sqlmock) {
 }
 
 var BranchSchemaForTest = &BranchSchema{
-	schema: map[string]map[string]string{
+	branchSchema: map[string]map[string]string{
 		"eCommerce": {
 			"Users": `
                     CREATE TABLE Users (
@@ -114,14 +114,14 @@ var BranchSchemaForTest = &BranchSchema{
 
 func InitMockShowDatabases(mock sqlmock.Sqlmock) {
 	rows := sqlmock.NewRows([]string{"Database"})
-	for db, _ := range BranchSchemaForTest.schema {
+	for db, _ := range BranchSchemaForTest.branchSchema {
 		rows = rows.AddRow(db)
 	}
 	mock.ExpectQuery("SHOW DATABASES").WillReturnRows(rows)
 }
 
 func InitMockShowCreateTable(mock sqlmock.Sqlmock) {
-	for db, tables := range BranchSchemaForTest.schema {
+	for db, tables := range BranchSchemaForTest.branchSchema {
 		for table, createTableStmt := range tables {
 			sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", db, table)
 			println(sql)
@@ -134,7 +134,7 @@ func InitMockShowCreateTable(mock sqlmock.Sqlmock) {
 func InitMockTableInfos(mock sqlmock.Sqlmock) {
 	query1 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
 	rows1 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.schema {
+	for db, tables := range BranchSchemaForTest.branchSchema {
 		for table, _ := range tables {
 			rows1 = rows1.AddRow(db, table)
 		}
@@ -143,7 +143,7 @@ func InitMockTableInfos(mock sqlmock.Sqlmock) {
 
 	query2 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ('eCommerce')"
 	rows2 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.schema {
+	for db, tables := range BranchSchemaForTest.branchSchema {
 		if db == "eCommerce" {
 			continue
 		}
@@ -155,7 +155,7 @@ func InitMockTableInfos(mock sqlmock.Sqlmock) {
 
 	query3 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('eCommerce')"
 	rows3 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.schema {
+	for db, tables := range BranchSchemaForTest.branchSchema {
 		if db == "eCommerce" {
 			for table, _ := range tables {
 				rows3 = rows3.AddRow(db, table)

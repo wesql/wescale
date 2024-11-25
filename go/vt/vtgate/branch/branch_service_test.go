@@ -18,14 +18,14 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "add new database",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
@@ -59,7 +59,7 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "drop database",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
@@ -69,7 +69,7 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
@@ -96,14 +96,14 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "modify table structure in existing database",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY, name VARCHAR(255))",
 					},
@@ -127,14 +127,14 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "add new table in existing database",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 						"table2": "CREATE TABLE table2 (id INT PRIMARY KEY)",
@@ -160,7 +160,7 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "drop table in existing database",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 						"table2": "CREATE TABLE table2 (id INT PRIMARY KEY)",
@@ -168,7 +168,7 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
@@ -193,7 +193,7 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "complex case - multiple databases with various changes",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"users":    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100))",
 						"orders":   "CREATE TABLE orders (id INT PRIMARY KEY, user_id INT)",
@@ -205,7 +205,7 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"users":    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), email VARCHAR(255))",
 						"orders":   "CREATE TABLE orders (id INT PRIMARY KEY, user_id INT, order_date TIMESTAMP)",
@@ -257,14 +257,14 @@ func TestGetBranchDiff(t *testing.T) {
 		{
 			name: "error case - invalid schema",
 			originSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "INVALID SQL STATEMENT",
 					},
 				},
 			},
 			expectSchema: &BranchSchema{
-				schema: map[string]map[string]string{
+				branchSchema: map[string]map[string]string{
 					"db1": {
 						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY)",
 					},
@@ -278,7 +278,7 @@ func TestGetBranchDiff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hints := &schemadiff.DiffHints{}
-			gotDiff, err := getBranchDiff(tt.originSchema, tt.expectSchema, hints)
+			gotDiff, err := getBranchSchemaDiff(tt.originSchema, tt.expectSchema, hints)
 
 			if tt.wantErr {
 				assert.Error(t, err)

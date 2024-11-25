@@ -165,7 +165,7 @@ func (s *SourceMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, ba
 		multiRows.Close()
 	}
 
-	return &BranchSchema{schema: result}, nil
+	return &BranchSchema{branchSchema: result}, nil
 }
 
 func getCombinedShowCreateTableSQL(tableInfos []TableInfo) string {

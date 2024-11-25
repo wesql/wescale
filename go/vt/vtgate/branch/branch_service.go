@@ -16,8 +16,8 @@ var (
 	BranchDiffObjectsTargetSnapshot = "target_snapshot"
 	BranchDiffObjectsSnapshotTarget = "snapshot_target"
 
-	MergeOptionOverride = "override"
-	MergeOptionMerge    = "merge"
+	MergeBackOptionOverride = "override"
+	MergeBackOptionDiff     = "diff"
 )
 
 type BranchService struct {
@@ -182,9 +182,9 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 		}
 		// return diff
 		if branchDiffObjectsFlag == BranchDiffObjectsSourceTarget {
-			return getBranchDiff(sourceSchema, targetSchema, hints)
+			return getBranchSchemaDiff(sourceSchema, targetSchema, hints)
 		}
-		return getBranchDiff(targetSchema, sourceSchema, hints)
+		return getBranchSchemaDiff(targetSchema, sourceSchema, hints)
 
 	case BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget:
 		// get target schema from target mysql
@@ -199,9 +199,9 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 		}
 		// return diff
 		if branchDiffObjectsFlag == BranchDiffObjectsTargetSnapshot {
-			return getBranchDiff(targetSchema, snapshotSchema, hints)
+			return getBranchSchemaDiff(targetSchema, snapshotSchema, hints)
 		}
-		return getBranchDiff(snapshotSchema, targetSchema, hints)
+		return getBranchSchemaDiff(snapshotSchema, targetSchema, hints)
 
 	case BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot:
 		// get source schema from source mysql
@@ -216,9 +216,9 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 		}
 		// return diff
 		if branchDiffObjectsFlag == BranchDiffObjectsSnapshotSource {
-			return getBranchDiff(snapshotSchema, sourceSchema, hints)
+			return getBranchSchemaDiff(snapshotSchema, sourceSchema, hints)
 		}
-		return getBranchDiff(sourceSchema, snapshotSchema, hints)
+		return getBranchSchemaDiff(sourceSchema, snapshotSchema, hints)
 
 	default:
 		return nil, fmt.Errorf("%v is invalid branch diff objects flag, should be one of %v, %v, %v, %v, %v, %v",
@@ -236,9 +236,10 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 // override: 试图将target分支覆盖掉source分支，
 // merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
 // todo complete me
+// todo enhancement: schema diff hints
 func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption string) error {
-	if mergeOption != MergeOptionOverride && mergeOption != MergeOptionMerge {
-		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOptionOverride, MergeOptionMerge)
+	if mergeOption != MergeBackOptionOverride && mergeOption != MergeBackOptionDiff {
+		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeBackOptionOverride, MergeBackOptionDiff)
 	}
 
 	if meta.status != StatusCreated && meta.status != StatusPreparing && meta.status != StatusPrepared && meta.status != StatusMerged {
@@ -260,14 +261,15 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 	}
 
 	// calculate ddl based on merge option
-	ddls := &BranchSchema{}
-	if mergeOption == MergeOptionOverride {
-		ddls, err = bs.getMergeBackOverrideDDLs()
+	ddls := &BranchDiff{}
+	hints := &schemadiff.DiffHints{}
+	if mergeOption == MergeBackOptionOverride {
+		ddls, err = bs.getMergeBackOverrideDDLs(meta, hints)
 		if err != nil {
 			return err
 		}
-	} else if mergeOption == MergeOptionMerge {
-		ddls, err = bs.getMergeBackMergeDDLs()
+	} else if mergeOption == MergeBackOptionDiff {
+		ddls, err = bs.getMergeBackMergeDiffDDLs(meta, hints)
 		if err != nil {
 			return err
 		}
@@ -300,14 +302,238 @@ func (bs *BranchService) BranchShow() {
 
 /**********************************************************************************************************************/
 
-// todo complete me
-func (bs *BranchService) getMergeBackOverrideDDLs() (*BranchSchema, error) {
-	return nil, nil
+func (bs *BranchService) getMergeBackOverrideDDLs(meta *BranchMeta, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	return bs.BranchDiff(meta, BranchDiffObjectsSourceTarget, hints)
 }
 
 // todo complete me
-func (bs *BranchService) getMergeBackMergeDDLs() (*BranchSchema, error) {
-	return nil, nil
+func (bs *BranchService) getMergeBackMergeDiffDDLs(meta *BranchMeta, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(meta.includeDatabases, meta.excludeDatabases)
+	if err != nil {
+		return nil, err
+	}
+	targetSchema, err := bs.targetMySQLService.GetBranchSchema(meta.includeDatabases, meta.excludeDatabases)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := bs.targetMySQLService.getSnapshot(meta)
+	if err != nil {
+		return nil, err
+	}
+
+	conflict, message, err := branchSchemasConflictCheck(sourceSchema, targetSchema, snapshot, hints)
+	if err != nil {
+		return nil, err
+	}
+	if conflict {
+		return nil, fmt.Errorf("branch schemas conflict: %v", message)
+	}
+
+	return getBranchSchemaDiff(snapshot, targetSchema, hints)
+}
+
+// this function check if the schema1 and schema2 (which are both derived from the snapshot schema) conflict using "three-way merge algorithm",
+// the algorithm is described as follows:
+//  1. Calculate the difference between snapshot and schema1 to get diff1,
+//     apply diff1 to snapshot will get schema1 (which we represent as: diff1(snapshot) => schema1)
+//  2. Get diff2 using the same way, diff2(snapshot) => schema2
+//  3. Apply diff1 on diff2(snapshot), i.e., diff1(diff2(snapshot)). If it's invalid, there's a conflict.
+//  4. Apply diff2 on diff1(snapshot), i.e., diff2(diff1(snapshot)). If it's invalid, there's a conflict.
+//  5. If both are valid but diff1(diff2(snapshot)) is not equal to diff2(diff1(snapshot)), there's a conflict.
+//  6. If both transformations are valid, and diff1(diff2(snapshot)) equals diff2(diff1(snapshot)), it signifies there's no conflict.
+//
+// 函数的输入是branchSchema，有多个数据库的schema
+// todo add UT
+// todo 注释
+func branchSchemasConflictCheck(branchSchema1, branchSchema2, snapshot *BranchSchema, hints *schemadiff.DiffHints) (bool, string, error) {
+	branchDiffFromSnapshotToSchema1, err := getBranchSchemaDiff(snapshot, branchSchema1, hints)
+	if err != nil {
+		return false, "", err
+	}
+	branchDiffFromSnapshotToSchema2, err := getBranchSchemaDiff(snapshot, branchSchema2, hints)
+	if err != nil {
+		return false, "", err
+	}
+	DatabaseSchemas1, err := branchSchemaToDatabaseSchemas(branchSchema1)
+	if err != nil {
+		return false, "", err
+	}
+	DatabaseSchemas2, err := branchSchemaToDatabaseSchemas(branchSchema2)
+	if err != nil {
+		return false, "", err
+	}
+
+	// diff1 应用到 bschema2上：
+	NewDatabaseSchemas2, err := applyBranchDiffToDatabaseSchemas(DatabaseSchemas2, branchDiffFromSnapshotToSchema1)
+	if err != nil {
+		return false, "", err
+	}
+	// 同理将diff2应用到bschema1
+	NewDatabaseSchemas1, err := applyBranchDiffToDatabaseSchemas(DatabaseSchemas1, branchDiffFromSnapshotToSchema2)
+	if err != nil {
+		return false, "", err
+	}
+	// 比较两个branch schema中的每一个schema是否都相同
+	equal, message, err := databaseSchemasEqual(NewDatabaseSchemas1, NewDatabaseSchemas2, hints)
+	if err != nil {
+		return false, "", err
+	}
+	if !equal {
+		// not equal, there's a conflict
+		return true, message, nil
+	}
+	return false, "", nil
+}
+
+func branchSchemaToDatabaseSchemas(branchSchema *BranchSchema) (map[string]*schemadiff.Schema, error) {
+	databaseSchemas := make(map[string]*schemadiff.Schema)
+	for dbName, databaseSchemaInMap := range branchSchema.branchSchema {
+		tableSchemaQueries := make([]string, 0)
+		for _, tableSchemaQuery := range databaseSchemaInMap {
+			tableSchemaQueries = append(tableSchemaQueries, tableSchemaQuery)
+		}
+
+		databaseSchema, err := schemadiff.NewSchemaFromQueries(tableSchemaQueries)
+		if err != nil {
+			return nil, err
+		}
+		databaseSchemas[dbName] = databaseSchema
+	}
+	return databaseSchemas, nil
+}
+
+// todo comment
+// todo add UT
+func applyBranchDiffToDatabaseSchemas(databaseSchemas map[string]*schemadiff.Schema, branchDiff *BranchDiff) (map[string]*schemadiff.Schema, error) {
+	resultDatabaseSchemas := make(map[string]*schemadiff.Schema)
+	for database, databaseDiff := range branchDiff.diffs {
+		// 处理删除数据库的情况
+		if databaseDiff.needDrop {
+			if _, exists := databaseSchemas[database]; !exists {
+				return nil, fmt.Errorf("database %s not exist in databaseSchemas, can not drop database", database)
+			}
+			// this database will not occur in the result, skip
+			continue
+		}
+
+		// 处理创建一个新数据库的情况
+		if databaseDiff.needCreate {
+			if _, exists := databaseSchemas[database]; exists {
+				return nil, fmt.Errorf("database %s already exist in databaseSchemas, can not create database", database)
+			}
+
+			createTableQueries := make([]string, 0)
+			for _, createTableQuery := range databaseDiff.tableDDLs {
+				// 虽然这里是数组，但是由于每张表都不存在，因此实际上数组只有一个元素，且都是create table语句
+				createTableQueries = append(createTableQueries, createTableQuery...)
+			}
+			databaseSchema, err := schemadiff.NewSchemaFromQueries(createTableQueries)
+			if err != nil {
+				return nil, err
+			}
+			resultDatabaseSchemas[database] = databaseSchema
+			continue
+		}
+
+		// 处理已有数据库的情况
+		if _, exists := databaseSchemas[database]; !exists {
+			return nil, fmt.Errorf("database %s not exist in databaseSchemas, can not modify database", database)
+		}
+
+		// 将该数据库的diff应用到
+		databaseSchema := databaseSchemas[database]
+		entityDiffs := make([]schemadiff.EntityDiff, 0)
+		for _, entityDiff := range databaseDiff.tableEntityDiffs {
+			entityDiffs = append(entityDiffs, entityDiff)
+		}
+		newDatabaseSchema, err := databaseSchema.Apply(entityDiffs)
+		if err != nil {
+			return nil, err
+		}
+		resultDatabaseSchemas[database] = newDatabaseSchema
+	}
+	return resultDatabaseSchemas, nil
+}
+
+// todo UT
+func databaseSchemasEqual(databaseSchemas1, databaseSchemas2 map[string]*schemadiff.Schema, hints *schemadiff.DiffHints) (bool, string, error) {
+	if len(databaseSchemas1) != len(databaseSchemas2) {
+		return false, fmt.Sprintf("number of databases not equal: %d != %d",
+			len(databaseSchemas1), len(databaseSchemas2)), nil
+	}
+
+	for dbName, schema1 := range databaseSchemas1 {
+		schema2, exists := databaseSchemas2[dbName]
+		if !exists {
+			return false, fmt.Sprintf("database %s exists in source but not in target", dbName), nil
+		}
+
+		equal, message, err := databaseSchemaEqual(schema1, schema2, hints)
+		if err != nil {
+			return false, "", err
+		}
+		if !equal {
+			return false, fmt.Sprintf("database %s: %s", dbName, message), nil
+		}
+	}
+
+	return true, "", nil
+}
+
+// todo add UT
+func databaseSchemaEqual(databaseSchema1, databaseSchema2 *schemadiff.Schema, hints *schemadiff.DiffHints) (bool, string, error) {
+	tables1 := databaseSchema1.Tables()
+	tables2 := databaseSchema2.Tables()
+
+	if len(tables1) != len(tables2) {
+		return false, fmt.Sprintf("number of tables not equal: %d != %d",
+			len(tables1), len(tables2)), nil
+	}
+
+	tableMap1 := make(map[string]*schemadiff.CreateTableEntity)
+	for _, table := range tables1 {
+		tableMap1[table.Name()] = table
+	}
+
+	tableMap2 := make(map[string]*schemadiff.CreateTableEntity)
+	for _, table := range tables2 {
+		tableMap2[table.Name()] = table
+	}
+
+	for tableName, table1 := range tableMap1 {
+		table2, exists := tableMap2[tableName]
+		if !exists {
+			return false, fmt.Sprintf("table %s exists in source but not in target", tableName), nil
+		}
+
+		equal, message, err := tableSchemaEqual(table1, table2, hints)
+		if err != nil {
+			return false, "", err
+		}
+		if !equal {
+			return false, message, nil
+		}
+	}
+
+	return true, "", nil
+}
+
+// todo add UT
+func tableSchemaEqual(tableSchema1, tableSchema2 *schemadiff.CreateTableEntity, hints *schemadiff.DiffHints) (bool, string, error) {
+	entityDiff, err := tableSchema1.Diff(tableSchema2, hints)
+	if err != nil {
+		return false, "", err
+	}
+	_, ddls, err := schemadiff.GetDDLFromTableDiff(entityDiff, "", "")
+	if err != nil {
+		return false, "", err
+	}
+	if len(ddls) > 0 {
+		ddlMessage := strings.Join(ddls, ";")
+		message := fmt.Sprintf("table %v and %v are not equal, from %v to %v: %v", tableSchema1.Name(), tableSchema2.Name(), tableSchema1, tableSchema2, ddlMessage)
+		return false, message, nil
+	}
+	return true, "", nil
 }
 
 // branchFetchSnapshot retrieves the schema from the source MySQL instance and stores it
@@ -346,12 +572,12 @@ func (bs *BranchService) branchFetchSnapshot(branchMeta *BranchMeta) (*BranchSch
 }
 
 // todo enhancement: target database pattern
-func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	branchDiff := &BranchDiff{diffs: make(map[string]*DatabaseDiff)}
 
 	// databases exist in originSchema but not exist in expectSchema
-	for dbName := range originSchema.schema {
-		if _, exist := expectSchema.schema[dbName]; !exist {
+	for dbName := range originSchema.branchSchema {
+		if _, exist := expectSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
 				needCreate: false,
 				needDrop:   true,
@@ -361,15 +587,16 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 	}
 
 	// databases exist in expectSchema but not exist in originSchema
-	for dbName := range expectSchema.schema {
-		if _, exist := originSchema.schema[dbName]; !exist {
+	for dbName := range expectSchema.branchSchema {
+		if _, exist := originSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
 				needCreate: true,
 				needDrop:   false,
 			}
 			tableDDLs := make(map[string][]string)
+			tableEntityDiff := make(map[string]schemadiff.EntityDiff)
 			// generate create table ddl for each tables
-			for tableName, schema := range expectSchema.schema[dbName] {
+			for tableName, schema := range expectSchema.branchSchema[dbName] {
 				tableDiffs := make([]string, 0)
 				diff, err := schemadiff.DiffCreateTablesQueries("", schema, hints)
 				if err != nil {
@@ -382,15 +609,17 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 				}
 				tableDiffs = append(tableDiffs, ddls...)
 				tableDDLs[tableName] = tableDiffs
+				tableEntityDiff[tableName] = diff
 			}
 			databaseDiff.tableDDLs = tableDDLs
+			databaseDiff.tableEntityDiffs = tableEntityDiff
 			branchDiff.diffs[dbName] = databaseDiff
 		}
 	}
 
 	// databases exist in both originSchema and expectSchema
-	for dbName, expectTables := range expectSchema.schema {
-		originTables, exist := originSchema.schema[dbName]
+	for dbName, expectTables := range expectSchema.branchSchema {
+		originTables, exist := originSchema.branchSchema[dbName]
 		if !exist {
 			continue
 		}
@@ -399,6 +628,7 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 			needDrop:   false,
 		}
 		tableDDLs := make(map[string][]string)
+		tableEntityDiff := make(map[string]schemadiff.EntityDiff)
 
 		// tables exist in originSchema but not exist in expectSchema
 		for tableName, originSchema := range originTables {
@@ -414,6 +644,7 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 				}
 				tableDiffs = append(tableDiffs, ddls...)
 				tableDDLs[tableName] = tableDiffs
+				tableEntityDiff[tableName] = diff
 			}
 		}
 
@@ -431,6 +662,7 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 				}
 				tableDiffs = append(tableDiffs, ddls...)
 				tableDDLs[tableName] = tableDiffs
+				tableEntityDiff[tableName] = diff
 			}
 		}
 
@@ -448,9 +680,11 @@ func getBranchDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints
 				}
 				tableDiffs = append(tableDiffs, ddls...)
 				tableDDLs[tableName] = tableDiffs
+				tableEntityDiff[tableName] = diff
 			}
 		}
 		databaseDiff.tableDDLs = tableDDLs
+		databaseDiff.tableEntityDiffs = tableEntityDiff
 		branchDiff.diffs[dbName] = databaseDiff
 	}
 

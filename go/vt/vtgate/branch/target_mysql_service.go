@@ -57,7 +57,7 @@ func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 
 	// skip databases that already exist in target
 	for _, db := range databases {
-		delete(snapshot.schema, db)
+		delete(snapshot.branchSchema, db)
 	}
 
 	// apply schema to target
@@ -167,7 +167,7 @@ func (t *TargetMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, ba
 		multiRows.Close()
 	}
 
-	return &BranchSchema{schema: result}, nil
+	return &BranchSchema{branchSchema: result}, nil
 }
 
 func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error) {
@@ -180,7 +180,7 @@ func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error
 	defer rows.Close()
 
 	result := &BranchSchema{
-		schema: make(map[string]map[string]string),
+		branchSchema: make(map[string]map[string]string),
 	}
 
 	for rows.Next() {
@@ -196,18 +196,18 @@ func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		if _, ok := result.schema[database]; !ok {
-			result.schema[database] = make(map[string]string)
+		if _, ok := result.branchSchema[database]; !ok {
+			result.branchSchema[database] = make(map[string]string)
 		}
 
-		result.schema[database][table] = createTableSQL
+		result.branchSchema[database][table] = createTableSQL
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error during rows iteration: %v", err)
 	}
 
-	if len(result.schema) == 0 {
+	if len(result.branchSchema) == 0 {
 		return nil, fmt.Errorf("no snapshot found for name: %s", meta.name)
 	}
 
@@ -222,7 +222,7 @@ func (t *TargetMySQLService) deleteSnapshot(branchMeta *BranchMeta) error {
 
 func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *BranchSchema, batchSize int) error {
 	insertSQLs := make([]string, 0)
-	for database, tables := range schema.schema {
+	for database, tables := range schema.branchSchema {
 		for tableName, createTableSQL := range tables {
 			sql := getInsertSnapshotSQL(meta.name, database, tableName, createTableSQL)
 			insertSQLs = append(insertSQLs, sql)
@@ -247,12 +247,23 @@ func (t *TargetMySQLService) deleteMergeBackDDL(branchMeta *BranchMeta) error {
 	return err
 }
 
-func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchSchema, batchSize int) error {
+func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
 	insertSQLs := make([]string, 0)
-	for database, tables := range ddls.schema {
-		for tableName, ddl := range tables {
-			sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
-			insertSQLs = append(insertSQLs, sql)
+	for database, databaseDiff := range ddls.diffs {
+		if databaseDiff.needDrop {
+			insertSQLs = append(insertSQLs, fmt.Sprintf("DROP DATABASE IF EXISTS %s", database))
+			continue
+		}
+
+		if databaseDiff.needCreate {
+			insertSQLs = append(insertSQLs, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+		}
+
+		for tableName, ddls := range databaseDiff.tableDDLs {
+			for _, ddl := range ddls {
+				sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
+				insertSQLs = append(insertSQLs, sql)
+			}
 		}
 	}
 	for i := 0; i < len(insertSQLs); i += batchSize {
@@ -326,7 +337,7 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 }
 
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
-	for database, tables := range branchSchema.schema {
+	for database, tables := range branchSchema.branchSchema {
 		// create database
 		_, err := t.mysqlService.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
 		if err != nil {

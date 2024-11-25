@@ -1,5 +1,7 @@
 package branch
 
+import "vitess.io/vitess/go/vt/schemadiff"
+
 type BranchMeta struct {
 	name string
 	// source info
@@ -41,14 +43,17 @@ func StringToBranchStatus(s string) BranchStatus {
 
 type BranchSchema struct {
 	// databases -> tables -> create table statement or DDLs
-	schema map[string]map[string]string
+	branchSchema map[string]map[string]string
 }
 
 type DatabaseDiff struct {
 	needCreate bool
 	needDrop   bool
-	// table name -> ddls to alter this table from origin to expected
+	// table name -> ddls to create, drop or alter this table from origin to expected
 	tableDDLs map[string][]string
+
+	// table name -> EntityDiffs, used in schema merge back conflict check
+	tableEntityDiffs map[string]schemadiff.EntityDiff
 }
 
 type BranchDiff struct {
