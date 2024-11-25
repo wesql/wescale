@@ -30,7 +30,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 // todo make it idempotent
 // todo comment
 // 幂等性：确保将当前存在表中的snapshot应用到目标端，借助create database if not exist 和 create table if not exist这两个命令的幂等性，
-// 注意：会忽略掉已经在目标端的数据库
+// 注意：具体创建时，会忽略掉已经在目标端的数据库
 func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 
 	// get databases from target
@@ -58,7 +58,106 @@ func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 	return nil
 }
 
+// todo, it's exactly the same as SourceMySQLService.GetBranchSchema, move it to a common place
+// GetBranchSchema retrieves CREATE TABLE statements for all tables in databases filtered by `databasesInclude` and `databasesExclude`
+func (t *TargetMySQLService) GetBranchSchema(databasesInclude, databasesExclude []string) (*BranchSchema, error) {
+	tableInfos, err := t.getTableInfos(databasesInclude, databasesExclude)
+	if err != nil {
+		return nil, err
+	}
+	return t.getBranchSchemaInBatches(tableInfos, GetBranchSchemaBatchSize)
+}
+
 /**********************************************************************************************************************/
+
+// todo, it's exactly the same as SourceMySQLService.getTableInfos, move it to a common place
+// getTableInfos executes the table info query and returns a slice of tableInfo
+func (t *TargetMySQLService) getTableInfos(databasesInclude, databasesExclude []string) ([]TableInfo, error) {
+	query, err := buildTableInfosQuerySQL(databasesInclude, databasesExclude)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := t.mysqlService.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query table information: %v", err)
+	}
+	defer rows.Close()
+
+	var tableInfos []TableInfo
+
+	for rows.Next() {
+		var database, tableName string
+		if err := rows.Scan(&database, &tableName); err != nil {
+			return nil, fmt.Errorf("failed to scan query result: %v", err)
+		}
+		tableInfos = append(tableInfos, TableInfo{database: database, name: tableName})
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error occurred while iterating query results: %v", err)
+	}
+
+	return tableInfos, nil
+}
+
+// todo it's exactly the same as SourceMySQLService.getBranchSchemaInBatches, move it to a common place
+// getBranchSchemaInBatches retrieves CREATE TABLE statements in batches
+func (t *TargetMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, batchSize int) (*BranchSchema, error) {
+	result := make(map[string]map[string]string)
+
+	for i := 0; i < len(tableInfos); i += batchSize {
+		end := i + batchSize
+		if end > len(tableInfos) {
+			end = len(tableInfos)
+		}
+		batch := tableInfos[i:end]
+
+		combinedQuery := getCombinedShowCreateTableSQL(batch)
+
+		// Execute the combined query
+		multiRows, err := t.mysqlService.Query(combinedQuery)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute combined query: %v", err)
+		}
+
+		// Process each result set in the batch
+		for j := 0; j < len(batch); j++ {
+			table := batch[j]
+			db := table.database
+			tableName := table.name
+
+			// Ensure database map is initialized
+			if _, exists := result[db]; !exists {
+				result[db] = make(map[string]string)
+			}
+
+			// Each SHOW CREATE TABLE result has two columns: Table and Create Table
+			if !multiRows.Next() {
+				return nil, fmt.Errorf("unexpected end of result sets while processing %s.%s", db, tableName)
+			}
+
+			var tableNameResult, createTableStmt string
+			if err := multiRows.Scan(&tableNameResult, &createTableStmt); err != nil {
+				return nil, fmt.Errorf("failed to scan create table result for %s.%s: %v", db, tableName, err)
+			}
+
+			// Store the result
+			result[db][tableName] = createTableStmt
+
+			// Move to next result set, unless it's the last table in the batch
+			if j < len(batch)-1 {
+				if !multiRows.NextResultSet() {
+					return nil, fmt.Errorf("failed to move to next result set after processing %s.%s", db, tableName)
+				}
+			}
+		}
+
+		multiRows.Close()
+	}
+
+	return &BranchSchema{schema: result}, nil
+}
 
 func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error) {
 	selectSnapshotSQL := getSelectSnapshotSQL(meta.name)

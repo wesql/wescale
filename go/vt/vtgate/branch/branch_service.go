@@ -6,7 +6,16 @@ import (
 	"vitess.io/vitess/go/vt/schemadiff"
 )
 
-var DefaultExcludeDatabases = []string{"mysql", "sys", "information_schema", "performance_schema"}
+var (
+	DefaultExcludeDatabases = []string{"mysql", "sys", "information_schema", "performance_schema"}
+
+	BranchDiffObjectsSourceTarget   = "source_target" // which means wants diff from source schema to target schema
+	BranchDiffObjectsTargetSource   = "target_source"
+	BranchDiffObjectsSourceSnapshot = "source_snapshot"
+	BranchDiffObjectsSnapshotSource = "snapshot_source"
+	BranchDiffObjectsTargetSnapshot = "target_snapshot"
+	BranchDiffObjectsSnapshotTarget = "snapshot_target"
+)
 
 type BranchService struct {
 	sourceMySQLService *SourceMySQLService
@@ -81,6 +90,9 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 // 如果状态是已经创建了，那么就不需要再走继续的流程的，返回成功
 // 如果是其他的状态，也会直接返回。
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
+	if branchMeta.status != StatusInit {
+		return fmt.Errorf("the status of branch meta should be init")
+	}
 	meta, err := bs.targetMySQLService.SelectOrInsertBranchMeta(branchMeta)
 	if err != nil {
 		return err
@@ -110,10 +122,68 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	return nil
 }
 
-// todo complete me
 // 根据传入的参数，选择要产生diff的schema，然后计算diff，返回结果
-func (bs *BranchService) BranchDiff() (*BranchDiff, error) {
-	return nil, nil
+// 确保调用时branch meta的正确性，特别是其中的inlcude/ exclude字段
+func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	switch branchDiffObjectsFlag {
+	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
+		// get source schema from source mysql
+		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		if err != nil {
+			return nil, err
+		}
+		// get target schema from target mysql
+		targetSchema, err := bs.targetMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		if err != nil {
+			return nil, err
+		}
+		// return diff
+		if branchDiffObjectsFlag == BranchDiffObjectsSourceTarget {
+			return getBranchDiff(sourceSchema, targetSchema, hints)
+		}
+		return getBranchDiff(targetSchema, sourceSchema, hints)
+
+	case BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget:
+		// get target schema from target mysql
+		targetSchema, err := bs.targetMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		if err != nil {
+			return nil, err
+		}
+		// get snapshot schema that already saved in target mysql
+		snapshotSchema, err := bs.targetMySQLService.getSnapshot(branchMeta)
+		if err != nil {
+			return nil, err
+		}
+		// return diff
+		if branchDiffObjectsFlag == BranchDiffObjectsTargetSnapshot {
+			return getBranchDiff(targetSchema, snapshotSchema, hints)
+		}
+		return getBranchDiff(snapshotSchema, targetSchema, hints)
+
+	case BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot:
+		// get source schema from source mysql
+		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		if err != nil {
+			return nil, err
+		}
+		// get snapshot schema that already saved in target mysql
+		snapshotSchema, err := bs.targetMySQLService.getSnapshot(branchMeta)
+		if err != nil {
+			return nil, err
+		}
+		// return diff
+		if branchDiffObjectsFlag == BranchDiffObjectsSnapshotSource {
+			return getBranchDiff(snapshotSchema, sourceSchema, hints)
+		}
+		return getBranchDiff(sourceSchema, snapshotSchema, hints)
+
+	default:
+		return nil, fmt.Errorf("%v is invalid branch diff objects flag, should be one of %v, %v, %v, %v, %v, %v",
+			branchDiffObjectsFlag,
+			BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource,
+			BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget,
+			BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot)
+	}
 }
 
 func (bs *BranchService) BranchPrepareMerge(meta BranchMeta) {
