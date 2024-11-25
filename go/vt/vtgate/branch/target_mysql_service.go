@@ -378,10 +378,13 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 		&excludeDBs,
 		&meta.targetDBPattern,
 		&status,
+		&meta.IdOfNextDDLToExecute,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	// todo enhancement: add param verification
 
 	if includeDBs == "" {
 		meta.includeDatabases = []string{}
@@ -432,5 +435,6 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		includeDatabases,
 		excludeDatabases,
 		string(branchMeta.status),
-		branchMeta.targetDBPattern)
+		branchMeta.targetDBPattern,
+		branchMeta.IdOfNextDDLToExecute)
 }

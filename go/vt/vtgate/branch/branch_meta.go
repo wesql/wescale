@@ -11,8 +11,9 @@ type BranchMeta struct {
 	includeDatabases []string
 	excludeDatabases []string
 	// others
-	targetDBPattern string // todo
-	status          BranchStatus
+	targetDBPattern      string // todo
+	status               BranchStatus
+	IdOfNextDDLToExecute int // it's used in branch merge crash retry logic
 }
 
 type BranchStatus string
@@ -54,9 +55,9 @@ const (
 	UpsertBranchMetaSQL = `
     INSERT INTO mysql.branch 
         (name, source_host, source_port, source_user, source_password, 
-        include_databases, exclude_databases, status, target_db_pattern) 
+        include_databases, exclude_databases, status, target_db_pattern, id_of_next_ddl_to_execute) 
     VALUES 
-        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')
+        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s','%d')
     ON DUPLICATE KEY UPDATE 
         source_host = VALUES(source_host),
         source_port = VALUES(source_port),
@@ -65,7 +66,8 @@ const (
         include_databases = VALUES(include_databases),
         exclude_databases = VALUES(exclude_databases),
         status = VALUES(status),
-        target_db_pattern = VALUES(target_db_pattern)`
+        target_db_pattern = VALUES(target_db_pattern),
+        id_of_next_ddl_to_execute = VALUES(id_of_next_ddl_to_execute)`
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 
@@ -73,5 +75,5 @@ const (
 
 	DeleteBranchSnapshotSQL = "delete from mysql.branch_schema where name='%s' and schema_type='snapshot'"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_schema (name, database, table, create_table_sql, schema_type) values ('%s', '%s', '%s', '%s', 'snapshot')"
+	InsertBranchSnapshotSQL = "insert into mysql.branch_schema (name, database, table, sql, schema_type) values ('%s', '%s', '%s', '%s', 'snapshot')"
 )

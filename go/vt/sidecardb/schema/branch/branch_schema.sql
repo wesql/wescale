@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS mysql.branch_schema
     `name`             varchar(64)     NOT NULL,
     `database`         varchar(64)     NOT NULL,
     `table`           varchar(64)     NOT NULL,
-    `create_table_sql` text           NOT NULL,
+    `sql` text           NOT NULL,
     `schema_type`            varchar(16)     NOT NULL,
     PRIMARY KEY (`id`),
-    UNIQUE KEY(`name`, `database`, `table`)
+    UNIQUE KEY(`id`, `name`, `database`, `table`)
     ) ENGINE = InnoDB;
