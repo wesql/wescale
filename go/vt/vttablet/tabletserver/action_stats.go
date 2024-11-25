@@ -11,7 +11,7 @@ type ActionStats struct {
 	FilterAfterExecutionTiming  *servenv.TimingsWrapper
 	FilterErrorCounts           *stats.CountersWithSingleLabel
 	FilterQPSRates              *stats.Rates
-	FilterWasmMemorySize        *stats.CountersWithMultiLabels
+	FilterWasmMemorySize        *stats.GaugesWithMultiLabels
 }
 
 func NewActionStats(exporter *servenv.Exporter) *ActionStats {
@@ -19,7 +19,7 @@ func NewActionStats(exporter *servenv.Exporter) *ActionStats {
 		FilterBeforeExecutionTiming: exporter.NewTimings("FilterBeforeExecution", "Filter before execution timings", "Name"),
 		FilterAfterExecutionTiming:  exporter.NewTimings("FilterAfterExecution", "Filter before execution timings", "Name"),
 		FilterErrorCounts:           exporter.NewCountersWithSingleLabel("FilterErrorCounts", "filter error counts", "Name"),
-		FilterWasmMemorySize:        exporter.NewCountersWithMultiLabels("FilterWasmMemorySize", "Wasm memory size", []string{"Name", "BeforeOrAfter"}),
+		FilterWasmMemorySize:        exporter.NewGaugesWithMultiLabels("FilterWasmMemorySize", "Wasm memory size", []string{"Name", "BeforeOrAfter"}),
 	}
 	stats.FilterQPSRates = exporter.NewRates("FilterQps", stats.FilterBeforeExecutionTiming, 15*60/5, 5*time.Second)
 	return stats
