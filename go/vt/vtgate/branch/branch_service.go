@@ -275,7 +275,7 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 		}
 	}
 	// insert ddl into target database
-	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta, ddls, InsertMergeBackDDLBatchSize)
+	err = bs.targetMySQLService.insertMergeBackDDLInBatchesFromIdZero(meta, ddls, InsertMergeBackDDLBatchSize)
 	if err != nil {
 		return err
 	}
@@ -286,13 +286,36 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 }
 
 // todo make it Idempotence
+// todo enhancement: track whether the current ddl to apply has finished or is executing
 // 幂等性：确保执行prepare merge中记录的ddl，crash后再次执行时，从上次没有执行的DDL继续。
 // 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
 // merge完成后，更新snapshot。
-func (bs *BranchService) BranchMergeBack() {
-	// todo
-	// StartMergeBack
-	// apply schema diffs ddl to source through mysql connection
+func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
+	// 状态检查，只有prepared或者Merging才能执行
+	if meta.status != StatusPrepared && meta.status != StatusMerging {
+		return fmt.Errorf("%v is invalid status, should be one of %v or %v", meta.status, StatusPrepared, StatusMerging)
+	}
+
+	if meta.status == StatusPrepared && meta.idOfNextDDLToExecute != 0 {
+		return fmt.Errorf("%v is invalid idOfNextDDLToExecute, should be 0 when status is prepared", meta.idOfNextDDLToExecute)
+	}
+
+	// 将status改为Merging
+	meta.status = StatusMerging
+	err := bs.targetMySQLService.UpsertBranchMeta(meta)
+	if err != nil {
+		return err
+	}
+
+	// 逐一获取，执行，记录ddl执行，也就是更新id++。
+	err = bs.executeMergeBackDDLOneByOne(meta)
+	if err != nil {
+		return err
+	}
+
+	// 执行完毕后更新状态
+	meta.status = StatusMerged
+	return bs.targetMySQLService.UpsertBranchMeta(meta)
 }
 
 func (bs *BranchService) BranchShow() {
@@ -301,6 +324,41 @@ func (bs *BranchService) BranchShow() {
 }
 
 /**********************************************************************************************************************/
+
+func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
+	selectMergeBackDDLSQL := getSelectMergeBackDDLGreaterThanIDSQL(meta.name, meta.idOfNextDDLToExecute)
+
+	rows, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			id       int64
+			name     string
+			database string
+			table    string
+			ddl      string
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &ddl); err != nil {
+			return fmt.Errorf("failed to scan row: %v", err)
+		}
+		// todo enhancement: track whether the current ddl to apply has finished or is executing
+		_, err = bs.sourceMySQLService.mysqlService.Exec(ddl)
+		if err != nil {
+			return fmt.Errorf("failed to execute ddl: %v", err)
+		}
+		meta.idOfNextDDLToExecute++
+		err = bs.targetMySQLService.UpsertBranchMeta(meta)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 func (bs *BranchService) getMergeBackOverrideDDLs(meta *BranchMeta, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	return bs.BranchDiff(meta, BranchDiffObjectsSourceTarget, hints)

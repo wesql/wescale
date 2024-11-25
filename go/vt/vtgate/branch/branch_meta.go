@@ -15,7 +15,7 @@ type BranchMeta struct {
 	// others
 	targetDBPattern      string // todo
 	status               BranchStatus
-	IdOfNextDDLToExecute int // it's used in branch merge crash retry logic
+	idOfNextDDLToExecute int // it's used in branch merge crash retry logic
 }
 
 type BranchStatus string
@@ -95,7 +95,7 @@ const (
 
 	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_merge_back where name='%s'"
 
-	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_merge_back where name='%s' order by id"
+	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_merge_back where name='%s' and id >= '%d' order by id"
 
-	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_merge_back (name, database, table, ddl) values ('%s', '%s', '%s', '%s')"
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_merge_back (id, name, database, table, ddl) values ('%d', '%s', '%s', '%s', '%s')"
 )

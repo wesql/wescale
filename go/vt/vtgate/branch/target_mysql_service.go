@@ -247,7 +247,9 @@ func (t *TargetMySQLService) deleteMergeBackDDL(branchMeta *BranchMeta) error {
 	return err
 }
 
-func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
+func (t *TargetMySQLService) insertMergeBackDDLInBatchesFromIdZero(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
+	// every time we insert MergeBackDDL, we will delete all entries, so we reset id
+	id := 0
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.diffs {
 		if databaseDiff.needDrop {
@@ -261,8 +263,9 @@ func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls 
 
 		for tableName, ddls := range databaseDiff.tableDDLs {
 			for _, ddl := range ddls {
-				sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
+				sql := getInsertMergeBackDDLSQL(id, meta.name, database, tableName, ddl)
 				insertSQLs = append(insertSQLs, sql)
+				id++
 			}
 		}
 	}
@@ -383,14 +386,6 @@ func (t *TargetMySQLService) createTablesInBatches(databaseName string, createTa
 	return nil
 }
 
-func (t *TargetMySQLService) selectBranchStatus(name string) (BranchStatus, error) {
-	meta, err := t.selectBranchMeta(name)
-	if err != nil {
-		return StatusUnknown, err
-	}
-	return meta.status, nil
-}
-
 func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) {
 	selectBranchMetaSQL := getSelectBranchMetaSQL(name)
 	rows, err := t.mysqlService.Query(selectBranchMetaSQL)
@@ -416,7 +411,7 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 		&excludeDBs,
 		&meta.targetDBPattern,
 		&status,
-		&meta.IdOfNextDDLToExecute,
+		&meta.idOfNextDDLToExecute,
 	)
 	if err != nil {
 		return nil, err
@@ -464,7 +459,7 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		excludeDatabases,
 		string(branchMeta.status),
 		branchMeta.targetDBPattern,
-		branchMeta.IdOfNextDDLToExecute)
+		branchMeta.idOfNextDDLToExecute)
 }
 
 // snapshot related
@@ -487,10 +482,10 @@ func getDeleteMergeBackDDLSQL(name string) string {
 	return fmt.Sprintf(DeleteBranchMergeBackDDLSQL, name)
 }
 
-func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
-	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, name, database, table, ddl)
+func getInsertMergeBackDDLSQL(id int, name, database, table, ddl string) string {
+	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, id, name, database, table, ddl)
 }
 
-func getSelectMergeBackDDLSQL(name string) string {
-	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name)
+func getSelectMergeBackDDLGreaterThanIDSQL(name string, id int) string {
+	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name, id)
 }

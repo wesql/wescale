@@ -42,24 +42,6 @@ func TestSelectBranchMeta(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestSelectBranchStatus(t *testing.T) {
-	mysqlService, mock := NewMockMysqlService(t)
-	defer mysqlService.Close()
-	TargetMySQLServiceForTest := &TargetMySQLService{
-		mysqlService: mysqlService,
-	}
-
-	InitMockBranchMetas(mock)
-
-	for i, meta := range BranchMetasForTest {
-		status, err := TargetMySQLServiceForTest.selectBranchStatus(fmt.Sprintf("test%d", i))
-		if err != nil {
-			t.Error(err)
-		}
-		assert.Equal(t, meta.status, status)
-	}
-}
-
 func compareBranchMetas(first, second *BranchMeta) bool {
 	if first == nil || second == nil {
 		if first != second {
