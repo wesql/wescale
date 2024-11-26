@@ -14,6 +14,7 @@ func TestDataMaskingPlugin(t *testing.T) {
 	filterName := "datamasking"
 	wasmName := "datamasking"
 	framework.InstallWasm(t, dataMaskingBytes, wasmName, cluster.WescaleDb)
+	defer framework.UninstallWasm(t, wasmName, cluster.WescaleDb)
 
 	builder := framework.NewWasmFilterBuilder(filterName, wasmName).SetPlans("Select")
 	framework.CreateFilterIfNotExists(t, builder, cluster.WescaleDb)

@@ -22,6 +22,11 @@ func InstallWasm(t *testing.T, wasmBytes []byte, wasmName string, db *sql.DB) {
 		wasmName, wasmRuntime, compressedWasmBytes, wasmCompressAlgorithm, hash)
 }
 
+func UninstallWasm(t *testing.T, wasmName string, db *sql.DB) {
+	t.Helper()
+	Exec(t, db, `delete from mysql.wasm_binary where name = ?`, wasmName)
+}
+
 func calcMd5String32(data []byte) string {
 	hash := md5.Sum(data)
 	return fmt.Sprintf("%x", hash)
