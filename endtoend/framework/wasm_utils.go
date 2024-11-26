@@ -18,13 +18,13 @@ func InstallWasm(t *testing.T, wasmBytes []byte, wasmName string, db *sql.DB) {
 	hash := calcMd5String32(wasmBytes)
 	compressedWasmBytes, err := compressByBZip2(wasmBytes)
 	assert.NoError(t, err)
-	Exec(t, db, `insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`,
+	ExecNoError(t, db, `insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`,
 		wasmName, wasmRuntime, compressedWasmBytes, wasmCompressAlgorithm, hash)
 }
 
 func UninstallWasm(t *testing.T, wasmName string, db *sql.DB) {
 	t.Helper()
-	Exec(t, db, `delete from mysql.wasm_binary where name = ?`, wasmName)
+	ExecNoError(t, db, `delete from mysql.wasm_binary where name = ?`, wasmName)
 }
 
 func calcMd5String32(data []byte) string {
@@ -49,7 +49,7 @@ func compressByBZip2(originalData []byte) ([]byte, error) {
 
 func insertIntoWasmBinary(t *testing.T, db *sql.DB, wasmName, wasmRuntime, wasmCompressAlgorithm string, wasmBytes []byte, hash string) error {
 	t.Helper()
-	Exec(t, db, `insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`, wasmName, wasmRuntime, wasmBytes, wasmCompressAlgorithm, hash)
+	ExecNoError(t, db, `insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`, wasmName, wasmRuntime, wasmBytes, wasmCompressAlgorithm, hash)
 
 	preparedStmt, err := db.Prepare(`insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`)
 	if err != nil {

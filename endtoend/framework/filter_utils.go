@@ -9,7 +9,7 @@ import (
 
 func AssertFilterExists(t *testing.T, filterName string, db *sql.DB) {
 	t.Helper()
-	row := Query(t, db, fmt.Sprintf("show create filter %s", filterName))
+	row := QueryNoError(t, db, fmt.Sprintf("show create filter %s", filterName))
 	defer row.Close()
 	assert.True(t, row.Next())
 }
@@ -19,10 +19,10 @@ func CreateFilterIfNotExists(t *testing.T, builder *FilterBuilder, db *sql.DB) {
 	sql, err := builder.Build()
 	assert.NoError(t, err)
 
-	Exec(t, db, sql)
+	ExecNoError(t, db, sql)
 }
 
 func DropFilter(t *testing.T, filterName string, db *sql.DB) {
 	t.Helper()
-	Exec(t, db, fmt.Sprintf("drop filter %s", filterName))
+	ExecNoError(t, db, fmt.Sprintf("drop filter %s", filterName))
 }
