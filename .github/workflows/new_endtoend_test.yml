@@ -111,7 +111,7 @@ jobs:
       - name: Run EndToEnd test
         run: |
           cd endtoend
-          go test -v ./wasm
+          go test ./... -v
 
       - name: Print Wescale logs
         run: |
