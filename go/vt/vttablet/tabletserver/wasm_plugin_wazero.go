@@ -18,19 +18,13 @@ type WazeroVM struct {
 	ctx     context.Context
 	runtime wazero.Runtime
 	modules map[string]WasmModule
-
-	globalMu sync.Mutex
-
-	hostSharedVariables map[string][]byte
-	hostSharedMu        sync.Mutex
 }
 
 func initWazeroVM() *WazeroVM {
 	ctx := context.Background()
 	w := &WazeroVM{
-		ctx:                 ctx,
-		modules:             make(map[string]WasmModule),
-		hostSharedVariables: make(map[string][]byte),
+		ctx:     ctx,
+		modules: make(map[string]WasmModule),
 	}
 	w.InitRuntime()
 	return w
@@ -67,20 +61,6 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 		}).
 		Export("ErrorLogOnHost").
 		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "valuePtr", "valueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, valuePtr, valueSize uint32) uint32 {
-			return SetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, valuePtr, valueSize)
-		}).
-		Export("SetValueByKeyOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr", "keyPtr", "keySize", "returnValuePtr", "returnValueSize").
-		WithResultNames("callStatus").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64, keyPtr, keySize, returnValuePtr, returnValueSize uint32) uint32 {
-			return GetValueByKeyOnHost(ctx, mod, wazeroRuntime, scope, hostModulePtr, keyPtr, keySize, returnValuePtr, returnValueSize)
-		}).
-		Export("GetValueByKeyOnHost").
-		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "returnQueryValueData",
 			"returnQueryValueSize").
 		WithResultNames("callStatus").
@@ -96,18 +76,6 @@ func exportHostABIV1(ctx context.Context, wazeroRuntime *WazeroVM) error {
 			return SetQueryOnHost(ctx, mod, hostInstancePtr, queryValuePtr, queryValueSize)
 		}).
 		Export("SetQueryOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
-			LockOnHost(wazeroRuntime, scope, hostModulePtr)
-		}).
-		Export("LockOnHost").
-		NewFunctionBuilder().
-		WithParameterNames("scope", "hostModulePtr").
-		WithFunc(func(ctx context.Context, mod api.Module, scope uint32, hostModulePtr uint64) {
-			UnlockOnHost(wazeroRuntime, scope, hostModulePtr)
-		}).
-		Export("UnlockOnHost").
 		NewFunctionBuilder().
 		WithParameterNames("hostInstancePtr", "errMessagePtr", "errMessageSize").
 		WithResultNames("callStatus").
@@ -147,62 +115,51 @@ func (*WazeroVM) GetRuntimeType() string {
 }
 
 func (w *WazeroVM) InitRuntime() error {
-	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, wazero.NewRuntimeConfig().WithCompilationCache(wazero.NewCompilationCache()))
+	runtimeConfig := wazero.NewRuntimeConfig().
+		WithCompilationCache(wazero.NewCompilationCache()).
+		WithCloseOnContextDone(true).
+		WithMemoryLimitPages(16 * 10) //64KB each page, 10 * 16pages = 10MB
+
+	w.runtime = wazero.NewRuntimeWithConfig(w.ctx, runtimeConfig)
 	wasi_snapshot_preview1.MustInstantiate(w.ctx, w.runtime)
 	return exportHostABIV1(w.ctx, w)
 }
 
-func (w *WazeroVM) ClearWasmModule(key string) {
+func (w *WazeroVM) ClearWasmModule(filterName string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if mod, exist := w.modules[key]; exist {
+	if mod, exist := w.modules[filterName]; exist {
 		defer mod.Close()
 	}
-	delete(w.modules, key)
+	delete(w.modules, filterName)
 }
 
-func (w *WazeroVM) GetWasmModule(key string) (bool, WasmModule) {
+func (w *WazeroVM) GetWasmModule(filterName string) (bool, WasmModule) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	module, exist := w.modules[key]
+	module, exist := w.modules[filterName]
 	return exist, module
 }
 
-func (w *WazeroVM) SetWasmModule(key string, wasmModule WasmModule) {
+func (w *WazeroVM) InitWasmModule(filterName string, wasmBytes []byte) (WasmModule, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	// the goal is to change the compiled module bytes, and keep module variables map
-	oldWasmModule, exist := w.modules[key]
-	if exist {
-		oldMap := oldWasmModule.GetModuleSharingVariables()
-		wasmModule.SetModuleSharingVariables(oldMap)
-	}
-	w.modules[key] = wasmModule
-}
-
-func (w *WazeroVM) InitWasmModule(key string, wasmBytes []byte) (WasmModule, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	module, exist := w.modules[key]
+	module, exist := w.modules[filterName]
 	if exist {
 		return module, nil
 	}
-	module, err := w.CompileWasmModule(wasmBytes)
+	compiled, err := w.runtime.CompileModule(w.ctx, wasmBytes)
 	if err != nil {
 		return nil, err
 	}
-	w.modules[key] = module
+	module = &WazeroModule{
+		filterName:     filterName,
+		compliedModule: compiled,
+		wazeroRuntime:  w,
+	}
+	w.modules[filterName] = module
 	return module, nil
-}
-
-func (w *WazeroVM) CompileWasmModule(wasmBytes []byte) (WasmModule, error) {
-	module, err := w.runtime.CompileModule(w.ctx, wasmBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return &WazeroModule{compliedModule: module, wazeroRuntime: w, moduleSharingVariables: make(map[string][]byte)}, nil
 }
 
 func (w *WazeroVM) Close() error {
@@ -211,26 +168,9 @@ func (w *WazeroVM) Close() error {
 }
 
 type WazeroModule struct {
+	filterName     string
 	wazeroRuntime  *WazeroVM
 	compliedModule wazero.CompiledModule
-
-	mu                     sync.Mutex
-	moduleSharingVariables map[string][]byte
-
-	moduleMu sync.Mutex
-	tmp      int
-}
-
-func (mod *WazeroModule) GetModuleSharingVariables() map[string][]byte {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-	return mod.moduleSharingVariables
-}
-
-func (mod *WazeroModule) SetModuleSharingVariables(m map[string][]byte) {
-	mod.mu.Lock()
-	defer mod.mu.Unlock()
-	mod.moduleSharingVariables = m
 }
 
 func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
@@ -240,7 +180,8 @@ func (mod *WazeroModule) NewInstance(qre *QueryExecutor) (WasmInstance, error) {
 	if mod.compliedModule == nil {
 		return nil, fmt.Errorf("compliedModule is nil in NewInstance")
 	}
-	instance, err := mod.wazeroRuntime.runtime.InstantiateModule(mod.wazeroRuntime.ctx, mod.compliedModule, wazero.NewModuleConfig().WithName(""))
+	config := wazero.NewModuleConfig().WithName("")
+	instance, err := mod.wazeroRuntime.runtime.InstantiateModule(mod.wazeroRuntime.ctx, mod.compliedModule, config)
 	if err != nil {
 		return nil, err
 	}
@@ -264,8 +205,12 @@ type WazeroInstance struct {
 
 func (ins *WazeroInstance) RunWASMPlugin() error {
 	ctx := context.Background()
+	defer ins.qre.tsv.qe.actionStats.FilterWasmMemorySize.Set([]string{ins.module.filterName, "Before"}, int64(ins.instance.Memory().Size()))
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunBeforeExecutionOnGuest")
+	if wazeroGuestFunc == nil {
+		return fmt.Errorf("Wasm Plugin ABI version is not compatible, missing RunBeforeExecutionOnGuest function in wasm module")
+	}
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
 	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
@@ -281,6 +226,7 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 
 func (ins *WazeroInstance) RunWASMPluginAfter() error {
 	ctx := context.Background()
+	defer ins.qre.tsv.qe.actionStats.FilterWasmMemorySize.Set([]string{ins.module.filterName, "After"}, int64(ins.instance.Memory().Size()))
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunAfterExecutionOnGuest")
 
@@ -322,18 +268,16 @@ func copyHostBytesIntoGuest(ctx context.Context, mod api.Module, bytes []byte, w
 		return StatusBadArgument
 	}
 
-	//todo wasm: why not use 'malloc' here?
-	alloc := mod.ExportedFunction("proxy_on_memory_allocate")
+	// call 'malloc' to allocate memory in guest, guest need to free it
+	alloc := mod.ExportedFunction("malloc")
 	res, err := alloc.Call(ctx, uint64(size))
 	if err != nil {
 		return StatusInternalFailure
 	}
-	buf, ok := mod.Memory().Read(uint32(res[0]), uint32(size))
+	ok := mod.Memory().Write(uint32(res[0]), bytes)
 	if !ok {
 		return StatusInternalFailure
 	}
-
-	copy(buf, bytes)
 	ok = mod.Memory().WriteUint32Le(wasmPtrPtr, uint32(res[0]))
 	if !ok {
 		return StatusInternalFailure

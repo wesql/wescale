@@ -200,7 +200,7 @@ func (qe *QueryEngine) HandleDropFilter(stmt *sqlparser.DropWescaleFilter) (*sql
 	return rst, nil
 }
 
-func (qe *QueryEngine) removeFilterMemoryData(name, actionArgs string, action rules.Action) {
+func (qe *QueryEngine) removeFilterMemoryData(filterName, actionArgs string, action rules.Action) {
 	switch action {
 	case rules.QRWasmPlugin:
 		query, err := customrule.GetSelectByActionArgsSQL(actionArgs)
@@ -216,11 +216,11 @@ func (qe *QueryEngine) removeFilterMemoryData(name, actionArgs string, action ru
 			a := &WasmPluginActionArgs{}
 			tmp, _ := a.Parse(actionArgs)
 			a = tmp.(*WasmPluginActionArgs)
-			qe.wasmPluginController.VM.ClearWasmModule(a.WasmBinaryName)
+			qe.wasmPluginController.VM.ClearWasmModule(filterName)
 		}
 
 	case rules.QRConcurrencyControl:
-		qe.concurrencyController.DeleteQueue(name)
+		qe.concurrencyController.DeleteQueue(filterName)
 	}
 }
 
@@ -316,20 +316,12 @@ func CheckAndFormatActionArgs(qe *QueryEngine, filerName, actionType, actionArgs
 		if err != nil {
 			return "", err
 		}
-		wasmModule, err := qe.wasmPluginController.VM.CompileWasmModule(bytes)
+		qe.wasmPluginController.VM.ClearWasmModule(filerName)
+		_, err = qe.wasmPluginController.VM.InitWasmModule(filerName, bytes)
 		if err != nil {
 			return "", fmt.Errorf("err when compiling wasm moulde %v", err)
 		}
-		// whether create or alter, just set
-		qe.wasmPluginController.VM.SetWasmModule(wasmPluginArgs.WasmBinaryName, wasmModule)
 
-		return FormatUserInputStr(actionArgs), nil
-	case rules.QRSkipFilter:
-		skipFilterArgs := &SkipFilterActionArgs{}
-		_, err := skipFilterArgs.Parse(actionArgs)
-		if err != nil {
-			return "", err
-		}
 		return FormatUserInputStr(actionArgs), nil
 	default:
 		if actionArgs != "" {

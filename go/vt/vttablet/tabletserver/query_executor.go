@@ -611,12 +611,16 @@ func (qre *QueryExecutor) runActionListBeforeExecution() (*sqltypes.Result, erro
 		return nil, nil
 	}
 	for _, a := range qre.matchedActionList {
-		if !a.GetSkipFlag() {
-			resp := a.BeforeExecution(qre)
-			qre.calledActionList = append(qre.calledActionList, a)
-			if resp.Reply != nil || resp.Err != nil {
-				return resp.Reply, resp.Err
-			}
+		startTime := time.Now()
+		// execute the filter action
+		resp := a.BeforeExecution(qre)
+		qre.tsv.qe.actionStats.FilterBeforeExecutionTiming.Add(a.GetRule().Name, time.Since(startTime))
+		qre.calledActionList = append(qre.calledActionList, a)
+		if resp.Err != nil {
+			qre.tsv.qe.actionStats.FilterErrorCounts.Add(a.GetRule().Name, 1)
+		}
+		if resp.Reply != nil || resp.Err != nil {
+			return resp.Reply, resp.Err
 		}
 	}
 	return nil, nil
@@ -631,7 +635,13 @@ func (qre *QueryExecutor) runActionListAfterExecution(reply *sqltypes.Result, er
 
 	for i := len(qre.calledActionList) - 1; i >= 0; i-- {
 		a := qre.calledActionList[i]
+		startTime := time.Now()
+		// execute the filter action
 		resp := a.AfterExecution(qre, newReply, newErr)
+		qre.tsv.qe.actionStats.FilterAfterExecutionTiming.Add(a.GetRule().Name, time.Since(startTime))
+		if resp.Err != nil {
+			qre.tsv.qe.actionStats.FilterErrorCounts.Add(a.GetRule().Name, 1)
+		}
 		newReply, newErr = resp.Reply, resp.Err
 	}
 	return newReply, newErr
