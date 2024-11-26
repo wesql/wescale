@@ -8,6 +8,8 @@ fi
 export START_VTTABLET=${START_VTTABLET:-1}
 export START_VTGATE=${START_VTGATE:-1}
 
+export CONFIG_PATH=${CONFIG_PATH:-'./conf'}
+
 # Set default values
 export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
 export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}

@@ -13,6 +13,7 @@ grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
 vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
 tablet_hostname='127.0.0.1'
+config_path=${CONFIG_PATH:-'./conf'}
 
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
@@ -51,4 +52,4 @@ vttablet \
   --pid_file $VTDATAROOT/vttablet.pid \
   --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
   --disable_active_reparents \
-  --config_path ./conf
+  --config_path $config_path
