@@ -18,7 +18,7 @@ env:
   MYSQL_VERSION: 8.0.32
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-mtr
+  group: ${{ github.workflow }}-${{ github.ref }}-endtoend
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
       artifact_name: 'image.tar'
 
   setup:
-    name: "MTR Test - Ubuntu Docker Cluster"
+    name: "New EndToEnd Test"
     needs: build-image
     runs-on: ubuntu-latest
 
