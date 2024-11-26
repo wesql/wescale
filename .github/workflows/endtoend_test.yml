@@ -104,7 +104,7 @@ jobs:
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_PORT=3306 \
           -e MYSQL_HOST=mysql-server \
-          -e CONFIG_PATH=/vt/config/wescale/default \
+          -e CONFIG_PATH=/vt/examples/config/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
