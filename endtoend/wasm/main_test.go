@@ -2,10 +2,10 @@ package wasm
 
 import (
 	_ "embed"
+	"github.com/wesql/wescale/endtoend/framework"
 	"log"
 	"os"
 	"testing"
-	"vitess.io/vitess/endtoend/framework"
 )
 
 //go:embed setup.sql
