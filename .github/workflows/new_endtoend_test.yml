@@ -108,32 +108,11 @@ jobs:
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
-      - name: Checkout mysql-tester code
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-        uses: actions/checkout@v3
-        with:
-          repository: apecloud/mysql-tester
-          path: './mysql-tester'
-
-      - name: Build mysql-tester
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+      - name: Run EndToEnd test
         run: |
-          cd ./mysql-tester && \
-          mkdir bin && \
-          make build
+          cd endtoend
+          go test -v ./wasm
 
-      - name: Run MTR Tests
-        if: steps.skip-workflow.outputs.skip-workflow == 'false'
-        run: |
-          cd ./mysql-tester && \
-          eatmydata -- ./bin/mysql-tester -user root -port 15306 -path testcase/wesql-scale 2>&1 | tee -a output.txt
-          
-          if grep -q -- 'level=error' output.txt; then
-              echo "Testcase is failed"
-              exit 1
-          else
-              echo "Testcase is successful"
-          fi
       - name: Print Wescale logs
         run: |
           docker logs wescale
