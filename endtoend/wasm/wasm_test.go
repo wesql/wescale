@@ -16,19 +16,16 @@ func TestDataMaskingPlugin(t *testing.T) {
 	framework.InstallWasm(t, dataMaskingBytes, wasmName, cluster.WescaleDb)
 	defer framework.UninstallWasm(t, wasmName, cluster.WescaleDb)
 
-	builder := framework.NewWasmFilterBuilder(filterName, wasmName).SetPlans("Select")
-	framework.CreateFilterIfNotExists(t, builder, cluster.WescaleDb)
+	filterBuilder := framework.NewWasmFilterBuilder(filterName, wasmName).SetPlans("Select")
+	framework.CreateFilterIfNotExists(t, filterBuilder, cluster.WescaleDb)
 	defer framework.DropFilter(t, filterName, cluster.WescaleDb)
 	framework.AssertFilterExists(t, filterName, cluster.WescaleDb)
 
 	framework.Exec(t, cluster.WescaleDb, "create table wasm_e2e_test.test (id int, name varchar(255))")
 	defer framework.Exec(t, cluster.WescaleDb, "drop table wasm_e2e_test.test")
-
 	framework.Exec(t, cluster.WescaleDb, "insert into wasm_e2e_test.test values (1, 'test')")
-
 	rows := framework.Query(t, cluster.WescaleDb, "select * from wasm_e2e_test.test")
 	defer rows.Close()
-
 	for rows.Next() {
 		var id int
 		var name string
