@@ -7,7 +7,7 @@ web_port=${VTGATE_WEB_PORT:-'15001'}
 grpc_port=${VTGATE_GRPC_PORT:-'15991'}
 mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
 mysql_server_socket_path="/tmp/mysql.sock"
-config_path=${CONFIG_PATH:-'./conf'}
+config_path=${CONFIG_PATH}
 
 topology_flags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
 

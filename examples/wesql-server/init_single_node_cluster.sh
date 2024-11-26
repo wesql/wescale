@@ -1,7 +1,7 @@
 #!/bin/bash
 set -m
 
-# 获取脚本所在目录的绝对路径
+# Get the directory where the script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 if [ "$(id -u)" -eq 0 ]; then
