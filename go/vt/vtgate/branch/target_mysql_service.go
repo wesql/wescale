@@ -43,7 +43,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 // Returns:
 // - error: Returns nil on success, error otherwise
 // todo param to name
-func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
+func (t *TargetMySQLService) ApplySnapshot(name string) error {
 
 	// get databases from target
 	databases, err := t.getAllDatabases()
@@ -51,7 +51,7 @@ func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 		return err
 	}
 
-	snapshot, err := t.getSnapshot(meta)
+	snapshot, err := t.getSnapshot(name)
 	if err != nil {
 		return err
 	}
@@ -172,8 +172,8 @@ func (t *TargetMySQLService) getBranchSchemaInBatches(tableInfos []TableInfo, ba
 	return &BranchSchema{branchSchema: result}, nil
 }
 
-func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error) {
-	selectSnapshotSQL := getSelectSnapshotSQL(meta.name)
+func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
+	selectSnapshotSQL := getSelectSnapshotSQL(name)
 	// mysql Query will stream the result, so we don't need to worry if the data is too large to transfer.
 	rows, err := t.mysqlService.Query(selectSnapshotSQL)
 	if err != nil {
@@ -210,23 +210,23 @@ func (t *TargetMySQLService) getSnapshot(meta *BranchMeta) (*BranchSchema, error
 	}
 
 	if len(result.branchSchema) == 0 {
-		return nil, fmt.Errorf("no snapshot found for name: %s", meta.name)
+		return nil, fmt.Errorf("no snapshot found for name: %s", name)
 	}
 
 	return result, nil
 }
 
-func (t *TargetMySQLService) deleteSnapshot(branchMeta *BranchMeta) error {
-	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(branchMeta.name)
+func (t *TargetMySQLService) deleteSnapshot(name string) error {
+	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(name)
 	_, err := t.mysqlService.Exec(deleteBranchSnapshotSQL)
 	return err
 }
 
-func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *BranchSchema, batchSize int) error {
+func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *BranchSchema, batchSize int) error {
 	insertSQLs := make([]string, 0)
 	for database, tables := range schema.branchSchema {
 		for tableName, createTableSQL := range tables {
-			sql := getInsertSnapshotSQL(meta.name, database, tableName, createTableSQL)
+			sql := getInsertSnapshotSQL(name, database, tableName, createTableSQL)
 			insertSQLs = append(insertSQLs, sql)
 		}
 	}
@@ -243,13 +243,13 @@ func (t *TargetMySQLService) insertSnapshotInBatches(meta *BranchMeta, schema *B
 	return nil
 }
 
-func (t *TargetMySQLService) deleteMergeBackDDL(branchMeta *BranchMeta) error {
-	deleteBranchMergeBackSQL := getDeleteMergeBackDDLSQL(branchMeta.name)
+func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
+	deleteBranchMergeBackSQL := getDeleteMergeBackDDLSQL(name)
 	_, err := t.mysqlService.Exec(deleteBranchMergeBackSQL)
 	return err
 }
 
-func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
+func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *BranchDiff, batchSize int) error {
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.diffs {
 		if databaseDiff.needDropDatabase {
@@ -263,7 +263,7 @@ func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls 
 
 		for tableName, ddls := range databaseDiff.tableDDLs {
 			for _, ddl := range ddls {
-				sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
+				sql := getInsertMergeBackDDLSQL(name, database, tableName, ddl)
 				insertSQLs = append(insertSQLs, sql)
 			}
 		}

@@ -118,7 +118,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 		return err
 	}
 	if meta.status == StatusInit || meta.status == StatusUnknown {
-		_, err := bs.branchFetchSnapshot(meta)
+		_, err := bs.branchFetchSnapshot(meta.name, meta.includeDatabases, meta.excludeDatabases)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	}
 
 	if meta.status == StatusFetched {
-		err := bs.targetMySQLService.ApplySnapshot(meta)
+		err := bs.targetMySQLService.ApplySnapshot(meta.name)
 		if err != nil {
 			return err
 		}
@@ -169,16 +169,16 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
 // todo branchMeta -> name
 // todo: branchDiffObjectsFlag 枚举 , meta file
-func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
 		// get source schema from source mysql
-		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
 			return nil, err
 		}
 		// get target schema from target mysql
-		targetSchema, err := bs.targetMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		targetSchema, err := bs.targetMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
 			return nil, err
 		}
@@ -190,12 +190,12 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 
 	case BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget:
 		// get target schema from target mysql
-		targetSchema, err := bs.targetMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		targetSchema, err := bs.targetMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
 			return nil, err
 		}
 		// get snapshot schema that already saved in target mysql
-		snapshotSchema, err := bs.targetMySQLService.getSnapshot(branchMeta)
+		snapshotSchema, err := bs.targetMySQLService.getSnapshot(name)
 		if err != nil {
 			return nil, err
 		}
@@ -207,12 +207,12 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 
 	case BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot:
 		// get source schema from source mysql
-		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
 			return nil, err
 		}
 		// get snapshot schema that already saved in target mysql
-		snapshotSchema, err := bs.targetMySQLService.getSnapshot(branchMeta)
+		snapshotSchema, err := bs.targetMySQLService.getSnapshot(name)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +259,7 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 	}
 
 	// delete all existing ddl entries in target database
-	err = bs.targetMySQLService.deleteMergeBackDDL(meta)
+	err = bs.targetMySQLService.deleteMergeBackDDL(meta.name)
 	if err != nil {
 		return err
 	}
@@ -268,18 +268,18 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 	ddls := &BranchDiff{}
 	hints := &schemadiff.DiffHints{}
 	if mergeOption == MergeBackOptionOverride {
-		ddls, err = bs.getMergeBackOverrideDDLs(meta, hints)
+		ddls, err = bs.getMergeBackOverrideDDLs(meta.name, meta.includeDatabases, meta.excludeDatabases, hints)
 		if err != nil {
 			return err
 		}
 	} else if mergeOption == MergeBackOptionDiff {
-		ddls, err = bs.getMergeBackMergeDiffDDLs(meta, hints)
+		ddls, err = bs.getMergeBackMergeDiffDDLs(meta.name, meta.includeDatabases, meta.excludeDatabases, hints)
 		if err != nil {
 			return err
 		}
 	}
 	// insert ddl into target database
-	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta, ddls, InsertMergeBackDDLBatchSize)
+	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta.name, ddls, InsertMergeBackDDLBatchSize)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
 	}
 
 	// 逐一获取，执行，记录ddl执行
-	err = bs.executeMergeBackDDLOneByOne(meta)
+	err = bs.executeMergeBackDDLOneByOne(meta.name)
 	if err != nil {
 		return err
 	}
@@ -333,8 +333,8 @@ func (bs *BranchService) BranchShow(flag string) {
 
 /**********************************************************************************************************************/
 
-func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
-	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(meta.name)
+func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
+	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)
 
 	rows, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
 	if err != nil {
@@ -368,21 +368,21 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
 	return nil
 }
 
-func (bs *BranchService) getMergeBackOverrideDDLs(meta *BranchMeta, hints *schemadiff.DiffHints) (*BranchDiff, error) {
-	return bs.BranchDiff(meta, BranchDiffObjectsSourceTarget, hints)
+func (bs *BranchService) getMergeBackOverrideDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	return bs.BranchDiff(name, includeDatabases, excludeDatabases, BranchDiffObjectsSourceTarget, hints)
 }
 
 // todo complete me
-func (bs *BranchService) getMergeBackMergeDiffDDLs(meta *BranchMeta, hints *schemadiff.DiffHints) (*BranchDiff, error) {
-	sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(meta.includeDatabases, meta.excludeDatabases)
+func (bs *BranchService) getMergeBackMergeDiffDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {
 		return nil, err
 	}
-	targetSchema, err := bs.targetMySQLService.GetBranchSchema(meta.includeDatabases, meta.excludeDatabases)
+	targetSchema, err := bs.targetMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {
 		return nil, err
 	}
-	snapshot, err := bs.targetMySQLService.getSnapshot(meta)
+	snapshot, err := bs.targetMySQLService.getSnapshot(name)
 	if err != nil {
 		return nil, err
 	}
@@ -616,21 +616,21 @@ func tableSchemaEqual(tableSchema1, tableSchema2 *schemadiff.CreateTableEntity, 
 // Returns:
 // - *BranchSchema: The fetched schema information
 // - error: Returns nil on success, error otherwise
-func (bs *BranchService) branchFetchSnapshot(branchMeta *BranchMeta) (*BranchSchema, error) {
+func (bs *BranchService) branchFetchSnapshot(name string, includeDatabases, excludeDatabases []string) (*BranchSchema, error) {
 	// get schema from source
-	schema, err := bs.sourceMySQLService.GetBranchSchema(branchMeta.includeDatabases, branchMeta.excludeDatabases)
+	schema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {
 		return nil, err
 	}
 
 	// delete all snapshot entries in target database
-	err = bs.targetMySQLService.deleteSnapshot(branchMeta)
+	err = bs.targetMySQLService.deleteSnapshot(name)
 	if err != nil {
 		return nil, err
 	}
 
 	// insert snapshot schema into target database
-	err = bs.targetMySQLService.insertSnapshotInBatches(branchMeta, schema, InsertSnapshotBatchSize)
+	err = bs.targetMySQLService.insertSnapshotInBatches(name, schema, InsertSnapshotBatchSize)
 	if err != nil {
 		return nil, err
 	}
