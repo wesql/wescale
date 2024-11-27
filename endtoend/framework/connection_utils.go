@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
-	"time"
 )
 
 func newMysqlConfig(host string, port int, user string, passwd string, dbName string) *mysql.Config {
@@ -13,8 +12,6 @@ func newMysqlConfig(host string, port int, user string, passwd string, dbName st
 		Addr:                 fmt.Sprintf("%s:%d", host, port),
 		User:                 user,
 		Passwd:               passwd,
-		ParseTime:            true,
-		Loc:                  time.Local,
 		AllowNativePasswords: true,
 		DBName:               dbName,
 	}
