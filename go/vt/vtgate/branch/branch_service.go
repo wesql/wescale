@@ -109,6 +109,7 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 // Returns:
 // - error: Returns nil on success, error otherwise
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
+// todo：并不保证并发正确性
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	if branchMeta.status != StatusInit {
 		return fmt.Errorf("the status of branch meta should be init")
@@ -167,6 +168,8 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // - *BranchDiff: Contains the calculated schema differences
 // - error: Returns nil on success, error on invalid flag or retrieval failure
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
+// todo branchMeta -> name
+// todo: branchDiffObjectsFlag 枚举 , meta file
 func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
@@ -237,11 +240,13 @@ func (bs *BranchService) BranchDiff(branchMeta *BranchMeta, branchDiffObjectsFla
 // merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
 // todo complete me
 // todo enhancement: schema diff hints
+// todo mergeOption 枚举
 func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption string) error {
 	if mergeOption != MergeBackOptionOverride && mergeOption != MergeBackOptionDiff {
 		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeBackOptionOverride, MergeBackOptionDiff)
 	}
 
+	// todo 封装成函数
 	if meta.status != StatusCreated && meta.status != StatusPreparing && meta.status != StatusPrepared && meta.status != StatusMerged {
 		return fmt.Errorf("%v is invalid status, should be one of %v or %v or %v or %v",
 			meta.status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
@@ -275,7 +280,7 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 		}
 	}
 	// insert ddl into target database
-	err = bs.targetMySQLService.insertMergeBackDDLInBatchesFromIdZero(meta, ddls, InsertMergeBackDDLBatchSize)
+	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta, ddls, InsertMergeBackDDLBatchSize)
 	if err != nil {
 		return err
 	}
@@ -291,13 +296,10 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 // 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
 // merge完成后，更新snapshot。
 func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
+	// todo 封装成函数
 	// 状态检查，只有prepared或者Merging才能执行
 	if meta.status != StatusPrepared && meta.status != StatusMerging {
 		return fmt.Errorf("%v is invalid status, should be one of %v or %v", meta.status, StatusPrepared, StatusMerging)
-	}
-
-	if meta.status == StatusPrepared && meta.idOfNextDDLToExecute != 0 {
-		return fmt.Errorf("%v is invalid idOfNextDDLToExecute, should be 0 when status is prepared", meta.idOfNextDDLToExecute)
 	}
 
 	// 将status改为Merging
@@ -307,7 +309,7 @@ func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
 		return err
 	}
 
-	// 逐一获取，执行，记录ddl执行，也就是更新id++。
+	// 逐一获取，执行，记录ddl执行
 	err = bs.executeMergeBackDDLOneByOne(meta)
 	if err != nil {
 		return err
@@ -316,17 +318,24 @@ func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
 	// 执行完毕后更新状态
 	meta.status = StatusMerged
 	return bs.targetMySQLService.UpsertBranchMeta(meta)
+
+	// todo 更新snapshot add version timestamp
+
+	// todo branch patch table
 }
 
-func (bs *BranchService) BranchShow() {
+func (bs *BranchService) BranchShow(flag string) {
 	// todo
 	// use flag to decide what to show
+	// meta status
+	// snapshot
+	// merge back ddl
 }
 
 /**********************************************************************************************************************/
 
 func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
-	selectMergeBackDDLSQL := getSelectMergeBackDDLGreaterThanIDSQL(meta.name, meta.idOfNextDDLToExecute)
+	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(meta.name)
 
 	rows, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
 	if err != nil {
@@ -335,7 +344,7 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
 	defer rows.Close()
 	for rows.Next() {
 		var (
-			id       int64
+			id       int
 			name     string
 			database string
 			table    string
@@ -350,8 +359,8 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(meta *BranchMeta) error {
 		if err != nil {
 			return fmt.Errorf("failed to execute ddl: %v", err)
 		}
-		meta.idOfNextDDLToExecute++
-		err = bs.targetMySQLService.UpsertBranchMeta(meta)
+		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
+		_, err = bs.targetMySQLService.mysqlService.Exec(updateDDLMergedSQL)
 		if err != nil {
 			return err
 		}
@@ -466,7 +475,7 @@ func applyBranchDiffToDatabaseSchemas(databaseSchemas map[string]*schemadiff.Sch
 	resultDatabaseSchemas := make(map[string]*schemadiff.Schema)
 	for database, databaseDiff := range branchDiff.diffs {
 		// 处理删除数据库的情况
-		if databaseDiff.needDrop {
+		if databaseDiff.needDropDatabase {
 			if _, exists := databaseSchemas[database]; !exists {
 				return nil, fmt.Errorf("database %s not exist in databaseSchemas, can not drop database", database)
 			}
@@ -475,7 +484,7 @@ func applyBranchDiffToDatabaseSchemas(databaseSchemas map[string]*schemadiff.Sch
 		}
 
 		// 处理创建一个新数据库的情况
-		if databaseDiff.needCreate {
+		if databaseDiff.needCreateDatabase {
 			if _, exists := databaseSchemas[database]; exists {
 				return nil, fmt.Errorf("database %s already exist in databaseSchemas, can not create database", database)
 			}
@@ -637,8 +646,8 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 	for dbName := range originSchema.branchSchema {
 		if _, exist := expectSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
-				needCreate: false,
-				needDrop:   true,
+				needCreateDatabase: false,
+				needDropDatabase:   true,
 			}
 			branchDiff.diffs[dbName] = databaseDiff
 		}
@@ -648,8 +657,8 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 	for dbName := range expectSchema.branchSchema {
 		if _, exist := originSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
-				needCreate: true,
-				needDrop:   false,
+				needCreateDatabase: true,
+				needDropDatabase:   false,
 			}
 			tableDDLs := make(map[string][]string)
 			tableEntityDiff := make(map[string]schemadiff.EntityDiff)
@@ -682,8 +691,8 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 			continue
 		}
 		databaseDiff := &DatabaseDiff{
-			needCreate: false,
-			needDrop:   false,
+			needCreateDatabase: false,
+			needDropDatabase:   false,
 		}
 		tableDDLs := make(map[string][]string)
 		tableEntityDiff := make(map[string]schemadiff.EntityDiff)

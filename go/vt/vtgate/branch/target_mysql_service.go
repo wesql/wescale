@@ -42,6 +42,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 //
 // Returns:
 // - error: Returns nil on success, error otherwise
+// todo param to name
 func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 
 	// get databases from target
@@ -69,6 +70,7 @@ func (t *TargetMySQLService) ApplySnapshot(meta *BranchMeta) error {
 	return nil
 }
 
+// todo, 组合
 // todo, it's exactly the same as SourceMySQLService.GetBranchSchema, move it to a common place
 // GetBranchSchema retrieves CREATE TABLE statements for all tables in databases filtered by `databasesInclude` and `databasesExclude`
 func (t *TargetMySQLService) GetBranchSchema(databasesInclude, databasesExclude []string) (*BranchSchema, error) {
@@ -247,25 +249,22 @@ func (t *TargetMySQLService) deleteMergeBackDDL(branchMeta *BranchMeta) error {
 	return err
 }
 
-func (t *TargetMySQLService) insertMergeBackDDLInBatchesFromIdZero(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
-	// every time we insert MergeBackDDL, we will delete all entries, so we reset id
-	id := 0
+func (t *TargetMySQLService) insertMergeBackDDLInBatches(meta *BranchMeta, ddls *BranchDiff, batchSize int) error {
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.diffs {
-		if databaseDiff.needDrop {
+		if databaseDiff.needDropDatabase {
 			insertSQLs = append(insertSQLs, fmt.Sprintf("DROP DATABASE IF EXISTS %s", database))
 			continue
 		}
 
-		if databaseDiff.needCreate {
+		if databaseDiff.needCreateDatabase {
 			insertSQLs = append(insertSQLs, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
 		}
 
 		for tableName, ddls := range databaseDiff.tableDDLs {
 			for _, ddl := range ddls {
-				sql := getInsertMergeBackDDLSQL(id, meta.name, database, tableName, ddl)
+				sql := getInsertMergeBackDDLSQL(meta.name, database, tableName, ddl)
 				insertSQLs = append(insertSQLs, sql)
-				id++
 			}
 		}
 	}
@@ -342,7 +341,7 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
 	for database, tables := range branchSchema.branchSchema {
 		// create database
-		_, err := t.mysqlService.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+		_, err := t.mysqlService.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %v", database, err)
 		}
@@ -376,6 +375,7 @@ func (t *TargetMySQLService) createTablesInBatches(databaseName string, createTa
 		}
 
 		batchSQL := strings.Join(stmts[i:end], ";")
+		// todo: remove use?
 		batchSQL = fmt.Sprintf("USE %s; %s", databaseName, batchSQL)
 
 		if _, err := t.mysqlService.Exec(batchSQL); err != nil {
@@ -411,7 +411,6 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 		&excludeDBs,
 		&meta.targetDBPattern,
 		&status,
-		&meta.idOfNextDDLToExecute,
 	)
 	if err != nil {
 		return nil, err
@@ -458,8 +457,7 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		includeDatabases,
 		excludeDatabases,
 		string(branchMeta.status),
-		branchMeta.targetDBPattern,
-		branchMeta.idOfNextDDLToExecute)
+		branchMeta.targetDBPattern)
 }
 
 // snapshot related
@@ -482,10 +480,14 @@ func getDeleteMergeBackDDLSQL(name string) string {
 	return fmt.Sprintf(DeleteBranchMergeBackDDLSQL, name)
 }
 
-func getInsertMergeBackDDLSQL(id int, name, database, table, ddl string) string {
-	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, id, name, database, table, ddl)
+func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
+	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, name, database, table, ddl)
 }
 
-func getSelectMergeBackDDLGreaterThanIDSQL(name string, id int) string {
-	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name, id)
+func getSelectUnmergedDDLSQL(name string) string {
+	return fmt.Sprintf(SelectBranchUnmergedDDLSQL, name)
+}
+
+func getUpdateDDLMergedSQL(id int) string {
+	return fmt.Sprintf(UpdateBranchMergeBackDDLMergedSQL, id)
 }

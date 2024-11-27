@@ -13,9 +13,8 @@ type BranchMeta struct {
 	includeDatabases []string
 	excludeDatabases []string
 	// others
-	targetDBPattern      string // todo
-	status               BranchStatus
-	idOfNextDDLToExecute int // it's used in branch merge crash retry logic
+	targetDBPattern string // todo enhancement: so that we can test branch in single mysql instance
+	status          BranchStatus
 }
 
 type BranchStatus string
@@ -47,8 +46,8 @@ type BranchSchema struct {
 }
 
 type DatabaseDiff struct {
-	needCreate bool
-	needDrop   bool
+	needCreateDatabase bool
+	needDropDatabase   bool
 	// table name -> ddls to create, drop or alter this table from origin to expected
 	tableDDLs map[string][]string
 
@@ -67,9 +66,9 @@ const (
 	UpsertBranchMetaSQL = `
     INSERT INTO mysql.branch 
         (name, source_host, source_port, source_user, source_password, 
-        include_databases, exclude_databases, status, target_db_pattern, id_of_next_ddl_to_execute) 
+        include_databases, exclude_databases, status, target_db_pattern) 
     VALUES 
-        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s','%d')
+        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')
     ON DUPLICATE KEY UPDATE 
         source_host = VALUES(source_host),
         source_port = VALUES(source_port),
@@ -78,8 +77,7 @@ const (
         include_databases = VALUES(include_databases),
         exclude_databases = VALUES(exclude_databases),
         status = VALUES(status),
-        target_db_pattern = VALUES(target_db_pattern),
-        id_of_next_ddl_to_execute = VALUES(id_of_next_ddl_to_execute)`
+        target_db_pattern = VALUES(target_db_pattern)`
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 
@@ -93,9 +91,11 @@ const (
 
 	// merge back ddl related
 
-	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_merge_back where name='%s'"
+	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where name='%s'"
 
-	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_merge_back where name='%s' and id >= '%d' order by id"
+	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where name='%s' and merged = false order by id"
 
-	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_merge_back (id, name, database, table, ddl) values ('%d', '%s', '%s', '%s', '%s')"
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (name, database, table, ddl, merged) values ('%s', '%s', '%s', '%s', false)"
+
+	UpdateBranchMergeBackDDLMergedSQL = "update mysql.branch_patch set merged = true where id = '%d'"
 )

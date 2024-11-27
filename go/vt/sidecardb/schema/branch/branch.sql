@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS mysql.branch
     `exclude_databases`             varchar(256),
     `status`                        varchar(32)      NOT NULL,
     `target_db_pattern`             varchar(256),
-    `id_of_next_ddl_to_execute`     int              NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
     ) ENGINE = InnoDB;

@@ -43,6 +43,8 @@ func (m *MysqlService) Query(query string) (*sql.Rows, error) {
 	return m.db.Query(query)
 }
 
+// todo: add database name
+// todo: should need read multi result? or just use conn
 func (m *MysqlService) Exec(query string, args ...any) (sql.Result, error) {
 	return m.db.Exec(query, args...)
 }
