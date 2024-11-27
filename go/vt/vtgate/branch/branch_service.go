@@ -240,26 +240,24 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 // todo complete me
 // todo enhancement: schema diff hints
 // todo mergeOption 枚举
-func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption string) error {
+func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption string) error {
 	if mergeOption != MergeBackOptionOverride && mergeOption != MergeBackOptionDiff {
 		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeBackOptionOverride, MergeBackOptionDiff)
 	}
 
-	// todo 封装成函数
-	if meta.status != StatusCreated && meta.status != StatusPreparing && meta.status != StatusPrepared && meta.status != StatusMerged {
+	if !statusIsOneOf(status, []BranchStatus{StatusCreated, StatusPreparing, StatusPrepared, StatusMerged}) {
 		return fmt.Errorf("%v is invalid status, should be one of %v or %v or %v or %v",
-			meta.status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
+			status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
 	}
 
 	// set status to preparing
-	meta.status = StatusPreparing
-	err := bs.targetMySQLService.UpsertBranchMeta(meta)
+	err := bs.targetMySQLService.UpdateBranchStatus(name, StatusPreparing)
 	if err != nil {
 		return err
 	}
 
 	// delete all existing ddl entries in target database
-	err = bs.targetMySQLService.deleteMergeBackDDL(meta.name)
+	err = bs.targetMySQLService.deleteMergeBackDDL(name)
 	if err != nil {
 		return err
 	}
@@ -268,25 +266,24 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 	ddls := &BranchDiff{}
 	hints := &schemadiff.DiffHints{}
 	if mergeOption == MergeBackOptionOverride {
-		ddls, err = bs.getMergeBackOverrideDDLs(meta.name, meta.includeDatabases, meta.excludeDatabases, hints)
+		ddls, err = bs.getMergeBackOverrideDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return err
 		}
 	} else if mergeOption == MergeBackOptionDiff {
-		ddls, err = bs.getMergeBackMergeDiffDDLs(meta.name, meta.includeDatabases, meta.excludeDatabases, hints)
+		ddls, err = bs.getMergeBackMergeDiffDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return err
 		}
 	}
 	// insert ddl into target database
-	err = bs.targetMySQLService.insertMergeBackDDLInBatches(meta.name, ddls, InsertMergeBackDDLBatchSize)
+	err = bs.targetMySQLService.insertMergeBackDDLInBatches(name, ddls, InsertMergeBackDDLBatchSize)
 	if err != nil {
 		return err
 	}
 
 	// set status to prepared
-	meta.status = StatusPrepared
-	return bs.targetMySQLService.UpsertBranchMeta(meta)
+	return bs.targetMySQLService.UpdateBranchStatus(name, StatusPrepared)
 }
 
 // todo make it Idempotence
@@ -294,33 +291,30 @@ func (bs *BranchService) BranchPrepareMergeBack(meta *BranchMeta, mergeOption st
 // 幂等性：确保执行prepare merge中记录的ddl，crash后再次执行时，从上次没有执行的DDL继续。
 // 难点：crash时，发送的那条DDL到底执行与否。有办法解决。但先记为todo，因为不同mysql协议数据库的解决方案不同。
 // merge完成后，更新snapshot。
-func (bs *BranchService) BranchMergeBack(meta *BranchMeta) error {
-	// todo 封装成函数
+func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error {
+
 	// 状态检查，只有prepared或者Merging才能执行
-	if meta.status != StatusPrepared && meta.status != StatusMerging {
-		return fmt.Errorf("%v is invalid status, should be one of %v or %v", meta.status, StatusPrepared, StatusMerging)
+	if !statusIsOneOf(status, []BranchStatus{StatusPrepared, StatusMerging}) {
+		return fmt.Errorf("%v is invalid status, should be one of %v or %v", status, StatusPrepared, StatusMerging)
 	}
 
 	// 将status改为Merging
-	meta.status = StatusMerging
-	err := bs.targetMySQLService.UpsertBranchMeta(meta)
+	err := bs.targetMySQLService.UpdateBranchStatus(name, StatusMerging)
 	if err != nil {
 		return err
 	}
 
 	// 逐一获取，执行，记录ddl执行
-	err = bs.executeMergeBackDDLOneByOne(meta.name)
+	err = bs.executeMergeBackDDLOneByOne(name)
 	if err != nil {
 		return err
 	}
 
 	// 执行完毕后更新状态
-	meta.status = StatusMerged
-	return bs.targetMySQLService.UpsertBranchMeta(meta)
+	return bs.targetMySQLService.UpdateBranchStatus(name, StatusMerged)
+	// todo 更新snapshot add
+	// todo enhancement multi version snapshot
 
-	// todo 更新snapshot add version timestamp
-
-	// todo branch patch table
 }
 
 func (bs *BranchService) BranchShow(flag string) {
@@ -332,6 +326,15 @@ func (bs *BranchService) BranchShow(flag string) {
 }
 
 /**********************************************************************************************************************/
+
+func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
+	for _, s := range statuses {
+		if status == s {
+			return true
+		}
+	}
+	return false
+}
 
 func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)

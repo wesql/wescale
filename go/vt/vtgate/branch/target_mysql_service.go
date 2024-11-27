@@ -445,6 +445,12 @@ func (t *TargetMySQLService) InsertBranchMeta(branchMeta *BranchMeta) error {
 	return err
 }
 
+func (t *TargetMySQLService) UpdateBranchStatus(name string, status BranchStatus) error {
+	sql := getUpdateBranchStatusSQL(name, status)
+	_, err := t.mysqlService.Exec(sql)
+	return err
+}
+
 // branch meta related
 
 func getSelectBranchMetaSQL(name string) string {
@@ -479,6 +485,10 @@ func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		excludeDatabases,
 		string(branchMeta.status),
 		branchMeta.targetDBPattern)
+}
+
+func getUpdateBranchStatusSQL(name string, status BranchStatus) string {
+	return fmt.Sprintf(UpdateBranchStatusSQL, string(status), name)
 }
 
 // snapshot related

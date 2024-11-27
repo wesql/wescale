@@ -87,6 +87,8 @@ const (
     VALUES 
         ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
 
+	UpdateBranchStatusSQL = "update mysql.branch set status='%s' where name='%s'"
+
 	// snapshot related
 
 	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"
