@@ -81,6 +81,12 @@ const (
 
 	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
 
+	InsertBranchMetaSQL = `INSERT INTO mysql.branch 
+        (name, source_host, source_port, source_user, source_password, 
+        include_databases, exclude_databases, status, target_db_pattern) 
+    VALUES 
+        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
+
 	// snapshot related
 
 	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"

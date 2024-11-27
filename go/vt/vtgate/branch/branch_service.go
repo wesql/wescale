@@ -109,7 +109,6 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 // Returns:
 // - error: Returns nil on success, error otherwise
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
-// todo：并不保证并发正确性
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	if branchMeta.status != StatusInit {
 		return fmt.Errorf("the status of branch meta should be init")

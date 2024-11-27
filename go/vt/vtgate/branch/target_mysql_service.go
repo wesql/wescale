@@ -21,7 +21,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 		return meta, nil
 	}
 
-	err := t.UpsertBranchMeta(metaToInsertIfNotExists)
+	err := t.InsertBranchMeta(metaToInsertIfNotExists)
 	if err != nil {
 		return nil, err
 	}
@@ -439,6 +439,12 @@ func (t *TargetMySQLService) UpsertBranchMeta(branchMeta *BranchMeta) error {
 	return err
 }
 
+func (t *TargetMySQLService) InsertBranchMeta(branchMeta *BranchMeta) error {
+	sql := getInsertBranchMetaSQL(branchMeta)
+	_, err := t.mysqlService.Exec(sql)
+	return err
+}
+
 // branch meta related
 
 func getSelectBranchMetaSQL(name string) string {
@@ -449,6 +455,21 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 	includeDatabases := strings.Join(branchMeta.includeDatabases, ",")
 	excludeDatabases := strings.Join(branchMeta.excludeDatabases, ",")
 	return fmt.Sprintf(UpsertBranchMetaSQL,
+		branchMeta.name,
+		branchMeta.sourceHost,
+		branchMeta.sourcePort,
+		branchMeta.sourceUser,
+		branchMeta.sourcePassword,
+		includeDatabases,
+		excludeDatabases,
+		string(branchMeta.status),
+		branchMeta.targetDBPattern)
+}
+
+func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
+	includeDatabases := strings.Join(branchMeta.includeDatabases, ",")
+	excludeDatabases := strings.Join(branchMeta.excludeDatabases, ",")
+	return fmt.Sprintf(InsertBranchMetaSQL,
 		branchMeta.name,
 		branchMeta.sourceHost,
 		branchMeta.sourcePort,
