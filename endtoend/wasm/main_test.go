@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// Cleanup the test environment
-	err = cluster.TearDownSingleNodeCluster()
+	err = cluster.CleanUp()
 	if err != nil {
 		log.Fatalf("Cleanup failed: %v", err)
 	}

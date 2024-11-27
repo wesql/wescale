@@ -32,8 +32,9 @@ type SingleNodeCluster struct {
 	DbName        string
 	SetUpScript   string
 	CleanupScript string
-	MysqlDb       *sql.DB
-	WescaleDb     *sql.DB
+
+	MysqlDb   *sql.DB
+	WescaleDb *sql.DB
 }
 
 func NewDefaultSingleNodeCluster() *SingleNodeCluster {
@@ -99,7 +100,7 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 	}, nil
 }
 
-func (c *SingleNodeCluster) TearDownSingleNodeCluster() error {
+func (c *SingleNodeCluster) CleanUp() error {
 	// Execute Clean Up Script
 	if c.CleanupScript != "" {
 		err := ExecuteSqlScript(c.WescaleDb, c.CleanupScript)
