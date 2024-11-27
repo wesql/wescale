@@ -46,16 +46,3 @@ func compressByBZip2(originalData []byte) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-
-func insertIntoWasmBinary(t *testing.T, db *sql.DB, wasmName, wasmRuntime, wasmCompressAlgorithm string, wasmBytes []byte, hash string) error {
-	t.Helper()
-	ExecNoError(t, db, `insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`, wasmName, wasmRuntime, wasmBytes, wasmCompressAlgorithm, hash)
-
-	preparedStmt, err := db.Prepare(`insert ignore into mysql.wasm_binary(name,runtime,data,compress_algorithm,hash_before_compress) values (?,?,?,?,?)`)
-	if err != nil {
-		return err
-	}
-	defer preparedStmt.Close()
-	_, err = preparedStmt.Exec(wasmName, wasmRuntime, wasmBytes, wasmCompressAlgorithm, hash)
-	return err
-}

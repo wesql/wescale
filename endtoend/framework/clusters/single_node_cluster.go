@@ -1,9 +1,10 @@
-package framework
+package clusters
 
 import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"github.com/wesql/wescale/endtoend/framework"
 )
 
 func (s *SingleNodeCluster) RegisterFlagsForSingleNodeCluster() {
@@ -76,7 +77,7 @@ func newCustomSingleNodeCluster(clusterName string,
 // cleanupScript can be an empty string if no cleanup script is needed.
 func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScript string) error {
 	// Create the database
-	db, err := newMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, "")
+	db, err := framework.NewMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, "")
 	if err != nil {
 		return err
 	}
@@ -88,18 +89,18 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 	}
 
 	// Create the connection pools
-	mysqlDb, err := newMysqlConnectionPool(s.mysqlHost, s.mysqlPort, s.mysqlUser, s.mysqlPasswd, dbName)
+	mysqlDb, err := framework.NewMysqlConnectionPool(s.mysqlHost, s.mysqlPort, s.mysqlUser, s.mysqlPasswd, dbName)
 	if err != nil {
 		return err
 	}
-	wescaleDb, err := newMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, dbName)
+	wescaleDb, err := framework.NewMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, dbName)
 	if err != nil {
 		return err
 	}
 
 	// Execute Set Up Script
 	if setupScript != "" {
-		err = ExecuteSqlScript(wescaleDb, setupScript)
+		err = framework.ExecuteSqlScript(wescaleDb, setupScript)
 		if err != nil {
 			return err
 		}
@@ -116,7 +117,7 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 func (s *SingleNodeCluster) CleanUp() error {
 	// Execute Clean Up Script
 	if s.CleanupScript != "" {
-		err := ExecuteSqlScript(s.WescaleDb, s.CleanupScript)
+		err := framework.ExecuteSqlScript(s.WescaleDb, s.CleanupScript)
 		if err != nil {
 			return err
 		}

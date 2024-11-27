@@ -3,7 +3,7 @@ package wasm
 import (
 	_ "embed"
 	"flag"
-	"github.com/wesql/wescale/endtoend/framework"
+	"github.com/wesql/wescale/endtoend/framework/clusters"
 	"log"
 	"os"
 	"testing"
@@ -17,10 +17,10 @@ var setupSql string
 //go:embed cleanup.sql
 var cleanupSql string
 
-var cluster *framework.SingleNodeCluster
+var cluster *clusters.SingleNodeCluster
 
 func TestMain(m *testing.M) {
-	cluster = framework.NewDefaultSingleNodeCluster()
+	cluster = clusters.NewDefaultSingleNodeCluster()
 	// Register flags for the single node cluster, allowing the user to override the default values
 	cluster.RegisterFlagsForSingleNodeCluster()
 	flag.Parse()

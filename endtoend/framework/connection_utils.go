@@ -17,7 +17,7 @@ func newMysqlConfig(host string, port int, user string, passwd string, dbName st
 	}
 }
 
-func newMysqlConnectionPool(host string, port int, user string, passwd string, dbName string) (*sql.DB, error) {
+func NewMysqlConnectionPool(host string, port int, user string, passwd string, dbName string) (*sql.DB, error) {
 	c := newMysqlConfig(host, port, user, passwd, dbName)
 	c.MultiStatements = true
 	db, err := sql.Open("mysql", c.FormatDSN())
