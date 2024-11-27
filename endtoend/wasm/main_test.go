@@ -21,7 +21,7 @@ var cluster *framework.SingleNodeCluster
 func TestMain(m *testing.M) {
 	// Setup the test environment
 	var err error
-	cluster, err = framework.SetUpSingleNodeCluster(dbName, setupSql, cleanupSql)
+	cluster, err = framework.NewDefaultSingleNodeCluster().SetUp(dbName, setupSql, cleanupSql)
 	if err != nil {
 		log.Fatalf("Setup failed: %v", err)
 	}
