@@ -2,6 +2,7 @@ package wasm
 
 import (
 	_ "embed"
+	"flag"
 	"github.com/wesql/wescale/endtoend/framework"
 	"log"
 	"os"
@@ -19,9 +20,13 @@ var cleanupSql string
 var cluster *framework.SingleNodeCluster
 
 func TestMain(m *testing.M) {
+	cluster = framework.NewDefaultSingleNodeCluster()
+	// Register flags for the single node cluster, allowing the user to override the default values
+	cluster.RegisterFlagsForSingleNodeCluster()
+	flag.Parse()
+
 	// Setup the test environment
-	var err error
-	cluster, err = framework.NewDefaultSingleNodeCluster().SetUp(dbName, setupSql, cleanupSql)
+	err := cluster.SetUp(dbName, setupSql, cleanupSql)
 	if err != nil {
 		log.Fatalf("Setup failed: %v", err)
 	}
