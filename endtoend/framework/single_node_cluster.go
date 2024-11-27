@@ -3,6 +3,7 @@ package framework
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 )
 
 var (
@@ -34,28 +35,66 @@ func RegisterFlagsForSingleNodeCluster() {
 }
 
 type SingleNodeCluster struct {
-	MysqlDb   *sql.DB
-	WescaleDb *sql.DB
+	DbName        string
+	SetUpScript   string
+	CleanupScript string
+	MysqlDb       *sql.DB
+	WescaleDb     *sql.DB
 }
 
-func SetUpSingleNodeCluster() (*SingleNodeCluster, error) {
-	mysqlDb, err := newMysqlConnectionPool(mysqlHost, mysqlPort, mysqlUser, mysqlPasswd, "")
+// SetUpSingleNodeCluster creates a single node cluster with a MySQL and WeScale database.
+// dbName can be an empty string if no database is needed.
+// setupScript can be an empty string if no setup script is needed.
+// cleanupScript can be an empty string if no cleanup script is needed.
+func SetUpSingleNodeCluster(dbName string, setupScript string, cleanupScript string) (*SingleNodeCluster, error) {
+	// Create the database
+	db, err := newMysqlConnectionPool(wescaleHost, wescalePort, wescaleUser, wescalePasswd, "")
+	if err != nil {
+		return nil, err
+	}
+	if dbName != "" {
+		_, err = db.Exec(fmt.Sprintf("create database if not exists `%s`", dbName))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Create the connection pools
+	mysqlDb, err := newMysqlConnectionPool(mysqlHost, mysqlPort, mysqlUser, mysqlPasswd, dbName)
+	if err != nil {
+		return nil, err
+	}
+	wescaleDb, err := newMysqlConnectionPool(wescaleHost, wescalePort, wescaleUser, wescalePasswd, dbName)
 	if err != nil {
 		return nil, err
 	}
 
-	wescaleDb, err := newMysqlConnectionPool(wescaleHost, wescalePort, wescaleUser, wescalePasswd, "")
-	if err != nil {
-		return nil, err
+	// Execute Set Up Script
+	if setupScript != "" {
+		err = ExecuteSqlScript(wescaleDb, setupScript)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &SingleNodeCluster{
-		MysqlDb:   mysqlDb,
-		WescaleDb: wescaleDb,
+		DbName:        dbName,
+		SetUpScript:   setupScript,
+		CleanupScript: cleanupScript,
+		MysqlDb:       mysqlDb,
+		WescaleDb:     wescaleDb,
 	}, nil
 }
 
 func (c *SingleNodeCluster) TearDownSingleNodeCluster() error {
+	// Execute Clean Up Script
+	if c.CleanupScript != "" {
+		err := ExecuteSqlScript(c.WescaleDb, c.CleanupScript)
+		if err != nil {
+			return err
+		}
+	}
+
 	if c.MysqlDb != nil {
 		err := c.MysqlDb.Close()
 		if err != nil {
