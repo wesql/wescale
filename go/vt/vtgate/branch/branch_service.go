@@ -362,7 +362,6 @@ func (bs *BranchService) getMergeBackOverrideDDLs(name string, includeDatabases,
 	return bs.BranchDiff(name, includeDatabases, excludeDatabases, FromSourceToTarget, hints)
 }
 
-// todo complete me
 func (bs *BranchService) getMergeBackMergeDiffDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {

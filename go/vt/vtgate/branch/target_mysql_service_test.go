@@ -9,9 +9,7 @@ import (
 func TestGetAllDatabases(t *testing.T) {
 	mysqlService, mock := NewMockMysqlService(t)
 	defer mysqlService.Close()
-	TargetMySQLServiceForTest := &TargetMySQLService{
-		mysqlService: mysqlService,
-	}
+	TargetMySQLServiceForTest := NewTargetMySQLService(mysqlService)
 
 	InitMockShowDatabases(mock)
 
@@ -24,9 +22,7 @@ func TestGetAllDatabases(t *testing.T) {
 func TestSelectBranchMeta(t *testing.T) {
 	mysqlService, mock := NewMockMysqlService(t)
 	defer mysqlService.Close()
-	TargetMySQLServiceForTest := &TargetMySQLService{
-		mysqlService: mysqlService,
-	}
+	TargetMySQLServiceForTest := NewTargetMySQLService(mysqlService)
 
 	InitMockBranchMetas(mock)
 

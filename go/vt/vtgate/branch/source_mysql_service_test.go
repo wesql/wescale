@@ -7,7 +7,7 @@ import (
 
 func TestGetBranchSchemaInBatches(t *testing.T) {
 	service, mock := NewMockMysqlService(t)
-	s := &SourceMySQLService{mysqlService: service}
+	s := NewSourceMySQLService(service)
 
 	InitMockShowCreateTable(mock)
 	tableInfo := make([]TableInfo, 0)
@@ -28,7 +28,7 @@ func TestGetBranchSchemaInBatches(t *testing.T) {
 
 func TestGetBranchSchema(t *testing.T) {
 	service, mock := NewMockMysqlService(t)
-	s := &SourceMySQLService{mysqlService: service}
+	s := NewSourceMySQLService(service)
 
 	// get one table schema each time, because it's more convenient for mock
 	GetBranchSchemaBatchSize = 1
@@ -239,9 +239,7 @@ func TestGetTableInfos(t *testing.T) {
 		},
 	}
 
-	service := &SourceMySQLService{
-		mysqlService: mysql,
-	}
+	service := NewSourceMySQLService(mysql)
 
 	for _, tt := range testcases {
 		got, err := service.getTableInfos(tt.databasesInclude, tt.databasesExclude)
