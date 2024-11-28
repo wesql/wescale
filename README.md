@@ -21,15 +21,15 @@ interaction between your application and the database, making development more e
 While databases have evolved to include complex and common application requirements like transactions and indexing, 
 modern applications have a growing set of shared needs that aren’t suitable or haven’t yet been integrated into the database layer. 
 This gap has led to the rise of various database middleware solutions such as 
-client-side connection pools, SQL retry libraries, online DDL tools like gh-ost and pt-online-schema-change, and more.
+client-side connection pools, SQL retry libraries, online DDL tools, and more.
 <br/>
 As a database proxy, WeScale serves as a crucial bridge between the application layer and the database layer.
 It leans towards the application side, offering features specifically designed to simplify the developer experience. These include:
-- Server Side Connection Management: Efficiently manages database connections to prevent issues like max_connections limits.
-- Read-Write Splitting: Automatically routes read queries to replicas and write queries to the primary node.
-- Read-After-Write Consistency: Ensures that data written to the primary node is immediately available on replicas for subsequent reads.
-- Load Balancing: Distributes queries intelligently across replicas to optimize performance.
-- Transparent Failover: Automatically handles database failovers while keeping application connections intact.
+- **Server Side Connection Management**: Efficiently manages database connections to prevent issues like max_connections limits.
+- **Read-Write Splitting**: Automatically routes read queries to replicas and write queries to the primary node.
+- **Read-After-Write Consistency**: Ensures that data written to the primary node is immediately available on replicas for subsequent reads.
+- **Load Balancing**: Distributes queries intelligently across replicas to optimize performance.
+- **Transparent Failover**: Automatically handles database failovers while keeping application connections intact.
 - DeclartiveDDL & OnlineDDL: Simplifies schema changes by allowing developers to define schema changes declaratively and apply them online.
 - Branch: Enables developers to create a branch of the database for testing and development purposes.
 - Transaction Chopping: Splits large transactions into smaller chunks to prevent long-running transactions from blocking other queries.
