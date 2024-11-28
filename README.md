@@ -70,26 +70,27 @@ docker rm -f mysql-server wescale
 docker network rm wescale-network
 ```
 
+# Documentation
+* [Read-Write-Split & LoadBalancer.md](doc%2Ftoturial%2F03-Read-Write-Split%20%26%20LoadBalancer.md)
+* [Read-After-Write-Consistency.md](doc%2Ftoturial%2F04-Read-After-Write-Consistency.md)
+* [Declarative-DDL.md](doc%2Ftoturial%2F14-Declarative-DDL.md)
+* [OnlineDDL.md](doc%2Ftoturial%2F07-OnlineDDL.md)
+* [Branch](doc%2Ftoturial%2F08-Branch.md)
+* [Transaction Chopping.md](doc%2Ftoturial%2F09-Transaction-Chopping.md)
+* [Show Tablets Query Plans](doc%2Ftoturial%2F10-Show%20Tablets%20Query%20Plans.md)
+* [Filters](doc%2Ftoturial%2F12-Filters.md)
+* [Write a Wasm Plugin In WeScale](doc%2Ftoturial%2F13-Write-a-Wasm-Plugin-In-WeScale.md)
+* [Transparent Failover.md](doc%2Ftoturial%2F05-Transparent%20Failover.md)
+* [Authentication & Authorization.md](doc%2Ftoturial%2F06-Authentication%26Authorization.md)
+
 # Blogs
+* [Architecture.md](doc%2Ftoturial%2F01-Architecture.md)
+* [Life of A Query.md](doc%2Ftoturial%2F02-Life%20of%20A%20Query.md)
 * [Introduction To WeScale.md](doc%2Fblogs%2FIntroduction%20To%20WeScale.md)
 * [Dive into Read-Write-Splitting of WeScale.md](doc%2Fblogs%2FDive%20into%20Read-Write-Splitting%20of%20WeScale.md)
 * [Performance Comparison WeScale vs MySQL.md](doc%2Fblogs%2FPerformance%20Comparison%20WeScale%20vs%20MySQL.md)
 * [Execution Process of DROP TABLE in OnlineDDL Mode.md](doc%2Fblogs%2FExecution%20Process%20of%20DROP%20TABLE%20in%20OnlineDDL%20Mode.md)
-
-# Documentation
-* [Deploy & Debug.md](doc%2Ftoturial%2F00-Deploy%26Debug.md)
-* [Architecture.md](doc%2Ftoturial%2F01-Architecture.md)
-* [Life of A Query.md](doc%2Ftoturial%2F02-Life%20of%20A%20Query.md)
-* [Read-Write-Split & LoadBalancer.md](doc%2Ftoturial%2F03-Read-Write-Split%20%26%20LoadBalancer.md)
-* [Read-After-Write-Consistency.md](doc%2Ftoturial%2F04-Read-After-Write-Consistency.md)
-* [Transparent Failover.md](doc%2Ftoturial%2F05-Transparent%20Failover.md)
-* [Authentication & Authorization.md](doc%2Ftoturial%2F06-Authentication%26Authorization.md)
-* [OnlineDDL User Guide](doc%2Ftoturial%2F07-OnlineDDL-User-Guide.md)
-* [Branch Tutorial](doc%2Ftoturial%2F08-Branch.md)
-* [Non-Transactional DML](doc%2Ftoturial%2F09-Non-Transactional%20DML.md)
-* [Show Tablets Query Plans](doc%2Ftoturial%2F10-Show%20Tablets%20Query%20Plans.md)
-* [Filters](doc%2Ftoturial%2F12-Filters.md)
-* [Write a Wasm Plugin In WeScale](doc%2Ftoturial%2F13-Write-a-Wasm-Plugin-In-WeScale.md)
+* [Scaling-database-connections.md](doc%2Fblogs%2FScaling-database-connections.md)
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
