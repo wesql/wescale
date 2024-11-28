@@ -14,7 +14,7 @@
 </div>
 
 
-<br/>
+# Introduction
 WeScale is an open-source database proxy built with application developers in mind. It aims to simplify and enhance the 
 interaction between your application and the database, making development more efficient and enjoyable.
 <br/>
