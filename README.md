@@ -77,7 +77,7 @@ docker rm -f mysql-server wescale
 docker network rm wescale-network
 ```
 
-# Documentation
+# Features
 * [Read-Write-Split & LoadBalancer.md](doc%2Ftoturial%2F03-Read-Write-Split%20%26%20LoadBalancer.md)
 * [Read-After-Write-Consistency.md](doc%2Ftoturial%2F04-Read-After-Write-Consistency.md)
 * [Declarative-DDL.md](doc%2Ftoturial%2F14-Declarative-DDL.md)
