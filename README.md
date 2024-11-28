@@ -14,10 +14,27 @@
 </div>
 
 
-WeScale is a database proxy designed to enhance the scalability, performance, security, and resilience of your applications.
 <br/>
-By managing connections, read-write-split, read-after-write-consistency, load balancing, WeScale offers
-a valuable tool for developers and database administrators.
+WeScale is an open-source database proxy built with application developers in mind. It aims to simplify and enhance the 
+interaction between your application and the database, making development more efficient and enjoyable.
+<br/>
+While databases have evolved to include complex and common application requirements like transactions and indexing, 
+modern applications have a growing set of shared needs that aren’t suitable or haven’t yet been integrated into the database layer. 
+This gap has led to the rise of various database middleware solutions such as 
+client-side connection pools, SQL retry libraries, online DDL tools like gh-ost and pt-online-schema-change, and more.
+<br/>
+As a database proxy, WeScale serves as a crucial bridge between the application layer and the database layer.
+It leans towards the application side, offering features specifically designed to simplify the developer experience. These include:
+* Server Side Connection Management: Efficiently manages database connections to prevent issues like max_connections limits.
+* Read-Write Splitting: Automatically routes read queries to replicas and write queries to the primary node.
+* Read-After-Write Consistency: Ensures that data written to the primary node is immediately available on replicas for subsequent reads.
+* Load Balancing: Distributes queries intelligently across replicas to optimize performance.
+* Transparent Failover: Automatically handles database failovers while keeping application connections intact.
+* DeclartiveDDL & OnlineDDL: Simplifies schema changes by allowing developers to define schema changes declaratively and apply them online.
+* Branch: Enables developers to create a branch of the database for testing and development purposes.
+* Transaction Chopping: Splits large transactions into smaller chunks to prevent long-running transactions from blocking other queries.
+* Filters & Wasm Plugin: Allows developers to write custom filters using WebAssembly to extend WeScale's functionality.
+* Native Authentication & Authorization: Supports MySQL native authentication and authorization methods.
 
 # Getting Started
 * To [Get Started On Your Local Machine](doc%2Ftoturial%2F00-Deploy%26Debug.md) with WeScale, simply clone the repository and follow the installation instructions
@@ -94,31 +111,6 @@ docker network rm wescale-network
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
-
-# Features
-
-**Connection Management:**
-WeScale efficiently manages connections to your database, reducing the overhead on your application
-and improving performance. WeScale relieves you of the worry of the max_connection problem in your database.
-
-**Read Write Split:**
-WeScale simplify application logic by automatically routing read queries to read-only nodes
-and write queries to the primary node. This is achieved by parsing and analyzing SQL statements,
-which ensures efficient use of available resources.
-
-**Read After Write Consistency:**
-When an application writes data to the primary node and subsequently reads it on a read-only node,
-WeScale makes sure that the data that was just written to the primary node can be accessed
-and read from the read-only node.
-
-**Load Balancing:**
-The proxy intelligently routes queries to the appropriate read-only nodes using various load balancing policies.
-This ensures that the workload is evenly distributed across all available nodes, optimizing performance
-and resource utilization
-
-**Transparent Failover:**
-WeScale is capable of automatically detecting failovers and buffering application SQL in its memory while keeping application connections intact, 
-thus enhancing application resilience in the event of database failures.
 
 # Contributing
 We welcome contributions to WeScale! If you have any ideas, bug reports, or feature requests,
