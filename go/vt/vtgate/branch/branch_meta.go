@@ -40,6 +40,24 @@ func StringToBranchStatus(s string) BranchStatus {
 	}
 }
 
+type MergeBackOption string
+
+const (
+	MergeOverride MergeBackOption = "override"
+	MergeDiff     MergeBackOption = "diff"
+)
+
+type BranchDiffObjectsFlag string
+
+const (
+	FromSourceToTarget   BranchDiffObjectsFlag = "source_target" // diff from source schema to target schema
+	FromTargetToSource   BranchDiffObjectsFlag = "target_source"
+	FromSourceToSnapshot BranchDiffObjectsFlag = "source_snapshot"
+	FromSnapshotToSource BranchDiffObjectsFlag = "snapshot_source"
+	FromTargetToSnapshot BranchDiffObjectsFlag = "target_snapshot"
+	FromSnapshotToTarget BranchDiffObjectsFlag = "snapshot_target"
+)
+
 type BranchSchema struct {
 	// databases -> tables -> create table statement or DDLs
 	branchSchema map[string]map[string]string

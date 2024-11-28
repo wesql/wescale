@@ -8,16 +8,6 @@ import (
 
 var (
 	DefaultExcludeDatabases = []string{"mysql", "sys", "information_schema", "performance_schema"}
-
-	BranchDiffObjectsSourceTarget   = "source_target" // which means wants diff from source schema to target schema
-	BranchDiffObjectsTargetSource   = "target_source"
-	BranchDiffObjectsSourceSnapshot = "source_snapshot"
-	BranchDiffObjectsSnapshotSource = "snapshot_source"
-	BranchDiffObjectsTargetSnapshot = "target_snapshot"
-	BranchDiffObjectsSnapshotTarget = "snapshot_target"
-
-	MergeBackOptionOverride = "override"
-	MergeBackOptionDiff     = "diff"
 )
 
 type BranchService struct {
@@ -154,9 +144,9 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // - Returns error if the requested snapshot doesn't exist
 //
 // Supported Comparison Modes (branchDiffObjectsFlag):
-// - SourceTarget/TargetSource: Compares source MySQL schema with target MySQL schema
-// - TargetSnapshot/SnapshotTarget: Compares target MySQL schema with stored snapshot
-// - SnapshotSource/SourceSnapshot: Compares stored snapshot with source MySQL schema
+// - FromSourceToTarget/ FromTargetToSource: Compares source MySQL schema with target MySQL schema
+// - FromTargetToSnapshot/ FromSnapshotToTarget: Compares target MySQL schema with stored snapshot
+// - FromSnapshotToSource/ FromSourceToSnapshot: Compares stored snapshot with source MySQL schema
 //
 // Parameters:
 // - branchMeta: Contains branch configuration including database filters
@@ -168,10 +158,9 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // - error: Returns nil on success, error on invalid flag or retrieval failure
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
 // todo branchMeta -> name
-// todo: branchDiffObjectsFlag 枚举 , meta file
-func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, branchDiffObjectsFlag string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, branchDiffObjectsFlag BranchDiffObjectsFlag, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
-	case BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource:
+	case FromSourceToTarget, FromTargetToSource:
 		// get source schema from source mysql
 		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
@@ -183,12 +172,12 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 			return nil, err
 		}
 		// return diff
-		if branchDiffObjectsFlag == BranchDiffObjectsSourceTarget {
+		if branchDiffObjectsFlag == FromSourceToTarget {
 			return getBranchSchemaDiff(sourceSchema, targetSchema, hints)
 		}
 		return getBranchSchemaDiff(targetSchema, sourceSchema, hints)
 
-	case BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget:
+	case FromTargetToSnapshot, FromSnapshotToTarget:
 		// get target schema from target mysql
 		targetSchema, err := bs.targetMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
@@ -200,12 +189,12 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 			return nil, err
 		}
 		// return diff
-		if branchDiffObjectsFlag == BranchDiffObjectsTargetSnapshot {
+		if branchDiffObjectsFlag == FromTargetToSnapshot {
 			return getBranchSchemaDiff(targetSchema, snapshotSchema, hints)
 		}
 		return getBranchSchemaDiff(snapshotSchema, targetSchema, hints)
 
-	case BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot:
+	case FromSnapshotToSource, FromSourceToSnapshot:
 		// get source schema from source mysql
 		sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 		if err != nil {
@@ -217,7 +206,7 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 			return nil, err
 		}
 		// return diff
-		if branchDiffObjectsFlag == BranchDiffObjectsSnapshotSource {
+		if branchDiffObjectsFlag == FromSnapshotToSource {
 			return getBranchSchemaDiff(snapshotSchema, sourceSchema, hints)
 		}
 		return getBranchSchemaDiff(sourceSchema, snapshotSchema, hints)
@@ -225,9 +214,9 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 	default:
 		return nil, fmt.Errorf("%v is invalid branch diff objects flag, should be one of %v, %v, %v, %v, %v, %v",
 			branchDiffObjectsFlag,
-			BranchDiffObjectsSourceTarget, BranchDiffObjectsTargetSource,
-			BranchDiffObjectsTargetSnapshot, BranchDiffObjectsSnapshotTarget,
-			BranchDiffObjectsSnapshotSource, BranchDiffObjectsSourceSnapshot)
+			FromSourceToTarget, FromTargetToSource,
+			FromTargetToSnapshot, FromSnapshotToTarget,
+			FromSnapshotToSource, FromSourceToSnapshot)
 	}
 }
 
@@ -237,12 +226,10 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 // 只有状态为preparing，prepared,merged，created时才能执行
 // override: 试图将target分支覆盖掉source分支，
 // merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
-// todo complete me
 // todo enhancement: schema diff hints
-// todo mergeOption 枚举
-func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption string) error {
-	if mergeOption != MergeBackOptionOverride && mergeOption != MergeBackOptionDiff {
-		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeBackOptionOverride, MergeBackOptionDiff)
+func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption MergeBackOption) error {
+	if mergeOption != MergeOverride && mergeOption != MergeDiff {
+		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOverride, MergeDiff)
 	}
 
 	if !statusIsOneOf(status, []BranchStatus{StatusCreated, StatusPreparing, StatusPrepared, StatusMerged}) {
@@ -265,12 +252,12 @@ func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus
 	// calculate ddl based on merge option
 	ddls := &BranchDiff{}
 	hints := &schemadiff.DiffHints{}
-	if mergeOption == MergeBackOptionOverride {
+	if mergeOption == MergeOverride {
 		ddls, err = bs.getMergeBackOverrideDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return err
 		}
-	} else if mergeOption == MergeBackOptionDiff {
+	} else if mergeOption == MergeDiff {
 		ddls, err = bs.getMergeBackMergeDiffDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return err
@@ -372,7 +359,7 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 }
 
 func (bs *BranchService) getMergeBackOverrideDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
-	return bs.BranchDiff(name, includeDatabases, excludeDatabases, BranchDiffObjectsSourceTarget, hints)
+	return bs.BranchDiff(name, includeDatabases, excludeDatabases, FromSourceToTarget, hints)
 }
 
 // todo complete me
