@@ -10,7 +10,6 @@ type TargetMySQLService struct {
 	mysqlService *MysqlService
 }
 
-var CreateTablesBatchSize = 10
 var InsertSnapshotBatchSize = 10
 var InsertMergeBackDDLBatchSize = 10
 
@@ -42,7 +41,6 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 //
 // Returns:
 // - error: Returns nil on success, error otherwise
-// todo param to name
 func (t *TargetMySQLService) ApplySnapshot(name string) error {
 
 	// get databases from target
@@ -218,7 +216,7 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 
 func (t *TargetMySQLService) deleteSnapshot(name string) error {
 	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(name)
-	_, err := t.mysqlService.Exec(deleteBranchSnapshotSQL)
+	_, err := t.mysqlService.Exec("", deleteBranchSnapshotSQL)
 	return err
 }
 
@@ -245,7 +243,7 @@ func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *Branch
 
 func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
 	deleteBranchMergeBackSQL := getDeleteMergeBackDDLSQL(name)
-	_, err := t.mysqlService.Exec(deleteBranchMergeBackSQL)
+	_, err := t.mysqlService.Exec("", deleteBranchMergeBackSQL)
 	return err
 }
 
@@ -341,14 +339,14 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
 	for database, tables := range branchSchema.branchSchema {
 		// create database
-		_, err := t.mysqlService.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
+		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %v", database, err)
 		}
 
-		// create tables in batches
+		// create tables
 		createTableStmts := addIfNotExistsForCreateTableSQL(tables)
-		err = t.createTablesInBatches(database, createTableStmts, CreateTablesBatchSize)
+		err = t.createTables(database, createTableStmts)
 		if err != nil {
 			return err
 		}
@@ -356,33 +354,12 @@ func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema)
 	return nil
 }
 
-func (t *TargetMySQLService) createTablesInBatches(databaseName string, createTableStmts map[string]string, batchSize int) error {
-	if batchSize <= 0 {
-		return fmt.Errorf("invalid batch size: %d", batchSize)
-	}
-
-	stmts := make([]string, 0, len(createTableStmts))
-	for _, stmt := range createTableStmts {
-		stmt = strings.TrimSpace(stmt)
-		stmt = strings.TrimSuffix(stmt, ";")
-		stmts = append(stmts, stmt)
-	}
-
-	for i := 0; i < len(stmts); i += batchSize {
-		end := i + batchSize
-		if end > len(stmts) {
-			end = len(stmts)
-		}
-
-		batchSQL := strings.Join(stmts[i:end], ";")
-		// todo: remove use?
-		batchSQL = fmt.Sprintf("USE %s; %s", databaseName, batchSQL)
-
-		if _, err := t.mysqlService.Exec(batchSQL); err != nil {
-			return fmt.Errorf("failed to execute batch create tables %s: %v", batchSQL, err)
+func (t *TargetMySQLService) createTables(databaseName string, createTableStmts map[string]string) error {
+	for _, sql := range createTableStmts {
+		if _, err := t.mysqlService.Exec(databaseName, sql); err != nil {
+			return fmt.Errorf("failed to execute create tables %s: %v", sql, err)
 		}
 	}
-
 	return nil
 }
 
@@ -435,19 +412,19 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 
 func (t *TargetMySQLService) UpsertBranchMeta(branchMeta *BranchMeta) error {
 	sql := getUpsertBranchMetaSQL(branchMeta)
-	_, err := t.mysqlService.Exec(sql)
+	_, err := t.mysqlService.Exec("", sql)
 	return err
 }
 
 func (t *TargetMySQLService) InsertBranchMeta(branchMeta *BranchMeta) error {
 	sql := getInsertBranchMetaSQL(branchMeta)
-	_, err := t.mysqlService.Exec(sql)
+	_, err := t.mysqlService.Exec("", sql)
 	return err
 }
 
 func (t *TargetMySQLService) UpdateBranchStatus(name string, status BranchStatus) error {
 	sql := getUpdateBranchStatusSQL(name, status)
-	_, err := t.mysqlService.Exec(sql)
+	_, err := t.mysqlService.Exec("", sql)
 	return err
 }
 

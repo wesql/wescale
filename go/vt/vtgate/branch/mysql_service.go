@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -43,10 +44,17 @@ func (m *MysqlService) Query(query string) (*sql.Rows, error) {
 	return m.db.Query(query)
 }
 
-// todo: add database name
-// todo: should need read multi result? or just use conn
-func (m *MysqlService) Exec(query string, args ...any) (sql.Result, error) {
-	return m.db.Exec(query, args...)
+func (m *MysqlService) Exec(database, query string) (sql.Result, error) {
+	ctx := context.Background()
+	if database != "" {
+		query = fmt.Sprintf("USE %s; %s", database, query)
+	}
+	conn, err := m.db.Conn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	return conn.ExecContext(ctx, query)
 }
 
 func (m *MysqlService) ExecuteInTxn(queries ...string) error {

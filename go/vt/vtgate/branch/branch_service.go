@@ -157,7 +157,6 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // - *BranchDiff: Contains the calculated schema differences
 // - error: Returns nil on success, error on invalid flag or retrieval failure
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
-// todo branchMeta -> name
 func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, branchDiffObjectsFlag BranchDiffObjectsFlag, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case FromSourceToTarget, FromTargetToSource:
@@ -299,8 +298,9 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 
 	// 执行完毕后更新状态
 	return bs.targetMySQLService.UpdateBranchStatus(name, StatusMerged)
-	// todo 更新snapshot add
-	// todo enhancement multi version snapshot
+
+	// todo enhancement: update snapshot to support merging more than once
+	// todo enhancement: multi version snapshot
 
 }
 
@@ -344,12 +344,12 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 			return fmt.Errorf("failed to scan row: %v", err)
 		}
 		// todo enhancement: track whether the current ddl to apply has finished or is executing
-		_, err = bs.sourceMySQLService.mysqlService.Exec(ddl)
+		_, err = bs.sourceMySQLService.mysqlService.Exec(database, ddl)
 		if err != nil {
 			return fmt.Errorf("failed to execute ddl: %v", err)
 		}
 		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
-		_, err = bs.targetMySQLService.mysqlService.Exec(updateDDLMergedSQL)
+		_, err = bs.targetMySQLService.mysqlService.Exec("", updateDDLMergedSQL)
 		if err != nil {
 			return err
 		}
