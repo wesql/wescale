@@ -46,7 +46,6 @@ func NewWasmFilterBuilder(filterName string, wasmName string) *FilterBuilder {
 	}
 }
 
-// 基本设置方法
 func (fb *FilterBuilder) SetName(name string) *FilterBuilder {
 	fb.Name = name
 	return fb
@@ -67,7 +66,6 @@ func (fb *FilterBuilder) SetStatus(status string) *FilterBuilder {
 	return fb
 }
 
-// Pattern 相关方法
 func (fb *FilterBuilder) SetPlans(plans string) *FilterBuilder {
 	fb.Plans = plans
 	return fb
@@ -113,7 +111,6 @@ func (fb *FilterBuilder) SetBindVarConds(conds string) *FilterBuilder {
 	return fb
 }
 
-// Execute 相关方法
 func (fb *FilterBuilder) SetAction(action string) *FilterBuilder {
 	fb.Action = action
 	return fb
@@ -124,7 +121,6 @@ func (fb *FilterBuilder) SetActionArgs(args string) *FilterBuilder {
 	return fb
 }
 
-// Build 生成最终的 SQL
 func (fb *FilterBuilder) Build() (string, error) {
 	const sqlTemplate = `create filter if not exists {{.Name}} (
         desc='{{.Description}}',

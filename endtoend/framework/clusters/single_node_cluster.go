@@ -81,6 +81,7 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	if dbName != "" {
 		_, err = db.Exec(fmt.Sprintf("create database if not exists `%s`", dbName))
 		if err != nil {
