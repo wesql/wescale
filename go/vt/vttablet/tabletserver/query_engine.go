@@ -187,6 +187,8 @@ type QueryEngine struct {
 
 	// stats
 	queryCounts, queryTimes, queryErrorCounts, queryRowsAffected, queryRowsReturned *stats.CountersWithMultiLabels
+	// actionStats for filters
+	actionStats *ActionStats
 
 	// Loggers
 	accessCheckerLogger *logutil.ThrottledLogger
@@ -280,6 +282,8 @@ func NewQueryEngine(env tabletenv.Env, se *schema.Engine) *QueryEngine {
 	qe.queryRowsAffected = env.Exporter().NewCountersWithMultiLabels("QueryRowsAffected", "query rows affected", []string{"Table", "Plan"})
 	qe.queryRowsReturned = env.Exporter().NewCountersWithMultiLabels("QueryRowsReturned", "query rows returned", []string{"Table", "Plan"})
 	qe.queryErrorCounts = env.Exporter().NewCountersWithMultiLabels("QueryErrorCounts", "query error counts", []string{"Table", "Plan"})
+
+	qe.actionStats = NewActionStats(env.Exporter())
 
 	env.Exporter().HandleFunc("/debug/ccl", qe.concurrencyController.ServeHTTP)
 	env.Exporter().HandleFunc("/debug/hotrows", qe.txSerializer.ServeHTTP)

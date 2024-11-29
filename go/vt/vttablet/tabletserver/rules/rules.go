@@ -772,7 +772,6 @@ const (
 	QRBuffer
 	QRConcurrencyControl
 	QRWasmPlugin
-	QRSkipFilter
 )
 
 func ParseStringToAction(s string) (Action, error) {
@@ -789,8 +788,6 @@ func ParseStringToAction(s string) (Action, error) {
 		return QRConcurrencyControl, nil
 	case "WASM_PLUGIN":
 		return QRWasmPlugin, nil
-	case "SKIP_FILTER":
-		return QRSkipFilter, nil
 	default:
 		return QRContinue, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "invalid Action %s", s)
 	}
@@ -810,8 +807,6 @@ func (act Action) ToString() string {
 		return "CONCURRENCY_CONTROL"
 	case QRWasmPlugin:
 		return "WASM_PLUGIN"
-	case QRSkipFilter:
-		return "SKIP_FILTER"
 	default:
 		return "INVALID"
 	}

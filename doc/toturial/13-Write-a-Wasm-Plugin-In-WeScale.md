@@ -2,54 +2,96 @@
 title: Write a Wasm Plugin In WeScale
 ---
 
-# Introduction
-Most platform software provides a certain degree of extensibility. Just as MySQL allows users to write UDFs to extend functionality, WeScale also allows users to write Filters to achieve the same purpose. However, this is still not a very user-friendly way for most users because it requires them to compile and distribute their own code along with the code provided by the service provider.
+# Extending WeScale with Wasm Plugins
 
-A better way would be: modern browsers provide extensibility, allowing users who want deep customization to write browser extensions, while users who want shallow customization can use plugins like Tampermonkey to inject JavaScript code to change browser behavior.
+## Overview
 
-Therefore, based on Filter, WeScale proposes the concept of Wasm Plugin. We hope that Wasm Plugin can provide our users with more secure, dynamic and easy-to-use extensibility.
+WeScale provides a new way to extend its functionality through **WebAssembly (Wasm) plugins**. While traditional methods like writing Filters allow users to customize behavior, they often require compiling and distributing code alongside the service provider's software, which can be cumbersome for many users.
 
-Before we start, I recommend you read the [design document](..%2Fdesign%2F20240531_WasmPlugin.md) to understand the design of Wasm Plugin.
+Wasm plugins offer a more secure, dynamic, and user-friendly approach to extensibility. Similar to how modern browsers allow extensions or scripts to modify behavior, Wasm plugins let you inject custom logic into WeScale without deep integration complexities.
 
-# Clone the WeScale-Wasm-Plugin-Template
-We've prepared a template for you to write your Wasm Plugin. You can clone it from 
-[WeScale-Wasm-Plugin-Template](https://github.com/wesql/wescale-wasm-plugin-template) and follow the instructions 
-in the README.md to write your Wasm Plugin.
-![img.png](images/wasm3.png)
 
-# Write Your Code
-The structure of the template is simple. You can write your code directly in the `main.go` file. 
-And you can see the example code in the `examples` directory. There's a `Makefile` to help you build and deploy the Wasm binary.
-![img.png](images/wasm4.png)
+## Prerequisites
 
-Let's say you want to write a Wasm Plugin to intercept the DML queries which do not have a WHERE clause.
+- **WeScale Access**: Ensure you have access to a WeScale database instance.
+- **Familiar with Filters**: Understanding of WeScale Filters is necessary.
 
-The first step is to acquire the query from the host environment. You can use the `hostfunction.GetHostQuery` function to get the query.
-All the functions provided by the host environment are defined in the `host_functions` package. 
-```go
-func (a *CustomWasmPlugin) RunBeforeExecution() error {
-	query, err := hostfunction.GetHostQuery()
-	if err != nil {
-		return err
-	}
+---
 
-	return nil
-}
+## Example Scenario Setup
+
+We'll use a sample environment to demonstrate the creation and usage of filters. Consider the following database and table:
+
+```sql
+mysql> create database test_wasm;
+mysql> use test_wasm;
+mysql> create table test_wasm.t1 (c1 int primary key auto_increment, c2 int);
+mysql> insert into test_wasm.t1 values (1, 1);
 ```
 
-The next step is to recognize if the query is a DML query and check if it has a WHERE clause. If it doesn't have a WHERE clause, you can return an error.
-Luckily, you can import a third-party library to parse the SQL query and check if it meets the requirements.
-Now the code looks like this:
+## Step 1: Clone the WeScale Wasm Plugin Template
+
+To simplify the process, we've prepared a template for you to write your Wasm Plugin. You can clone it from
+[WeScale-Wasm-Plugin-Template](https://github.com/wesql/wescale-wasm-plugin-template) and follow the instructions
+in the `README.md` to write your Wasm Plugin.
+
+- **`main.go`**: The main file where you'll write your plugin code.
+- **`examples/`**: Contains example plugins for reference.
+- **`Makefile`**: Helps with building and deploying the Wasm binary.
+- **`README.md`**: Provides instructions on using the template.
+
+![Template Structure](images/wasm3.png)
+
+
+## Step 2: Write Your Plugin Code
+
+### Understanding the Plugin Code Structure
+You will need to implement `WasmPlugin` interface by defining two functions: `RunBeforeExecution` and `RunAfterExecution`.
+
+The `RunBeforeExecution` function is called before the SQL query is executed, while `RunAfterExecution` is called after the query is executed.
+You can intercept or manipulate the SQL query in `RunBeforeExecution` and modify the query result in `RunAfterExecution`.
+
+You also need to define a `main` function to start the plugin.
+
+![Editing main.go](images/wasm4.png)
+
+### Implementing a Custom Wasm Plugin
+
+DML queries without a `WHERE` clause can be dangerous as they can affect all rows in a table. It is a common security practice to prevent such queries from executing.
+
+The output should return an error message if a `WHERE` clause is missing, like so:
+```sql
+mysql> DELETE FROM db.tbl;
+Error from wasm plugin at before execution stage: no where clause
+
+mysql> UPDATE db.tbl SET username = 'Bryce';
+Error from wasm plugin at before execution stage: no where clause
+```
+
+<details>
+<summary>Here's the complete code for the plugin</summary>
+
+https://raw.githubusercontent.com/wesql/wescale-wasm-plugin-template/refs/heads/main/examples/interceptor/main.go
+
 ```go
+package main
+
 import (
-    "fmt"
-    "github.com/wesql/wescale-wasm-plugin-sdk/pkg"
-    hostfunction "github.com/wesql/wescale-wasm-plugin-sdk/pkg/host_functions/v1alpha1"
-    "github.com/wesql/wescale-wasm-plugin-sdk/pkg/proto/query"
-    "github.com/xwb1989/sqlparser"
+	"fmt"
+	"github.com/wesql/sqlparser"
+	"github.com/wesql/sqlparser/go/vt/proto/query"
+	"github.com/wesql/wescale-wasm-plugin-sdk/pkg"
+	hostfunction "github.com/wesql/wescale-wasm-plugin-sdk/pkg/host_functions"
 )
 
-func (a *CustomWasmPlugin) RunBeforeExecution() error {
+func main() {
+	pkg.InitWasmPlugin(&ParserWasmPlugin{})
+}
+
+type ParserWasmPlugin struct {
+}
+
+func (a *ParserWasmPlugin) RunBeforeExecution() error {
 	query, err := hostfunction.GetHostQuery()
 	if err != nil {
 		return err
@@ -74,43 +116,136 @@ func (a *CustomWasmPlugin) RunBeforeExecution() error {
 
 	return nil
 }
-```
 
-We have nothing to do in the `RunAfterExecution` function, so we can leave it empty.
-
-```go
-func (a *CustomWasmPlugin) RunAfterExecution(queryResult *query.QueryResult, errBefore error) (*query.QueryResult, error) {
+func (a *ParserWasmPlugin) RunAfterExecution(queryResult *query.QueryResult, errBefore error) (*query.QueryResult, error) {
+	// do nothing
 	return queryResult, errBefore
 }
 ```
+</details>
 
-So that's it! You've written a Wasm Plugin to intercept DML queries without a WHERE clause.
-You can find the complete code in the `examples/interceptor` directory.
+Let's break down the code of the plugin:
 
-# Compile and Deploy
-You can find the detailed steps to compile and deploy the Wasm Plugin in the `README.md` of the template repository.
-But here's a brief summary:
-1. Build the Wasm binary by running the `make build` command.
-```bash
-make build WASM_FILE=my_plugin.wasm
+1. **Import Necessary Packages**:
+```go
+import (
+	"fmt"
+	"github.com/wesql/sqlparser"
+	"github.com/wesql/sqlparser/go/vt/proto/query"
+	"github.com/wesql/wescale-wasm-plugin-sdk/pkg"
+	hostfunction "github.com/wesql/wescale-wasm-plugin-sdk/pkg/host_functions"
+)
 ```
 
-2. Deploy the Wasm Plugin to WeScale by running the `wescale_wasm` binary.
+Explain:
+- `sqlparser`: Library to parse SQL queries. It can be used to check for DML queries without a `WHERE` clause.
+- `wescale-wasm-plugin-sdk`: SDK to interact with the WeScale host environment.
+- `host_functions`: Functions provided by the host environment. e.g. `hostfunction.GetHostQuery()` returns the current executing SQL query.
+
+2. **Implement `RunBeforeExecution` Method**:
+
+This method intercepts the query before execution.
+
+```go
+func (a *ParserWasmPlugin) RunBeforeExecution() error {
+   // Retrieve the SQL query using `hostfunction.GetHostQuery()`.
+   query, err := hostfunction.GetHostQuery()
+   if err != nil {
+       return err
+   }
+   
+   // Parse the SQL query into an AST. 
+   stmt, err := sqlparser.Parse(query)
+   if err != nil {
+       hostfunction.InfoLog("parse error: " + err.Error())
+       return nil
+   }
+   
+   // Check for DML queries without a WHERE clause.
+   // Return an error if a `WHERE` clause is missing.
+   switch stmt := stmt.(type) {
+   case *sqlparser.Update:
+       if stmt.Where == nil {
+           return fmt.Errorf("no where clause")
+       }
+   case *sqlparser.Delete:
+       if stmt.Where == nil {
+           return fmt.Errorf("no where clause")
+       }
+   default:
+   }
+   
+   return nil
+}
+```
+
+3. **Implement `RunAfterExecution` Method**:
+
+Since no action is needed after execution, you can leave it as is.
+
+```go
+func (a *CustomWasmPlugin) RunAfterExecution(queryResult *query.QueryResult, errBefore error) (*query.QueryResult, error) {
+    return queryResult, errBefore
+}
+```
+
+4. **Complete the Plugin**:
+
+Ensure your `main.go` includes the `main` function to register the plugin.
+
+```go
+func main() {
+	pkg.InitWasmPlugin(&ParserWasmPlugin{})
+}
+```
+
+---
+
+## Step 3: Compile and Deploy the Plugin
+
+### 1. Build the Wasm Binary
+
+Use the `Makefile` to compile your plugin into a Wasm binary:
+
 ```bash
-# install the wescale_wasm binary, it will help you deploy the plugin
+make build-wasm-using-docker
+```
+
+This command generates the `my_plugin.wasm` file in the `bin/` directory.
+
+### 2. Deploy the Wasm Plugin to WeScale
+
+First, install the `wescale_wasm` binary to help with deployment:
+
+```bash
 make install-wescale-wasm
-
-# deploy the plugin
-./bin/wescale_wasm --command=install --wasm_file=./bin/my_plugin.wasm --mysql_host=127.0.0.1 --mysql_port=15306 --mysql_user=root --mysql_password=root
 ```
 
-3. Check the status of the plugin.
+Then, deploy your plugin using:
+
 ```bash
-$ mysql -h127.0.0.1 -P15306 -e 'show filters\G'
+./bin/wescale_wasm --command=install \
+  --wasm_file=./bin/my_plugin.wasm \
+  --mysql_host=127.0.0.1 \
+  --mysql_port=15306 \
+  --mysql_user=root \
+  --mysql_password=root \
+  --create_filter
+```
+
+Replace the MySQL connection details with those of your WeScale instance.
+
+### 3. Verify the Plugin Installation
+
+Check if the plugin is active:
+
+
+```
+MySQL [mysql]> SHOW FILTERS\G
 *************************** 1. row ***************************
-                         id: 47
-           create_timestamp: 2024-05-31 18:27:50
-           update_timestamp: 2024-05-31 18:27:50
+                         id: 9
+           create_timestamp: 2024-09-29 10:23:15
+           update_timestamp: 2024-09-29 10:23:15
                        name: my_plugin_wasm_filter
                 description:
                    priority: 1000
@@ -128,20 +263,78 @@ fully_qualified_table_names: []
                 action_args: wasm_binary_name="my_plugin.wasm"
 ```
 
-4. Now you can test the plugin by running some DML queries with and without a WHERE clause.
-```go
-$ mysql -h127.0.0.1 -P15306 -e '/*explain filter*/delete from mysql.user'
+
+## Step 4: Test the Plugin
+
+### Example 1: Explain the Filter
+
+Use the `/*explain filter*/` comment to see which filters apply:
+> NOTICE: Make sure you are connecting to MySQL using `-c` parameter, otherwise the `/*explain filter*/` comment will be ignored.
+```bash
+mysql -h127.0.0.1 -P15306 -Ac -e '/*explain filter*/ DELETE FROM test_wasm.t1;'
+```
+
+Expected output:
+
+```
 +-----------------------+-------------+----------+-------------+-----------------------------------+
 | Name                  | description | priority | action      | action_args                       |
 +-----------------------+-------------+----------+-------------+-----------------------------------+
 | my_plugin_wasm_filter |             | 1000     | WASM_PLUGIN | wasm_binary_name="my_plugin.wasm" |
 +-----------------------+-------------+----------+-------------+-----------------------------------+
+```
 
-$ mysql -h127.0.0.1 -P15306 -e 'delete from mysql.user'
+### Example 2: Attempt a DML Without WHERE Clause
+
+Try running a `DELETE` without a `WHERE` clause:
+
+```bash
+mysql -h127.0.0.1 -P15306 -Ac -e 'DELETE FROM test_wasm.t1;'
+```
+
+Expected error:
+
+```
 ERROR 1105 (HY000) at line 1: target: .0.primary: vttablet: rpc error: code = Unknown desc = error from wasm plugin at after execution stage: error from wasm plugin at before execution stage: no where clause (CallerID: userData1)
 ```
 
-5. If you want to remove the plugin, you can run the following command.
+The plugin intercepts and prevents the execution.
+
+
+## Step 5: Remove the Plugin
+
+To uninstall the plugin:
+
 ```bash
 ./bin/wescale_wasm --command=uninstall --filter_name=my_plugin_wasm_filter
 ```
+
+Confirm removal:
+
+```bash
+mysql -h127.0.0.1 -P15306 -e 'SHOW FILTERS\G'
+```
+
+The plugin should no longer be listed.
+
+
+## Conclusion
+
+You've successfully created and deployed a Wasm plugin in WeScale that enhances security by preventing accidental execution of `UPDATE` or `DELETE` statements without a `WHERE` clause.
+
+Wasm plugins provide a flexible and secure method to extend WeScale's functionality without the complexities of compiling and distributing code alongside the service provider's software.
+
+
+## Additional Resources
+
+- **WeScale Wasm Plugin Template**: [GitHub Repository](https://github.com/wesql/wescale-wasm-plugin-template)
+- **Wasm Plugin Design Document**: [Design Document](https://github.com/wesql/wescale/blob/main/doc/design/20240531_WasmPlugin.md)
+
+
+## Next Steps
+
+- **Explore More Examples**: Check the `examples/` directory for additional plugins.
+- **Customize Further**: Modify your plugin to handle other scenarios or add new features.
+- **Contribute**: Share your plugins with the community or contribute to the template repository.
+
+By leveraging Wasm plugins, you can tailor WeScale to better meet your application's specific needs, enhancing both functionality and security.

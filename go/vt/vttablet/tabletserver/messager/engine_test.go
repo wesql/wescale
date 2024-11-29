@@ -25,6 +25,7 @@ import (
 	"vitess.io/vitess/go/sqltypes"
 	vtrpcpb "vitess.io/vitess/go/vt/proto/vtrpc"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/schema"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 )
@@ -160,7 +161,8 @@ func newTestEngine(db *fakesqldb.DB) *Engine {
 	tsv := &fakeTabletServer{
 		Env: tabletenv.NewEnv(config, "MessagerTest"),
 	}
-	se := schema.NewEngine(tsv)
+	taskPool := background.NewTaskPool(tsv)
+	se := schema.NewEngine(tsv, taskPool)
 	te := NewEngine(tsv, se, newFakeVStreamer())
 	te.Open()
 	return te

@@ -24,6 +24,7 @@ package vreplication
 import (
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/vt/dbconfigs"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 
 	"context"
@@ -54,13 +55,14 @@ func NewReplicaConnector(connParams *mysql.ConnParams) *ReplicaConnector {
 	config.DB = dbCfg
 	c := &ReplicaConnector{conn: connParams}
 	env := tabletenv.NewEnv(config, "source")
-	c.se = schema.NewEngine(env)
+	c.taskPool = background.NewTaskPool(env)
+	c.se = schema.NewEngine(env, c.taskPool)
 	c.se.SkipMetaCheck = true
 	c.vstreamer = vstreamer.NewEngine(env, nil, c.se, nil, "")
 	c.se.InitDBConfig(dbconfigs.New(connParams))
 
 	// Open
-
+	c.taskPool.Open()
 	c.vstreamer.Open()
 
 	return c
@@ -70,6 +72,7 @@ func NewReplicaConnector(connParams *mysql.ConnParams) *ReplicaConnector {
 
 type ReplicaConnector struct {
 	conn      *mysql.ConnParams
+	taskPool  *background.TaskPool
 	se        *schema.Engine
 	vstreamer *vstreamer.Engine
 }
@@ -77,6 +80,7 @@ type ReplicaConnector struct {
 func (c *ReplicaConnector) shutdown() {
 	c.vstreamer.Close()
 	c.se.Close()
+	c.taskPool.Close()
 }
 
 func (c *ReplicaConnector) Open(ctx context.Context) error {

@@ -3,7 +3,6 @@ package tabletserver
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -20,8 +19,6 @@ type ContinueAction struct {
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
-
-	skipFlag bool
 }
 
 func (p *ContinueAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -55,16 +52,6 @@ type FailAction struct {
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
-
-	skipFlag bool
-}
-
-func (p *ContinueAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *ContinueAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
 }
 
 func (p *FailAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -93,21 +80,11 @@ func (p *FailAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-func (p *FailAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *FailAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
-}
-
 type FailRetryAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
-
-	skipFlag bool
 }
 
 func (p *FailRetryAction) BeforeExecution(_ *QueryExecutor) *ActionExecutionResponse {
@@ -136,21 +113,11 @@ func (p *FailRetryAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-func (p *FailRetryAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *FailRetryAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
-}
-
 type BufferAction struct {
 	Rule *rules.Rule
 
 	// Action is the action to take if the rule matches
 	Action rules.Action
-
-	skipFlag bool
 }
 
 func (p *BufferAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
@@ -198,14 +165,6 @@ func (p *BufferAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-func (p *BufferAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *BufferAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
-}
-
 type ConcurrencyControlAction struct {
 	Rule *rules.Rule
 
@@ -213,8 +172,6 @@ type ConcurrencyControlAction struct {
 	Action rules.Action
 
 	Args *ConcurrencyControlActionArgs
-
-	skipFlag bool
 }
 
 type ConcurrencyControlActionArgs struct {
@@ -292,14 +249,6 @@ func (p *ConcurrencyControlAction) GetRule() *rules.Rule {
 	return p.Rule
 }
 
-func (p *ConcurrencyControlAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *ConcurrencyControlAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
-}
-
 type WasmPluginAction struct {
 	Rule *rules.Rule
 
@@ -307,8 +256,6 @@ type WasmPluginAction struct {
 	Action rules.Action
 
 	Args *WasmPluginActionArgs
-
-	skipFlag bool
 }
 
 type WasmPluginActionArgs struct {
@@ -337,13 +284,13 @@ func (args *WasmPluginActionArgs) Parse(stringParams string) (ActionArgs, error)
 func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
 	controller := qre.tsv.qe.wasmPluginController
 
-	ok, module := controller.VM.GetWasmModule(p.Args.WasmBinaryName)
+	ok, module := controller.VM.GetWasmModule(p.GetRule().Name)
 	if !ok {
 		wasmBytes, err := controller.GetWasmBytesByBinaryName(qre.ctx, p.Args.WasmBinaryName)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
-		module, err = controller.VM.InitWasmModule(p.Args.WasmBinaryName, wasmBytes)
+		module, err = controller.VM.InitWasmModule(p.GetRule().Name, wasmBytes)
 		if err != nil {
 			return &ActionExecutionResponse{Err: err}
 		}
@@ -351,6 +298,7 @@ func (p *WasmPluginAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionR
 
 	instance, err := module.NewInstance(qre)
 	if err != nil {
+		//todo wasm: if instance is nil, we will not be able to get the it in AfterExecution. We need to handle this case
 		return &ActionExecutionResponse{Err: err}
 	}
 
@@ -398,92 +346,4 @@ func (p *WasmPluginAction) SetParams(args ActionArgs) error {
 
 func (p *WasmPluginAction) GetRule() *rules.Rule {
 	return p.Rule
-}
-
-func (p *WasmPluginAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *WasmPluginAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
-}
-
-type SkipFilterAction struct {
-	Rule *rules.Rule
-
-	// Action is the action to take if the rule matches
-	Action rules.Action
-
-	Args *SkipFilterActionArgs
-
-	skipFlag bool
-}
-
-type SkipFilterActionArgs struct {
-	AllowRegexString string `toml:"skip_filter_regex"`
-	AllowRegex       *regexp.Regexp
-}
-
-func (args *SkipFilterActionArgs) Parse(stringParams string) (ActionArgs, error) {
-	s := &SkipFilterActionArgs{}
-	if stringParams == "" {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "stringParams is empty when parsing skip filter action args")
-	}
-
-	userInputTOML := ConvertUserInputToTOML(stringParams)
-	err := toml.Unmarshal([]byte(userInputTOML), s)
-	if err != nil {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when parsing skip filter action args: %v", err)
-	}
-	s.AllowRegex, err = regexp.Compile(fmt.Sprintf("^%s$", s.AllowRegexString))
-	if err != nil {
-		return nil, vterrors.Errorf(vtrpcpb.Code_INVALID_ARGUMENT, "error when compiling skip filter action args: %v", err)
-	}
-
-	return s, nil
-}
-
-func (p *SkipFilterAction) BeforeExecution(qre *QueryExecutor) *ActionExecutionResponse {
-	findSelf := false
-	for _, a := range qre.matchedActionList {
-		if a.GetRule().Name == p.GetRule().Name {
-			findSelf = true
-			continue
-		}
-		if findSelf {
-			if p.Args.AllowRegex.MatchString(a.GetRule().Name) {
-				a.SetSkipFlag(true)
-			}
-		}
-	}
-	return &ActionExecutionResponse{Err: nil}
-}
-
-func (p *SkipFilterAction) AfterExecution(qre *QueryExecutor, reply *sqltypes.Result, err error) *ActionExecutionResponse {
-	return &ActionExecutionResponse{Reply: reply, Err: err}
-}
-
-func (p *SkipFilterAction) ParseParams(argsStr string) (ActionArgs, error) {
-	return p.Args.Parse(argsStr)
-}
-
-func (p *SkipFilterAction) SetParams(args ActionArgs) error {
-	skipFilterArgs, ok := args.(*SkipFilterActionArgs)
-	if !ok {
-		return fmt.Errorf("args :%v is not a valid SkipFilterActionArgs)", args)
-	}
-	p.Args = skipFilterArgs
-	return nil
-}
-
-func (p *SkipFilterAction) GetRule() *rules.Rule {
-	return p.Rule
-}
-
-func (p *SkipFilterAction) GetSkipFlag() bool {
-	return p.skipFlag
-}
-
-func (p *SkipFilterAction) SetSkipFlag(skip bool) {
-	p.skipFlag = skip
 }

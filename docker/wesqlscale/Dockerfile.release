@@ -68,8 +68,7 @@ RUN git config --global --add safe.directory $VTSOURCEROOT
 RUN mkdir -p /vtdataroot /home/vitess && \
     mkdir -p /vt && \
     mkdir -p /vt/bin && \
-    mkdir -p /vt/config && \
-    mkdir -p /vt/web
+    mkdir -p /vt/config
 
 # Bootstrap Vitess
 WORKDIR /vt/src/vitess
@@ -92,13 +91,11 @@ RUN cp /vt/src/vitess/bin/vtctld /vt/bin/ && \
     cp /vt/src/vitess/bin/vtctlclient /vt/bin/ && \
     cp /vt/src/vitess/bin/vtctldclient /vt/bin/ && \
     cp /vt/src/vitess/bin/vtgate /vt/bin/ && \
-    cp /vt/src/vitess/bin/vtconsensus /vt/bin/ && \
     cp /vt/src/vitess/bin/vttablet /vt/bin/ && \
-    cp /vt/src/vitess/bin/vtadmin /vt/bin/ && \
     cp /vt/src/vitess/bin/protoc  /vt/bin && \
     cp /vt/src/vitess/bin/etcd  /vt/bin && \
     cp /vt/src/vitess/bin/etcdctl  /vt/bin && \
-    cp -rf $VTSOURCEROOT/web /vt && \
+    cp -rf $VTSOURCEROOT/config /vt && \
     cp -rf $VTSOURCEROOT/examples /vt && \
     rm -rf /vt/src
 

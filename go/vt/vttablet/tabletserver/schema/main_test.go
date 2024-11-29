@@ -37,9 +37,11 @@ func getTestSchemaEngine(t *testing.T) (*Engine, *fakesqldb.DB, func()) {
 	db.AddQueryPattern(baseShowTablesPattern, &sqltypes.Result{})
 	db.AddQuery(mysql.BaseShowPrimary, &sqltypes.Result{})
 	AddFakeInnoDBReadRowsResult(db, 1)
-	se := newEngine(10, 10*time.Second, 10*time.Second, db)
+	se, taskPool := newEngine(10, 10*time.Second, 10*time.Second, db)
+	taskPool.Open()
 	require.NoError(t, se.Open())
 	cancel := func() {
+		defer taskPool.Close()
 		defer db.Close()
 		defer se.Close()
 	}

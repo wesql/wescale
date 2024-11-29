@@ -29,7 +29,7 @@ import (
 	"vitess.io/vitess/go/vt/log"
 	binlogdatapb "vitess.io/vitess/go/vt/proto/binlogdata"
 	"vitess.io/vitess/go/vt/vtgate/evalengine"
-	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 
 	"vitess.io/vitess/go/vt/sqlparser"
@@ -51,20 +51,20 @@ type trackedSchema struct {
 // and supplying a schema for a specific version by loading the cached values from the schema_version table
 // The schema version table is populated by the Tracker
 type historian struct {
-	conns   *connpool.Pool
-	lastID  int64
-	schemas []*trackedSchema
-	mu      sync.Mutex
-	enabled bool
-	isOpen  bool
+	taskPool *background.TaskPool
+	lastID   int64
+	schemas  []*trackedSchema
+	mu       sync.Mutex
+	enabled  bool
+	isOpen   bool
 }
 
 // newHistorian creates a new historian. It expects a schema.Engine instance
-func newHistorian(enabled bool, conns *connpool.Pool) *historian {
+func newHistorian(enabled bool, taskPool *background.TaskPool) *historian {
 	sh := historian{
-		conns:   conns,
-		lastID:  0,
-		enabled: enabled,
+		taskPool: taskPool,
+		lastID:   0,
+		enabled:  enabled,
 	}
 	return &sh
 }
@@ -159,7 +159,7 @@ func (h *historian) GetTableForPos(tableName sqlparser.IdentifierCS, gtid string
 // loadFromDB loads all rows from the schema_version table that the historian does not have as yet
 // caller should have locked h.mu
 func (h *historian) loadFromDB(ctx context.Context) error {
-	conn, err := h.conns.Get(ctx, nil)
+	conn, err := h.taskPool.BorrowConn(ctx, nil)
 	if err != nil {
 		return err
 	}

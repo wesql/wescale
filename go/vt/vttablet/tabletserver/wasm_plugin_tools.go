@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func getQueryByName(wasmBinaryName string) string {
+func generateWasmQueryByName(wasmBinaryName string) string {
 	return fmt.Sprintf("select * from %s where name = '%s'", WasmBinaryTableName, wasmBinaryName)
 }
 

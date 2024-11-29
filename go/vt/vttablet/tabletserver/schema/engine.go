@@ -49,6 +49,7 @@ import (
 	"vitess.io/vitess/go/vt/log"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vterrors"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/background"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/connpool"
 	"vitess.io/vitess/go/vt/vttablet/tabletserver/tabletenv"
 
@@ -83,8 +84,8 @@ type Engine struct {
 
 	historian *historian
 
-	conns *connpool.Pool
-	ticks *timer.Timer
+	taskPool *background.TaskPool
+	ticks    *timer.Timer
 
 	// dbCreationFailed is for preventing log spam.
 	dbCreationFailed bool
@@ -96,16 +97,11 @@ type Engine struct {
 }
 
 // NewEngine creates a new Engine.
-func NewEngine(env tabletenv.Env) *Engine {
+func NewEngine(env tabletenv.Env, taskPool *background.TaskPool) *Engine {
 	reloadTime := env.Config().SchemaReloadIntervalSeconds.Get()
 	se := &Engine{
-		env: env,
-		// We need three connections: one for the reloader, one for
-		// the historian, and one for the tracker.
-		conns: connpool.NewPool(env, "SchemaEngine", tabletenv.ConnPoolConfig{
-			Size:               3,
-			IdleTimeoutSeconds: env.Config().OltpReadPool.IdleTimeoutSeconds,
-		}),
+		env:        env,
+		taskPool:   taskPool,
 		ticks:      timer.NewTimer(reloadTime),
 		reloadTime: reloadTime,
 	}
@@ -127,7 +123,7 @@ func NewEngine(env tabletenv.Env) *Engine {
 
 		schemazHandler(se.GetFullyQualifiedTables(), w, r)
 	})
-	se.historian = newHistorian(env.Config().TrackSchemaVersions, se.conns)
+	se.historian = newHistorian(env.Config().TrackSchemaVersions, se.taskPool)
 	return se
 }
 
@@ -231,17 +227,6 @@ func (se *Engine) Open() error {
 
 	ctx := tabletenv.LocalContext()
 
-	// The function we're in is supposed to be idempotent, but this conns.Open()
-	// call is not itself idempotent. Therefore, if we return for any reason
-	// without marking ourselves as open, we need to call conns.Close() so the
-	// pools aren't leaked the next time we call Open().
-	se.conns.Open(se.cp, se.cp, se.cp)
-	defer func() {
-		if !se.isOpen {
-			se.conns.Close()
-		}
-	}()
-
 	se.tables = map[sqlparser.TableSchemaAndName]*Table{
 		sqlparser.NewTableSchemaAndName("", "dual"): NewTable("dual"),
 	}
@@ -301,7 +286,6 @@ func (se *Engine) closeLocked() {
 		wg.Done()
 	}()
 	se.historian.Close()
-	se.conns.Close()
 
 	se.tables = make(map[sqlparser.TableSchemaAndName]*Table)
 	se.lastChange = 0
@@ -384,7 +368,7 @@ func (se *Engine) reload(ctx context.Context, includeStats bool) error {
 		se.SchemaReloadTimings.Record("SchemaReload", start)
 	}()
 
-	conn, err := se.conns.Get(ctx, nil)
+	conn, err := se.taskPool.BorrowConn(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -583,7 +567,7 @@ func (se *Engine) GetTableFromSchema(tableSchema string, tableName string) (*Tab
 	setting.SetQuery(fmt.Sprintf("use %s", tableSchema))
 	setting.SetResetQuery(fmt.Sprintf("use %s", se.cp.DBName()))
 
-	conn, err := se.conns.Get(ctx, &setting)
+	conn, err := se.taskPool.BorrowConn(ctx, &setting)
 	if err != nil {
 		return nil, err
 	}
@@ -738,7 +722,7 @@ func (se *Engine) GetFullyQualifiedTables() map[string]*Table {
 
 // GetConnection returns a connection from the pool
 func (se *Engine) GetConnection(ctx context.Context) (*connpool.DBConn, error) {
-	return se.conns.Get(ctx, nil)
+	return se.taskPool.BorrowConn(ctx, nil)
 }
 
 func (se *Engine) handleDebugSchema(response http.ResponseWriter, request *http.Request) {

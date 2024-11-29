@@ -1,0 +1,118 @@
+name: "New EndToEnd Test"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - 'release-*'
+    tags:
+      - '*'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: wescale_ci_image
+  REGISTRY: ghcr.io
+  IMAGE_TAG: test-${{ github.sha }}
+  MYSQL_VERSION: 8.0.32
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-endtoend
+  cancel-in-progress: true
+
+jobs:
+  build-image:
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build_image.yml
+    with:
+      branch: ${{ github.ref }}
+      image_name: ${{ github.repository_owner }}/wescale_ci_image
+      tags: test-${{ github.sha }}
+      platforms: linux/amd64
+      want_push: false
+      want_load: true
+      want_artifact: true
+      artifact_name: 'image.tar'
+
+  setup:
+    name: "New EndToEnd Test"
+    needs: build-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if workflow needs to be skipped
+        id: skip-workflow
+        run: |
+          skip='false'
+          if [[ "${{github.event.pull_request}}" ==  "" ]] && [[ "${{github.ref}}" != "refs/heads/main" ]] && [[ ! "${{github.ref}}" =~ ^refs/heads/release-[0-9]+\.[0-9]$ ]] && [[ ! "${{github.ref}}" =~ "refs/tags/.*" ]]; then
+            skip='true'
+          fi
+          echo Skip ${skip}
+          echo "skip-workflow=${skip}" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        if: steps.skip-workflow.outputs.skip-workflow == 'false'
+        uses: actions/checkout@v3
+
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: image.tar
+          path: /tmp
+
+      - name: Load Docker image
+        run: |
+          docker load < /tmp/image.tar
+          echo "Verifying image loaded:"
+          docker images
+
+      - name: Set up cluster
+        run: |
+          MYSQL_IMG="mysql/mysql-server:${{ env.MYSQL_VERSION }}"
+          WESCALE_CI_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          
+          docker network create wescale-network
+          
+          docker run -itd --network wescale-network --name mysql-server \
+          -p 3306:3306 \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_ROOT_HOST=% \
+          -e MYSQL_LOG_CONSOLE=true \
+          $MYSQL_IMG \
+          --bind-address=0.0.0.0 \
+          --port=3306 \
+          --log-bin=binlog \
+          --gtid_mode=ON \
+          --enforce_gtid_consistency=ON \
+          --log_replica_updates=ON \
+          --binlog_format=ROW
+          
+          docker run -itd --network wescale-network --name wescale \
+          -p 15306:15306 \
+          -w /vt/examples/wesql-server \
+          -e MYSQL_ROOT_USER=root \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_PORT=3306 \
+          -e MYSQL_HOST=mysql-server \
+          -e CONFIG_PATH=/vt/config/wescale/default \
+          $WESCALE_CI_IMAGE \
+          /vt/examples/wesql-server/init_single_node_cluster.sh
+
+      - name: Run EndToEnd test
+        run: |
+          cd endtoend
+          go test ./... -v
+
+      - name: Print Wescale logs
+        run: |
+          docker logs wescale

@@ -5,19 +5,15 @@ import "vitess.io/vitess/go/sqltypes"
 type WasmVM interface {
 	GetRuntimeType() string
 	InitRuntime() error
-	GetWasmModule(key string) (bool, WasmModule)
-	SetWasmModule(key string, wasmModule WasmModule)
-	InitWasmModule(key string, wasmBytes []byte) (WasmModule, error)
-	CompileWasmModule(wasmBytes []byte) (WasmModule, error)
-	ClearWasmModule(key string)
+	GetWasmModule(filterName string) (bool, WasmModule)
+	InitWasmModule(filterName string, wasmBytes []byte) (WasmModule, error)
+	ClearWasmModule(filterName string)
 	Close() error
 }
 
 type WasmModule interface {
 	NewInstance(qre *QueryExecutor) (WasmInstance, error)
 	Close() error
-	GetModuleSharingVariables() map[string][]byte
-	SetModuleSharingVariables(map[string][]byte)
 }
 
 type WasmInstance interface {
