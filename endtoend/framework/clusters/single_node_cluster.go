@@ -7,6 +7,7 @@ import (
 	"github.com/wesql/wescale/endtoend/framework"
 )
 
+// RegisterFlagsForSingleNodeCluster : Register flags for the single node cluster, allowing the user to override the default values
 func (s *SingleNodeCluster) RegisterFlagsForSingleNodeCluster() {
 	flag.StringVar(&s.mysqlHost, fmt.Sprintf("%s_mysqlHost", s.ClusterName), s.mysqlHost, "Host of the MySQL server")
 	flag.IntVar(&s.mysqlPort, fmt.Sprintf("%s_mysqlPort", s.ClusterName), s.mysqlPort, "Port of the MySQL server")
@@ -41,7 +42,7 @@ type SingleNodeCluster struct {
 }
 
 func NewDefaultSingleNodeCluster() *SingleNodeCluster {
-	return newCustomSingleNodeCluster(
+	return NewCustomSingleNodeCluster(
 		"default",
 		"127.0.0.1",
 		3306,
@@ -54,7 +55,7 @@ func NewDefaultSingleNodeCluster() *SingleNodeCluster {
 	)
 }
 
-func newCustomSingleNodeCluster(clusterName string,
+func NewCustomSingleNodeCluster(clusterName string,
 	mysqlHost string, mysqlPort int, mysqlUser string, mysqlPasswd string,
 	wescaleHost string, wescalePort int, wescaleUser string, wescalePasswd string) *SingleNodeCluster {
 	s := &SingleNodeCluster{
@@ -75,7 +76,7 @@ func newCustomSingleNodeCluster(clusterName string,
 // dbName can be an empty string if no database is needed.
 // setupScript can be an empty string if no setup script is needed.
 // cleanupScript can be an empty string if no cleanup script is needed.
-func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScript string) error {
+func (s *SingleNodeCluster) SetUp(dbName string, setupScript string) error {
 	// Create the database
 	db, err := framework.NewMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, "")
 	if err != nil {
@@ -109,13 +110,13 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 
 	s.DbName = dbName
 	s.SetUpScript = setupScript
-	s.CleanupScript = cleanupScript
 	s.MysqlDb = mysqlDb
 	s.WescaleDb = wescaleDb
 	return nil
 }
 
-func (s *SingleNodeCluster) CleanUp() error {
+func (s *SingleNodeCluster) CleanUp(cleanupScript string) error {
+	s.CleanupScript = cleanupScript
 	// Execute Clean Up Script
 	if s.CleanupScript != "" {
 		err := framework.ExecuteSqlScript(s.WescaleDb, s.CleanupScript)
