@@ -108,7 +108,7 @@ jobs:
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
           
-          docker run -itd --network wescale-network --name mysql-server \
+          docker run -itd --network wescale-network --name mysql-server3307 \
           -p 3307:3307 \
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_ROOT_HOST=% \
@@ -122,13 +122,13 @@ jobs:
           --log_replica_updates=ON \
           --binlog_format=ROW
           
-          docker run -itd --network wescale-network --name wescale \
+          docker run -itd --network wescale-network --name wescale15307 \
           -p 15307:15307 \
           -w /vt/examples/wesql-server \
           -e MYSQL_ROOT_USER=root \
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_PORT=3307 \
-          -e MYSQL_HOST=mysql-server \
+          -e MYSQL_HOST=mysql-server3307 \
           -e CONFIG_PATH=/vt/config/wescale/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
