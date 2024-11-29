@@ -213,8 +213,7 @@ func (ins *WazeroInstance) RunWASMPlugin() error {
 	}
 
 	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
-	modulePtr := uint64(uintptr(unsafe.Pointer(ins.module)))
-	_, err := wazeroGuestFunc.Call(ctx, instancePtr, modulePtr)
+	_, err := wazeroGuestFunc.Call(ctx, instancePtr)
 	if err != nil {
 		return err
 	}
@@ -230,7 +229,8 @@ func (ins *WazeroInstance) RunWASMPluginAfter() error {
 
 	wazeroGuestFunc := ins.instance.ExportedFunction("RunAfterExecutionOnGuest")
 
-	_, err := wazeroGuestFunc.Call(ctx)
+	instancePtr := uint64(uintptr(unsafe.Pointer(ins)))
+	_, err := wazeroGuestFunc.Call(ctx, instancePtr)
 	if err != nil {
 		return err
 	}
