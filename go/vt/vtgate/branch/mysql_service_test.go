@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"vitess.io/vitess/go/vt/schemadiff"
+	"vitess.io/vitess/go/vt/sqlparser"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-sql-driver/mysql"
@@ -116,4 +118,58 @@ func TestExecuteInTxn(t *testing.T) {
 		assert.Error(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
+}
+
+func TestTableSchemaEqual(t *testing.T) {
+	tests := []struct {
+		name          string
+		table1        string
+		table2        string
+		hints         *schemadiff.DiffHints
+		expectEqual   bool
+		expectMessage string
+		expectError   bool
+	}{
+		{
+			name:   "identical schemas",
+			table1: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+
+			table2: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+
+			hints:         &schemadiff.DiffHints{TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways},
+			expectEqual:   true,
+			expectMessage: "",
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			schema1, err := sqlparser.Parse(tt.table1)
+			assert.NoError(t, err)
+			createTable1 := schema1.(*sqlparser.CreateTable)
+			entity1 := &schemadiff.CreateTableEntity{CreateTable: createTable1}
+
+			schema2, err := sqlparser.Parse(tt.table2)
+			assert.NoError(t, err)
+			createTable2 := schema2.(*sqlparser.CreateTable)
+			entity2 := &schemadiff.CreateTableEntity{CreateTable: createTable2}
+
+			equal, message, err := tableSchemaEqual(entity1, entity2, tt.hints)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectEqual, equal)
+
+			if tt.expectMessage != "" {
+				assert.Contains(t, message, tt.expectMessage)
+			} else {
+				assert.Empty(t, message)
+			}
+		})
+	}
 }

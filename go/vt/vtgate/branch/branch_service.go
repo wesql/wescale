@@ -574,6 +574,7 @@ func databaseSchemaEqual(databaseSchema1, databaseSchema2 *schemadiff.Schema, hi
 }
 
 // todo add UT
+// todo enhancement: deal with charset
 func tableSchemaEqual(tableSchema1, tableSchema2 *schemadiff.CreateTableEntity, hints *schemadiff.DiffHints) (bool, string, error) {
 	entityDiff, err := tableSchema1.Diff(tableSchema2, hints)
 	if err != nil {
@@ -585,7 +586,7 @@ func tableSchemaEqual(tableSchema1, tableSchema2 *schemadiff.CreateTableEntity, 
 	}
 	if len(ddls) > 0 {
 		ddlMessage := strings.Join(ddls, ";")
-		message := fmt.Sprintf("table %v and %v are not equal, from %v to %v: %v", tableSchema1.Name(), tableSchema2.Name(), tableSchema1, tableSchema2, ddlMessage)
+		message := fmt.Sprintf("table %v and %v are not equal, from %v to %v: %v", tableSchema1.Name(), tableSchema2.Name(), tableSchema1.Name(), tableSchema2.Name(), ddlMessage)
 		return false, message, nil
 	}
 	return true, "", nil
