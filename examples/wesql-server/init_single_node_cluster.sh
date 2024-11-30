@@ -14,10 +14,10 @@ export START_VTGATE=${START_VTGATE:-1}
 export CONFIG_PATH=${CONFIG_PATH:-"$SCRIPT_DIR/../../config/wescale/default"}
 
 # Set default values
-export MYSQL_ROOT_USER=${MYSQL_ROOT_USER:-'root'}
-export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-'passwd'}
-export MYSQL_HOST=${MYSQL_HOST:-'127.0.0.1'}
-export MYSQL_PORT=${MYSQL_PORT:-'3306'}
+export MYSQL_ROOT_USER=${MYSQL_ROOT_USER-'root'}
+export MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD-'passwd'}
+export MYSQL_HOST=${MYSQL_HOST-'127.0.0.1'}
+export MYSQL_PORT=${MYSQL_PORT-'3306'}
 
 export VTDATAROOT=${VTDATAROOT:-$SCRIPT_DIR/vtdataroot}
 
