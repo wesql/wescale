@@ -2275,3 +2275,8 @@ func AndExpressions(exprs ...Expr) Expr {
 
 // Equals is the default Comparator for AST expressions.
 var Equals = &Comparator{}
+
+// Clone returns a deep copy of the SQLNode, typed as the original type
+func Clone[K SQLNode](x K) K {
+	return CloneSQLNode(x).(K)
+}

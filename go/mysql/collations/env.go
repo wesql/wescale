@@ -30,11 +30,12 @@ type colldefaults struct {
 // Environment is a collation environment for a MySQL version, which contains
 // a database of collations and defaults for that specific version.
 type Environment struct {
-	version     collver
-	byName      map[string]Collation
-	byID        map[ID]Collation
-	byCharset   map[string]*colldefaults
-	unsupported map[string]ID
+	version       collver
+	byName        map[string]Collation
+	byID          map[ID]Collation
+	byCharset     map[string]*colldefaults
+	byCharsetName map[ID]string
+	unsupported   map[string]ID
 }
 
 // LookupByName returns the collation with the given name. The collation
@@ -158,18 +159,21 @@ func NewEnvironment(serverVersion string) *Environment {
 
 func makeEnv(version collver) *Environment {
 	env := &Environment{
-		version:     version,
-		byName:      make(map[string]Collation),
-		byID:        make(map[ID]Collation),
-		byCharset:   make(map[string]*colldefaults),
-		unsupported: make(map[string]ID),
+		version:       version,
+		byName:        make(map[string]Collation),
+		byID:          make(map[ID]Collation),
+		byCharset:     make(map[string]*colldefaults),
+		unsupported:   make(map[string]ID),
+		byCharsetName: make(map[ID]string),
 	}
 
 	for collid, vi := range globalVersionInfo {
 		var ournames []string
+		var ourcharsets []string
 		for _, alias := range vi.alias {
 			if alias.mask&version != 0 {
 				ournames = append(ournames, alias.name)
+				ourcharsets = append(ourcharsets, alias.charset)
 			}
 		}
 		if len(ournames) == 0 {
@@ -205,6 +209,11 @@ func makeEnv(version collver) *Environment {
 				continue
 			}
 			defaults.Binary = collation
+		}
+
+		for i, _ := range ournames {
+			cs := ourcharsets[i]
+			env.byCharsetName[collid] = cs
 		}
 	}
 
@@ -299,4 +308,8 @@ func (env *Environment) ParseConnectionCharset(csname string) (uint8, error) {
 		return 0, fmt.Errorf("unsupported connection charset: %q", csname)
 	}
 	return uint8(collid), nil
+}
+
+func (env *Environment) LookupCharsetName(coll ID) string {
+	return env.byCharsetName[coll]
 }
