@@ -303,8 +303,6 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 		return nil, err
 	}
 
-	// todo enhancement: add param verification
-
 	if includeDBs == "" {
 		meta.includeDatabases = []string{}
 	} else {
@@ -317,6 +315,10 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 	}
 
 	meta.status = StringToBranchStatus(status)
+	err = meta.Validate()
+	if err != nil {
+		return nil, err
+	}
 	return &meta, nil
 }
 

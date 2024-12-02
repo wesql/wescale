@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"github.com/go-sql-driver/mysql"
 	"strconv"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
@@ -25,6 +26,11 @@ const (
 
 const (
 	DefaultBranchName = "my_branch"
+
+	DefaultBranchTargetHost     = "127.0.0.1"
+	DefaultBranchTargetPort     = 15306
+	DefaultBranchTargetUser     = "root"
+	DefaultBranchTargetPassword = ""
 )
 
 // Branch is an operator to deal with branch commands
@@ -114,6 +120,18 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 // TryExecute implements Primitive interface
 func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
 	result := &sqltypes.Result{}
+	switch b.commandType {
+	case Create:
+		err := b.branchCreate()
+		if err != nil {
+			return nil, err
+		}
+		return &sqltypes.Result{}, nil
+	case Diff:
+	case MergeBack:
+	case PrepareMergeBack:
+	}
+
 	return result, nil
 }
 
@@ -358,4 +376,64 @@ func (bsp *BranchShowParams) validate() error {
 		return fmt.Errorf("invalid merge option: %s", bsp.ShowOption)
 	}
 	return nil
+}
+
+func createBranchService(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.BranchService, error) {
+	// 1. create source mysql handler
+	sourceMysqlConfig := &mysql.Config{
+		User:   sourceUser,
+		Passwd: sourcePassword,
+		Net:    "tcp",
+		Addr:   fmt.Sprintf("%s:%d", sourceHost, sourcePort),
+	}
+	sourceMysqlService, err := branch.NewMysqlServiceWithConfig(sourceMysqlConfig)
+	if err != nil {
+		return nil, err
+	}
+	sourceMysqlHandler := branch.NewSourceMySQLService(sourceMysqlService)
+	// 2. create target mysql handler
+	targetMysqlConfig := &mysql.Config{
+		User:   DefaultBranchTargetUser,
+		Passwd: DefaultBranchTargetPassword,
+		Net:    "tcp",
+		Addr:   fmt.Sprintf("%s:%d", DefaultBranchTargetHost, DefaultBranchTargetPort),
+	}
+	targetMysqlService, err := branch.NewMysqlServiceWithConfig(targetMysqlConfig)
+	if err != nil {
+		return nil, err
+	}
+	targetMysqlHandler := branch.NewTargetMySQLService(targetMysqlService)
+	// 3. create branch service
+	bs := branch.NewBranchService(sourceMysqlHandler, targetMysqlHandler)
+	return bs, nil
+}
+
+func (b *Branch) branchCreate() error {
+	// create branch meta
+	createParams, ok := b.params.(*BranchCreateParams)
+	if !ok {
+		return fmt.Errorf("branch create: invalid branch command params")
+	}
+	port, err := strconv.Atoi(createParams.SourcePort)
+	if err != nil {
+		return err
+	}
+	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude, createParams.TargetDBPattern)
+	if err != nil {
+		return err
+	}
+
+	// create branch service
+	bs, err := createBranchService(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
+	if err != nil {
+		return err
+	}
+
+	// create branch
+	return bs.BranchCreate(branchMeta)
+}
+
+// todo complete me
+func (b *Branch) branchDiff() (*sqltypes.Result, error) {
+	return &sqltypes.Result{}, nil
 }

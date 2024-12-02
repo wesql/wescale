@@ -61,35 +61,82 @@ func (cached *AlterVSchema) CachedSize(alloc bool) int64 {
 	size += cached.AlterVschemaDDL.CachedSize(true)
 	return size
 }
-
-//go:nocheckptr
 func (cached *Branch) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(48)
+		size += int64(64)
 	}
 	// field name string
 	size += hack.RuntimeAllocSize(int64(len(cached.name)))
-	// field commandType string
+	// field commandType vitess.io/vitess/go/vt/vtgate/engine.BranchCommandType
 	size += hack.RuntimeAllocSize(int64(len(cached.commandType)))
-	// field params map[string]string
-	if cached.params != nil {
-		size += int64(48)
-		hmap := reflect.ValueOf(cached.params)
-		numBuckets := int(math.Pow(2, float64((*(*uint8)(unsafe.Pointer(hmap.Pointer() + uintptr(9)))))))
-		numOldBuckets := (*(*uint16)(unsafe.Pointer(hmap.Pointer() + uintptr(10))))
-		size += hack.RuntimeAllocSize(int64(numOldBuckets * 272))
-		if len(cached.params) > 0 || numBuckets > 1 {
-			size += hack.RuntimeAllocSize(int64(numBuckets * 272))
-		}
-		for k, v := range cached.params {
-			size += hack.RuntimeAllocSize(int64(len(k)))
-			size += hack.RuntimeAllocSize(int64(len(v)))
-		}
+	// field params vitess.io/vitess/go/vt/vtgate/engine.branchParams
+	if cc, ok := cached.params.(cachedObject); ok {
+		size += cc.CachedSize(true)
 	}
+	return size
+}
+func (cached *BranchCreateParams) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(112)
+	}
+	// field SourceHost string
+	size += hack.RuntimeAllocSize(int64(len(cached.SourceHost)))
+	// field SourcePort string
+	size += hack.RuntimeAllocSize(int64(len(cached.SourcePort)))
+	// field SourceUser string
+	size += hack.RuntimeAllocSize(int64(len(cached.SourceUser)))
+	// field SourcePassword string
+	size += hack.RuntimeAllocSize(int64(len(cached.SourcePassword)))
+	// field Include string
+	size += hack.RuntimeAllocSize(int64(len(cached.Include)))
+	// field Exclude string
+	size += hack.RuntimeAllocSize(int64(len(cached.Exclude)))
+	// field TargetDBPattern string
+	size += hack.RuntimeAllocSize(int64(len(cached.TargetDBPattern)))
+	return size
+}
+func (cached *BranchDiffParams) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field CompareObjects string
+	size += hack.RuntimeAllocSize(int64(len(cached.CompareObjects)))
+	return size
+}
+func (cached *BranchPrepareMergeBackParams) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field MergeOption string
+	size += hack.RuntimeAllocSize(int64(len(cached.MergeOption)))
+	return size
+}
+func (cached *BranchShowParams) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(16)
+	}
+	// field ShowOption string
+	size += hack.RuntimeAllocSize(int64(len(cached.ShowOption)))
 	return size
 }
 func (cached *CheckCol) CachedSize(alloc bool) int64 {

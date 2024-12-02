@@ -44,21 +44,8 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 		excludeDatabases = strings.Split(excludeDBs, ",")
 		for i, db := range excludeDatabases {
 			db = strings.TrimSpace(db)
-			if db == "*" {
-				return nil, fmt.Errorf("excludeDatabases contains wildcard '*', branching is meaningless")
-			}
 			excludeDatabases[i] = db
 		}
-	}
-
-	if name == "" {
-		return nil, fmt.Errorf("name cannot be empty")
-	}
-	if sourceHost == "" {
-		return nil, fmt.Errorf("sourceHost cannot be empty")
-	}
-	if sourcePort <= 0 || sourcePort > 65535 {
-		return nil, fmt.Errorf("invalid sourcePort: %d", sourcePort)
 	}
 
 	bMeta := &BranchMeta{
@@ -74,7 +61,44 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 	}
 
 	addDefaultExcludeDatabases(bMeta)
+
+	err := bMeta.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return bMeta, nil
+}
+
+func (meta *BranchMeta) Validate() error {
+	if meta.name == "" {
+		return fmt.Errorf("branch name cannot be empty")
+	}
+
+	if meta.sourceHost == "" {
+		return fmt.Errorf("branch sourceHost cannot be empty")
+	}
+	if meta.sourcePort <= 0 || meta.sourcePort > 65535 {
+		return fmt.Errorf("branch invalid sourcePort: %d", meta.sourcePort)
+	}
+
+	if meta.includeDatabases == nil || len(meta.includeDatabases) == 0 {
+		return fmt.Errorf("branch includeDatabases cannot be empty")
+	}
+	for _, db := range meta.excludeDatabases {
+		if db == "*" {
+			return fmt.Errorf("excludeDatabases contains wildcard '*', branching is meaningless")
+		}
+	}
+
+	switch meta.status {
+	case StatusInit, StatusFetched, StatusCreated, StatusPreparing, StatusPrepared, StatusMerging, StatusMerged:
+	default:
+		return fmt.Errorf("branch invalid status: %s", meta.status)
+	}
+
+	// todo enhancement: targetDBPattern
+	return nil
 }
 
 // BranchCreate creates a database branch in the target MySQL instance based on the source schema.
