@@ -58,6 +58,14 @@ const (
 	FromSnapshotToTarget BranchDiffObjectsFlag = "snapshot_target"
 )
 
+type BranchShowOption string
+
+const (
+	ShowAll      BranchShowOption = "all"
+	ShowSnapshot BranchShowOption = "snapshot"
+	ShowStatus   BranchShowOption = "status"
+)
+
 type BranchSchema struct {
 	// databases -> tables -> create table statement or DDLs
 	branchSchema map[string]map[string]string
