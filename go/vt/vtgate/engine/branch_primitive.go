@@ -442,23 +442,10 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("branch diff: invalid branch command params")
 	}
-	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	meta, bs, err := getBranchMetaAndService(b.name)
 	if err != nil {
 		return nil, err
 	}
-	// get branch meta
-	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
-	if err != nil {
-		return nil, err
-	}
-	// get source handler
-	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
-	if err != nil {
-		return nil, err
-	}
-	// get branch service
-	bs := branch.NewBranchService(sourceHandler, targetHandler)
 
 	// todo enhancement: support diff hints?
 	diff, err := bs.BranchDiff(meta.Name, meta.IncludeDatabases, meta.ExcludeDatabases, branch.BranchDiffObjectsFlag(diffParams.CompareObjects), &schemadiff.DiffHints{})
@@ -466,25 +453,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	// build result
-	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
-	rows := make([][]sqltypes.Value, 0)
-	for db, dbDiff := range diff.Diffs {
-		if dbDiff.NeedDropDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("drop database `%s`", db)))
-			continue
-		}
-		if dbDiff.NeedCreateDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("create database `%s`", db)))
-		}
-		for table, tableDiffs := range dbDiff.TableDDLs {
-			for _, tableDiff := range tableDiffs {
-				rows = append(rows, sqltypes.BuildVarCharRow(db, table, tableDiff))
-			}
-		}
-	}
-
-	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
+	return buildBranchDiffResult(diff), nil
 }
 
 func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
@@ -492,24 +461,11 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
 	}
-	// todo use common function
-	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+
+	meta, bs, err := getBranchMetaAndService(b.name)
 	if err != nil {
 		return nil, err
 	}
-	// get branch meta
-	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
-	if err != nil {
-		return nil, err
-	}
-	// get source handler
-	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
-	if err != nil {
-		return nil, err
-	}
-	// get branch service
-	bs := branch.NewBranchService(sourceHandler, targetHandler)
 
 	// todo enhancement: support diff hints?
 	diff, err := bs.BranchPrepareMergeBack(meta.Name, meta.Status, meta.IncludeDatabases, meta.ExcludeDatabases, branch.MergeBackOption(prepareMergeBackParams.MergeOption), &schemadiff.DiffHints{})
@@ -517,8 +473,39 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	// todo use common function
-	// build result
+	return buildBranchDiffResult(diff), nil
+}
+
+func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
+	meta, bs, err := getBranchMetaAndService(b.name)
+	if err != nil {
+		return nil, err
+	}
+	return &sqltypes.Result{}, bs.BranchMergeBack(meta.Name, meta.Status)
+}
+
+func getBranchMetaAndService(name string) (*branch.BranchMeta, *branch.BranchService, error) {
+	// get target handler
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	if err != nil {
+		return nil, nil, err
+	}
+	// get branch meta
+	meta, err := targetHandler.SelectAndValidateBranchMeta(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	// get source handler
+	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
+	if err != nil {
+		return nil, nil, err
+	}
+	// get branch service
+	bs := branch.NewBranchService(sourceHandler, targetHandler)
+	return meta, bs, nil
+}
+
+func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
 	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
 	rows := make([][]sqltypes.Value, 0)
 	for db, dbDiff := range diff.Diffs {
@@ -535,29 +522,5 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 			}
 		}
 	}
-
-	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
-}
-
-func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
-	// todo use common function
-	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
-	if err != nil {
-		return nil, err
-	}
-	// get branch meta
-	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
-	if err != nil {
-		return nil, err
-	}
-	// get source handler
-	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
-	if err != nil {
-		return nil, err
-	}
-	// get branch service
-	bs := branch.NewBranchService(sourceHandler, targetHandler)
-
-	return &sqltypes.Result{}, bs.BranchMergeBack(meta.Name, meta.Status)
+	return &sqltypes.Result{Fields: fields, Rows: rows}
 }
