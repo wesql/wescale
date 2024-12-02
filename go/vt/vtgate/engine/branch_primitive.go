@@ -120,21 +120,18 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 // todo complete me
 // TryExecute implements Primitive interface
 func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
-	result := &sqltypes.Result{}
 	switch b.commandType {
 	case Create:
-		err := b.branchCreate()
-		if err != nil {
-			return nil, err
-		}
-		return &sqltypes.Result{}, nil
+		return b.branchCreate()
 	case Diff:
 		return b.branchDiff()
-	case MergeBack:
 	case PrepareMergeBack:
+		return b.branchPrepareMergeBack()
+	case MergeBack:
+		return b.branchMergeBack()
+	default:
+		return nil, fmt.Errorf("unsupported branch command type: %s", b.commandType)
 	}
-
-	return result, nil
 }
 
 // todo complete me
@@ -410,34 +407,34 @@ func createBranchTargetHandler(targetUser, targetPassword, targetHost string, ta
 	return targetMysqlHandler, nil
 }
 
-func (b *Branch) branchCreate() error {
+func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	// create branch meta
 	createParams, ok := b.params.(*BranchCreateParams)
 	if !ok {
-		return fmt.Errorf("branch create: invalid branch command params")
+		return nil, fmt.Errorf("branch create: invalid branch command params")
 	}
 	port, err := strconv.Atoi(createParams.SourcePort)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude, createParams.TargetDBPattern)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// create branch service
 	sourceHandler, err := createBranchSourceHandler(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	bs := branch.NewBranchService(sourceHandler, targetHandler)
 
 	// create branch
-	return bs.BranchCreate(branchMeta)
+	return &sqltypes.Result{}, bs.BranchCreate(branchMeta)
 }
 
 func (b *Branch) branchDiff() (*sqltypes.Result, error) {
@@ -488,4 +485,79 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
+}
+
+func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
+	prepareMergeBackParams, ok := b.params.(*BranchPrepareMergeBackParams)
+	if !ok {
+		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
+	}
+	// todo use common function
+	// get target handler
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch meta
+	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
+	if err != nil {
+		return nil, err
+	}
+	// get source handler
+	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch service
+	bs := branch.NewBranchService(sourceHandler, targetHandler)
+
+	// todo enhancement: support diff hints?
+	diff, err := bs.BranchPrepareMergeBack(meta.Name, meta.Status, meta.IncludeDatabases, meta.ExcludeDatabases, branch.MergeBackOption(prepareMergeBackParams.MergeOption), &schemadiff.DiffHints{})
+	if err != nil {
+		return nil, err
+	}
+
+	// todo use common function
+	// build result
+	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
+	rows := make([][]sqltypes.Value, 0)
+	for db, dbDiff := range diff.Diffs {
+		if dbDiff.NeedDropDatabase {
+			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("drop database `%s`", db)))
+			continue
+		}
+		if dbDiff.NeedCreateDatabase {
+			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("create database `%s`", db)))
+		}
+		for table, tableDiffs := range dbDiff.TableDDLs {
+			for _, tableDiff := range tableDiffs {
+				rows = append(rows, sqltypes.BuildVarCharRow(db, table, tableDiff))
+			}
+		}
+	}
+
+	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
+}
+
+func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
+	// todo use common function
+	// get target handler
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch meta
+	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
+	if err != nil {
+		return nil, err
+	}
+	// get source handler
+	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch service
+	bs := branch.NewBranchService(sourceHandler, targetHandler)
+
+	return &sqltypes.Result{}, bs.BranchMergeBack(meta.Name, meta.Status)
 }

@@ -249,51 +249,54 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 // 只有状态为preparing，prepared,merged，created时才能执行
 // override: 试图将target分支覆盖掉source分支，
 // merge：试图将target相当于snapshot的修改合并到source分支，会通过三路合并算法进行合并的冲突检测，若冲突则返回错误
-// todo enhancement: schema diff hints
-func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption MergeBackOption) error {
+func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption MergeBackOption, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	if mergeOption != MergeOverride && mergeOption != MergeDiff {
-		return fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOverride, MergeDiff)
+		return nil, fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOverride, MergeDiff)
 	}
 
 	if !statusIsOneOf(status, []BranchStatus{StatusCreated, StatusPreparing, StatusPrepared, StatusMerged}) {
-		return fmt.Errorf("%v is invalid Status, should be one of %v or %v or %v or %v",
+		return nil, fmt.Errorf("%v is invalid Status, should be one of %v or %v or %v or %v",
 			status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
 	}
 
 	// set Status to preparing
 	err := bs.targetMySQLService.UpdateBranchStatus(name, StatusPreparing)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// delete all existing ddl entries in target database
 	err = bs.targetMySQLService.deleteMergeBackDDL(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// calculate ddl based on merge option
 	ddls := &BranchDiff{}
-	hints := &schemadiff.DiffHints{}
 	if mergeOption == MergeOverride {
 		ddls, err = bs.getMergeBackOverrideDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else if mergeOption == MergeDiff {
 		ddls, err = bs.getMergeBackMergeDiffDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	// insert ddl into target database
 	err = bs.targetMySQLService.insertMergeBackDDLInBatches(name, ddls, InsertMergeBackDDLBatchSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// set Status to prepared
-	return bs.targetMySQLService.UpdateBranchStatus(name, StatusPrepared)
+	err = bs.targetMySQLService.UpdateBranchStatus(name, StatusPrepared)
+	if err != nil {
+		return nil, err
+	}
+
+	return ddls, nil
 }
 
 // todo make it Idempotence
