@@ -1435,11 +1435,11 @@ branch_merge_back_statement:
 
 // Branch clean up command
 branch_clean_up_statement:
-    BRANCH CLEAN_UP
+    BRANCH CLEAN_UP with_opt
     {
         $$ = &BranchCommand{
             Type: "cleanUp",
-            Params: nil,
+            Params: $3,
         }
     }
 

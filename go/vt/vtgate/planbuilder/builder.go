@@ -207,8 +207,9 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return newPlanResult(engine.NewRowsPrimitive(nil, nil)), nil
 	case *sqlparser.CreateWescaleFilter, *sqlparser.AlterWescaleFilter, *sqlparser.DropWescaleFilter, *sqlparser.ShowWescaleFilter,
 		*sqlparser.CreateWescaleCDC, *sqlparser.AlterWescaleCDC, *sqlparser.ShowWescaleCDC, *sqlparser.DropWescaleCDC:
-		return buildWescaleFilterPlan(query, vschema)
-		// todo branch case *sqlparser.Branch:
+		return buildSendPlan(query, vschema)
+	case *sqlparser.BranchCommand:
+		// todo
 
 	}
 
