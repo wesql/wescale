@@ -35,18 +35,18 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table1": {},
 						},
 					},
 					"db2": {
-						needCreateDatabase: true,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: true,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table2": {
 								"CREATE TABLE `db2`.`table2` (\n\t`id` int,\n\tPRIMARY KEY (`id`)\n)",
 							},
@@ -76,18 +76,18 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table1": {},
 						},
 					},
 					"db2": {
-						needCreateDatabase: false,
-						needDropDatabase:   true,
-						tableDDLs:          map[string][]string{},
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   true,
+						TableDDLs:          map[string][]string{},
 					},
 				},
 			},
@@ -105,18 +105,18 @@ func TestGetBranchDiff(t *testing.T) {
 			expectSchema: &BranchSchema{
 				branchSchema: map[string]map[string]string{
 					"db1": {
-						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY, name VARCHAR(255))",
+						"table1": "CREATE TABLE table1 (id INT PRIMARY KEY, Name VARCHAR(255))",
 					},
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table1": {
-								"ALTER TABLE `db1`.`table1` ADD COLUMN `name` varchar(255)",
+								"ALTER TABLE `db1`.`table1` ADD COLUMN `Name` varchar(255)",
 							},
 						},
 					},
@@ -142,11 +142,11 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table1": {},
 							"table2": {
 								"CREATE TABLE `db1`.`table2` (\n\t`id` int,\n\tPRIMARY KEY (`id`)\n)",
@@ -175,11 +175,11 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"table1": {},
 							"table2": {
 								"DROP TABLE `table2`",
@@ -195,19 +195,19 @@ func TestGetBranchDiff(t *testing.T) {
 			originSchema: &BranchSchema{
 				branchSchema: map[string]map[string]string{
 					"db1": {
-						"users":    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100))",
+						"users":    "CREATE TABLE users (id INT PRIMARY KEY, Name VARCHAR(100))",
 						"orders":   "CREATE TABLE orders (id INT PRIMARY KEY, user_id INT)",
 						"old_logs": "CREATE TABLE old_logs (id INT PRIMARY KEY, log_data TEXT)",
 					},
 					"db2": {
-						"products": "CREATE TABLE products (id INT PRIMARY KEY, name VARCHAR(200))",
+						"products": "CREATE TABLE products (id INT PRIMARY KEY, Name VARCHAR(200))",
 					},
 				},
 			},
 			expectSchema: &BranchSchema{
 				branchSchema: map[string]map[string]string{
 					"db1": {
-						"users":    "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(100), email VARCHAR(255))",
+						"users":    "CREATE TABLE users (id INT PRIMARY KEY, Name VARCHAR(100), email VARCHAR(255))",
 						"orders":   "CREATE TABLE orders (id INT PRIMARY KEY, user_id INT, order_date TIMESTAMP)",
 						"payments": "CREATE TABLE payments (id INT PRIMARY KEY, order_id INT, amount DECIMAL(10,2))",
 					},
@@ -217,11 +217,11 @@ func TestGetBranchDiff(t *testing.T) {
 				},
 			},
 			wantDiff: &BranchDiff{
-				diffs: map[string]*DatabaseDiff{
+				Diffs: map[string]*DatabaseDiff{
 					"db1": {
-						needCreateDatabase: false,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"old_logs": {
 								"DROP TABLE `old_logs`",
 							},
@@ -237,14 +237,14 @@ func TestGetBranchDiff(t *testing.T) {
 						},
 					},
 					"db2": {
-						needCreateDatabase: false,
-						needDropDatabase:   true,
-						tableDDLs:          map[string][]string{},
+						NeedCreateDatabase: false,
+						NeedDropDatabase:   true,
+						TableDDLs:          map[string][]string{},
 					},
 					"db3": {
-						needCreateDatabase: true,
-						needDropDatabase:   false,
-						tableDDLs: map[string][]string{
+						NeedCreateDatabase: true,
+						NeedDropDatabase:   false,
+						TableDDLs: map[string][]string{
 							"analytics": {
 								"CREATE TABLE `db3`.`analytics` (\n\t`id` int,\n\t`event_type` varchar(50),\n\t`data` json,\n\tPRIMARY KEY (`id`)\n)",
 							},
@@ -298,13 +298,13 @@ func compareDatabaseDiff(t *testing.T, want, got *DatabaseDiff) {
 		return
 	}
 
-	assert.Equal(t, want.needCreateDatabase, got.needCreateDatabase, "needCreateDatabase mismatch")
-	assert.Equal(t, want.needDropDatabase, got.needDropDatabase, "needDropDatabase mismatch")
+	assert.Equal(t, want.NeedCreateDatabase, got.NeedCreateDatabase, "NeedCreateDatabase mismatch")
+	assert.Equal(t, want.NeedDropDatabase, got.NeedDropDatabase, "NeedDropDatabase mismatch")
 
-	// Compare tableDDLs maps
-	assert.Equal(t, len(want.tableDDLs), len(got.tableDDLs), "tableDDLs length mismatch")
-	for tableName, wantDDLs := range want.tableDDLs {
-		gotDDLs, exists := got.tableDDLs[tableName]
+	// Compare TableDDLs maps
+	assert.Equal(t, len(want.TableDDLs), len(got.TableDDLs), "TableDDLs length mismatch")
+	for tableName, wantDDLs := range want.TableDDLs {
+		gotDDLs, exists := got.TableDDLs[tableName]
 		assert.True(t, exists, "missing table DDLs for table %s", tableName)
 		if exists {
 			// Sort DDLs to ensure consistent comparison
@@ -322,15 +322,15 @@ func compareBranchDiff(t *testing.T, want, got *BranchDiff) {
 		return
 	}
 
-	// Compare diffs maps
-	assert.Equal(t, len(want.diffs), len(got.diffs), "diffs length mismatch")
+	// Compare Diffs maps
+	assert.Equal(t, len(want.Diffs), len(got.Diffs), "Diffs length mismatch")
 
 	// Get sorted database names for consistent comparison
 	var wantDBNames, gotDBNames []string
-	for dbName := range want.diffs {
+	for dbName := range want.Diffs {
 		wantDBNames = append(wantDBNames, dbName)
 	}
-	for dbName := range got.diffs {
+	for dbName := range got.Diffs {
 		gotDBNames = append(gotDBNames, dbName)
 	}
 	sort.Strings(wantDBNames)
@@ -340,8 +340,8 @@ func compareBranchDiff(t *testing.T, want, got *BranchDiff) {
 
 	// Compare each database diff
 	for _, dbName := range wantDBNames {
-		wantDB := want.diffs[dbName]
-		gotDB := got.diffs[dbName]
+		wantDB := want.Diffs[dbName]
+		gotDB := got.Diffs[dbName]
 		assert.NotNil(t, gotDB, "missing DatabaseDiff for database %s", dbName)
 		if gotDB != nil {
 			compareDatabaseDiff(t, wantDB, gotDB)

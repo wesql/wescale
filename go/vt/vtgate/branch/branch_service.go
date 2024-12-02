@@ -27,7 +27,7 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 
 	var includeDatabases []string
 	if includeDBs == "" {
-		return nil, fmt.Errorf("includeDatabases cannot be empty")
+		return nil, fmt.Errorf("IncludeDatabases cannot be empty")
 	}
 
 	includeDatabases = strings.Split(includeDBs, ",")
@@ -49,15 +49,15 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 	}
 
 	bMeta := &BranchMeta{
-		name:             name,
-		sourceHost:       sourceHost,
-		sourcePort:       sourcePort,
-		sourceUser:       sourceUser,
-		sourcePassword:   sourcePassword,
-		includeDatabases: includeDatabases,
-		excludeDatabases: excludeDatabases,
-		targetDBPattern:  targetDBPattern,
-		status:           StatusInit,
+		Name:             name,
+		SourceHost:       sourceHost,
+		SourcePort:       sourcePort,
+		SourceUser:       sourceUser,
+		SourcePassword:   sourcePassword,
+		IncludeDatabases: includeDatabases,
+		ExcludeDatabases: excludeDatabases,
+		TargetDBPattern:  targetDBPattern,
+		Status:           StatusInit,
 	}
 
 	addDefaultExcludeDatabases(bMeta)
@@ -71,33 +71,33 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 }
 
 func (meta *BranchMeta) Validate() error {
-	if meta.name == "" {
-		return fmt.Errorf("branch name cannot be empty")
+	if meta.Name == "" {
+		return fmt.Errorf("branch Name cannot be empty")
 	}
 
-	if meta.sourceHost == "" {
-		return fmt.Errorf("branch sourceHost cannot be empty")
+	if meta.SourceHost == "" {
+		return fmt.Errorf("branch SourceHost cannot be empty")
 	}
-	if meta.sourcePort <= 0 || meta.sourcePort > 65535 {
-		return fmt.Errorf("branch invalid sourcePort: %d", meta.sourcePort)
+	if meta.SourcePort <= 0 || meta.SourcePort > 65535 {
+		return fmt.Errorf("branch invalid SourcePort: %d", meta.SourcePort)
 	}
 
-	if meta.includeDatabases == nil || len(meta.includeDatabases) == 0 {
-		return fmt.Errorf("branch includeDatabases cannot be empty")
+	if meta.IncludeDatabases == nil || len(meta.IncludeDatabases) == 0 {
+		return fmt.Errorf("branch IncludeDatabases cannot be empty")
 	}
-	for _, db := range meta.excludeDatabases {
+	for _, db := range meta.ExcludeDatabases {
 		if db == "*" {
-			return fmt.Errorf("excludeDatabases contains wildcard '*', branching is meaningless")
+			return fmt.Errorf("ExcludeDatabases contains wildcard '*', branching is meaningless")
 		}
 	}
 
-	switch meta.status {
+	switch meta.Status {
 	case StatusInit, StatusFetched, StatusCreated, StatusPreparing, StatusPrepared, StatusMerging, StatusMerged:
 	default:
-		return fmt.Errorf("branch invalid status: %s", meta.status)
+		return fmt.Errorf("branch invalid Status: %s", meta.Status)
 	}
 
-	// todo enhancement: targetDBPattern
+	// todo enhancement: TargetDBPattern
 	return nil
 }
 
@@ -124,32 +124,32 @@ func (meta *BranchMeta) Validate() error {
 // - error: Returns nil on success, error otherwise
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
 func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
-	if branchMeta.status != StatusInit {
-		return fmt.Errorf("the status of branch meta should be init")
+	if branchMeta.Status != StatusInit {
+		return fmt.Errorf("the Status of branch meta should be init")
 	}
 	meta, err := bs.targetMySQLService.SelectOrInsertBranchMeta(branchMeta)
 	if err != nil {
 		return err
 	}
-	if meta.status == StatusInit || meta.status == StatusUnknown {
-		_, err := bs.branchFetchSnapshot(meta.name, meta.includeDatabases, meta.excludeDatabases)
+	if meta.Status == StatusInit || meta.Status == StatusUnknown {
+		_, err := bs.branchFetchSnapshot(meta.Name, meta.IncludeDatabases, meta.ExcludeDatabases)
 		if err != nil {
 			return err
 		}
 		// upsert make sure the meta stored in mysql will be synced
-		meta.status = StatusFetched
+		meta.Status = StatusFetched
 		err = bs.targetMySQLService.UpsertBranchMeta(meta)
 		if err != nil {
 			return err
 		}
 	}
 
-	if meta.status == StatusFetched {
-		err := bs.targetMySQLService.ApplySnapshot(meta.name)
+	if meta.Status == StatusFetched {
+		err := bs.targetMySQLService.ApplySnapshot(meta.Name)
 		if err != nil {
 			return err
 		}
-		meta.status = StatusCreated
+		meta.Status = StatusCreated
 		return bs.targetMySQLService.UpsertBranchMeta(meta)
 	}
 
@@ -256,11 +256,11 @@ func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus
 	}
 
 	if !statusIsOneOf(status, []BranchStatus{StatusCreated, StatusPreparing, StatusPrepared, StatusMerged}) {
-		return fmt.Errorf("%v is invalid status, should be one of %v or %v or %v or %v",
+		return fmt.Errorf("%v is invalid Status, should be one of %v or %v or %v or %v",
 			status, StatusCreated, StatusPreparing, StatusPrepared, StatusMerged)
 	}
 
-	// set status to preparing
+	// set Status to preparing
 	err := bs.targetMySQLService.UpdateBranchStatus(name, StatusPreparing)
 	if err != nil {
 		return err
@@ -292,7 +292,7 @@ func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus
 		return err
 	}
 
-	// set status to prepared
+	// set Status to prepared
 	return bs.targetMySQLService.UpdateBranchStatus(name, StatusPrepared)
 }
 
@@ -305,7 +305,7 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 
 	// 状态检查，只有prepared或者Merging才能执行
 	if !statusIsOneOf(status, []BranchStatus{StatusPrepared, StatusMerging}) {
-		return fmt.Errorf("%v is invalid status, should be one of %v or %v", status, StatusPrepared, StatusMerging)
+		return fmt.Errorf("%v is invalid Status, should be one of %v or %v", status, StatusPrepared, StatusMerging)
 	}
 
 	// 将status改为Merging
@@ -331,7 +331,7 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 func (bs *BranchService) BranchShow(flag string) {
 	// todo
 	// use flag to decide what to show
-	// meta status
+	// meta Status
 	// snapshot
 	// merge back ddl
 }
@@ -485,9 +485,9 @@ func branchSchemaToDatabaseSchemas(branchSchema *BranchSchema) (map[string]*sche
 // todo add UT
 func applyBranchDiffToDatabaseSchemas(databaseSchemas map[string]*schemadiff.Schema, branchDiff *BranchDiff) (map[string]*schemadiff.Schema, error) {
 	resultDatabaseSchemas := make(map[string]*schemadiff.Schema)
-	for database, databaseDiff := range branchDiff.diffs {
+	for database, databaseDiff := range branchDiff.Diffs {
 		// 处理删除数据库的情况
-		if databaseDiff.needDropDatabase {
+		if databaseDiff.NeedDropDatabase {
 			if _, exists := databaseSchemas[database]; !exists {
 				return nil, fmt.Errorf("database %s not exist in databaseSchemas, can not drop database", database)
 			}
@@ -496,13 +496,13 @@ func applyBranchDiffToDatabaseSchemas(databaseSchemas map[string]*schemadiff.Sch
 		}
 
 		// 处理创建一个新数据库的情况
-		if databaseDiff.needCreateDatabase {
+		if databaseDiff.NeedCreateDatabase {
 			if _, exists := databaseSchemas[database]; exists {
 				return nil, fmt.Errorf("database %s already exist in databaseSchemas, can not create database", database)
 			}
 
 			createTableQueries := make([]string, 0)
-			for _, createTableQuery := range databaseDiff.tableDDLs {
+			for _, createTableQuery := range databaseDiff.TableDDLs {
 				// 虽然这里是数组，但是由于每张表都不存在，因此实际上数组只有一个元素，且都是create table语句
 				createTableQueries = append(createTableQueries, createTableQuery...)
 			}
@@ -653,16 +653,16 @@ func (bs *BranchService) branchFetchSnapshot(name string, includeDatabases, excl
 
 // todo enhancement: target database pattern
 func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema, hints *schemadiff.DiffHints) (*BranchDiff, error) {
-	branchDiff := &BranchDiff{diffs: make(map[string]*DatabaseDiff)}
+	branchDiff := &BranchDiff{Diffs: make(map[string]*DatabaseDiff)}
 
 	// databases exist in originSchema but not exist in expectSchema
 	for dbName := range originSchema.branchSchema {
 		if _, exist := expectSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
-				needCreateDatabase: false,
-				needDropDatabase:   true,
+				NeedCreateDatabase: false,
+				NeedDropDatabase:   true,
 			}
-			branchDiff.diffs[dbName] = databaseDiff
+			branchDiff.Diffs[dbName] = databaseDiff
 		}
 	}
 
@@ -670,8 +670,8 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 	for dbName := range expectSchema.branchSchema {
 		if _, exist := originSchema.branchSchema[dbName]; !exist {
 			databaseDiff := &DatabaseDiff{
-				needCreateDatabase: true,
-				needDropDatabase:   false,
+				NeedCreateDatabase: true,
+				NeedDropDatabase:   false,
 			}
 			tableDDLs := make(map[string][]string)
 			tableEntityDiff := make(map[string]schemadiff.EntityDiff)
@@ -691,9 +691,9 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 				tableDDLs[tableName] = tableDiffs
 				tableEntityDiff[tableName] = diff
 			}
-			databaseDiff.tableDDLs = tableDDLs
+			databaseDiff.TableDDLs = tableDDLs
 			databaseDiff.tableEntityDiffs = tableEntityDiff
-			branchDiff.diffs[dbName] = databaseDiff
+			branchDiff.Diffs[dbName] = databaseDiff
 		}
 	}
 
@@ -704,8 +704,8 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 			continue
 		}
 		databaseDiff := &DatabaseDiff{
-			needCreateDatabase: false,
-			needDropDatabase:   false,
+			NeedCreateDatabase: false,
+			NeedDropDatabase:   false,
 		}
 		tableDDLs := make(map[string][]string)
 		tableEntityDiff := make(map[string]schemadiff.EntityDiff)
@@ -763,9 +763,9 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 				tableEntityDiff[tableName] = diff
 			}
 		}
-		databaseDiff.tableDDLs = tableDDLs
+		databaseDiff.TableDDLs = tableDDLs
 		databaseDiff.tableEntityDiffs = tableEntityDiff
-		branchDiff.diffs[dbName] = databaseDiff
+		branchDiff.Diffs[dbName] = databaseDiff
 	}
 
 	return branchDiff, nil
@@ -774,14 +774,14 @@ func getBranchSchemaDiff(originSchema *BranchSchema, expectSchema *BranchSchema,
 func addDefaultExcludeDatabases(branchMeta *BranchMeta) {
 	for _, db := range DefaultExcludeDatabases {
 		has := false
-		for _, db2 := range branchMeta.excludeDatabases {
+		for _, db2 := range branchMeta.ExcludeDatabases {
 			if db == db2 {
 				has = true
 				break
 			}
 		}
 		if !has {
-			branchMeta.excludeDatabases = append(branchMeta.excludeDatabases, db)
+			branchMeta.ExcludeDatabases = append(branchMeta.ExcludeDatabases, db)
 		}
 	}
 }

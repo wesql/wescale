@@ -119,7 +119,7 @@ func TestExecuteInTxn(t *testing.T) {
 
 //func TestTableSchemaEqual(t *testing.T) {
 //	tests := []struct {
-//		name          string
+//		Name          string
 //		table1        string
 //		table2        string
 //		hints         *schemadiff.DiffHints
@@ -128,10 +128,10 @@ func TestExecuteInTxn(t *testing.T) {
 //		expectError   bool
 //	}{
 //		{
-//			name:   "identical schemas",
-//			table1: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+//			Name:   "identical schemas",
+//			table1: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `Name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
 //
-//			table2: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+//			table2: "CREATE TABLE b3 (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `Name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 //
 //			hints:         &schemadiff.DiffHints{TableCharsetCollateStrategy: schemadiff.TableCharsetCollateIgnoreAlways},
 //			expectEqual:   true,
@@ -141,7 +141,7 @@ func TestExecuteInTxn(t *testing.T) {
 //	}
 //
 //	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
+//		t.Run(tt.Name, func(t *testing.T) {
 //			schema1, err := sqlparser.Parse(tt.table1)
 //			assert.NoError(t, err)
 //			createTable1 := schema1.(*sqlparser.CreateTable)

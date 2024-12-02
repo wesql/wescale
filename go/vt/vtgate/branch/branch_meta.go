@@ -3,18 +3,18 @@ package branch
 import "vitess.io/vitess/go/vt/schemadiff"
 
 type BranchMeta struct {
-	name string
+	Name string
 	// source info
-	sourceHost     string
-	sourcePort     int
-	sourceUser     string
-	sourcePassword string
+	SourceHost     string
+	SourcePort     int
+	SourceUser     string
+	SourcePassword string
 	// filter rules
-	includeDatabases []string
-	excludeDatabases []string
+	IncludeDatabases []string
+	ExcludeDatabases []string
 	// others
-	targetDBPattern string // todo enhancement: so that we can test branch in single mysql instance
-	status          BranchStatus
+	TargetDBPattern string // todo enhancement: so that we can test branch in single mysql instance
+	Status          BranchStatus
 }
 
 type BranchStatus string
@@ -63,7 +63,7 @@ type BranchShowOption string
 const (
 	ShowAll      BranchShowOption = "all"
 	ShowSnapshot BranchShowOption = "snapshot"
-	ShowStatus   BranchShowOption = "status"
+	ShowStatus   BranchShowOption = "Status"
 )
 
 type BranchSchema struct {
@@ -72,18 +72,18 @@ type BranchSchema struct {
 }
 
 type DatabaseDiff struct {
-	needCreateDatabase bool
-	needDropDatabase   bool
-	// table name -> ddls to create, drop or alter this table from origin to expected
-	tableDDLs map[string][]string
+	NeedCreateDatabase bool
+	NeedDropDatabase   bool
+	// table Name -> ddls to create, drop or alter this table from origin to expected
+	TableDDLs map[string][]string
 
-	// table name -> EntityDiffs, used in schema merge back conflict check
+	// table Name -> EntityDiffs, used in schema merge back conflict check
 	tableEntityDiffs map[string]schemadiff.EntityDiff
 }
 
 type BranchDiff struct {
-	// database name -> DatabaseDiff
-	diffs map[string]*DatabaseDiff
+	// database Name -> DatabaseDiff
+	Diffs map[string]*DatabaseDiff
 }
 
 const (
@@ -91,8 +91,8 @@ const (
 
 	UpsertBranchMetaSQL = `
     INSERT INTO mysql.branch 
-        (name, source_host, source_port, source_user, source_password, 
-        include_databases, exclude_databases, status, target_db_pattern) 
+        (Name, source_host, source_port, source_user, source_password, 
+        include_databases, exclude_databases, Status, target_db_pattern) 
     VALUES 
         ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')
     ON DUPLICATE KEY UPDATE 
@@ -102,34 +102,34 @@ const (
         source_password = VALUES(source_password),
         include_databases = VALUES(include_databases),
         exclude_databases = VALUES(exclude_databases),
-        status = VALUES(status),
+        Status = VALUES(Status),
         target_db_pattern = VALUES(target_db_pattern)`
 
-	SelectBranchMetaSQL = "select * from mysql.branch where name='%s'"
+	SelectBranchMetaSQL = "select * from mysql.branch where Name='%s'"
 
 	InsertBranchMetaSQL = `INSERT INTO mysql.branch 
-        (name, source_host, source_port, source_user, source_password, 
-        include_databases, exclude_databases, status, target_db_pattern) 
+        (Name, source_host, source_port, source_user, source_password, 
+        include_databases, exclude_databases, Status, target_db_pattern) 
     VALUES 
         ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s', '%s')`
 
-	UpdateBranchStatusSQL = "update mysql.branch set status='%s' where name='%s'"
+	UpdateBranchStatusSQL = "update mysql.branch set Status='%s' where Name='%s'"
 
 	// snapshot related
 
-	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where name='%s' order by id"
+	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where Name='%s' order by id"
 
-	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where name='%s'"
+	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where Name='%s'"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (Name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
 
 	// merge back ddl related
 
-	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where name='%s'"
+	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where Name='%s'"
 
-	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where name='%s' and merged = false order by id"
+	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false order by id"
 
-	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (name, database, table, ddl, merged) values ('%s', '%s', '%s', '%s', false)"
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (Name, database, table, ddl, merged) values ('%s', '%s', '%s', '%s', false)"
 
 	UpdateBranchMergeBackDDLMergedSQL = "update mysql.branch_patch set merged = true where id = '%d'"
 )

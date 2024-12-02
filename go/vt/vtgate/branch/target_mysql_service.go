@@ -25,7 +25,7 @@ var InsertMergeBackDDLBatchSize = 10
 
 func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *BranchMeta) (*BranchMeta, error) {
 
-	meta, _ := t.selectBranchMeta(metaToInsertIfNotExists.name)
+	meta, _ := t.SelectAndValidateBranchMeta(metaToInsertIfNotExists.Name)
 	if meta != nil {
 		return meta, nil
 	}
@@ -118,7 +118,7 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 	}
 
 	if len(result.branchSchema) == 0 {
-		return nil, fmt.Errorf("no snapshot found for name: %s", name)
+		return nil, fmt.Errorf("no snapshot found for Name: %s", name)
 	}
 
 	return result, nil
@@ -159,17 +159,17 @@ func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
 
 func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *BranchDiff, batchSize int) error {
 	insertSQLs := make([]string, 0)
-	for database, databaseDiff := range ddls.diffs {
-		if databaseDiff.needDropDatabase {
+	for database, databaseDiff := range ddls.Diffs {
+		if databaseDiff.NeedDropDatabase {
 			insertSQLs = append(insertSQLs, fmt.Sprintf("DROP DATABASE IF EXISTS %s", database))
 			continue
 		}
 
-		if databaseDiff.needCreateDatabase {
+		if databaseDiff.NeedCreateDatabase {
 			insertSQLs = append(insertSQLs, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
 		}
 
-		for tableName, ddls := range databaseDiff.tableDDLs {
+		for tableName, ddls := range databaseDiff.TableDDLs {
 			for _, ddl := range ddls {
 				sql := getInsertMergeBackDDLSQL(name, database, tableName, ddl)
 				insertSQLs = append(insertSQLs, sql)
@@ -233,7 +233,7 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	for rows.Next() {
 		var dbName string
 		if err := rows.Scan(&dbName); err != nil {
-			return nil, fmt.Errorf("failed to scan database name: %v", err)
+			return nil, fmt.Errorf("failed to scan database Name: %v", err)
 		}
 		databases = append(databases, dbName)
 	}
@@ -273,7 +273,7 @@ func (t *TargetMySQLService) createTables(databaseName string, createTableStmts 
 	return nil
 }
 
-func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) {
+func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMeta, error) {
 	selectBranchMetaSQL := getSelectBranchMetaSQL(name)
 	rows, err := t.mysqlService.Query(selectBranchMetaSQL)
 	if err != nil {
@@ -289,14 +289,14 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 	var includeDBs, excludeDBs, status string
 
 	err = rows.Scan(
-		&meta.name,
-		&meta.sourceHost,
-		&meta.sourcePort,
-		&meta.sourceUser,
-		&meta.sourcePassword,
+		&meta.Name,
+		&meta.SourceHost,
+		&meta.SourcePort,
+		&meta.SourceUser,
+		&meta.SourcePassword,
 		&includeDBs,
 		&excludeDBs,
-		&meta.targetDBPattern,
+		&meta.TargetDBPattern,
 		&status,
 	)
 	if err != nil {
@@ -304,17 +304,17 @@ func (t *TargetMySQLService) selectBranchMeta(name string) (*BranchMeta, error) 
 	}
 
 	if includeDBs == "" {
-		meta.includeDatabases = []string{}
+		meta.IncludeDatabases = []string{}
 	} else {
-		meta.includeDatabases = strings.Split(includeDBs, ",")
+		meta.IncludeDatabases = strings.Split(includeDBs, ",")
 	}
 	if excludeDBs == "" {
-		meta.excludeDatabases = []string{}
+		meta.ExcludeDatabases = []string{}
 	} else {
-		meta.excludeDatabases = strings.Split(excludeDBs, ",")
+		meta.ExcludeDatabases = strings.Split(excludeDBs, ",")
 	}
 
-	meta.status = StringToBranchStatus(status)
+	meta.Status = StringToBranchStatus(status)
 	err = meta.Validate()
 	if err != nil {
 		return nil, err
@@ -347,33 +347,33 @@ func getSelectBranchMetaSQL(name string) string {
 }
 
 func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
-	includeDatabases := strings.Join(branchMeta.includeDatabases, ",")
-	excludeDatabases := strings.Join(branchMeta.excludeDatabases, ",")
+	includeDatabases := strings.Join(branchMeta.IncludeDatabases, ",")
+	excludeDatabases := strings.Join(branchMeta.ExcludeDatabases, ",")
 	return fmt.Sprintf(UpsertBranchMetaSQL,
-		branchMeta.name,
-		branchMeta.sourceHost,
-		branchMeta.sourcePort,
-		branchMeta.sourceUser,
-		branchMeta.sourcePassword,
+		branchMeta.Name,
+		branchMeta.SourceHost,
+		branchMeta.SourcePort,
+		branchMeta.SourceUser,
+		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.status),
-		branchMeta.targetDBPattern)
+		string(branchMeta.Status),
+		branchMeta.TargetDBPattern)
 }
 
 func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
-	includeDatabases := strings.Join(branchMeta.includeDatabases, ",")
-	excludeDatabases := strings.Join(branchMeta.excludeDatabases, ",")
+	includeDatabases := strings.Join(branchMeta.IncludeDatabases, ",")
+	excludeDatabases := strings.Join(branchMeta.ExcludeDatabases, ",")
 	return fmt.Sprintf(InsertBranchMetaSQL,
-		branchMeta.name,
-		branchMeta.sourceHost,
-		branchMeta.sourcePort,
-		branchMeta.sourceUser,
-		branchMeta.sourcePassword,
+		branchMeta.Name,
+		branchMeta.SourceHost,
+		branchMeta.SourcePort,
+		branchMeta.SourceUser,
+		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.status),
-		branchMeta.targetDBPattern)
+		string(branchMeta.Status),
+		branchMeta.TargetDBPattern)
 }
 
 func getUpdateBranchStatusSQL(name string, status BranchStatus) string {

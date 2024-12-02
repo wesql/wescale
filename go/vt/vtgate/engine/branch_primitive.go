@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
+	"vitess.io/vitess/go/vt/schemadiff"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/branch"
 )
@@ -128,6 +129,7 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 		}
 		return &sqltypes.Result{}, nil
 	case Diff:
+		return b.branchDiff()
 	case MergeBack:
 	case PrepareMergeBack:
 	}
@@ -378,8 +380,7 @@ func (bsp *BranchShowParams) validate() error {
 	return nil
 }
 
-func createBranchService(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.BranchService, error) {
-	// 1. create source mysql handler
+func createBranchSourceHandler(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.SourceMySQLService, error) {
 	sourceMysqlConfig := &mysql.Config{
 		User:   sourceUser,
 		Passwd: sourcePassword,
@@ -391,21 +392,22 @@ func createBranchService(sourceUser, sourcePassword, sourceHost string, sourcePo
 		return nil, err
 	}
 	sourceMysqlHandler := branch.NewSourceMySQLService(sourceMysqlService)
-	// 2. create target mysql handler
+	return sourceMysqlHandler, nil
+}
+
+func createBranchTargetHandler(targetUser, targetPassword, targetHost string, targetPort int) (*branch.TargetMySQLService, error) {
 	targetMysqlConfig := &mysql.Config{
-		User:   DefaultBranchTargetUser,
-		Passwd: DefaultBranchTargetPassword,
+		User:   targetUser,
+		Passwd: targetPassword,
 		Net:    "tcp",
-		Addr:   fmt.Sprintf("%s:%d", DefaultBranchTargetHost, DefaultBranchTargetPort),
+		Addr:   fmt.Sprintf("%s:%d", targetHost, targetPort),
 	}
 	targetMysqlService, err := branch.NewMysqlServiceWithConfig(targetMysqlConfig)
 	if err != nil {
 		return nil, err
 	}
 	targetMysqlHandler := branch.NewTargetMySQLService(targetMysqlService)
-	// 3. create branch service
-	bs := branch.NewBranchService(sourceMysqlHandler, targetMysqlHandler)
-	return bs, nil
+	return targetMysqlHandler, nil
 }
 
 func (b *Branch) branchCreate() error {
@@ -424,16 +426,66 @@ func (b *Branch) branchCreate() error {
 	}
 
 	// create branch service
-	bs, err := createBranchService(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
+	sourceHandler, err := createBranchSourceHandler(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
 	if err != nil {
 		return err
 	}
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	if err != nil {
+		return err
+	}
+	bs := branch.NewBranchService(sourceHandler, targetHandler)
 
 	// create branch
 	return bs.BranchCreate(branchMeta)
 }
 
-// todo complete me
 func (b *Branch) branchDiff() (*sqltypes.Result, error) {
-	return &sqltypes.Result{}, nil
+	diffParams, ok := b.params.(*BranchDiffParams)
+	if !ok {
+		return nil, fmt.Errorf("branch diff: invalid branch command params")
+	}
+	// get target handler
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch meta
+	meta, err := targetHandler.SelectAndValidateBranchMeta(b.name)
+	if err != nil {
+		return nil, err
+	}
+	// get source handler
+	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
+	if err != nil {
+		return nil, err
+	}
+	// get branch service
+	bs := branch.NewBranchService(sourceHandler, targetHandler)
+
+	// todo enhancement: support diff hints?
+	diff, err := bs.BranchDiff(meta.Name, meta.IncludeDatabases, meta.ExcludeDatabases, branch.BranchDiffObjectsFlag(diffParams.CompareObjects), &schemadiff.DiffHints{})
+	if err != nil {
+		return nil, err
+	}
+
+	// build result
+	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
+	rows := make([][]sqltypes.Value, 0)
+	for db, dbDiff := range diff.Diffs {
+		if dbDiff.NeedDropDatabase {
+			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("drop database `%s`", db)))
+			continue
+		}
+		if dbDiff.NeedCreateDatabase {
+			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("create database `%s`", db)))
+		}
+		for table, tableDiffs := range dbDiff.TableDDLs {
+			for _, tableDiff := range tableDiffs {
+				rows = append(rows, sqltypes.BuildVarCharRow(db, table, tableDiff))
+			}
+		}
+	}
+
+	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
 }

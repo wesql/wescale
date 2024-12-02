@@ -27,13 +27,13 @@ func TestSelectBranchMeta(t *testing.T) {
 	InitMockBranchMetas(mock)
 
 	for i, _ := range BranchMetasForTest {
-		meta, err := TargetMySQLServiceForTest.selectBranchMeta(fmt.Sprintf("test%d", i))
+		meta, err := TargetMySQLServiceForTest.SelectAndValidateBranchMeta(fmt.Sprintf("test%d", i))
 		if err != nil {
 			t.Error(err)
 		}
 		assert.Equal(t, true, compareBranchMetas(BranchMetasForTest[i], meta))
 	}
-	meta, err := TargetMySQLServiceForTest.selectBranchMeta("no this test")
+	meta, err := TargetMySQLServiceForTest.SelectAndValidateBranchMeta("no this test")
 	assert.Nil(t, meta)
 	assert.NotNil(t, err)
 }
@@ -46,32 +46,32 @@ func compareBranchMetas(first, second *BranchMeta) bool {
 		return first == second
 	}
 
-	if first.name != second.name {
-		fmt.Printf("name different: first=%s, second=%s\n", first.name, second.name)
+	if first.Name != second.Name {
+		fmt.Printf("Name different: first=%s, second=%s\n", first.Name, second.Name)
 		return false
 	}
-	if first.sourceHost != second.sourceHost {
-		fmt.Printf("sourceHost different: first=%s, second=%s\n", first.sourceHost, second.sourceHost)
+	if first.SourceHost != second.SourceHost {
+		fmt.Printf("SourceHost different: first=%s, second=%s\n", first.SourceHost, second.SourceHost)
 		return false
 	}
-	if first.sourcePort != second.sourcePort {
-		fmt.Printf("sourcePort different: first=%d, second=%d\n", first.sourcePort, second.sourcePort)
+	if first.SourcePort != second.SourcePort {
+		fmt.Printf("SourcePort different: first=%d, second=%d\n", first.SourcePort, second.SourcePort)
 		return false
 	}
-	if first.sourceUser != second.sourceUser {
-		fmt.Printf("sourceUser different: first=%s, second=%s\n", first.sourceUser, second.sourceUser)
+	if first.SourceUser != second.SourceUser {
+		fmt.Printf("SourceUser different: first=%s, second=%s\n", first.SourceUser, second.SourceUser)
 		return false
 	}
-	if first.sourcePassword != second.sourcePassword {
-		fmt.Printf("sourcePassword different: first=%s, second=%s\n", first.sourcePassword, second.sourcePassword)
+	if first.SourcePassword != second.SourcePassword {
+		fmt.Printf("SourcePassword different: first=%s, second=%s\n", first.SourcePassword, second.SourcePassword)
 		return false
 	}
-	if first.targetDBPattern != second.targetDBPattern {
-		fmt.Printf("targetDBPattern different: first=%s, second=%s\n", first.targetDBPattern, second.targetDBPattern)
+	if first.TargetDBPattern != second.TargetDBPattern {
+		fmt.Printf("TargetDBPattern different: first=%s, second=%s\n", first.TargetDBPattern, second.TargetDBPattern)
 		return false
 	}
-	if first.status != second.status {
-		fmt.Printf("status different: first=%s, second=%s\n", first.status, second.status)
+	if first.Status != second.Status {
+		fmt.Printf("Status different: first=%s, second=%s\n", first.Status, second.Status)
 		return false
 	}
 
@@ -87,14 +87,14 @@ func compareBranchMetas(first, second *BranchMeta) bool {
 		return true
 	}
 
-	if !sliceEqual(first.includeDatabases, second.includeDatabases) {
-		fmt.Printf("includeDatabases different:\n first=%v\n second=%v\n",
-			first.includeDatabases, second.includeDatabases)
+	if !sliceEqual(first.IncludeDatabases, second.IncludeDatabases) {
+		fmt.Printf("IncludeDatabases different:\n first=%v\n second=%v\n",
+			first.IncludeDatabases, second.IncludeDatabases)
 		return false
 	}
-	if !sliceEqual(first.excludeDatabases, second.excludeDatabases) {
-		fmt.Printf("excludeDatabases different:\n first=%v\n second=%v\n",
-			first.excludeDatabases, second.excludeDatabases)
+	if !sliceEqual(first.ExcludeDatabases, second.ExcludeDatabases) {
+		fmt.Printf("ExcludeDatabases different:\n first=%v\n second=%v\n",
+			first.ExcludeDatabases, second.ExcludeDatabases)
 		return false
 	}
 
@@ -146,10 +146,10 @@ func TestAddIfNotExistsForCreateTableSQL(t *testing.T) {
 		{
 			name: "Complex table",
 			input: map[string]string{
-				"complex_table": "CREATE TABLE `complex_table` (id INT PRIMARY KEY,name VARCHAR(255))",
+				"complex_table": "CREATE TABLE `complex_table` (id INT PRIMARY KEY,Name VARCHAR(255))",
 			},
 			expected: map[string]string{
-				"complex_table": "CREATE TABLE IF NOT EXISTS `complex_table` (id INT PRIMARY KEY,name VARCHAR(255))",
+				"complex_table": "CREATE TABLE IF NOT EXISTS `complex_table` (id INT PRIMARY KEY,Name VARCHAR(255))",
 			},
 		},
 	}

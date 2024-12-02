@@ -167,7 +167,7 @@ func InitMockTableInfos(mock sqlmock.Sqlmock) {
 
 var (
 	BranchMetaColumns = []string{
-		"name",
+		"Name",
 		"source_host",
 		"source_port",
 		"source_user",
@@ -175,42 +175,42 @@ var (
 		"include_databases",
 		"exclude_databases",
 		"target_db_pattern",
-		"status",
+		"Status",
 	}
 
 	BranchMetasForTest = []*BranchMeta{
 		{
-			name:             "test0",
-			sourceHost:       "prod.mysql.example.com",
-			sourcePort:       3306,
-			sourceUser:       "repl_user",
-			sourcePassword:   "password123",
-			includeDatabases: []string{"db1", "db2"},
-			excludeDatabases: []string{"db3"},
-			targetDBPattern:  "",
-			status:           "init",
+			Name:             "test0",
+			SourceHost:       "prod.mysql.example.com",
+			SourcePort:       3306,
+			SourceUser:       "repl_user",
+			SourcePassword:   "password123",
+			IncludeDatabases: []string{"db1", "db2"},
+			ExcludeDatabases: []string{"db3"},
+			TargetDBPattern:  "",
+			Status:           "init",
 		},
 		{
-			name:             "test1",
-			sourceHost:       "prod.mysql.example.com",
-			sourcePort:       3306,
-			sourceUser:       "repl_user",
-			sourcePassword:   "password123",
-			includeDatabases: []string{"*"},
-			excludeDatabases: []string{},
-			targetDBPattern:  "",
-			status:           "bad status",
+			Name:             "test1",
+			SourceHost:       "prod.mysql.example.com",
+			SourcePort:       3306,
+			SourceUser:       "repl_user",
+			SourcePassword:   "password123",
+			IncludeDatabases: []string{"*"},
+			ExcludeDatabases: []string{},
+			TargetDBPattern:  "",
+			Status:           "bad Status",
 		},
 		{
-			name:             "test2",
-			sourceHost:       "prod.mysql.example.com",
-			sourcePort:       3306,
-			sourceUser:       "repl_user",
-			sourcePassword:   "password123",
-			includeDatabases: []string{},
-			excludeDatabases: []string{},
-			targetDBPattern:  "",
-			status:           "unknown",
+			Name:             "test2",
+			SourceHost:       "prod.mysql.example.com",
+			SourcePort:       3306,
+			SourceUser:       "repl_user",
+			SourcePassword:   "password123",
+			IncludeDatabases: []string{},
+			ExcludeDatabases: []string{},
+			TargetDBPattern:  "",
+			Status:           "unknown",
 		},
 	}
 )
@@ -219,21 +219,21 @@ func InitMockBranchMetas(mock sqlmock.Sqlmock) {
 
 	for i, _ := range BranchMetasForTest {
 		rows := sqlmock.NewRows(BranchMetaColumns).AddRow(
-			BranchMetasForTest[i].name,
-			BranchMetasForTest[i].sourceHost,
-			BranchMetasForTest[i].sourcePort,
-			BranchMetasForTest[i].sourceUser,
-			BranchMetasForTest[i].sourcePassword,
-			strings.Join(BranchMetasForTest[i].includeDatabases, ","),
-			strings.Join(BranchMetasForTest[i].excludeDatabases, ","),
-			BranchMetasForTest[i].targetDBPattern,
-			BranchMetasForTest[i].status,
+			BranchMetasForTest[i].Name,
+			BranchMetasForTest[i].SourceHost,
+			BranchMetasForTest[i].SourcePort,
+			BranchMetasForTest[i].SourceUser,
+			BranchMetasForTest[i].SourcePassword,
+			strings.Join(BranchMetasForTest[i].IncludeDatabases, ","),
+			strings.Join(BranchMetasForTest[i].ExcludeDatabases, ","),
+			BranchMetasForTest[i].TargetDBPattern,
+			BranchMetasForTest[i].Status,
 		)
 
-		mock.ExpectQuery(fmt.Sprintf("select * from mysql.branch where name='test%d'", i)).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf("select * from mysql.branch where Name='test%d'", i)).WillReturnRows(rows)
 	}
 
 	for _, meta := range BranchMetasForTest {
-		meta.status = StringToBranchStatus(string(meta.status))
+		meta.Status = StringToBranchStatus(string(meta.Status))
 	}
 }
