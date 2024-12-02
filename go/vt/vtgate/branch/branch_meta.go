@@ -115,6 +115,8 @@ const (
 
 	UpdateBranchStatusSQL = "update mysql.branch set Status='%s' where Name='%s'"
 
+	DeleteBranchMetaSQL = "delete from mysql.branch where Name='%s'"
+
 	// snapshot related
 
 	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where Name='%s' order by id"

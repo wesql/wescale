@@ -331,6 +331,13 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 
 }
 
+func (bs *BranchService) BranchCleanUp(name string) error {
+	deleteMeta := getDeleteBranchMetaSQL(name)
+	deleteSnapshot := getDeleteSnapshotSQL(name)
+	deleteMergeBackDDL := getDeleteMergeBackDDLSQL(name)
+	return bs.targetMySQLService.mysqlService.ExecuteInTxn(deleteMeta, deleteSnapshot, deleteMergeBackDDL)
+}
+
 func (bs *BranchService) BranchShow(flag string) {
 	// todo
 	// use flag to decide what to show

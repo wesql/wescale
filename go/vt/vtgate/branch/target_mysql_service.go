@@ -380,6 +380,10 @@ func getUpdateBranchStatusSQL(name string, status BranchStatus) string {
 	return fmt.Sprintf(UpdateBranchStatusSQL, string(status), name)
 }
 
+func getDeleteBranchMetaSQL(name string) string {
+	return fmt.Sprintf(DeleteBranchMetaSQL, name)
+}
+
 // snapshot related
 
 func getSelectSnapshotSQL(name string) string {

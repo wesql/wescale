@@ -129,6 +129,8 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 		return b.branchPrepareMergeBack()
 	case MergeBack:
 		return b.branchMergeBack()
+	case Cleanup:
+		return b.branchCleanUp()
 	default:
 		return nil, fmt.Errorf("unsupported branch command type: %s", b.commandType)
 	}
@@ -482,6 +484,14 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 		return nil, err
 	}
 	return &sqltypes.Result{}, bs.BranchMergeBack(meta.Name, meta.Status)
+}
+
+func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
+	meta, bs, err := getBranchMetaAndService(b.name)
+	if err != nil {
+		return nil, err
+	}
+	return &sqltypes.Result{}, bs.BranchCleanUp(meta.Name)
 }
 
 func getBranchMetaAndService(name string) (*branch.BranchMeta, *branch.BranchService, error) {
