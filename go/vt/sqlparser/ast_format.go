@@ -2253,6 +2253,25 @@ func (node *AlterWescaleCDC) Format(buf *TrackedBuffer) {
 	buf.literal(")")
 }
 
+func (node *BranchCommand) Format(buf *TrackedBuffer) {
+	buf.literal("branch ")
+
+	buf.astPrintf(node, "%s ", node.Type)
+
+	if node.Params != nil {
+		buf.astPrintf(node, "%v", node.Params)
+	}
+}
+
+func (node *WithParams) Format(buf *TrackedBuffer) {
+	buf.literal("with (\n")
+
+	for i, _ := range node.Keys {
+		buf.astPrintf(node, "\t'%s'='%s',\n", node.Keys[i], node.Values[i])
+	}
+	buf.literal(")")
+}
+
 // Format formats the node.
 func (node *CreateView) Format(buf *TrackedBuffer) {
 	buf.astPrintf(node, "create %v", node.Comments)

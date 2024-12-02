@@ -82,6 +82,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfBitXor(in, f)
 	case BoolVal:
 		return VisitBoolVal(in, f)
+	case *BranchCommand:
+		return VisitRefOfBranchCommand(in, f)
 	case *CallProc:
 		return VisitRefOfCallProc(in, f)
 	case *CaseExpr:
@@ -538,6 +540,8 @@ func VisitSQLNode(in SQLNode, f Visit) error {
 		return VisitRefOfWindowSpecification(in, f)
 	case *With:
 		return VisitRefOfWith(in, f)
+	case *WithParams:
+		return VisitRefOfWithParams(in, f)
 	case *XorExpr:
 		return VisitRefOfXorExpr(in, f)
 	default:
@@ -931,6 +935,18 @@ func VisitRefOfBitXor(in *BitXor, f Visit) error {
 		return err
 	}
 	if err := VisitExpr(in.Arg, f); err != nil {
+		return err
+	}
+	return nil
+}
+func VisitRefOfBranchCommand(in *BranchCommand, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	if err := VisitRefOfWithParams(in.Params, f); err != nil {
 		return err
 	}
 	return nil
@@ -4182,6 +4198,15 @@ func VisitRefOfWith(in *With, f Visit) error {
 	}
 	return nil
 }
+func VisitRefOfWithParams(in *WithParams, f Visit) error {
+	if in == nil {
+		return nil
+	}
+	if cont, err := f(in); err != nil || !cont {
+		return err
+	}
+	return nil
+}
 func VisitRefOfXorExpr(in *XorExpr, f Visit) error {
 	if in == nil {
 		return nil
@@ -4806,6 +4831,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfAlterWescaleFilter(in, f)
 	case *Begin:
 		return VisitRefOfBegin(in, f)
+	case *BranchCommand:
+		return VisitRefOfBranchCommand(in, f)
 	case *CallProc:
 		return VisitRefOfCallProc(in, f)
 	case *CheckTable:
@@ -4906,6 +4933,8 @@ func VisitStatement(in Statement, f Visit) error {
 		return VisitRefOfVExplainStmt(in, f)
 	case *VStream:
 		return VisitRefOfVStream(in, f)
+	case *WithParams:
+		return VisitRefOfWithParams(in, f)
 	default:
 		// this should never happen
 		return nil

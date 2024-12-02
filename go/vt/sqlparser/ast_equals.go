@@ -206,6 +206,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return a == b
+	case *BranchCommand:
+		b, ok := inB.(*BranchCommand)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfBranchCommand(a, b)
 	case *CallProc:
 		b, ok := inB.(*CallProc)
 		if !ok {
@@ -1574,6 +1580,12 @@ func (cmp *Comparator) SQLNode(inA, inB SQLNode) bool {
 			return false
 		}
 		return cmp.RefOfWith(a, b)
+	case *WithParams:
+		b, ok := inB.(*WithParams)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfWithParams(a, b)
 	case *XorExpr:
 		b, ok := inB.(*XorExpr)
 		if !ok {
@@ -1938,6 +1950,18 @@ func (cmp *Comparator) RefOfBitXor(a, b *BitXor) bool {
 		return false
 	}
 	return cmp.Expr(a.Arg, b.Arg)
+}
+
+// RefOfBranchCommand does deep equals between the two objects.
+func (cmp *Comparator) RefOfBranchCommand(a, b *BranchCommand) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Type == b.Type &&
+		cmp.RefOfWithParams(a.Params, b.Params)
 }
 
 // RefOfCallProc does deep equals between the two objects.
@@ -4791,6 +4815,18 @@ func (cmp *Comparator) RefOfWith(a, b *With) bool {
 		cmp.SliceOfRefOfCommonTableExpr(a.ctes, b.ctes)
 }
 
+// RefOfWithParams does deep equals between the two objects.
+func (cmp *Comparator) RefOfWithParams(a, b *WithParams) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return cmp.SliceOfString(a.Keys, b.Keys) &&
+		cmp.SliceOfString(a.Values, b.Values)
+}
+
 // RefOfXorExpr does deep equals between the two objects.
 func (cmp *Comparator) RefOfXorExpr(a, b *XorExpr) bool {
 	if a == b {
@@ -6414,6 +6450,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfBegin(a, b)
+	case *BranchCommand:
+		b, ok := inB.(*BranchCommand)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfBranchCommand(a, b)
 	case *CallProc:
 		b, ok := inB.(*CallProc)
 		if !ok {
@@ -6714,6 +6756,12 @@ func (cmp *Comparator) Statement(inA, inB Statement) bool {
 			return false
 		}
 		return cmp.RefOfVStream(a, b)
+	case *WithParams:
+		b, ok := inB.(*WithParams)
+		if !ok {
+			return false
+		}
+		return cmp.RefOfWithParams(a, b)
 	default:
 		// this should never happen
 		return false

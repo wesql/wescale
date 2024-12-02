@@ -729,6 +729,11 @@ var keywords = []keyword{
 	{"cdcs", CDCS},
 	{"env", ENV},
 	{"wasm_binary_name", WASM_BINARY_NAME},
+	{"branch", BRANCH},
+	{"merge_back", MERGE_BACK},
+	{"prepare_merge_back", PREPARE_MERGE_BACK},
+	{"diff", DIFF},
+	{"clean_up", CLEAN_UP},
 }
 
 // keywordStrings contains the reverse mapping of token to keyword strings

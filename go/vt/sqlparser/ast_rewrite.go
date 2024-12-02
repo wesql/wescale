@@ -82,6 +82,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfBitXor(parent, node, replacer)
 	case BoolVal:
 		return a.rewriteBoolVal(parent, node, replacer)
+	case *BranchCommand:
+		return a.rewriteRefOfBranchCommand(parent, node, replacer)
 	case *CallProc:
 		return a.rewriteRefOfCallProc(parent, node, replacer)
 	case *CaseExpr:
@@ -538,6 +540,8 @@ func (a *application) rewriteSQLNode(parent SQLNode, node SQLNode, replacer repl
 		return a.rewriteRefOfWindowSpecification(parent, node, replacer)
 	case *With:
 		return a.rewriteRefOfWith(parent, node, replacer)
+	case *WithParams:
+		return a.rewriteRefOfWithParams(parent, node, replacer)
 	case *XorExpr:
 		return a.rewriteRefOfXorExpr(parent, node, replacer)
 	default:
@@ -1379,6 +1383,33 @@ func (a *application) rewriteRefOfBitXor(parent SQLNode, node *BitXor, replacer 
 	}
 	if !a.rewriteExpr(node, node.Arg, func(newNode, parent SQLNode) {
 		parent.(*BitXor).Arg = newNode.(Expr)
+	}) {
+		return false
+	}
+	if a.post != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
+func (a *application) rewriteRefOfBranchCommand(parent SQLNode, node *BranchCommand, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if !a.rewriteRefOfWithParams(node, node.Params, func(newNode, parent SQLNode) {
+		parent.(*BranchCommand).Params = newNode.(*WithParams)
 	}) {
 		return false
 	}
@@ -8611,6 +8642,30 @@ func (a *application) rewriteRefOfWith(parent SQLNode, node *With, replacer repl
 	}
 	return true
 }
+func (a *application) rewriteRefOfWithParams(parent SQLNode, node *WithParams, replacer replacerFunc) bool {
+	if node == nil {
+		return true
+	}
+	if a.pre != nil {
+		a.cur.replacer = replacer
+		a.cur.parent = parent
+		a.cur.node = node
+		if !a.pre(&a.cur) {
+			return true
+		}
+	}
+	if a.post != nil {
+		if a.pre == nil {
+			a.cur.replacer = replacer
+			a.cur.parent = parent
+			a.cur.node = node
+		}
+		if !a.post(&a.cur) {
+			return false
+		}
+	}
+	return true
+}
 func (a *application) rewriteRefOfXorExpr(parent SQLNode, node *XorExpr, replacer replacerFunc) bool {
 	if node == nil {
 		return true
@@ -9252,6 +9307,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfAlterWescaleFilter(parent, node, replacer)
 	case *Begin:
 		return a.rewriteRefOfBegin(parent, node, replacer)
+	case *BranchCommand:
+		return a.rewriteRefOfBranchCommand(parent, node, replacer)
 	case *CallProc:
 		return a.rewriteRefOfCallProc(parent, node, replacer)
 	case *CheckTable:
@@ -9352,6 +9409,8 @@ func (a *application) rewriteStatement(parent SQLNode, node Statement, replacer 
 		return a.rewriteRefOfVExplainStmt(parent, node, replacer)
 	case *VStream:
 		return a.rewriteRefOfVStream(parent, node, replacer)
+	case *WithParams:
+		return a.rewriteRefOfWithParams(parent, node, replacer)
 	default:
 		// this should never happen
 		return true
