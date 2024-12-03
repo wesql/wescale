@@ -362,8 +362,9 @@ func (bpp *BranchPrepareMergeBackParams) setValues(params map[string]string) err
 }
 
 func (bpp *BranchPrepareMergeBackParams) validate() error {
+	// todo enhancement: support diff objects
 	switch branch.MergeBackOption(bpp.MergeOption) {
-	case branch.MergeOverride, branch.MergeDiff:
+	case branch.MergeOverride:
 	default:
 		return fmt.Errorf("invalid merge option: %s", bpp.MergeOption)
 	}
