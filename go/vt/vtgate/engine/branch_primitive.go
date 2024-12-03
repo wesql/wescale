@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"net"
 	"strconv"
 	"strings"
 	"vitess.io/vitess/go/sqltypes"
@@ -122,7 +123,6 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 	return b, nil
 }
 
-// todo complete me
 // TryExecute implements Primitive interface
 func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
 	switch b.commandType {
@@ -136,6 +136,8 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 		return b.branchMergeBack()
 	case Cleanup:
 		return b.branchCleanUp()
+	case Show:
+		return b.branchShow()
 	default:
 		return nil, fmt.Errorf("unsupported branch command type: %s", b.commandType)
 	}
@@ -201,7 +203,6 @@ func parseBranchCommandType(s string) (BranchCommandType, error) {
 	}
 }
 
-// todo complete me
 func (b *Branch) setAndValidateParams(paramsMap map[string]string) error {
 	if name, exists := paramsMap[BranchParamsName]; exists {
 		b.name = name
@@ -298,15 +299,20 @@ func (bcp *BranchCreateParams) validate() error {
 	if bcp.SourceHost == "" {
 		return fmt.Errorf("branch create: source host is required")
 	} else {
-		// todo check if host is valid ip format
+		if net.ParseIP(bcp.SourceHost) == nil {
+			return fmt.Errorf("branch create: source host %v is not a valid ip address", bcp.SourceHost)
+		}
 	}
 
 	if bcp.SourcePort == "" {
 		return fmt.Errorf("branch create: source port is required")
 	} else {
-		_, err := strconv.Atoi(bcp.SourcePort)
+		port, err := strconv.Atoi(bcp.SourcePort)
 		if err != nil {
 			return fmt.Errorf("branch create: source port is not a number")
+		}
+		if port <= 0 || port > 65535 {
+			return fmt.Errorf("branch create: source port %v is not a valid port", bcp.SourcePort)
 		}
 	}
 

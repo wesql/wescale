@@ -2,6 +2,7 @@ package branch
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"vitess.io/vitess/go/vt/schemadiff"
 )
@@ -77,7 +78,12 @@ func (meta *BranchMeta) Validate() error {
 
 	if meta.SourceHost == "" {
 		return fmt.Errorf("branch SourceHost cannot be empty")
+	} else {
+		if net.ParseIP(meta.SourceHost) == nil {
+			return fmt.Errorf("source host %v is not a valid ip address", meta.SourceHost)
+		}
 	}
+
 	if meta.SourcePort <= 0 || meta.SourcePort > 65535 {
 		return fmt.Errorf("branch invalid SourcePort: %d", meta.SourcePort)
 	}
