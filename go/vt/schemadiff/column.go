@@ -108,7 +108,7 @@ func (c *ColumnDefinitionEntity) ColumnDiff(other *ColumnDefinitionEntity, hints
 		return nil, nil
 	}
 
-	return NewModifyColumnDiffByDefinition(otherClone.ColumnDefinition), nil
+	return NewModifyColumnDiffByDefinition(other.ColumnDefinition), nil
 }
 
 // IsTextual returns true when this column is of textual type, and is capable of having a character set property
@@ -149,6 +149,9 @@ func (c *ColumnDefinitionEntity) SetExplicitCharsetCollate() error {
 	if c.ColumnDefinition.Type.Charset.Name == "" && c.ColumnDefinition.Type.Options.Collate != "" {
 		// Column has explicit collation but no charset. We can infer the charset from the collation.
 		collationID := collationEnv.LookupByName(c.ColumnDefinition.Type.Options.Collate)
+		if collationID == nil {
+			return fmt.Errorf("unable to determine charset for column %s with collation %s", c.ColumnDefinition.Name, c.ColumnDefinition.Type.Options.Collate)
+		}
 		charset := collationEnv.LookupCharsetName(collationID.ID())
 		if charset == "" {
 			return fmt.Errorf("unable to determine charset for column %s with collation %s", c.ColumnDefinition.Name, collationID.Name())
