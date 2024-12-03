@@ -58,14 +58,6 @@ const (
 	FromSnapshotToTarget BranchDiffObjectsFlag = "snapshot_target"
 )
 
-type BranchShowOption string
-
-const (
-	ShowAll      BranchShowOption = "all"
-	ShowSnapshot BranchShowOption = "snapshot"
-	ShowStatus   BranchShowOption = "Status"
-)
-
 type BranchSchema struct {
 	// databases -> tables -> create table statement or DDLs
 	branchSchema map[string]map[string]string
@@ -130,6 +122,8 @@ const (
 	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where Name='%s'"
 
 	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false order by id"
+
+	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_patch where Name='%s' order by id"
 
 	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (Name, database, table, ddl, merged) values ('%s', '%s', '%s', '%s', false)"
 

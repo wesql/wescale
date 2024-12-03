@@ -80,8 +80,12 @@ func (t *TargetMySQLService) ApplySnapshot(name string) error {
 
 /**********************************************************************************************************************/
 
+func (t *TargetMySQLService) GetMysqlService() *MysqlService {
+	return t.mysqlService
+}
+
 func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
-	selectSnapshotSQL := getSelectSnapshotSQL(name)
+	selectSnapshotSQL := GetSelectSnapshotSQL(name)
 	// mysql Query will stream the result, so we don't need to worry if the data is too large to transfer.
 	rows, err := t.mysqlService.Query(selectSnapshotSQL)
 	if err != nil {
@@ -386,7 +390,7 @@ func getDeleteBranchMetaSQL(name string) string {
 
 // snapshot related
 
-func getSelectSnapshotSQL(name string) string {
+func GetSelectSnapshotSQL(name string) string {
 	return fmt.Sprintf(SelectBranchSnapshotSQL, name)
 }
 
@@ -410,6 +414,10 @@ func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
 
 func getSelectUnmergedDDLSQL(name string) string {
 	return fmt.Sprintf(SelectBranchUnmergedDDLSQL, name)
+}
+
+func GetSelectMergeBackDDLSQL(name string) string {
+	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name)
 }
 
 func getUpdateDDLMergedSQL(id int) string {

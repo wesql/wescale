@@ -338,14 +338,6 @@ func (bs *BranchService) BranchCleanUp(name string) error {
 	return bs.targetMySQLService.mysqlService.ExecuteInTxn(deleteMeta, deleteSnapshot, deleteMergeBackDDL)
 }
 
-func (bs *BranchService) BranchShow(flag string) {
-	// todo
-	// use flag to decide what to show
-	// meta Status
-	// snapshot
-	// merge back ddl
-}
-
 /**********************************************************************************************************************/
 
 func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
@@ -372,9 +364,10 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 			database string
 			table    string
 			ddl      string
+			merged   bool
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &ddl); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
 			return fmt.Errorf("failed to scan row: %v", err)
 		}
 		// todo enhancement: track whether the current ddl to apply has finished or is executing

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-sql-driver/mysql"
 	"strconv"
+	"strings"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/schemadiff"
@@ -91,6 +92,10 @@ type BranchPrepareMergeBackParams struct {
 
 const (
 	BranchShowParamsShowOption = "show_option"
+
+	ShowStatus       = "status"
+	ShowSnapshot     = "snapshot"
+	ShowMergeBackDDL = "merge_back_ddl"
 )
 
 type BranchShowParams struct {
@@ -364,15 +369,15 @@ func (bsp *BranchShowParams) setValues(params map[string]string) error {
 		bsp.ShowOption = v
 		delete(params, BranchShowParamsShowOption)
 	} else {
-		bsp.ShowOption = string(branch.ShowAll)
+		bsp.ShowOption = ShowStatus
 	}
 
 	return checkRedundantParams(params)
 }
 
 func (bsp *BranchShowParams) validate() error {
-	switch branch.BranchShowOption(bsp.ShowOption) {
-	case branch.ShowAll, branch.ShowSnapshot, branch.ShowStatus:
+	switch bsp.ShowOption {
+	case ShowSnapshot, ShowStatus, ShowMergeBackDDL:
 	default:
 		return fmt.Errorf("invalid merge option: %s", bsp.ShowOption)
 	}
@@ -444,7 +449,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("branch diff: invalid branch command params")
 	}
-	meta, bs, err := getBranchMetaAndService(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +469,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
 	}
 
-	meta, bs, err := getBranchMetaAndService(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +484,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 }
 
 func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
-	meta, bs, err := getBranchMetaAndService(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name)
 	if err != nil {
 		return nil, err
 	}
@@ -487,32 +492,55 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 }
 
 func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
-	meta, bs, err := getBranchMetaAndService(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name)
 	if err != nil {
 		return nil, err
 	}
 	return &sqltypes.Result{}, bs.BranchCleanUp(meta.Name)
 }
 
-func getBranchMetaAndService(name string) (*branch.BranchMeta, *branch.BranchService, error) {
+func (b *Branch) branchShow() (*sqltypes.Result, error) {
+	showParams, ok := b.params.(*BranchShowParams)
+	if !ok {
+		return nil, fmt.Errorf("branch show: invalid branch command params")
+	}
+
+	meta, _, _, targetHandler, err := getBranchDataStruct(b.name)
+	if err != nil {
+		return nil, err
+	}
+
+	switch showParams.ShowOption {
+	case ShowStatus:
+		return buildMetaResult(meta)
+	case ShowSnapshot:
+		return buildSnapshotResult(meta.Name, targetHandler)
+	case ShowMergeBackDDL:
+		return buildMergeBackDDLResult(meta.Name, targetHandler)
+	default:
+		return nil, fmt.Errorf("branch show: invalid branch command params")
+	}
+}
+
+func getBranchDataStruct(name string) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
 	// get target handler
 	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// get branch meta
 	meta, err := targetHandler.SelectAndValidateBranchMeta(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// get source handler
 	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// get branch service
 	bs := branch.NewBranchService(sourceHandler, targetHandler)
-	return meta, bs, nil
+	return meta, bs, sourceHandler, targetHandler, nil
 }
 
 func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
@@ -533,4 +561,79 @@ func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
 		}
 	}
 	return &sqltypes.Result{Fields: fields, Rows: rows}
+}
+
+func buildMetaResult(meta *branch.BranchMeta) (*sqltypes.Result, error) {
+	fields := sqltypes.BuildVarCharFields("name", "status", "source host", "source port", "source user", "include", "exclude", "target db pattern")
+	rows := make([][]sqltypes.Value, 0)
+	include := strings.Join(meta.IncludeDatabases, ",")
+	exclude := strings.Join(meta.ExcludeDatabases, ",")
+	rows = append(rows, sqltypes.BuildVarCharRow(meta.Name, string(meta.Status), meta.SourceHost, string(rune(meta.SourcePort)), meta.SourceUser, include, exclude, meta.TargetDBPattern))
+
+	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
+}
+
+func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQLService) (*sqltypes.Result, error) {
+	sql := branch.GetSelectMergeBackDDLSQL(branchName)
+	service := targetHandler.GetMysqlService()
+	rows, err := service.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "ddl", "merged")
+	resultRows := make([][]sqltypes.Value, 0)
+	for rows.Next() {
+		var (
+			id       int
+			name     string
+			database string
+			table    string
+			ddl      string
+			merged   bool
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %v", err)
+		}
+		mergedStr := "false"
+		if merged {
+			mergedStr = "true"
+		}
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, ddl, mergedStr))
+	}
+
+	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
+}
+
+func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLService) (*sqltypes.Result, error) {
+	selectSnapshotSQL := branch.GetSelectSnapshotSQL(branchName)
+	mysqlService := targetHandler.GetMysqlService()
+	rows, err := mysqlService.Query(selectSnapshotSQL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
+	}
+	defer rows.Close()
+
+	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table")
+	resultRows := make([][]sqltypes.Value, 0)
+
+	for rows.Next() {
+		var (
+			id             int
+			name           string
+			database       string
+			table          string
+			createTableSQL string
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %v", err)
+		}
+
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, createTableSQL))
+	}
+
+	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
 }
