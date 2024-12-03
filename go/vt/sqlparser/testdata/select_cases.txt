@@ -7865,10 +7865,10 @@ OUTPUT
 select 5 % 3, 5 % -3, -5 % 3, -5 % -3 from dual
 END
 INPUT
-select branch, count(*)/max(id) from t1 group by branch having (branch<>'mumbai' OR count(*)<2) order by id desc,branch desc limit 100;
+select `branch`, count(*)/max(id) from t1 group by `branch` having (`branch`<>'mumbai' OR count(*)<2) order by id desc,`branch` desc limit 100;
 END
 OUTPUT
-select branch, count(*) / max(id) from t1 group by branch having branch != 'mumbai' or count(*) < 2 order by id desc, branch desc limit 100
+select `branch`, count(*) / max(id) from t1 group by `branch` having `branch` != 'mumbai' or count(*) < 2 order by id desc, `branch` desc limit 100
 END
 INPUT
 select ST_astext(ST_Intersection(ST_GeomFromText('POLYGON((0 0, 50 45, 40 50, 0 0))'), ST_GeomFromText('LINESTRING(-10 -10, 200 200, 199 201, -11 -9)')));
@@ -19439,10 +19439,10 @@ OUTPUT
 select * from t1 where i = 2
 END
 INPUT
-select count(*) from t1 group by branch having branch<>'mumbai' order by id desc,branch desc limit 100;
+select count(*) from t1 group by `branch` having `branch`<>'mumbai' order by id desc,`branch` desc limit 100;
 END
 OUTPUT
-select count(*) from t1 group by branch having branch != 'mumbai' order by id desc, branch desc limit 100
+select count(*) from t1 group by `branch` having `branch` != 'mumbai' order by id desc, `branch` desc limit 100
 END
 INPUT
 select (select d from t2 where d > a) as 'x', t1.* as 'with_alias' from t1;
