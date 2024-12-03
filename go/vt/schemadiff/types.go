@@ -273,6 +273,35 @@ func TableCharsetCollateStrategyToString(strategy int) (string, error) {
 }
 
 const (
+	ColumnCharsetCollateStrict int = iota
+	ColumnCharsetCollateIgnoreAlways
+)
+
+var ColumnCharsetCollateStrategyValues = map[int]string{
+	ColumnCharsetCollateStrict:       "strict",
+	ColumnCharsetCollateIgnoreAlways: "ignore_always",
+}
+
+var columnCharsetCollateStrategyStrings = map[string]int{
+	ColumnCharsetCollateStrategyValues[ColumnCharsetCollateStrict]:       ColumnCharsetCollateStrict,
+	ColumnCharsetCollateStrategyValues[ColumnCharsetCollateIgnoreAlways]: ColumnCharsetCollateIgnoreAlways,
+}
+
+func ParseColumnCharsetCollateStrategy(strategyStr string) (int, error) {
+	if strategy, exists := columnCharsetCollateStrategyStrings[strategyStr]; exists {
+		return strategy, nil
+	}
+	return -1, errors.New("invalid column charset collate strategy: " + strategyStr)
+}
+
+func ColumnCharsetCollateStrategyToString(strategy int) (string, error) {
+	if str, exists := ColumnCharsetCollateStrategyValues[strategy]; exists {
+		return str, nil
+	}
+	return "", errors.New("invalid column charset collate strategy value: " + fmt.Sprint(strategy))
+}
+
+const (
 	AlterTableAlgorithmStrategyNone int = iota
 	AlterTableAlgorithmStrategyInstant
 	AlterTableAlgorithmStrategyInplace
@@ -302,13 +331,14 @@ func ParseAlterTableAlgorithmStrategy(strategyStr string) (int, error) {
 
 // DiffHints is an assortment of rules for diffing entities
 type DiffHints struct {
-	StrictIndexOrdering         bool
-	AutoIncrementStrategy       int
-	RangeRotationStrategy       int
-	ConstraintNamesStrategy     int
-	ColumnRenameStrategy        int
-	TableRenameStrategy         int
-	FullTextKeyStrategy         int
-	TableCharsetCollateStrategy int
-	AlterTableAlgorithmStrategy int
+	StrictIndexOrdering          bool
+	AutoIncrementStrategy        int
+	RangeRotationStrategy        int
+	ConstraintNamesStrategy      int
+	ColumnRenameStrategy         int
+	TableRenameStrategy          int
+	FullTextKeyStrategy          int
+	TableCharsetCollateStrategy  int
+	ColumnCharsetCollateStrategy int
+	AlterTableAlgorithmStrategy  int
 }

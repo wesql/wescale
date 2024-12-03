@@ -82,24 +82,33 @@ func NewColumnDefinitionEntity(c *sqlparser.ColumnDefinition, tableCharsetCollat
 // change this table to look like the other table.
 // It returns an AlterTable statement if changes are found, or nil if not.
 // the other table may be of different name; its name is ignored.
-func (c *ColumnDefinitionEntity) ColumnDiff(other *ColumnDefinitionEntity, _ *DiffHints) (*ModifyColumnDiff, error) {
+func (c *ColumnDefinitionEntity) ColumnDiff(other *ColumnDefinitionEntity, hints *DiffHints) (*ModifyColumnDiff, error) {
 	cClone := c         // not real clone yet
 	otherClone := other // not real clone yet
+
 	if c.IsTextual() || other.IsTextual() {
 		cClone = c.Clone()
-		if err := cClone.SetExplicitCharsetCollate(); err != nil {
-			return nil, err
-		}
 		otherClone = other.Clone()
-		if err := otherClone.SetExplicitCharsetCollate(); err != nil {
-			return nil, err
+		switch hints.ColumnCharsetCollateStrategy {
+		case ColumnCharsetCollateStrict:
+			if err := cClone.SetExplicitCharsetCollate(); err != nil {
+				return nil, err
+			}
+
+			if err := otherClone.SetExplicitCharsetCollate(); err != nil {
+				return nil, err
+			}
+
+		case ColumnCharsetCollateIgnoreAlways:
+			cClone.SetCharsetCollateEmpty()
+			otherClone.SetCharsetCollateEmpty()
 		}
 	}
 	if sqlparser.Equals.RefOfColumnDefinition(c.ColumnDefinition, other.ColumnDefinition) {
 		return nil, nil
 	}
 
-	return NewModifyColumnDiffByDefinition(other.ColumnDefinition), nil
+	return NewModifyColumnDiffByDefinition(otherClone.ColumnDefinition), nil
 }
 
 // IsTextual returns true when this column is of textual type, and is capable of having a character set property
@@ -163,4 +172,12 @@ func (c *ColumnDefinitionEntity) SetExplicitCharsetCollate() error {
 		}
 	}
 	return nil
+}
+
+func (c *ColumnDefinitionEntity) SetCharsetCollateEmpty() {
+	if c.IsTextual() {
+		c.ColumnDefinition.Type.Charset.Name = ""
+		c.ColumnDefinition.Type.Charset.Binary = false
+		c.ColumnDefinition.Type.Options.Collate = ""
+	}
 }
