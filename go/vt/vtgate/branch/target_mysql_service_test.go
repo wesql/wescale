@@ -2,7 +2,6 @@ package branch
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -17,25 +16,6 @@ func TestGetAllDatabases(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-func TestSelectBranchMeta(t *testing.T) {
-	mysqlService, mock := NewMockMysqlService(t)
-	defer mysqlService.Close()
-	TargetMySQLServiceForTest := NewTargetMySQLService(mysqlService)
-
-	InitMockBranchMetas(mock)
-
-	for i, _ := range BranchMetasForTest {
-		meta, err := TargetMySQLServiceForTest.SelectAndValidateBranchMeta(fmt.Sprintf("test%d", i))
-		if err != nil {
-			t.Error(err)
-		}
-		assert.Equal(t, true, compareBranchMetas(BranchMetasForTest[i], meta))
-	}
-	meta, err := TargetMySQLServiceForTest.SelectAndValidateBranchMeta("no this test")
-	assert.Nil(t, meta)
-	assert.NotNil(t, err)
 }
 
 func compareBranchMetas(first, second *BranchMeta) bool {

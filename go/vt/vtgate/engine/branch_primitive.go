@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
-	"net"
 	"strconv"
 	"strings"
 	"vitess.io/vitess/go/sqltypes"
@@ -294,14 +293,9 @@ func (bcp *BranchCreateParams) setValues(params map[string]string) error {
 	return checkRedundantParams(params)
 }
 
-// todo complete me
 func (bcp *BranchCreateParams) validate() error {
 	if bcp.SourceHost == "" {
 		return fmt.Errorf("branch create: source host is required")
-	} else {
-		if net.ParseIP(bcp.SourceHost) == nil {
-			return fmt.Errorf("branch create: source host %v is not a valid ip address", bcp.SourceHost)
-		}
 	}
 
 	if bcp.SourcePort == "" {

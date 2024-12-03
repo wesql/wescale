@@ -207,7 +207,7 @@ var (
 			SourcePort:       3306,
 			SourceUser:       "repl_user",
 			SourcePassword:   "password123",
-			IncludeDatabases: []string{},
+			IncludeDatabases: []string{"*"},
 			ExcludeDatabases: []string{},
 			TargetDBPattern:  "",
 			Status:           "unknown",
