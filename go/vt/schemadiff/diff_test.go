@@ -1012,14 +1012,11 @@ func TestHints(t *testing.T) {
 			expectedDiff: false,
 		},
 		{
-			name:    "TableCharsetCollateStrategy ignore always43",
-			schema1: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ",
-			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
-			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
-			// reason: table charset and collate is ignore; but column charset and collate is not equal.
-			// todo newborn22: now the function is not enable to set col charset and collate based on table's.
-			// diff:ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL
-			expectedDiff: true,
+			name:         "TableCharsetCollateStrategy ignore always3",
+			schema1:      "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ",
+			schema2:      "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+			hints:        DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
+			expectedDiff: false,
 		},
 		{
 			name:    "TableCharsetCollateStrategy ignore always4",
@@ -1044,7 +1041,8 @@ func TestHints(t *testing.T) {
 			schema2: "CREATE TABLE `t1` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
 			hints:   DiffHints{TableCharsetCollateStrategy: TableCharsetCollateIgnoreAlways},
 			// reason: table charset doesn't change, so column charset and collate doesn't need to change too.
-			expectedDiff: false,
+			// diff: ALTER TABLE `t1` MODIFY COLUMN `name` varchar(255) NOT NULL, because column charset will set as table's if not set explicitly.
+			expectedDiff: true,
 		},
 		{
 			name:    "TableCharsetCollateStrategy ignore; column change because of table charset change",
