@@ -104,7 +104,7 @@ func (c *ColumnDefinitionEntity) ColumnDiff(other *ColumnDefinitionEntity, hints
 			otherClone.SetCharsetCollateEmpty()
 		}
 	}
-	if sqlparser.Equals.RefOfColumnDefinition(c.ColumnDefinition, other.ColumnDefinition) {
+	if sqlparser.Equals.RefOfColumnDefinition(cClone.ColumnDefinition, otherClone.ColumnDefinition) {
 		return nil, nil
 	}
 
