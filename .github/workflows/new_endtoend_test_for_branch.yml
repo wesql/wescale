@@ -133,6 +133,29 @@ jobs:
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
+      - name: Wait for MySQL ports
+        run: |
+          timeout=300  # 5 minutes timeout
+          ports=(3306 3307 15306 15307)
+          
+          for port in "${ports[@]}"; do
+            echo "Waiting for MySQL port $port..."
+            start_time=$(date +%s)
+            while ! nc -z localhost $port; do
+              current_time=$(date +%s)
+              elapsed=$((current_time - start_time))
+          
+              if [ $elapsed -ge $timeout ]; then
+                echo "Timeout waiting for MySQL port $port"
+                exit 1
+              fi
+          
+              echo "Port $port not ready. Retrying in 5 seconds..."
+              sleep 5
+            done
+            echo "MySQL port $port is ready!"
+          done
+
       - name: Run EndToEnd test
         run: |
           cd endtoend
