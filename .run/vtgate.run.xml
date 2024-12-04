@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="vtgate" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="wesql-scale" />
+    <module name="wescale" />
     <working_directory value="$PROJECT_DIR$/examples/wesql-server" />
-    <parameters value="--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global --alsologtostderr --log_dir $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate --log_queries_to_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate/vtgate_querylog.txt --port 15001 --grpc_port 15991 --mysql_server_port 15306 --mysql_server_socket_path /tmp/mysql.sock --cell zone1 --cells_to_watch zone1 --service_map grpc-vtgateservice --pid_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate/vtgate.pid --config_path ./conf" />
+    <parameters value="--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global --alsologtostderr --log_dir $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate --log_queries_to_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate/vtgate_querylog.txt --port 15001 --grpc_port 15991 --mysql_server_port 15306 --mysql_server_socket_path /tmp/mysql.sock --cell zone1 --cells_to_watch zone1 --service_map grpc-vtgateservice --pid_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vtgate/vtgate.pid --config_path $PROJECT_DIR$/config/wescale/default" />
     <kind value="PACKAGE" />
     <package value="vitess.io/vitess/go/cmd/vtgate" />
     <directory value="$PROJECT_DIR$" />
