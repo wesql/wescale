@@ -2,6 +2,7 @@ package framework
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
@@ -39,4 +40,19 @@ func QueryWithErrorContains(t *testing.T, db *sql.DB, contains string, sql strin
 	log.Println(sql)
 	_, err := db.Query(sql, args...)
 	assert.ErrorContains(t, err, contains)
+}
+
+// CheckTableExists checks if a specific table exists in a given schema.
+func CheckTableExists(t *testing.T, db *sql.DB, schema string, table string) bool {
+	query := fmt.Sprintf("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s'", schema, table)
+	rows := QueryNoError(t, db, query)
+	defer rows.Close()
+	for rows.Next() {
+		var count int64
+		err := rows.Scan(&count)
+		assert.NoError(t, err)
+		return count > 0
+	}
+
+	return false
 }

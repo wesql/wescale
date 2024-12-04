@@ -3,7 +3,7 @@ package branch
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/wesql/wescale/endtoend/framework"
 	"testing"
 	"time"
 )
@@ -168,13 +168,16 @@ func TestBranchBasic(t *testing.T) {
 	sourcePrepare()
 	targetPrepare()
 
+	// defer branch cleanup
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, "branch clean_up;")
+
 	// create branch
 	createCMD := getBranchCreateCMD(sourceCluster.MysqlHost, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
-	_, err := targetCluster.WescaleDb.Exec(createCMD)
-	assert.NoError(t, err)
-
-	// defer branch cleanup
-	defer targetCluster.WescaleDb.Exec("branch clean_up;")
+	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
+	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users")
+	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders")
+	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products")
+	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products")
 
 	// change schema
 
