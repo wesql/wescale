@@ -99,14 +99,15 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 
 	for rows.Next() {
 		var (
-			id             int64
-			name           string
-			database       string
-			table          string
-			createTableSQL string
+			id              int64
+			name            string
+			database        string
+			table           string
+			createTableSQL  string
+			updateTimestamp string
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
@@ -291,8 +292,10 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 
 	var meta BranchMeta
 	var includeDBs, excludeDBs, status string
+	var id int
 
 	err = rows.Scan(
+		&id,
 		&meta.Name,
 		&meta.SourceHost,
 		&meta.SourcePort,

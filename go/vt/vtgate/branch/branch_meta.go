@@ -115,7 +115,7 @@ const (
 
 	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where Name='%s'"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (Name, database, table, create_table_sql) values ('%s', '%s', '%s', '%s')"
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (`Name`, `database`, `table`, `create_table_sql`) values ('%s', '%s', '%s', '%s')"
 
 	// merge back ddl related
 
@@ -125,7 +125,7 @@ const (
 
 	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_patch where Name='%s' order by id"
 
-	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (Name, database, table, ddl, merged) values ('%s', '%s', '%s', '%s', false)"
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (`Name`, `database`, `table`, `ddl`, `merged`) values ('%s', '%s', '%s', '%s', false)"
 
 	UpdateBranchMergeBackDDLMergedSQL = "update mysql.branch_patch set merged = true where id = '%d'"
 )

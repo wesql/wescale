@@ -1,4 +1,4 @@
-package wasm
+package branch
 
 import (
 	_ "embed"
@@ -27,16 +27,17 @@ var sourceCluster *clusters.SingleNodeCluster
 var targetCluster *clusters.SingleNodeCluster
 
 func TestMain(m *testing.M) {
+	// todo fix me after debugging branch
 	sourceCluster = clusters.NewDefaultSingleNodeCluster()
 	sourceCluster.RegisterFlagsForSingleNodeCluster()
 	targetCluster = clusters.NewCustomSingleNodeCluster(
 		"target",
 		"127.0.0.1",
-		3307,
+		3306,
 		"root",
 		"passwd",
 		"127.0.0.1",
-		15307,
+		15306,
 		"root",
 		"passwd",
 	)

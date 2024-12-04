@@ -26,13 +26,14 @@ const (
 	Show             BranchCommandType = "show"
 )
 
+// todo enhancement: add flags to config
 const (
 	DefaultBranchName = "my_branch"
 
 	DefaultBranchTargetHost     = "127.0.0.1"
 	DefaultBranchTargetPort     = 15306
 	DefaultBranchTargetUser     = "root"
-	DefaultBranchTargetPassword = ""
+	DefaultBranchTargetPassword = "passwd"
 )
 
 // Branch is an operator to deal with branch commands
@@ -288,6 +289,7 @@ func checkRedundantParams(params map[string]string) error {
 func (bcp *BranchCreateParams) setValues(params map[string]string) error {
 	if v, ok := params[BranchCreateParamsSourcePort]; ok {
 		bcp.SourcePort = v
+		delete(params, BranchCreateParamsSourcePort)
 	} else {
 		bcp.SourcePort = "3306"
 		delete(params, BranchCreateParamsSourcePort)
@@ -439,10 +441,11 @@ func createBranchSourceHandler(sourceUser, sourcePassword, sourceHost string, so
 
 func createBranchTargetHandler(targetUser, targetPassword, targetHost string, targetPort int) (*branch.TargetMySQLService, error) {
 	targetMysqlConfig := &mysql.Config{
-		User:   targetUser,
-		Passwd: targetPassword,
-		Net:    "tcp",
-		Addr:   fmt.Sprintf("%s:%d", targetHost, targetPort),
+		User:                 targetUser,
+		Passwd:               targetPassword,
+		Net:                  "tcp",
+		Addr:                 fmt.Sprintf("%s:%d", targetHost, targetPort),
+		AllowNativePasswords: true,
 	}
 	targetMysqlService, err := branch.NewMysqlServiceWithConfig(targetMysqlConfig)
 	if err != nil {
@@ -530,11 +533,13 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 }
 
 func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	// get target handler
+	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
 	if err != nil {
 		return nil, err
 	}
-	return &sqltypes.Result{}, bs.BranchCleanUp(meta.Name)
+
+	return &sqltypes.Result{}, targetHandler.BranchCleanUp(b.name)
 }
 
 func (b *Branch) branchShow() (*sqltypes.Result, error) {

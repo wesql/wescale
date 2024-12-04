@@ -357,11 +357,11 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 
 }
 
-func (bs *BranchService) BranchCleanUp(name string) error {
+func (t *TargetMySQLService) BranchCleanUp(name string) error {
 	deleteMeta := getDeleteBranchMetaSQL(name)
 	deleteSnapshot := getDeleteSnapshotSQL(name)
 	deleteMergeBackDDL := getDeleteMergeBackDDLSQL(name)
-	return bs.targetMySQLService.mysqlService.ExecuteInTxn(deleteMeta, deleteSnapshot, deleteMergeBackDDL)
+	return t.mysqlService.ExecuteInTxn(deleteMeta, deleteSnapshot, deleteMergeBackDDL)
 }
 
 /**********************************************************************************************************************/

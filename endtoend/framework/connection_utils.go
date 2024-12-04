@@ -27,7 +27,7 @@ func NewMysqlConnectionPool(host string, port int, user string, passwd string, d
 
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("%database ping error, v:%v user:%v passwd:%v err:%v", host, port, user, passwd, err)
+		return nil, fmt.Errorf("database ping error, %v:%v user:%v passwd:%v err:%v", host, port, user, passwd, err)
 	}
 
 	return db, nil
