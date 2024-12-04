@@ -129,7 +129,7 @@ jobs:
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_PORT=3307 \
           -e MYSQL_HOST=mysql-server3307 \
-          -e VTGATE_MYSQL_PORT 15307 \
+          -e VTGATE_MYSQL_PORT=15307 \
           -e CONFIG_PATH=/vt/config/wescale/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
