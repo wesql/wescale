@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="vttablet" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="wesql-scale" />
+    <working_directory value="$PROJECT_DIR$/examples/wesql-server" />
+    <parameters value="--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global --alsologtostderr --log_dir $PROJECT_DIR$/examples/wesql-server/vtdataroot/vttablet --log_queries_to_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vttablet/vttablet_0000000000_querylog.txt --tablet-path zone1-0000000000 --tablet_hostname 127.0.0.1 --init_tablet_type replica --enable_replication_reporter --backup_storage_implementation file --file_backup_storage_root $PROJECT_DIR$/examples/wesql-server/vtdataroot/vttablet/backups --port 15100 --db_port 3306 --db_host 127.0.0.1 --db_allprivs_user root --db_allprivs_password passwd --db_dba_user root --db_dba_password passwd --db_app_user root --db_app_password passwd --db_filtered_user root --db_filtered_password passwd --grpc_port 16100 --service_map grpc-queryservice,grpc-tabletmanager,grpc-updatestream --pid_file $PROJECT_DIR$/examples/wesql-server/vtdataroot/vttablet/vttablet.pid --vtctld_addr http://127.0.0.1:15000/ --disable_active_reparents --config_path ./conf" />
+    <kind value="PACKAGE" />
+    <package value="vitess.io/vitess/go/cmd/vttablet" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$" />
+    <method v="2" />
+  </configuration>
+</component>

@@ -84,7 +84,6 @@ examples/mysql/vtdataroot
 /bin/
 /vtdataroot/
 venv
-.run/
 
 users.json
 .scannerwork
