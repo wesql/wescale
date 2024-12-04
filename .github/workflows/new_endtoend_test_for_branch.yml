@@ -156,6 +156,12 @@ jobs:
             echo "MySQL port $port is ready!"
           done
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: false    # 只允许工作流触发者访问
+          timeout-minutes: 30             # 设置超时时间为30分钟
+
       - name: Run EndToEnd test
         run: |
           cd endtoend
