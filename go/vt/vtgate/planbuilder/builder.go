@@ -209,7 +209,11 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		*sqlparser.CreateWescaleCDC, *sqlparser.AlterWescaleCDC, *sqlparser.ShowWescaleCDC, *sqlparser.DropWescaleCDC:
 		return buildSendPlan(query, vschema)
 	case *sqlparser.BranchCommand:
-		// todo
+		b, err := engine.BuildBranchPlan(stmt)
+		if err != nil {
+			return nil, err
+		}
+		return newPlanResult(b), nil
 
 	}
 

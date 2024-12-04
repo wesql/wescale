@@ -110,11 +110,13 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 	if err != nil {
 		return nil, err
 	}
-	params := make(map[string]string)
-	for i, _ := range branchCmd.Params.Keys {
-		params[branchCmd.Params.Keys[i]] = branchCmd.Params.Values[i]
-	}
 	b := &Branch{commandType: cmdType}
+	params := make(map[string]string)
+	if branchCmd.Params != nil {
+		for i, _ := range branchCmd.Params.Keys {
+			params[branchCmd.Params.Keys[i]] = branchCmd.Params.Values[i]
+		}
+	}
 	err = b.setAndValidateParams(params)
 	if err != nil {
 		return nil, fmt.Errorf("invalid branch command params: %w", err)
@@ -142,10 +144,45 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 	}
 }
 
-// todo complete me
 // TryStreamExecute implements Primitive interface
 func (b *Branch) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool, callback func(*sqltypes.Result) error) error {
 	result := &sqltypes.Result{}
+	var err error
+	switch b.commandType {
+	case Create:
+		result, err = b.branchCreate()
+		if err != nil {
+			return err
+		}
+	case Diff:
+		result, err = b.branchDiff()
+		if err != nil {
+			return err
+		}
+	case PrepareMergeBack:
+		result, err = b.branchPrepareMergeBack()
+		if err != nil {
+			return err
+		}
+	case MergeBack:
+		result, err = b.branchMergeBack()
+		if err != nil {
+			return err
+		}
+	case Cleanup:
+		result, err = b.branchCleanUp()
+		if err != nil {
+			return err
+		}
+	case Show:
+		result, err = b.branchShow()
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported branch command type: %s", b.commandType)
+	}
+
 	return callback(result)
 }
 
