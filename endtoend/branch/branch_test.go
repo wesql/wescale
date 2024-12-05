@@ -303,7 +303,7 @@ func TestBranchBasicWithFailPoint(t *testing.T) {
 	defer targetClean()
 
 	// create branch
-	createCMD := getBranchCreateCMD(sourceCluster.MysqlHost, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
+	createCMD := getBranchCreateCMD(sourceHostToTarget, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
 	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError", "return(true)")
 	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
 	expectBranchStatus(t, "my_branch", "init")
