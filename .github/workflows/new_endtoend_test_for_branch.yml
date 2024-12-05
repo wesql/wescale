@@ -83,6 +83,7 @@ jobs:
           
           docker network create wescale-network
           
+          # target cluster
           docker run -itd --network wescale-network --name mysql-server \
           -p 3306:3306 \
           -e MYSQL_ROOT_PASSWORD=passwd \
@@ -104,10 +105,11 @@ jobs:
           -e MYSQL_ROOT_PASSWORD=passwd \
           -e MYSQL_PORT=3306 \
           -e MYSQL_HOST=mysql-server \
-          -e CONFIG_PATH=/vt/config/wescale/endtoend/branch \
+          -e CONFIG_PATH=/vt/config/wescale/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
           
+          # source cluster
           docker run -itd --network wescale-network --name mysql-server3307 \
           -p 3307:3307 \
           -e MYSQL_ROOT_PASSWORD=passwd \
@@ -130,7 +132,7 @@ jobs:
           -e MYSQL_PORT=3307 \
           -e MYSQL_HOST=mysql-server3307 \
           -e VTGATE_MYSQL_PORT=15307 \
-          -e CONFIG_PATH=/vt/config/wescale/endtoend/branch \
+          -e CONFIG_PATH=/vt/config/wescale/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
 
@@ -161,7 +163,7 @@ jobs:
         run: |
           make failpoint-enable
           cd endtoend
-          go test ./branch -v
+          go test ./branch -v --source_host_to_target=wescale15307
           cd ..
           make failpoint-disable
 

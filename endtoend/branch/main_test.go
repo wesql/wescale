@@ -25,6 +25,7 @@ var targetCleanupSql string
 
 var sourceCluster *clusters.SingleNodeCluster
 var targetCluster *clusters.SingleNodeCluster
+var sourceHostToTarget string = "127.0.0.1"
 
 func TestMain(m *testing.M) {
 	sourceCluster = clusters.NewCustomSingleNodeCluster(
@@ -53,6 +54,8 @@ func TestMain(m *testing.M) {
 		"passwd",
 	)
 	targetCluster.RegisterFlagsForSingleNodeCluster()
+
+	flag.StringVar(&sourceHostToTarget, "source_host_to_target", "127.0.0.1", "the source host to target cluster, if target is in an separate env such as docker, it shouldn't be 127.0.0.1")
 	flag.Parse()
 
 	// Setup the test environment
