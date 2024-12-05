@@ -56,3 +56,19 @@ func CheckTableExists(t *testing.T, db *sql.DB, schema string, table string) boo
 
 	return false
 }
+
+func CheckColumnExists(t *testing.T, db *sql.DB, schema, table, column string) bool {
+	t.Helper()
+	query := fmt.Sprintf(`SELECT COUNT(1) FROM information_schema.columns WHERE table_schema = '%s' AND table_name = '%s' AND column_name = '%s'`, schema, table, column)
+
+	rows := QueryNoError(t, db, query)
+	defer rows.Close()
+
+	var count int
+	if rows.Next() {
+		err := rows.Scan(&count)
+		assert.NoError(t, err)
+	}
+
+	return count > 0
+}

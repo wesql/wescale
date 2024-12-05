@@ -2,7 +2,9 @@ package branch
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/wesql/wescale/endtoend/framework"
 	"testing"
 	"time"
@@ -163,27 +165,98 @@ func getBranchCreateCMD(
 	)
 }
 
+func getBranchCleanUpCMD() string {
+	return fmt.Sprintf(`Branch clean_up;`)
+}
+
+// default override
+func getBranchDiffCMD(compareObjects string) string {
+	return fmt.Sprintf(`Branch diff with (
+    'compare_objects'='%s'
+);`, compareObjects)
+}
+
+// default override
+func getBranchPrepareMergeBackCMD() string {
+	return fmt.Sprintf(`Branch prepare_merge_back;`)
+}
+
+func getBranchMergeBackCMD() string {
+	return fmt.Sprintf(`Branch merge_back;`)
+}
+
+func printBranchDiff(rows *sql.Rows) {
+	fmt.Printf("---------------------- start printing branch diff ----------------------\n")
+	for rows.Next() {
+		var (
+			database  string
+			tableName string
+			ddl       string
+		)
+		err := rows.Scan(&database, &tableName, &ddl)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Database: %s, Table: %s, DDL: %s\n", database, tableName, ddl)
+	}
+	fmt.Printf("---------------------- print branch diff end ----------------------\n")
+}
+
 func TestBranchBasic(t *testing.T) {
 	testSourceAndTargetClusterConnection(t)
 	sourcePrepare()
 	targetPrepare()
 
 	// defer branch cleanup
-	defer framework.ExecNoError(t, targetCluster.WescaleDb, "branch clean_up;")
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchCleanUpCMD())
 
 	// create branch
 	createCMD := getBranchCreateCMD(sourceCluster.MysqlHost, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
 	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
-	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users")
-	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders")
-	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products")
-	framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products")
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
+	// the test_db3 will be skipped when branch creating
+	assert.Equal(t, false, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products"))
 
 	// change schema
+	framework.ExecNoError(t, sourceCluster.WescaleDb, "ALTER TABLE test_db3.source_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "source_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db3.target_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db3", "target_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db1.users DROP COLUMN created_at;")
+	assert.Equal(t, false, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db1", "users", "created_at"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
 
 	// branch diff
+	diffCMD := getBranchDiffCMD("source_target")
+	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
+	defer rows.Close()
+	printBranchDiff(rows)
 
 	// branch prepare merge back
+	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
+	defer rows2.Close()
+	printBranchDiff(rows2)
 
 	// branch merge
+	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
+
+	// no diff
+	rows3 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchDiffCMD("source_target"))
+	defer rows3.Close()
+	assert.Equal(t, false, rows3.Next())
+
+	// check schema
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "target_products"))
+	assert.Equal(t, false, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db2", "orders"))
+
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
 }

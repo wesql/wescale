@@ -303,8 +303,8 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 		&meta.SourcePassword,
 		&includeDBs,
 		&excludeDBs,
-		&meta.TargetDBPattern,
 		&status,
+		&meta.TargetDBPattern,
 	)
 	if err != nil {
 		return nil, err

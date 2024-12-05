@@ -35,6 +35,18 @@ func StringToBranchStatus(s string) BranchStatus {
 	switch s {
 	case "init":
 		return StatusInit
+	case "fetched":
+		return StatusFetched
+	case "created":
+		return StatusCreated
+	case "preparing":
+		return StatusPreparing
+	case "prepared":
+		return StatusPrepared
+	case "merging":
+		return StatusMerging
+	case "merged":
+		return StatusMerged
 	default:
 		return StatusUnknown
 	}

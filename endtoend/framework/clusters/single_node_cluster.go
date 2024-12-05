@@ -42,15 +42,14 @@ type SingleNodeCluster struct {
 }
 
 func NewDefaultSingleNodeCluster() *SingleNodeCluster {
-	// todo fix me after debugging branch
 	return NewCustomSingleNodeCluster(
 		"default",
 		"127.0.0.1",
-		12345,
+		3306,
 		"root",
 		"passwd",
 		"127.0.0.1",
-		12345,
+		15306,
 		"root",
 		"passwd",
 	)
