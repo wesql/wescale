@@ -28,9 +28,11 @@ var targetCluster *clusters.SingleNodeCluster
 
 func TestMain(m *testing.M) {
 	sourceCluster = clusters.NewCustomSingleNodeCluster(
+		// source cluster here is actually a mysql created by running ./init_mysql15307.sh, which it's convenient to debug the e2e test locally.
+		// the source and target clusters info in github CI will be set based on config file in /vt/config/wescale/endtoend/branch
 		"source",
-		"127.0.0.1", // todo, in docker, it shouldn't be 127.0.0.1
-		15307,       // todo fix me? this allows local test by simply run init_mysql15307.sh
+		"127.0.0.1",
+		15307,
 		"root",
 		"passwd",
 		"127.0.0.1",
