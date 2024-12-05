@@ -2,8 +2,10 @@ package branch
 
 import (
 	"fmt"
+	"github.com/pingcap/failpoint"
 	"regexp"
 	"strings"
+	"vitess.io/vitess/go/vt/failpointkey"
 )
 
 type TargetMySQLService struct {
@@ -52,7 +54,9 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 // Returns:
 // - error: Returns nil on success, error otherwise
 func (t *TargetMySQLService) ApplySnapshot(name string) error {
-
+	failpoint.Inject(failpointkey.BranchApplySnapshotError.Name, func() {
+		failpoint.Return(fmt.Errorf("error applying snapshot by failpoint"))
+	})
 	// get databases from target
 	databases, err := t.getAllDatabases()
 	if err != nil {
@@ -163,6 +167,9 @@ func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
 }
 
 func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *BranchDiff, batchSize int) error {
+	failpoint.Inject(failpointkey.BranchInsertMergeBackDDLError.Name, func() {
+		failpoint.Return(fmt.Errorf("error inserting merge back ddl by failpoint"))
+	})
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.Diffs {
 		if databaseDiff.NeedDropDatabase {

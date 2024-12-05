@@ -159,6 +159,7 @@ jobs:
 
       - name: Run EndToEnd test
         run: |
+          make failpoint-enable
           cd endtoend
           go test ./branch -v
 

@@ -2,7 +2,9 @@ package branch
 
 import (
 	"fmt"
+	"github.com/pingcap/failpoint"
 	"strings"
+	"vitess.io/vitess/go/vt/failpointkey"
 	"vitess.io/vitess/go/vt/schemadiff"
 )
 
@@ -406,6 +408,9 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 		if err != nil {
 			return err
 		}
+		failpoint.Inject(failpointkey.BranchExecuteMergeBackDDLError.Name, func() {
+			failpoint.Return(fmt.Errorf("error executing merge back ddl by failpoint"))
+		})
 	}
 
 	return nil
@@ -659,6 +664,9 @@ func tableSchemaEqual(tableSchema1, tableSchema2 *schemadiff.CreateTableEntity, 
 // - *BranchSchema: The fetched schema information
 // - error: Returns nil on success, error otherwise
 func (bs *BranchService) branchFetchSnapshot(name string, includeDatabases, excludeDatabases []string) (*BranchSchema, error) {
+	failpoint.Inject(failpointkey.BranchFetchSnapshotError.Name, func() {
+		failpoint.Return(nil, fmt.Errorf("error fetching snapshot by failpoint"))
+	})
 	// get schema from source
 	schema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {

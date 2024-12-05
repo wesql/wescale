@@ -44,6 +44,7 @@ func QueryWithErrorContains(t *testing.T, db *sql.DB, contains string, sql strin
 
 // CheckTableExists checks if a specific table exists in a given schema.
 func CheckTableExists(t *testing.T, db *sql.DB, schema string, table string) bool {
+	t.Helper()
 	query := fmt.Sprintf("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '%s' AND table_name = '%s'", schema, table)
 	rows := QueryNoError(t, db, query)
 	defer rows.Close()
@@ -71,4 +72,16 @@ func CheckColumnExists(t *testing.T, db *sql.DB, schema, table, column string) b
 	}
 
 	return count > 0
+}
+
+func EnableFailPoint(t *testing.T, db *sql.DB, key, value string) {
+	t.Helper()
+	query := fmt.Sprintf("set @put_failpoint='%s=%s'", key, value)
+	ExecNoError(t, db, query)
+}
+
+func DisableFailPoint(t *testing.T, db *sql.DB, key string) {
+	t.Helper()
+	query := fmt.Sprintf("set @remove_failpoint='%s'", key)
+	ExecNoError(t, db, query)
 }

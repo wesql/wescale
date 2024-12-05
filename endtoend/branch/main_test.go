@@ -29,8 +29,8 @@ var targetCluster *clusters.SingleNodeCluster
 func TestMain(m *testing.M) {
 	sourceCluster = clusters.NewCustomSingleNodeCluster(
 		"source",
-		"127.0.0.1",
-		15307, // todo fix me? this allows local test by simply run init_mysql15307.sh
+		"127.0.0.1", // todo, in docker, it shouldn't be 127.0.0.1
+		15307,       // todo fix me? this allows local test by simply run init_mysql15307.sh
 		"root",
 		"passwd",
 		"127.0.0.1",
