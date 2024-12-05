@@ -241,7 +241,7 @@ func TestBranchBasic(t *testing.T) {
 	defer targetClean()
 
 	// create branch
-	createCMD := getBranchCreateCMD(sourceCluster.MysqlHost, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
+	createCMD := getBranchCreateCMD("wescale15307", 15307, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
 	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
 	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
 	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
