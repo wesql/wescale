@@ -160,7 +160,9 @@ jobs:
       - name: Run EndToEnd test
         run: |
           make failpoint-enable
-          go test ./endtoend/branch -v
+          cd endtoend
+          go test ./branch -v
+          cd ..
           make failpoint-disable
 
       - name: Print Wescale logs
