@@ -36,6 +36,7 @@ jobs:
       want_load: true
       want_artifact: true
       artifact_name: 'image.tar'
+      enable_failpoint: true
 
   setup:
     name: "New EndToEnd Test For Branch"
@@ -161,11 +162,8 @@ jobs:
 
       - name: Run EndToEnd test
         run: |
-          make failpoint-enable
           cd endtoend
           go test ./branch -v --source_host_to_target=wescale15307
-          cd ..
-          make failpoint-disable
 
       - name: Print Wescale logs
         run: |
