@@ -426,10 +426,11 @@ func (bsp *BranchShowParams) validate() error {
 
 func createBranchSourceHandler(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.SourceMySQLService, error) {
 	sourceMysqlConfig := &mysql.Config{
-		User:   sourceUser,
-		Passwd: sourcePassword,
-		Net:    "tcp",
-		Addr:   fmt.Sprintf("%s:%d", sourceHost, sourcePort),
+		User:                 sourceUser,
+		Passwd:               sourcePassword,
+		Net:                  "tcp",
+		Addr:                 fmt.Sprintf("%s:%d", sourceHost, sourcePort),
+		AllowNativePasswords: true,
 	}
 	sourceMysqlService, err := branch.NewMysqlServiceWithConfig(sourceMysqlConfig)
 	if err != nil {
