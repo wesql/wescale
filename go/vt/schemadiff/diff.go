@@ -1,6 +1,7 @@
 package schemadiff
 
 import (
+	"fmt"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -173,4 +174,30 @@ func DiffSchemas(schema1 *Schema, schema2 *Schema, hints *DiffHints) ([]EntityDi
 		schema2 = newEmptySchema()
 	}
 	return schema1.Diff(schema2, hints)
+}
+
+func GetDDLFromTableDiff(diff EntityDiff, dbName, tableName string) ([]sqlparser.DDLStatement, []string, error) {
+	ddlStmts := make([]sqlparser.DDLStatement, 0)
+	ddlStrs := make([]string, 0)
+	if diff.IsEmpty() {
+		return ddlStmts, ddlStrs, nil
+	}
+
+	for diff != nil && !diff.IsEmpty() {
+		ddlStmt, ok := diff.Statement().(sqlparser.DDLStatement)
+		if !ok {
+			return ddlStmts, ddlStrs, fmt.Errorf("diff ddl is not a DDLStatement")
+		}
+
+		// if we don't set dbName here, it will be set to mysql db when executing
+		if dbName != "" && tableName != "" {
+			ddlStmt.SetTable(dbName, tableName)
+		}
+		ddlStmt.SetFullyParsed(true)
+		ddlStmts = append(ddlStmts, ddlStmt)
+		ddlStrs = append(ddlStrs, diff.CanonicalStatementString())
+
+		diff = diff.SubsequentDiff()
+	}
+	return ddlStmts, ddlStrs, nil
 }

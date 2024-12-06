@@ -83,6 +83,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfBitXor(in)
 	case BoolVal:
 		return in
+	case *BranchCommand:
+		return CloneRefOfBranchCommand(in)
 	case *CallProc:
 		return CloneRefOfCallProc(in)
 	case *CaseExpr:
@@ -539,6 +541,8 @@ func CloneSQLNode(in SQLNode) SQLNode {
 		return CloneRefOfWindowSpecification(in)
 	case *With:
 		return CloneRefOfWith(in)
+	case *WithParams:
+		return CloneRefOfWithParams(in)
 	case *XorExpr:
 		return CloneRefOfXorExpr(in)
 	default:
@@ -837,6 +841,16 @@ func CloneRefOfBitXor(n *BitXor) *BitXor {
 	}
 	out := *n
 	out.Arg = CloneExpr(n.Arg)
+	return &out
+}
+
+// CloneRefOfBranchCommand creates a deep clone of the input.
+func CloneRefOfBranchCommand(n *BranchCommand) *BranchCommand {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Params = CloneRefOfWithParams(n.Params)
 	return &out
 }
 
@@ -3283,6 +3297,17 @@ func CloneRefOfWith(n *With) *With {
 	return &out
 }
 
+// CloneRefOfWithParams creates a deep clone of the input.
+func CloneRefOfWithParams(n *WithParams) *WithParams {
+	if n == nil {
+		return nil
+	}
+	out := *n
+	out.Keys = CloneSliceOfString(n.Keys)
+	out.Values = CloneSliceOfString(n.Values)
+	return &out
+}
+
 // CloneRefOfXorExpr creates a deep clone of the input.
 func CloneRefOfXorExpr(n *XorExpr) *XorExpr {
 	if n == nil {
@@ -3932,6 +3957,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfAlterWescaleFilter(in)
 	case *Begin:
 		return CloneRefOfBegin(in)
+	case *BranchCommand:
+		return CloneRefOfBranchCommand(in)
 	case *CallProc:
 		return CloneRefOfCallProc(in)
 	case *CheckTable:
@@ -4032,6 +4059,8 @@ func CloneStatement(in Statement) Statement {
 		return CloneRefOfVExplainStmt(in)
 	case *VStream:
 		return CloneRefOfVStream(in)
+	case *WithParams:
+		return CloneRefOfWithParams(in)
 	default:
 		// this should never happen
 		return nil

@@ -66,6 +66,26 @@ var (
 		Name:       "CreateSidecarDbError",
 		ExampleStr: "return(true)",
 	}
+	BranchFetchSnapshotError = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError",
+		Name:       "BranchFetchSnapshotError",
+		ExampleStr: "return(true)",
+	}
+	BranchApplySnapshotError = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError",
+		Name:       "BranchApplySnapshotError",
+		ExampleStr: "return(true)",
+	}
+	BranchInsertMergeBackDDLError = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError",
+		Name:       "BranchInsertMergeBackDDLError",
+		ExampleStr: "return(true)",
+	}
+	BranchExecuteMergeBackDDLError = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError",
+		Name:       "BranchExecuteMergeBackDDLError",
+		ExampleStr: "return(true)",
+	}
 )
 
 func init() {
@@ -84,4 +104,8 @@ func init() {
 	FailpointTable[CreateErrorWhenExecutingBatch.FullName] = CreateErrorWhenExecutingBatch
 	FailpointTable[CrashVTGate.FullName] = CrashVTGate
 	FailpointTable[CreateSidecarDbError.FullName] = CreateSidecarDbError
+	FailpointTable[BranchFetchSnapshotError.FullName] = BranchFetchSnapshotError
+	FailpointTable[BranchApplySnapshotError.FullName] = BranchApplySnapshotError
+	FailpointTable[BranchInsertMergeBackDDLError.FullName] = BranchInsertMergeBackDDLError
+	FailpointTable[BranchExecuteMergeBackDDLError.FullName] = BranchExecuteMergeBackDDLError
 }

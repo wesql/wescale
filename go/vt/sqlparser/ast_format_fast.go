@@ -2976,6 +2976,30 @@ func (node *AlterWescaleCDC) formatFast(buf *TrackedBuffer) {
 	buf.WriteString(")")
 }
 
+func (node *BranchCommand) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("branch ")
+
+	buf.WriteString(node.Type)
+	buf.WriteByte(' ')
+
+	if node.Params != nil {
+		node.Params.formatFast(buf)
+	}
+}
+
+func (node *WithParams) formatFast(buf *TrackedBuffer) {
+	buf.WriteString("with (\n")
+
+	for i, _ := range node.Keys {
+		buf.WriteString("\t'")
+		buf.WriteString(node.Keys[i])
+		buf.WriteString("'='")
+		buf.WriteString(node.Values[i])
+		buf.WriteString("',\n")
+	}
+	buf.WriteString(")")
+}
+
 // formatFast formats the node.
 func (node *CreateView) formatFast(buf *TrackedBuffer) {
 	buf.WriteString("create ")

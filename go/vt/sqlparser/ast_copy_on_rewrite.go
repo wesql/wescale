@@ -82,6 +82,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfBitXor(n, parent)
 	case BoolVal:
 		return c.copyOnRewriteBoolVal(n, parent)
+	case *BranchCommand:
+		return c.copyOnRewriteRefOfBranchCommand(n, parent)
 	case *CallProc:
 		return c.copyOnRewriteRefOfCallProc(n, parent)
 	case *CaseExpr:
@@ -538,6 +540,8 @@ func (c *cow) copyOnRewriteSQLNode(n SQLNode, parent SQLNode) (out SQLNode, chan
 		return c.copyOnRewriteRefOfWindowSpecification(n, parent)
 	case *With:
 		return c.copyOnRewriteRefOfWith(n, parent)
+	case *WithParams:
+		return c.copyOnRewriteRefOfWithParams(n, parent)
 	case *XorExpr:
 		return c.copyOnRewriteRefOfXorExpr(n, parent)
 	default:
@@ -1167,6 +1171,28 @@ func (c *cow) copyOnRewriteRefOfBitXor(n *BitXor, parent SQLNode) (out SQLNode, 
 		if changedArg {
 			res := *n
 			res.Arg, _ = _Arg.(Expr)
+			out = &res
+			if c.cloned != nil {
+				c.cloned(n, out)
+			}
+			changed = true
+		}
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
+func (c *cow) copyOnRewriteRefOfBranchCommand(n *BranchCommand, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+		_Params, changedParams := c.copyOnRewriteRefOfWithParams(n.Params, n)
+		if changedParams {
+			res := *n
+			res.Params, _ = _Params.(*WithParams)
 			out = &res
 			if c.cloned != nil {
 				c.cloned(n, out)
@@ -6286,6 +6312,18 @@ func (c *cow) copyOnRewriteRefOfWith(n *With, parent SQLNode) (out SQLNode, chan
 	}
 	return
 }
+func (c *cow) copyOnRewriteRefOfWithParams(n *WithParams, parent SQLNode) (out SQLNode, changed bool) {
+	if n == nil || c.cursor.stop {
+		return n, false
+	}
+	out = n
+	if c.pre == nil || c.pre(n, parent) {
+	}
+	if c.post != nil {
+		out, changed = c.postVisit(out, parent, changed)
+	}
+	return
+}
 func (c *cow) copyOnRewriteRefOfXorExpr(n *XorExpr, parent SQLNode) (out SQLNode, changed bool) {
 	if n == nil || c.cursor.stop {
 		return n, false
@@ -6919,6 +6957,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfAlterWescaleFilter(n, parent)
 	case *Begin:
 		return c.copyOnRewriteRefOfBegin(n, parent)
+	case *BranchCommand:
+		return c.copyOnRewriteRefOfBranchCommand(n, parent)
 	case *CallProc:
 		return c.copyOnRewriteRefOfCallProc(n, parent)
 	case *CheckTable:
@@ -7019,6 +7059,8 @@ func (c *cow) copyOnRewriteStatement(n Statement, parent SQLNode) (out SQLNode, 
 		return c.copyOnRewriteRefOfVExplainStmt(n, parent)
 	case *VStream:
 		return c.copyOnRewriteRefOfVStream(n, parent)
+	case *WithParams:
+		return c.copyOnRewriteRefOfWithParams(n, parent)
 	default:
 		// this should never happen
 		return nil, false

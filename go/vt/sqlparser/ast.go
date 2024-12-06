@@ -591,6 +591,16 @@ type (
 		Name       string
 	}
 
+	WithParams struct {
+		Keys   []string
+		Values []string
+	}
+
+	BranchCommand struct {
+		Type   string
+		Params *WithParams
+	}
+
 	// CreateTable represents a CREATE TABLE statement.
 	CreateTable struct {
 		Temp        bool
@@ -868,6 +878,8 @@ func (*CreateWescaleCDC) iStatement()    {}
 func (*AlterWescaleCDC) iStatement()     {}
 func (*DropWescaleCDC) iStatement()      {}
 func (*ShowWescaleCDC) iStatement()      {}
+func (*BranchCommand) iStatement()       {}
+func (*WithParams) iStatement()          {}
 
 func (*CreateView) iDDLStatement()    {}
 func (*AlterView) iDDLStatement()     {}

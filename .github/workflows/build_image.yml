@@ -42,6 +42,10 @@ on:
         required: false
         type: string
         default: 'image.tar'
+      enable_failpoint:
+        required: false
+        type: boolean
+        default: false
 
 
 jobs:
@@ -56,6 +60,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
+
+      - name: Enable FailPoint
+        if: inputs.enable_failpoint
+        run: |
+          make failpoint-enable
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

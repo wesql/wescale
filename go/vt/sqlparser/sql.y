@@ -228,6 +228,8 @@ func bindVariable(yylex yyLexer, bvar string) {
   jtOnResponse	*JtOnResponse
   variables      []*Variable
   variable       *Variable
+
+  withParams    *WithParams
 }
 
 // These precedence rules are there to handle shift-reduce conflicts.
@@ -337,6 +339,9 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> PLANS TABLE_NAME QUERY_REGEX QUERY_TEMPLATE
 %token <str> REQUEST_IP_REGEX USER_REGEX LEADING_COMMENT_REGEX TRAILING_COMMENT_REGEX BIND_VAR_CONDS
 %token <str> ACTION_ARGS
+
+// Branch Tokens
+%token <str> BRANCH DIFF PREPARE_MERGE_BACK MERGE_BACK CLEAN_UP
 
 // CDC Tokens
 %token <str> CDC CDCS WASM_BINARY_NAME ENV
@@ -459,6 +464,16 @@ func bindVariable(yylex yyLexer, bvar string) {
 %type <statement> alter_cdc_statement
 %type <statement> drop_cdc_statement
 %type <statement> show_cdc_statement
+%type <statement> branch_statement
+%type <statement> branch_create_statement
+%type <statement> branch_diff_statement
+%type <statement> branch_prepare_merge_back_statement
+%type <statement> branch_merge_back_statement
+%type <statement> branch_clean_up_statement
+%type <statement> branch_show_statement
+%type <withParams> with_opt
+%type <withParams> with_param
+%type <withParams> with_param_list
 %type <with> with_clause_opt with_clause
 %type <cte> common_table_expr
 %type <ctes> with_list
@@ -736,6 +751,7 @@ command:
 | alter_cdc_statement
 | drop_cdc_statement
 | show_cdc_statement
+| branch_statement
 | /*empty*/
 {
   setParseTree(yylex, nil)
@@ -1351,7 +1367,127 @@ alter_wescale_cdc_info_field:
       $$ = "env"
     }
 
+branch_statement:
+    branch_create_statement
+    {
+        $$ = $1
+    }
+  | branch_diff_statement
+    {
+        $$ = $1
+    }
+  | branch_prepare_merge_back_statement
+    {
+        $$ = $1
+    }
+  | branch_merge_back_statement
+    {
+        $$ = $1
+    }
+  | branch_clean_up_statement
+    {
+        $$ = $1
+    }
+  | branch_show_statement
+    {
+        $$ = $1
+    }
 
+// Branch create command
+branch_create_statement:
+    BRANCH CREATE with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "create",
+            Params: $3,
+        }
+    }
+
+// Branch diff command
+branch_diff_statement:
+    BRANCH DIFF with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "diff",
+            Params: $3,
+        }
+    }
+
+// Branch prepare merge back command
+branch_prepare_merge_back_statement:
+    BRANCH PREPARE_MERGE_BACK with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "prepareMergeBack",
+            Params: $3,
+        }
+    }
+
+// Branch merge back command
+branch_merge_back_statement:
+    BRANCH MERGE_BACK with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "mergeBack",
+            Params: $3,
+        }
+    }
+
+// Branch clean up command
+branch_clean_up_statement:
+    BRANCH CLEAN_UP with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "cleanUp",
+            Params: $3,
+        }
+    }
+
+// Branch show command
+branch_show_statement:
+    BRANCH SHOW with_opt
+    {
+        $$ = &BranchCommand{
+            Type: "show",
+            Params: $3,
+        }
+    }
+
+// WITH clause parsing
+with_opt:
+    /* empty */
+    {
+        $$ = nil
+    }
+  | WITH '(' with_param_list ')'
+    {
+        $$ = $3
+    }
+
+with_param_list:
+    with_param
+    {
+        $$ = $1
+    }
+  | with_param_list ',' with_param
+    {
+        for _, v := range $3.Keys {
+            $1.Keys=append($1.Keys,v)
+        }
+        for _, v := range $3.Values {
+            $1.Values=append($1.Values,v)
+         }
+        $$ = $1
+    }
+
+with_param:
+    STRING '=' STRING
+    {
+        $$ = &WithParams{
+            Keys:[]string{$1},
+            Values:[]string{$3},
+        }
+    }
 
 create_filter_statement:
   CREATE comment_opt FILTER not_exists_opt ID wescale_filter_info_opt wescale_filter_pattern_info_opt EXECUTE '(' wescale_filter_action_info ')'
@@ -8912,6 +9048,11 @@ non_reserved_keyword:
 | ACTION_ARGS
 | WEIGHT_STRING
 | WASM_BINARY_NAME
+| BRANCH
+| DIFF
+| PREPARE_MERGE_BACK
+| MERGE_BACK
+| CLEAN_UP
 | ENV %prec FUNCTION_CALL_NON_KEYWORD
 
 

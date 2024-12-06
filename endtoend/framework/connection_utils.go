@@ -22,12 +22,12 @@ func NewMysqlConnectionPool(host string, port int, user string, passwd string, d
 	c.MultiStatements = true
 	db, err := sql.Open("mysql", c.FormatDSN())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sql open error, %v:%v user:%v passwd:%v err:%v", host, port, user, passwd, err)
 	}
 
 	if err := db.Ping(); err != nil {
 		db.Close()
-		return nil, err
+		return nil, fmt.Errorf("database ping error, %v:%v user:%v passwd:%v err:%v", host, port, user, passwd, err)
 	}
 
 	return db, nil

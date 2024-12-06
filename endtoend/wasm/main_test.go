@@ -21,12 +21,11 @@ var cluster *clusters.SingleNodeCluster
 
 func TestMain(m *testing.M) {
 	cluster = clusters.NewDefaultSingleNodeCluster()
-	// Register flags for the single node cluster, allowing the user to override the default values
 	cluster.RegisterFlagsForSingleNodeCluster()
 	flag.Parse()
 
 	// Setup the test environment
-	err := cluster.SetUp(dbName, setupSql, cleanupSql)
+	err := cluster.SetUp(dbName, setupSql)
 	if err != nil {
 		log.Fatalf("Setup failed: %v", err)
 	}
@@ -35,7 +34,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// Cleanup the test environment
-	err = cluster.CleanUp()
+	err = cluster.CleanUp(cleanupSql)
 	if err != nil {
 		log.Fatalf("Cleanup failed: %v", err)
 	}

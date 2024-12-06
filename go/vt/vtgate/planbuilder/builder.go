@@ -207,7 +207,14 @@ func createInstructionFor(query string, stmt sqlparser.Statement, reservedVars *
 		return newPlanResult(engine.NewRowsPrimitive(nil, nil)), nil
 	case *sqlparser.CreateWescaleFilter, *sqlparser.AlterWescaleFilter, *sqlparser.DropWescaleFilter, *sqlparser.ShowWescaleFilter,
 		*sqlparser.CreateWescaleCDC, *sqlparser.AlterWescaleCDC, *sqlparser.ShowWescaleCDC, *sqlparser.DropWescaleCDC:
-		return buildWescaleFilterPlan(query, vschema)
+		return buildSendPlan(query, vschema)
+	case *sqlparser.BranchCommand:
+		b, err := engine.BuildBranchPlan(stmt)
+		if err != nil {
+			return nil, err
+		}
+		return newPlanResult(b), nil
+
 	}
 
 	return nil, vterrors.VT13001(fmt.Sprintf("unexpected statement type: %T", stmt))

@@ -544,6 +544,20 @@ func (cached *BitXor) CachedSize(alloc bool) int64 {
 	}
 	return size
 }
+func (cached *BranchCommand) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(24)
+	}
+	// field Type string
+	size += hack.RuntimeAllocSize(int64(len(cached.Type)))
+	// field Params *vitess.io/vitess/go/vt/sqlparser.WithParams
+	size += cached.Params.CachedSize(true)
+	return size
+}
 func (cached *CallProc) CachedSize(alloc bool) int64 {
 	if cached == nil {
 		return int64(0)
@@ -4389,6 +4403,30 @@ func (cached *With) CachedSize(alloc bool) int64 {
 		size += hack.RuntimeAllocSize(int64(cap(cached.ctes)) * int64(8))
 		for _, elem := range cached.ctes {
 			size += elem.CachedSize(true)
+		}
+	}
+	return size
+}
+func (cached *WithParams) CachedSize(alloc bool) int64 {
+	if cached == nil {
+		return int64(0)
+	}
+	size := int64(0)
+	if alloc {
+		size += int64(48)
+	}
+	// field Keys []string
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Keys)) * int64(16))
+		for _, elem := range cached.Keys {
+			size += hack.RuntimeAllocSize(int64(len(elem)))
+		}
+	}
+	// field Values []string
+	{
+		size += hack.RuntimeAllocSize(int64(cap(cached.Values)) * int64(16))
+		for _, elem := range cached.Values {
+			size += hack.RuntimeAllocSize(int64(len(elem)))
 		}
 	}
 	return size

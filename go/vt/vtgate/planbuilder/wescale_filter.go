@@ -8,7 +8,7 @@ import (
 	"vitess.io/vitess/go/vt/vtgate/planbuilder/plancontext"
 )
 
-func buildWescaleFilterPlan(query string, vschema plancontext.VSchema) (*planResult, error) {
+func buildSendPlan(query string, vschema plancontext.VSchema) (*planResult, error) {
 	dest, ks, _, err := vschema.TargetDestination(global.DefaultKeyspace)
 	if err != nil {
 		return nil, err

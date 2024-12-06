@@ -7,13 +7,14 @@ import (
 	"github.com/wesql/wescale/endtoend/framework"
 )
 
+// RegisterFlagsForSingleNodeCluster : Register flags for the single node cluster, allowing the user to override the default values
 func (s *SingleNodeCluster) RegisterFlagsForSingleNodeCluster() {
-	flag.StringVar(&s.mysqlHost, fmt.Sprintf("%s_mysqlHost", s.ClusterName), s.mysqlHost, "Host of the MySQL server")
-	flag.IntVar(&s.mysqlPort, fmt.Sprintf("%s_mysqlPort", s.ClusterName), s.mysqlPort, "Port of the MySQL server")
-	flag.StringVar(&s.mysqlUser, fmt.Sprintf("%s_mysqlUser", s.ClusterName), s.mysqlUser, "User for the MySQL server")
-	flag.StringVar(&s.mysqlPasswd, fmt.Sprintf("%s_mysqlPasswd", s.ClusterName), s.mysqlPasswd, "Password for the MySQL server")
+	flag.StringVar(&s.MysqlHost, fmt.Sprintf("%s_mysqlHost", s.ClusterName), s.MysqlHost, "Host of the MySQL server")
+	flag.IntVar(&s.MysqlPort, fmt.Sprintf("%s_mysqlPort", s.ClusterName), s.MysqlPort, "Port of the MySQL server")
+	flag.StringVar(&s.MysqlUser, fmt.Sprintf("%s_mysqlUser", s.ClusterName), s.MysqlUser, "User for the MySQL server")
+	flag.StringVar(&s.MysqlPasswd, fmt.Sprintf("%s_mysqlPasswd", s.ClusterName), s.MysqlPasswd, "Password for the MySQL server")
 
-	flag.StringVar(&s.wescaleHost, fmt.Sprintf("%s_wescaleHost", s.ClusterName), s.wescaleHost, "Host of the WeScale server")
+	flag.StringVar(&s.WescaleHost, fmt.Sprintf("%s_wescaleHost", s.ClusterName), s.WescaleHost, "Host of the WeScale server")
 	flag.IntVar(&s.wescalePort, fmt.Sprintf("%s_wescalePort", s.ClusterName), s.wescalePort, "Port of the WeScale server")
 	flag.StringVar(&s.wescaleUser, fmt.Sprintf("%s_wescaleUser", s.ClusterName), s.wescaleUser, "User for the WeScale server")
 	flag.StringVar(&s.wescalePasswd, fmt.Sprintf("%s_wescalePasswd", s.ClusterName), s.wescalePasswd, "Password for the WeScale server")
@@ -22,12 +23,12 @@ func (s *SingleNodeCluster) RegisterFlagsForSingleNodeCluster() {
 type SingleNodeCluster struct {
 	ClusterName string
 
-	mysqlHost   string
-	mysqlPort   int
-	mysqlUser   string
-	mysqlPasswd string
+	MysqlHost   string
+	MysqlPort   int
+	MysqlUser   string
+	MysqlPasswd string
 
-	wescaleHost   string
+	WescaleHost   string
 	wescalePort   int
 	wescaleUser   string
 	wescalePasswd string
@@ -41,7 +42,7 @@ type SingleNodeCluster struct {
 }
 
 func NewDefaultSingleNodeCluster() *SingleNodeCluster {
-	return newCustomSingleNodeCluster(
+	return NewCustomSingleNodeCluster(
 		"default",
 		"127.0.0.1",
 		3306,
@@ -54,16 +55,16 @@ func NewDefaultSingleNodeCluster() *SingleNodeCluster {
 	)
 }
 
-func newCustomSingleNodeCluster(clusterName string,
+func NewCustomSingleNodeCluster(clusterName string,
 	mysqlHost string, mysqlPort int, mysqlUser string, mysqlPasswd string,
 	wescaleHost string, wescalePort int, wescaleUser string, wescalePasswd string) *SingleNodeCluster {
 	s := &SingleNodeCluster{
 		ClusterName:   clusterName,
-		mysqlHost:     mysqlHost,
-		mysqlPort:     mysqlPort,
-		mysqlUser:     mysqlUser,
-		mysqlPasswd:   mysqlPasswd,
-		wescaleHost:   wescaleHost,
+		MysqlHost:     mysqlHost,
+		MysqlPort:     mysqlPort,
+		MysqlUser:     mysqlUser,
+		MysqlPasswd:   mysqlPasswd,
+		WescaleHost:   wescaleHost,
 		wescalePort:   wescalePort,
 		wescaleUser:   wescaleUser,
 		wescalePasswd: wescalePasswd,
@@ -75,9 +76,9 @@ func newCustomSingleNodeCluster(clusterName string,
 // dbName can be an empty string if no database is needed.
 // setupScript can be an empty string if no setup script is needed.
 // cleanupScript can be an empty string if no cleanup script is needed.
-func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScript string) error {
+func (s *SingleNodeCluster) SetUp(dbName string, setupScript string) error {
 	// Create the database
-	db, err := framework.NewMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, "")
+	db, err := framework.NewMysqlConnectionPool(s.WescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, "")
 	if err != nil {
 		return err
 	}
@@ -90,11 +91,11 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 	}
 
 	// Create the connection pools
-	mysqlDb, err := framework.NewMysqlConnectionPool(s.mysqlHost, s.mysqlPort, s.mysqlUser, s.mysqlPasswd, dbName)
+	mysqlDb, err := framework.NewMysqlConnectionPool(s.MysqlHost, s.MysqlPort, s.MysqlUser, s.MysqlPasswd, dbName)
 	if err != nil {
 		return err
 	}
-	wescaleDb, err := framework.NewMysqlConnectionPool(s.wescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, dbName)
+	wescaleDb, err := framework.NewMysqlConnectionPool(s.WescaleHost, s.wescalePort, s.wescaleUser, s.wescalePasswd, dbName)
 	if err != nil {
 		return err
 	}
@@ -109,13 +110,13 @@ func (s *SingleNodeCluster) SetUp(dbName string, setupScript string, cleanupScri
 
 	s.DbName = dbName
 	s.SetUpScript = setupScript
-	s.CleanupScript = cleanupScript
 	s.MysqlDb = mysqlDb
 	s.WescaleDb = wescaleDb
 	return nil
 }
 
-func (s *SingleNodeCluster) CleanUp() error {
+func (s *SingleNodeCluster) CleanUp(cleanupScript string) error {
+	s.CleanupScript = cleanupScript
 	// Execute Clean Up Script
 	if s.CleanupScript != "" {
 		err := framework.ExecuteSqlScript(s.WescaleDb, s.CleanupScript)

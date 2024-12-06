@@ -1,4 +1,4 @@
-name: "New EndToEnd Test"
+name: "New EndToEnd Test For Branch"
 
 on:
   pull_request:
@@ -36,9 +36,10 @@ jobs:
       want_load: true
       want_artifact: true
       artifact_name: 'image.tar'
+      enable_failpoint: true
 
   setup:
-    name: "New EndToEnd Test"
+    name: "New EndToEnd Test For Branch"
     needs: build-image
     runs-on: ubuntu-latest
 
@@ -83,6 +84,7 @@ jobs:
           
           docker network create wescale-network
           
+          # target cluster
           docker run -itd --network wescale-network --name mysql-server \
           -p 3306:3306 \
           -e MYSQL_ROOT_PASSWORD=passwd \
@@ -107,11 +109,38 @@ jobs:
           -e CONFIG_PATH=/vt/config/wescale/default \
           $WESCALE_CI_IMAGE \
           /vt/examples/wesql-server/init_single_node_cluster.sh
+          
+          # source cluster
+          docker run -itd --network wescale-network --name mysql-server3307 \
+          -p 3307:3307 \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_ROOT_HOST=% \
+          -e MYSQL_LOG_CONSOLE=true \
+          $MYSQL_IMG \
+          --bind-address=0.0.0.0 \
+          --port=3307 \
+          --log-bin=binlog \
+          --gtid_mode=ON \
+          --enforce_gtid_consistency=ON \
+          --log_replica_updates=ON \
+          --binlog_format=ROW
+          
+          docker run -itd --network wescale-network --name wescale15307 \
+          -p 15307:15307 \
+          -w /vt/examples/wesql-server \
+          -e MYSQL_ROOT_USER=root \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_PORT=3307 \
+          -e MYSQL_HOST=mysql-server3307 \
+          -e VTGATE_MYSQL_PORT=15307 \
+          -e CONFIG_PATH=/vt/config/wescale/default \
+          $WESCALE_CI_IMAGE \
+          /vt/examples/wesql-server/init_single_node_cluster.sh
 
       - name: Wait for MySQL ports
         run: |
           timeout=300  # 5 minutes timeout
-          ports=(3306 15306)
+          ports=(3306 3307 15306 15307)
           
           for port in "${ports[@]}"; do
             echo "Waiting for MySQL port $port..."
@@ -134,7 +163,7 @@ jobs:
       - name: Run EndToEnd test
         run: |
           cd endtoend
-          go test ./wasm -v
+          go test ./branch -v --source_host_to_target=wescale15307
 
       - name: Print Wescale logs
         run: |
