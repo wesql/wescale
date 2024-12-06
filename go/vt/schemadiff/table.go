@@ -34,6 +34,11 @@ import (
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
+type charsetCollate struct {
+	charset string
+	collate string
+}
+
 type AlterTableEntityDiff struct {
 	from       *CreateTableEntity
 	to         *CreateTableEntity
@@ -354,7 +359,7 @@ func defaultCharset() string {
 	return collation.Charset().Name()
 }
 
-func defaultCharsetCollation(charset string) string {
+func defaultCharsetForCollation(charset string) string {
 	collation := collationEnv.DefaultCollationForCharset(charset)
 	if collation == nil {
 		return ""
@@ -373,7 +378,7 @@ func (c *CreateTableEntity) normalizeColumnOptions() {
 			tableCollation = option.String
 		}
 	}
-	defaultCollation := defaultCharsetCollation(tableCharset)
+	defaultCollation := defaultCharsetForCollation(tableCharset)
 	if tableCollation == "" {
 		tableCollation = defaultCollation
 	}
@@ -733,17 +738,30 @@ func (c *CreateTableEntity) TableDiff(other *CreateTableEntity, hints *DiffHints
 	var parentAlterTableEntityDiff *AlterTableEntityDiff
 	var partitionSpecs []*sqlparser.PartitionSpec
 	var superfluousFulltextKeys []*sqlparser.AddIndexDefinition
+
+	t1Options := c.CreateTable.TableSpec.Options
+	t2Options := other.CreateTable.TableSpec.Options
+
+	t1cc := getTableCharsetCollate(&t1Options)
+	t2cc := getTableCharsetCollate(&t2Options)
 	{
-		t1Options := c.CreateTable.TableSpec.Options
-		t2Options := other.CreateTable.TableSpec.Options
-		diffedTableCharset = c.diffTableCharset(t1Options, t2Options)
+
+		// todo, collate?
+		diffedTableCharset = ""
+		if t1cc.charset != t2cc.charset {
+			diffedTableCharset = t2cc.charset
+		}
+		//diffedTableCharset = c.diffTableCharset(t1Options, t2Options)
 	}
 	{
 		// diff columns
 		// ordered columns for both tables:
 		t1Columns := c.CreateTable.TableSpec.Columns
 		t2Columns := other.CreateTable.TableSpec.Columns
-		c.diffColumns(alterTable, t1Columns, t2Columns, hints, diffedTableCharset != "")
+		err := c.diffColumns(alterTable, t1Columns, t2Columns, hints, diffedTableCharset != "", t1cc, t2cc)
+		if err != nil {
+			return nil, err
+		}
 	}
 	{
 		// diff keys
@@ -825,6 +843,22 @@ func (c *CreateTableEntity) TableDiff(other *CreateTableEntity, hints *DiffHints
 		}
 	}
 	return parentAlterTableEntityDiff, nil
+}
+
+func getTableCharsetCollate(tableOptions *sqlparser.TableOptions) *charsetCollate {
+	cc := &charsetCollate{
+		charset: collationEnv.LookupCharsetName(collations.ID(int16(collationEnv.DefaultConnectionCharset()))),
+		collate: collationEnv.LookupByID(collations.ID(int16(collationEnv.DefaultConnectionCharset()))).Name(),
+	}
+	for _, option := range *tableOptions {
+		if strings.EqualFold(option.Name, "charset") {
+			cc.charset = option.String
+		}
+		if strings.EqualFold(option.Name, "collate") {
+			cc.collate = option.String
+		}
+	}
+	return cc
 }
 
 func (c *CreateTableEntity) diffTableCharset(
@@ -1433,7 +1467,9 @@ func (c *CreateTableEntity) diffColumns(alterTable *sqlparser.AlterTable,
 	t2Columns []*sqlparser.ColumnDefinition,
 	hints *DiffHints,
 	tableCharsetChanged bool,
-) {
+	t1cc *charsetCollate,
+	t2cc *charsetCollate,
+) error {
 	getColumnsMap := func(cols []*sqlparser.ColumnDefinition) map[string]*columnDetails {
 		var prevCol *columnDetails
 		m := map[string]*columnDetails{}
@@ -1491,11 +1527,14 @@ func (c *CreateTableEntity) diffColumns(alterTable *sqlparser.AlterTable,
 		t2ColName := t2Col.Name.Lowered()
 		// we know that column exists in both tables
 		t1Col := t1ColumnsMap[t2ColName]
-		t1ColEntity := NewColumnDefinitionEntity(t1Col.col)
-		t2ColEntity := NewColumnDefinitionEntity(t2Col)
+		t1ColEntity := NewColumnDefinitionEntity(t1Col.col, t1cc)
+		t2ColEntity := NewColumnDefinitionEntity(t2Col, t2cc)
 
 		// check diff between before/after columns:
-		modifyColumnDiff := t1ColEntity.ColumnDiff(t2ColEntity, hints)
+		modifyColumnDiff, err := t1ColEntity.ColumnDiff(t2ColEntity, hints)
+		if err != nil {
+			return err
+		}
 		if modifyColumnDiff == nil {
 			// even if there's no apparent change, there can still be implicit changes
 			// it is possible that the table charset is changed. the column may be some col1 TEXT NOT NULL, possibly in both varsions 1 and 2,
@@ -1562,6 +1601,7 @@ func (c *CreateTableEntity) diffColumns(alterTable *sqlparser.AlterTable,
 	for _, c := range addColumns {
 		alterTable.AlterOptions = append(alterTable.AlterOptions, c)
 	}
+	return nil
 }
 
 func heuristicallyDetectColumnRenames(

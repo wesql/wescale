@@ -77,6 +77,9 @@ docker rm -f mysql-server wescale
 docker network rm wescale-network
 ```
 
+## Community
+Join our [Discord](https://discord.com/channels/1308609231498510427/1308609231498510430) to discuss features, get help, and connect with other users.
+
 # Features
 * [Declarative-DDL.md](doc%2Ftoturial%2F14-Declarative-DDL.md)
 * [OnlineDDL.md](doc%2Ftoturial%2F07-OnlineDDL.md)
