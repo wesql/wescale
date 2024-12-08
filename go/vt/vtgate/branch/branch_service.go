@@ -100,7 +100,10 @@ func (meta *BranchMeta) Validate() error {
 		return fmt.Errorf("branch invalid Status: %s", meta.Status)
 	}
 
-	// todo enhancement: TargetDBPattern
+	if err := ValidateTargetDatabasePattern(meta.TargetDBPattern); err != nil {
+		return fmt.Errorf("branch target db pattern %s is invalid, %v", meta.TargetDBPattern, err)
+	}
+
 	return nil
 }
 
@@ -148,7 +151,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	}
 
 	if meta.Status == StatusFetched {
-		err := bs.targetMySQLService.ApplySnapshot(meta.Name)
+		err := bs.targetMySQLService.ApplySnapshot(meta.Name, meta.TargetDBPattern)
 		if err != nil {
 			return err
 		}

@@ -149,3 +149,54 @@ func TestAddIfNotExistsForCreateTableSQL(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateTargetName(t *testing.T) {
+	tests := []struct {
+		sourceDBName          string
+		targetDatabasePattern string
+		expected              string
+	}{
+		{"example_db", "target_{source_db_name}_db", "target_example_db_db"},
+		{"dev_db", "dev_{source_db_name}_database", "dev_dev_db_database"},
+		{"prod", "{source_db_name}_production", "prod_production"},
+	}
+
+	for _, test := range tests {
+		result := GenerateTargetName(test.sourceDBName, test.targetDatabasePattern)
+		if result != test.expected {
+			t.Errorf("GenerateTargetName(%q, %q) = %q; expected %q", test.sourceDBName, test.targetDatabasePattern, result, test.expected)
+		}
+	}
+}
+
+func TestGenerateSourceName(t *testing.T) {
+	tests := []struct {
+		targetDBName          string
+		targetDatabasePattern string
+		expected              string
+		expectError           bool
+	}{
+		{"target_example_db_db", "target_{source_db_name}_db", "example_db", false},
+		{"dev_dev_db_database", "dev_{source_db_name}_database", "dev_db", false},
+		{"prod_production", "{source_db_name}_production", "prod", false},
+		{"invalid_name", "target_{source_db_name}_db", "", true},   // Should return an error
+		{"target_wrong_db", "other_{source_db_name}_db", "", true}, // Should return an error
+		{"target_source_db", "target_{source_db_name}_db", "source", false},
+		{"target_db", "target_{source_db_name}_db", "", true},
+	}
+
+	for _, test := range tests {
+		result, err := GenerateSourceName(test.targetDBName, test.targetDatabasePattern)
+		if test.expectError {
+			if err == nil {
+				t.Errorf("Expected error for GenerateSourceName(%q, %q), but got none", test.targetDBName, test.targetDatabasePattern)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("Error for GenerateSourceName(%q, %q): %v", test.targetDBName, test.targetDatabasePattern, err)
+			} else if result != test.expected {
+				t.Errorf("GenerateSourceName(%q, %q) = %q; expected %q", test.targetDBName, test.targetDatabasePattern, result, test.expected)
+			}
+		}
+	}
+}

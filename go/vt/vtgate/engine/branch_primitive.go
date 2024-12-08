@@ -327,6 +327,8 @@ func (bcp *BranchCreateParams) setValues(params map[string]string) error {
 	if v, ok := params[BranchCreateParamsTargetDBPattern]; ok {
 		bcp.TargetDBPattern = v
 		delete(params, BranchCreateParamsTargetDBPattern)
+	} else {
+		bcp.TargetDBPattern = branch.SourceDBNamePlaceHolder
 	}
 
 	return checkRedundantParams(params)
@@ -353,11 +355,14 @@ func (bcp *BranchCreateParams) validate() error {
 		return fmt.Errorf("branch create: include databases is required")
 	}
 
+	if err := branch.ValidateTargetDatabasePattern(bcp.TargetDBPattern); err != nil {
+		return fmt.Errorf("branch create: target db pattern %s is invalid, %v", bcp.TargetDBPattern, err)
+	}
+
 	return nil
 }
 
-// todo complete me
-// todo output type
+// todo enhancement: output type
 func (bdp *BranchDiffParams) setValues(params map[string]string) error {
 	if v, ok := params[BranchDiffParamsCompareObjects]; ok {
 		bdp.CompareObjects = v
@@ -369,8 +374,7 @@ func (bdp *BranchDiffParams) setValues(params map[string]string) error {
 	return checkRedundantParams(params)
 }
 
-// todo complete me
-// todo output type
+// todo enhancement: output type
 func (bdp *BranchDiffParams) validate() error {
 	switch branch.BranchDiffObjectsFlag(bdp.CompareObjects) {
 	case branch.FromSourceToTarget, branch.FromTargetToSource,

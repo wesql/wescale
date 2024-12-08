@@ -13,9 +13,14 @@ type BranchMeta struct {
 	IncludeDatabases []string
 	ExcludeDatabases []string
 	// others
-	TargetDBPattern string // todo enhancement: so that we can test branch in single mysql instance
+	TargetDBPattern string // todo complete me
 	Status          BranchStatus
 }
+
+const (
+	// SourceDBNamePlaceHolder used in target db pattern
+	SourceDBNamePlaceHolder = "{source_db_name}"
+)
 
 type BranchStatus string
 

@@ -53,7 +53,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 //
 // Returns:
 // - error: Returns nil on success, error otherwise
-func (t *TargetMySQLService) ApplySnapshot(name string) error {
+func (t *TargetMySQLService) ApplySnapshot(name, targetDBPattern string) error {
 	failpoint.Inject(failpointkey.BranchApplySnapshotError.Name, func() {
 		failpoint.Return(fmt.Errorf("error applying snapshot by failpoint"))
 	})
@@ -74,7 +74,7 @@ func (t *TargetMySQLService) ApplySnapshot(name string) error {
 	}
 
 	// apply schema to target
-	err = t.createDatabaseAndTables(snapshot)
+	err = t.createDatabaseAndTables(snapshot, targetDBPattern)
 	if err != nil {
 		return err
 	}
@@ -82,11 +82,59 @@ func (t *TargetMySQLService) ApplySnapshot(name string) error {
 	return nil
 }
 
-/**********************************************************************************************************************/
-
 func (t *TargetMySQLService) GetMysqlService() *MysqlService {
 	return t.mysqlService
 }
+
+func ValidateTargetDatabasePattern(targetDatabasePattern string) error {
+	if strings.Count(targetDatabasePattern, SourceDBNamePlaceHolder) != 1 {
+		return fmt.Errorf("target database pattern must contain exactly one %s placeholder", SourceDBNamePlaceHolder)
+	}
+	return nil
+}
+
+// GenerateTargetName generates the target database name based on the source database name
+// and the target database pattern.
+func GenerateTargetName(sourceDBName string, targetDatabasePattern string) string {
+	// Replace the {source_db_name} placeholder with the actual source database name
+	targetDBName := strings.ReplaceAll(targetDatabasePattern, "{source_db_name}", sourceDBName)
+	return targetDBName
+}
+
+// GenerateSourceName extracts the source database name from the target database name
+// according to the given target database pattern.
+func GenerateSourceName(targetDBName string, targetDatabasePattern string) (string, error) {
+	// Get the length of the source pattern
+	placeHolderLen := len(SourceDBNamePlaceHolder)
+
+	// Find the index of the source pattern in the target database pattern
+	start := strings.Index(targetDatabasePattern, SourceDBNamePlaceHolder)
+	if start == -1 {
+		return "", fmt.Errorf("target database pattern does not contain {source_db_name}")
+	}
+
+	patternBeforePlaceHolder := targetDatabasePattern[:start]
+	patternAfterPlaceHolder := targetDatabasePattern[start+placeHolderLen:]
+
+	// Verify that the target database name matches the expected length for the pattern
+	if len(targetDBName)-len(patternAfterPlaceHolder) < 0 || len(targetDBName)-len(patternAfterPlaceHolder) <= len(patternBeforePlaceHolder) {
+		return "", fmt.Errorf("target database name is too short for given pattern")
+	}
+
+	// Check the beginning and end of the target name against the expected pattern
+	before := targetDBName[:len(patternBeforePlaceHolder)]
+	after := targetDBName[len(targetDBName)-len(patternAfterPlaceHolder):]
+
+	if before != patternBeforePlaceHolder || after != patternAfterPlaceHolder {
+		return "", fmt.Errorf("target database name does not match the expected pattern")
+	}
+
+	sourceDBName := targetDBName[len(patternBeforePlaceHolder) : len(targetDBName)-len(patternAfterPlaceHolder)]
+
+	return sourceDBName, nil
+}
+
+/**********************************************************************************************************************/
 
 func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 	selectSnapshotSQL := GetSelectSnapshotSQL(name)
@@ -258,7 +306,7 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	return databases, nil
 }
 
-func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
+func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema, targetDBPattern string) error {
 	for database, tables := range branchSchema.branchSchema {
 		// create database
 		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
