@@ -58,9 +58,27 @@ func CheckTableExists(t *testing.T, db *sql.DB, schema string, table string) boo
 	return false
 }
 
+// CheckColumnExists checks if a specific column exists in a given table.
 func CheckColumnExists(t *testing.T, db *sql.DB, schema, table, column string) bool {
 	t.Helper()
 	query := fmt.Sprintf(`SELECT COUNT(1) FROM information_schema.columns WHERE table_schema = '%s' AND table_name = '%s' AND column_name = '%s'`, schema, table, column)
+
+	rows := QueryNoError(t, db, query)
+	defer rows.Close()
+
+	var count int
+	if rows.Next() {
+		err := rows.Scan(&count)
+		assert.NoError(t, err)
+	}
+
+	return count > 0
+}
+
+// CheckDatabaseExists checks if a specific database exists in the MySQL server.
+func CheckDatabaseExists(t *testing.T, db *sql.DB, databaseName string) bool {
+	t.Helper()
+	query := fmt.Sprintf(`SELECT COUNT(1) FROM information_schema.schemata WHERE schema_name = '%s'`, databaseName)
 
 	rows := QueryNoError(t, db, query)
 	defer rows.Close()

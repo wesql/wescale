@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/wesql/wescale/endtoend/framework"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -78,10 +79,12 @@ func sourcePrepare() {
 		"DROP DATABASE IF EXISTS test_db1;",
 		"DROP DATABASE IF EXISTS test_db2;",
 		"DROP DATABASE IF EXISTS test_db3;",
+		"DROP DATABASE IF EXISTS test_db4;",
 
 		"CREATE DATABASE test_db1;",
 		"CREATE DATABASE test_db2;",
 		"CREATE DATABASE test_db3;",
+		"CREATE DATABASE test_db4;",
 
 		`CREATE TABLE test_db1.users (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -106,6 +109,11 @@ func sourcePrepare() {
         category VARCHAR(50),
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );`,
+
+		`CREATE TABLE test_db4.student (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(200) NOT NULL
+    );`,
 	}
 	for _, statement := range sqlStatements {
 		_, err := sourceCluster.WescaleDb.Exec(statement)
@@ -120,6 +128,8 @@ func sourceClean() {
 		"DROP DATABASE IF EXISTS test_db1;",
 		"DROP DATABASE IF EXISTS test_db2;",
 		"DROP DATABASE IF EXISTS test_db3;",
+		"DROP DATABASE IF EXISTS test_db4;",
+		"DROP DATABASE IF EXISTS target_db",
 	}
 	for _, statement := range sqlStatements {
 		_, err := sourceCluster.WescaleDb.Exec(statement)
@@ -134,8 +144,11 @@ func targetPrepare() {
 		"DROP DATABASE IF EXISTS test_db1;",
 		"DROP DATABASE IF EXISTS test_db2;",
 		"DROP DATABASE IF EXISTS test_db3;",
+		"DROP DATABASE IF EXISTS test_db4;",
+		"DROP DATABASE IF EXISTS target_db;",
 
 		"CREATE DATABASE test_db3;",
+		"CREATE DATABASE target_db",
 
 		`CREATE TABLE test_db3.target_products (
         product_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -144,6 +157,11 @@ func targetPrepare() {
         stock_quantity INT,
         category VARCHAR(50),
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );`,
+
+		`CREATE TABLE target_db.target_new_table (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        col1 VARCHAR(200) NOT NULL
     );`,
 	}
 	for _, statement := range sqlStatements {
@@ -159,6 +177,8 @@ func targetClean() {
 		"DROP DATABASE IF EXISTS test_db1;",
 		"DROP DATABASE IF EXISTS test_db2;",
 		"DROP DATABASE IF EXISTS test_db3;",
+		"DROP DATABASE IF EXISTS test_db4;",
+		"DROP DATABASE IF EXISTS target_db",
 	}
 	for _, statement := range sqlStatements {
 		_, err := targetCluster.WescaleDb.Exec(statement)
@@ -213,21 +233,109 @@ func getBranchMergeBackCMD() string {
 	return fmt.Sprintf(`Branch merge_back;`)
 }
 
+func getBranchShowCMD(showOption string) string {
+	return fmt.Sprintf(`Branch show with ('show_option'='%s');`, showOption)
+}
+
 func printBranchDiff(rows *sql.Rows) {
 	fmt.Printf("---------------------- start printing branch diff ----------------------\n")
 	for rows.Next() {
 		var (
+			name      string
 			database  string
 			tableName string
 			ddl       string
 		)
-		err := rows.Scan(&database, &tableName, &ddl)
+		err := rows.Scan(&name, &database, &tableName, &ddl)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("Database: %s, Table: %s, DDL: %s\n", database, tableName, ddl)
+		fmt.Printf("Branch Name: %s, Database: %s, Table: %s, DDL: %s\n", name, database, tableName, ddl)
 	}
 	fmt.Printf("---------------------- print branch diff end ----------------------\n")
+}
+
+func branchDiffContains(rows *sql.Rows, name, database string, tableName string, ddl string) bool {
+	for rows.Next() {
+		var (
+			nameTmp      string
+			databaseTmp  string
+			tableNameTmp string
+			ddlTmp       string
+		)
+		err := rows.Scan(&nameTmp, &databaseTmp, &tableNameTmp, &ddlTmp)
+		if err != nil {
+			panic(err)
+		}
+		if nameTmp == name && databaseTmp == database && tableNameTmp == tableName && ddlTmp == ddl {
+			return true
+		}
+	}
+	return false
+}
+
+func printBranchShowStatus(rows *sql.Rows) {
+	fmt.Printf("---------------------- start printing branch show status ----------------------\n")
+	for rows.Next() {
+		var (
+			name             string
+			status           string
+			sourceHost       string
+			sourcePort       int
+			sourceUser       string
+			includeDatabases string
+			excludeDatabases string
+		)
+		err := rows.Scan(&name, &status, &sourceHost, &sourcePort, &sourceUser, &includeDatabases, &excludeDatabases)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Branch Name: %s, Status: %s, Source Host: %s, Source Port: %d, Source User: %s, Include Databases: %s, Exclude Databases: %s\n",
+			name, status, sourceHost, sourcePort, sourceUser, includeDatabases, excludeDatabases)
+	}
+	fmt.Printf("---------------------- print branch show status end ----------------------\n")
+}
+
+func printBranchShowSnapshot(rows *sql.Rows) {
+	fmt.Printf("---------------------- start printing branch show snapshot ----------------------\n")
+	for rows.Next() {
+		var (
+			id              int
+			name            string
+			database        string
+			table           string
+			createTableSQL  string
+			updateTimestamp string
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
+			panic(err)
+		}
+		fmt.Printf("Snapshot ID: %d, Branch Name: %s, Database: %s, Table: %s, CreateTableSQL: %s, UpdateTimestamp: %s\n",
+			id, name, database, table, createTableSQL, updateTimestamp)
+	}
+	fmt.Printf("---------------------- print branch show snapshot end ----------------------\n")
+}
+
+func printBranchShowMergeBackDDL(rows *sql.Rows) {
+	fmt.Printf("---------------------- start printing branch show merge back ddl ----------------------\n")
+	for rows.Next() {
+		var (
+			id       int
+			name     string
+			database string
+			table    string
+			ddl      string
+			merged   bool
+		)
+
+		if err := rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
+			panic(err)
+		}
+		fmt.Printf("Merge Back DDL ID: %d, Branch Name: %s, Database: %s, Table: %s, DDL: %s, Merged or not: %s\n",
+			id, name, database, table, ddl, strconv.FormatBool(merged))
+	}
+	fmt.Printf("---------------------- print branch show merge back ddl end ----------------------\n")
 }
 
 func TestBranchBasic(t *testing.T) {
@@ -262,16 +370,37 @@ func TestBranchBasic(t *testing.T) {
 	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
 	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
 
+	framework.ExecNoError(t, targetCluster.WescaleDb, "DROP DATABASE IF EXISTS test_db4")
+	assert.Equal(t, false, framework.CheckDatabaseExists(t, targetCluster.WescaleDb, "test_db4"))
+
 	// branch diff
 	diffCMD := getBranchDiffCMD("source_target")
 	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
 	defer rows.Close()
 	printBranchDiff(rows)
+	branchDiffContains(rows, "my_branch", "target_db", "", "CREATE DATABASE IF NOT EXISTS target_db")
+	branchDiffContains(rows, "mt_branch", "test_db4", "", "DROP DATABASE IF EXISTS test_db4")
 
 	// branch prepare merge back
 	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
 	defer rows2.Close()
 	printBranchDiff(rows2)
+
+	// branch show
+	showStatus := "branch show;"
+	rowsStatus := framework.QueryNoError(t, targetCluster.WescaleDb, showStatus)
+	defer rowsStatus.Close()
+	printBranchShowStatus(rowsStatus)
+
+	showSnapshot := getBranchShowCMD("snapshot")
+	rowsSnapshot := framework.QueryNoError(t, targetCluster.WescaleDb, showSnapshot)
+	defer rowsSnapshot.Close()
+	printBranchShowSnapshot(rowsSnapshot)
+
+	showMergeBackDDL := getBranchShowCMD("merge_back_ddl")
+	rowsMergeBackDDL := framework.QueryNoError(t, targetCluster.WescaleDb, showMergeBackDDL)
+	defer rowsMergeBackDDL.Close()
+	printBranchShowMergeBackDDL(rowsMergeBackDDL)
 
 	// branch merge
 	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
@@ -290,93 +419,95 @@ func TestBranchBasic(t *testing.T) {
 	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
 	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
 
+	assert.Equal(t, false, framework.CheckDatabaseExists(t, sourceCluster.WescaleDb, "test_db4"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "target_db", "target_new_table"))
 }
 
-//func TestBranchBasicWithFailPoint(t *testing.T) {
-//	testSourceAndTargetClusterConnection(t)
-//	sourcePrepare()
-//	targetPrepare()
-//
-//	// defer cleanup
-//	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchCleanUpCMD())
-//	defer sourceClean()
-//	defer targetClean()
-//
-//	// create branch
-//	createCMD := getBranchCreateCMD(sourceHostToTarget, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
-//	expectBranchStatus(t, "my_branch", "init")
-//
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError")
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
-//	expectBranchStatus(t, "my_branch", "fetched")
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError")
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
-//	expectBranchStatus(t, "my_branch", "created")
-//
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
-//	// the test_db3 will be skipped when branch creating
-//	assert.Equal(t, false, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products"))
-//
-//	// change schema
-//	framework.ExecNoError(t, sourceCluster.WescaleDb, "ALTER TABLE test_db3.source_products ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "source_products", "description"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db3.target_products ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db3", "target_products", "description"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db1.users DROP COLUMN created_at;")
-//	assert.Equal(t, false, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db1", "users", "created_at"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
-//
-//	// branch diff
-//	diffCMD := getBranchDiffCMD("source_target")
-//	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
-//	defer rows.Close()
-//	printBranchDiff(rows)
-//
-//	// branch prepare merge back
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchPrepareMergeBackCMD())
-//	expectBranchStatus(t, "my_branch", "preparing")
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError")
-//
-//	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
-//	defer rows2.Close()
-//	printBranchDiff(rows2)
-//	expectBranchStatus(t, "my_branch", "prepared")
-//
-//	// branch merge
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchMergeBackCMD())
-//	expectBranchStatus(t, "my_branch", "merging")
-//
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError")
-//	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
-//	expectBranchStatus(t, "my_branch", "merged")
-//
-//	// no diff
-//	rows3 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchDiffCMD("source_target"))
-//	defer rows3.Close()
-//	assert.Equal(t, false, rows3.Next())
-//
-//	// check schema
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "target_products"))
-//	assert.Equal(t, false, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "source_products"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db1", "users"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db2", "orders"))
-//
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
-//
-//}
+func TestBranchBasicWithFailPoint(t *testing.T) {
+	testSourceAndTargetClusterConnection(t)
+	sourcePrepare()
+	targetPrepare()
+
+	// defer cleanup
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchCleanUpCMD())
+	defer sourceClean()
+	defer targetClean()
+
+	// create branch
+	createCMD := getBranchCreateCMD(sourceHostToTarget, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
+	expectBranchStatus(t, "my_branch", "init")
+
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError")
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
+	expectBranchStatus(t, "my_branch", "fetched")
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError")
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
+	expectBranchStatus(t, "my_branch", "created")
+
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
+	// the test_db3 will be skipped when branch creating
+	assert.Equal(t, false, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products"))
+
+	// change schema
+	framework.ExecNoError(t, sourceCluster.WescaleDb, "ALTER TABLE test_db3.source_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "source_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db3.target_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db3", "target_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db1.users DROP COLUMN created_at;")
+	assert.Equal(t, false, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db1", "users", "created_at"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
+
+	// branch diff
+	diffCMD := getBranchDiffCMD("source_target")
+	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
+	defer rows.Close()
+	printBranchDiff(rows)
+
+	// branch prepare merge back
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchPrepareMergeBackCMD())
+	expectBranchStatus(t, "my_branch", "preparing")
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError")
+
+	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
+	defer rows2.Close()
+	printBranchDiff(rows2)
+	expectBranchStatus(t, "my_branch", "prepared")
+
+	// branch merge
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchMergeBackCMD())
+	expectBranchStatus(t, "my_branch", "merging")
+
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError")
+	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
+	expectBranchStatus(t, "my_branch", "merged")
+
+	// no diff
+	rows3 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchDiffCMD("source_target"))
+	defer rows3.Close()
+	assert.Equal(t, false, rows3.Next())
+
+	// check schema
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "target_products"))
+	assert.Equal(t, false, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db2", "orders"))
+
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
+
+}
 
 func expectBranchStatus(t *testing.T, name, expectStatus string) {
 	rows := framework.QueryNoError(t, targetCluster.WescaleDb, fmt.Sprintf("select status from mysql.branch where name = '%s'", name))
@@ -387,7 +518,3 @@ func expectBranchStatus(t *testing.T, name, expectStatus string) {
 	assert.Nil(t, err)
 	assert.Equal(t, expectStatus, actualStatus)
 }
-
-// todo test database add and drop
-
-// todo test local

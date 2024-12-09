@@ -493,7 +493,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	return buildBranchDiffResult(diff), nil
+	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
 func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
@@ -513,7 +513,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	return buildBranchDiffResult(diff), nil
+	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
 func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
@@ -578,20 +578,20 @@ func getBranchDataStruct(name string) (*branch.BranchMeta, *branch.BranchService
 	return meta, bs, sourceHandler, targetHandler, nil
 }
 
-func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
-	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
+func buildBranchDiffResult(name string, diff *branch.BranchDiff) *sqltypes.Result {
+	fields := sqltypes.BuildVarCharFields("branch name", "database", "table", "ddl")
 	rows := make([][]sqltypes.Value, 0)
 	for db, dbDiff := range diff.Diffs {
 		if dbDiff.NeedDropDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("drop database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("drop database `%s`", db)))
 			continue
 		}
 		if dbDiff.NeedCreateDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("create database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("create database `%s`", db)))
 		}
 		for table, tableDiffs := range dbDiff.TableDDLs {
 			for _, tableDiff := range tableDiffs {
-				rows = append(rows, sqltypes.BuildVarCharRow(db, table, tableDiff))
+				rows = append(rows, sqltypes.BuildVarCharRow(name, db, table, tableDiff))
 			}
 		}
 	}
@@ -636,7 +636,7 @@ func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQ
 		if merged {
 			mergedStr = "true"
 		}
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, ddl, mergedStr))
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, ddl, mergedStr))
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
@@ -668,7 +668,7 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, createTableSQL, updateTimestamp))
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
