@@ -173,12 +173,16 @@ func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *Bran
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.Diffs {
 		if databaseDiff.NeedDropDatabase {
-			insertSQLs = append(insertSQLs, fmt.Sprintf("DROP DATABASE IF EXISTS %s", database))
+			ddl := fmt.Sprintf("DROP DATABASE IF EXISTS %s", database)
+			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			insertSQLs = append(insertSQLs, sql)
 			continue
 		}
 
 		if databaseDiff.NeedCreateDatabase {
-			insertSQLs = append(insertSQLs, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+			ddl := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database)
+			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			insertSQLs = append(insertSQLs, sql)
 		}
 
 		for tableName, ddls := range databaseDiff.TableDDLs {
@@ -421,6 +425,10 @@ func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
 
 func getSelectUnmergedDDLSQL(name string) string {
 	return fmt.Sprintf(SelectBranchUnmergedDDLSQL, name)
+}
+
+func getSelectUnmergedDBDDLSQL(name string) string {
+	return fmt.Sprintf(SelectBranchUnmergedDBDDLSQL, name)
 }
 
 func GetSelectMergeBackDDLSQL(name string) string {

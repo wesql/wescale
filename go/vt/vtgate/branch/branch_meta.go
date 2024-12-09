@@ -133,6 +133,8 @@ const (
 
 	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false order by id"
 
+	SelectBranchUnmergedDBDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and `table` = '' order by id"
+
 	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_patch where Name='%s' order by id"
 
 	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (`Name`, `database`, `table`, `ddl`, `merged`) values ('%s', '%s', '%s', '%s', false)"

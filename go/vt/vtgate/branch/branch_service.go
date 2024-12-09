@@ -1,6 +1,7 @@
 package branch
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/pingcap/failpoint"
 	"strings"
@@ -344,7 +345,7 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 
 	// select and execute merge back ddl one by one
 	// todo enhancement: track whether the current ddl to apply has finished or is executing
-	err = bs.executeMergeBackDDLOneByOne(name)
+	err = bs.executeMergeBackDDL(name)
 	if err != nil {
 		return err
 	}
@@ -375,14 +376,32 @@ func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
 	return false
 }
 
-func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
-	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)
-
-	rows, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
+func (bs *BranchService) executeMergeBackDDL(name string) error {
+	// create or drop database first
+	selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLSQL(name)
+	rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
+	err = bs.executeMergeBackDDLOneByOne(rows)
+	if err != nil {
+		return err
+	}
+
+	// then, execute table ddl
+	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)
+
+	rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
+	if err != nil {
+		return err
+	}
+	defer rows2.Close()
+	return bs.executeMergeBackDDLOneByOne(rows2)
+}
+
+// caller should close rows
+func (bs *BranchService) executeMergeBackDDLOneByOne(rows *sql.Rows) error {
 	for rows.Next() {
 		var (
 			id       int
@@ -392,14 +411,20 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 			ddl      string
 			merged   bool
 		)
-
-		if err := rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
+		var err error
+		if err = rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
 			return fmt.Errorf("failed to scan row: %v", err)
 		}
-		// todo enhancement: track whether the current ddl to apply has finished or is executing
-		_, err = bs.sourceMySQLService.mysqlService.Exec(database, ddl)
+
+		if table == "" {
+			// create or drop database ddl
+			_, err = bs.sourceMySQLService.mysqlService.Exec("", ddl)
+		} else {
+			// todo enhancement: track whether the current ddl to apply has finished or is executing
+			_, err = bs.sourceMySQLService.mysqlService.Exec(database, ddl)
+		}
 		if err != nil {
-			return fmt.Errorf("failed to execute ddl: %v", err)
+			return fmt.Errorf("failed to execute ddl %v: %v", ddl, err)
 		}
 		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
 		_, err = bs.targetMySQLService.mysqlService.Exec("", updateDDLMergedSQL)
