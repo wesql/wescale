@@ -97,7 +97,7 @@ func ValidateTargetDatabasePattern(targetDatabasePattern string) error {
 // and the target database pattern.
 func GenerateTargetName(sourceDBName string, targetDatabasePattern string) string {
 	// Replace the {source_db_name} placeholder with the actual source database name
-	targetDBName := strings.ReplaceAll(targetDatabasePattern, "{source_db_name}", sourceDBName)
+	targetDBName := strings.ReplaceAll(targetDatabasePattern, SourceDBNamePlaceHolder, sourceDBName)
 	return targetDBName
 }
 
@@ -309,14 +309,15 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema, targetDBPattern string) error {
 	for database, tables := range branchSchema.branchSchema {
 		// create database
-		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
+		targetDBName := GenerateTargetName(database, targetDBPattern)
+		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", targetDBName))
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %v", database, err)
 		}
 
 		// create tables
 		createTableStmts := addIfNotExistsForCreateTableSQL(tables)
-		err = t.createTables(database, createTableStmts)
+		err = t.createTables(targetDBName, createTableStmts)
 		if err != nil {
 			return err
 		}

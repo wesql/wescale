@@ -156,9 +156,10 @@ func TestGenerateTargetName(t *testing.T) {
 		targetDatabasePattern string
 		expected              string
 	}{
-		{"example_db", "target_{source_db_name}_db", "target_example_db_db"},
-		{"dev_db", "dev_{source_db_name}_database", "dev_dev_db_database"},
-		{"prod", "{source_db_name}_production", "prod_production"},
+		{"example_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "target_example_db_db"},
+		{"dev_db", fmt.Sprintf("dev_%s_database", SourceDBNamePlaceHolder), "dev_dev_db_database"},
+		{"prod", fmt.Sprintf("%s_production", SourceDBNamePlaceHolder), "prod_production"},
+		{"test", fmt.Sprintf("%s", SourceDBNamePlaceHolder), "test"},
 	}
 
 	for _, test := range tests {
@@ -176,13 +177,13 @@ func TestGenerateSourceName(t *testing.T) {
 		expected              string
 		expectError           bool
 	}{
-		{"target_example_db_db", "target_{source_db_name}_db", "example_db", false},
-		{"dev_dev_db_database", "dev_{source_db_name}_database", "dev_db", false},
-		{"prod_production", "{source_db_name}_production", "prod", false},
-		{"invalid_name", "target_{source_db_name}_db", "", true},   // Should return an error
-		{"target_wrong_db", "other_{source_db_name}_db", "", true}, // Should return an error
-		{"target_source_db", "target_{source_db_name}_db", "source", false},
-		{"target_db", "target_{source_db_name}_db", "", true},
+		{"target_example_db_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "example_db", false},
+		{"dev_dev_db_database", fmt.Sprintf("dev_%s_database", SourceDBNamePlaceHolder), "dev_db", false},
+		{"prod_production", fmt.Sprintf("%s_production", SourceDBNamePlaceHolder), "prod", false},
+		{"invalid_name", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "", true},   // Should return an error
+		{"target_wrong_db", fmt.Sprintf("other_%s_db", SourceDBNamePlaceHolder), "", true}, // Should return an error
+		{"target_source_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "source", false},
+		{"target_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "", true},
 	}
 
 	for _, test := range tests {
