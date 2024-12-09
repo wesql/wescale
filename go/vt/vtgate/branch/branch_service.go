@@ -25,7 +25,7 @@ func NewBranchService(sourceHandler *SourceMySQLService, targetHandler *TargetMy
 }
 
 func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePassword,
-	includeDBs, excludeDBs, targetDBPattern string) (*BranchMeta, error) {
+	includeDBs, excludeDBs string) (*BranchMeta, error) {
 
 	var includeDatabases []string
 	if includeDBs == "" {
@@ -58,7 +58,6 @@ func NewBranchMeta(name, sourceHost string, sourcePort int, sourceUser, sourcePa
 		SourcePassword:   sourcePassword,
 		IncludeDatabases: includeDatabases,
 		ExcludeDatabases: excludeDatabases,
-		TargetDBPattern:  targetDBPattern,
 		Status:           StatusInit,
 	}
 
@@ -98,10 +97,6 @@ func (meta *BranchMeta) Validate() error {
 	case StatusInit, StatusFetched, StatusCreated, StatusPreparing, StatusPrepared, StatusMerging, StatusMerged:
 	default:
 		return fmt.Errorf("branch invalid Status: %s", meta.Status)
-	}
-
-	if err := ValidateTargetDatabasePattern(meta.TargetDBPattern); err != nil {
-		return fmt.Errorf("branch target db pattern %s is invalid, %v", meta.TargetDBPattern, err)
 	}
 
 	return nil
@@ -151,7 +146,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 	}
 
 	if meta.Status == StatusFetched {
-		err := bs.targetMySQLService.ApplySnapshot(meta.Name, meta.TargetDBPattern)
+		err := bs.targetMySQLService.ApplySnapshot(meta.Name)
 		if err != nil {
 			return err
 		}
@@ -187,7 +182,7 @@ func (bs *BranchService) BranchCreate(branchMeta *BranchMeta) error {
 // - *BranchDiff: Contains the calculated schema differences
 // - error: Returns nil on success, error on invalid flag or retrieval failure
 // todo enhancement: filter schemas about table gc and online DDL shadow tables
-func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, targetDBPattern string, branchDiffObjectsFlag BranchDiffObjectsFlag, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDatabases []string, branchDiffObjectsFlag BranchDiffObjectsFlag, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	switch branchDiffObjectsFlag {
 	case FromSourceToTarget, FromTargetToSource:
 		// get source schema from source mysql
@@ -200,12 +195,6 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 		if err != nil {
 			return nil, err
 		}
-		// modify target schema db name to source db name
-		targetSchema, err = modifyBranchSchemaDBNameToSourceDBName(targetSchema, targetDBPattern)
-		if err != nil {
-			return nil, err
-		}
-
 		// return diff
 		if branchDiffObjectsFlag == FromSourceToTarget {
 			return getBranchSchemaDiff(sourceSchema, targetSchema, hints)
@@ -215,11 +204,6 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 	case FromTargetToSnapshot, FromSnapshotToTarget:
 		// get target schema from target mysql
 		targetSchema, err := bs.targetMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
-		// modify target schema db name to source db name
-		targetSchema, err = modifyBranchSchemaDBNameToSourceDBName(targetSchema, targetDBPattern)
-		if err != nil {
-			return nil, err
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +262,7 @@ func (bs *BranchService) BranchDiff(name string, includeDatabases, excludeDataba
 // Returns:
 // - BranchDiff: The calculated DDL operations required for the merge-back.
 // - error: An error if any step of the process fails.
-func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, targetDBPattern string, mergeOption MergeBackOption, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus, includeDatabases, excludeDatabases []string, mergeOption MergeBackOption, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	if mergeOption != MergeOverride && mergeOption != MergeDiff {
 		return nil, fmt.Errorf("%v is invalid merge option, should be one of %v or %v", mergeOption, MergeOverride, MergeDiff)
 	}
@@ -303,12 +287,12 @@ func (bs *BranchService) BranchPrepareMergeBack(name string, status BranchStatus
 	// calculate ddl based on merge option
 	ddls := &BranchDiff{}
 	if mergeOption == MergeOverride {
-		ddls, err = bs.getMergeBackOverrideDDLs(name, includeDatabases, excludeDatabases, targetDBPattern, hints)
+		ddls, err = bs.getMergeBackOverrideDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return nil, err
 		}
 	} else if mergeOption == MergeDiff {
-		ddls, err = bs.getMergeBackMergeDiffDDLs(name, includeDatabases, excludeDatabases, targetDBPattern, hints)
+		ddls, err = bs.getMergeBackMergeDiffDDLs(name, includeDatabases, excludeDatabases, hints)
 		if err != nil {
 			return nil, err
 		}
@@ -382,23 +366,6 @@ func (t *TargetMySQLService) BranchCleanUp(name string) error {
 
 /**********************************************************************************************************************/
 
-func modifyBranchSchemaDBNameToSourceDBName(branchSchema *BranchSchema, targetDBNamePattern string) (*BranchSchema, error) {
-	if targetDBNamePattern == SourceDBNamePlaceHolder {
-		return branchSchema, nil
-	}
-	rst := &BranchSchema{
-		branchSchema: make(map[string]map[string]string),
-	}
-	for targetDBName, dbSchema := range branchSchema.branchSchema {
-		sourceDBName, err := GenerateSourceName(targetDBName, targetDBNamePattern)
-		if err != nil {
-			return nil, err
-		}
-		rst.branchSchema[sourceDBName] = dbSchema
-	}
-	return rst, nil
-}
-
 func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
 	for _, s := range statuses {
 		if status == s {
@@ -447,11 +414,11 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(name string) error {
 	return nil
 }
 
-func (bs *BranchService) getMergeBackOverrideDDLs(name string, includeDatabases, excludeDatabases []string, targetDBPattern string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
-	return bs.BranchDiff(name, includeDatabases, excludeDatabases, targetDBPattern, FromSourceToTarget, hints)
+func (bs *BranchService) getMergeBackOverrideDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+	return bs.BranchDiff(name, includeDatabases, excludeDatabases, FromSourceToTarget, hints)
 }
 
-func (bs *BranchService) getMergeBackMergeDiffDDLs(name string, includeDatabases, excludeDatabases []string, targetDBPattern string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
+func (bs *BranchService) getMergeBackMergeDiffDDLs(name string, includeDatabases, excludeDatabases []string, hints *schemadiff.DiffHints) (*BranchDiff, error) {
 	sourceSchema, err := bs.sourceMySQLService.GetBranchSchema(includeDatabases, excludeDatabases)
 	if err != nil {
 		return nil, err
@@ -460,12 +427,6 @@ func (bs *BranchService) getMergeBackMergeDiffDDLs(name string, includeDatabases
 	if err != nil {
 		return nil, err
 	}
-	// modify target schema db name to source db name
-	targetSchema, err = modifyBranchSchemaDBNameToSourceDBName(targetSchema, targetDBPattern)
-	if err != nil {
-		return nil, err
-	}
-
 	snapshot, err := bs.targetMySQLService.getSnapshot(name)
 	if err != nil {
 		return nil, err

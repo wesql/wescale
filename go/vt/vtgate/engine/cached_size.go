@@ -85,7 +85,7 @@ func (cached *BranchCreateParams) CachedSize(alloc bool) int64 {
 	}
 	size := int64(0)
 	if alloc {
-		size += int64(112)
+		size += int64(96)
 	}
 	// field SourceHost string
 	size += hack.RuntimeAllocSize(int64(len(cached.SourceHost)))
@@ -99,8 +99,6 @@ func (cached *BranchCreateParams) CachedSize(alloc bool) int64 {
 	size += hack.RuntimeAllocSize(int64(len(cached.Include)))
 	// field Exclude string
 	size += hack.RuntimeAllocSize(int64(len(cached.Exclude)))
-	// field TargetDBPattern string
-	size += hack.RuntimeAllocSize(int64(len(cached.TargetDBPattern)))
 	return size
 }
 func (cached *BranchDiffParams) CachedSize(alloc bool) int64 {

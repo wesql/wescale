@@ -56,23 +56,21 @@ const (
 )
 
 const (
-	BranchCreateParamsSourceHost      = "source_host"
-	BranchCreateParamsSourcePort      = "source_port"
-	BranchCreateParamsSourceUser      = "source_user"
-	BranchCreateParamsSourcePassword  = "source_password"
-	BranchCreateParamsInclude         = "include_databases"
-	BranchCreateParamsExclude         = "exclude_databases"
-	BranchCreateParamsTargetDBPattern = "target_db_pattern"
+	BranchCreateParamsSourceHost     = "source_host"
+	BranchCreateParamsSourcePort     = "source_port"
+	BranchCreateParamsSourceUser     = "source_user"
+	BranchCreateParamsSourcePassword = "source_password"
+	BranchCreateParamsInclude        = "include_databases"
+	BranchCreateParamsExclude        = "exclude_databases"
 )
 
 type BranchCreateParams struct {
-	SourceHost      string
-	SourcePort      string
-	SourceUser      string
-	SourcePassword  string
-	Include         string
-	Exclude         string
-	TargetDBPattern string
+	SourceHost     string
+	SourcePort     string
+	SourceUser     string
+	SourcePassword string
+	Include        string
+	Exclude        string
 }
 
 const (
@@ -324,13 +322,6 @@ func (bcp *BranchCreateParams) setValues(params map[string]string) error {
 		delete(params, BranchCreateParamsSourcePassword)
 	}
 
-	if v, ok := params[BranchCreateParamsTargetDBPattern]; ok {
-		bcp.TargetDBPattern = v
-		delete(params, BranchCreateParamsTargetDBPattern)
-	} else {
-		bcp.TargetDBPattern = branch.SourceDBNamePlaceHolder
-	}
-
 	return checkRedundantParams(params)
 }
 
@@ -353,10 +344,6 @@ func (bcp *BranchCreateParams) validate() error {
 
 	if bcp.Include == "" {
 		return fmt.Errorf("branch create: include databases is required")
-	}
-
-	if err := branch.ValidateTargetDatabasePattern(bcp.TargetDBPattern); err != nil {
-		return fmt.Errorf("branch create: target db pattern %s is invalid, %v", bcp.TargetDBPattern, err)
 	}
 
 	return nil
@@ -470,7 +457,7 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude, createParams.TargetDBPattern)
+	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude)
 	if err != nil {
 		return nil, err
 	}
@@ -612,11 +599,11 @@ func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
 }
 
 func buildMetaResult(meta *branch.BranchMeta) (*sqltypes.Result, error) {
-	fields := sqltypes.BuildVarCharFields("name", "status", "source host", "source port", "source user", "include", "exclude", "target db pattern")
+	fields := sqltypes.BuildVarCharFields("name", "status", "source host", "source port", "source user", "include", "exclude")
 	rows := make([][]sqltypes.Value, 0)
 	include := strings.Join(meta.IncludeDatabases, ",")
 	exclude := strings.Join(meta.ExcludeDatabases, ",")
-	rows = append(rows, sqltypes.BuildVarCharRow(meta.Name, string(meta.Status), meta.SourceHost, string(rune(meta.SourcePort)), meta.SourceUser, include, exclude, meta.TargetDBPattern))
+	rows = append(rows, sqltypes.BuildVarCharRow(meta.Name, string(meta.Status), meta.SourceHost, strconv.Itoa(meta.SourcePort), meta.SourceUser, include, exclude))
 
 	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
 }
@@ -664,23 +651,24 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 	}
 	defer rows.Close()
 
-	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table")
+	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table", "update time")
 	resultRows := make([][]sqltypes.Value, 0)
 
 	for rows.Next() {
 		var (
-			id             int
-			name           string
-			database       string
-			table          string
-			createTableSQL string
+			id              int
+			name            string
+			database        string
+			table           string
+			createTableSQL  string
+			updateTimestamp string
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, createTableSQL))
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, createTableSQL, updateTimestamp))
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil

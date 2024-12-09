@@ -53,7 +53,7 @@ func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *B
 //
 // Returns:
 // - error: Returns nil on success, error otherwise
-func (t *TargetMySQLService) ApplySnapshot(name, targetDBPattern string) error {
+func (t *TargetMySQLService) ApplySnapshot(name string) error {
 	failpoint.Inject(failpointkey.BranchApplySnapshotError.Name, func() {
 		failpoint.Return(fmt.Errorf("error applying snapshot by failpoint"))
 	})
@@ -74,7 +74,7 @@ func (t *TargetMySQLService) ApplySnapshot(name, targetDBPattern string) error {
 	}
 
 	// apply schema to target
-	err = t.createDatabaseAndTables(snapshot, targetDBPattern)
+	err = t.createDatabaseAndTables(snapshot)
 	if err != nil {
 		return err
 	}
@@ -84,54 +84,6 @@ func (t *TargetMySQLService) ApplySnapshot(name, targetDBPattern string) error {
 
 func (t *TargetMySQLService) GetMysqlService() *MysqlService {
 	return t.mysqlService
-}
-
-func ValidateTargetDatabasePattern(targetDatabasePattern string) error {
-	if strings.Count(targetDatabasePattern, SourceDBNamePlaceHolder) != 1 {
-		return fmt.Errorf("target database pattern must contain exactly one %s placeholder", SourceDBNamePlaceHolder)
-	}
-	return nil
-}
-
-// GenerateTargetName generates the target database name based on the source database name
-// and the target database pattern.
-func GenerateTargetName(sourceDBName string, targetDatabasePattern string) string {
-	// Replace the {source_db_name} placeholder with the actual source database name
-	targetDBName := strings.ReplaceAll(targetDatabasePattern, SourceDBNamePlaceHolder, sourceDBName)
-	return targetDBName
-}
-
-// GenerateSourceName extracts the source database name from the target database name
-// according to the given target database pattern.
-func GenerateSourceName(targetDBName string, targetDatabasePattern string) (string, error) {
-	// Get the length of the source pattern
-	placeHolderLen := len(SourceDBNamePlaceHolder)
-
-	// Find the index of the source pattern in the target database pattern
-	start := strings.Index(targetDatabasePattern, SourceDBNamePlaceHolder)
-	if start == -1 {
-		return "", fmt.Errorf("target database pattern does not contain {source_db_name}")
-	}
-
-	patternBeforePlaceHolder := targetDatabasePattern[:start]
-	patternAfterPlaceHolder := targetDatabasePattern[start+placeHolderLen:]
-
-	// Verify that the target database name matches the expected length for the pattern
-	if len(targetDBName)-len(patternAfterPlaceHolder) < 0 || len(targetDBName)-len(patternAfterPlaceHolder) <= len(patternBeforePlaceHolder) {
-		return "", fmt.Errorf("target database name is too short for given pattern")
-	}
-
-	// Check the beginning and end of the target name against the expected pattern
-	before := targetDBName[:len(patternBeforePlaceHolder)]
-	after := targetDBName[len(targetDBName)-len(patternAfterPlaceHolder):]
-
-	if before != patternBeforePlaceHolder || after != patternAfterPlaceHolder {
-		return "", fmt.Errorf("target database name does not match the expected pattern")
-	}
-
-	sourceDBName := targetDBName[len(patternBeforePlaceHolder) : len(targetDBName)-len(patternAfterPlaceHolder)]
-
-	return sourceDBName, nil
 }
 
 /**********************************************************************************************************************/
@@ -306,18 +258,17 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	return databases, nil
 }
 
-func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema, targetDBPattern string) error {
+func (t *TargetMySQLService) createDatabaseAndTables(branchSchema *BranchSchema) error {
 	for database, tables := range branchSchema.branchSchema {
 		// create database
-		targetDBName := GenerateTargetName(database, targetDBPattern)
-		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", targetDBName))
+		_, err := t.mysqlService.Exec("", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database))
 		if err != nil {
 			return fmt.Errorf("failed to create database '%s': %v", database, err)
 		}
 
 		// create tables
 		createTableStmts := addIfNotExistsForCreateTableSQL(tables)
-		err = t.createTables(targetDBName, createTableStmts)
+		err = t.createTables(database, createTableStmts)
 		if err != nil {
 			return err
 		}
@@ -343,7 +294,7 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, err
+		return nil, fmt.Errorf("branch not found: %s", name)
 	}
 
 	var meta BranchMeta
@@ -360,7 +311,6 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 		&includeDBs,
 		&excludeDBs,
 		&status,
-		&meta.TargetDBPattern,
 	)
 	if err != nil {
 		return nil, err
@@ -420,8 +370,7 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.Status),
-		branchMeta.TargetDBPattern)
+		string(branchMeta.Status))
 }
 
 func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
@@ -435,8 +384,7 @@ func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.Status),
-		branchMeta.TargetDBPattern)
+		string(branchMeta.Status))
 }
 
 func getUpdateBranchStatusSQL(name string, status BranchStatus) string {

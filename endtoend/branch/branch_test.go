@@ -387,3 +387,7 @@ func expectBranchStatus(t *testing.T, name, expectStatus string) {
 	assert.Nil(t, err)
 	assert.Equal(t, expectStatus, actualStatus)
 }
+
+// todo test database add and drop
+
+// todo test local

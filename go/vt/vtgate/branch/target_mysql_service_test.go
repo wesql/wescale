@@ -46,10 +46,6 @@ func compareBranchMetas(first, second *BranchMeta) bool {
 		fmt.Printf("SourcePassword different: first=%s, second=%s\n", first.SourcePassword, second.SourcePassword)
 		return false
 	}
-	if first.TargetDBPattern != second.TargetDBPattern {
-		fmt.Printf("TargetDBPattern different: first=%s, second=%s\n", first.TargetDBPattern, second.TargetDBPattern)
-		return false
-	}
 	if first.Status != second.Status {
 		fmt.Printf("Status different: first=%s, second=%s\n", first.Status, second.Status)
 		return false
@@ -147,57 +143,5 @@ func TestAddIfNotExistsForCreateTableSQL(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestGenerateTargetName(t *testing.T) {
-	tests := []struct {
-		sourceDBName          string
-		targetDatabasePattern string
-		expected              string
-	}{
-		{"example_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "target_example_db_db"},
-		{"dev_db", fmt.Sprintf("dev_%s_database", SourceDBNamePlaceHolder), "dev_dev_db_database"},
-		{"prod", fmt.Sprintf("%s_production", SourceDBNamePlaceHolder), "prod_production"},
-		{"test", fmt.Sprintf("%s", SourceDBNamePlaceHolder), "test"},
-	}
-
-	for _, test := range tests {
-		result := GenerateTargetName(test.sourceDBName, test.targetDatabasePattern)
-		if result != test.expected {
-			t.Errorf("GenerateTargetName(%q, %q) = %q; expected %q", test.sourceDBName, test.targetDatabasePattern, result, test.expected)
-		}
-	}
-}
-
-func TestGenerateSourceName(t *testing.T) {
-	tests := []struct {
-		targetDBName          string
-		targetDatabasePattern string
-		expected              string
-		expectError           bool
-	}{
-		{"target_example_db_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "example_db", false},
-		{"dev_dev_db_database", fmt.Sprintf("dev_%s_database", SourceDBNamePlaceHolder), "dev_db", false},
-		{"prod_production", fmt.Sprintf("%s_production", SourceDBNamePlaceHolder), "prod", false},
-		{"invalid_name", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "", true},   // Should return an error
-		{"target_wrong_db", fmt.Sprintf("other_%s_db", SourceDBNamePlaceHolder), "", true}, // Should return an error
-		{"target_source_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "source", false},
-		{"target_db", fmt.Sprintf("target_%s_db", SourceDBNamePlaceHolder), "", true},
-	}
-
-	for _, test := range tests {
-		result, err := GenerateSourceName(test.targetDBName, test.targetDatabasePattern)
-		if test.expectError {
-			if err == nil {
-				t.Errorf("Expected error for GenerateSourceName(%q, %q), but got none", test.targetDBName, test.targetDatabasePattern)
-			}
-		} else {
-			if err != nil {
-				t.Errorf("Error for GenerateSourceName(%q, %q): %v", test.targetDBName, test.targetDatabasePattern, err)
-			} else if result != test.expected {
-				t.Errorf("GenerateSourceName(%q, %q) = %q; expected %q", test.targetDBName, test.targetDatabasePattern, result, test.expected)
-			}
-		}
 	}
 }
