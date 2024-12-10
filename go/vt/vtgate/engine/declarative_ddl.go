@@ -63,7 +63,7 @@ var configInStr = HintsInStr{
 }
 
 // not all options are supported to configure
-func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
+func registerDeclarativeDDLDiffHintsFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&configInStr.AutoIncrementStrategy, "declarative_ddl_hints_auto_increment_strategy", configInStr.AutoIncrementStrategy, "auto increment strategy")
 	fs.StringVar(&configInStr.RangeRotationStrategy, "declarative_ddl_hints_range_rotation_strategy", configInStr.RangeRotationStrategy, "range rotation strategy")
 	fs.StringVar(&configInStr.ConstraintNamesStrategy, "declarative_ddl_hints_constraint_names_strategy", configInStr.ConstraintNamesStrategy, "constraint names strategy")
@@ -74,7 +74,7 @@ func registerPoolSizeControllerConfigTypeFlags(fs *pflag.FlagSet) {
 }
 
 func init() {
-	servenv.OnParseFor("vtgate", registerPoolSizeControllerConfigTypeFlags)
+	servenv.OnParseFor("vtgate", registerDeclarativeDDLDiffHintsFlags)
 }
 
 // DeclarativeDDL is an operator to send schema diff DDL queries to the specific keyspace, tabletType and destination

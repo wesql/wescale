@@ -33,6 +33,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"vitess.io/vitess/go/internal/global"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
@@ -57,7 +58,6 @@ import (
 )
 
 var (
-	mysqlServerPort                   = -1
 	mysqlServerBindAddress            string
 	mysqlServerSocketPath             string
 	mysqlTCPVersion                   = "tcp"
@@ -85,7 +85,6 @@ var (
 )
 
 func registerPluginFlags(fs *pflag.FlagSet) {
-	fs.IntVar(&mysqlServerPort, "mysql_server_port", mysqlServerPort, "If set, also listen for MySQL binary protocol connections on this port.")
 	fs.StringVar(&mysqlServerBindAddress, "mysql_server_bind_address", mysqlServerBindAddress, "Binds on this address when listening to MySQL binary protocol. Useful to restrict listening to 'localhost' only for instance.")
 	fs.StringVar(&mysqlServerSocketPath, "mysql_server_socket_path", mysqlServerSocketPath, "This option specifies the Unix socket file to use when listening for local connections. By default it will be empty and it won't listen to a unix socket")
 	fs.StringVar(&mysqlTCPVersion, "mysql_tcp_version", mysqlTCPVersion, "Select tcp, tcp4, or tcp6 to control the socket type.")
@@ -464,7 +463,7 @@ func initTLSConfig(mysqlListener *mysql.Listener, mysqlSslCert, mysqlSslKey, mys
 // It should be called only once in a process.
 func initMySQLProtocol() {
 	// Flag is not set, just return.
-	if mysqlServerPort < 0 && mysqlServerSocketPath == "" {
+	if global.MysqlServerPort < 0 && mysqlServerSocketPath == "" {
 		return
 	}
 
@@ -494,10 +493,10 @@ func initMySQLProtocol() {
 	// Create a Listener.
 	var err error
 	vtgateHandle = newVtgateHandler(rpcVTGate)
-	if mysqlServerPort >= 0 {
+	if global.MysqlServerPort >= 0 {
 		mysqlListener, err = mysql.NewListener(
 			mysqlTCPVersion,
-			net.JoinHostPort(mysqlServerBindAddress, fmt.Sprintf("%v", mysqlServerPort)),
+			net.JoinHostPort(mysqlServerBindAddress, fmt.Sprintf("%v", global.MysqlServerPort)),
 			authServer,
 			vtgateHandle,
 			mysqlConnReadTimeout,

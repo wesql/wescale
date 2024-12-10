@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
+	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/schemadiff"
+	"vitess.io/vitess/go/vt/servenv"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/branch"
 )
@@ -26,15 +29,26 @@ const (
 	Show             BranchCommandType = "show"
 )
 
-// todo enhancement: add flags to config
-const (
-	DefaultBranchName = "my_branch"
-
+var (
+	DefaultBranchName           = "my_branch"
 	DefaultBranchTargetHost     = "127.0.0.1"
-	DefaultBranchTargetPort     = 15306
+	DefaultBranchTargetPort     = -1
 	DefaultBranchTargetUser     = "root"
 	DefaultBranchTargetPassword = "passwd"
 )
+
+func registerBranchFlags(fs *pflag.FlagSet) {
+	// todo add dynamic handler
+	fs.StringVar(&DefaultBranchName, "branch_default_name", DefaultBranchName, "default branch name")
+	fs.StringVar(&DefaultBranchTargetHost, "branch_default_target_host", DefaultBranchTargetHost, "default branch target host")
+	fs.IntVar(&DefaultBranchTargetPort, "branch_default_target_port", DefaultBranchTargetPort, "default branch target port")
+	fs.StringVar(&DefaultBranchTargetUser, "branch_default_target_user", DefaultBranchTargetUser, "default branch target user")
+	fs.StringVar(&DefaultBranchTargetPassword, "branch_default_target_password", DefaultBranchTargetPassword, "default branch target password")
+}
+
+func init() {
+	servenv.OnParseFor("vtgate", registerBranchFlags)
+}
 
 // Branch is an operator to deal with branch commands
 type Branch struct {
@@ -42,6 +56,11 @@ type Branch struct {
 	name        string
 	commandType BranchCommandType
 	params      branchParams
+
+	targetHost     string
+	targetPort     int
+	targetUser     string
+	targetPassword string
 
 	noInputs
 }
@@ -120,6 +139,16 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid branch command params: %w", err)
 	}
+
+	b.targetHost = DefaultBranchTargetHost
+	if DefaultBranchTargetPort == -1 {
+		b.targetPort = global.MysqlServerPort
+	} else {
+		b.targetPort = DefaultBranchTargetPort
+	}
+	b.targetUser = DefaultBranchTargetUser
+	b.targetPassword = DefaultBranchTargetPassword
+
 	return b, nil
 }
 
@@ -467,7 +496,7 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -482,7 +511,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("branch diff: invalid branch command params")
 	}
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +531,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
 	}
 
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -517,7 +546,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 }
 
 func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +555,7 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 
 func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +569,7 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 		return nil, fmt.Errorf("branch show: invalid branch command params")
 	}
 
-	meta, _, _, targetHandler, err := getBranchDataStruct(b.name)
+	meta, _, _, targetHandler, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -557,9 +586,9 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 	}
 }
 
-func getBranchDataStruct(name string) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
+func getBranchDataStruct(name string, targetUser, targetPassword, targetHost string, targetPort int) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(targetUser, targetPassword, targetHost, targetPort)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

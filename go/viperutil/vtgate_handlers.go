@@ -184,4 +184,35 @@ func RegisterReloadHandlersForVtGate(v *ViperConfig) {
 			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
 		}
 	})
+
+	// branch
+	v.ReloadHandler.AddReloadHandler("branch_default_name", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("branch_default_name", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("branch_default_target_host", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("branch_default_target_host", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("branch_default_target_port", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("branch_default_target_port", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("branch_default_target_user", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("branch_default_target_user", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
+
+	v.ReloadHandler.AddReloadHandler("branch_default_target_password", func(key string, value string, fs *pflag.FlagSet) {
+		if err := fs.Set("branch_default_target_password", value); err != nil {
+			log.Errorf("fail to reload config %s=%s, err: %v", key, value, err)
+		}
+	})
 }

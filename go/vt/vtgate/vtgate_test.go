@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"vitess.io/vitess/go/internal/global"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +69,7 @@ func init() {
 	transactionMode = "MULTI"
 	Init(context.Background(), hcVTGateTest, newSandboxForCells([]string{"aa"}), "aa", nil, querypb.ExecuteOptions_Gen4)
 
-	mysqlServerPort = 0
+	global.MysqlServerPort = 0
 	mysqlAuthServerImpl = "none"
 	initMySQLProtocol()
 }
