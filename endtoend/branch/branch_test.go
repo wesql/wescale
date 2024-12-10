@@ -213,8 +213,8 @@ func getBranchCreateCMD(
 	)
 }
 
-func getBranchCleanUpCMD() string {
-	return fmt.Sprintf(`Branch clean_up;`)
+func getBranchDeleteCMD() string {
+	return fmt.Sprintf(`Branch delete;`)
 }
 
 // default override
@@ -344,7 +344,7 @@ func TestBranchBasic(t *testing.T) {
 	targetPrepare()
 
 	// defer cleanup
-	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchCleanUpCMD())
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchDeleteCMD())
 	defer sourceClean()
 	defer targetClean()
 
@@ -429,7 +429,7 @@ func TestBranchBasicWithFailPoint(t *testing.T) {
 	targetPrepare()
 
 	// defer cleanup
-	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchCleanUpCMD())
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchDeleteCMD())
 	defer sourceClean()
 	defer targetClean()
 

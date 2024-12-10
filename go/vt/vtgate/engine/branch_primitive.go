@@ -22,7 +22,7 @@ const (
 	Diff             BranchCommandType = "diff"
 	MergeBack        BranchCommandType = "mergeBack"
 	PrepareMergeBack BranchCommandType = "prepareMergeBack"
-	Cleanup          BranchCommandType = "cleanUp"
+	BranchDelete     BranchCommandType = "delete"
 	Show             BranchCommandType = "show"
 )
 
@@ -134,7 +134,7 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 		return b.branchPrepareMergeBack()
 	case MergeBack:
 		return b.branchMergeBack()
-	case Cleanup:
+	case BranchDelete:
 		return b.branchCleanUp()
 	case Show:
 		return b.branchShow()
@@ -168,7 +168,7 @@ func (b *Branch) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars
 		if err != nil {
 			return err
 		}
-	case Cleanup:
+	case BranchDelete:
 		result, err = b.branchCleanUp()
 		if err != nil {
 			return err
@@ -229,8 +229,8 @@ func parseBranchCommandType(s string) (BranchCommandType, error) {
 		return MergeBack, nil
 	case string(PrepareMergeBack):
 		return PrepareMergeBack, nil
-	case string(Cleanup):
-		return Cleanup, nil
+	case string(BranchDelete):
+		return BranchDelete, nil
 	case string(Show):
 		return Show, nil
 	default:
@@ -256,7 +256,7 @@ func (b *Branch) setAndValidateParams(paramsMap map[string]string) error {
 		params = &BranchPrepareMergeBackParams{}
 	case Show:
 		params = &BranchShowParams{}
-	case MergeBack, Cleanup:
+	case MergeBack, BranchDelete:
 		return nil
 	default:
 		return fmt.Errorf("invalid branch command type: %s", b.commandType)
