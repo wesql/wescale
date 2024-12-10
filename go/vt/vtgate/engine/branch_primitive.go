@@ -7,11 +7,11 @@ import (
 	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
-	"vitess.io/vitess/go/internal/global"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/schemadiff"
 	"vitess.io/vitess/go/vt/servenv"
+	"vitess.io/vitess/go/vt/share"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/branch"
 )
@@ -142,7 +142,7 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 
 	b.targetHost = DefaultBranchTargetHost
 	if DefaultBranchTargetPort == -1 {
-		b.targetPort = global.MysqlServerPort
+		b.targetPort = share.GetMysqlServerPort()
 	} else {
 		b.targetPort = DefaultBranchTargetPort
 	}

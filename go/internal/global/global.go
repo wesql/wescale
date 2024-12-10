@@ -6,9 +6,7 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 package global
 
 import (
-	"github.com/spf13/pflag"
 	"time"
-	"vitess.io/vitess/go/vt/servenv"
 )
 
 // Keyspace
@@ -60,18 +58,3 @@ const (
 const (
 	TopoServerConfigOverwriteShard = true
 )
-
-// *****************************************************************************************************************************
-
-var (
-	MysqlServerPort = -1
-)
-
-func registerPluginFlags(fs *pflag.FlagSet) {
-	fs.IntVar(&MysqlServerPort, "mysql_server_port", MysqlServerPort, "If set, also listen for MySQL binary protocol connections on this port.")
-}
-
-func init() {
-	servenv.OnParseFor("vtgate", registerPluginFlags)
-	servenv.OnParseFor("vtcombo", registerPluginFlags)
-}
