@@ -1,603 +1,278 @@
----
-title: Branch
----
-
 # Branch
 
 ## Overview
 
-The Branch feature in WeSQL allows you to copy a database to current Wescale cluster or another Wescale cluster. This is particularly useful when you want to create a development database that mirrors your production environment. This guide explains how to use the Branch feature, including its commands and options.
+The Branch feature in WeSQL allows you to copy a database from one Wescale cluster (the **source**) to another Wescale cluster (the **target**). This functionality is particularly useful for creating a development database that mirrors your production environment. This guide provides clear instructions on how to use the Branch feature, including its commands and options.
+
+**Source** refers to the Wescale cluster from which schema is copied, while **Target** refers to the Wescale cluster where the schema will be copied to.
+
+---
 
 ## General Syntax
 
-The `Branch` command is an umbrella command with several subcommands (`actions`) that define specific operations within the workflow. Each action has its own options to control its behavior.
+The general syntax for Branch commands is as follows:
 
-```shell
-Branch -- <options> <action>
-
-action := [Prepare | Start | Stop | SchemaDiff | PrepareMergeBack | StartMergeBack | Cleanup ]
 ```
+Branch <Action> [with ('key1'='value1', 'key2'='value2', 'key3'='value3');]
+```
+
+Where the **Action** can be one of the following:
+- **create**
+- **diff**
+- **prepare_merge_back**
+- **merge_back**
+- **show**
+- **delete**
+
+---
 
 ## Actions Overview
 
-- **Prepare**: Initializes the branch workflow by copying the database schema from the source to the target database.
-- **Start**: Begins data streaming from the source to the target database.
-- **Stop**: Halts the data streaming process.
-- **SchemaDiff**: Displays differences between the source and target database schemas.
-- **PrepareMergeBack**: Prepares to merge schema changes from the target back to the source database.
-- **StartMergeBack**: Executes the merge of schema changes.
-- **Cleanup**: Cleans up the branch workflow
+- **create**: Initializes the branch workflow by copying the database schema from the source to the target database.
+- **diff**: Displays differences between the source and target database schemas.
+- **prepare_merge_back**: Prepares to merge schema changes from the target back to the source database.
+- **merge_back**: Executes the merge of schema changes.
+- **show**: Displays the branch metadata.
+- **delete**: Deletes the branch metadata.
 
-For a simple database copy, focus on the `Prepare`, `PrepareMergeBack`, `StartMergeBack`, and `Cleanup` commands.
+---
 
-## Step1: Example Scenario Setup
+## Prerequisites
 
-### Create Sample Tables
-We'll use a sample environment to demonstrate the Branch feature. Execute the following commands to create the source database and tables:
+### Create Cluster
 
-```sql
-CREATE DATABASE IF NOT EXISTS branch_source;
+Each branch corresponds to a MySQL instance. Therefore, you need two Wescale clusters: one acting as the source and the other as the target. You can start the two Wescale clusters with the following commands. If you already have a Wescale cluster running locally, you can just start a new one.
 
-USE branch_source;
-
-CREATE TABLE IF NOT EXISTS branch_source.user (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
-  ) ENGINE=InnoDB;
-  
-CREATE TABLE IF NOT EXISTS branch_source.customer (
-    customer_id BIGINT NOT NULL AUTO_INCREMENT,
-    email VARCHAR(128),
-    PRIMARY KEY(customer_id)
-  ) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS branch_source.product (
-    sku VARCHAR(128),
-    description VARCHAR(128),
-    price BIGINT,
-    PRIMARY KEY(sku)
-  ) ENGINE=InnoDB;
-  
-CREATE TABLE IF NOT EXISTS branch_source.corder (
-    order_id BIGINT NOT NULL AUTO_INCREMENT,
-    customer_id BIGINT,
-    sku VARCHAR(128),
-    price BIGINT,
-    PRIMARY KEY(order_id)
-  ) ENGINE=InnoDB;
-```
-
-### Insert Sample Data
-
-You can then insert some sample data into the tables:
-```sql
--- Insert data into user table (500 rows)
-INSERT INTO branch_source.user (name)
-SELECT CONCAT('user_', n)
-FROM (
-    SELECT ROW_NUMBER() OVER () AS n
-    FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) a
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) b
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) c
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d
-) AS numbers
-WHERE n <= 500;
-
--- Insert data into customer table (200 rows), linking to user table
-INSERT INTO branch_source.customer (email, customer_id)
-SELECT CONCAT('customer_', n, '@example.com'), n
-FROM (
-    SELECT ROW_NUMBER() OVER () AS n
-    FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) a
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) b
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) c
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d
-) AS numbers
-WHERE n <= 200;
-
--- Insert data into product table (1000 rows)
-INSERT INTO branch_source.product (sku, description, price)
-SELECT CONCAT('sku_', n), CONCAT('product_', n), FLOOR(RAND() * 1000 + 1) -- Random price between 1 and 1000
-FROM (
-    SELECT ROW_NUMBER() OVER () AS n
-    FROM (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) a
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) b
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) c
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) d
-    CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4) e
-) AS numbers
-WHERE n <= 1000;
-
--- Insert data into corder table (10000 rows), linking to customer and product tables
-INSERT INTO branch_source.corder (customer_id, sku, price)
-SELECT c.customer_id, p.sku, p.price
-FROM (
-    SELECT ROW_NUMBER() OVER () AS n, customer_id
-    FROM branch_source.customer
-    ORDER BY RAND() -- Randomly select customers
-) c
-JOIN (
-    SELECT ROW_NUMBER() OVER () AS n, sku, price
-    FROM branch_source.product
-    ORDER BY RAND() -- Randomly select products
-) p ON (c.n % 1000) + 1 = p.n  -- Ensure every product is ordered
-CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) a
-CROSS JOIN (SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) b
-WHERE c.n <= 10000;
-```
-
-With the tables and data in place, you can now proceed with the Branch feature, or try out the sample queries provided in the [Example Business Queries](#example-business-queries) section.
-
-### Prepare Branch Command Client
-
-We need to use `vtctlclient` to execute the `Branch` command.
-
-If you are using `kubernetes`, you can enter the `wesql-vtcontroller` Pod to run the `vtctlclient` command:
-```shell
-$ kubectl get po
-NAME                           READY   STATUS    RESTARTS      AGE
-mycluster-wesql-0-0            2/2     Running   0             25m
-mycluster-wesql-1-0            1/1     Running   1 (22m ago)   25m
-mycluster-wesql-2-0            1/1     Running   1 (22m ago)   25m
-wesql-vtcontroller-0           2/2     Running   0             25m
-wesql-vtgate-87f69955c-h62nx   1/1     Running   0             25m
-wesql-vtgate-87f69955c-t7lbg   1/1     Running   0             25m
-
-$ kubectl exec -it wesql-vtcontroller-0 -c vtctld -- sh
-/vt #    vtctlclient -v
-WeScale version: 0.3.7 (git revision cb93f4e1dacce0882dde6ec27ee409c011684034 branch 'HEAD') built on Tue Oct 22 03:40:00 UTC 2024 by root@buildkitsandbox using go1.20.2 linux/amd64
-```
-
-If you are using `docker`, you can enter the `wescale` container to run the `vtctlclient` command:
-```shell
-ubuntu $ docker exec -it wescale bash
-[root@3c089b5e14fc wesql-server]$
-[root@3c089b5e14fc wesql-server]$   vtctlclient -v
-WeScale version: 0.3.7 (git revision cb93f4e1dacce0882dde6ec27ee409c011684034 branch 'HEAD') built on Tue Oct 22 03:40:00 UTC 2024 by root@buildkitsandbox using go1.20.2 linux/amd64
-```
-
-## Step2: Create a Branch Workflow
-
-The `Prepare` action create a branch workflow by copying the schema from the source database to the target database.
-
-
-### Example
-Let's copy the schema from the `branch_source` database to the `branch_target` database.
-
-`skip_copy_phase=false` and `stop_after_copy=false` means that we'll copy both schema and data.
-
+Here, we will use the Wescale cluster on port **15306** as the source and another on port **15307** as the target.
 
 ```shell
-vtctlclient --server localhost:15999 Branch -- \
-  --source_database branch_source \
-  --target_database branch_target \
-  --workflow_name branch_test \
-  --skip_copy_phase=false \
-  --stop_after_copy=false \
-Prepare
+docker network create wescale-network
+
+# Source cluster
+docker run -itd --network wescale-network --name mysql-server \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_ROOT_HOST=% \
+  -e MYSQL_LOG_CONSOLE=true \
+  mysql/mysql-server:8.0.32 \
+  --bind-address=0.0.0.0 \
+  --port=3306 \
+  --log-bin=binlog \
+  --gtid_mode=ON \
+  --enforce_gtid_consistency=ON \
+  --log_replica_updates=ON \
+  --binlog_format=ROW
+
+docker run -itd --network wescale-network --name wescale \
+  -p 15306:15306 \
+  -w /vt/examples/wesql-server \
+  -e MYSQL_ROOT_USER=root \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_PORT=3306 \
+  -e MYSQL_HOST=mysql-server \
+  -e CONFIG_PATH=/vt/config/wescale/default \
+  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  /vt/examples/wesql-server/init_single_node_cluster.sh
+
+# Target cluster
+docker run -itd --network wescale-network --name mysql-server3307 \
+  -p 3307:3307 \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_ROOT_HOST=% \
+  -e MYSQL_LOG_CONSOLE=true \
+  mysql/mysql-server:8.0.32 \
+  --bind-address=0.0.0.0 \
+  --port=3307 \
+  --log-bin=binlog \
+  --gtid_mode=ON \
+  --enforce_gtid_consistency=ON \
+  --log_replica_updates=ON \
+  --binlog_format=ROW
+
+docker run -itd --network wescale-network --name wescale15307 \
+  -p 15307:15307 \
+  -w /vt/examples/wesql-server \
+  -e MYSQL_ROOT_USER=root \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_PORT=3307 \
+  -e MYSQL_HOST=mysql-server3307 \
+  -e VTGATE_MYSQL_PORT=15307 \
+  -e CONFIG_PATH=/vt/config/wescale/default \
+  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  /vt/examples/wesql-server/init_single_node_cluster.sh
 ```
 
-**Output:**
+### Initialize Data
 
-```
-successfully create branch workflow : branch_test sourceDatabase : branch_source targetDatabase : branch_target
-rules : 
-[source_table:"corder" target_table:"corder" filtering_rule:"select * from corder " create_ddl:"copy" merge_ddl:"copy"]
-[source_table:"customer" target_table:"customer" filtering_rule:"select * from customer " create_ddl:"copy" merge_ddl:"copy"]
-[source_table:"product" target_table:"product" filtering_rule:"select * from product " create_ddl:"copy" merge_ddl:"copy"]
-[source_table:"user" target_table:"user" filtering_rule:"select * from `user` " create_ddl:"copy" merge_ddl:"copy"]
-```
-
-The output shows that the branch workflow `branch_test` has been created. Now you can verify that the `branch_target` database has been created:
-```sql
-mysql> show databases;
-+--------------------+
-| Database           |
-+--------------------+
-| branch_source      |
-| branch_target      |
-| information_schema |
-| mysql              |
-| performance_schema |
-| sys                |
-+--------------------+
-6 rows in set (0.00 sec)
-```
-
-
-### Optional Parameters
-<details>
-<summary>Optional Parameters</summary>
-
-For Advanced usage, you can use the following syntax:
-```shell
-Branch -- \
-  --source_database=<source_database> \
-  --target_database=<target_database> \
-  --workflow_name=<workflow_name> \
-  [--source_topo_url=<source_topo_url>] \
-  [--tablet_types=<tablet_types>] \
-  [--cells=<cells>] \
-  [--include=<tables>] \
-  [--exclude=<tables>] \
-  [--skip_copy_phase=<true|false>] \
-  [--stop_after_copy=<true|false>] \
-  [--default_filter_rules=<filter_rule>] \
-Prepare
-```
-
-**Options**
-
-- `--source_database`: Name of the source database.
-- `--target_database`: Name of the target database (created if it doesn't exist).
-- `--workflow_name`: Identifier for the branch workflow.
-- `--source_topo_url`: URL of the source cluster's topology server (defaults to local).
-- `--tablet_types`: Types of tablets to use as data sources (e.g., `REPLICA`, `PRIMARY`).
-- `--include`: Tables to include from the source database.
-- `--exclude`: Tables to exclude from the source database.
-- `--skip_copy_phase`: If `true`, only copies the schema without data.
-- `--stop_after_copy`: If `true`, stops data synchronization after the initial copy.
-- `--default_filter_rules`: Conditions to filter data during copying.
-
-</details>
-
-## Step3: Data Streaming and Transformation
-
-Once `Prepare` command is executed, you can define data transformation rules for each table in the `mysql.branch_table_rules` table.
-This allows you to filter, transform, or generate mock data before streaming it to the target database.
-All you need to do is update the `filtering_rule` column in the `branch_table_rules` table.
-
-### Example
-
-```sql
-UPDATE mysql.branch_table_rules 
-SET filtering_rule='SELECT id, gofakeit_generate(''{firstname}:###:???:{moviename}'') AS name FROM user' 
-WHERE source_table_name = 'user' and workflow_name='branch_test';
-
-UPDATE mysql.branch_table_rules 
-SET filtering_rule='SELECT customer_id, gofakeit_bytype(''regex'', ''^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'') AS email FROM customer' 
-WHERE source_table_name = 'customer' and workflow_name='branch_test';
-```
-
-
-## Step4: Start Data Streaming
-
-Use the `Start` action to begin data streaming between the source and target databases. The target database applies ETL operations based on the defined `filtering_rule`.
-
-### Example
+After connecting to the source Wescale, run the following commands:
 
 ```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name=branch_test Start
+docker exec -it wescale mysql -h127.0.0.1 -P15306
 ```
 
-**Output:**
-```
-Start workflow: branch_test successfully.
-```
+Create the following databases and tables:
 
-Then you can insert some data into the source database and verify that it's copied to the target database.
-You can see that the data is transformed according to the rules defined in the `branch_table_rules` table.
-
-Since `gofakeit_generate(''{firstname}:###:???:{moviename}'') AS name` is used for the `user` table, the `name` column is populated with random names.
-It's very convenient for generating mock data in the target branch for testing purposes.
-> For more information on `gofakeit` functions, see the [Using `gofakeit` Functions in Data Streaming and Transformation](#using-gofakeit-functions-in-data-streaming-and-transformation) section.
 ```sql
-mysql> select * from branch_source.user;
+DROP DATABASE IF EXISTS test_db1;
+DROP DATABASE IF EXISTS test_db2;
+DROP DATABASE IF EXISTS test_db3;
+CREATE DATABASE test_db1;
+CREATE DATABASE test_db2;
 
-mysql> select * from branch_target.user;
+CREATE TABLE test_db1.users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL,
+  email VARCHAR(100) UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-mysql> select * from branch_source.customer;
-
-mysql> select * from branch_target.customer;
+CREATE TABLE test_db2.source_orders (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  customer_name VARCHAR(100) NOT NULL,
+  order_date DATE NOT NULL,
+  total_amount DECIMAL(10,2),
+  status VARCHAR(20)
+);
 ```
 
-<details>
-<summary>Syntax</summary>
-Branch -- --workflow_name=${workflow_name} Start
-</details>
-
-
-## Step5: Stop Data Streaming
-
-The `Stop` action halts the data streaming process. Restart it later using the `Start` action if needed.
-### Example
+Next, connect to the target Wescale:
 
 ```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test Stop
+docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
 ```
 
-**Output:**
-```
-Stop workflow: branch_test successfully.
-```
-
-**Note:** If `stop_after_copy` was set to `true` during the `Prepare` action and the data copy is complete, the `Stop` command will have no effect.
-
-
-<details>
-<summary>Syntax</summary>
-Branch -- --workflow_name=${workflow_name} Stop
-</details>
-
-
-## Step6: View Schema Differences
-
-Use the `SchemaDiff` action to display differences between the source and target database schemas. This helps decide whether to merge schema changes back into the source database.
-
-### Example
-
-Assuming you've made schema changes to the target database:
+Create the following databases and tables:
 
 ```sql
-mysql> # Since OnlineDDL is enabled, it return the UUID of the OnlineDDL Job. OnlineDDL runs asynchronously, so you may need to wait for it to complete.
-mysql> ALTER TABLE branch_target.product ADD COLUMN v2 INT;
-+--------------------------------------+
-| uuid                                 |
-+--------------------------------------+
-| 63ed2d8f_7c09_11ef_82e1_0aa7bf255933 |
-+--------------------------------------+
-1 row in set (0.02 sec)
+DROP DATABASE IF EXISTS test_db1;
+DROP DATABASE IF EXISTS test_db2;
+DROP DATABASE IF EXISTS test_db3;
+CREATE DATABASE test_db2;
+CREATE DATABASE test_db3;
 
+CREATE TABLE test_db2.target_orders (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  customer_name VARCHAR(100) NOT NULL
+);
 
-mysql> # Since OnlineDDL is enabled, it return the UUID of the OnlineDDL Job. OnlineDDL runs asynchronously, so you may need to wait for it to complete.
-mysql> ALTER TABLE branch_target.product ADD COLUMN v3 INT;
-+--------------------------------------+
-| uuid                                 |
-+--------------------------------------+
-| 67dd9224_7c09_11ef_82e1_0aa7bf255933 |
-+--------------------------------------+
-1 row in set (0.01 sec)
-
-mysql> # Check the table schema and make sure the OnlineDDL is completed.
-mysql> show create table branch_target.product\G
-*************************** 1. row ***************************
-       Table: product
-Create Table: CREATE TABLE `product` (
-  `sku` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `description` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `price` bigint DEFAULT NULL,
-  `v2` int DEFAULT NULL,
-  `v3` int DEFAULT NULL,
-  PRIMARY KEY (`sku`)
-) ENGINE=SMARTENGINE DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-1 row in set (0.01 sec)
+CREATE TABLE test_db3.products (
+  product_id INT PRIMARY KEY AUTO_INCREMENT,
+  product_name VARCHAR(200) NOT NULL,
+  price DECIMAL(10,2),
+  stock_quantity INT,
+  category VARCHAR(50),
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
 
-Then run the `SchemaDiff` action to compare the source and target database schemas:
-```bash
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test SchemaDiff --compare_objects=source_target --output_type=ddl
-```
+---
 
-You can see that the target side has two additional columns `v2` and `v3` in the `product` table compared to the source side.
-**Output:**
-```
-The DDLs required to transform from the source schema to the target schema are as follows:
-alter table product add column v2 int, add column v3 int
-```
+## Basic Usage
 
-<details>
-<summary>Syntax</summary>
+In the process of software development, we often need to modify the existing database schema. However, testing directly in the production environment poses significant security risks. Thus, it's common to create a testing environment where schema modifications can be safely tested before being applied back to the production environment. Here, we refer to the production environment as the "source" and the testing environment as the "target."
 
-```shell
-Branch -- --workflow_name=${workflow_name} SchemaDiff \
-[--compare_objects=<source_target|target_source|source_snapshot|snapshot_source|target_snapshot|snapshot_target>] \
-[--output_type=<create_table|ddl|conflict>] \
-```
-**compare_objects**
-(default `source_target`)
-- `source`: Source schema, may be changed due to other branches merged.
-- `target`: Target schema.
-- `snapshot`: Snapshot of source schema when starting branch.
+As described above, a typical workflow involves three major processes: copying schema from source to target, schema modification in target, and merging target schema back to source.
 
-**output_type**
-(default `create_table`)
-- `create_table`: Show difference of create table SQLs of compare objects.
-- `ddl`: Show DDls used to convert from first compare object to second compare object.
-- `conflict`: Show whether schema of first compare object can be merged to schema of second compare object without conflicts.
+### Schema Copy
 
-</details>
-
-## Step7: PrepareMergeBack
-
-The `PrepareMergeBack` action is a prerequisite for the `StartMergeBack` action.
-It generates DDL statements that will be executed at the source side, so that the schema changes made at the target side can be merged back to the source side.
-
-Since `product` table on the target side has two additional columns `v2` and `v3`, the DDL statement will be generated to add these two columns to the source side.
-
-### Example
-
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test PrepareMergeBack --merge_option=override
-```
-
-**Output:**
-```
-Table: product 
-DDL: ALTER TABLE `product` ADD COLUMN `v2` int, ADD COLUMN `v3` int
-PrepareMergeBack (mergeOption=override) branch_test successfully
-```
-
-
-<details>
-<summary>Syntax</summary>
-
-```shell
-Branch -- --workflow_name=${workflow_name} PrepareMergeBack \
-[--merge_option=<override|diff>] \
-```
-**merge_option**
-(default `override`)
-- `override`: Override the source schema with the target schema and output the required DDL.
-- `diff`: Merge the target schema into the source schema and output the required DDL. You can use the `SchemaDiff` command to check for conflicts before merging.
-
-</details>
-
-
-
-## Step8: StartMergeBack
-
-Use the `StartMergeBack` action to execute the DDL statements generated during `PrepareMergeBack`, applying schema changes to the source database using an online strategy.
-
-### Example
-
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test StartMergeBack
-```
-
-**Output:**
-```
-StartMergeBack for 'branch_test' completed successfully. UUIDs:
-[c057f330_b1e0_11ee_b7b2_5ea977d56bb7]
-```
-
-Monitor the progress of the Online DDL using the provided UUID:
+After connecting to the target Wescale, check the available databases before copying:
 
 ```sql
-mysql> SHOW SCHEMA_MIGRATION LIKE 'c057f330_b1e0_11ee_b7b2_5ea977d56bb7'\G
+SHOW DATABASES;
 ```
 
-When the Online DDL task is complete, the schema of source table should be the same as that of target table.
+To copy the database schema from the source to the target, create a branch with the following command:
 
 ```sql
-mysql> desc branch_source.product;
-+-------------+--------------+------+-----+---------+-------+
-| Field       | Type         | Null | Key | Default | Extra |
-+-------------+--------------+------+-----+---------+-------+
-| sku         | varchar(128) | NO   | PRI | NULL    |       |
-| description | varchar(128) | YES  |     | NULL    |       |
-| price       | bigint       | YES  |     | NULL    |       |
-| v2          | int          | YES  |     | NULL    |       |
-| v3          | int          | YES  |     | NULL    |       |
-+-------------+--------------+------+-----+---------+-------+
-5 rows in set (0.005 sec)
+Branch create with (
+    'source_host'='wescale',
+    'source_port'='15306',
+    'source_user'='root',
+    'source_password'='passwd'
+);
 ```
 
-<details>
-<summary>Syntax</summary>
-Branch -- --workflow_name=${workflow_name} StartMergeBack
-</details>
+*Note: For detailed parameter explanations, refer to the command parameters section later in this document.*
 
-
-## Step9: Cleanup a Branch Workflow
-
-The `Cleanup` action removes the metadata of branch workflow. The target database **will not** be deleted.
-
-
-### Example
-
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test Cleanup
-```
-
-**Output:**
-```
-Cleanup for workflow 'branch_test' completed successfully.
-```
-
-<details>
-<summary>Syntax</summary>
-Branch -- --workflow_name=${workflow_name} Cleanup
-</details>
-
-## Appendix
-
-### Using `gofakeit` Functions in Data Streaming and Transformation
-
-The Branch feature supports `gofakeit_generate` and `gofakeit_bytype` functions for data generation, compatible with MySQL data types.
-It only works with the `Branch` feature and is not available for general queries.
-
-**gofakeit_generate:**
-
-Generates random strings based on patterns. Refer to the [gofakeit documentation](https://github.com/brianvoe/gofakeit) for pattern syntax.
-
-**Example:**
+To view the current branch metadata, use:
 
 ```sql
-SELECT gofakeit_generate('{firstname} {lastname}') AS full_name;
+Branch show;
 ```
 
-**gofakeit_bytype:**
+You'll see the branch status as "created".
 
-Generates random data based on specified types.
+And now, check the available databases again, you will find the source schema has been copied to target.
 
-#### Supported Types and Usage
+### Schema modification
 
-| Type         | Description                                        | Example Usage                               |
-|--------------|----------------------------------------------------|---------------------------------------------|
-| `tinyint`    | Generates a random tiny integer.                   | `gofakeit_bytype('tinyint')`                |
-| `smallint`   | Generates a random small integer.                  | `gofakeit_bytype('smallint')`               |
-| `mediumint`  | Generates a random medium integer.                 | `gofakeit_bytype('mediumint')`              |
-| `int`        | Generates a random integer.                        | `gofakeit_bytype('int')`                    |
-| `integer`    | Alias for `int`.                                   | `gofakeit_bytype('integer')`                |
-| `bigint`     | Generates a random big integer.                    | `gofakeit_bytype('bigint')`                 |
-| `float`      | Generates a random float.                          | `gofakeit_bytype('float')`                  |
-| `double`     | Generates a random double.                         | `gofakeit_bytype('double')`                 |
-| `decimal`    | Generates a random decimal.                        | `gofakeit_bytype('decimal', 5, 2)`          |
-| `date`       | Generates a random date.                           | `gofakeit_bytype('date')`                   |
-| `datetime`   | Generates a random datetime.                       | `gofakeit_bytype('datetime')`               |
-| `timestamp`  | Generates a random timestamp.                      | `gofakeit_bytype('timestamp')`              |
-| `time`       | Generates a random time.                           | `gofakeit_bytype('time')`                   |
-| `year`       | Generates a random year.                           | `gofakeit_bytype('year')`                   |
-| `floatrange` | Generates a random float within a specified range. | `gofakeit_bytype('floatrange', 1.5, 10.0)`  |
-| `intrange`   | Generates a random integer within a range.         | `gofakeit_bytype('intrange', 100, 200)`     |
-| `name`       | Generates a random name.                           | `gofakeit_bytype('name')`                   |
-| `address`    | Generates a random address.                        | `gofakeit_bytype('address')`                |
-| `uuid`       | Generates a random UUID.                           | `gofakeit_bytype('uuid')`                   |
-| `regex`      | Generates a string matching a regex pattern.       | `gofakeit_bytype('regex', '[A-Z]{5}')`      |
-
-**Example:**
+We suppose we need to modify the `test_db1.users` table, in the target, you could run:
 
 ```sql
-SELECT gofakeit_bytype('intrange', 1, 100) AS random_number;
+ALTER TABLE test_db1.users ADD COLUMN new_col INT;
 ```
 
-----
+### Schema Merge
 
-### Example Business Queries
+The Branch functionality in WeSQL allows you to merge the target's schema back to the source. The merging process we provide is called "override," which means that the target schema will overwrite the source schema.
 
-Here are some example queries that demonstrate typical business use cases for the given tables, along with explanations:
-
-**1. Find the top 5 customers by total order value:**
+To see the DDLs required to update the source schema to match the target, use:
 
 ```sql
-SELECT c.customer_id, c.email, SUM(co.price) AS total_spent
-FROM branch_source.customer c
-JOIN branch_source.corder co ON c.customer_id = co.customer_id
-GROUP BY c.customer_id, c.email
-ORDER BY total_spent DESC
-LIMIT 5;
+Branch prepare_merge_back;
 ```
 
-**2. Find the most popular product (most frequently ordered):**
+If everything is prepared, the branch status will update to "prepared," indicating readiness to merge.
+
+Execute the merge with:
 
 ```sql
-SELECT p.sku, p.description, COUNT(co.order_id) AS order_count
-FROM branch_source.product p
-JOIN branch_source.corder co ON p.sku = co.sku
-GROUP BY p.sku, p.description
-ORDER BY order_count DESC
-LIMIT 1;
+Branch merge_back;
 ```
 
-**3. Find all orders made by a specific customer:**
+After merging, the schema in the source should reflect the same structure as in the target.
 
-```sql
-SELECT co.order_id, co.sku, co.price
-FROM branch_source.corder co
-WHERE co.customer_id = 123; -- Replace 123 with the desired customer ID
-```
+---
 
-**4. Find the average order value:**
+## Advanced
 
-```sql
-SELECT AVG(price) AS average_order_value
-FROM branch_source.corder;
-```
+### Idempotency
 
-**5. Total revenue for the most popular product:**
+Branch commands are idempotent. This means if a command fails, simply re-executing the command will continue from where it left off.
 
-```sql
-SELECT SUM(co.price) AS total_revenue
-FROM branch_source.corder co
-WHERE co.sku = (SELECT sku FROM branch_source.corder GROUP BY sku ORDER BY COUNT(*) DESC LIMIT 1);
-```
+For instance, the `Branch create` command involves two main phases: retrieving the schema from the source and applying it to the target. If a crash occurs while fetching the schema, just re-execute the `Branch create` command without additional operations.
+
+> It is important to note that the idempotency of the `branch merge_back` command is not yet perfect. Each time branch merge_back is executed, it begins by sequentially executing the "unmerged" DDLs generated by the `branch prepare_merge_back `command (viewable with the branch show command) and marks them as "merged" once executed. **Due to potential crashes, there might be DDLs that are executed but not marked as merged. Checking these DDLs is a task we plan to address in the future.**
+
+### Command Parameter Explanation
+
+| Command Action         | Parameter               | Description                                                                                                                                                                                                                                                                                                                                                                        | Default Value | Required |
+|------------------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|----------|
+| `Branch create`        | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+|                        | `source_host`           | Host of the source database                                                                                                                                                                                                                                                                                                                                                        |              | Yes      |
+|                        | `source_port`           | Port of the source database                                                                                                                                                                                                                                                                                                                                                        | 3306         | No       |
+|                        | `source_user`           | Username for the source database                                                                                                                                                                                                                                                                                                                                                   | root         | No       |
+|                        | `source_password`       | Password for the source database                                                                                                                                                                                                                                                                                                                                                   |              | No       |
+|                        | `include_databases`     | Whitelist of databases to process                                                                                                                                                                                                                                                                                                                                                  | *            | No       |
+|                        | `exclude_databases`     | Blacklist of databases to process. system databases like information_schema, mysql, performance_schema and sys are alwats excluded.                                                                                                                                                                                                                                                |              | No       |
+| `Branch diff`          | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+|                        | `compare_objects`       | Comparison objects. Should be one of `source_target`, `target_source`, `source_snapshot`, `snapshot_source`, `target_snapshot`, `snapshot_target`, `source_target`. <br/>`source` refers to the real-time schema of the source. <br/>`target` refers to the real-time schema of the target.<br/> `snapshot` refers to the schema of the source at the time the branch was created. | target_source | No       |
+| `Branch prepare_merge_back` | `name`           | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+| `Branch merge_back`    | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+| `Branch show`          | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+|                        | `show_option`           | Options for display. Should be one of `status`, `snapshot`, `merge_back_ddl`.                                                                                                                                                                                                                                                                                                      | status        | No       |
+| `Branch delete`        | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | my_branch    | No       |
+
+### State Transitions
+
+Branch can have the following states:
+
+- **Init**: Initial state after creating the branch.
+- **Fetched**: Snapshot saved to the target.
+- **Created**: Snapshot has been applied to the target.
+- **Preparing**: Generating the merge back DDL.
+- **Prepared**: DDL generated and saved, ready for merging.
+- **Merging**: Applying DDL to the source.
+- **Merged**: All DDLs have been applied to the source successfully.
+
+![BranchStatus](images/BranchStatus.png) 
