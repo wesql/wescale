@@ -1,0 +1,23 @@
+name: Start WeSQL Cluster
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: format('{0}-{1}', ${{ github.ref }}, 'Cluster (start_wesql_cluster)')
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Public IP
+        id: ip
+        uses: haythem/public-ip@v1.3
+
+      - name: Print Public IP
+        run: |
+          echo ${{ steps.ip.outputs.ipv4 }}
+          echo ${{ steps.ip.outputs.ipv6 }}
