@@ -3,7 +3,7 @@ package branch
 import "fmt"
 
 type CommonMysqlService struct {
-	mysqlService *MysqlService
+	mysqlService MysqlService
 }
 
 // GetBranchSchema retrieves CREATE TABLE statements for all tables in databases filtered by `databasesInclude` and `databasesExclude`

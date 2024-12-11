@@ -7,10 +7,10 @@ import (
 
 type SourceMySQLService struct {
 	*CommonMysqlService
-	mysqlService *MysqlService
+	mysqlService MysqlService
 }
 
-func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
+func NewSourceMySQLService(mysqlService MysqlService) *SourceMySQLService {
 	return &SourceMySQLService{
 		CommonMysqlService: &CommonMysqlService{
 			mysqlService: mysqlService,

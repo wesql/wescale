@@ -8,7 +8,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-func NewMockMysqlService(t *testing.T) (*MysqlService, sqlmock.Sqlmock) {
+func NewMockMysqlService(t *testing.T) (*NativeMysqlService, sqlmock.Sqlmock) {
 	// use QueryMatcherEqual to match exact query
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 

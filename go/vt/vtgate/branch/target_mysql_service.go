@@ -10,10 +10,10 @@ import (
 
 type TargetMySQLService struct {
 	*CommonMysqlService
-	mysqlService *MysqlService
+	mysqlService MysqlService
 }
 
-func NewTargetMySQLService(mysqlService *MysqlService) *TargetMySQLService {
+func NewTargetMySQLService(mysqlService MysqlService) *TargetMySQLService {
 	return &TargetMySQLService{
 		CommonMysqlService: &CommonMysqlService{
 			mysqlService: mysqlService,
@@ -82,7 +82,7 @@ func (t *TargetMySQLService) ApplySnapshot(name string) error {
 	return nil
 }
 
-func (t *TargetMySQLService) GetMysqlService() *MysqlService {
+func (t *TargetMySQLService) GetMysqlService() MysqlService {
 	return t.mysqlService
 }
 
