@@ -237,8 +237,16 @@ func getBranchShowCMD(showOption string) string {
 	return fmt.Sprintf(`Branch show with ('show_option'='%s');`, showOption)
 }
 
-func printBranchDiff(rows *sql.Rows) {
+type BranchDiffRow struct {
+	Name      string
+	Database  string
+	TableName string
+	DDL       string
+}
+
+func printBranchDiff(rows *sql.Rows) []BranchDiffRow {
 	fmt.Printf("---------------------- start printing branch diff ----------------------\n")
+	rst := make([]BranchDiffRow, 0)
 	for rows.Next() {
 		var (
 			name      string
@@ -250,24 +258,21 @@ func printBranchDiff(rows *sql.Rows) {
 		if err != nil {
 			panic(err)
 		}
+		rst = append(rst, BranchDiffRow{
+			Name:      name,
+			Database:  database,
+			TableName: tableName,
+			DDL:       ddl,
+		})
 		fmt.Printf("Branch Name: %s, Database: %s, Table: %s, DDL: %s\n", name, database, tableName, ddl)
 	}
 	fmt.Printf("---------------------- print branch diff end ----------------------\n")
+	return rst
 }
 
-func branchDiffContains(rows *sql.Rows, name, database string, tableName string, ddl string) bool {
-	for rows.Next() {
-		var (
-			nameTmp      string
-			databaseTmp  string
-			tableNameTmp string
-			ddlTmp       string
-		)
-		err := rows.Scan(&nameTmp, &databaseTmp, &tableNameTmp, &ddlTmp)
-		if err != nil {
-			panic(err)
-		}
-		if nameTmp == name && databaseTmp == database && tableNameTmp == tableName && ddlTmp == ddl {
+func branchDiffContains(rows []BranchDiffRow, name, database string, tableName string, ddl string) bool {
+	for _, row := range rows {
+		if row.Name == name && row.Database == database && row.TableName == tableName && row.DDL == ddl {
 			return true
 		}
 	}
@@ -377,9 +382,9 @@ func TestBranchBasic(t *testing.T) {
 	diffCMD := getBranchDiffCMD("source_target")
 	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
 	defer rows.Close()
-	printBranchDiff(rows)
-	assert.Equal(t, true, branchDiffContains(rows, "origin", "target_db", "", "CREATE DATABASE IF NOT EXISTS `target_db`"))
-	assert.Equal(t, true, branchDiffContains(rows, "origin", "test_db4", "", "DROP DATABASE IF EXISTS `test_db4`"))
+	branchDiff := printBranchDiff(rows)
+	assert.Equal(t, true, branchDiffContains(branchDiff, "origin", "target_db", "", "CREATE DATABASE IF NOT EXISTS `target_db`"))
+	assert.Equal(t, true, branchDiffContains(branchDiff, "origin", "test_db4", "", "DROP DATABASE IF EXISTS `test_db4`"))
 
 	// branch prepare merge back
 	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
