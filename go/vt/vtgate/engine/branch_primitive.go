@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	DefaultBranchName           = "my_branch"
+	DefaultBranchName           = "origin"
 	DefaultBranchTargetHost     = "127.0.0.1"
 	DefaultBranchTargetPort     = -1
 	DefaultBranchTargetUser     = "root"
