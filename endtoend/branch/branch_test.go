@@ -378,8 +378,8 @@ func TestBranchBasic(t *testing.T) {
 	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
 	defer rows.Close()
 	printBranchDiff(rows)
-	assert.Equal(t, true, branchDiffContains(rows, "origin", "target_db", "", "CREATE DATABASE IF NOT EXISTS target_db"))
-	assert.Equal(t, true, branchDiffContains(rows, "origin", "test_db4", "", "DROP DATABASE IF EXISTS test_db4"))
+	assert.Equal(t, true, branchDiffContains(rows, "origin", "target_db", "", "CREATE DATABASE IF NOT EXISTS `target_db`"))
+	assert.Equal(t, true, branchDiffContains(rows, "origin", "test_db4", "", "DROP DATABASE IF EXISTS `test_db4`"))
 
 	// branch prepare merge back
 	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
