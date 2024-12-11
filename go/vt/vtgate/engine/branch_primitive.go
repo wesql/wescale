@@ -612,11 +612,11 @@ func buildBranchDiffResult(name string, diff *branch.BranchDiff) *sqltypes.Resul
 	rows := make([][]sqltypes.Value, 0)
 	for db, dbDiff := range diff.Diffs {
 		if dbDiff.NeedDropDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("drop database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", db)))
 			continue
 		}
 		if dbDiff.NeedCreateDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("create database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", db)))
 		}
 		for table, tableDiffs := range dbDiff.TableDDLs {
 			for _, tableDiff := range tableDiffs {
