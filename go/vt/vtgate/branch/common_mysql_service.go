@@ -12,6 +12,10 @@ func (c *CommonMysqlService) GetBranchSchema(databasesInclude, databasesExclude 
 	if err != nil {
 		return nil, err
 	}
+	if len(tableInfos) == 0 {
+		return nil, fmt.Errorf("no table found")
+	}
+
 	return c.getBranchSchemaInBatches(tableInfos, GetBranchSchemaBatchSize)
 }
 

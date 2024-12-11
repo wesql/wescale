@@ -1,230 +1,278 @@
+# 分支
+
+## 概述
+
+WeSQL中的Branch功能允许您将一个Wescale集群（**source**）中的数据库复制到另一个Wescale集群（**target**）。这个功能特别适用于创建与您的生产环境相似的开发数据库。本指南提供了使用Branch功能的清晰指令，包括其命令和选项。
+
+**Source**指的是从中复制schema的Wescale集群，而**Target**指的是将schema应用到的Wescale集群。
+
 ---
-题目: Branch
+
+## 一般语法
+
+Branch命令的一般语法如下：
+
+```
+Branch <Action> [with ('key1'='value1', 'key2'='value2', 'key3'='value3');]
+```
+
+其中**Action**可以是以下之一：
+- **create**
+- **diff**
+- **prepare_merge_back**
+- **merge_back**
+- **show**
+- **delete**
+
 ---
 
-# **背景**
+## 动作概述
 
-branch功能用于将数据库复制到另一个 WeScale 集群或本地集群。在生产环境中，您可以使用branch功能创建与开发环境中相同的数据库。本文档将解释如何使用branch功能。`Branch` 是一个“伞式”命令，其中的 `action` 子命令定义了工作流上的操作。每个 `action` 都可以有自己的 `options`。
+- **create**: 通过将数据库schema从source复制到target数据库来初始化分支工作流。
+- **diff**: 显示source和target数据库schema之间的差异。
+- **prepare_merge_back**: 准备将target的schema更改合并回source数据库。
+- **merge_back**: 执行schema更改的合并。
+- **show**: 显示分支元数据。
+- **delete**: 删除分支元数据。
 
-# **branch命令的一般语法**
+---
 
-branch操作由 vtctld 服务器执行，该服务器维护与 vttablets 的 gRPC 连接。本质上，vtctld 扮演指挥者的角色。
+## 先决条件
 
-注意：如果要使用branch功能，**请确保写入端的 vtctld 服务器已打开。**
+### 创建集群
+
+每个分支对应一个MySQL实例。因此，您需要两个Wescale集群：一个作为source，另一个作为target。您可以使用以下命令启动这两个Wescale集群。如果您已经在本地运行了一个Wescale集群，可以直接启动一个新的集群。
+
+在这里，我们将使用端口**15306**上的Wescale集群作为source，另一个在端口**15307**上作为target。
+
+```shell
+docker network create wescale-network
+
+# Source集群
+docker run -itd --network wescale-network --name mysql-server \
+  -p 3306:3306 \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_ROOT_HOST=% \
+  -e MYSQL_LOG_CONSOLE=true \
+  mysql/mysql-server:8.0.32 \
+  --bind-address=0.0.0.0 \
+  --port=3306 \
+  --log-bin=binlog \
+  --gtid_mode=ON \
+  --enforce_gtid_consistency=ON \
+  --log_replica_updates=ON \
+  --binlog_format=ROW
+
+docker run -itd --network wescale-network --name wescale \
+  -p 15306:15306 \
+  -w /vt/examples/wesql-server \
+  -e MYSQL_ROOT_USER=root \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_PORT=3306 \
+  -e MYSQL_HOST=mysql-server \
+  -e CONFIG_PATH=/vt/config/wescale/default \
+  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  /vt/examples/wesql-server/init_single_node_cluster.sh
+
+# Target集群
+docker run -itd --network wescale-network --name mysql-server3307 \
+  -p 3307:3307 \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_ROOT_HOST=% \
+  -e MYSQL_LOG_CONSOLE=true \
+  mysql/mysql-server:8.0.32 \
+  --bind-address=0.0.0.0 \
+  --port=3307 \
+  --log-bin=binlog \
+  --gtid_mode=ON \
+  --enforce_gtid_consistency=ON \
+  --log_replica_updates=ON \
+  --binlog_format=ROW
+
+docker run -itd --network wescale-network --name wescale15307 \
+  -p 15307:15307 \
+  -w /vt/examples/wesql-server \
+  -e MYSQL_ROOT_USER=root \
+  -e MYSQL_ROOT_PASSWORD=passwd \
+  -e MYSQL_PORT=3307 \
+  -e MYSQL_HOST=mysql-server3307 \
+  -e VTGATE_MYSQL_PORT=15307 \
+  -e CONFIG_PATH=/vt/config/wescale/default \
+  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  /vt/examples/wesql-server/init_single_node_cluster.sh
 ```
-Branch -- <options> <action>
 
-action := [Prepare | Start | Stop | PrepareMergeBack | StartMergeBack | Cleanup ｜ Schemadiff]
--- 每个 action 都有自己的选项，可以用来控制其行为。
+### 初始化数据
+
+在连接到source Wescale后，运行以下命令：
+
+```shell
+docker exec -it wescale mysql -h127.0.0.1 -P15306
 ```
 
-# **Actions**
+创建以下数据库和表：
 
-branch命令包含 Prepare、Start、Stop、PrepareMergeBack、StartMergeBack 和 SchemaDiff 命令。
-
-如果您的目标只是复制一个数据库，请专注于 'Prepare'、'Start' 和 'Stop' 命令。这些命令可用于完成数据库复制工作流。
-
-'PrepareMergeBack' 和 'StartMergeBack' 命令通常用于将目标数据库的Schema与源数据库合并。
-
-在讲解branch功能的教程之前，我们将使用以下环境作为教程的主要示例。执行以下 SQL 命令创建数据库和表：
 ```sql
-mysql -h127.0.0.1 -P15306 -e 'create database if not exists branch_source'
+DROP DATABASE IF EXISTS test_db1;
+DROP DATABASE IF EXISTS test_db2;
+DROP DATABASE IF EXISTS test_db3;
+CREATE DATABASE test_db1;
+CREATE DATABASE test_db2;
 
-mysql -h127.0.0.1 -P15306 -e 'create table if not exists branch_source.product(
-                                sku varchar(128),
-                                description varchar(128),
-                                price bigint,
-                                primary key(sku)
-                              ) ENGINE=InnoDB;
-                              create table if not exists branch_source.customer(
-                                customer_id bigint not null auto_increment,
-                                email varchar(128),
-                                primary key(customer_id)
-                              ) ENGINE=InnoDB;
-                              create table if not exists branch_source.corder(
-                                order_id bigint not null auto_increment,
-                                customer_id bigint,
-                                sku varchar(128),
-                                price bigint,
-                                primary key(order_id)
-                              ) ENGINE=InnoDB;
-                              CREATE TABLE if not exists branch_source.user (
-                                  id INT AUTO_INCREMENT PRIMARY KEY auto_increment,
-                                  name VARCHAR(255) NOT NULL
-                              ) ENGINE=InnoDB;'
+CREATE TABLE test_db1.users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL,
+  email VARCHAR(100) UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE test_db2.source_orders (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  customer_name VARCHAR(100) NOT NULL,
+  order_date DATE NOT NULL,
+  total_amount DECIMAL(10,2),
+  status VARCHAR(20)
+);
 ```
 
-## **Prepare**
+接下来，连接到target Wescale：
 
-在Prepare阶段，vtctld 将任务和相应的 table_rules 插入到 mysql.branch_jobs 和 mysql.branch_table_rules 表中。您可以通过修改 mysql.branch_table_rules 中的信息来自定义过滤器。
-```
-Branch -- 
---source_database=<source_database> 
---target_database=<target_database> 
---workflow_name=<workflow_name> 
-[--source_topo_url=<source_topo_url>] 
-[--tablet_types=<source_typelet_type>] 
-[--cells=<cells>] 
-[--include=<tables>]
-[--exclude=<tables>]
-[--skip_copy_phase =<true/false>]
-[--stop_after_copy=<true/false>]
-[--default_filter_rules=<filter_rule>]
-Prepare
-```
-+ source_database : 指定源数据库名称。
-+ target_database : 指定目标数据库名称（如果不存在，将自动创建）。
-+ workflow_name   : 指定branch工作流名称（用于查询branch状态）。
-+ source_topo_url : 源集群的拓扑服务器 URL（默认为本地拓扑服务器）。
-+ tablet_types    : 数据源 tablet 类型（如 REPLICA、PRIMARY 等）。
-+ include         : 指定要从源数据库中包含的表。
-+ exclude         : 指定要从源数据库中排除的表。
-+ skip_copy_phase : 仅复制模式，不复制数据。
-+ stop_after_copy : 如果为 false，则在复制完成后持续同步源和目标之间的数据。
-+ default_filter_rules : 在 'where' 子句中附加条件以过滤特定数据。
-
-### **用法**
 ```shell
-vtctlclient --server localhost:15999 Branch -- --source_database branch_source --target_database branch_target --skip_copy_phase=false  --stop_after_copy=false --workflow_name
- branch_test --default_filter_rules "RAND()<0.1" Prepare
-
-successfully create branch workflow : branch_test sourceDatabase : branch_source targetDatabase : branch_target
-rules : 
-[source_table:"corder" target_table:"corder" filtering_rule:"select * from corder WHERE RAND()<0.1" create_ddl:"copy" merge_ddl:"copy" default_filter_rules:"RAND()<0.1"]
-[source_table:"customer" target_table:"customer" filtering_rule:"select * from customer WHERE RAND()<0.1" create_ddl:"copy" merge_ddl:"copy" default_filter_rules:"RAND()<0.1"]
-[source_table:"product" target_table:"product" filtering_rule:"select * from product WHERE RAND()<0.1" create_ddl:"copy" merge_ddl:"copy" default_filter_rules:"RAND()<0.1"]
-[source_table:"user" target_table:"user" filtering_rule:"select * from `user` WHERE RAND()<0.1" create_ddl:"copy" merge_ddl:"copy" default_filter_rules:"RAND()<0.1"]
+docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
 ```
 
-## **data transformer**
+创建以下数据库和表：
 
-在数据流开始之前，您可以通过修改 mysql.branch_table_rules 表中的 filtering_rule 属性来执行数据转换。我们兼容 [gofakeit](https://github.com/brianvoe/gofakeit) 中的内容。您可以使用 gofakeit_generate 生成特定字符串或使用 gofakeit_bytype 生成特定类型。
-
-过滤规则将在源 MySQL 实例上执行，并在 vttablet 上进行转换和过滤。
-
-### **用法**
 ```sql
-update mysql.branch_table_rules set filtering_rule='select id, gofakeit_generate(\'{firstname}:###:???:{moviename}\') as name from user WHERE id<=100' where source_table_name = 'user';
-update mysql.branch_table_rules set filtering_rule='select customer_id, gofakeit_bytype(\'regex\',\'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$\') as email from `customer` WHERE customer_id<=100' where source_table_name = 'customer';
-update mysql.branch_table_rules set filtering_rule='select sku,description,gofakeit_bytype(\'intrange\',110,150) as price,gofakeit_bytype(\'floatrange\',23.5,23.9) as weight from `product`' where source_table_name = 'product';
-update mysql.branch_table_rules set filtering_rule='SELECT order_id,gofakeit_bytype(\'bigint\') as customer_id,gofakeit_generate(\'{firstname}:###:???:{moviename}\') as sku,gofakeit_bytype(\'bigint\') as price FROM corder where customer_id<=100' where source_table_name = 'corder';
+DROP DATABASE IF EXISTS test_db1;
+DROP DATABASE IF EXISTS test_db2;
+DROP DATABASE IF EXISTS test_db3;
+CREATE DATABASE test_db2;
+CREATE DATABASE test_db3;
+
+CREATE TABLE test_db2.target_orders (
+  order_id INT PRIMARY KEY AUTO_INCREMENT,
+  customer_name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE test_db3.products (
+  product_id INT PRIMARY KEY AUTO_INCREMENT,
+  product_name VARCHAR(200) NOT NULL,
+  price DECIMAL(10,2),
+  stock_quantity INT,
+  category VARCHAR(50),
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 ```
 
-## **Start**
+---
 
-`Start` 将在源端和目标端之间启动数据流。目标端将根据 table_rules 执行 ETL 操作。
+## 基本用法
 
-### **用法**
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test Start
+在软件开发过程中，我们通常需要修改现有的数据库schema。然而，直接在生产环境中进行测试存在显著的安全风险。因此，通常会创建一个测试环境，以便在其中安全地测试schema修改，然后再将其应用回生产环境。在这里，我们将生产环境称为“source”，将测试环境称为“target”。
 
-Start workflow:branch_test successfully.
-```
+如上所述，典型的工作流涉及三个主要过程：从source复制schema到target，在target中修改schema，以及将target的schema合并回source。
 
-## **Stop**
+### Schema复制
 
-`Stop` 将停止先前的数据流，您可以使用 `Start` 命令再次启动数据流。
+在连接到target Wescale后，复制之前检查可用的数据库：
 
-### **用法**
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test Stop
-
-Start workflow branch_test successfully
-```
-
-注意：如果branch复制阶段已经完成且 stop_after_copy 设置为 true，则 Stop 功能将失效。
-
-## **SchemaDiff**
-
-`SchemaDiff` 显示两个数据库模式之间的差异。该工具有助于决定是否将更改合并回源数据库。
-
-### **用法**
-```shell
-mysql -h127.0.0.1 -P15306 -e 'alter table branch_target.product add column v2 int;'
-mysql -h127.0.0.1 -P15306 -e 'alter table branch_target.product add column v3 int;'
-
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test schemadiff
-
-table product is diff
-branch_target:name:"product" schema:"CREATE TABLE `product` (\n  `sku` varchar(128) NOT NULL,\n  `description` varchar(128) DEFAULT NULL,\n  `price` bigint DEFAULT NULL,\n  `v2` int DEFAULT NULL,\n  `v3` int DEFAULT NULL,\n  PRIMARY KEY (`sku`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci" primary_key_columns:"sku" type:"BASE TABLE" data_length:16384
-branch_source:name:"product" schema:"CREATE TABLE `product` (\n  `sku` varchar(128) NOT NULL,\n  `description` varchar(128) DEFAULT NULL,\n  `price` bigint DEFAULT NULL,\n  PRIMARY KEY (`sku`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci" primary_key_columns:"sku" type:"BASE TABLE" data_length:1589248 row_count:5294
-```
-
-##
-
-**PrepareMergeBack**
-
-`PrepareMergeBack` 将构建源数据库和目标数据库之间的差异，然后生成可执行的 DDL 并将其添加到 branch_table_rules 表中。
-
-### **用法**
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test PrepareMergeBack
-
-PrepareMergeBack branch_test successfully 
-table: product entry: ALTER TABLE `product` ADD COLUMN `v2` int, ADD COLUMN `v3` int
-```
-
-## **StartMergeBack**
-
-`StartMergeBack` 将使用 'online' 策略执行 PrepareMergeBack 阶段生成的 DDL。
-
-### **用法**
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test StartMergeBack
-
-Start mergeBack branch_test successfully. uuid list:
-[c057f330_b1e0_11ee_b7b2_5ea977d56bb7]
-```
-
-启动 StartMergeBack 后，我们会收到一个 OnlineDDL 的 UUID。然后可以使用该 UUID 和 `show vitess_migrations like [uuid]` 命令来查询 onlineDDL 的状态。
-
-### **用法**
 ```sql
-mysql> show vitess_migrations like 'c057f330_b1e0_11ee_b7b2_5ea977d56bb7' \G;
+SHOW DATABASES;
 ```
 
-## **清理**
+要将数据库schema从source复制到target，请使用以下命令创建一个分支：
 
-`Cleanup` 功能将删除与 workflow_name 相关的 `branch_jobs` 表和 `branch_table_rules` 表中的项目。
-
-### **用法**
-```shell
-vtctlclient --server localhost:15999 Branch -- --workflow_name branch_test cleanup
-
-cleanup workflow:branch_test successfully
+```sql
+Branch create with (
+    'source_host'='wescale',
+    'source_port'='15306',
+    'source_user'='root',
+    'source_password'='passwd'
+);
 ```
 
-## **gofakeit 函数**
+*注意：有关详细参数解释，请参考本文件后面的命令参数部分。*
 
-提供了 `gofakeit_generate` 和 `gofakeit_bytype` 函数，完全兼容 MySQL 的不同类型数据生成。
+要查看当前的分支元数据，请使用：
 
-### **gofakeit_generate**
+```sql
+Branch show;
+```
 
-`gofakeit_generate` 函数遵循 `gofakeit.generate` 的模式生成随机字符串。您可以在 [gofakeit](https://github.com/brianvoe/gofakeit) GitHub 页面上找到更多信息。
+您将看到分支状态为“created”。
 
-### **gofakeit_bytype**
+现在，再次检查可用的数据库，您会发现source的schema已被复制到target。
 
-`gofakeit_bytype` 支持以下功能：
+### Schema修改
 
-| 类型         | 描述                                        | 用法示例                             |
-|--------------|---------------------------------------------|--------------------------------------|
-| `tinyint`    | 生成一个随机的 tinyint 类型整数。            | `gofakeit_bytype('tinyint')`         |
-| `smallint`   | 生成一个随机的 smallint 类型整数。           | `gofakeit_bytype('smallint')`        |
-| `mediumint`  | 生成一个随机的 mediumint 类型整数。          | `gofakeit_bytype('mediumint')`       |
-| `int`        | 生成一个随机的 int 类型整数。                | `gofakeit_bytype('int')`             |
-| `integer`    | `int` 类型的别名。                          | `gofakeit_bytype('integer')`         |
-| `bigint`     | 生成一个随机的 bigint 类型整数。             | `gofakeit_bytype('bigint')`          |
-| `float`      | 生成一个随机的浮点数。                      | `gofakeit_bytype('float')`           |
-| `double`     | 生成一个随机的 double 类型数。               | `gofakeit_bytype('double')`          |
-| `decimal`    | 生成一个随机的 decimal 类型数。              | `gofakeit_bytype('decimal', 5, 2)`   |
-| `date`       | 生成一个随机日期。                          | `gofakeit_bytype('date')`            |
-| `datetime`   | 生成一个随机的日期时间。                    | `gofakeit_bytype('datetime')`        |
-| `timestamp`  | 生成一个随机的时间戳。                      | `gofakeit_bytype('timestamp')`       |
-| `time`       | 生成一个随机时间。                          | `gofakeit_bytype('time')`            |
-| `year`       | 生成一个随机年份。                          | `gofakeit_bytype('year')`            |
-| `floatrange` | 生成一个在指定范围内的随机浮点数。          | `gofakeit_bytype('floatrange', 1.5, 10.0)` |
-| `intrange`   | 生成一个在指定范围内的随机整数。            | `gofakeit_bytype('intrange', 110, 150)`    |
-| `name`       | 生成一个随机名称。                          | `gofakeit_bytype('name')`            |
-| `address`    | 生成一个随机地址。                          | `gofakeit_bytype('address')`         |
-| `uuid`       | 生成一个随机的 UUID。                       | `gofakeit_bytype('uuid')`            |
-| `regex`      | 生成一个符合正则表达式模式的字符串。        | `gofakeit_bytype('regex', '[a-zA-Z]{5}')`  |
+假设我们需要修改target中的`test_db1.users`表，您可以运行：
+
+```sql
+ALTER TABLE test_db1.users ADD COLUMN new_col INT;
+```
+
+### Schema合并
+
+WeSQL中的Branch功能允许您将target的schema合并回source。我们提供的合并过程称为“覆盖”，这意味着target schema将覆盖source schema。
+
+要查看将source schema更新为与target匹配所需的DDL，请使用：
+
+```sql
+Branch prepare_merge_back;
+```
+
+如果一切准备就绪，分支状态将更新为“prepared”，表示准备好进行合并。
+
+通过以下命令执行合并：
+
+```sql
+Branch merge_back;
+```
+
+合并后，source中的schema应反映与target相同的结构。
+
+---
+
+## 高级
+
+### 幂等性
+
+Branch命令是幂等的。这意味着如果一个命令失败，只需重新执行该命令即可从中断处继续。
+
+例如，`Branch create`命令涉及两个主要阶段：从source检索schema并将其应用于target。如果在抓取schema的过程中发生崩溃，只需重新执行`Branch create`命令，无需其他操作。
+
+> 需要注意的是，`branch merge_back`命令的幂等性尚不完美。每次执行`branch merge_back`时，它将开始依次执行`branch prepare_merge_back`命令生成的“未合并” DDL（可通过`branch show`命令查看），并在执行后将其标记为“merged”。 **由于潜在的崩溃，可能会存在已执行但未标记为merged的DDL。检查这些DDL是我们计划在未来解决的任务。**
+
+### 命令参数解释
+
+| 命令动作                | 参数                     | 描述                                                                                                                                                                                                                                                                                                                                                                            | 默认值       | 必需    |
+|------------------------|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|----------|
+| `Branch create`        | `name`                  | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+|                        | `source_host`           | source数据库的主机                                                                                                                                                                                                                                                                                                                                                                |              | 是       |
+|                        | `source_port`           | source数据库的端口                                                                                                                                                                                                                                                                                                                                                                | 3306         | 否       |
+|                        | `source_user`           | source数据库的用户名                                                                                                                                                                                                                                                                                                                                                             | root         | 否       |
+|                        | `source_password`       | source数据库的密码                                                                                                                                                                                                                                                                                                                                                               |              | 否       |
+|                        | `include_databases`     | 要处理的数据库白名单                                                                                                                                                                                                                                                                                                                                                            | *            | 否       |
+|                        | `exclude_databases`     | 要处理的数据库黑名单。系统数据库如information_schema、mysql、performance_schema和sys总是被排除在外。                                                                                                                                                                                                                                                                    |              | 否       |
+| `Branch diff`          | `name`                  | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+|                        | `compare_objects`       | 比较对象。应为`source_target`、`target_source`、`source_snapshot`、`snapshot_source`、`target_snapshot`、`snapshot_target`、`source_target`之一。<br/>`source`指的是source的实时schema。<br/>`target`指的是target的实时schema。<br/>`snapshot`指的是分支创建时source的schema。  | target_source | 否       |
+| `Branch prepare_merge_back` | `name`           | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+| `Branch merge_back`    | `name`                  | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+| `Branch show`          | `name`                  | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+|                        | `show_option`           | 显示选项。应为`status`、`snapshot`、`merge_back_ddl`之一。                                                                                                                                                                                                                                                                                                                      | status        | 否       |
+| `Branch delete`        | `name`                  | 分支的名称                                                                                                                                                                                                                                                                                                                                                                       | origin    | 否       |
+
+### 状态转换
+
+分支可以有以下状态：
+
+- **Init**: 创建分支后的初始状态。
+- **Fetched**: 快照已保存到target。
+- **Created**: 快照已应用到target。
+- **Preparing**: 正在生成合并回DDL。
+- **Prepared**: DDL已生成并保存，准备合并。
+- **Merging**: 正在将DDL应用于source。
+- **Merged**: 所有DDL已成功应用于source。
+
+![BranchStatus](images/BranchStatus.png) 

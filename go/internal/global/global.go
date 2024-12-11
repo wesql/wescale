@@ -5,7 +5,9 @@ Licensed under the Apache v2(found in the LICENSE file in the root directory).
 
 package global
 
-import "time"
+import (
+	"time"
+)
 
 // Keyspace
 const (

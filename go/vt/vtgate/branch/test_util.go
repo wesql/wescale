@@ -187,7 +187,6 @@ var (
 			SourcePassword:   "password123",
 			IncludeDatabases: []string{"db1", "db2"},
 			ExcludeDatabases: []string{"db3"},
-			TargetDBPattern:  "",
 			Status:           "init",
 		},
 		{
@@ -198,7 +197,6 @@ var (
 			SourcePassword:   "password123",
 			IncludeDatabases: []string{"*"},
 			ExcludeDatabases: []string{},
-			TargetDBPattern:  "",
 			Status:           "bad Status",
 		},
 		{
@@ -209,7 +207,6 @@ var (
 			SourcePassword:   "password123",
 			IncludeDatabases: []string{"*"},
 			ExcludeDatabases: []string{},
-			TargetDBPattern:  "",
 			Status:           "unknown",
 		},
 	}
@@ -226,7 +223,6 @@ func InitMockBranchMetas(mock sqlmock.Sqlmock) {
 			BranchMetasForTest[i].SourcePassword,
 			strings.Join(BranchMetasForTest[i].IncludeDatabases, ","),
 			strings.Join(BranchMetasForTest[i].ExcludeDatabases, ","),
-			BranchMetasForTest[i].TargetDBPattern,
 			BranchMetasForTest[i].Status,
 		)
 

@@ -46,10 +46,6 @@ func compareBranchMetas(first, second *BranchMeta) bool {
 		fmt.Printf("SourcePassword different: first=%s, second=%s\n", first.SourcePassword, second.SourcePassword)
 		return false
 	}
-	if first.TargetDBPattern != second.TargetDBPattern {
-		fmt.Printf("TargetDBPattern different: first=%s, second=%s\n", first.TargetDBPattern, second.TargetDBPattern)
-		return false
-	}
 	if first.Status != second.Status {
 		fmt.Printf("Status different: first=%s, second=%s\n", first.Status, second.Status)
 		return false

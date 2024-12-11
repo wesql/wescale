@@ -341,7 +341,7 @@ func bindVariable(yylex yyLexer, bvar string) {
 %token <str> ACTION_ARGS
 
 // Branch Tokens
-%token <str> BRANCH DIFF PREPARE_MERGE_BACK MERGE_BACK CLEAN_UP
+%token <str> BRANCH DIFF PREPARE_MERGE_BACK MERGE_BACK
 
 // CDC Tokens
 %token <str> CDC CDCS WASM_BINARY_NAME ENV
@@ -1435,10 +1435,10 @@ branch_merge_back_statement:
 
 // Branch clean up command
 branch_clean_up_statement:
-    BRANCH CLEAN_UP with_opt
+    BRANCH DELETE with_opt
     {
         $$ = &BranchCommand{
-            Type: "cleanUp",
+            Type: "delete",
             Params: $3,
         }
     }
@@ -9052,7 +9052,6 @@ non_reserved_keyword:
 | DIFF
 | PREPARE_MERGE_BACK
 | MERGE_BACK
-| CLEAN_UP
 | ENV %prec FUNCTION_CALL_NON_KEYWORD
 
 

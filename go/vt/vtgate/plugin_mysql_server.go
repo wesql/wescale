@@ -33,6 +33,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"vitess.io/vitess/go/vt/share"
 
 	topodatapb "vitess.io/vitess/go/vt/proto/topodata"
 
@@ -105,6 +106,12 @@ func registerPluginFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&mysqlQueryTimeout, "mysql_server_query_timeout", mysqlQueryTimeout, "mysql query timeout")
 	fs.BoolVar(&mysqlConnBufferPooling, "mysql-server-pool-conn-read-buffers", mysqlConnBufferPooling, "If set, the server will pool incoming connection read buffers")
 	fs.StringVar(&mysqlDefaultWorkloadName, "mysql_default_workload", mysqlDefaultWorkloadName, "Default session workload (OLTP, OLAP, DBA)")
+
+	share.GetMysqlServerPort = GetMysqlServerPort
+}
+
+func GetMysqlServerPort() int {
+	return mysqlServerPort
 }
 
 // vtgateHandler implements the Listener interface.

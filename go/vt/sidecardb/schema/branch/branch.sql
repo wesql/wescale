@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS mysql.branch
     `include_databases`             varchar(256)     NOT NULL,
     `exclude_databases`             varchar(256),
     `status`                        varchar(32)      NOT NULL,
-    `target_db_pattern`             varchar(256),
     PRIMARY KEY (`id`),
     UNIQUE KEY (`name`)
     ) ENGINE = InnoDB;

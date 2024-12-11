@@ -82,11 +82,11 @@ func (t *TargetMySQLService) ApplySnapshot(name string) error {
 	return nil
 }
 
-/**********************************************************************************************************************/
-
 func (t *TargetMySQLService) GetMysqlService() *MysqlService {
 	return t.mysqlService
 }
+
+/**********************************************************************************************************************/
 
 func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 	selectSnapshotSQL := GetSelectSnapshotSQL(name)
@@ -173,12 +173,16 @@ func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *Bran
 	insertSQLs := make([]string, 0)
 	for database, databaseDiff := range ddls.Diffs {
 		if databaseDiff.NeedDropDatabase {
-			insertSQLs = append(insertSQLs, fmt.Sprintf("DROP DATABASE IF EXISTS %s", database))
+			ddl := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", database)
+			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			insertSQLs = append(insertSQLs, sql)
 			continue
 		}
 
 		if databaseDiff.NeedCreateDatabase {
-			insertSQLs = append(insertSQLs, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+			ddl := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database)
+			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			insertSQLs = append(insertSQLs, sql)
 		}
 
 		for tableName, ddls := range databaseDiff.TableDDLs {
@@ -294,7 +298,7 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, err
+		return nil, fmt.Errorf("branch not found: %s", name)
 	}
 
 	var meta BranchMeta
@@ -311,7 +315,6 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 		&includeDBs,
 		&excludeDBs,
 		&status,
-		&meta.TargetDBPattern,
 	)
 	if err != nil {
 		return nil, err
@@ -371,8 +374,7 @@ func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.Status),
-		branchMeta.TargetDBPattern)
+		string(branchMeta.Status))
 }
 
 func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
@@ -386,8 +388,7 @@ func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
 		branchMeta.SourcePassword,
 		includeDatabases,
 		excludeDatabases,
-		string(branchMeta.Status),
-		branchMeta.TargetDBPattern)
+		string(branchMeta.Status))
 }
 
 func getUpdateBranchStatusSQL(name string, status BranchStatus) string {
@@ -424,6 +425,10 @@ func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
 
 func getSelectUnmergedDDLSQL(name string) string {
 	return fmt.Sprintf(SelectBranchUnmergedDDLSQL, name)
+}
+
+func getSelectUnmergedDBDDLSQL(name string) string {
+	return fmt.Sprintf(SelectBranchUnmergedDBDDLSQL, name)
 }
 
 func GetSelectMergeBackDDLSQL(name string) string {

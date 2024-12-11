@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-sql-driver/mysql"
+	"github.com/spf13/pflag"
 	"strconv"
 	"strings"
 	"vitess.io/vitess/go/sqltypes"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/schemadiff"
+	"vitess.io/vitess/go/vt/servenv"
+	"vitess.io/vitess/go/vt/share"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/vtgate/branch"
 )
@@ -22,19 +25,30 @@ const (
 	Diff             BranchCommandType = "diff"
 	MergeBack        BranchCommandType = "mergeBack"
 	PrepareMergeBack BranchCommandType = "prepareMergeBack"
-	Cleanup          BranchCommandType = "cleanUp"
+	BranchDelete     BranchCommandType = "delete"
 	Show             BranchCommandType = "show"
 )
 
-// todo enhancement: add flags to config
-const (
-	DefaultBranchName = "my_branch"
-
+var (
+	DefaultBranchName           = "origin"
 	DefaultBranchTargetHost     = "127.0.0.1"
-	DefaultBranchTargetPort     = 15306
+	DefaultBranchTargetPort     = -1
 	DefaultBranchTargetUser     = "root"
 	DefaultBranchTargetPassword = "passwd"
 )
+
+func registerBranchFlags(fs *pflag.FlagSet) {
+	// todo add dynamic handler
+	fs.StringVar(&DefaultBranchName, "branch_default_name", DefaultBranchName, "default branch name")
+	fs.StringVar(&DefaultBranchTargetHost, "branch_default_target_host", DefaultBranchTargetHost, "default branch target host")
+	fs.IntVar(&DefaultBranchTargetPort, "branch_default_target_port", DefaultBranchTargetPort, "default branch target port")
+	fs.StringVar(&DefaultBranchTargetUser, "branch_default_target_user", DefaultBranchTargetUser, "default branch target user")
+	fs.StringVar(&DefaultBranchTargetPassword, "branch_default_target_password", DefaultBranchTargetPassword, "default branch target password")
+}
+
+func init() {
+	servenv.OnParseFor("vtgate", registerBranchFlags)
+}
 
 // Branch is an operator to deal with branch commands
 type Branch struct {
@@ -42,6 +56,11 @@ type Branch struct {
 	name        string
 	commandType BranchCommandType
 	params      branchParams
+
+	targetHost     string
+	targetPort     int
+	targetUser     string
+	targetPassword string
 
 	noInputs
 }
@@ -56,23 +75,21 @@ const (
 )
 
 const (
-	BranchCreateParamsSourceHost      = "source_host"
-	BranchCreateParamsSourcePort      = "source_port"
-	BranchCreateParamsSourceUser      = "source_user"
-	BranchCreateParamsSourcePassword  = "source_password"
-	BranchCreateParamsInclude         = "include_databases"
-	BranchCreateParamsExclude         = "exclude_databases"
-	BranchCreateParamsTargetDBPattern = "target_db_pattern"
+	BranchCreateParamsSourceHost     = "source_host"
+	BranchCreateParamsSourcePort     = "source_port"
+	BranchCreateParamsSourceUser     = "source_user"
+	BranchCreateParamsSourcePassword = "source_password"
+	BranchCreateParamsInclude        = "include_databases"
+	BranchCreateParamsExclude        = "exclude_databases"
 )
 
 type BranchCreateParams struct {
-	SourceHost      string
-	SourcePort      string
-	SourceUser      string
-	SourcePassword  string
-	Include         string
-	Exclude         string
-	TargetDBPattern string
+	SourceHost     string
+	SourcePort     string
+	SourceUser     string
+	SourcePassword string
+	Include        string
+	Exclude        string
 }
 
 const (
@@ -122,6 +139,16 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid branch command params: %w", err)
 	}
+
+	b.targetHost = DefaultBranchTargetHost
+	if DefaultBranchTargetPort == -1 {
+		b.targetPort = share.GetMysqlServerPort()
+	} else {
+		b.targetPort = DefaultBranchTargetPort
+	}
+	b.targetUser = DefaultBranchTargetUser
+	b.targetPassword = DefaultBranchTargetPassword
+
 	return b, nil
 }
 
@@ -136,7 +163,7 @@ func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[s
 		return b.branchPrepareMergeBack()
 	case MergeBack:
 		return b.branchMergeBack()
-	case Cleanup:
+	case BranchDelete:
 		return b.branchCleanUp()
 	case Show:
 		return b.branchShow()
@@ -170,7 +197,7 @@ func (b *Branch) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars
 		if err != nil {
 			return err
 		}
-	case Cleanup:
+	case BranchDelete:
 		result, err = b.branchCleanUp()
 		if err != nil {
 			return err
@@ -231,8 +258,8 @@ func parseBranchCommandType(s string) (BranchCommandType, error) {
 		return MergeBack, nil
 	case string(PrepareMergeBack):
 		return PrepareMergeBack, nil
-	case string(Cleanup):
-		return Cleanup, nil
+	case string(BranchDelete):
+		return BranchDelete, nil
 	case string(Show):
 		return Show, nil
 	default:
@@ -258,7 +285,7 @@ func (b *Branch) setAndValidateParams(paramsMap map[string]string) error {
 		params = &BranchPrepareMergeBackParams{}
 	case Show:
 		params = &BranchShowParams{}
-	case MergeBack, Cleanup:
+	case MergeBack, BranchDelete:
 		return nil
 	default:
 		return fmt.Errorf("invalid branch command type: %s", b.commandType)
@@ -324,11 +351,6 @@ func (bcp *BranchCreateParams) setValues(params map[string]string) error {
 		delete(params, BranchCreateParamsSourcePassword)
 	}
 
-	if v, ok := params[BranchCreateParamsTargetDBPattern]; ok {
-		bcp.TargetDBPattern = v
-		delete(params, BranchCreateParamsTargetDBPattern)
-	}
-
 	return checkRedundantParams(params)
 }
 
@@ -356,8 +378,7 @@ func (bcp *BranchCreateParams) validate() error {
 	return nil
 }
 
-// todo complete me
-// todo output type
+// todo enhancement: output type
 func (bdp *BranchDiffParams) setValues(params map[string]string) error {
 	if v, ok := params[BranchDiffParamsCompareObjects]; ok {
 		bdp.CompareObjects = v
@@ -369,8 +390,7 @@ func (bdp *BranchDiffParams) setValues(params map[string]string) error {
 	return checkRedundantParams(params)
 }
 
-// todo complete me
-// todo output type
+// todo enhancement: output type
 func (bdp *BranchDiffParams) validate() error {
 	switch branch.BranchDiffObjectsFlag(bdp.CompareObjects) {
 	case branch.FromSourceToTarget, branch.FromTargetToSource,
@@ -466,7 +486,7 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude, createParams.TargetDBPattern)
+	branchMeta, err := branch.NewBranchMeta(b.name, createParams.SourceHost, port, createParams.SourceUser, createParams.SourcePassword, createParams.Include, createParams.Exclude)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +496,7 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +511,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("branch diff: invalid branch command params")
 	}
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +522,7 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	return buildBranchDiffResult(diff), nil
+	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
 func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
@@ -511,7 +531,7 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
 	}
 
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -522,11 +542,11 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 		return nil, err
 	}
 
-	return buildBranchDiffResult(diff), nil
+	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
 func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
-	meta, bs, _, _, err := getBranchDataStruct(b.name)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +555,7 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 
 func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +569,7 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 		return nil, fmt.Errorf("branch show: invalid branch command params")
 	}
 
-	meta, _, _, targetHandler, err := getBranchDataStruct(b.name)
+	meta, _, _, targetHandler, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -566,9 +586,9 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 	}
 }
 
-func getBranchDataStruct(name string) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
+func getBranchDataStruct(name string, targetUser, targetPassword, targetHost string, targetPort int) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(DefaultBranchTargetUser, DefaultBranchTargetPassword, DefaultBranchTargetHost, DefaultBranchTargetPort)
+	targetHandler, err := createBranchTargetHandler(targetUser, targetPassword, targetHost, targetPort)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -587,20 +607,20 @@ func getBranchDataStruct(name string) (*branch.BranchMeta, *branch.BranchService
 	return meta, bs, sourceHandler, targetHandler, nil
 }
 
-func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
-	fields := sqltypes.BuildVarCharFields("database", "table", "ddl")
+func buildBranchDiffResult(name string, diff *branch.BranchDiff) *sqltypes.Result {
+	fields := sqltypes.BuildVarCharFields("branch name", "database", "table", "ddl")
 	rows := make([][]sqltypes.Value, 0)
 	for db, dbDiff := range diff.Diffs {
 		if dbDiff.NeedDropDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("drop database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", db)))
 			continue
 		}
 		if dbDiff.NeedCreateDatabase {
-			rows = append(rows, sqltypes.BuildVarCharRow(db, "", fmt.Sprintf("create database `%s`", db)))
+			rows = append(rows, sqltypes.BuildVarCharRow(name, db, "", fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", db)))
 		}
 		for table, tableDiffs := range dbDiff.TableDDLs {
 			for _, tableDiff := range tableDiffs {
-				rows = append(rows, sqltypes.BuildVarCharRow(db, table, tableDiff))
+				rows = append(rows, sqltypes.BuildVarCharRow(name, db, table, tableDiff))
 			}
 		}
 	}
@@ -608,11 +628,11 @@ func buildBranchDiffResult(diff *branch.BranchDiff) *sqltypes.Result {
 }
 
 func buildMetaResult(meta *branch.BranchMeta) (*sqltypes.Result, error) {
-	fields := sqltypes.BuildVarCharFields("name", "status", "source host", "source port", "source user", "include", "exclude", "target db pattern")
+	fields := sqltypes.BuildVarCharFields("name", "status", "source host", "source port", "source user", "include", "exclude")
 	rows := make([][]sqltypes.Value, 0)
 	include := strings.Join(meta.IncludeDatabases, ",")
 	exclude := strings.Join(meta.ExcludeDatabases, ",")
-	rows = append(rows, sqltypes.BuildVarCharRow(meta.Name, string(meta.Status), meta.SourceHost, string(rune(meta.SourcePort)), meta.SourceUser, include, exclude, meta.TargetDBPattern))
+	rows = append(rows, sqltypes.BuildVarCharRow(meta.Name, string(meta.Status), meta.SourceHost, strconv.Itoa(meta.SourcePort), meta.SourceUser, include, exclude))
 
 	return &sqltypes.Result{Fields: fields, Rows: rows}, nil
 }
@@ -645,7 +665,7 @@ func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQ
 		if merged {
 			mergedStr = "true"
 		}
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, ddl, mergedStr))
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, ddl, mergedStr))
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
@@ -660,23 +680,24 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 	}
 	defer rows.Close()
 
-	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table")
+	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table", "update time")
 	resultRows := make([][]sqltypes.Value, 0)
 
 	for rows.Next() {
 		var (
-			id             int
-			name           string
-			database       string
-			table          string
-			createTableSQL string
+			id              int
+			name            string
+			database        string
+			table           string
+			createTableSQL  string
+			updateTimestamp string
 		)
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL); err != nil {
+		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(string(rune(id)), name, database, table, createTableSQL))
+		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
