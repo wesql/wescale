@@ -1,9 +1,9 @@
 package branch
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/pingcap/failpoint"
+	"strconv"
 	"strings"
 	"vitess.io/vitess/go/vt/failpointkey"
 	"vitess.io/vitess/go/vt/schemadiff"
@@ -383,7 +383,6 @@ func (bs *BranchService) executeMergeBackDDL(name string) error {
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
 	err = bs.executeMergeBackDDLOneByOne(rows)
 	if err != nil {
 		return err
@@ -396,36 +395,29 @@ func (bs *BranchService) executeMergeBackDDL(name string) error {
 	if err != nil {
 		return err
 	}
-	defer rows2.Close()
 	return bs.executeMergeBackDDLOneByOne(rows2)
 }
 
 // caller should close rows
-func (bs *BranchService) executeMergeBackDDLOneByOne(rows *sql.Rows) error {
-	for rows.Next() {
-		var (
-			id       int
-			name     string
-			database string
-			table    string
-			ddl      string
-			merged   bool
-		)
-		var err error
-		if err = rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
-			return fmt.Errorf("failed to scan row: %v", err)
-		}
+func (bs *BranchService) executeMergeBackDDLOneByOne(rows Rows) error {
+	for _, row := range rows {
 
+		id, _ := strconv.Atoi(string(row.RowData["id"]))
+		table := string(row.RowData["table"])
+		database := string(row.RowData["database"])
+		ddl := string(row.RowData["ddl"])
+
+		var err error
 		if table == "" {
-			// create or drop database ddl
+			// create or drop database ddl, don't specify database
 			_, err = bs.sourceMySQLService.mysqlService.Exec("", ddl)
 		} else {
-			// todo enhancement: track whether the current ddl to apply has finished or is executing
 			_, err = bs.sourceMySQLService.mysqlService.Exec(database, ddl)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to execute ddl %v: %v", ddl, err)
 		}
+
 		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
 		_, err = bs.targetMySQLService.mysqlService.Exec("", updateDDLMergedSQL)
 		if err != nil {
@@ -435,7 +427,6 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(rows *sql.Rows) error {
 			failpoint.Return(fmt.Errorf("error executing merge back ddl by failpoint"))
 		})
 	}
-
 	return nil
 }
 

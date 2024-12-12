@@ -24,8 +24,6 @@ type TableInfo struct {
 	name     string
 }
 
-var GetBranchSchemaBatchSize = 50
-
 /**********************************************************************************************************************/
 
 // buildTableInfosQuerySQL constructs the SQL query to retrieve table names

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pingcap/failpoint"
 	"regexp"
+	"strconv"
 	"strings"
 	"vitess.io/vitess/go/vt/failpointkey"
 )
@@ -95,35 +96,22 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
 	}
-	defer rows.Close()
 
 	result := &BranchSchema{
 		branchSchema: make(map[string]map[string]string),
 	}
 
-	for rows.Next() {
-		var (
-			id              int64
-			name            string
-			database        string
-			table           string
-			createTableSQL  string
-			updateTimestamp string
-		)
+	for _, row := range rows {
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %v", err)
-		}
+		database := string(row.RowData["database"])
+		table := string(row.RowData["table"])
+		createTableSQL := string(row.RowData["create_table_sql"])
 
 		if _, ok := result.branchSchema[database]; !ok {
 			result.branchSchema[database] = make(map[string]string)
 		}
 
 		result.branchSchema[database][table] = createTableSQL
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %v", err)
 	}
 
 	if len(result.branchSchema) == 0 {
@@ -243,20 +231,11 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database list: %v", err)
 	}
-	defer rows.Close()
 
 	var databases []string
-	for rows.Next() {
-		var dbName string
-		if err := rows.Scan(&dbName); err != nil {
-			return nil, fmt.Errorf("failed to scan database Name: %v", err)
-		}
+	for _, row := range rows {
+		dbName := string(row.RowData["Database"])
 		databases = append(databases, dbName)
-	}
-
-	// Check for errors during iteration
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred while iterating database list: %v", err)
 	}
 
 	return databases, nil
@@ -295,27 +274,23 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	if !rows.Next() {
+	if len(rows) == 0 {
 		return nil, fmt.Errorf("branch not found: %s", name)
 	}
 
 	var meta BranchMeta
 	var includeDBs, excludeDBs, status string
-	var id int
 
-	err = rows.Scan(
-		&id,
-		&meta.Name,
-		&meta.SourceHost,
-		&meta.SourcePort,
-		&meta.SourceUser,
-		&meta.SourcePassword,
-		&includeDBs,
-		&excludeDBs,
-		&status,
-	)
+	meta.Name = string(rows[0].RowData["name"])
+	meta.SourceHost = string(rows[0].RowData["source_host"])
+	meta.SourcePort, _ = strconv.Atoi(string(rows[0].RowData["source_port"]))
+	meta.SourceUser = string(rows[0].RowData["source_user"])
+	meta.SourcePassword = string(rows[0].RowData["source_password"])
+	includeDBs = string(rows[0].RowData["include_databases"])
+	excludeDBs = string(rows[0].RowData["exclude_databases"])
+	status = string(rows[0].RowData["status"])
+
 	if err != nil {
 		return nil, err
 	}

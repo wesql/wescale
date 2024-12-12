@@ -644,23 +644,18 @@ func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQ
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "ddl", "merged")
 	resultRows := make([][]sqltypes.Value, 0)
-	for rows.Next() {
-		var (
-			id       int
-			name     string
-			database string
-			table    string
-			ddl      string
-			merged   bool
-		)
+	for _, row := range rows {
 
-		if err := rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %v", err)
-		}
+		id, _ := strconv.Atoi(string(row.RowData["id"]))
+		name := string(row.RowData["name"])
+		database := string(row.RowData["database"])
+		table := string(row.RowData["table"])
+		ddl := string(row.RowData["ddl"])
+		merged, _ := strconv.ParseBool(string(row.RowData["merged"]))
+
 		mergedStr := "false"
 		if merged {
 			mergedStr = "true"
@@ -678,24 +673,18 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 	if err != nil {
 		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
 	}
-	defer rows.Close()
 
 	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table", "update time")
 	resultRows := make([][]sqltypes.Value, 0)
 
-	for rows.Next() {
-		var (
-			id              int
-			name            string
-			database        string
-			table           string
-			createTableSQL  string
-			updateTimestamp string
-		)
+	for _, row := range rows {
 
-		if err := rows.Scan(&id, &name, &database, &table, &createTableSQL, &updateTimestamp); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %v", err)
-		}
+		id, _ := strconv.Atoi(string(row.RowData["id"]))
+		name := string(row.RowData["name"])
+		database := string(row.RowData["database"])
+		table := string(row.RowData["table"])
+		createTableSQL := string(row.RowData["create_table"])
+		updateTimestamp := string(row.RowData["update_time"])
 
 		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
 	}

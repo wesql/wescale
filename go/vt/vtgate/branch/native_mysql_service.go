@@ -40,11 +40,51 @@ func (m *NativeMysqlService) Close() error {
 	return m.db.Close()
 }
 
-func (m *NativeMysqlService) Query(query string) (*sql.Rows, error) {
-	return m.db.Query(query)
+func (m *NativeMysqlService) Query(query string) (Rows, error) {
+	rows, err := m.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	var results Rows = make([]Row, 0)
+
+	for rows.Next() {
+		// construct values container
+		values := make([]interface{}, len(columns))
+		for i := range values {
+			var v []byte
+			values[i] = &v
+		}
+
+		if err := rows.Scan(values...); err != nil {
+			return nil, err
+		}
+
+		// store row values into map
+		rowMap := make(map[string][]byte)
+		for i, colName := range columns {
+			val := *values[i].(*[]byte)
+			rowMap[colName] = val
+		}
+
+		row := Row{RowData: rowMap}
+		results = append(results, row)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
-func (m *NativeMysqlService) Exec(database, query string) (sql.Result, error) {
+func (m *NativeMysqlService) Exec(database, query string) (*Result, error) {
 	ctx := context.Background()
 	if database != "" {
 		query = fmt.Sprintf("USE %s; %s", database, query)
@@ -54,7 +94,21 @@ func (m *NativeMysqlService) Exec(database, query string) (sql.Result, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	return conn.ExecContext(ctx, query)
+	rst, err := conn.ExecContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	affectRows, err := rst.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	lastInsertId, err := rst.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Result{AffectedRows: affectRows, LastInsertID: lastInsertId}, nil
 }
 
 func (m *NativeMysqlService) ExecuteInTxn(queries ...string) error {
