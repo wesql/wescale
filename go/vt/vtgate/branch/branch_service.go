@@ -3,7 +3,6 @@ package branch
 import (
 	"fmt"
 	"github.com/pingcap/failpoint"
-	"strconv"
 	"strings"
 	"vitess.io/vitess/go/vt/failpointkey"
 	"vitess.io/vitess/go/vt/schemadiff"
@@ -402,10 +401,10 @@ func (bs *BranchService) executeMergeBackDDL(name string) error {
 func (bs *BranchService) executeMergeBackDDLOneByOne(rows Rows) error {
 	for _, row := range rows {
 
-		id, _ := strconv.Atoi(string(row.RowData["id"]))
-		table := string(row.RowData["table"])
-		database := string(row.RowData["database"])
-		ddl := string(row.RowData["ddl"])
+		id, _ := BytesToInt(row.RowData["id"])
+		table := BytesToString(row.RowData["table"])
+		database := BytesToString(row.RowData["database"])
+		ddl := BytesToString(row.RowData["ddl"])
 
 		var err error
 		if table == "" {

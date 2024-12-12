@@ -649,12 +649,12 @@ func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQ
 	resultRows := make([][]sqltypes.Value, 0)
 	for _, row := range rows {
 
-		id, _ := strconv.Atoi(string(row.RowData["id"]))
-		name := string(row.RowData["name"])
-		database := string(row.RowData["database"])
-		table := string(row.RowData["table"])
-		ddl := string(row.RowData["ddl"])
-		merged, _ := strconv.ParseBool(string(row.RowData["merged"]))
+		id, _ := branch.BytesToInt(row.RowData["id"])
+		name := branch.BytesToString(row.RowData["name"])
+		database := branch.BytesToString(row.RowData["database"])
+		table := branch.BytesToString(row.RowData["table"])
+		ddl := branch.BytesToString(row.RowData["ddl"])
+		merged, _ := strconv.ParseBool(branch.BytesToString(row.RowData["merged"]))
 
 		mergedStr := "false"
 		if merged {
@@ -679,12 +679,12 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 
 	for _, row := range rows {
 
-		id, _ := strconv.Atoi(string(row.RowData["id"]))
-		name := string(row.RowData["name"])
-		database := string(row.RowData["database"])
-		table := string(row.RowData["table"])
-		createTableSQL := string(row.RowData["create_table"])
-		updateTimestamp := string(row.RowData["update_time"])
+		id, _ := branch.BytesToInt(row.RowData["id"])
+		name := branch.BytesToString(row.RowData["name"])
+		database := branch.BytesToString(row.RowData["database"])
+		table := branch.BytesToString(row.RowData["table"])
+		createTableSQL := branch.BytesToString(row.RowData["create_table"])
+		updateTimestamp := branch.BytesToString(row.RowData["update_time"])
 
 		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
 	}

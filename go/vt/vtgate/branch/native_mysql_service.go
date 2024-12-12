@@ -67,7 +67,7 @@ func (m *NativeMysqlService) Query(query string) (Rows, error) {
 		}
 
 		// store row values into map
-		rowMap := make(map[string][]byte)
+		rowMap := make(map[string]bytes)
 		for i, colName := range columns {
 			val := *values[i].(*[]byte)
 			rowMap[colName] = val

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/pingcap/failpoint"
 	"regexp"
-	"strconv"
 	"strings"
 	"vitess.io/vitess/go/vt/failpointkey"
 )
@@ -103,9 +102,9 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 
 	for _, row := range rows {
 
-		database := string(row.RowData["database"])
-		table := string(row.RowData["table"])
-		createTableSQL := string(row.RowData["create_table_sql"])
+		database := BytesToString(row.RowData["database"])
+		table := BytesToString(row.RowData["table"])
+		createTableSQL := BytesToString(row.RowData["create_table_sql"])
 
 		if _, ok := result.branchSchema[database]; !ok {
 			result.branchSchema[database] = make(map[string]string)
@@ -234,7 +233,7 @@ func (t *TargetMySQLService) getAllDatabases() ([]string, error) {
 
 	var databases []string
 	for _, row := range rows {
-		dbName := string(row.RowData["Database"])
+		dbName := BytesToString(row.RowData["Database"])
 		databases = append(databases, dbName)
 	}
 
@@ -282,14 +281,14 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 	var meta BranchMeta
 	var includeDBs, excludeDBs, status string
 
-	meta.Name = string(rows[0].RowData["name"])
-	meta.SourceHost = string(rows[0].RowData["source_host"])
-	meta.SourcePort, _ = strconv.Atoi(string(rows[0].RowData["source_port"]))
-	meta.SourceUser = string(rows[0].RowData["source_user"])
-	meta.SourcePassword = string(rows[0].RowData["source_password"])
-	includeDBs = string(rows[0].RowData["include_databases"])
-	excludeDBs = string(rows[0].RowData["exclude_databases"])
-	status = string(rows[0].RowData["status"])
+	meta.Name = BytesToString(rows[0].RowData["name"])
+	meta.SourceHost = BytesToString(rows[0].RowData["source_host"])
+	meta.SourcePort, _ = BytesToInt(rows[0].RowData["source_port"])
+	meta.SourceUser = BytesToString(rows[0].RowData["source_user"])
+	meta.SourcePassword = BytesToString(rows[0].RowData["source_password"])
+	includeDBs = BytesToString(rows[0].RowData["include_databases"])
+	excludeDBs = BytesToString(rows[0].RowData["exclude_databases"])
+	status = BytesToString(rows[0].RowData["status"])
 
 	if err != nil {
 		return nil, err

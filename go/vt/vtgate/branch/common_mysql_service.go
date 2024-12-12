@@ -37,8 +37,8 @@ func (c *CommonMysqlService) getTableInfos(databasesInclude, databasesExclude []
 
 	for _, row := range rows {
 		var database, tableName string
-		database = string(row.RowData["TABLE_SCHEMA"])
-		tableName = string(row.RowData["TABLE_NAME"])
+		database = BytesToString(row.RowData["TABLE_SCHEMA"])
+		tableName = BytesToString(row.RowData["TABLE_NAME"])
 
 		tableInfos = append(tableInfos, TableInfo{database: database, name: tableName})
 	}
@@ -61,7 +61,7 @@ func (c *CommonMysqlService) getBranchSchema(tableInfos []TableInfo) (*BranchSch
 
 		for _, row := range rows {
 			result[tableInfos[i].database] = make(map[string]string)
-			result[tableInfos[i].database][tableInfos[i].name] = string(row.RowData["Create Table"])
+			result[tableInfos[i].database][tableInfos[i].name] = BytesToString(row.RowData["Create Table"])
 		}
 	}
 

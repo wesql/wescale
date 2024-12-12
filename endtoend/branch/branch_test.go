@@ -428,91 +428,91 @@ func TestBranchBasic(t *testing.T) {
 	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "target_db", "target_new_table"))
 }
 
-//func TestBranchBasicWithFailPoint(t *testing.T) {
-//	testSourceAndTargetClusterConnection(t)
-//	sourcePrepare()
-//	targetPrepare()
-//
-//	// defer cleanup
-//	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchDeleteCMD())
-//	defer sourceClean()
-//	defer targetClean()
-//
-//	// create branch
-//	createCMD := getBranchCreateCMD(sourceHostToTarget, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
-//	expectBranchStatus(t, "origin", "init")
-//
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError")
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
-//	expectBranchStatus(t, "origin", "fetched")
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError")
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
-//	expectBranchStatus(t, "origin", "created")
-//
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
-//	// the test_db3 will be skipped when branch creating
-//	assert.Equal(t, false, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products"))
-//
-//	// change schema
-//	framework.ExecNoError(t, sourceCluster.WescaleDb, "ALTER TABLE test_db3.source_products ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "source_products", "description"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db3.target_products ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db3", "target_products", "description"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db1.users DROP COLUMN created_at;")
-//	assert.Equal(t, false, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db1", "users", "created_at"))
-//
-//	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
-//	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
-//
-//	// branch diff
-//	diffCMD := getBranchDiffCMD("source_target")
-//	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
-//	defer rows.Close()
-//	printBranchDiff(rows)
-//
-//	// branch prepare merge back
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchPrepareMergeBackCMD())
-//	expectBranchStatus(t, "origin", "preparing")
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError")
-//
-//	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
-//	defer rows2.Close()
-//	printBranchDiff(rows2)
-//	expectBranchStatus(t, "origin", "prepared")
-//
-//	// branch merge
-//	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError", "return(true)")
-//	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchMergeBackCMD())
-//	expectBranchStatus(t, "origin", "merging")
-//
-//	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError")
-//	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
-//	expectBranchStatus(t, "origin", "merged")
-//
-//	// no diff
-//	rows3 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchDiffCMD("source_target"))
-//	defer rows3.Close()
-//	assert.Equal(t, false, rows3.Next())
-//
-//	// check schema
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "target_products"))
-//	assert.Equal(t, false, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "source_products"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db1", "users"))
-//	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db2", "orders"))
-//
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
-//	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
-//
-//}
+func TestBranchBasicWithFailPoint(t *testing.T) {
+	testSourceAndTargetClusterConnection(t)
+	sourcePrepare()
+	targetPrepare()
+
+	// defer cleanup
+	defer framework.ExecNoError(t, targetCluster.WescaleDb, getBranchDeleteCMD())
+	defer sourceClean()
+	defer targetClean()
+
+	// create branch
+	createCMD := getBranchCreateCMD(sourceHostToTarget, sourceCluster.MysqlPort, "root", "passwd", "*", "information_schema,mysql,performance_schema,sys")
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
+	expectBranchStatus(t, "origin", "init")
+
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchFetchSnapshotError")
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", createCMD)
+	expectBranchStatus(t, "origin", "fetched")
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchApplySnapshotError")
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, createCMD)
+	expectBranchStatus(t, "origin", "created")
+
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db2", "orders"))
+	// the test_db3 will be skipped when branch creating
+	assert.Equal(t, false, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, targetCluster.WescaleDb, "test_db3", "target_products"))
+
+	// change schema
+	framework.ExecNoError(t, sourceCluster.WescaleDb, "ALTER TABLE test_db3.source_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "source_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db3.target_products ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db3", "target_products", "description"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db1.users DROP COLUMN created_at;")
+	assert.Equal(t, false, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db1", "users", "created_at"))
+
+	framework.ExecNoError(t, targetCluster.WescaleDb, "ALTER TABLE test_db2.orders ADD COLUMN description TEXT;")
+	assert.Equal(t, true, framework.CheckColumnExists(t, targetCluster.WescaleDb, "test_db2", "orders", "description"))
+
+	// branch diff
+	diffCMD := getBranchDiffCMD("source_target")
+	rows := framework.QueryNoError(t, targetCluster.WescaleDb, diffCMD)
+	defer rows.Close()
+	printBranchDiff(rows)
+
+	// branch prepare merge back
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchPrepareMergeBackCMD())
+	expectBranchStatus(t, "origin", "preparing")
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError")
+
+	rows2 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
+	defer rows2.Close()
+	printBranchDiff(rows2)
+	expectBranchStatus(t, "origin", "prepared")
+
+	// branch merge
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError", "return(true)")
+	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchMergeBackCMD())
+	expectBranchStatus(t, "origin", "merging")
+
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchExecuteMergeBackDDLError")
+	framework.ExecNoError(t, targetCluster.WescaleDb, getBranchMergeBackCMD())
+	expectBranchStatus(t, "origin", "merged")
+
+	// no diff
+	rows3 := framework.QueryNoError(t, targetCluster.WescaleDb, getBranchDiffCMD("source_target"))
+	defer rows3.Close()
+	assert.Equal(t, false, rows3.Next())
+
+	// check schema
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "target_products"))
+	assert.Equal(t, false, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db3", "source_products"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db1", "users"))
+	assert.Equal(t, true, framework.CheckTableExists(t, sourceCluster.WescaleDb, "test_db2", "orders"))
+
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db3", "target_products", "description"))
+	assert.Equal(t, true, framework.CheckColumnExists(t, sourceCluster.WescaleDb, "test_db2", "orders", "description"))
+
+}
 
 func expectBranchStatus(t *testing.T, name, expectStatus string) {
 	rows := framework.QueryNoError(t, targetCluster.WescaleDb, fmt.Sprintf("select status from mysql.branch where name = '%s'", name))
