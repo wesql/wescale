@@ -156,17 +156,17 @@ func BuildBranchPlan(branchCmd *sqlparser.BranchCommand) (*Branch, error) {
 func (b *Branch) TryExecute(ctx context.Context, vcursor VCursor, bindVars map[string]*querypb.BindVariable, wantfields bool) (*sqltypes.Result, error) {
 	switch b.commandType {
 	case Create:
-		return b.branchCreate()
+		return b.branchCreate(vcursor)
 	case Diff:
-		return b.branchDiff()
+		return b.branchDiff(vcursor)
 	case PrepareMergeBack:
-		return b.branchPrepareMergeBack()
+		return b.branchPrepareMergeBack(vcursor)
 	case MergeBack:
-		return b.branchMergeBack()
+		return b.branchMergeBack(vcursor)
 	case BranchDelete:
-		return b.branchCleanUp()
+		return b.branchCleanUp(vcursor)
 	case Show:
-		return b.branchShow()
+		return b.branchShow(vcursor)
 	default:
 		return nil, fmt.Errorf("unsupported branch command type: %s", b.commandType)
 	}
@@ -178,32 +178,32 @@ func (b *Branch) TryStreamExecute(ctx context.Context, vcursor VCursor, bindVars
 	var err error
 	switch b.commandType {
 	case Create:
-		result, err = b.branchCreate()
+		result, err = b.branchCreate(vcursor)
 		if err != nil {
 			return err
 		}
 	case Diff:
-		result, err = b.branchDiff()
+		result, err = b.branchDiff(vcursor)
 		if err != nil {
 			return err
 		}
 	case PrepareMergeBack:
-		result, err = b.branchPrepareMergeBack()
+		result, err = b.branchPrepareMergeBack(vcursor)
 		if err != nil {
 			return err
 		}
 	case MergeBack:
-		result, err = b.branchMergeBack()
+		result, err = b.branchMergeBack(vcursor)
 		if err != nil {
 			return err
 		}
 	case BranchDelete:
-		result, err = b.branchCleanUp()
+		result, err = b.branchCleanUp(vcursor)
 		if err != nil {
 			return err
 		}
 	case Show:
-		result, err = b.branchShow()
+		result, err = b.branchShow(vcursor)
 		if err != nil {
 			return err
 		}
@@ -476,7 +476,13 @@ func createBranchTargetMysqlHandler(targetUser, targetPassword, targetHost strin
 	return targetMysqlHandler, nil
 }
 
-func (b *Branch) branchCreate() (*sqltypes.Result, error) {
+func createBranchTargetVTGateHandler(cursor VCursor) (*branch.TargetMySQLService, error) {
+	vtgateMysqlService := &VTGateMysqlService{VCursor: cursor}
+	targetMysqlHandler := branch.NewTargetMySQLService(vtgateMysqlService)
+	return targetMysqlHandler, nil
+}
+
+func (b *Branch) branchCreate(cursor VCursor) (*sqltypes.Result, error) {
 	// create branch meta
 	createParams, ok := b.params.(*BranchCreateParams)
 	if !ok {
@@ -496,7 +502,7 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetHandler, err := createBranchTargetMysqlHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	targetHandler, err := createBranchTargetVTGateHandler(cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -506,12 +512,12 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	return &sqltypes.Result{}, bs.BranchCreate(branchMeta)
 }
 
-func (b *Branch) branchDiff() (*sqltypes.Result, error) {
+func (b *Branch) branchDiff(cursor VCursor) (*sqltypes.Result, error) {
 	diffParams, ok := b.params.(*BranchDiffParams)
 	if !ok {
 		return nil, fmt.Errorf("branch diff: invalid branch command params")
 	}
-	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -525,13 +531,13 @@ func (b *Branch) branchDiff() (*sqltypes.Result, error) {
 	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
-func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
+func (b *Branch) branchPrepareMergeBack(cursor VCursor) (*sqltypes.Result, error) {
 	prepareMergeBackParams, ok := b.params.(*BranchPrepareMergeBackParams)
 	if !ok {
 		return nil, fmt.Errorf("branch prepare merge back: invalid branch command params")
 	}
 
-	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	meta, bs, _, _, err := getBranchDataStruct(b.name, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -545,17 +551,17 @@ func (b *Branch) branchPrepareMergeBack() (*sqltypes.Result, error) {
 	return buildBranchDiffResult(meta.Name, diff), nil
 }
 
-func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
-	meta, bs, _, _, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+func (b *Branch) branchMergeBack(cursor VCursor) (*sqltypes.Result, error) {
+	meta, bs, _, _, err := getBranchDataStruct(b.name, cursor)
 	if err != nil {
 		return nil, err
 	}
 	return &sqltypes.Result{}, bs.BranchMergeBack(meta.Name, meta.Status)
 }
 
-func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
+func (b *Branch) branchCleanUp(cursor VCursor) (*sqltypes.Result, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetMysqlHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	targetHandler, err := createBranchTargetVTGateHandler(cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -563,13 +569,13 @@ func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
 	return &sqltypes.Result{}, targetHandler.BranchCleanUp(b.name)
 }
 
-func (b *Branch) branchShow() (*sqltypes.Result, error) {
+func (b *Branch) branchShow(cursor VCursor) (*sqltypes.Result, error) {
 	showParams, ok := b.params.(*BranchShowParams)
 	if !ok {
 		return nil, fmt.Errorf("branch show: invalid branch command params")
 	}
 
-	meta, _, _, targetHandler, err := getBranchDataStruct(b.name, b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	meta, _, _, targetHandler, err := getBranchDataStruct(b.name, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -586,9 +592,9 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 	}
 }
 
-func getBranchDataStruct(name string, targetUser, targetPassword, targetHost string, targetPort int) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
+func getBranchDataStruct(name string, cursor VCursor) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetMysqlHandler(targetUser, targetPassword, targetHost, targetPort)
+	targetHandler, err := createBranchTargetVTGateHandler(cursor)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
