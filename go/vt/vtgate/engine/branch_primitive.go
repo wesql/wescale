@@ -444,7 +444,7 @@ func (bsp *BranchShowParams) validate() error {
 	return nil
 }
 
-func createBranchSourceHandler(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.SourceMySQLService, error) {
+func createBranchSourceMysqlHandler(sourceUser, sourcePassword, sourceHost string, sourcePort int) (*branch.SourceMySQLService, error) {
 	sourceMysqlConfig := &mysql.Config{
 		User:                 sourceUser,
 		Passwd:               sourcePassword,
@@ -460,7 +460,7 @@ func createBranchSourceHandler(sourceUser, sourcePassword, sourceHost string, so
 	return sourceMysqlHandler, nil
 }
 
-func createBranchTargetHandler(targetUser, targetPassword, targetHost string, targetPort int) (*branch.TargetMySQLService, error) {
+func createBranchTargetMysqlHandler(targetUser, targetPassword, targetHost string, targetPort int) (*branch.TargetMySQLService, error) {
 	targetMysqlConfig := &mysql.Config{
 		User:                 targetUser,
 		Passwd:               targetPassword,
@@ -492,11 +492,11 @@ func (b *Branch) branchCreate() (*sqltypes.Result, error) {
 	}
 
 	// create branch service
-	sourceHandler, err := createBranchSourceHandler(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
+	sourceHandler, err := createBranchSourceMysqlHandler(createParams.SourceUser, createParams.SourcePassword, createParams.SourceHost, port)
 	if err != nil {
 		return nil, err
 	}
-	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	targetHandler, err := createBranchTargetMysqlHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -555,7 +555,7 @@ func (b *Branch) branchMergeBack() (*sqltypes.Result, error) {
 
 func (b *Branch) branchCleanUp() (*sqltypes.Result, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
+	targetHandler, err := createBranchTargetMysqlHandler(b.targetUser, b.targetPassword, b.targetHost, b.targetPort)
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +588,7 @@ func (b *Branch) branchShow() (*sqltypes.Result, error) {
 
 func getBranchDataStruct(name string, targetUser, targetPassword, targetHost string, targetPort int) (*branch.BranchMeta, *branch.BranchService, *branch.SourceMySQLService, *branch.TargetMySQLService, error) {
 	// get target handler
-	targetHandler, err := createBranchTargetHandler(targetUser, targetPassword, targetHost, targetPort)
+	targetHandler, err := createBranchTargetMysqlHandler(targetUser, targetPassword, targetHost, targetPort)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -598,7 +598,7 @@ func getBranchDataStruct(name string, targetUser, targetPassword, targetHost str
 		return nil, nil, nil, nil, err
 	}
 	// get source handler
-	sourceHandler, err := createBranchSourceHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
+	sourceHandler, err := createBranchSourceMysqlHandler(meta.SourceUser, meta.SourcePassword, meta.SourceHost, meta.SourcePort)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

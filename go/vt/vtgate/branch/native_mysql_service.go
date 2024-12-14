@@ -67,7 +67,7 @@ func (m *NativeMysqlService) Query(query string) (Rows, error) {
 		}
 
 		// store row values into map
-		rowMap := make(map[string]bytes)
+		rowMap := make(map[string]Bytes)
 		for i, colName := range columns {
 			val := *values[i].(*[]byte)
 			rowMap[colName] = val
@@ -108,7 +108,7 @@ func (m *NativeMysqlService) Exec(database, query string) (*Result, error) {
 		return nil, err
 	}
 
-	return &Result{AffectedRows: affectRows, LastInsertID: lastInsertId}, nil
+	return &Result{AffectedRows: uint64(affectRows), LastInsertID: uint64(lastInsertId)}, nil
 }
 
 func (m *NativeMysqlService) ExecuteInTxn(queries ...string) error {
