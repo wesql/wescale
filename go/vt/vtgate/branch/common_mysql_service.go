@@ -23,24 +23,37 @@ func (c *CommonMysqlService) GetBranchSchema(databasesInclude, databasesExclude 
 
 // getTableInfos executes the table info query and returns a slice of tableInfo
 func (c *CommonMysqlService) getTableInfos(databasesInclude, databasesExclude []string) ([]TableInfo, error) {
-	query, err := buildTableInfosQuerySQL(databasesInclude, databasesExclude)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := c.mysqlService.Query(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query table information: %v", err)
-	}
-
 	var tableInfos []TableInfo
 
-	for _, row := range rows {
-		var database, tableName string
-		database = BytesToString(row.RowData["TABLE_SCHEMA"])
-		tableName = BytesToString(row.RowData["TABLE_NAME"])
+	lastSchema := ""
+	lastTable := ""
 
-		tableInfos = append(tableInfos, TableInfo{database: database, name: tableName})
+	for {
+		query, err := buildTableInfosQueryInBatchSQL(databasesInclude, databasesExclude, lastSchema, lastTable, SelectBatchSize)
+		if err != nil {
+			return nil, err
+		}
+
+		rows, err := c.mysqlService.Query(query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query table information: %v", err)
+		}
+
+		for _, row := range rows {
+			var database, tableName string
+			database = BytesToString(row.RowData["TABLE_SCHEMA"])
+			tableName = BytesToString(row.RowData["TABLE_NAME"])
+
+			tableInfos = append(tableInfos, TableInfo{database: database, name: tableName})
+		}
+
+		if len(rows) < SelectBatchSize {
+			break
+		}
+
+		lastSchema = BytesToString(rows[SelectBatchSize-1].RowData["TABLE_SCHEMA"])
+		lastTable = BytesToString(rows[SelectBatchSize-1].RowData["TABLE_NAME"])
+
 	}
 
 	return tableInfos, nil

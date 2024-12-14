@@ -638,55 +638,70 @@ func buildMetaResult(meta *branch.BranchMeta) (*sqltypes.Result, error) {
 }
 
 func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQLService) (*sqltypes.Result, error) {
-	sql := branch.GetSelectMergeBackDDLSQL(branchName)
-	service := targetHandler.GetMysqlService()
-	rows, err := service.Query(sql)
-	if err != nil {
-		return nil, err
-	}
-
 	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "ddl", "merged")
 	resultRows := make([][]sqltypes.Value, 0)
-	for _, row := range rows {
-
-		id, _ := branch.BytesToInt(row.RowData["id"])
-		name := branch.BytesToString(row.RowData["name"])
-		database := branch.BytesToString(row.RowData["database"])
-		table := branch.BytesToString(row.RowData["table"])
-		ddl := branch.BytesToString(row.RowData["ddl"])
-		merged, _ := strconv.ParseBool(branch.BytesToString(row.RowData["merged"]))
-
-		mergedStr := "false"
-		if merged {
-			mergedStr = "true"
+	lastID := 0
+	for {
+		sql := branch.GetSelectMergeBackDDLInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		service := targetHandler.GetMysqlService()
+		rows, err := service.Query(sql)
+		if err != nil {
+			return nil, err
 		}
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, ddl, mergedStr))
+
+		for _, row := range rows {
+
+			id, _ := branch.BytesToInt(row.RowData["id"])
+			name := branch.BytesToString(row.RowData["name"])
+			database := branch.BytesToString(row.RowData["database"])
+			table := branch.BytesToString(row.RowData["table"])
+			ddl := branch.BytesToString(row.RowData["ddl"])
+			merged, _ := strconv.ParseBool(branch.BytesToString(row.RowData["merged"]))
+
+			mergedStr := "false"
+			if merged {
+				mergedStr = "true"
+			}
+			resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, ddl, mergedStr))
+		}
+
+		if len(rows) < branch.SelectBatchSize {
+			break
+		}
+		lastID, _ = branch.BytesToInt(rows[len(rows)-1].RowData["id"])
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil
 }
 
 func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLService) (*sqltypes.Result, error) {
-	selectSnapshotSQL := branch.GetSelectSnapshotSQL(branchName)
-	mysqlService := targetHandler.GetMysqlService()
-	rows, err := mysqlService.Query(selectSnapshotSQL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
-	}
-
 	fields := sqltypes.BuildVarCharFields("id", "name", "database", "table", "create table", "update time")
 	resultRows := make([][]sqltypes.Value, 0)
+	lastID := 0
 
-	for _, row := range rows {
+	for {
+		selectSnapshotSQL := branch.GetSelectSnapshotInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		mysqlService := targetHandler.GetMysqlService()
+		rows, err := mysqlService.Query(selectSnapshotSQL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
+		}
 
-		id, _ := branch.BytesToInt(row.RowData["id"])
-		name := branch.BytesToString(row.RowData["name"])
-		database := branch.BytesToString(row.RowData["database"])
-		table := branch.BytesToString(row.RowData["table"])
-		createTableSQL := branch.BytesToString(row.RowData["create_table"])
-		updateTimestamp := branch.BytesToString(row.RowData["update_time"])
+		for _, row := range rows {
 
-		resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
+			id, _ := branch.BytesToInt(row.RowData["id"])
+			name := branch.BytesToString(row.RowData["name"])
+			database := branch.BytesToString(row.RowData["database"])
+			table := branch.BytesToString(row.RowData["table"])
+			createTableSQL := branch.BytesToString(row.RowData["create_table"])
+			updateTimestamp := branch.BytesToString(row.RowData["update_time"])
+
+			resultRows = append(resultRows, sqltypes.BuildVarCharRow(strconv.Itoa(id), name, database, table, createTableSQL, updateTimestamp))
+		}
+		if len(rows) < branch.SelectBatchSize {
+			break
+		}
+		lastID, _ = branch.BytesToInt(rows[len(rows)-1].RowData["id"])
 	}
 
 	return &sqltypes.Result{Fields: fields, Rows: resultRows}, nil

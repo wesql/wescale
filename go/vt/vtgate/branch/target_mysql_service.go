@@ -22,8 +22,10 @@ func NewTargetMySQLService(mysqlService MysqlService) *TargetMySQLService {
 	}
 }
 
-var InsertSnapshotBatchSize = 10
-var InsertMergeBackDDLBatchSize = 10
+const (
+	InsertSnapshotBatchSize     = 10
+	InsertMergeBackDDLBatchSize = 10
+)
 
 func (t *TargetMySQLService) SelectOrInsertBranchMeta(metaToInsertIfNotExists *BranchMeta) (*BranchMeta, error) {
 
@@ -89,28 +91,34 @@ func (t *TargetMySQLService) GetMysqlService() MysqlService {
 /**********************************************************************************************************************/
 
 func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
-	selectSnapshotSQL := GetSelectSnapshotSQL(name)
-	// mysql Query will stream the result, so we don't need to worry if the data is too large to transfer.
-	rows, err := t.mysqlService.Query(selectSnapshotSQL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
-	}
-
 	result := &BranchSchema{
 		branchSchema: make(map[string]map[string]string),
 	}
-
-	for _, row := range rows {
-
-		database := BytesToString(row.RowData["database"])
-		table := BytesToString(row.RowData["table"])
-		createTableSQL := BytesToString(row.RowData["create_table_sql"])
-
-		if _, ok := result.branchSchema[database]; !ok {
-			result.branchSchema[database] = make(map[string]string)
+	lastID := -1
+	for {
+		selectSnapshotSQL := GetSelectSnapshotInBatchSQL(name, lastID, SelectBatchSize)
+		rows, err := t.mysqlService.Query(selectSnapshotSQL)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
 		}
 
-		result.branchSchema[database][table] = createTableSQL
+		for _, row := range rows {
+
+			database := BytesToString(row.RowData["database"])
+			table := BytesToString(row.RowData["table"])
+			createTableSQL := BytesToString(row.RowData["create_table_sql"])
+
+			if _, ok := result.branchSchema[database]; !ok {
+				result.branchSchema[database] = make(map[string]string)
+			}
+
+			result.branchSchema[database][table] = createTableSQL
+		}
+
+		if len(rows) < SelectBatchSize {
+			break
+		}
+		lastID, _ = BytesToInt(rows[len(rows)-1].RowData["id"])
 	}
 
 	if len(result.branchSchema) == 0 {
@@ -375,8 +383,8 @@ func getDeleteBranchMetaSQL(name string) string {
 
 // snapshot related
 
-func GetSelectSnapshotSQL(name string) string {
-	return fmt.Sprintf(SelectBranchSnapshotSQL, name)
+func GetSelectSnapshotInBatchSQL(name string, id, batchSize int) string {
+	return fmt.Sprintf(SelectBranchSnapshotInBatchSQL, name, id, batchSize)
 }
 
 func getDeleteSnapshotSQL(name string) string {
@@ -397,16 +405,16 @@ func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
 	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, name, database, table, ddl)
 }
 
-func getSelectUnmergedDDLSQL(name string) string {
-	return fmt.Sprintf(SelectBranchUnmergedDDLSQL, name)
+func getSelectUnmergedDDLInBatchSQL(name string, id, batchSize int) string {
+	return fmt.Sprintf(SelectBranchUnmergedDDLInBatchSQL, name, id, batchSize)
 }
 
-func getSelectUnmergedDBDDLSQL(name string) string {
-	return fmt.Sprintf(SelectBranchUnmergedDBDDLSQL, name)
+func getSelectUnmergedDBDDLInBatchSQL(name string, id, batchSize int) string {
+	return fmt.Sprintf(SelectBranchUnmergedDBDDLInBatchSQL, name, id, batchSize)
 }
 
-func GetSelectMergeBackDDLSQL(name string) string {
-	return fmt.Sprintf(SelectBranchMergeBackDDLSQL, name)
+func GetSelectMergeBackDDLInBatchSQL(name string, id, batchSize int) string {
+	return fmt.Sprintf(SelectBranchMergeBackDDLInBatchSQL, name, id, batchSize)
 }
 
 func getUpdateDDLMergedSQL(id int) string {

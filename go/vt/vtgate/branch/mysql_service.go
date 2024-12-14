@@ -11,6 +11,7 @@ type Row struct {
 	RowData map[string]bytes
 }
 
+// Rows The order of the rows in the query result should be the same as the order in the array
 type Rows []Row
 
 type Result struct {

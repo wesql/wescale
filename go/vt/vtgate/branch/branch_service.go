@@ -377,24 +377,41 @@ func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
 
 func (bs *BranchService) executeMergeBackDDL(name string) error {
 	// create or drop database first
-	selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLSQL(name)
-	rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
-	if err != nil {
-		return err
-	}
-	err = bs.executeMergeBackDDLOneByOne(rows)
-	if err != nil {
-		return err
+	lastID := 0
+	for {
+		selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLInBatchSQL(name, lastID, SelectBatchSize)
+		rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
+		if err != nil {
+			return err
+		}
+		err = bs.executeMergeBackDDLOneByOne(rows)
+		if err != nil {
+			return err
+		}
+		if len(rows) < SelectBatchSize {
+			break
+		}
+		lastID, _ = BytesToInt(rows[len(rows)-1].RowData["id"])
 	}
 
 	// then, execute table ddl
-	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)
-
-	rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
-	if err != nil {
-		return err
+	lastID = 0
+	for {
+		selectMergeBackDDLSQL := getSelectUnmergedDDLInBatchSQL(name, lastID, SelectBatchSize)
+		rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
+		if err != nil {
+			return err
+		}
+		err = bs.executeMergeBackDDLOneByOne(rows2)
+		if err != nil {
+			return err
+		}
+		if len(rows2) < SelectBatchSize {
+			break
+		}
+		lastID, _ = BytesToInt(rows2[len(rows2)-1].RowData["id"])
 	}
-	return bs.executeMergeBackDDLOneByOne(rows2)
+	return nil
 }
 
 // caller should close rows
