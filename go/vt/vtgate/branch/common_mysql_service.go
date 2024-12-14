@@ -60,7 +60,9 @@ func (c *CommonMysqlService) getBranchSchema(tableInfos []TableInfo) (*BranchSch
 		}
 
 		for _, row := range rows {
-			result[tableInfos[i].database] = make(map[string]string)
+			if _, exists := result[tableInfos[i].database]; !exists {
+				result[tableInfos[i].database] = make(map[string]string)
+			}
 			result[tableInfos[i].database][tableInfos[i].name] = BytesToString(row.RowData["Create Table"])
 		}
 	}
