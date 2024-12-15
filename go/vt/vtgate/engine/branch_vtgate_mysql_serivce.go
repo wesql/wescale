@@ -40,10 +40,13 @@ func (v *VTGateMysqlService) Query(query string) (branch.Rows, error) {
 }
 
 func (v *VTGateMysqlService) Exec(database, query string) (*branch.Result, error) {
-	_, err := v.VCursor.Execute(context.Background(), "Execute", fmt.Sprintf("USE `%s`", database), make(map[string]*querypb.BindVariable), true, 3)
-	if err != nil {
-		return nil, err
+	if database != "" {
+		err := v.VCursor.Session().SetTarget(database)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	rst, err := v.VCursor.Execute(context.Background(), "Execute", query, make(map[string]*querypb.BindVariable), true, 3)
 	if err != nil {
 		return nil, err
