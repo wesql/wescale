@@ -1168,6 +1168,20 @@ func (e *Executor) VSchema() *vindexes.VSchema {
 	return e.vschema
 }
 
+func (e *Executor) VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if _, ok := e.vschema.Keyspaces[name]; !ok {
+		e.vschema.Keyspaces[name] = KeyspaceSchema
+	}
+}
+
+func (e *Executor) VSchemaDeleteKeyspace(name string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	delete(e.vschema.Keyspaces, name)
+}
+
 // SaveVSchema updates the vschema and stats
 func (e *Executor) SaveVSchema(vschema *vindexes.VSchema, stats *VSchemaStats) {
 	e.mu.Lock()

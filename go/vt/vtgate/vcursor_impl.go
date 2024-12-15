@@ -93,6 +93,8 @@ type iExecute interface {
 	ParseDestinationTarget(targetString string) (string, topodatapb.TabletType, key.Destination, error)
 	reloadExec(ctx context.Context, reloadType *sqlparser.ReloadType) error
 	VSchema() *vindexes.VSchema
+	VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema)
+	VSchemaDeleteKeyspace(name string)
 	SetFailPoint(command string, key string, value string) error
 	SubmitDMLJob(command, sql, uuid, tableSchema, timePeriodStart, timePeriodEnd, timePeriodTimeZone string, timeGapInMs, batchSize int64, postponeLaunch bool, failPolicy, throttleDuration, throttleRatio string) (*sqltypes.Result, error)
 	ShowDMLJob(uuid string, showDetail bool) (*sqltypes.Result, error)
@@ -1218,6 +1220,14 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 
 func (vc *vcursorImpl) GetExecutorVSchema() *vindexes.VSchema {
 	return vc.executor.VSchema()
+}
+
+func (vc *vcursorImpl) VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
+	vc.executor.VSchemaAddKeyspaceIfNotExists(name, KeyspaceSchema)
+}
+
+func (vc *vcursorImpl) VSchemaDeleteKeyspace(name string) {
+	vc.executor.VSchemaDeleteKeyspace(name)
 }
 
 func (vc *vcursorImpl) GetVSchema() *vindexes.VSchema {

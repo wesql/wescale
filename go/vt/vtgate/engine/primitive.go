@@ -129,9 +129,13 @@ type (
 
 		FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
 
-		GetExecutorVSchema() *vindexes.VSchema
+		//GetExecutorVSchema() *vindexes.VSchema
 
-		GetVSchema() *vindexes.VSchema
+		VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema)
+
+		VSchemaDeleteKeyspace(name string)
+
+		//GetVSchema() *vindexes.VSchema
 	}
 
 	// SessionActions gives primitives ability to interact with the session state
