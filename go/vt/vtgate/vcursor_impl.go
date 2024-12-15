@@ -707,13 +707,19 @@ func (vc *vcursorImpl) Session() engine.SessionActions {
 	return vc
 }
 
-func (vc *vcursorImpl) SetTarget(target string) error {
+func (vc *vcursorImpl) GetTarget() string {
+	return vc.safeSession.TargetString
+}
+
+func (vc *vcursorImpl) SetTarget(target string, check bool) error {
 	keyspace, tabletType, _, err := topoprotopb.ParseDestination(target, defaultTabletType)
 	if err != nil {
 		return err
 	}
-	if _, ok := vc.vschema.Keyspaces[keyspace]; !ignoreKeyspace(keyspace) && !ok {
-		return vterrors.VT05003(keyspace)
+	if check {
+		if _, ok := vc.vschema.Keyspaces[keyspace]; !ignoreKeyspace(keyspace) && !ok {
+			return vterrors.VT05003(keyspace)
+		}
 	}
 
 	if vc.safeSession.InTransaction() && tabletType != topodatapb.TabletType_PRIMARY {
@@ -1208,6 +1214,10 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 	default:
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)
 	}
+}
+
+func (vc *vcursorImpl) GetExecutorVSchema() *vindexes.VSchema {
+	return vc.executor.VSchema()
 }
 
 func (vc *vcursorImpl) GetVSchema() *vindexes.VSchema {

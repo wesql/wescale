@@ -237,7 +237,7 @@ func TestSetTarget(t *testing.T) {
 		t.Run(fmt.Sprintf("%d#%s", i, tc.targetString), func(t *testing.T) {
 			vc, _ := newVCursorImpl(NewSafeSession(&vtgatepb.Session{InTransaction: true}), "", sqlparser.MarginComments{}, nil, nil, &fakeVSchemaOperator{vschema: tc.vschema}, tc.vschema, nil, nil, false, querypb.ExecuteOptions_Gen4)
 			vc.vschema = tc.vschema
-			err := vc.SetTarget(tc.targetString)
+			err := vc.SetTarget(tc.targetString, true)
 			if tc.expectedError == "" {
 				require.NoError(t, err)
 				require.Equal(t, vc.safeSession.TargetString, tc.targetString)

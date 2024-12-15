@@ -12,6 +12,11 @@ type VTGateMysqlService struct {
 }
 
 func (v *VTGateMysqlService) Query(query string) (branch.Rows, error) {
+	err := v.VCursor.Session().SetTarget("mysql", true)
+	if err != nil {
+		return nil, err
+	}
+
 	// AUTOCOMMIT is used to run the statement as autocommitted transaction.
 	// AUTOCOMMIT = 3;
 	rst, err := v.VCursor.Execute(context.Background(), "Execute", query, make(map[string]*querypb.BindVariable), true, 3)
@@ -41,7 +46,10 @@ func (v *VTGateMysqlService) Query(query string) (branch.Rows, error) {
 
 func (v *VTGateMysqlService) Exec(database, query string) (*branch.Result, error) {
 	if database != "" {
-		err := v.VCursor.Session().SetTarget(database)
+		oldTarget := v.VCursor.Session().GetTarget()
+		defer v.VCursor.Session().SetTarget(oldTarget, true)
+
+		err := v.VCursor.Session().SetTarget(database, false)
 		if err != nil {
 			return nil, err
 		}
@@ -56,6 +64,10 @@ func (v *VTGateMysqlService) Exec(database, query string) (*branch.Result, error
 }
 
 func (v *VTGateMysqlService) ExecuteInTxn(queries ...string) error {
+	err := v.VCursor.Session().SetTarget("mysql", true)
+	if err != nil {
+		return err
+	}
 	first := true
 	defer v.VCursor.Execute(context.Background(), "Execute", "ROLLBACK;", make(map[string]*querypb.BindVariable), true, 0)
 	for _, query := range queries {
@@ -74,6 +86,6 @@ func (v *VTGateMysqlService) ExecuteInTxn(queries ...string) error {
 		}
 	}
 
-	_, err := v.VCursor.Execute(context.Background(), "Execute", "COMMIT;", make(map[string]*querypb.BindVariable), true, 0)
+	_, err = v.VCursor.Execute(context.Background(), "Execute", "COMMIT;", make(map[string]*querypb.BindVariable), true, 0)
 	return err
 }

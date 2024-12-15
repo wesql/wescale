@@ -128,6 +128,10 @@ type (
 		ReloadExec(ctx context.Context, command sqlparser.ReloadType) (*sqltypes.Result, error)
 
 		FindHealthyPrimaryTablet() (*discovery.TabletHealth, error)
+
+		GetExecutorVSchema() *vindexes.VSchema
+
+		GetVSchema() *vindexes.VSchema
 	}
 
 	// SessionActions gives primitives ability to interact with the session state
@@ -135,7 +139,9 @@ type (
 		// RecordWarning stores the given warning in the current session
 		RecordWarning(warning *querypb.QueryWarning)
 
-		SetTarget(target string) error
+		SetTarget(target string, check bool) error
+
+		GetTarget() string
 
 		SetUDV(key string, value any) error
 

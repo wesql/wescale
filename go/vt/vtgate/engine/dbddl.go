@@ -162,6 +162,11 @@ func (c *DBDDL) createDatabase(ctx context.Context, vcursor VCursor, plugin DBDD
 			break
 		}
 	}
+
+	newKSSchema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: c.name, Sharded: false}, Tables: make(map[string]*vindexes.Table)}
+	vcursor.GetExecutorVSchema().Keyspaces[c.name] = newKSSchema
+	//vcursor.GetVSchema().Keyspaces[c.name] = newKSSchema
+
 	return &sqltypes.Result{RowsAffected: 1}, nil
 }
 
