@@ -73,9 +73,8 @@ docker run -itd --network wescale-network --name wescale15307 \
 
 ### Initialize Data
 
-Initialize your source cluster with some example databases and tables:
-
 ```shell
+# On the source side (port 15306)
 $ docker exec -it wescale mysql -h127.0.0.1 -P15306
 
 DROP DATABASE IF EXISTS test_db1;
@@ -113,10 +112,8 @@ A typical workflow involves:
 
 ### Step 1: Branch Create
 
-Use the `Branch create` command on the target cluster to copy the schema from the source cluster.
-
-**Command:**
 ```sql
+# On the target side (port 15307)
 $ docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
 
 mysql> Branch create with (
@@ -130,10 +127,9 @@ mysql> Branch create with (
 Query OK, 0 rows affected (0.214 sec)
 ```
 
-Check the branch status and metadata:
-
 ```sql
-MySQL [(none)]> Branch show;
+# On the target side (port 15307)
+mysql> Branch show;
 +-----------+---------+-------------+-------------+-------------+---------+--------------------------------------------------------------------------+
 | name      | status  | source host | source port | source user | include | exclude                                                                  |
 +-----------+---------+-------------+-------------+-------------+---------+--------------------------------------------------------------------------+
@@ -142,10 +138,9 @@ MySQL [(none)]> Branch show;
 1 row in set (0.010 sec)
 ```
 
-You’ll see a status of "created". Now verify the target cluster has the same schema as the source:
-
 ```sql
-MySQL [(none)]> show databases;
+# On the target side (port 15307)
+mysql> show databases;
 +--------------------+
 | Database           |
 +--------------------+
@@ -161,9 +156,8 @@ MySQL [(none)]> show databases;
 
 ### Step 2: Modify Schema in the Target
 
-Make schema changes on the target side without impacting production:
-
 ```sql
+# On the target side (port 15307)
 ALTER TABLE test_db1.users ADD COLUMN phone VARCHAR(20);
 ALTER TABLE test_db1.users ADD INDEX idx_phone (phone);
 
@@ -182,9 +176,8 @@ CREATE TABLE test_db2.products (
 
 ### Step 3: Branch Diff
 
-Compare the target schema with the source to identify necessary DDL changes:
-
 ```sql
+# On the target side (port 15307)
 mysql> Branch diff\G
 ```
 
@@ -192,17 +185,15 @@ This command lists the SQL statements required to update the source schema to ma
 
 ### Step 4: Branch Prepare Merge Back
 
-Persist the identified DDL statements into the branch’s metadata for safe merging:
-
 ```sql
+# On the target side (port 15307)
 Branch prepare_merge_back;
 ```
 
 ### Step 5: Branch Merge Back
 
-Apply the prepared DDL statements to the source cluster:
-
 ```sql
+# On the target side (port 15307)
 Branch merge_back;
 ```
 
@@ -218,6 +209,7 @@ SHOW TABLES FROM test_db2;
 Since both environments should now be in sync, you can run `Branch diff` again on the **target** side:
 
 ```sql
+# On the target side (port 15307)
 Branch diff;
 ```
 
