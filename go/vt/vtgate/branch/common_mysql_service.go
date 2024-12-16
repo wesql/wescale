@@ -1,6 +1,9 @@
 package branch
 
-import "fmt"
+import (
+	"fmt"
+	"vitess.io/vitess/go/vt/sqlparser"
+)
 
 type CommonMysqlService struct {
 	mysqlService MysqlService
@@ -76,9 +79,33 @@ func (c *CommonMysqlService) getTableSchemaOneByOne(tableInfos []TableInfo) (*Br
 			if _, exists := result[tableInfos[i].database]; !exists {
 				result[tableInfos[i].database] = make(map[string]string)
 			}
-			result[tableInfos[i].database][tableInfos[i].name] = BytesToString(row.RowData["Create Table"])
+
+			createTableSQL, err := normalizeCreateTableSQL(BytesToString(row.RowData["Create Table"]))
+			if err != nil {
+				return nil, err
+			}
+			result[tableInfos[i].database][tableInfos[i].name] = createTableSQL
 		}
 	}
 
 	return &BranchSchema{branchSchema: result}, nil
+}
+
+func normalizeCreateTableSQL(createTableSQL string) (string, error) {
+	s, err := sqlparser.Parse(createTableSQL)
+	if err != nil {
+		return "", err
+	}
+	createStmt := s.(*sqlparser.CreateTable)
+	createStmt.IfNotExists = true
+	// remove engine information
+	tmp := make([]*sqlparser.TableOption, 0)
+	for _, opt := range createStmt.TableSpec.Options {
+		if opt.Name != "ENGINE" {
+			tmp = append(tmp, opt)
+		}
+	}
+	createStmt.TableSpec.Options = tmp
+
+	return sqlparser.String(createStmt), nil
 }

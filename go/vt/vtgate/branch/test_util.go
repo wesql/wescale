@@ -31,83 +31,20 @@ func NewMockMysqlService(t *testing.T) (*NativeMysqlService, sqlmock.Sqlmock) {
 var BranchSchemaForTest = &BranchSchema{
 	branchSchema: map[string]map[string]string{
 		"eCommerce": {
-			"Users": `
-                    CREATE TABLE Users (
-                        UserID INT PRIMARY KEY,
-                        Username VARCHAR(50) NOT NULL,
-                        Email VARCHAR(100) NOT NULL UNIQUE,
-                        PasswordHash VARCHAR(255) NOT NULL
-                    );`,
-			"Orders": `
-                    CREATE TABLE Orders (
-                        OrderID INT PRIMARY KEY,
-                        UserID INT,
-                        OrderDate DATETIME,
-                        Status VARCHAR(20),
-                        ShippingAddress VARCHAR(255),
-                        FOREIGN KEY (UserID) REFERENCES Users(UserID)
-                    );`,
-			"OrderItems": `
-                    CREATE TABLE OrderItems (
-                        OrderItemID INT PRIMARY KEY,
-                        OrderID INT,
-                        ProductID INT,
-                        Quantity INT,
-                        Price DECIMAL(10, 2),
-                        FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
-                    );`,
+			"Users":      "create table if not exists `Users` (\n\tUserID INT primary key,\n\tUsername VARCHAR(50) not null,\n\tEmail VARCHAR(100) not null unique,\n\tPasswordHash VARCHAR(255) not null\n)",
+			"Orders":     "create table if not exists Orders (\n\tOrderID INT primary key,\n\tUserID INT,\n\tOrderDate DATETIME,\n\t`Status` VARCHAR(20),\n\tShippingAddress VARCHAR(255),\n\tforeign key (UserID) references `Users` (UserID)\n)",
+			"OrderItems": "create table if not exists OrderItems (\n\tOrderItemID INT primary key,\n\tOrderID INT,\n\tProductID INT,\n\tQuantity INT,\n\tPrice DECIMAL(10,2),\n\tforeign key (OrderID) references Orders (OrderID)\n)",
 		},
 		"Inventory": {
-			"Products": `
-                    CREATE TABLE Products (
-                        ProductID INT PRIMARY KEY,
-                        ProductName VARCHAR(100) NOT NULL,
-                        CategoryID INT,
-                        Price DECIMAL(10, 2),
-                        Stock INT
-                    );`,
-			"Categories": `
-                    CREATE TABLE Categories (
-                        CategoryID INT PRIMARY KEY,
-                        CategoryName VARCHAR(50) NOT NULL
-                    );`,
-			"Suppliers": `
-                    CREATE TABLE Suppliers (
-                        SupplierID INT PRIMARY KEY,
-                        SupplierName VARCHAR(100),
-                        ContactEmail VARCHAR(100)
-                    );`,
-			"InventoryLog": `
-                    CREATE TABLE InventoryLog (
-                        LogID INT PRIMARY KEY,
-                        ProductID INT,
-                        ChangeAmount INT,
-                        ChangeDate DATETIME,
-                        FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
-                    );`,
+			"Products":     "create table if not exists Products (\n\tProductID INT primary key,\n\tProductName VARCHAR(100) not null,\n\tCategoryID INT,\n\tPrice DECIMAL(10,2),\n\tStock INT\n)",
+			"Categories":   "create table if not exists Categories (\n\tCategoryID INT primary key,\n\tCategoryName VARCHAR(50) not null\n)",
+			"Suppliers":    "create table if not exists Suppliers (\n\tSupplierID INT primary key,\n\tSupplierName VARCHAR(100),\n\tContactEmail VARCHAR(100)\n)",
+			"InventoryLog": "create table if not exists InventoryLog (\n\tLogID INT primary key,\n\tProductID INT,\n\tChangeAmount INT,\n\tChangeDate DATETIME,\n\tforeign key (ProductID) references Products (ProductID)\n)",
 		},
 		"HR": {
-			"Employees": `
-                    CREATE TABLE Employees (
-                        EmployeeID INT PRIMARY KEY,
-                        FirstName VARCHAR(50),
-                        LastName VARCHAR(50),
-                        DepartmentID INT,
-                        Email VARCHAR(100) UNIQUE
-                    );`,
-			"Departments": `
-                    CREATE TABLE Departments (
-                        DepartmentID INT PRIMARY KEY,
-                        DepartmentName VARCHAR(100)
-                    );`,
-			"Payroll": `
-                    CREATE TABLE Payroll (
-                        PayrollID INT PRIMARY KEY,
-                        EmployeeID INT,
-                        Salary DECIMAL(15, 2),
-                        PayrollDate DATE,
-                        FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID)
-                    );`,
+			"Employees":   "create table if not exists Employees (\n\tEmployeeID INT primary key,\n\tFirstName VARCHAR(50),\n\tLastName VARCHAR(50),\n\tDepartmentID INT,\n\tEmail VARCHAR(100) unique\n)",
+			"Departments": "create table if not exists Departments (\n\tDepartmentID INT primary key,\n\tDepartmentName VARCHAR(100)\n)",
+			"Payroll":     "create table if not exists Payroll (\n\tPayrollID INT primary key,\n\tEmployeeID INT,\n\tSalary DECIMAL(15,2),\n\tPayrollDate DATE,\n\tforeign key (EmployeeID) references Employees (EmployeeID)\n)",
 		},
 	},
 }

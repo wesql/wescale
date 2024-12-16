@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 	"vitess.io/vitess/go/vt/failpointkey"
-	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type TargetMySQLService struct {
@@ -139,11 +138,7 @@ func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *Branch
 	insertSQLs := make([]string, 0)
 	for database, tables := range schema.branchSchema {
 		for tableName, createTableSQL := range tables {
-			normalizedSQL, err := normalizeCreateTableSQL(createTableSQL)
-			if err != nil {
-				return err
-			}
-			sql := getInsertSnapshotSQL(name, database, tableName, normalizedSQL)
+			sql := getInsertSnapshotSQL(name, database, tableName, createTableSQL)
 			insertSQLs = append(insertSQLs, sql)
 		}
 	}
@@ -158,25 +153,6 @@ func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *Branch
 		}
 	}
 	return nil
-}
-
-func normalizeCreateTableSQL(createTableSQL string) (string, error) {
-	s, err := sqlparser.Parse(createTableSQL)
-	if err != nil {
-		return "", err
-	}
-	createStmt := s.(*sqlparser.CreateTable)
-	createStmt.IfNotExists = true
-	// remove engine information
-	tmp := make([]*sqlparser.TableOption, 0)
-	for _, opt := range createStmt.TableSpec.Options {
-		if opt.Name != "ENGINE" {
-			tmp = append(tmp, opt)
-		}
-	}
-	createStmt.TableSpec.Options = tmp
-
-	return sqlparser.String(createStmt), nil
 }
 
 func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
