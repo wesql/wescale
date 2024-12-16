@@ -74,9 +74,8 @@ func TestQuery(t *testing.T) {
 	defer service.Close()
 
 	mock.ExpectQuery("SELECT 1").WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
-	rows, err := service.Query("SELECT 1")
+	_, err := service.Query("SELECT 1")
 	assert.NoError(t, err)
-	assert.NotNil(t, rows)
 
 	mock.ExpectQuery("INSERT * FROM t1").WillReturnError(errors.New("synx error"))
 	_, err = service.Query("SELECT 1")

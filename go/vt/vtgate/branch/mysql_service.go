@@ -1,76 +1,50 @@
 package branch
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
-
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
+	"strconv"
 )
 
-type MysqlService struct {
-	db *sql.DB
+type Bytes []byte
+
+type Row struct {
+	RowData map[string]Bytes
 }
 
-func NewMysqlService(db *sql.DB) (*MysqlService, error) {
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping MySQL: %w", err)
-	}
-	return &MysqlService{db: db}, nil
+// Rows The order of the rows in the query result should be the same as the order in the array
+type Rows []Row
+
+type Result struct {
+	LastInsertID uint64
+	AffectedRows uint64
 }
 
-func NewMysqlServiceWithConfig(config *mysql.Config) (*MysqlService, error) {
-	config.MultiStatements = true
-	db, err := sql.Open("mysql", config.FormatDSN())
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MySQL: %w", err)
-	}
-
-	service, err := NewMysqlService(db)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	return service, nil
+type MysqlService interface {
+	Query(query string) (Rows, error)
+	Exec(database, query string) (*Result, error)
+	ExecuteInTxn(queries ...string) error
 }
 
-func (m *MysqlService) Close() error {
-	return m.db.Close()
+func BytesToString(b Bytes) string {
+	return string(b)
 }
 
-func (m *MysqlService) Query(query string) (*sql.Rows, error) {
-	return m.db.Query(query)
+func BytesToInt(b Bytes) (int, error) {
+	return strconv.Atoi(BytesToString(b))
 }
 
-func (m *MysqlService) Exec(database, query string) (sql.Result, error) {
-	ctx := context.Background()
-	if database != "" {
-		query = fmt.Sprintf("USE %s; %s", database, query)
-	}
-	conn, err := m.db.Conn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	return conn.ExecContext(ctx, query)
+func BytesToFloat64(b Bytes) (float64, error) {
+	return strconv.ParseFloat(BytesToString(b), 64)
 }
 
-func (m *MysqlService) ExecuteInTxn(queries ...string) error {
-	tx, err := m.db.Begin()
-	if err != nil {
-		return err
-	}
-	// make sure to rollback if any query fails
-	defer tx.Rollback()
+func BytesToBool(b Bytes) (bool, error) {
+	return strconv.ParseBool(BytesToString(b))
+}
 
-	for _, query := range queries {
-		_, err := tx.Exec(query)
-		if err != nil {
-			return err
-		}
-	}
+func BytesToUint64(b Bytes) (uint64, error) {
+	return strconv.ParseUint(BytesToString(b), 10, 64)
+}
 
-	return tx.Commit()
+func BytesToInt64(b Bytes) (int64, error) {
+	return strconv.ParseInt(BytesToString(b), 10, 64)
 }

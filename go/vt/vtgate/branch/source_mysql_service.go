@@ -7,10 +7,10 @@ import (
 
 type SourceMySQLService struct {
 	*CommonMysqlService
-	mysqlService *MysqlService
+	mysqlService MysqlService
 }
 
-func NewSourceMySQLService(mysqlService *MysqlService) *SourceMySQLService {
+func NewSourceMySQLService(mysqlService MysqlService) *SourceMySQLService {
 	return &SourceMySQLService{
 		CommonMysqlService: &CommonMysqlService{
 			mysqlService: mysqlService,
@@ -24,12 +24,10 @@ type TableInfo struct {
 	name     string
 }
 
-var GetBranchSchemaBatchSize = 50
-
 /**********************************************************************************************************************/
 
-// buildTableInfosQuerySQL constructs the SQL query to retrieve table names
-func buildTableInfosQuerySQL(databasesInclude, databasesExclude []string) (string, error) {
+// buildTableInfosQueryInBatchSQL constructs the SQL query to retrieve table names
+func buildTableInfosQueryInBatchSQL(databasesInclude, databasesExclude []string, lastSchema, lastTable string, batchSize int) (string, error) {
 	sql := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
 
 	// deal with databasesInclude
@@ -73,6 +71,11 @@ func buildTableInfosQuerySQL(databasesInclude, databasesExclude []string) (strin
 		excludeList := strings.Join(databasesExcludeFilterEmptye, "','")
 		sql += fmt.Sprintf(" AND TABLE_SCHEMA NOT IN ('%s')", excludeList)
 	}
+
+	// add batch limit
+	sql += fmt.Sprintf(" AND (TABLE_SCHEMA > '%s' OR (TABLE_SCHEMA = '%s' AND TABLE_NAME > '%s')) ORDER BY TABLE_SCHEMA ASC, TABLE_NAME ASC LIMIT %d",
+		lastSchema, lastSchema, lastTable, batchSize)
+
 	return sql, nil
 }
 

@@ -30,11 +30,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"vitess.io/vitess/go/vt/discovery"
-
 	"vitess.io/vitess/go/mysql/collations"
 	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/test/utils"
+	"vitess.io/vitess/go/vt/discovery"
 	"vitess.io/vitess/go/vt/key"
 	"vitess.io/vitess/go/vt/sqlparser"
 	"vitess.io/vitess/go/vt/srvtopo"
@@ -104,6 +103,14 @@ func (t *noopVCursor) StreamExecutePrimitiveStandalone(ctx context.Context, prim
 func (t *noopVCursor) AnyAdvisoryLockTaken() bool {
 	// TODO implement me
 	panic("implement me")
+}
+
+func (t *noopVCursor) ExecutorVSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
+
+}
+
+func (t *noopVCursor) ExecutorVSchemaDeleteKeyspace(name string) {
+
 }
 
 func (t *noopVCursor) AddAdvisoryLock(_ string) {
@@ -341,7 +348,11 @@ func (t *noopVCursor) SetConsolidator(querypb.ExecuteOptions_Consolidator) {
 	panic("implement me")
 }
 
-func (t *noopVCursor) SetTarget(string) error {
+func (t *noopVCursor) SetTarget(target string, check bool) error {
+	panic("implement me")
+}
+
+func (t *noopVCursor) GetTarget() string {
 	panic("implement me")
 }
 
@@ -519,9 +530,13 @@ func (f *loggingVCursor) FindHealthyPrimaryTablet() (*discovery.TabletHealth, er
 	panic("implement me")
 }
 
-func (f *loggingVCursor) SetTarget(target string) error {
+func (f *loggingVCursor) SetTarget(target string, check bool) error {
 	f.log = append(f.log, fmt.Sprintf("Target set to %s", target))
 	return nil
+}
+
+func (f *loggingVCursor) GetTarget() string {
+	panic("implement me")
 }
 
 func (f *loggingVCursor) GetKeyspace() string {
@@ -813,6 +828,12 @@ func (f *loggingVCursor) SetWorkload(querypb.ExecuteOptions_Workload) {
 
 func (f *loggingVCursor) SetPlannerVersion(querypb.ExecuteOptions_PlannerVersion) {
 	panic("implement me")
+}
+
+func (f *loggingVCursor) ExecutorVSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
+}
+
+func (f *loggingVCursor) ExecutorVSchemaDeleteKeyspace(name string) {
 }
 
 func (f *loggingVCursor) FindRoutedTable(tbl sqlparser.TableName) (*vindexes.Table, error) {

@@ -1,7 +1,6 @@
 package branch
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/pingcap/failpoint"
 	"strings"
@@ -378,46 +377,55 @@ func statusIsOneOf(status BranchStatus, statuses []BranchStatus) bool {
 
 func (bs *BranchService) executeMergeBackDDL(name string) error {
 	// create or drop database first
-	selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLSQL(name)
-	rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	err = bs.executeMergeBackDDLOneByOne(rows)
-	if err != nil {
-		return err
+	lastID := 0
+	for {
+		selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLInBatchSQL(name, lastID, SelectBatchSize)
+		rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
+		if err != nil {
+			return err
+		}
+		err = bs.executeMergeBackDDLOneByOne(rows)
+		if err != nil {
+			return err
+		}
+		if len(rows) < SelectBatchSize {
+			break
+		}
+		lastID, _ = BytesToInt(rows[len(rows)-1].RowData["id"])
 	}
 
 	// then, execute table ddl
-	selectMergeBackDDLSQL := getSelectUnmergedDDLSQL(name)
-
-	rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
-	if err != nil {
-		return err
+	lastID = 0
+	for {
+		selectMergeBackDDLSQL := getSelectUnmergedDDLInBatchSQL(name, lastID, SelectBatchSize)
+		rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
+		if err != nil {
+			return err
+		}
+		err = bs.executeMergeBackDDLOneByOne(rows2)
+		if err != nil {
+			return err
+		}
+		if len(rows2) < SelectBatchSize {
+			break
+		}
+		lastID, _ = BytesToInt(rows2[len(rows2)-1].RowData["id"])
 	}
-	defer rows2.Close()
-	return bs.executeMergeBackDDLOneByOne(rows2)
+	return nil
 }
 
 // caller should close rows
-func (bs *BranchService) executeMergeBackDDLOneByOne(rows *sql.Rows) error {
-	for rows.Next() {
-		var (
-			id       int
-			name     string
-			database string
-			table    string
-			ddl      string
-			merged   bool
-		)
-		var err error
-		if err = rows.Scan(&id, &name, &database, &table, &ddl, &merged); err != nil {
-			return fmt.Errorf("failed to scan row: %v", err)
-		}
+func (bs *BranchService) executeMergeBackDDLOneByOne(rows Rows) error {
+	for _, row := range rows {
 
+		id, _ := BytesToInt(row.RowData["id"])
+		table := BytesToString(row.RowData["table"])
+		database := BytesToString(row.RowData["database"])
+		ddl := BytesToString(row.RowData["ddl"])
+
+		var err error
 		if table == "" {
-			// create or drop database ddl
+			// create or drop database ddl, don't specify database
 			_, err = bs.sourceMySQLService.mysqlService.Exec("", ddl)
 		} else {
 			// todo enhancement: track whether the current ddl to apply has finished or is executing
@@ -435,7 +443,6 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(rows *sql.Rows) error {
 			failpoint.Return(fmt.Errorf("error executing merge back ddl by failpoint"))
 		})
 	}
-
 	return nil
 }
 

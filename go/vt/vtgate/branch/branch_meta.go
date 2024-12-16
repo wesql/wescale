@@ -90,6 +90,8 @@ type BranchDiff struct {
 }
 
 const (
+	SelectBatchSize = 5000
+
 	// branch meta related
 
 	UpsertBranchMetaSQL = `
@@ -121,7 +123,7 @@ const (
 
 	// snapshot related
 
-	SelectBranchSnapshotSQL = "select * from mysql.branch_snapshot where Name='%s' order by id"
+	SelectBranchSnapshotInBatchSQL = "select * from mysql.branch_snapshot where Name='%s' and id > %d order by id asc limit %d"
 
 	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where Name='%s'"
 
@@ -131,11 +133,11 @@ const (
 
 	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where Name='%s'"
 
-	SelectBranchUnmergedDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false order by id"
+	SelectBranchUnmergedDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and id > %d order by id asc limit %d"
 
-	SelectBranchUnmergedDBDDLSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and `table` = '' order by id"
+	SelectBranchUnmergedDBDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and `table` = '' and id > %d order by id asc limit %d"
 
-	SelectBranchMergeBackDDLSQL = "select * from mysql.branch_patch where Name='%s' order by id"
+	SelectBranchMergeBackDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and id > %d order by id asc limit %d"
 
 	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (`Name`, `database`, `table`, `ddl`, `merged`) values ('%s', '%s', '%s', '%s', false)"
 

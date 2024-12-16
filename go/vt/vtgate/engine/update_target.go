@@ -67,7 +67,7 @@ func (updTarget *UpdateTarget) GetTableName() string {
 
 // TryExecute implements the Primitive interface
 func (updTarget *UpdateTarget) TryExecute(_ context.Context, vcursor VCursor, _ map[string]*query.BindVariable, _ bool) (*sqltypes.Result, error) {
-	err := vcursor.Session().SetTarget(updTarget.Target)
+	err := vcursor.Session().SetTarget(updTarget.Target, true)
 	if err != nil {
 		return nil, err
 	}
