@@ -123,5 +123,3 @@ jobs:
       - name: Branch Show
         run: |
           mysql -h127.0.0.1 -P15306 -e "Branch show"
-
-      - name: SSH
