@@ -648,7 +648,10 @@ func buildMergeBackDDLResult(branchName string, targetHandler *branch.TargetMySQ
 	resultRows := make([][]sqltypes.Value, 0)
 	lastID := 0
 	for {
-		sql := branch.GetSelectMergeBackDDLInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		sql, err := branch.GetSelectMergeBackDDLInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		if err != nil {
+			return nil, err
+		}
 		service := targetHandler.GetMysqlService()
 		rows, err := service.Query(sql)
 		if err != nil {
@@ -686,7 +689,10 @@ func buildSnapshotResult(branchName string, targetHandler *branch.TargetMySQLSer
 	lastID := 0
 
 	for {
-		selectSnapshotSQL := branch.GetSelectSnapshotInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		selectSnapshotSQL, err := branch.GetSelectSnapshotInBatchSQL(branchName, lastID, branch.SelectBatchSize)
+		if err != nil {
+			return nil, err
+		}
 		mysqlService := targetHandler.GetMysqlService()
 		rows, err := mysqlService.Query(selectSnapshotSQL)
 		if err != nil {

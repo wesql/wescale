@@ -99,7 +99,7 @@ const (
         (Name, source_host, source_port, source_user, source_password, 
         include_databases, exclude_databases, Status) 
     VALUES 
-        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s')
+        (%a, %a, %a, %a, %a, %a, %a, %a)
     ON DUPLICATE KEY UPDATE 
         source_host = VALUES(source_host),
         source_port = VALUES(source_port),
@@ -109,37 +109,37 @@ const (
         exclude_databases = VALUES(exclude_databases),
         Status = VALUES(Status)`
 
-	SelectBranchMetaSQL = "select * from mysql.branch where Name='%s'"
+	SelectBranchMetaSQL = "select * from mysql.branch where Name=%a"
 
 	InsertBranchMetaSQL = `INSERT INTO mysql.branch 
         (Name, source_host, source_port, source_user, source_password, 
         include_databases, exclude_databases, Status) 
     VALUES 
-        ('%s', '%s', %d, '%s', '%s', '%s', '%s', '%s')`
+        (%a, %a, %a, %a, %a, %a, %a, %a)`
 
-	UpdateBranchStatusSQL = "update mysql.branch set Status='%s' where Name='%s'"
+	UpdateBranchStatusSQL = "update mysql.branch set Status=%a where Name=%a"
 
-	DeleteBranchMetaSQL = "delete from mysql.branch where Name='%s'"
+	DeleteBranchMetaSQL = "delete from mysql.branch where Name=%a"
 
 	// snapshot related
 
-	SelectBranchSnapshotInBatchSQL = "select * from mysql.branch_snapshot where Name='%s' and id > %d order by id asc limit %d"
+	SelectBranchSnapshotInBatchSQL = "select * from mysql.branch_snapshot where Name=%a and id > %a order by id asc limit %a"
 
-	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where Name='%s'"
+	DeleteBranchSnapshotSQL = "delete from mysql.branch_snapshot where Name=%a"
 
-	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (`Name`, `database`, `table`, `create_table_sql`) values ('%s', '%s', '%s', '%s')"
+	InsertBranchSnapshotSQL = "insert into mysql.branch_snapshot (`Name`, `database`, `table`, `create_table_sql`) values (%a, %a, %a, %a)"
 
 	// merge back ddl related
 
-	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where Name='%s'"
+	DeleteBranchMergeBackDDLSQL = "delete from mysql.branch_patch where Name=%a"
 
-	SelectBranchUnmergedDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and id > %d order by id asc limit %d"
+	SelectBranchUnmergedDDLInBatchSQL = "select * from mysql.branch_patch where Name=%a and merged = false and id > %a order by id asc limit %a"
 
-	SelectBranchUnmergedDBDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and merged = false and `table` = '' and id > %d order by id asc limit %d"
+	SelectBranchUnmergedDBDDLInBatchSQL = "select * from mysql.branch_patch where Name=%a and merged = false and `table` = '' and id > %a order by id asc limit %a"
 
-	SelectBranchMergeBackDDLInBatchSQL = "select * from mysql.branch_patch where Name='%s' and id > %d order by id asc limit %d"
+	SelectBranchMergeBackDDLInBatchSQL = "select * from mysql.branch_patch where Name=%a and id > %a order by id asc limit %a"
 
-	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (`Name`, `database`, `table`, `ddl`, `merged`) values ('%s', '%s', '%s', '%s', false)"
+	InsertBranchMergeBackDDLSQL = "insert into mysql.branch_patch (`Name`, `database`, `table`, `ddl`, `merged`) values (%a, %a, %a, %a, false)"
 
-	UpdateBranchMergeBackDDLMergedSQL = "update mysql.branch_patch set merged = true where id = '%d'"
+	UpdateBranchMergeBackDDLMergedSQL = "update mysql.branch_patch set merged = true where id = %a"
 )

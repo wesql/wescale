@@ -5,7 +5,9 @@ import (
 	"github.com/pingcap/failpoint"
 	"regexp"
 	"strings"
+	"vitess.io/vitess/go/sqltypes"
 	"vitess.io/vitess/go/vt/failpointkey"
+	"vitess.io/vitess/go/vt/sqlparser"
 )
 
 type TargetMySQLService struct {
@@ -96,7 +98,10 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 	}
 	lastID := -1
 	for {
-		selectSnapshotSQL := GetSelectSnapshotInBatchSQL(name, lastID, SelectBatchSize)
+		selectSnapshotSQL, err := GetSelectSnapshotInBatchSQL(name, lastID, SelectBatchSize)
+		if err != nil {
+			return nil, err
+		}
 		rows, err := t.mysqlService.Query(selectSnapshotSQL)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query snapshot %v: %v", selectSnapshotSQL, err)
@@ -129,8 +134,11 @@ func (t *TargetMySQLService) getSnapshot(name string) (*BranchSchema, error) {
 }
 
 func (t *TargetMySQLService) deleteSnapshot(name string) error {
-	deleteBranchSnapshotSQL := getDeleteSnapshotSQL(name)
-	_, err := t.mysqlService.Exec("", deleteBranchSnapshotSQL)
+	deleteBranchSnapshotSQL, err := getDeleteSnapshotSQL(name)
+	if err != nil {
+		return err
+	}
+	_, err = t.mysqlService.Exec("", deleteBranchSnapshotSQL)
 	return err
 }
 
@@ -138,7 +146,10 @@ func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *Branch
 	insertSQLs := make([]string, 0)
 	for database, tables := range schema.branchSchema {
 		for tableName, createTableSQL := range tables {
-			sql := getInsertSnapshotSQL(name, database, tableName, createTableSQL)
+			sql, err := getInsertSnapshotSQL(name, database, tableName, createTableSQL)
+			if err != nil {
+				return err
+			}
 			insertSQLs = append(insertSQLs, sql)
 		}
 	}
@@ -156,8 +167,11 @@ func (t *TargetMySQLService) insertSnapshotInBatches(name string, schema *Branch
 }
 
 func (t *TargetMySQLService) deleteMergeBackDDL(name string) error {
-	deleteBranchMergeBackSQL := getDeleteMergeBackDDLSQL(name)
-	_, err := t.mysqlService.Exec("", deleteBranchMergeBackSQL)
+	deleteBranchMergeBackSQL, err := getDeleteMergeBackDDLSQL(name)
+	if err != nil {
+		return err
+	}
+	_, err = t.mysqlService.Exec("", deleteBranchMergeBackSQL)
 	return err
 }
 
@@ -169,20 +183,29 @@ func (t *TargetMySQLService) insertMergeBackDDLInBatches(name string, ddls *Bran
 	for database, databaseDiff := range ddls.Diffs {
 		if databaseDiff.NeedDropDatabase {
 			ddl := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", database)
-			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			sql, err := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			if err != nil {
+				return err
+			}
 			insertSQLs = append(insertSQLs, sql)
 			continue
 		}
 
 		if databaseDiff.NeedCreateDatabase {
 			ddl := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", database)
-			sql := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			sql, err := getInsertMergeBackDDLSQL(name, database, "", ddl)
+			if err != nil {
+				return err
+			}
 			insertSQLs = append(insertSQLs, sql)
 		}
 
 		for tableName, ddls := range databaseDiff.TableDDLs {
 			for _, ddl := range ddls {
-				sql := getInsertMergeBackDDLSQL(name, database, tableName, ddl)
+				sql, err := getInsertMergeBackDDLSQL(name, database, tableName, ddl)
+				if err != nil {
+					return err
+				}
 				insertSQLs = append(insertSQLs, sql)
 			}
 		}
@@ -275,7 +298,10 @@ func (t *TargetMySQLService) createTables(databaseName string, createTableStmts 
 }
 
 func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMeta, error) {
-	selectBranchMetaSQL := getSelectBranchMetaSQL(name)
+	selectBranchMetaSQL, err := getSelectBranchMetaSQL(name)
+	if err != nil {
+		return nil, err
+	}
 	rows, err := t.mysqlService.Query(selectBranchMetaSQL)
 	if err != nil {
 		return nil, err
@@ -321,101 +347,148 @@ func (t *TargetMySQLService) SelectAndValidateBranchMeta(name string) (*BranchMe
 }
 
 func (t *TargetMySQLService) UpsertBranchMeta(branchMeta *BranchMeta) error {
-	sql := getUpsertBranchMetaSQL(branchMeta)
-	_, err := t.mysqlService.Exec("", sql)
+	sql, err := getUpsertBranchMetaSQL(branchMeta)
+	if err != nil {
+		return err
+	}
+	_, err = t.mysqlService.Exec("", sql)
 	return err
 }
 
 func (t *TargetMySQLService) InsertBranchMeta(branchMeta *BranchMeta) error {
-	sql := getInsertBranchMetaSQL(branchMeta)
-	_, err := t.mysqlService.Exec("", sql)
+	sql, err := getInsertBranchMetaSQL(branchMeta)
+	if err != nil {
+		return err
+	}
+	_, err = t.mysqlService.Exec("", sql)
 	return err
 }
 
 func (t *TargetMySQLService) UpdateBranchStatus(name string, status BranchStatus) error {
-	sql := getUpdateBranchStatusSQL(name, status)
-	_, err := t.mysqlService.Exec("", sql)
+	sql, err := getUpdateBranchStatusSQL(name, status)
+	if err != nil {
+		return err
+	}
+	_, err = t.mysqlService.Exec("", sql)
 	return err
 }
 
 // branch meta related
 
-func getSelectBranchMetaSQL(name string) string {
-	return fmt.Sprintf(SelectBranchMetaSQL, name)
+func getSelectBranchMetaSQL(name string) (string, error) {
+	return sqlparser.ParseAndBind(SelectBranchMetaSQL, sqltypes.StringBindVariable(name))
 }
 
-func getUpsertBranchMetaSQL(branchMeta *BranchMeta) string {
+func getUpsertBranchMetaSQL(branchMeta *BranchMeta) (string, error) {
 	includeDatabases := strings.Join(branchMeta.IncludeDatabases, ",")
 	excludeDatabases := strings.Join(branchMeta.ExcludeDatabases, ",")
-	return fmt.Sprintf(UpsertBranchMetaSQL,
-		branchMeta.Name,
-		branchMeta.SourceHost,
-		branchMeta.SourcePort,
-		branchMeta.SourceUser,
-		branchMeta.SourcePassword,
-		includeDatabases,
-		excludeDatabases,
-		string(branchMeta.Status))
+	return sqlparser.ParseAndBind(UpsertBranchMetaSQL,
+		sqltypes.StringBindVariable(branchMeta.Name),
+		sqltypes.StringBindVariable(branchMeta.SourceHost),
+		sqltypes.Int64BindVariable(int64(branchMeta.SourcePort)),
+		sqltypes.StringBindVariable(branchMeta.SourceUser),
+		sqltypes.StringBindVariable(branchMeta.SourcePassword),
+		sqltypes.StringBindVariable(includeDatabases),
+		sqltypes.StringBindVariable(excludeDatabases),
+		sqltypes.StringBindVariable(string(branchMeta.Status)))
 }
 
-func getInsertBranchMetaSQL(branchMeta *BranchMeta) string {
+func getInsertBranchMetaSQL(branchMeta *BranchMeta) (string, error) {
 	includeDatabases := strings.Join(branchMeta.IncludeDatabases, ",")
 	excludeDatabases := strings.Join(branchMeta.ExcludeDatabases, ",")
-	return fmt.Sprintf(InsertBranchMetaSQL,
-		branchMeta.Name,
-		branchMeta.SourceHost,
-		branchMeta.SourcePort,
-		branchMeta.SourceUser,
-		branchMeta.SourcePassword,
-		includeDatabases,
-		excludeDatabases,
-		string(branchMeta.Status))
+	return sqlparser.ParseAndBind(InsertBranchMetaSQL,
+		sqltypes.StringBindVariable(branchMeta.Name),
+		sqltypes.StringBindVariable(branchMeta.SourceHost),
+		sqltypes.Int64BindVariable(int64(branchMeta.SourcePort)),
+		sqltypes.StringBindVariable(branchMeta.SourceUser),
+		sqltypes.StringBindVariable(branchMeta.SourcePassword),
+		sqltypes.StringBindVariable(includeDatabases),
+		sqltypes.StringBindVariable(excludeDatabases),
+		sqltypes.StringBindVariable(string(branchMeta.Status)),
+	)
 }
 
-func getUpdateBranchStatusSQL(name string, status BranchStatus) string {
-	return fmt.Sprintf(UpdateBranchStatusSQL, string(status), name)
+func getUpdateBranchStatusSQL(name string, status BranchStatus) (string, error) {
+	return sqlparser.ParseAndBind(UpdateBranchStatusSQL,
+		sqltypes.StringBindVariable(string(status)),
+		sqltypes.StringBindVariable(name),
+	)
 }
 
-func getDeleteBranchMetaSQL(name string) string {
-	return fmt.Sprintf(DeleteBranchMetaSQL, name)
+func getDeleteBranchMetaSQL(name string) (string, error) {
+	return sqlparser.ParseAndBind(DeleteBranchMetaSQL,
+		sqltypes.StringBindVariable(name),
+	)
 }
 
 // snapshot related
 
-func GetSelectSnapshotInBatchSQL(name string, id, batchSize int) string {
-	return fmt.Sprintf(SelectBranchSnapshotInBatchSQL, name, id, batchSize)
+func GetSelectSnapshotInBatchSQL(name string, id, batchSize int) (string, error) {
+	return sqlparser.ParseAndBind(SelectBranchSnapshotInBatchSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.Int64BindVariable(int64(id)),
+		sqltypes.Int64BindVariable(int64(batchSize)),
+	)
 }
 
-func getDeleteSnapshotSQL(name string) string {
-	return fmt.Sprintf(DeleteBranchSnapshotSQL, name)
+func getDeleteSnapshotSQL(name string) (string, error) {
+	return sqlparser.ParseAndBind(DeleteBranchSnapshotSQL,
+		sqltypes.StringBindVariable(name),
+	)
 }
 
-func getInsertSnapshotSQL(name, database, table, createTable string) string {
-	return fmt.Sprintf(InsertBranchSnapshotSQL, name, database, table, createTable)
+func getInsertSnapshotSQL(name, database, table, createTable string) (string, error) {
+	return sqlparser.ParseAndBind(InsertBranchSnapshotSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.StringBindVariable(database),
+		sqltypes.StringBindVariable(table),
+		sqltypes.StringBindVariable(createTable),
+	)
 }
 
 // merge back ddl related
 
-func getDeleteMergeBackDDLSQL(name string) string {
-	return fmt.Sprintf(DeleteBranchMergeBackDDLSQL, name)
+func getDeleteMergeBackDDLSQL(name string) (string, error) {
+	return sqlparser.ParseAndBind(DeleteBranchMergeBackDDLSQL,
+		sqltypes.StringBindVariable(name),
+	)
 }
 
-func getInsertMergeBackDDLSQL(name, database, table, ddl string) string {
-	return fmt.Sprintf(InsertBranchMergeBackDDLSQL, name, database, table, ddl)
+func getInsertMergeBackDDLSQL(name, database, table, ddl string) (string, error) {
+	return sqlparser.ParseAndBind(InsertBranchMergeBackDDLSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.StringBindVariable(database),
+		sqltypes.StringBindVariable(table),
+		sqltypes.StringBindVariable(ddl),
+	)
 }
 
-func getSelectUnmergedDDLInBatchSQL(name string, id, batchSize int) string {
-	return fmt.Sprintf(SelectBranchUnmergedDDLInBatchSQL, name, id, batchSize)
+func getSelectUnmergedDDLInBatchSQL(name string, id, batchSize int) (string, error) {
+	return sqlparser.ParseAndBind(SelectBranchUnmergedDDLInBatchSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.Int64BindVariable(int64(id)),
+		sqltypes.Int64BindVariable(int64(batchSize)),
+	)
 }
 
-func getSelectUnmergedDBDDLInBatchSQL(name string, id, batchSize int) string {
-	return fmt.Sprintf(SelectBranchUnmergedDBDDLInBatchSQL, name, id, batchSize)
+func getSelectUnmergedDBDDLInBatchSQL(name string, id, batchSize int) (string, error) {
+	return sqlparser.ParseAndBind(SelectBranchUnmergedDBDDLInBatchSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.Int64BindVariable(int64(id)),
+		sqltypes.Int64BindVariable(int64(batchSize)),
+	)
 }
 
-func GetSelectMergeBackDDLInBatchSQL(name string, id, batchSize int) string {
-	return fmt.Sprintf(SelectBranchMergeBackDDLInBatchSQL, name, id, batchSize)
+func GetSelectMergeBackDDLInBatchSQL(name string, id, batchSize int) (string, error) {
+	return sqlparser.ParseAndBind(SelectBranchMergeBackDDLInBatchSQL,
+		sqltypes.StringBindVariable(name),
+		sqltypes.Int64BindVariable(int64(id)),
+		sqltypes.Int64BindVariable(int64(batchSize)),
+	)
 }
 
-func getUpdateDDLMergedSQL(id int) string {
-	return fmt.Sprintf(UpdateBranchMergeBackDDLMergedSQL, id)
+func getUpdateDDLMergedSQL(id int) (string, error) {
+	return sqlparser.ParseAndBind(UpdateBranchMergeBackDDLMergedSQL,
+		sqltypes.Int64BindVariable(int64(id)),
+	)
 }
