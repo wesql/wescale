@@ -81,14 +81,14 @@ jobs:
       - name: Wait for MySQL port
         run: |
           for i in {1..60}; do
-            if nc -z localhost 3306; then
-              echo "MySQL port 3306 is ready!"
+            if nc -z localhost 15306; then
+              echo "MySQL port 15306 is ready!"
               exit 0
             fi
-            echo "Waiting for MySQL port 3306..."
+            echo "Waiting for MySQL port 15306..."
             sleep 5
           done
-          echo "Timeout waiting for MySQL port 3306"
+          echo "Timeout waiting for MySQL port 15306"
           exit 1
 
       - name: Create Branch On Target Cluster
