@@ -1217,11 +1217,6 @@ func (vc *vcursorImpl) ShowExec(ctx context.Context, command sqlparser.ShowComma
 		return nil, vterrors.Errorf(vtrpcpb.Code_INTERNAL, "bug: unexpected show command: %v", command)
 	}
 }
-
-func (vc *vcursorImpl) GetExecutorVSchema() *vindexes.VSchema {
-	return vc.executor.VSchema()
-}
-
 func (vc *vcursorImpl) VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
 	vc.executor.VSchemaAddKeyspaceIfNotExists(name, KeyspaceSchema)
 }

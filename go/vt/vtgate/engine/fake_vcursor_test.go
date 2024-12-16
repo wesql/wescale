@@ -105,22 +105,12 @@ func (t *noopVCursor) AnyAdvisoryLockTaken() bool {
 	panic("implement me")
 }
 
-func (t *noopVCursor) GetExecutorVSchema() *vindexes.VSchema {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (t *noopVCursor) VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
-	panic("implement me")
+
 }
 
 func (t *noopVCursor) VSchemaDeleteKeyspace(name string) {
-	panic("implement me")
-}
 
-func (t *noopVCursor) GetVSchema() *vindexes.VSchema {
-	// TODO implement me
-	panic("implement me")
 }
 
 func (t *noopVCursor) AddAdvisoryLock(_ string) {
@@ -840,20 +830,10 @@ func (f *loggingVCursor) SetPlannerVersion(querypb.ExecuteOptions_PlannerVersion
 	panic("implement me")
 }
 
-func (f *loggingVCursor) GetExecutorVSchema() *vindexes.VSchema {
-	panic("implement me")
-}
-
 func (f *loggingVCursor) VSchemaAddKeyspaceIfNotExists(name string, KeyspaceSchema *vindexes.KeyspaceSchema) {
-	panic("implement me")
 }
 
 func (f *loggingVCursor) VSchemaDeleteKeyspace(name string) {
-	panic("implement me")
-}
-
-func (f *loggingVCursor) GetVSchema() {
-	panic("implement me")
 }
 
 func (f *loggingVCursor) FindRoutedTable(tbl sqlparser.TableName) (*vindexes.Table, error) {
