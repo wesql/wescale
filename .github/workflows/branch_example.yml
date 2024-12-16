@@ -32,74 +32,78 @@ on:
         default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha4'
 
 jobs:
-  - name: Set Up Target Cluster
-    run: |
-      docker run -itd --network host --name mysql-server \
-      -p 3306:3306 \
-      -e MYSQL_ROOT_PASSWORD=passwd \
-      -e MYSQL_ROOT_HOST=% \
-      -e MYSQL_LOG_CONSOLE=true \
-      mysql/mysql-server:8.0.32 \
-      --bind-address=0.0.0.0 \
-      --port=3306 \
-      --log-bin=binlog \
-      --gtid_mode=ON \
-      --enforce_gtid_consistency=ON \
-      --log_replica_updates=ON \
-      --binlog_format=ROW
-      
-      docker run -itd --network host --name wescale \
-      -p 15306:15306 \
-      -w /vt/examples/wesql-server \
-      -e MYSQL_ROOT_USER=root \
-      -e MYSQL_ROOT_PASSWORD=passwd \
-      -e MYSQL_PORT=3306 \
-      -e MYSQL_HOST=mysql-server \
-      ${{ env.WESCALE_IMAGE }} \
-      /vt/examples/wesql-server/init_single_node_cluster.sh
+  build:
+    runs-on: ubuntu-latest
 
-  - name: Wait for MySQL port
-    run: |
-      for i in {1..60}; do
-        if nc -z localhost 3306; then
-          echo "MySQL port 3306 is ready!"
-          exit 0
-        fi
-        echo "Waiting for MySQL port 3306..."
-        sleep 5
-      done
-      echo "Timeout waiting for MySQL port 3306"
-      exit 1
+    steps:
+    - name: Set Up Target Cluster
+      run: |
+        docker run -itd --network host --name mysql-server \
+        -p 3306:3306 \
+        -e MYSQL_ROOT_PASSWORD=passwd \
+        -e MYSQL_ROOT_HOST=% \
+        -e MYSQL_LOG_CONSOLE=true \
+        mysql/mysql-server:8.0.32 \
+        --bind-address=0.0.0.0 \
+        --port=3306 \
+        --log-bin=binlog \
+        --gtid_mode=ON \
+        --enforce_gtid_consistency=ON \
+        --log_replica_updates=ON \
+        --binlog_format=ROW
+        
+        docker run -itd --network host --name wescale \
+        -p 15306:15306 \
+        -w /vt/examples/wesql-server \
+        -e MYSQL_ROOT_USER=root \
+        -e MYSQL_ROOT_PASSWORD=passwd \
+        -e MYSQL_PORT=3306 \
+        -e MYSQL_HOST=mysql-server \
+        ${{ env.WESCALE_IMAGE }} \
+        /vt/examples/wesql-server/init_single_node_cluster.sh
 
-  - name: Create Branch On Target Cluster
-    run: |
-      mysql -h127.0.0.1 -P15306 -e "Branch create with (
-        'source_host'='${{ inputs.source_host }}',
-        'source_port'='${{ inputs.source_port }}',
-        'source_user'='${{ inputs.source_user }}',
-        'source_password'='${{ inputs.source_password }}',
-        'include_databases'='${{ inputs.include_databases }}',
-        'exclude_databases'='${{ inputs.exclude_databases }}'
-      );"
-      
-      mysql -h127.0.0.1 -P15306 -e "Branch show"
-      
-  - name: Do Your Schema Migration
-    run: |
-      sleep 1
+    - name: Wait for MySQL port
+      run: |
+        for i in {1..60}; do
+          if nc -z localhost 3306; then
+            echo "MySQL port 3306 is ready!"
+            exit 0
+          fi
+          echo "Waiting for MySQL port 3306..."
+          sleep 5
+        done
+        echo "Timeout waiting for MySQL port 3306"
+        exit 1
 
-  - name: Branch Diff
-    run: |
-      mysql -h127.0.0.1 -P15306 -e "Branch diff"
+    - name: Create Branch On Target Cluster
+      run: |
+        mysql -h127.0.0.1 -P15306 -e "Branch create with (
+          'source_host'='${{ inputs.source_host }}',
+          'source_port'='${{ inputs.source_port }}',
+          'source_user'='${{ inputs.source_user }}',
+          'source_password'='${{ inputs.source_password }}',
+          'include_databases'='${{ inputs.include_databases }}',
+          'exclude_databases'='${{ inputs.exclude_databases }}'
+        );"
+        
+        mysql -h127.0.0.1 -P15306 -e "Branch show"
 
-  - name: Branch Prepare Merge Back
-    run: |
-      mysql -h127.0.0.1 -P15306 -e "Branch prepare_merge_back"
+    - name: Do Your Schema Migration
+      run: |
+        sleep 1
 
-  - name: Branch Merge Back
-    run: |
-      mysql -h127.0.0.1 -P15306 -e "Branch merge_back"
+    - name: Branch Diff
+      run: |
+        mysql -h127.0.0.1 -P15306 -e "Branch diff"
 
-  - name: Branch Show
-    run: |
-      mysql -h127.0.0.1 -P15306 -e "Branch show"
+    - name: Branch Prepare Merge Back
+      run: |
+        mysql -h127.0.0.1 -P15306 -e "Branch prepare_merge_back"
+
+    - name: Branch Merge Back
+      run: |
+        mysql -h127.0.0.1 -P15306 -e "Branch merge_back"
+
+    - name: Branch Show
+      run: |
+        mysql -h127.0.0.1 -P15306 -e "Branch show"
