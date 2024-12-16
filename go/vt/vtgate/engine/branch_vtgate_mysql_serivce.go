@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/failpoint"
+	"vitess.io/vitess/go/vt/failpointkey"
 	querypb "vitess.io/vitess/go/vt/proto/query"
 	"vitess.io/vitess/go/vt/vtgate/branch"
 )
@@ -12,6 +14,9 @@ type VTGateMysqlService struct {
 }
 
 func (v *VTGateMysqlService) Query(query string) (branch.Rows, error) {
+	oldTarget := v.VCursor.Session().GetTarget()
+	defer v.VCursor.Session().SetTarget(oldTarget, true)
+
 	err := v.VCursor.Session().SetTarget("mysql", true)
 	if err != nil {
 		return nil, err
@@ -19,7 +24,7 @@ func (v *VTGateMysqlService) Query(query string) (branch.Rows, error) {
 
 	// AUTOCOMMIT is used to run the statement as autocommitted transaction.
 	// AUTOCOMMIT = 3;
-	rst, err := v.VCursor.Execute(context.Background(), "Execute", query, make(map[string]*querypb.BindVariable), true, 3)
+	rst, err := v.VCursor.Execute(context.Background(), "Branch Query", query, make(map[string]*querypb.BindVariable), true, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +60,7 @@ func (v *VTGateMysqlService) Exec(database, query string) (*branch.Result, error
 		}
 	}
 
-	rst, err := v.VCursor.Execute(context.Background(), "Execute", query, make(map[string]*querypb.BindVariable), true, 3)
+	rst, err := v.VCursor.Execute(context.Background(), "Branch Execute", query, make(map[string]*querypb.BindVariable), true, 3)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +69,18 @@ func (v *VTGateMysqlService) Exec(database, query string) (*branch.Result, error
 }
 
 func (v *VTGateMysqlService) ExecuteInTxn(queries ...string) error {
+	oldTarget := v.VCursor.Session().GetTarget()
+	defer v.VCursor.Session().SetTarget(oldTarget, true)
+
 	err := v.VCursor.Session().SetTarget("mysql", true)
 	if err != nil {
 		return err
 	}
 	first := true
-	defer v.VCursor.Execute(context.Background(), "Execute", "ROLLBACK;", make(map[string]*querypb.BindVariable), true, 0)
+	defer v.VCursor.Execute(context.Background(), "Branch ExecuteInTxn", "ROLLBACK;", make(map[string]*querypb.BindVariable), true, 0)
 	for _, query := range queries {
 		if first {
-			_, err := v.VCursor.Execute(context.Background(), "Execute", "start transaction;", make(map[string]*querypb.BindVariable), true, 0)
+			_, err := v.VCursor.Execute(context.Background(), "Branch ExecuteInTxn", "start transaction;", make(map[string]*querypb.BindVariable), true, 0)
 			if err != nil {
 				return err
 			}
@@ -80,12 +88,15 @@ func (v *VTGateMysqlService) ExecuteInTxn(queries ...string) error {
 		}
 		// NORMAL is the default commit order.
 		// NORMAL = 0;
-		_, err := v.VCursor.Execute(context.Background(), "Execute", query, make(map[string]*querypb.BindVariable), true, 0)
+		_, err := v.VCursor.Execute(context.Background(), "Branch ExecuteInTxn", query, make(map[string]*querypb.BindVariable), true, 0)
 		if err != nil {
 			return err
 		}
 	}
-
-	_, err = v.VCursor.Execute(context.Background(), "Execute", "COMMIT;", make(map[string]*querypb.BindVariable), true, 0)
+	failpoint.Inject(failpointkey.VTGateExecuteInTxnRollback.Name, func() {
+		_, err := v.VCursor.Execute(context.Background(), "Branch ExecuteInTxn", "ROLLBACK;", make(map[string]*querypb.BindVariable), true, 0)
+		failpoint.Return(err)
+	})
+	_, err = v.VCursor.Execute(context.Background(), "Branch ExecuteInTxn", "COMMIT;", make(map[string]*querypb.BindVariable), true, 0)
 	return err
 }

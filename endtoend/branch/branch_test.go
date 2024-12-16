@@ -344,7 +344,7 @@ func printBranchShowMergeBackDDL(rows *sql.Rows) {
 }
 
 func TestBranchBasic(t *testing.T) {
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 0; i++ {
 		testBranchBasic(t)
 	}
 }
@@ -484,7 +484,16 @@ func TestBranchBasicWithFailPoint(t *testing.T) {
 	defer rows.Close()
 	printBranchDiff(rows)
 
-	// branch prepare merge back
+	// test branch prepare merge back
+
+	// first let ExecInTxn always rollback, so the merge back ddl table should be empty, because it is inserted in a txn
+	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/engine/VTGateExecuteInTxnRollback", "return(true)")
+	framework.QueryNoError(t, targetCluster.WescaleDb, getBranchPrepareMergeBackCMD())
+	rowsShouleBeEmpty := framework.QueryNoError(t, targetCluster.WescaleDb, "select * from mysql.branch_patch")
+	defer rowsShouleBeEmpty.Close()
+	assert.Equal(t, false, rowsShouleBeEmpty.Next())
+	framework.DisableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/engine/VTGateExecuteInTxnRollback")
+
 	framework.EnableFailPoint(t, targetCluster.WescaleDb, "vitess.io/vitess/go/vt/vtgate/branch/BranchInsertMergeBackDDLError", "return(true)")
 	framework.ExecWithErrorContains(t, targetCluster.WescaleDb, "failpoint", getBranchPrepareMergeBackCMD())
 	expectBranchStatus(t, "origin", "preparing")

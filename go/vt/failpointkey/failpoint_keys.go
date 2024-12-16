@@ -86,6 +86,11 @@ var (
 		Name:       "BranchExecuteMergeBackDDLError",
 		ExampleStr: "return(true)",
 	}
+	VTGateExecuteInTxnRollback = FailpointValue{
+		FullName:   "vitess.io/vitess/go/vt/vtgate/engine/VTGateExecuteInTxnRollback",
+		Name:       "VTGateExecuteInTxnRollback",
+		ExampleStr: "return(true)",
+	}
 )
 
 func init() {
@@ -108,4 +113,5 @@ func init() {
 	FailpointTable[BranchApplySnapshotError.FullName] = BranchApplySnapshotError
 	FailpointTable[BranchInsertMergeBackDDLError.FullName] = BranchInsertMergeBackDDLError
 	FailpointTable[BranchExecuteMergeBackDDLError.FullName] = BranchExecuteMergeBackDDLError
+	FailpointTable[VTGateExecuteInTxnRollback.FullName] = VTGateExecuteInTxnRollback
 }
