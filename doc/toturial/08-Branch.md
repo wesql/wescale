@@ -130,14 +130,6 @@ mysql> Branch create with (
 Query OK, 0 rows affected (0.214 sec)
 ```
 
-- **source_host** (required): Host/IP of the source database.
-- **source_port** (optional, default: 3306): Port of the source database.
-- **source_user** (optional, default: root): Username for connecting to the source.
-- **source_password** (optional): Password for the source user.
-- **include_databases** (optional, default: `*`): Databases to include.
-- **exclude_databases** (optional): Databases to exclude (system DBs are always excluded).
-
-
 Check the branch status and metadata:
 
 ```sql
@@ -169,7 +161,7 @@ MySQL [(none)]> show databases;
 
 ### Step 2: Modify Schema in the Target
 
-Make schema changes on the target side without risking production:
+Make schema changes on the target side without impacting production:
 
 ```sql
 ALTER TABLE test_db1.users ADD COLUMN phone VARCHAR(20);
@@ -192,62 +184,66 @@ CREATE TABLE test_db2.products (
 
 Compare the target schema with the source to identify necessary DDL changes:
 
-**Command:**
-```sql
-Branch diff;
-```
-- **compare_objects** (optional, default: `target_source`): Defines which schemas to compare. Options include `source_target`, `target_source`, `source_snapshot`, `snapshot_source`, `target_snapshot`, `snapshot_target`.
-
-Example:
 ```sql
 mysql> Branch diff\G
 ```
 
-This will display the DDL statements needed to update the source to match the target.
+This command lists the SQL statements required to update the source schema to match the target.
 
 ### Step 4: Branch Prepare Merge Back
 
-Persist the DDL statements identified by `Branch diff` into the branch’s metadata for safe merging:
+Persist the identified DDL statements into the branch’s metadata for safe merging:
 
-**Command:**
 ```sql
 Branch prepare_merge_back;
 ```
-
-This command stores the DDL statements, ensuring they are ready to be applied.
 
 ### Step 5: Branch Merge Back
 
 Apply the prepared DDL statements to the source cluster:
 
-**Command:**
 ```sql
 Branch merge_back;
 ```
 
-Once complete, the source schema will match the tested changes from the target.
+After this operation completes, check the schema on the **source** cluster to confirm that it now includes all the target’s changes:
+
+```sql
+# On the source side (port 15306)
+SHOW DATABASES;
+SHOW TABLES FROM test_db1;
+SHOW TABLES FROM test_db2;
+```
+
+Since both environments should now be in sync, you can run `Branch diff` again on the **target** side:
+
+```sql
+Branch diff;
+```
+
+This time, the diff should produce no output, indicating that the source and target schemas are identical.
 
 ---
 
-## Further Considerations
+## Additional Details
 
 ### Idempotency
 
-Branch commands are idempotent. If a command fails, re-running it will continue from where it stopped. For example, if `Branch create` fails after fetching the schema but before applying it, simply run `Branch create` again to resume.
+Branch commands are idempotent, meaning you can re-run them if something goes wrong partway through. For example, if `Branch create` fails after retrieving the schema but before applying it, simply execute `Branch create` again to resume.
 
-**Note on `Branch merge_back` idempotency:**  
-`Branch merge_back` replays any unmerged DDLs each time it is executed. If a crash occurs after executing some DDLs but before marking them as merged, re-running the command may attempt to reapply these DDLs. Future improvements will provide more granular checks to handle these cases gracefully.
+**Note on `Branch merge_back` Idempotency:**  
+Each time `Branch merge_back` runs, it attempts to apply any “unmerged” DDLs. In the event of a crash, some DDLs might be applied on the source without being marked as merged. Future enhancements will improve the handling of these scenarios.
 
 ### State Transitions
 
-A branch moves through several states:
+A branch progresses through several states:
 
-- **Init**: After the branch creation begins.
-- **Fetched**: The schema snapshot has been taken from the source.
-- **Created**: The snapshot has been successfully applied to the target.
-- **Preparing**: The system is generating the DDL statements needed to merge back.
-- **Prepared**: The DDL statements are saved and ready for merging.
-- **Merging**: The DDL statements are being applied to the source.
-- **Merged**: All DDL statements have been successfully applied.
+- **Init**: Branch creation has started.
+- **Fetched**: Source schema snapshot has been captured.
+- **Created**: Snapshot applied to the target.
+- **Preparing**: Generating the DDL statements for merging back.
+- **Prepared**: DDL statements are saved, ready to merge.
+- **Merging**: DDL statements are being applied to the source.
+- **Merged**: All DDL statements successfully applied.
 
 ![BranchStatus](images/BranchStatus.png)
