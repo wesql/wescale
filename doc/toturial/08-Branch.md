@@ -2,27 +2,7 @@
 
 ## Overview
 
-The Branch feature in WeSQL allows you to copy a database from one Wescale cluster (the **source**) to another Wescale cluster (the **target**). This functionality is particularly useful for creating a development database that mirrors your production environment. This guide provides clear instructions on how to use the Branch feature, including its commands and options.
-
-**Source** refers to the Wescale cluster from which schema is copied, while **Target** refers to the Wescale cluster where the schema will be copied to.
-
----
-
-## General Syntax
-
-The general syntax for Branch commands is as follows:
-
-```
-Branch <Action> [with ('key1'='value1', 'key2'='value2', 'key3'='value3');]
-```
-
-Where the **Action** can be one of the following:
-- **create**
-- **diff**
-- **prepare_merge_back**
-- **merge_back**
-- **show**
-- **delete**
+The Branch feature in WeSQL enables you to create a target database with the same schema as your source database. This approach allows you to safely develop and test new schema changes in isolation, without affecting the production environment. After finalizing and validating your changes in the target database, you can merge these schema modifications back into the source database. This workflow ensures a controlled and reliable process for database schema evolution.
 
 ---
 
@@ -41,9 +21,10 @@ Where the **Action** can be one of the following:
 
 ### Create Cluster
 
-Each branch corresponds to a MySQL instance. Therefore, you need two Wescale clusters: one acting as the source and the other as the target. You can start the two Wescale clusters with the following commands. If you already have a Wescale cluster running locally, you can just start a new one.
+To use the Branch feature, you need two WeScale clusters: a **source** cluster and a **target** cluster. The source cluster is where your production schema resides, while the target cluster is where you’ll test and refine your changes.
 
-Here, we will use the Wescale cluster on port **15306** as the source and another on port **15307** as the target.
+If you already have a WeScale cluster running locally, simply start another one as the target. For example, the commands below start a source cluster on port **15306** and a target cluster on port **15307**:
+
 
 ```shell
 docker network create wescale-network
@@ -104,18 +85,13 @@ docker run -itd --network wescale-network --name wescale15307 \
 
 ### Initialize Data
 
-After connecting to the source Wescale, run the following commands:
+Use the following commands to set up initial tables in the source cluster:
 
 ```shell
-docker exec -it wescale mysql -h127.0.0.1 -P15306
-```
+$ docker exec -it wescale mysql -h127.0.0.1 -P15306
 
-Create the following databases and tables:
-
-```sql
 DROP DATABASE IF EXISTS test_db1;
 DROP DATABASE IF EXISTS test_db2;
-DROP DATABASE IF EXISTS test_db3;
 CREATE DATABASE test_db1;
 CREATE DATABASE test_db2;
 
@@ -126,7 +102,7 @@ CREATE TABLE test_db1.users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE test_db2.source_orders (
+CREATE TABLE test_db2.orders (
   order_id INT PRIMARY KEY AUTO_INCREMENT,
   customer_name VARCHAR(100) NOT NULL,
   order_date DATE NOT NULL,
@@ -135,102 +111,109 @@ CREATE TABLE test_db2.source_orders (
 );
 ```
 
-Next, connect to the target Wescale:
-
-```shell
-docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
-```
-
-Create the following databases and tables:
-
-```sql
-DROP DATABASE IF EXISTS test_db1;
-DROP DATABASE IF EXISTS test_db2;
-DROP DATABASE IF EXISTS test_db3;
-CREATE DATABASE test_db2;
-CREATE DATABASE test_db3;
-
-CREATE TABLE test_db2.target_orders (
-  order_id INT PRIMARY KEY AUTO_INCREMENT,
-  customer_name VARCHAR(100) NOT NULL
-);
-
-CREATE TABLE test_db3.products (
-  product_id INT PRIMARY KEY AUTO_INCREMENT,
-  product_name VARCHAR(200) NOT NULL,
-  price DECIMAL(10,2),
-  stock_quantity INT,
-  category VARCHAR(50),
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
-
 ---
 
-## Basic Usage
+## Example Usage
 
 In the process of software development, we often need to modify the existing database schema. However, testing directly in the production environment poses significant security risks. Thus, it's common to create a testing environment where schema modifications can be safely tested before being applied back to the production environment. Here, we refer to the production environment as the "source" and the testing environment as the "target."
 
 As described above, a typical workflow involves three major processes: copying schema from source to target, schema modification in target, and merging target schema back to source.
 
-### Schema Copy
+### Step 1: Branch Create
 
-After connecting to the target Wescale, check the available databases before copying:
-
-```sql
-SHOW DATABASES;
-```
-
-To copy the database schema from the source to the target, create a branch with the following command:
+Connect to the target WeScale cluster and run the following command to create a branch. 
+`Branch create` command will copy the schema from the source to the target, and establish a branch relationship between the two clusters.
 
 ```sql
-Branch create with (
+$ docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
+
+mysql> Branch create with (
     'source_host'='wescale',
     'source_port'='15306',
     'source_user'='root',
     'source_password'='passwd'
 );
+Query OK, 0 rows affected (0.214 sec)
 ```
 
-*Note: For detailed parameter explanations, refer to the command parameters section later in this document.*
-
-To view the current branch metadata, use:
+To view the branch metadata, use:
 
 ```sql
-Branch show;
+MySQL [(none)]> Branch show;
++-----------+---------+-------------+-------------+-------------+---------+--------------------------------------------------------------------------+
+| name      | status  | source host | source port | source user | include | exclude                                                                  |
++-----------+---------+-------------+-------------+-------------+---------+--------------------------------------------------------------------------+
+| my_branch | created | wescale     | 15306       | root        | *       | information_schema,mysql.performance_schema,sys,mysql,performance_schema |
++-----------+---------+-------------+-------------+-------------+---------+--------------------------------------------------------------------------+
+1 row in set (0.010 sec)
 ```
 
 You'll see the branch status as "created".
-
-And now, check the available databases again, you will find the source schema has been copied to target.
-
-### Schema modification
-
-We suppose we need to modify the `test_db1.users` table, in the target, you could run:
+And now, check the databases in the `target` side, you will find the source database schema has been copied to target side.
 
 ```sql
-ALTER TABLE test_db1.users ADD COLUMN new_col INT;
+MySQL [(none)]> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| test_db1           |
+| test_db2           |
++--------------------+
+6 rows in set (0.001 sec)
 ```
 
-### Schema Merge
+### Step 2: Perform Your Schema Modifications on the Target
 
-The Branch functionality in WeSQL allows you to merge the target's schema back to the source. The merging process we provide is called "override," which means that the target schema will overwrite the source schema.
+Once the branch is created and the schema is copied over to the target, you can safely experiment with changes. For example, you might add new columns and indexes or create additional tables. These changes will not affect the source until you explicitly merge them back.
 
-To see the DDLs required to update the source schema to match the target, use:
+```sql
+ALTER TABLE test_db1.users ADD COLUMN phone VARCHAR(20);
+
+ALTER TABLE test_db1.users ADD INDEX idx_phone (phone);
+
+ALTER TABLE test_db2.orders ADD COLUMN payment_type VARCHAR(20);
+
+ALTER TABLE test_db2.orders ADD INDEX idx_date_status (order_date, status);
+
+CREATE TABLE test_db2.products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(200) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    stock INT DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'on_sale',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Step 3: Branch Diff
+
+Use the `Branch diff` command to compare the target and source schemas, and generate the DDL statements needed to align the source with the target. This lets you preview the changes before applying them back to the source environment.
+
+```sql
+mysql> Branch diff\G
+```
+
+### Step 4: Branch Prepare Merge Back
+
+The `Branch prepare_merge_back` command persists the DDL statements identified by `Branch diff` into the branch’s metadata. This step helps ensure that all schema changes can be cleanly merged back into the source cluster.
 
 ```sql
 Branch prepare_merge_back;
 ```
 
-If everything is prepared, the branch status will update to "prepared," indicating readiness to merge.
+### Step 5: Branch Merge Back
 
-Execute the merge with:
+After preparing the merge, you can apply the changes to the source cluster by running:
 
 ```sql
 Branch merge_back;
 ```
 
-After merging, the schema in the source should reflect the same structure as in the target.
+This will execute the stored DDL statements on the source cluster, bringing it up to date with the target schema. At this point, your production schema now includes all the tested modifications you performed in the target environment.
 
 ---
 
