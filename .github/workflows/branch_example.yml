@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SOURCE_HOST: ${{ inputs.source_host || '47.93.127.119' }}
-      SOURCE_PORT: ${{ inputs.source_port || '3306' }}
+      SOURCE_PORT: ${{ inputs.source_port || '15306' }}
       SOURCE_USER: ${{ inputs.source_user || 'root' }}
       SOURCE_PASSWORD: ${{ inputs.source_password || '' }}
       INCLUDE_DATABASES: ${{ inputs.include_databases || '*' }}
