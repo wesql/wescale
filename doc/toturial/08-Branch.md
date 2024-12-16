@@ -2,29 +2,17 @@
 
 ## Overview
 
-The Branch feature in WeSQL enables you to create a target database with the same schema as your source database. This approach allows you to safely develop and test new schema changes in isolation, without affecting the production environment. After finalizing and validating your changes in the target database, you can merge these schema modifications back into the source database. This workflow ensures a controlled and reliable process for database schema evolution.
-
----
-
-## Actions Overview
-
-- **create**: Initializes the branch workflow by copying the database schema from the source to the target database.
-- **diff**: Displays differences between the source and target database schemas.
-- **prepare_merge_back**: Prepares to merge schema changes from the target back to the source database.
-- **merge_back**: Executes the merge of schema changes.
-- **show**: Displays the branch metadata.
-- **delete**: Deletes the branch metadata.
+The Branch feature in WeSQL enables you to create a target database with the same schema as your source database. This approach allows you to safely develop and test new schema changes in isolation, without affecting the production environment. After validating these changes in the target environment, you can merge them back into the source database. This controlled workflow streamlines the evolution of your database schema.
 
 ---
 
 ## Prerequisites
 
-### Create Cluster
+### Create Clusters
 
-To use the Branch feature, you need two WeScale clusters: a **source** cluster and a **target** cluster. The source cluster is where your production schema resides, while the target cluster is where you’ll test and refine your changes.
+To use the Branch feature, you need two WeScale clusters: a **source** cluster and a **target** cluster. The source cluster represents your production environment, while the target cluster serves as a safe testing environment.
 
-If you already have a WeScale cluster running locally, simply start another one as the target. For example, the commands below start a source cluster on port **15306** and a target cluster on port **15307**:
-
+For example, the following commands start a source cluster on port **15306** and a target cluster on port **15307**:
 
 ```shell
 docker network create wescale-network
@@ -85,7 +73,7 @@ docker run -itd --network wescale-network --name wescale15307 \
 
 ### Initialize Data
 
-Use the following commands to set up initial tables in the source cluster:
+Initialize your source cluster with some example databases and tables:
 
 ```shell
 $ docker exec -it wescale mysql -h127.0.0.1 -P15306
@@ -115,15 +103,19 @@ CREATE TABLE test_db2.orders (
 
 ## Example Usage
 
-In the process of software development, we often need to modify the existing database schema. However, testing directly in the production environment poses significant security risks. Thus, it's common to create a testing environment where schema modifications can be safely tested before being applied back to the production environment. Here, we refer to the production environment as the "source" and the testing environment as the "target."
+In software development, testing schema changes directly in production is risky. By using Branch, you can duplicate your production schema into a target environment, apply and test changes there, and then merge these validated changes back into the source.
 
-As described above, a typical workflow involves three major processes: copying schema from source to target, schema modification in target, and merging target schema back to source.
+A typical workflow involves:
+1. **Create**: Copying the schema from source to target.
+2. **Modify**: Making schema changes safely in the target environment.
+3. **Diff & Prepare**: Determining what changes are needed to align source with the target, and preparing these changes for merging.
+4. **Merge Back**: Applying the tested schema changes to the source.
 
 ### Step 1: Branch Create
 
-Connect to the target WeScale cluster and run the following command to create a branch. 
-`Branch create` command will copy the schema from the source to the target, and establish a branch relationship between the two clusters.
+Use the `Branch create` command on the target cluster to copy the schema from the source cluster.
 
+**Command:**
 ```sql
 $ docker exec -it wescale15307 mysql -h127.0.0.1 -P15307
 
@@ -131,12 +123,22 @@ mysql> Branch create with (
     'source_host'='wescale',
     'source_port'='15306',
     'source_user'='root',
-    'source_password'='passwd'
+    'source_password'='passwd',
+    'include_databases'='*',
+    'exclude_databases'=''
 );
 Query OK, 0 rows affected (0.214 sec)
 ```
 
-To view the branch metadata, use:
+- **source_host** (required): Host/IP of the source database.
+- **source_port** (optional, default: 3306): Port of the source database.
+- **source_user** (optional, default: root): Username for connecting to the source.
+- **source_password** (optional): Password for the source user.
+- **include_databases** (optional, default: `*`): Databases to include.
+- **exclude_databases** (optional): Databases to exclude (system DBs are always excluded).
+
+
+Check the branch status and metadata:
 
 ```sql
 MySQL [(none)]> Branch show;
@@ -148,8 +150,7 @@ MySQL [(none)]> Branch show;
 1 row in set (0.010 sec)
 ```
 
-You'll see the branch status as "created".
-And now, check the databases in the `target` side, you will find the source database schema has been copied to target side.
+You’ll see a status of "created". Now verify the target cluster has the same schema as the source:
 
 ```sql
 MySQL [(none)]> show databases;
@@ -166,17 +167,15 @@ MySQL [(none)]> show databases;
 6 rows in set (0.001 sec)
 ```
 
-### Step 2: Perform Your Schema Modifications on the Target
+### Step 2: Modify Schema in the Target
 
-Once the branch is created and the schema is copied over to the target, you can safely experiment with changes. For example, you might add new columns and indexes or create additional tables. These changes will not affect the source until you explicitly merge them back.
+Make schema changes on the target side without risking production:
 
 ```sql
 ALTER TABLE test_db1.users ADD COLUMN phone VARCHAR(20);
-
 ALTER TABLE test_db1.users ADD INDEX idx_phone (phone);
 
 ALTER TABLE test_db2.orders ADD COLUMN payment_type VARCHAR(20);
-
 ALTER TABLE test_db2.orders ADD INDEX idx_date_status (order_date, status);
 
 CREATE TABLE test_db2.products (
@@ -191,71 +190,64 @@ CREATE TABLE test_db2.products (
 
 ### Step 3: Branch Diff
 
-Use the `Branch diff` command to compare the target and source schemas, and generate the DDL statements needed to align the source with the target. This lets you preview the changes before applying them back to the source environment.
+Compare the target schema with the source to identify necessary DDL changes:
 
+**Command:**
+```sql
+Branch diff;
+```
+- **compare_objects** (optional, default: `target_source`): Defines which schemas to compare. Options include `source_target`, `target_source`, `source_snapshot`, `snapshot_source`, `target_snapshot`, `snapshot_target`.
+
+Example:
 ```sql
 mysql> Branch diff\G
 ```
 
+This will display the DDL statements needed to update the source to match the target.
+
 ### Step 4: Branch Prepare Merge Back
 
-The `Branch prepare_merge_back` command persists the DDL statements identified by `Branch diff` into the branch’s metadata. This step helps ensure that all schema changes can be cleanly merged back into the source cluster.
+Persist the DDL statements identified by `Branch diff` into the branch’s metadata for safe merging:
 
+**Command:**
 ```sql
 Branch prepare_merge_back;
 ```
 
+This command stores the DDL statements, ensuring they are ready to be applied.
+
 ### Step 5: Branch Merge Back
 
-After preparing the merge, you can apply the changes to the source cluster by running:
+Apply the prepared DDL statements to the source cluster:
 
+**Command:**
 ```sql
 Branch merge_back;
 ```
 
-This will execute the stored DDL statements on the source cluster, bringing it up to date with the target schema. At this point, your production schema now includes all the tested modifications you performed in the target environment.
+Once complete, the source schema will match the tested changes from the target.
 
 ---
 
-## Advanced
+## Further Considerations
 
 ### Idempotency
 
-Branch commands are idempotent. This means if a command fails, simply re-executing the command will continue from where it left off.
+Branch commands are idempotent. If a command fails, re-running it will continue from where it stopped. For example, if `Branch create` fails after fetching the schema but before applying it, simply run `Branch create` again to resume.
 
-For instance, the `Branch create` command involves two main phases: retrieving the schema from the source and applying it to the target. If a crash occurs while fetching the schema, just re-execute the `Branch create` command without additional operations.
-
-> It is important to note that the idempotency of the `branch merge_back` command is not yet perfect. Each time branch merge_back is executed, it begins by sequentially executing the "unmerged" DDLs generated by the `branch prepare_merge_back `command (viewable with the branch show command) and marks them as "merged" once executed. **Due to potential crashes, there might be DDLs that are executed but not marked as merged. Checking these DDLs is a task we plan to address in the future.**
-
-### Command Parameter Explanation
-
-| Command Action         | Parameter               | Description                                                                                                                                                                                                                                                                                                                                                                        | Default Value | Required |
-|------------------------|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|----------|
-| `Branch create`        | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
-|                        | `source_host`           | Host of the source database                                                                                                                                                                                                                                                                                                                                                        |              | Yes      |
-|                        | `source_port`           | Port of the source database                                                                                                                                                                                                                                                                                                                                                        | 3306         | No       |
-|                        | `source_user`           | Username for the source database                                                                                                                                                                                                                                                                                                                                                   | root         | No       |
-|                        | `source_password`       | Password for the source database                                                                                                                                                                                                                                                                                                                                                   |              | No       |
-|                        | `include_databases`     | Whitelist of databases to process                                                                                                                                                                                                                                                                                                                                                  | *            | No       |
-|                        | `exclude_databases`     | Blacklist of databases to process. system databases like information_schema, mysql, performance_schema and sys are alwats excluded.                                                                                                                                                                                                                                                |              | No       |
-| `Branch diff`          | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
-|                        | `compare_objects`       | Comparison objects. Should be one of `source_target`, `target_source`, `source_snapshot`, `snapshot_source`, `target_snapshot`, `snapshot_target`, `source_target`. <br/>`source` refers to the real-time schema of the source. <br/>`target` refers to the real-time schema of the target.<br/> `snapshot` refers to the schema of the source at the time the branch was created. | target_source | No       |
-| `Branch prepare_merge_back` | `name`           | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
-| `Branch merge_back`    | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
-| `Branch show`          | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
-|                        | `show_option`           | Options for display. Should be one of `status`, `snapshot`, `merge_back_ddl`.                                                                                                                                                                                                                                                                                                      | status        | No       |
-| `Branch delete`        | `name`                  | Name of the branch                                                                                                                                                                                                                                                                                                                                                                 | origin    | No       |
+**Note on `Branch merge_back` idempotency:**  
+`Branch merge_back` replays any unmerged DDLs each time it is executed. If a crash occurs after executing some DDLs but before marking them as merged, re-running the command may attempt to reapply these DDLs. Future improvements will provide more granular checks to handle these cases gracefully.
 
 ### State Transitions
 
-Branch can have the following states:
+A branch moves through several states:
 
-- **Init**: Initial state after creating the branch.
-- **Fetched**: Snapshot saved to the target.
-- **Created**: Snapshot has been applied to the target.
-- **Preparing**: Generating the merge back DDL.
-- **Prepared**: DDL generated and saved, ready for merging.
-- **Merging**: Applying DDL to the source.
-- **Merged**: All DDLs have been applied to the source successfully.
+- **Init**: After the branch creation begins.
+- **Fetched**: The schema snapshot has been taken from the source.
+- **Created**: The snapshot has been successfully applied to the target.
+- **Preparing**: The system is generating the DDL statements needed to merge back.
+- **Prepared**: The DDL statements are saved and ready for merging.
+- **Merging**: The DDL statements are being applied to the source.
+- **Merged**: All DDL statements have been successfully applied.
 
-![BranchStatus](images/BranchStatus.png) 
+![BranchStatus](images/BranchStatus.png)
