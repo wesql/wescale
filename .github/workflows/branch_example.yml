@@ -2,61 +2,39 @@ name: Branch Example
 
 on:
   push:
-    inputs:
-      source_host:
-        required: true
-        type: string
-        default: '47.93.127.119'
-      source_port:
-        required: false
-        type: string
-        default: '15306'
-      source_user:
-        required: false
-        type: string
-        default: 'root'
-      source_password:
-        required: true
-        type: string
-        default: ''
-      include_databases:
-        required: false
-        type: string
-        default: '*'
-      exclude_databases:
-        required: false
-        type: string
-        default: 'information_schema,mysql,performance_schema,sys'
-      wescale_image:
-        required: false
-        type: string
-        default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha4'
   workflow_dispatch:
     inputs:
       source_host:
+        description: 'Source host address'
         required: true
         type: string
       source_port:
+        description: 'Source port'
         required: false
         type: string
         default: '3306'
       source_user:
+        description: 'Source user'
         required: false
         type: string
         default: 'root'
       source_password:
+        description: 'Source password'
         required: true
         type: string
         default: ''
       include_databases:
+        description: 'Databases to include'
         required: false
         type: string
         default: '*'
       exclude_databases:
+        description: 'Databases to exclude'
         required: false
         type: string
         default: 'information_schema,mysql,performance_schema,sys'
       wescale_image:
+        description: 'WeScale image tag'
         required: false
         type: string
         default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha4'
@@ -64,76 +42,84 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SOURCE_HOST: ${{ inputs.source_host || '47.93.127.119' }}
+      SOURCE_PORT: ${{ inputs.source_port || '3306' }}
+      SOURCE_USER: ${{ inputs.source_user || 'root' }}
+      SOURCE_PASSWORD: ${{ inputs.source_password || '' }}
+      INCLUDE_DATABASES: ${{ inputs.include_databases || '*' }}
+      EXCLUDE_DATABASES: ${{ inputs.exclude_databases || 'information_schema,mysql,performance_schema,sys' }}
+      WESCALE_IMAGE: ${{ inputs.wescale_image || 'apecloud/apecloud-mysql-scale:0.3.8-alpha4' }}
 
     steps:
-    - name: Set Up Target Cluster
-      run: |
-        docker run -itd --network host --name mysql-server \
-        -p 3306:3306 \
-        -e MYSQL_ROOT_PASSWORD=passwd \
-        -e MYSQL_ROOT_HOST=% \
-        -e MYSQL_LOG_CONSOLE=true \
-        mysql/mysql-server:8.0.32 \
-        --bind-address=0.0.0.0 \
-        --port=3306 \
-        --log-bin=binlog \
-        --gtid_mode=ON \
-        --enforce_gtid_consistency=ON \
-        --log_replica_updates=ON \
-        --binlog_format=ROW
-        
-        docker run -itd --network host --name wescale \
-        -p 15306:15306 \
-        -w /vt/examples/wesql-server \
-        -e MYSQL_ROOT_USER=root \
-        -e MYSQL_ROOT_PASSWORD=passwd \
-        -e MYSQL_PORT=3306 \
-        -e MYSQL_HOST=mysql-server \
-        ${{ env.WESCALE_IMAGE }} \
-        /vt/examples/wesql-server/init_single_node_cluster.sh
+      - name: Set Up Target Cluster
+        run: |
+          docker run -itd --network host --name mysql-server \
+          -p 3306:3306 \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_ROOT_HOST=% \
+          -e MYSQL_LOG_CONSOLE=true \
+          mysql/mysql-server:8.0.32 \
+          --bind-address=0.0.0.0 \
+          --port=3306 \
+          --log-bin=binlog \
+          --gtid_mode=ON \
+          --enforce_gtid_consistency=ON \
+          --log_replica_updates=ON \
+          --binlog_format=ROW
+          
+          docker run -itd --network host --name wescale \
+          -p 15306:15306 \
+          -w /vt/examples/wesql-server \
+          -e MYSQL_ROOT_USER=root \
+          -e MYSQL_ROOT_PASSWORD=passwd \
+          -e MYSQL_PORT=3306 \
+          -e MYSQL_HOST=mysql-server \
+          ${{ env.WESCALE_IMAGE }} \
+          /vt/examples/wesql-server/init_single_node_cluster.sh
 
-    - name: Wait for MySQL port
-      run: |
-        for i in {1..60}; do
-          if nc -z localhost 3306; then
-            echo "MySQL port 3306 is ready!"
-            exit 0
-          fi
-          echo "Waiting for MySQL port 3306..."
-          sleep 5
-        done
-        echo "Timeout waiting for MySQL port 3306"
-        exit 1
+      - name: Wait for MySQL port
+        run: |
+          for i in {1..60}; do
+            if nc -z localhost 3306; then
+              echo "MySQL port 3306 is ready!"
+              exit 0
+            fi
+            echo "Waiting for MySQL port 3306..."
+            sleep 5
+          done
+          echo "Timeout waiting for MySQL port 3306"
+          exit 1
 
-    - name: Create Branch On Target Cluster
-      run: |
-        mysql -h127.0.0.1 -P15306 -e "Branch create with (
-          'source_host'='${{ inputs.source_host }}',
-          'source_port'='${{ inputs.source_port }}',
-          'source_user'='${{ inputs.source_user }}',
-          'source_password'='${{ inputs.source_password }}',
-          'include_databases'='${{ inputs.include_databases }}',
-          'exclude_databases'='${{ inputs.exclude_databases }}'
-        );"
-        
-        mysql -h127.0.0.1 -P15306 -e "Branch show"
+      - name: Create Branch On Target Cluster
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch create with (
+            'source_host'='${{ env.SOURCE_HOST }}',
+            'source_port'='${{ env.SOURCE_PORT }}',
+            'source_user'='${{ env.SOURCE_USER }}',
+            'source_password'='${{ env.SOURCE_PASSWORD }}',
+            'include_databases'='${{ env.INCLUDE_DATABASES }}',
+            'exclude_databases'='${{ env.EXCLUDE_DATABASES }}'
+          );"
+          
+          mysql -h127.0.0.1 -P15306 -e "Branch show"
 
-    - name: Do Your Schema Migration
-      run: |
-        sleep 1
+      - name: Do Your Schema Migration
+        run: |
+          sleep 1
 
-    - name: Branch Diff
-      run: |
-        mysql -h127.0.0.1 -P15306 -e "Branch diff"
+      - name: Branch Diff
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch diff"
 
-    - name: Branch Prepare Merge Back
-      run: |
-        mysql -h127.0.0.1 -P15306 -e "Branch prepare_merge_back"
+      - name: Branch Prepare Merge Back
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch prepare_merge_back"
 
-    - name: Branch Merge Back
-      run: |
-        mysql -h127.0.0.1 -P15306 -e "Branch merge_back"
+      - name: Branch Merge Back
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch merge_back"
 
-    - name: Branch Show
-      run: |
-        mysql -h127.0.0.1 -P15306 -e "Branch show"
+      - name: Branch Show
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch show"
