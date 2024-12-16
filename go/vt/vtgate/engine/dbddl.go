@@ -164,9 +164,7 @@ func (c *DBDDL) createDatabase(ctx context.Context, vcursor VCursor, plugin DBDD
 	}
 
 	newKSSchema := &vindexes.KeyspaceSchema{Keyspace: &vindexes.Keyspace{Name: c.name, Sharded: false}, Tables: make(map[string]*vindexes.Table)}
-	vcursor.VSchemaAddKeyspaceIfNotExists(c.name, newKSSchema)
-	//vcursor.GetExecutorVSchema().Keyspaces[c.name] = newKSSchema
-	//vcursor.GetVSchema().Keyspaces[c.name] = newKSSchema
+	vcursor.ExecutorVSchemaAddKeyspaceIfNotExists(c.name, newKSSchema)
 
 	return &sqltypes.Result{RowsAffected: 1}, nil
 }
@@ -184,8 +182,7 @@ func (c *DBDDL) dropDatabase(ctx context.Context, vcursor VCursor, plugin DBDDLP
 		}
 	}
 
-	vcursor.VSchemaDeleteKeyspace(c.name)
-	//delete(vcursor.GetExecutorVSchema().Keyspaces, c.name)
+	vcursor.ExecutorVSchemaDeleteKeyspace(c.name)
 
 	return &sqltypes.Result{StatusFlags: sqltypes.ServerStatusDbDropped}, nil
 }

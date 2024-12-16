@@ -131,40 +131,6 @@ func InitMockShowCreateTable(mock sqlmock.Sqlmock) {
 	}
 }
 
-func InitMockTableInfos(mock sqlmock.Sqlmock) {
-	query1 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
-	rows1 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.branchSchema {
-		for table, _ := range tables {
-			rows1 = rows1.AddRow(db, table)
-		}
-	}
-	mock.ExpectQuery(query1).WillReturnRows(rows1)
-
-	query2 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ('eCommerce')"
-	rows2 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.branchSchema {
-		if db == "eCommerce" {
-			continue
-		}
-		for table, _ := range tables {
-			rows2 = rows2.AddRow(db, table)
-		}
-	}
-	mock.ExpectQuery(query2).WillReturnRows(rows2)
-
-	query3 := "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA IN ('eCommerce')"
-	rows3 := sqlmock.NewRows([]string{"TABLE_SCHEMA", "TABLE_NAME"})
-	for db, tables := range BranchSchemaForTest.branchSchema {
-		if db == "eCommerce" {
-			for table, _ := range tables {
-				rows3 = rows3.AddRow(db, table)
-			}
-		}
-	}
-	mock.ExpectQuery(query3).WillReturnRows(rows3)
-}
-
 var (
 	BranchMetaColumns = []string{
 		"Name",

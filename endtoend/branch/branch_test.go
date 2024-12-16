@@ -344,7 +344,7 @@ func printBranchShowMergeBackDDL(rows *sql.Rows) {
 }
 
 func TestBranchBasic(t *testing.T) {
-	for i := 0; i < 0; i++ {
+	for i := 0; i < 5; i++ {
 		testBranchBasic(t)
 	}
 }

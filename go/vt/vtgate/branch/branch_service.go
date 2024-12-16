@@ -428,12 +428,12 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(rows Rows) error {
 			// create or drop database ddl, don't specify database
 			_, err = bs.sourceMySQLService.mysqlService.Exec("", ddl)
 		} else {
+			// todo enhancement: track whether the current ddl to apply has finished or is executing
 			_, err = bs.sourceMySQLService.mysqlService.Exec(database, ddl)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to execute ddl %v: %v", ddl, err)
 		}
-
 		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
 		_, err = bs.targetMySQLService.mysqlService.Exec("", updateDDLMergedSQL)
 		if err != nil {

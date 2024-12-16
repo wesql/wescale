@@ -16,7 +16,7 @@ func (c *CommonMysqlService) GetBranchSchema(databasesInclude, databasesExclude 
 		return nil, fmt.Errorf("no table found")
 	}
 
-	return c.getBranchSchema(tableInfos)
+	return c.getTableSchemaOneByOne(tableInfos)
 }
 
 /**********************************************************************************************************************/
@@ -60,7 +60,7 @@ func (c *CommonMysqlService) getTableInfos(databasesInclude, databasesExclude []
 }
 
 // get table schema one by one
-func (c *CommonMysqlService) getBranchSchema(tableInfos []TableInfo) (*BranchSchema, error) {
+func (c *CommonMysqlService) getTableSchemaOneByOne(tableInfos []TableInfo) (*BranchSchema, error) {
 	result := make(map[string]map[string]string)
 
 	for i := 0; i < len(tableInfos); i++ {
