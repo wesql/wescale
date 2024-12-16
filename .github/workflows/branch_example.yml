@@ -1,6 +1,36 @@
 name: Branch Example
 
 on:
+  push:
+    inputs:
+      source_host:
+        required: true
+        type: string
+        default: '47.93.127.119'
+      source_port:
+        required: false
+        type: string
+        default: '15306'
+      source_user:
+        required: false
+        type: string
+        default: 'root'
+      source_password:
+        required: true
+        type: string
+        default: ''
+      include_databases:
+        required: false
+        type: string
+        default: '*'
+      exclude_databases:
+        required: false
+        type: string
+        default: 'information_schema,mysql,performance_schema,sys'
+      wescale_image:
+        required: false
+        type: string
+        default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha4'
   workflow_dispatch:
     inputs:
       source_host:
