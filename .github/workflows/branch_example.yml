@@ -37,7 +37,7 @@ on:
         description: 'WeScale image tag'
         required: false
         type: string
-        default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha4'
+        default: 'apecloud/apecloud-mysql-scale:0.3.8-alpha5'
 
 jobs:
   build:
