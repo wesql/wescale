@@ -23,7 +23,8 @@ jobs:
 
       - name: Do Your Schema Migration
         run: |
-          sleep 1
+          mysql -h127.0.0.1 -P15306 -e "create database if not exists foobar"
+          mysql -h127.0.0.1 -P15306 -e "create table if not exists foobar.account (id int primary key, name varchar(255))"
 
       - name: Branch Diff
         run: |
