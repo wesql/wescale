@@ -358,9 +358,18 @@ func (bs *BranchService) BranchMergeBack(name string, status BranchStatus) error
 }
 
 func (t *TargetMySQLService) BranchCleanUp(name string) error {
-	deleteMeta := getDeleteBranchMetaSQL(name)
-	deleteSnapshot := getDeleteSnapshotSQL(name)
-	deleteMergeBackDDL := getDeleteMergeBackDDLSQL(name)
+	deleteMeta, err := getDeleteBranchMetaSQL(name)
+	if err != nil {
+		return err
+	}
+	deleteSnapshot, err := getDeleteSnapshotSQL(name)
+	if err != nil {
+		return err
+	}
+	deleteMergeBackDDL, err := getDeleteMergeBackDDLSQL(name)
+	if err != nil {
+		return err
+	}
 	return t.mysqlService.ExecuteInTxn(deleteMeta, deleteSnapshot, deleteMergeBackDDL)
 }
 
@@ -379,7 +388,10 @@ func (bs *BranchService) executeMergeBackDDL(name string) error {
 	// create or drop database first
 	lastID := 0
 	for {
-		selectUnmergedDBDDLSQL := getSelectUnmergedDBDDLInBatchSQL(name, lastID, SelectBatchSize)
+		selectUnmergedDBDDLSQL, err := getSelectUnmergedDBDDLInBatchSQL(name, lastID, SelectBatchSize)
+		if err != nil {
+			return err
+		}
 		rows, err := bs.targetMySQLService.mysqlService.Query(selectUnmergedDBDDLSQL)
 		if err != nil {
 			return err
@@ -397,7 +409,10 @@ func (bs *BranchService) executeMergeBackDDL(name string) error {
 	// then, execute table ddl
 	lastID = 0
 	for {
-		selectMergeBackDDLSQL := getSelectUnmergedDDLInBatchSQL(name, lastID, SelectBatchSize)
+		selectMergeBackDDLSQL, err := getSelectUnmergedDDLInBatchSQL(name, lastID, SelectBatchSize)
+		if err != nil {
+			return err
+		}
 		rows2, err := bs.targetMySQLService.mysqlService.Query(selectMergeBackDDLSQL)
 		if err != nil {
 			return err
@@ -434,7 +449,10 @@ func (bs *BranchService) executeMergeBackDDLOneByOne(rows Rows) error {
 		if err != nil {
 			return fmt.Errorf("failed to execute ddl %v: %v", ddl, err)
 		}
-		updateDDLMergedSQL := getUpdateDDLMergedSQL(id)
+		updateDDLMergedSQL, err := getUpdateDDLMergedSQL(id)
+		if err != nil {
+			return err
+		}
 		_, err = bs.targetMySQLService.mysqlService.Exec("", updateDDLMergedSQL)
 		if err != nil {
 			return err

@@ -2,6 +2,7 @@ package branch
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -144,4 +145,34 @@ func TestAddIfNotExistsForCreateTableSQL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNormalizeCreateTableSQL(t *testing.T) {
+	tests := []struct {
+		input       string
+		expected    string
+		expectError bool
+	}{
+		{
+			input:       "CREATE TABLE `users` (\n  `id` int NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,\n  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,\n  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  `col1` int DEFAULT NULL,\n  PRIMARY KEY (`id`),\n  UNIQUE KEY `email` (`email`)\n) ENGINE=SMARTENGINE DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
+			expected:    "create table if not exists `users` (\n\tid int not null auto_increment,\n\tusername varchar(50) character set utf8mb4 collate utf8mb4_general_ci not null,\n\temail varchar(100) character set utf8mb4 collate utf8mb4_general_ci default null,\n\tcreated_at timestamp null default current_timestamp(),\n\tcol1 int default null,\n\tPRIMARY KEY (id),\n\tUNIQUE KEY email (email)\n) CHARSET utf8mb4,\n  COLLATE utf8mb4_general_ci",
+			expectError: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			output, err := normalizeCreateTableSQL(tt.input)
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("unexpected error: %s", err)
+				}
+				assert.Equal(t, tt.expected, output)
+			}
+		})
+	}
+
 }
