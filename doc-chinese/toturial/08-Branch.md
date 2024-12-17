@@ -71,7 +71,7 @@ docker run -itd --network wescale-network --name wescale \
   -e MYSQL_PORT=3306 \
   -e MYSQL_HOST=mysql-server \
   -e CONFIG_PATH=/vt/config/wescale/default \
-  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  apecloud/apecloud-mysql-scale:0.3.8 \
   /vt/examples/wesql-server/init_single_node_cluster.sh
 
 # Target集群
@@ -98,7 +98,7 @@ docker run -itd --network wescale-network --name wescale15307 \
   -e MYSQL_HOST=mysql-server3307 \
   -e VTGATE_MYSQL_PORT=15307 \
   -e CONFIG_PATH=/vt/config/wescale/default \
-  apecloud/apecloud-mysql-scale:0.3.8-alpha4 \
+  apecloud/apecloud-mysql-scale:0.3.8 \
   /vt/examples/wesql-server/init_single_node_cluster.sh
 ```
 

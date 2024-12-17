@@ -1,0 +1,78 @@
+name: Branch Example
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_host:
+        description: 'Source host address'
+        required: true
+        type: string
+      source_port:
+        description: 'Source port'
+        required: false
+        type: string
+        default: '3306'
+      source_user:
+        description: 'Source user'
+        required: false
+        type: string
+        default: 'root'
+      source_password:
+        description: 'Source password'
+        required: true
+        type: string
+        default: ''
+      include_databases:
+        description: 'Databases to include'
+        required: false
+        type: string
+        default: '*'
+      exclude_databases:
+        description: 'Databases to exclude'
+        required: false
+        type: string
+        default: 'information_schema,mysql,performance_schema,sys'
+      wescale_image:
+        description: 'WeScale image tag'
+        required: false
+        type: string
+        default: 'apecloud/apecloud-mysql-scale:0.3.8'
+
+jobs:
+  setup-mysql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Create MySQL Branch
+        uses: wesql/mysql-branch-action@v0.0.7
+        with:
+          source_host: ${{inputs.source_host}}
+          source_port: ${{inputs.source_port}}
+          source_user: ${{inputs.source_user}}
+          source_password: ${{inputs.source_password}}
+          include_databases: ${{inputs.include_databases}}
+          exclude_databases: ${{inputs.exclude_databases}}
+          wescale_image: ${{inputs.wescale_image}}
+
+      - name: Do Your Schema Migration
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "create database if not exists foobar"
+          mysql -h127.0.0.1 -P15306 -e "create table if not exists foobar.account (id int primary key, name varchar(255))"
+
+      - name: Branch Diff
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch diff"
+
+      - name: Branch Prepare Merge Back
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch prepare_merge_back"
+
+      - name: Branch Merge Back
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch merge_back"
+
+      - name: Branch Show
+        run: |
+          mysql -h127.0.0.1 -P15306 -e "Branch show"
