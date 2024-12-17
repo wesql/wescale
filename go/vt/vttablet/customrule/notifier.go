@@ -13,5 +13,4 @@ func Watch() <-chan struct{} {
 	return customRuleChanged
 }
 
-var WaitForFilterLoad func(name string) error
-var WaitForFilterDelete func(name string) error
+var WaitForFilter func(name string, shouldExists bool) error

@@ -83,7 +83,6 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 }
 
 func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*sqltypes.Result, error) {
-
 	stmt, _, err := sqlparser.Parse2(sql)
 	if err != nil {
 		return nil, err
@@ -91,52 +90,52 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*
 
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleFilter:
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleCreateFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return &sqltypes.Result{}, nil
 		}
-		rst, err := qe.HandleCreateFilter(s)
-		if err != nil {
-			return nil, err
-		}
-		err = customrule.WaitForFilterLoad(s.Name)
-		if err != nil {
-			return nil, err
-		}
+
+		customrule.WaitForFilter(s.Name, true)
 		return rst, nil
 
 	case *sqlparser.AlterWescaleFilter:
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleAlterFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return &sqltypes.Result{}, nil
 		}
-		rst, err := qe.HandleAlterFilter(s)
-		if err != nil {
-			return nil, err
-		}
+
 		nameToWait := s.AlterInfo.Name
 		if nameToWait == rules.UnsetValueOfStmt {
 			nameToWait = s.OriginName
 		}
-		err = customrule.WaitForFilterLoad(nameToWait)
-		if err != nil {
-			return nil, err
-		}
+		customrule.WaitForFilter(nameToWait, true)
 		return rst, nil
 
 	case *sqlparser.DropWescaleFilter:
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleDropFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return &sqltypes.Result{}, nil
 		}
-		rst, err := qe.HandleDropFilter(s)
-		if err != nil {
-			return nil, err
-		}
-		err = customrule.WaitForFilterDelete(s.Name)
-		if err != nil {
-			return nil, err
-		}
+
+		customrule.WaitForFilter(s.Name, false)
 		return rst, nil
 
 	case *sqlparser.ShowWescaleFilter:
