@@ -49,7 +49,7 @@ jobs:
       SOURCE_PASSWORD: ${{ inputs.source_password || '' }}
       INCLUDE_DATABASES: ${{ inputs.include_databases || '*' }}
       EXCLUDE_DATABASES: ${{ inputs.exclude_databases || 'information_schema,mysql,performance_schema,sys' }}
-      WESCALE_IMAGE: ${{ inputs.wescale_image || 'apecloud/apecloud-mysql-scale:0.3.8-alpha4' }}
+      WESCALE_IMAGE: ${{ inputs.wescale_image || 'apecloud/apecloud-mysql-scale:0.3.8-alpha5' }}
 
     steps:
       - name: Set Up Target Cluster
