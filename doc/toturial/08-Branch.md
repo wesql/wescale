@@ -178,7 +178,32 @@ CREATE TABLE test_db2.products (
 
 ```sql
 # On the target side (port 15307)
-mysql> Branch diff\G
+MySQL [(none)]> Branch diff\G
+*************************** 1. row ***************************
+branch name: origin
+   database: test_db1
+      table: users
+        ddl: ALTER TABLE `test_db1`.`users` ADD COLUMN `phone` varchar(20), ADD KEY `idx_phone` (`phone`)
+*************************** 2. row ***************************
+branch name: origin
+   database: test_db2
+      table: products
+        ddl: CREATE TABLE IF NOT EXISTS `test_db2`.`products` (
+                                                                                                                                                                         `product_id` int NOT NULL AUTO_INCREMENT,
+                                                                                                                                                                         `product_name` varchar(200) NOT NULL,
+    `price` decimal(10,2) NOT NULL,
+    `stock` int DEFAULT '0',
+    `status` varchar(20) DEFAULT 'on_sale',
+    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`product_id`)
+    ) CHARSET utf8mb4,
+    COLLATE utf8mb4_0900_ai_ci
+    *************************** 3. row ***************************
+    branch name: origin
+    database: test_db2
+    table: orders
+    ddl: ALTER TABLE `test_db2`.`orders` ADD COLUMN `payment_type` varchar(20), ADD KEY `idx_date_status` (`order_date`, `status`)
+3 rows in set (0.022 sec)
 ```
 
 This command lists the SQL statements required to update the source schema to match the target.
@@ -187,14 +212,40 @@ This command lists the SQL statements required to update the source schema to ma
 
 ```sql
 # On the target side (port 15307)
-Branch prepare_merge_back;
+MySQL [(none)]> Branch prepare_merge_back\G
+*************************** 1. row ***************************
+branch name: origin
+   database: test_db1
+      table: users
+        ddl: ALTER TABLE `test_db1`.`users` ADD COLUMN `phone` varchar(20), ADD KEY `idx_phone` (`phone`)
+*************************** 2. row ***************************
+branch name: origin
+   database: test_db2
+      table: products
+        ddl: CREATE TABLE IF NOT EXISTS `test_db2`.`products` (
+                                                                                                                                                                                       `product_id` int NOT NULL AUTO_INCREMENT,
+                                                                                                                                                                                       `product_name` varchar(200) NOT NULL,
+    `price` decimal(10,2) NOT NULL,
+    `stock` int DEFAULT '0',
+    `status` varchar(20) DEFAULT 'on_sale',
+    `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`product_id`)
+    ) CHARSET utf8mb4,
+    COLLATE utf8mb4_0900_ai_ci
+    *************************** 3. row ***************************
+    branch name: origin
+    database: test_db2
+    table: orders
+    ddl: ALTER TABLE `test_db2`.`orders` ADD COLUMN `payment_type` varchar(20), ADD KEY `idx_date_status` (`order_date`, `status`)
+3 rows in set (0.020 sec)
 ```
 
 ### Step 5: Branch Merge Back
 
 ```sql
 # On the target side (port 15307)
-Branch merge_back;
+MySQL [(none)]> Branch merge_back;
+Query OK, 0 rows affected (0.109 sec)
 ```
 
 After this operation completes, check the schema on the **source** cluster to confirm that it now includes all the target’s changes:
@@ -202,15 +253,17 @@ After this operation completes, check the schema on the **source** cluster to co
 ```sql
 # On the source side (port 15306)
 SHOW DATABASES;
-SHOW TABLES FROM test_db1;
-SHOW TABLES FROM test_db2;
+SHOW CREATE TABLE test_db1.users; -- You should see the new columns and indexes
+SHOW CREATE TABLE test_db2.orders; -- You should see the new columns and indexes
+SHOW TABLES FROM test_db2; -- You should see the new table
 ```
 
 Since both environments should now be in sync, you can run `Branch diff` again on the **target** side:
 
 ```sql
 # On the target side (port 15307)
-Branch diff;
+MySQL [(none)]> Branch diff;
+Empty set (0.018 sec)
 ```
 
 This time, the diff should produce no output, indicating that the source and target schemas are identical.
