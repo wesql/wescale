@@ -58,7 +58,7 @@ docker run -itd --network wescale-network --name wescale \
   -e MYSQL_ROOT_PASSWORD=passwd \
   -e MYSQL_PORT=3306 \
   -e MYSQL_HOST=mysql-server \
-  apecloud/apecloud-mysql-scale:0.3.7 \
+  apecloud/apecloud-mysql-scale:0.3.8 \
   /vt/examples/wesql-server/init_single_node_cluster.sh
 ```
 
@@ -69,6 +69,29 @@ mysql -h127.0.0.1 -uroot -ppasswd -P15306
 
 # You can still connect to the original MySQL server
 mysql -h127.0.0.1 -uroot -ppasswd -P3306
+```
+
+Try out Declarative DDL:
+```sql
+CREATE DATABASE if not exists test;
+USE test;
+
+CREATE TABLE if not exists test_table (
+    id int primary key,
+    name varchar(255)
+);
+
+SHOW CREATE TABLE test_table;
+
+CREATE TABLE if not exists test_table (
+    id int primary key,
+    name varchar(255),
+    email varchar(255),
+    profile varchar(255),
+    index (name, email)
+);
+
+SHOW CREATE TABLE test_table;
 ```
 
 Clean up the containers:
@@ -104,6 +127,15 @@ Join our [Discord](https://discord.com/channels/1308609231498510427/130860923149
 
 # Developer
 * [Use FailPoint Injection In WeScale.md](doc%2Fdeveloper%2FUse%20FailPoint%20Injection%20In%20WeScale.md)
+
+# Monitoring
+Once you have WeScale up and running, you can monitor the cluster using prometheus and grafana.
+```bash
+cd ./examples/metrics && ./start_dashboard.sh
+```
+Open your browser and navigate to `http://localhost:3000/dashboards` to view the dashboard.
+
+![20241217-164819.jpeg](doc%2F20241217-164819.jpeg)
 
 # Contributing
 We welcome contributions to WeScale! If you have any ideas, bug reports, or feature requests,
