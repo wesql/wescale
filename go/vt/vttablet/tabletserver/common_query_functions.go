@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
@@ -90,26 +91,54 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*
 
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleFilter:
-		defer customrule.NotifyReload()
 		if !isPrimary {
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
+			return &sqltypes.Result{}, nil
 		}
-		return qe.HandleCreateFilter(s)
+		rst, err := qe.HandleCreateFilter(s)
+		if err != nil {
+			return nil, err
+		}
+		err = customrule.WaitForFilterLoad(s.Name)
+		if err != nil {
+			return nil, err
+		}
+		return rst, nil
+
 	case *sqlparser.AlterWescaleFilter:
-		defer customrule.NotifyReload()
 		if !isPrimary {
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
+			return &sqltypes.Result{}, nil
 		}
-		return qe.HandleAlterFilter(s)
+		rst, err := qe.HandleAlterFilter(s)
+		if err != nil {
+			return nil, err
+		}
+		nameToWait := s.AlterInfo.Name
+		if nameToWait == rules.UnsetValueOfStmt {
+			nameToWait = s.OriginName
+		}
+		err = customrule.WaitForFilterLoad(nameToWait)
+		if err != nil {
+			return nil, err
+		}
+		return rst, nil
+
 	case *sqlparser.DropWescaleFilter:
-		defer customrule.NotifyReload()
 		if !isPrimary {
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
+			return &sqltypes.Result{}, nil
 		}
-		return qe.HandleDropFilter(s)
+		rst, err := qe.HandleDropFilter(s)
+		if err != nil {
+			return nil, err
+		}
+		err = customrule.WaitForFilterDelete(s.Name)
+		if err != nil {
+			return nil, err
+		}
+		return rst, nil
+
 	case *sqlparser.ShowWescaleFilter:
 		return qe.HandleShowFilter(s)
 	}

@@ -12,3 +12,6 @@ func NotifyReload() {
 func Watch() <-chan struct{} {
 	return customRuleChanged
 }
+
+var WaitForFilterLoad func(name string) error
+var WaitForFilterDelete func(name string) error

@@ -127,6 +127,8 @@ func activateTopoCustomRules(qsc tabletserver.Controller) {
 		if err != nil {
 			log.Fatalf("cannot start DatabaseCustomRule: %v", err)
 		}
+		customrule.WaitForFilterLoad = cr.WaitForFilterLoad
+		customrule.WaitForFilterDelete = cr.WaitForFilterDelete
 		cr.start()
 
 		servenv.OnTerm(cr.stop)
@@ -135,4 +137,46 @@ func activateTopoCustomRules(qsc tabletserver.Controller) {
 
 func init() {
 	tabletserver.RegisterFunctions = append(tabletserver.RegisterFunctions, activateTopoCustomRules)
+}
+
+func (cr *databaseCustomRule) WaitForFilterLoad(name string) error {
+	timeoutDuration := 5 * time.Second
+	pollingInterval := 100 * time.Millisecond
+
+	timeout := time.After(timeoutDuration)
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("wait for filter reload timeout")
+		case <-ticker.C:
+			if cr.qrs.Find(name) != nil {
+				return nil
+			}
+			customrule.NotifyReload()
+		}
+	}
+}
+
+func (cr *databaseCustomRule) WaitForFilterDelete(name string) error {
+	timeoutDuration := 5 * time.Second
+	pollingInterval := 100 * time.Millisecond
+
+	timeout := time.After(timeoutDuration)
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("wait for filter delete timeout")
+		case <-ticker.C:
+			if cr.qrs.Find(name) == nil {
+				return nil
+			}
+			customrule.NotifyReload()
+		}
+	}
 }
