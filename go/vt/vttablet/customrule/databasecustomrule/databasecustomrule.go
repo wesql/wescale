@@ -59,7 +59,7 @@ func (cr *databaseCustomRule) start() {
 		for {
 			select {
 			case <-intervalTicker.C:
-			case <-customrule.Watch():
+				//case <-customrule.Watch():
 			}
 
 			if err := cr.reloadRulesFromDatabase(); err != nil {
