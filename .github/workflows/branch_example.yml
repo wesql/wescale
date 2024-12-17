@@ -1,7 +1,42 @@
 name: Branch Example
 
 on:
-  push:
+  workflow_dispatch:
+    inputs:
+      source_host:
+        description: 'Source host address'
+        required: true
+        type: string
+      source_port:
+        description: 'Source port'
+        required: false
+        type: string
+        default: '3306'
+      source_user:
+        description: 'Source user'
+        required: false
+        type: string
+        default: 'root'
+      source_password:
+        description: 'Source password'
+        required: true
+        type: string
+        default: ''
+      include_databases:
+        description: 'Databases to include'
+        required: false
+        type: string
+        default: '*'
+      exclude_databases:
+        description: 'Databases to exclude'
+        required: false
+        type: string
+        default: 'information_schema,mysql,performance_schema,sys'
+      wescale_image:
+        description: 'WeScale image tag'
+        required: false
+        type: string
+        default: 'apecloud/apecloud-mysql-scale:0.3.8'
 
 jobs:
   setup-mysql:
@@ -13,13 +48,13 @@ jobs:
       - name: Create MySQL Branch
         uses: wesql/mysql-branch-action@v0.0.7
         with:
-          source_host: '47.93.127.119'
-          source_port: '15306'
-          source_user: 'root'
-          source_password: ${{ secrets.SOURCE_PASSWORD }}
-          include_databases: '*' # Optional
-          exclude_databases: 'information_schema,mysql,performance_schema,sys' # Optional
-          wescale_image: 'apecloud/apecloud-mysql-scale:0.3.8' # Optional
+          source_host: ${{inputs.source_host}}
+          source_port: ${{inputs.source_port}}
+          source_user: ${{inputs.source_user}}
+          source_password: ${{inputs.source_password}}
+          include_databases: ${{inputs.include_databases}}
+          exclude_databases: ${{inputs.exclude_databases}}
+          wescale_image: ${{inputs.wescale_image}}
 
       - name: Do Your Schema Migration
         run: |
