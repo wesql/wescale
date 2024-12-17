@@ -73,6 +73,8 @@ mysql -h127.0.0.1 -uroot -ppasswd -P3306
 
 Try out Declarative DDL:
 ```sql
+SET @@enable_declarative_ddl=true;
+
 CREATE DATABASE if not exists test;
 USE test;
 
