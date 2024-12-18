@@ -12,3 +12,5 @@ func NotifyReload() {
 func Watch() <-chan struct{} {
 	return customRuleChanged
 }
+
+var WaitForFilter func(name string, shouldExists bool) error

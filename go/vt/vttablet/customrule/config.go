@@ -14,7 +14,7 @@ var (
 	DatabaseCustomRuleDbName            = sidecardb.SidecarDBName
 	DatabaseCustomRuleTableName         = "wescale_plugin"
 	DatabaseCustomRuleReloadInterval    = 60 * time.Second
-	DatabaseCustomRuleNotifierDelayTime = 100 * time.Millisecond
+	DatabaseCustomRuleNotifierDelayTime = 100 * time.Millisecond // time to wait for primary inserting filters and the filters are synced to replicas
 )
 
 func registerFlags(fs *pflag.FlagSet) {

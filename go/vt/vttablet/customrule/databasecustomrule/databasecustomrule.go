@@ -7,6 +7,7 @@ package databasecustomrule
 
 import (
 	"context"
+	"sync"
 
 	"fmt"
 	"reflect"
@@ -27,6 +28,8 @@ const databaseCustomRuleSource string = "DATABASE_CUSTOM_RULE"
 
 // databaseCustomRule is the database backed implementation.
 type databaseCustomRule struct {
+	mu sync.Mutex
+
 	// controller is set at construction time.
 	controller tabletserver.Controller
 
@@ -45,13 +48,18 @@ func newDatabaseCustomRule(qsc tabletserver.Controller) (*databaseCustomRule, er
 
 func (cr *databaseCustomRule) start() {
 	go func() {
+		// reload rules that already in the database once start
+		if err := cr.reloadRulesFromDatabase(); err != nil {
+			log.Warningf("Background watch of database custom rule failed: %v", err)
+		}
+
 		intervalTicker := time.NewTicker(customrule.DatabaseCustomRuleReloadInterval)
 		defer intervalTicker.Stop()
 
 		for {
 			select {
 			case <-intervalTicker.C:
-			case <-customrule.Watch():
+				//case <-customrule.Watch():
 			}
 
 			if err := cr.reloadRulesFromDatabase(); err != nil {
@@ -83,6 +91,9 @@ func (cr *databaseCustomRule) applyRules(qr *sqltypes.Result) error {
 		}
 		qrs.Add(rule)
 	}
+
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
 
 	if !reflect.DeepEqual(cr.qrs, qrs) {
 		cr.qrs = qrs.Copy()
@@ -122,6 +133,7 @@ func activateTopoCustomRules(qsc tabletserver.Controller) {
 		if err != nil {
 			log.Fatalf("cannot start DatabaseCustomRule: %v", err)
 		}
+		customrule.WaitForFilter = cr.WaitForFilter
 		cr.start()
 
 		servenv.OnTerm(cr.stop)
@@ -130,4 +142,40 @@ func activateTopoCustomRules(qsc tabletserver.Controller) {
 
 func init() {
 	tabletserver.RegisterFunctions = append(tabletserver.RegisterFunctions, activateTopoCustomRules)
+}
+
+func (cr *databaseCustomRule) WaitForFilter(name string, shouldExists bool) error {
+	timeoutDuration := 5 * time.Second
+	interval := 100 * time.Millisecond
+
+	timeout := time.After(timeoutDuration)
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	err := cr.reloadRulesFromDatabase()
+	if err != nil {
+		return fmt.Errorf("failed to reload rules from database: %v", err)
+	}
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("wait for filter reload timeout")
+		case <-ticker.C:
+			filter := cr.FindFilter(name)
+			if shouldExists && filter != nil || !shouldExists && filter == nil {
+				return nil
+			}
+			err := cr.reloadRulesFromDatabase()
+			if err != nil {
+				return fmt.Errorf("failed to reload rules from database: %v", err)
+			}
+		}
+	}
+}
+
+func (cr *databaseCustomRule) FindFilter(name string) *rules.Rule {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+	return cr.qrs.Find(name)
 }

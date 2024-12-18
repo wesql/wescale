@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"vitess.io/vitess/go/vt/vttablet/tabletserver/rules"
 
 	"vitess.io/vitess/go/vt/vttablet/customrule"
 
@@ -82,7 +83,6 @@ func (qe *QueryEngine) TabletsPlans(alias *topodatapb.TabletAlias) (*sqltypes.Re
 }
 
 func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*sqltypes.Result, error) {
-
 	stmt, _, err := sqlparser.Parse2(sql)
 	if err != nil {
 		return nil, err
@@ -90,26 +90,54 @@ func (qe *QueryEngine) HandleWescaleFilterRequest(sql string, isPrimary bool) (*
 
 	switch s := stmt.(type) {
 	case *sqlparser.CreateWescaleFilter:
-		defer customrule.NotifyReload()
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleCreateFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
 		}
-		return qe.HandleCreateFilter(s)
+
+		customrule.WaitForFilter(s.Name, true)
+		return rst, nil
+
 	case *sqlparser.AlterWescaleFilter:
-		defer customrule.NotifyReload()
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleAlterFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
 		}
-		return qe.HandleAlterFilter(s)
+
+		nameToWait := s.AlterInfo.Name
+		if nameToWait == rules.UnsetValueOfStmt {
+			nameToWait = s.OriginName
+		}
+		customrule.WaitForFilter(nameToWait, true)
+		return rst, nil
+
 	case *sqlparser.DropWescaleFilter:
-		defer customrule.NotifyReload()
-		if !isPrimary {
+		rst := &sqltypes.Result{}
+		if isPrimary {
+			rst, err = qe.HandleDropFilter(s)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// wait for primary inserting filters and the filters are synced to replicas
 			time.Sleep(customrule.DatabaseCustomRuleNotifierDelayTime)
-			return nil, nil
 		}
-		return qe.HandleDropFilter(s)
+
+		customrule.WaitForFilter(s.Name, false)
+		return rst, nil
+
 	case *sqlparser.ShowWescaleFilter:
 		return qe.HandleShowFilter(s)
 	}
