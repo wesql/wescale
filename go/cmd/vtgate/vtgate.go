@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+	"vitess.io/vitess/go/internal/global"
 
 	"vitess.io/vitess/go/viperutil"
 
@@ -42,7 +43,7 @@ import (
 )
 
 var (
-	cell              = ""
+	cell              = global.DefaultCell
 	tabletTypesToWait []topodatapb.TabletType
 	plannerName       string
 	vtGateViperConfig = viperutil.NewViperConfig()

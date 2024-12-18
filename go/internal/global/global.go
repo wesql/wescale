@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const DefaultCell = "zone1"
+
 // Keyspace
 const (
 	DefaultKeyspace = "mysql"
