@@ -120,8 +120,7 @@ func main() {
 		if err != nil {
 			log.Exitf("failed to get server id: %v", err)
 		}
-		tabletPath = fmt.Sprintf("%s-%010d", cell, server_id)
-		tabletAlias, err = topoproto.ParseTabletAlias(tabletPath)
+		tabletAlias, err = topoproto.ParseTabletAlias(fmt.Sprintf("%s-%010d", cell, server_id))
 		if err != nil {
 			log.Exitf("failed to parse --tablet-path: %v", err)
 		}
