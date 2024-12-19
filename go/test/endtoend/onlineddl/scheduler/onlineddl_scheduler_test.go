@@ -807,12 +807,6 @@ func testScheduler(t *testing.T) {
 		dropT4Statement = `
 			DROP TABLE IF EXISTS t4_test
 		`
-		//alterExtraColumn = `
-		//	ALTER TABLE t1_test ADD COLUMN extra_column int NOT NULL DEFAULT 0
-		//`
-		//createViewDependsOnExtraColumn = `
-		//	CREATE VIEW t1_test_view AS SELECT id, extra_column FROM t1_test
-		//`
 	)
 
 	testReadTimestamp := func(t *testing.T, uuid string, timestampColumn string) (timestamp string) {
