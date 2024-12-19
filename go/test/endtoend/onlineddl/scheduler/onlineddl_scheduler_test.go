@@ -53,7 +53,6 @@ const (
 type testOnlineDDLStatementParams struct {
 	ddlStatement     string
 	ddlStrategy      string
-	executeStrategy  string
 	expectHint       string
 	expectError      string
 	skipWait         bool
@@ -308,12 +307,11 @@ func testPause(t *testing.T) {
 
 	createParams := func(ddlStatement string, ddlStrategy string, executeStrategy string, expectHint string, expectError string, skipWait bool) *testOnlineDDLStatementParams {
 		return &testOnlineDDLStatementParams{
-			ddlStatement:    ddlStatement,
-			ddlStrategy:     ddlStrategy,
-			executeStrategy: executeStrategy,
-			expectHint:      expectHint,
-			expectError:     expectError,
-			skipWait:        skipWait,
+			ddlStatement: ddlStatement,
+			ddlStrategy:  ddlStrategy,
+			expectHint:   expectHint,
+			expectError:  expectError,
+			skipWait:     skipWait,
 		}
 	}
 
@@ -693,12 +691,11 @@ func testScheduler(t *testing.T) {
 
 	createParams := func(ddlStatement string, ddlStrategy string, executeStrategy string, expectHint string, expectError string, skipWait bool) *testOnlineDDLStatementParams {
 		return &testOnlineDDLStatementParams{
-			ddlStatement:    ddlStatement,
-			ddlStrategy:     ddlStrategy,
-			executeStrategy: executeStrategy,
-			expectHint:      expectHint,
-			expectError:     expectError,
-			skipWait:        skipWait,
+			ddlStatement: ddlStatement,
+			ddlStrategy:  ddlStrategy,
+			expectHint:   expectHint,
+			expectError:  expectError,
+			skipWait:     skipWait,
 		}
 	}
 
@@ -1234,37 +1231,15 @@ func testOnlineDDLStatement(t *testing.T, params *testOnlineDDLStatementParams) 
 
 	tableName := parseTableName(t, params.ddlStatement)
 
-	if params.executeStrategy == "vtgate" {
-		require.Empty(t, params.migrationContext, "explicit migration context not supported in vtgate. Test via vtctl")
-		result := onlineddl.VtgateExecDDL(t, &vtParams, params.ddlStrategy, params.ddlStatement, params.expectError)
-		if result != nil {
-			row := result.Named().Row()
-			if row != nil {
-				uuid = row.AsString("uuid", "")
-			}
-		}
-	} else {
-		vtctlParams := &cluster.VtctlClientParams{DDLStrategy: params.ddlStrategy, MigrationContext: params.migrationContext, SkipPreflight: true}
-		if overrideVtctlParams != nil {
-			vtctlParams = overrideVtctlParams
-		}
-		output, err := clusterInstance.VtctlclientProcess.ApplySchemaWithOutput(keyspaceName, params.ddlStatement, *vtctlParams)
-		switch params.expectError {
-		case anyErrorIndicator:
-			if err != nil {
-				// fine. We got any error.
-				t.Logf("expected any error, got this error: %v", err)
-				return
-			}
-			uuid = output
-		case "":
-			assert.NoError(t, err)
-			uuid = output
-		default:
-			assert.Error(t, err)
-			assert.Contains(t, output, params.expectError)
+	require.Empty(t, params.migrationContext, "explicit migration context not supported in vtgate. Test via vtctl")
+	result := onlineddl.VtgateExecDDL(t, &vtParams, params.ddlStrategy, params.ddlStatement, params.expectError)
+	if result != nil {
+		row := result.Named().Row()
+		if row != nil {
+			uuid = row.AsString("uuid", "")
 		}
 	}
+
 	uuid = strings.TrimSpace(uuid)
 	fmt.Println("# Generated UUID (for debug purposes):")
 	fmt.Printf("<%s>\n", uuid)
