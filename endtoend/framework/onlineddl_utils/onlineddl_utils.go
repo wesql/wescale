@@ -45,3 +45,73 @@ func VtgateExecDDL(t *testing.T, db *sql.DB, ddlStrategy string, ddl string, exp
 
 	return uuid
 }
+
+func GetSchemaMigrationMetadata(t *testing.T, db *sql.DB, uuid string) *SchemaMigrationMetadata {
+	t.Helper()
+
+	query := fmt.Sprintf("show vitess_migrations like '%s'", uuid)
+
+	row := db.QueryRow(query)
+	metadata := &SchemaMigrationMetadata{}
+
+	err := row.Scan(
+		&metadata.ID,
+		&metadata.MigrationUUID,
+		&metadata.Keyspace,
+		&metadata.Shard,
+		&metadata.MySQLSchema,
+		&metadata.MySQLTable,
+		&metadata.MigrationStatement,
+		&metadata.Strategy,
+		&metadata.Options,
+		&metadata.AddedTimestamp,
+		&metadata.RequestedTimestamp,
+		&metadata.ReadyTimestamp,
+		&metadata.StartedTimestamp,
+		&metadata.LivenessTimestamp,
+		&metadata.CompletedTimestamp,
+		&metadata.CleanupTimestamp,
+		&metadata.MigrationStatus,
+		&metadata.StatusBeforePaused,
+		&metadata.LogPath,
+		&metadata.Artifacts,
+		&metadata.Retries,
+		&metadata.Tablet,
+		&metadata.TabletFailure,
+		&metadata.Progress,
+		&metadata.MigrationContext,
+		&metadata.DDLAction,
+		&metadata.Message,
+		&metadata.ETASeconds,
+		&metadata.RowsCopied,
+		&metadata.TableRows,
+		&metadata.AddedUniqueKeys,
+		&metadata.RemovedUniqueKeys,
+		&metadata.LogFile,
+		&metadata.RetainArtifactsSeconds,
+		&metadata.PostponeCompletion,
+		&metadata.RemovedUniqueKeyNames,
+		&metadata.DroppedNoDefaultColumnNames,
+		&metadata.ExpandedColumnNames,
+		&metadata.RevertibleNotes,
+		&metadata.AllowConcurrent,
+		&metadata.RevertedUUID,
+		&metadata.IsView,
+		&metadata.ReadyToComplete,
+		&metadata.StowawayTable,
+		&metadata.VitessLivenessIndicator,
+		&metadata.UserThrottleRatio,
+		&metadata.SpecialPlan,
+		&metadata.LastThrottledTimestamp,
+		&metadata.ComponentThrottled,
+		&metadata.CancelledTimestamp,
+		&metadata.PostponeLaunch,
+		&metadata.Stage,
+		&metadata.CutoverAttempts,
+		&metadata.IsImmediateOperation,
+		&metadata.ReviewedTimestamp,
+	)
+
+	assert.NoError(t, err)
+	return metadata
+}
