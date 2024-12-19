@@ -60,7 +60,6 @@ done
 # 追加其他标志到临时配置文件
 cat <<EOL >> "$temp_config"
 alsologtostderr=true
-log_dir=$VTDATAROOT
 log_queries_to_file=$VTDATAROOT/vtgate_querylog.txt
 port=$web_port
 grpc_port=$grpc_port
