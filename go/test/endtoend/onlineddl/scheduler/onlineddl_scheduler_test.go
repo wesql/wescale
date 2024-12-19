@@ -82,7 +82,6 @@ var (
 	DBName                = "test"
 	cell                  = "zone1"
 	schemaChangeDirectory = ""
-	overrideVtctlParams   *cluster.VtctlClientParams
 )
 
 func parseTableName(t *testing.T, sql string) (tableName string) {
@@ -257,18 +256,6 @@ func checkArtifactsOfMigration(t *testing.T, uuid, expectArtifacts string) {
 	actualArtifacts := rs.Named().Rows[0].AsString("artifacts", "")
 	fmt.Printf("expectArtifacts is %s, actualArtifacts is %s", expectArtifacts, actualArtifacts)
 	assert.Equal(t, expectArtifacts, actualArtifacts)
-}
-
-func checkStateOfVreplication(t *testing.T, uuid, expectState string) {
-	query, err := sqlparser.ParseAndBind("select state from mysql.vreplication where workflow=%a",
-		sqltypes.StringBindVariable(uuid),
-	)
-	require.NoError(t, err)
-	rs := onlineddl.VtgateExecQuery(t, &vtParams, query, "")
-	require.NotNil(t, rs)
-
-	assert.Equal(t, 1, len(rs.Named().Rows))
-	assert.Equal(t, expectState, rs.Named().Rows[0].AsString("state", ""))
 }
 
 func WaitForVreplicationState(t *testing.T, vtParams *mysql.ConnParams, uuid string, timeout time.Duration, expectStates ...string) string {
