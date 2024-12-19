@@ -138,8 +138,8 @@ func main() {
 	defer exit.Recover()
 
 	servenv.ParseFlags("vtgate")
-	servenv.Init()
 	vtGateViperConfig.LoadAndWatchConfigFile()
+	servenv.Init()
 
 	ts := topo.Open()
 	defer ts.Close()
