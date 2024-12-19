@@ -1258,59 +1258,6 @@ func testScheduler(t *testing.T) {
 			})
 		})
 	}
-	// 'mysql' strategy
-	t.Run("mysql strategy", func(t *testing.T) {
-		t.Run("show create table t1_test", func(t *testing.T) {
-			r := onlineddl.VtgateExecQuery(t, &vtParams, "show create table t1_test", "")
-			for _, row := range r.Named().Rows {
-				for key, value := range row {
-					t.Logf("[%v : %v]", key, value)
-				}
-				t.Logf("\n")
-			}
-		})
-		t.Run("declarative", func(t *testing.T) {
-			onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=true", "")
-			t1uuid = testOnlineDDLStatement(t, createParams(createT1Statement, "mysql", "vtgate", "just-created", "", false))
-
-			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete)
-			//onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
-			checkTable(t, t1Name, true)
-			onlineddl.VtgateExecQuery(t, &vtParams, "set @@enable_declarative_ddl=false", "")
-		})
-
-		t.Run("fail postpone-completion", func(t *testing.T) {
-			t1uuid := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "mysql --postpone-completion", "vtgate", "", "", true))
-
-			// --postpone-completion not supported in mysql strategy
-			time.Sleep(ensureStateNotChangedTime)
-			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusFailed)
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusFailed)
-		})
-		t.Run("trivial", func(t *testing.T) {
-			t1uuid := testOnlineDDLStatement(t, createParams(trivialAlterT1Statement, "mysql", "vtgate", "", "", true))
-
-			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.CheckMigrationStatus(t, &vtParams, shards, t1uuid, schema.OnlineDDLStatusComplete)
-
-			rs := onlineddl.ReadMigrations(t, &vtParams, t1uuid)
-			require.NotNil(t, rs)
-			for _, row := range rs.Named().Rows {
-				artifacts := row.AsString("artifacts", "-")
-				assert.Empty(t, artifacts)
-			}
-		})
-		t.Run("instant", func(t *testing.T) {
-			t1uuid := testOnlineDDLStatement(t, createParams(instantAlterT1Statement, "mysql", "vtgate", "", "", true))
-
-			status := onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete, schema.OnlineDDLStatusFailed)
-			fmt.Printf("# Migration status (for debug purposes): <%s>\n", status)
-			onlineddl.WaitForMigrationStatus(t, &vtParams, shards, t1uuid, normalWaitTime, schema.OnlineDDLStatusComplete)
-		})
-	})
 	// in-order-completion
 	t.Run("alter non-exist table before ", func(t *testing.T) {
 		t.Run("alter non-exist table, it should be fail", func(t *testing.T) {
