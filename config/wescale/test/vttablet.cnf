@@ -28,7 +28,6 @@ non_transactional_dml_batch_size_threshold=10000
 non_transactional_dml_batch_size_threshold_ratio=0.5
 
 
-
 topo_implementation=etcd2
 topo_global_server_address=127.0.0.1:2379
 topo_global_root=/vitess/global

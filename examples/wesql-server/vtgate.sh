@@ -14,8 +14,8 @@ topology_flags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_serv
 VTDATAROOT=$VTDATAROOT/vtgate
 mkdir -p "$VTDATAROOT"
 
-original_config="$config_path/vtgate.cnf"
-temp_config="$config_path/vtgate.cnf.tmp"
+original_config="$config_path/../bak/vtgate.cnf"
+temp_config="$config_path/vtgate.cnf"
 
 # 检查原始配置文件是否存在
 if [ ! -f "$original_config" ]; then
@@ -26,17 +26,35 @@ fi
 # 拷贝原始配置文件到临时文件
 cp "$original_config" "$temp_config"
 
-# 将 topology_flags 转换为 key=value 并追加到临时配置文件
-for flag in $topology_flags; do
-    # 去掉前缀 --
-    key=${flag%%=*}
-    key=${key#--}
-    value=${flag#*=}
-    # 如果没有 '=', 则为布尔值
-    if [ "$key" = "$flag" ]; then
-        value=true
+printf "\n\n" >> "$temp_config"
+
+# 解析 topology_flags 并转换为 key=value 形式追加到临时配置文件
+# 使用数组来正确处理带有空格的值
+IFS=' ' read -r -a flags_array <<< "$topology_flags"
+
+i=0
+while [ $i -lt ${#flags_array[@]} ]; do
+    flag="${flags_array[$i]}"
+    if [[ "$flag" == --* ]]; then
+        key="${flag#--}"
+        # 检查是否为 --key=value 形式
+        if [[ "$key" == *"="* ]]; then
+            key="${key%%=*}"
+            value="${flag#*=}"
+        else
+            # 检查下一个参数是否存在且不是另一个 flag
+            next_index=$((i + 1))
+            if [ $next_index -lt ${#flags_array[@]} ] && [[ "${flags_array[$next_index]}" != --* ]]; then
+                value="${flags_array[$next_index]}"
+                i=$next_index
+            else
+                # 布尔值标志
+                value=true
+            fi
+        fi
+        echo "$key=$value" >> "$temp_config"
     fi
-    echo "$key=$value" >> "$temp_config"
+    i=$((i + 1))
 done
 
 # 追加其他标志到临时配置文件
@@ -53,9 +71,6 @@ cells_to_watch=$cell
 service_map=grpc-vtgateservice
 pid_file=$VTDATAROOT/vtgate.pid
 EOL
-
-# 替换原始配置文件
-mv "$temp_config" "$original_config"
 
 # 启动 vtgate，仅使用 --config_path 参数
 vtgate \

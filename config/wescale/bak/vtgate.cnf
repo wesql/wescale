@@ -46,17 +46,3 @@ auto_scale_data_node_pod_name=mycluster-wesql-0-0
 auto_scale_data_node_stateful_set_name=mycluster-wesql-0
 auto_scale_logger_node_pod_name=mycluster-wesql-1-0,mycluster-wesql-2-0
 auto_scale_logger_node_stateful_set_name=mycluster-wesql-1,mycluster-wesql-2
-
-topo_implementation=etcd2
-topo_global_server_address=127.0.0.1:2379
-topo_global_root=/vitess/global
-alsologtostderr=true
-log_queries_to_file=vtdataroot/vtgate/vtgate_querylog.txt
-port=15001
-grpc_port=15991
-mysql_server_port=15306
-mysql_server_socket_path=/tmp/mysql.sock
-cell=zone1
-cells_to_watch=zone1
-service_map=grpc-vtgateservice
-pid_file=vtdataroot/vtgate/vtgate.pid
