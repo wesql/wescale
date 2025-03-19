@@ -24,7 +24,7 @@ package main
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"time"
 
 	"vitess.io/vitess/go/internal/global"
@@ -53,12 +53,12 @@ import (
 )
 
 var (
+	cell                         = global.DefaultCell
 	enforceTableACLConfig        bool
 	tableACLConfig               string
 	tableACLMode                 string
 	tableACLConfigReloadInterval time.Duration
 	tabletPath                   string
-	tabletConfig                 string
 
 	tm                  *tabletmanager.TabletManager
 	vtTabletViperConfig = viperutil.NewViperConfig()
@@ -70,7 +70,6 @@ func registerFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&tableACLMode, "table-acl-config-mode", global.TableACLModeSimple, "table acl config mode (simple or mysqlbased)")
 	fs.DurationVar(&tableACLConfigReloadInterval, "table-acl-config-reload-interval", global.DefaultACLReloadInterval, "Ticker to reload ACLs. Duration flag, format e.g.: 30s. Default: do not reload")
 	fs.StringVar(&tabletPath, "tablet-path", tabletPath, "tablet alias")
-	fs.StringVar(&tabletConfig, "tablet_config", tabletConfig, "YAML file config for tablet")
 	acl.RegisterFlags(fs)
 }
 
@@ -103,24 +102,37 @@ func main() {
 	if tableACLMode != global.TableACLModeSimple && tableACLMode != global.TableACLModeMysqlBased {
 		log.Exit("require table-acl-config-mode")
 	}
-	if tabletPath == "" {
-		log.Exit("--tablet-path required")
+
+	var tabletAlias *topodatapb.TabletAlias = nil
+	if tabletPath != "" {
+		parsedTabletAlias, err := topoproto.ParseTabletAlias(tabletPath)
+		if err != nil {
+			log.Exitf("failed to parse --tablet-path: %v", err)
+		}
+		tabletAlias = parsedTabletAlias
 	}
-	tabletAlias, err := topoproto.ParseTabletAlias(tabletPath)
-	if err != nil {
-		log.Exitf("failed to parse --tablet-path: %v", err)
+
+	config, mycnf := initConfig(tabletAlias)
+	mysqld := mysqlctl.NewMysqld(config.DB)
+
+	if tabletAlias == nil {
+		server_id, err := mysqld.GetServerID(context.Background())
+		if err != nil {
+			log.Exitf("failed to get server id: %v", err)
+		}
+		tabletAlias, err = topoproto.ParseTabletAlias(fmt.Sprintf("%s-%010d", cell, server_id))
+		if err != nil {
+			log.Exitf("failed to parse --tablet-path: %v", err)
+		}
 	}
+
 	// validate query server pool auto scale config
 	tabletserver.ValidateQueryServerPoolAutoScaleConfig(true)
-
-	// config and mycnf initializations are intertwined.
-	config, mycnf := initConfig(tabletAlias)
 
 	ts := topo.Open()
 	qsc := createTabletServer(config, ts, tabletAlias)
 	viperutil.RegisterReloadHandlersForVtTablet(vtTabletViperConfig, qsc)
 
-	mysqld := mysqlctl.NewMysqld(config.DB)
 	servenv.OnClose(mysqld.Close)
 
 	// Initialize and start tm.
@@ -169,17 +181,8 @@ func initConfig(tabletAlias *topodatapb.TabletAlias) (*tabletenv.TabletConfig, *
 		log.Exitf("invalid config: %v", err)
 	}
 
-	if tabletConfig != "" {
-		bytes, err := os.ReadFile(tabletConfig)
-		if err != nil {
-			log.Exitf("error reading config file %s: %v", tabletConfig, err)
-		}
-		if err := yaml2.Unmarshal(bytes, config); err != nil {
-			log.Exitf("error parsing config file %s: %v", bytes, err)
-		}
-	}
 	gotBytes, _ := yaml2.Marshal(config)
-	log.Infof("Loaded config file %s successfully:\n%s", tabletConfig, gotBytes)
+	log.Infof("Loaded config file successfully:\n%s", gotBytes)
 
 	var mycnf *mysqlctl.Mycnf
 	var socketFile string
